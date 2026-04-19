@@ -42,11 +42,9 @@ void BilinearForm::assemble()
   K_.setZero();
 
   index_type ic = 0;
-
   for (const auto& cell : mesh.cells())
   {
     values.reinit(cell);
-
     const index_type ndofs = pattern_.elemNumDofs(ic);
 
     DenseMatrix Ke(ndofs, ndofs);
@@ -56,9 +54,7 @@ void BilinearForm::assemble()
     {
       term->assemble(values, Ke);
     }
-
     K_.addLocalMatrix(ic, Ke);
-
     ++ic;
   }
 }

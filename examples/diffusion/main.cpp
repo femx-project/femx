@@ -39,8 +39,8 @@ void printHelpInfo()
 template <class workspace_type>
 int diffusion(const std::string& backend)
 {
-  constexpr index_type nx = 64;
-  constexpr index_type ny = 64;
+  constexpr index_type nx = 128;
+  constexpr index_type ny = 128;
 
   Mesh mesh = Mesh::makeStructuredQuad(nx, ny);
 
@@ -91,13 +91,13 @@ int diffusion(const std::string& backend)
   const auto                          end  = std::chrono::high_resolution_clock::now();
   const std::chrono::duration<double> time = end - start;
 
-  DataOut data_out;
-  data_out.attachMesh(mesh);
-  data_out.addNodalField("u", x);
+  DataOut dout;
+  dout.attachMesh(mesh);
+  dout.addNodalField("u", x);
 
   const std::string filename =
       std::string(REFEM_DIFFUSION_OUTPUT_DIR) + "/diffusion";
-  data_out.write(filename);
+  dout.write(filename);
 
   std::cout << "Backend: " << backend << '\n';
   std::cout << "Solve time: " << time.count() << " s\n";
