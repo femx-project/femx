@@ -1,0 +1,19 @@
+add_subdirectory(common)
+add_subdirectory(mesh)
+add_subdirectory(fe)
+add_subdirectory(linalg)
+add_subdirectory(forms)
+add_subdirectory(io)
+add_subdirectory(solver)
+
+target_link_libraries(refem
+  INTERFACE
+    refem_common
+    refem_fe
+    refem_forms
+    refem_forms_integrators
+    refem_io
+    refem_linalg
+    refem_mesh
+    refem_solver
+)

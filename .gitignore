@@ -1,0 +1,5 @@
+.vscode
+.codex
+*.code-workspace
+
+build/
