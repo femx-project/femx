@@ -33,6 +33,7 @@ public:
 
   const index_type* rowPtrData() const;
   const index_type* colIndData() const;
+  real_type*        valuesData();
   const real_type*  valuesData() const;
 
 private:

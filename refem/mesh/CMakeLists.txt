@@ -4,6 +4,7 @@ add_library(refem::mesh ALIAS refem_mesh)
 target_sources(refem_mesh
   PRIVATE
     Cell.cpp
+    Mesh.cpp
   PUBLIC
     Cell.hpp
     Mesh.hpp

@@ -25,6 +25,7 @@ public:
 
   virtual const index_type* rowPtrData() const = 0;
   virtual const index_type* colIndData() const = 0;
+  virtual real_type*        valuesData()       = 0;
   virtual const real_type*  valuesData() const = 0;
 };
 

@@ -8,6 +8,7 @@ project(refem
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(REFEM_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
+option(REFEM_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
 option(REFEM_BUILD_EXAMPLES "Build refem examples" OFF)
 
 if(REFEM_ENABLE_RESOLVE)
@@ -15,6 +16,23 @@ if(REFEM_ENABLE_RESOLVE)
 
   if(ReSolve_FOUND)
     message(STATUS "Found ReSolve: ${ReSolve_DIR}")
+  endif()
+endif()
+
+if(REFEM_ENABLE_HDF5)
+  find_package(HDF5 COMPONENTS C QUIET)
+
+  if(HDF5_FOUND)
+    message(STATUS "Found HDF5: ${HDF5_VERSION}")
+    if(HDF5_IS_PARALLEL)
+      find_package(MPI COMPONENTS CXX QUIET)
+    endif()
+    find_path(REFEM_MPI_INCLUDE_DIR mpi.h
+      HINTS
+        /usr/lib/x86_64-linux-gnu/openmpi/include
+        /usr/include/openmpi
+        /usr/local/include
+    )
   endif()
 endif()
 
@@ -34,6 +52,10 @@ endif()
 
 if(ReSolve_FOUND)
   target_compile_definitions(refem_config INTERFACE REFEM_HAS_RESOLVE=1)
+endif()
+
+if(HDF5_FOUND)
+  target_compile_definitions(refem_config INTERFACE REFEM_HAS_HDF5=1)
 endif()
 
 add_library(refem INTERFACE)

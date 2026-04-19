@@ -68,6 +68,11 @@ const index_type* SparseMatrix::colIndData() const
   return impl_->colIndData();
 }
 
+real_type* SparseMatrix::valuesData()
+{
+  return impl_->valuesData();
+}
+
 const real_type* SparseMatrix::valuesData() const
 {
   return impl_->valuesData();

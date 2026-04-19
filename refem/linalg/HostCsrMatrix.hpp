@@ -26,6 +26,7 @@ public:
 
   const index_type* rowPtrData() const override;
   const index_type* colIndData() const override;
+  real_type*        valuesData() override;
   const real_type*  valuesData() const override;
 
 private:

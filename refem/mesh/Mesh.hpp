@@ -21,6 +21,13 @@ public:
   {
   }
 
+  static Mesh makeStructuredQuad(index_type nx,
+                                 index_type ny,
+                                 real_type  x_min = 0.0,
+                                 real_type  x_max = 1.0,
+                                 real_type  y_min = 0.0,
+                                 real_type  y_max = 1.0);
+
   index_type dim() const noexcept
   {
     return dim_;

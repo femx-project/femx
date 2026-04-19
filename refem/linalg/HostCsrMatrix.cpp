@@ -85,6 +85,11 @@ const index_type* HostCsrMatrixImpl::colIndData() const
   return pattern_->colIndData();
 }
 
+real_type* HostCsrMatrixImpl::valuesData()
+{
+  return values_.data();
+}
+
 const real_type* HostCsrMatrixImpl::valuesData() const
 {
   return values_.data();

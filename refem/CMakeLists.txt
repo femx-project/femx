@@ -2,6 +2,7 @@ add_subdirectory(common)
 add_subdirectory(mesh)
 add_subdirectory(fe)
 add_subdirectory(linalg)
+add_subdirectory(bc)
 add_subdirectory(forms)
 add_subdirectory(io)
 add_subdirectory(solver)
@@ -9,6 +10,7 @@ add_subdirectory(solver)
 target_link_libraries(refem
   INTERFACE
     refem_common
+    refem_bc
     refem_fe
     refem_forms
     refem_forms_integrators

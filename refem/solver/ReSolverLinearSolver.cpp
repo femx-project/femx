@@ -103,12 +103,14 @@ public:
         A.cols(),
         A.nnz());
 
+    const auto memspace = memorySpace();
+
     checkStatus(
         matrix_->copyFromExternal(A.rowPtrData(),
                                   A.colIndData(),
                                   A.valuesData(),
                                   ReSolve::memory::HOST,
-                                  ReSolve::memory::HOST),
+                                  memspace),
         "ReSolve Csr::copyFromExternal failed");
 
     checkStatus(solver_->setMatrix(matrix_.get()),
@@ -164,20 +166,24 @@ public:
     }
 
 #if defined(REFEM_HAS_RESOLVE)
+    const auto memspace = memorySpace();
+
     ReSolve::vector::Vector rhs(b.size());
     ReSolve::vector::Vector sol(x.size());
 
     checkStatus(rhs.copyFromExternal(b.data(),
                                      ReSolve::memory::HOST,
-                                     ReSolve::memory::HOST),
+                                     memspace),
                 "ReSolve rhs Vector::copyFromExternal failed");
-    checkStatus(sol.allocate(ReSolve::memory::HOST),
+    checkStatus(sol.allocate(memspace),
                 "ReSolve solution Vector::allocate failed");
+    checkStatus(sol.setToZero(memspace),
+                "ReSolve solution Vector::setToZero failed");
 
     checkStatus(solver_->solve(&rhs, &sol),
                 "ReSolve SystemSolver::solve failed");
     checkStatus(sol.copyToExternal(x.data(),
-                                   ReSolve::memory::HOST,
+                                   memspace,
                                    ReSolve::memory::HOST),
                 "ReSolve solution Vector::copyToExternal failed");
 #else
@@ -196,6 +202,21 @@ private:
   }
 
 #if defined(REFEM_HAS_RESOLVE)
+  ReSolve::memory::MemorySpace memorySpace() const
+  {
+    switch (workspace_type_)
+    {
+    case WorkspaceType::Cpu:
+      return ReSolve::memory::HOST;
+
+    case WorkspaceType::Cuda:
+    case WorkspaceType::Hip:
+      return ReSolve::memory::DEVICE;
+    }
+
+    return ReSolve::memory::HOST;
+  }
+
   void resetSolver()
   {
     switch (workspace_type_)
