@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "Navier.hpp"
+#include "NavierGLS.hpp"
 #include "Utils.hpp"
 #include <refem/bc/DirichletCondition.hpp>
 #include <refem/fe/BlockFESpace.hpp>
@@ -31,8 +31,7 @@ using refem::real_type;
 
 int run(const Options& options)
 {
-  refem::Mesh           mesh = refem::Mesh::makeStructuredQuad(refem::nx,
-                                                               refem::ny);
+  refem::Mesh           mesh = refem::Mesh::makeStructuredQuad(refem::nx, refem::ny);
   refem::LagrangeQuadQ1 element;
   refem::FESpace        velocity_space(&mesh, &element, refem::dim);
   refem::FESpace        pressure_space(&mesh, &element);
@@ -50,7 +49,7 @@ int run(const Options& options)
   x.setZero();
   xp.setZero();
 
-  refem::SolverBackend solver_backend = refem::SolverBackend::ReSolve;
+  refem::SolverBackend  solver_backend = refem::SolverBackend::ReSolve;
   refem::ReSolveOptions solver_options;
   setSolverOptions(solver_options);
 
@@ -59,7 +58,7 @@ int run(const Options& options)
   {
     workspace = refem::WorkspaceType::Cpu;
   }
-  else if(options.backend == "cuda")
+  else if (options.backend == "cuda")
   {
     workspace = refem::WorkspaceType::Cuda;
   }

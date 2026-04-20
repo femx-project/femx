@@ -1,11 +1,11 @@
-#include "Navier.hpp"
+#include "NavierGLS.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
 
-#include "NavierComponents.hpp"
+#include "Components.hpp"
 #include <refem/bc/DirichletCondition.hpp>
 #include <refem/fe/BlockFESpace.hpp>
 #include <refem/fe/ElementValues.hpp>

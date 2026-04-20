@@ -1,6 +1,8 @@
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include <refem/bc/DirichletCondition.hpp>
@@ -15,7 +17,6 @@
 #include <refem/solver/LinearSolver.hpp>
 #include <refem/solver/ReSolverLinearSolver.hpp>
 #include <refem/solver/Workspace.hpp>
-#include <resolve/utilities/params/CliOptions.hpp>
 
 #ifndef REFEM_DIFFUSION_OUTPUT_DIR
 #define REFEM_DIFFUSION_OUTPUT_DIR "."
@@ -23,19 +24,73 @@
 
 using namespace refem;
 
+struct Options
+{
+  WorkspaceType workspace_type = WorkspaceType::Cpu;
+  std::string   backend        = "cpu";
+};
+
 void printHelpInfo()
 {
   std::cout << "\ndiffusion solves a left-to-right diffusion problem.\n\n";
-  std::cout << "Usage:\n\t./diffusion [-b <cpu|cuda>]\n\n";
+  std::cout << "Usage:\n\t./diffusion [-b|--backend <cpu|cuda>]\n\n";
   std::cout << "Optional features:\n";
-  std::cout << "\t-b <cpu|cuda> \tSelects hardware backend.\n";
-  std::cout << "\t-h \tPrints this message.\n\n";
+  std::cout << "\t-b, --backend <cpu|cuda> \tSelects hardware backend.\n";
+  std::cout << "\t-h, --help \tPrints this message.\n\n";
 }
 
-int diffusion(WorkspaceType workspace_type, const std::string& backend)
+Options parseOptions(int argc, char* argv[])
 {
-  constexpr index_type nx = 128;
-  constexpr index_type ny = 128;
+  Options options;
+
+  const auto requireValue = [argc, argv](int& i, const std::string& key)
+  {
+    if (i + 1 >= argc)
+    {
+      throw std::runtime_error("Missing value for " + key);
+    }
+    return std::string(argv[++i]);
+  };
+
+  for (int i = 1; i < argc; ++i)
+  {
+    const std::string key(argv[i]);
+    if (key == "-h" || key == "--help")
+    {
+      printHelpInfo();
+      std::exit(0);
+    }
+    else if (key == "-b" || key == "--backend")
+    {
+      options.backend = requireValue(i, key);
+    }
+    else
+    {
+      throw std::runtime_error("Unknown option: " + key);
+    }
+  }
+
+  if (options.backend == "cpu")
+  {
+    options.workspace_type = WorkspaceType::Cpu;
+  }
+  else if (options.backend == "cuda")
+  {
+    options.workspace_type = WorkspaceType::Cuda;
+  }
+  else
+  {
+    throw std::runtime_error(
+        "Backend must be either 'cpu' or 'cuda'");
+  }
+
+  return options;
+}
+
+int run(WorkspaceType workspace_type, const std::string& backend)
+{
+  constexpr index_type nx = 64;
+  constexpr index_type ny = 64;
 
   Mesh mesh = Mesh::makeStructuredQuad(nx, ny);
 
@@ -99,34 +154,14 @@ int diffusion(WorkspaceType workspace_type, const std::string& backend)
 
 int main(int argc, char* argv[])
 {
-  ReSolve::CliOptions options(argc, argv);
-
-  if (options.hasKey("-h"))
+  try
   {
-    printHelpInfo();
-    return 0;
+    const Options options = parseOptions(argc, argv);
+    return run(options.workspace_type, options.backend);
   }
-
-  auto opt = options.getParamFromKey("-b");
-  if (!opt)
+  catch (const std::exception& e)
   {
-    std::cout << "No backend option provided. Defaulting to CPU.\n";
-    return diffusion(WorkspaceType::Cpu, "cpu");
-  }
-  else if (opt->second == "cuda")
-  {
-    return diffusion(WorkspaceType::Cuda, "cuda");
-  }
-  else if (opt->second == "cpu")
-  {
-    return diffusion(WorkspaceType::Cpu, "cpu");
-  }
-  else
-  {
-    std::cout << "Re::Solve is not built with support for " << opt->second
-              << " backend.\n";
+    std::cerr << "diffusion: " << e.what() << '\n';
     return 1;
   }
-
-  return 0;
 }

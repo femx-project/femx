@@ -3,7 +3,7 @@
 #include <array>
 #include <vector>
 
-#include "Navier.hpp"
+#include "NavierGLS.hpp"
 #include <refem/forms/integrators/DomainBilinearIntegrator.hpp>
 #include <refem/forms/integrators/DomainLinearIntegrator.hpp>
 

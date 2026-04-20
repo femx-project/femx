@@ -1,0 +1,24 @@
+{
+  "mesh": {
+    "nx": 32,
+    "ny": 32
+  },
+  "time": {
+    "steps": 100,
+    "dt": 0.01
+  },
+  "physics": {
+    "rho": 1.0,
+    "mu": 0.01,
+    "lid": 1.0
+  },
+  "stability": {
+    "max_cfl": 10.0
+  },
+  "output": {
+    "interval": 10
+  },
+  "solver": {
+    "backend": "cpu"
+  }
+}

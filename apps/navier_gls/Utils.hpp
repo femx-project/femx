@@ -3,21 +3,105 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "Navier.hpp"
+#include "NavierGLS.hpp"
+#include <nlohmann/json.hpp>
 #include <refem/io/TimeSeriesDataOut.hpp>
 #include <refem/linalg/Vector.hpp>
 #include <refem/mesh/Mesh.hpp>
 #include <refem/solver/ReSolverLinearSolver.hpp>
 
+#ifndef REFEM_NAVIERSTOKES_CONFIG_FILE
+#define REFEM_NAVIERSTOKES_CONFIG_FILE "Config.json"
+#endif
+
 struct Options
 {
   std::string backend = "cpu";
+  std::string config  = REFEM_NAVIERSTOKES_CONFIG_FILE;
 };
+
+template <typename T>
+void assignIfPresent(const nlohmann::json& node,
+                     const char*           key,
+                     T&                    value)
+{
+  if (node.contains(key))
+  {
+    value = node.at(key).get<T>();
+  }
+}
+
+void loadConfigFile(const std::string& path,
+                    Options&           options)
+{
+  std::ifstream input(path);
+  if (!input)
+  {
+    throw std::runtime_error("Failed to open config file: " + path);
+  }
+
+  const auto config = nlohmann::json::parse(input, nullptr, true, true);
+
+  if (config.contains("mesh"))
+  {
+    const auto& mesh = config.at("mesh");
+    assignIfPresent(mesh, "nx", refem::nx);
+    assignIfPresent(mesh, "ny", refem::ny);
+  }
+
+  if (config.contains("time"))
+  {
+    const auto& time = config.at("time");
+    assignIfPresent(time, "steps", refem::steps);
+    assignIfPresent(time, "dt", refem::dt);
+  }
+
+  if (config.contains("physics"))
+  {
+    const auto& physics = config.at("physics");
+    assignIfPresent(physics, "rho", refem::rho);
+    assignIfPresent(physics, "mu", refem::mu);
+    assignIfPresent(physics, "lid", refem::lid);
+  }
+
+  if (config.contains("stability"))
+  {
+    assignIfPresent(config.at("stability"), "max_cfl", refem::max_cfl);
+  }
+
+  if (config.contains("output"))
+  {
+    assignIfPresent(config.at("output"), "interval", refem::interval);
+  }
+
+  if (config.contains("solver"))
+  {
+    assignIfPresent(config.at("solver"), "backend", options.backend);
+  }
+}
+
+void validateOptions(const Options& options)
+{
+  if (refem::nx <= 0 || refem::ny <= 0 || refem::steps <= 0 ||
+      refem::dt <= 0.0 || refem::max_cfl <= 0.0 || refem::rho <= 0.0 ||
+      refem::mu <= 0.0)
+  {
+    throw std::runtime_error("Invalid non-positive Navier-Stokes parameter");
+  }
+
+  refem::interval = std::max<refem::index_type>(1, refem::interval);
+
+  if (options.backend != "cpu" && options.backend != "cuda")
+  {
+    throw std::runtime_error("Backend must be either 'cpu' or 'cuda'");
+  }
+}
 
 Options parseOptions(int argc, char* argv[])
 {
@@ -37,55 +121,12 @@ Options parseOptions(int argc, char* argv[])
     const std::string key(argv[i]);
     if (key == "-h" || key == "--help")
     {
-      std::cout << "Usage: navierstokes [--nx N] [--ny N] [--steps N] "
-                   "[--dt DT] [--mu MU] [--rho RHO] [--lid U] "
-                   "[--interval N] [--max-cfl N] "
-                   "[-b|--backend cpu|cuda]\n";
+      std::cout << "Usage: navier_gls [--config FILE]\n";
       std::exit(0);
     }
-    else if (key == "-b" || key == "--backend")
+    else if (key == "--config")
     {
-      options.backend = requireValue(i, key);
-    }
-    else if (key == "--nx")
-    {
-      refem::nx =
-          static_cast<refem::index_type>(std::stol(requireValue(i, key)));
-    }
-    else if (key == "--ny")
-    {
-      refem::ny =
-          static_cast<refem::index_type>(std::stol(requireValue(i, key)));
-    }
-    else if (key == "--steps")
-    {
-      refem::steps =
-          static_cast<refem::index_type>(std::stol(requireValue(i, key)));
-    }
-    else if (key == "--interval")
-    {
-      refem::interval =
-          static_cast<refem::index_type>(std::stol(requireValue(i, key)));
-    }
-    else if (key == "--dt")
-    {
-      refem::dt = std::stod(requireValue(i, key));
-    }
-    else if (key == "--mu")
-    {
-      refem::mu = std::stod(requireValue(i, key));
-    }
-    else if (key == "--rho")
-    {
-      refem::rho = std::stod(requireValue(i, key));
-    }
-    else if (key == "--lid")
-    {
-      refem::lid = std::stod(requireValue(i, key));
-    }
-    else if (key == "--max-cfl")
-    {
-      refem::max_cfl = std::stod(requireValue(i, key));
+      options.config = requireValue(i, key);
     }
     else
     {
@@ -93,20 +134,8 @@ Options parseOptions(int argc, char* argv[])
     }
   }
 
-  if (refem::nx <= 0 || refem::ny <= 0 || refem::steps <= 0 ||
-      refem::dt <= 0.0 || refem::max_cfl <= 0.0 || refem::rho <= 0.0 ||
-      refem::mu <= 0.0)
-  {
-    throw std::runtime_error("Invalid non-positive Navier-Stokes parameter");
-  }
-
-  refem::interval = std::max<refem::index_type>(1, refem::interval);
-
-  if (options.backend != "cpu" && options.backend != "cuda")
-  {
-    throw std::runtime_error("Backend must be either 'cpu' or 'cuda'");
-  }
-
+  loadConfigFile(options.config, options);
+  validateOptions(options);
   return options;
 }
 
