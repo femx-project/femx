@@ -23,11 +23,11 @@ public:
 
   void setZero();
 
-  void addLocalMatrix(index_type ic, const DenseMatrix& Ke);
-
   index_type rows() const;
   index_type cols() const;
   index_type nnz() const;
+
+  const FixedSparsityPattern& pattern() const;
 
   MatrixBackend backend() const;
 
@@ -37,6 +37,7 @@ public:
   const real_type*  valuesData() const;
 
 private:
+  const FixedSparsityPattern*       pattern_{nullptr};
   std::unique_ptr<SparseMatrixImpl> impl_;
 };
 

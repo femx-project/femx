@@ -11,6 +11,7 @@ namespace refem
 
 SparseMatrix::SparseMatrix(const FixedSparsityPattern& pattern,
                            MatrixBackend              backend)
+  : pattern_(&pattern)
 {
   switch (backend)
   {
@@ -33,11 +34,6 @@ void SparseMatrix::setZero()
   impl_->setZero();
 }
 
-void SparseMatrix::addLocalMatrix(index_type ic, const DenseMatrix& Ke)
-{
-  impl_->addLocalMatrix(ic, Ke);
-}
-
 index_type SparseMatrix::rows() const
 {
   return impl_->rows();
@@ -51,6 +47,11 @@ index_type SparseMatrix::cols() const
 index_type SparseMatrix::nnz() const
 {
   return impl_->nnz();
+}
+
+const FixedSparsityPattern& SparseMatrix::pattern() const
+{
+  return *pattern_;
 }
 
 MatrixBackend SparseMatrix::backend() const

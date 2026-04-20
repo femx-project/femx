@@ -16,8 +16,6 @@ public:
 
   void setZero() override;
 
-  void addLocalMatrix(index_type cell, const DenseMatrix& Ke) override;
-
   index_type rows() const override;
   index_type cols() const override;
   index_type nnz() const override;

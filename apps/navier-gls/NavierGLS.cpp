@@ -15,6 +15,7 @@
 #include <refem/fe/FiniteElement.hpp>
 #include <refem/fe/GaussQuadrature.hpp>
 #include <refem/linalg/DenseMatrix.hpp>
+#include <refem/linalg/LocalAssembler.hpp>
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/mesh/Mesh.hpp>
 
@@ -443,13 +444,13 @@ void assembleSystem(const BlockFESpace& space,
 
   std::vector<QPState> qp_states(
       static_cast<std::size_t>(ev.numQuadraturePoints()));
-  std::vector<index_type> elem_dofs;
+  LocalAssembler assembler(space, A.pattern());
   DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
   Vector      Fe(space.numDofsPerElem());
 
   for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
   {
-    ev.reinit(space.mesh().cells()[static_cast<std::size_t>(ic)]);
+    ev.reinit(space.mesh().cell(ic));
     updateCellState(qp_states,
                     ev,
                     space,
@@ -473,9 +474,8 @@ void assembleSystem(const BlockFESpace& space,
     assembleViscousRHS(ev, qp_states, Fe);
     assembleStabilizationRHS(ev, qp_states, Fe);
 
-    A.addLocalMatrix(ic, Ke);
-    space.elemDofs(ic, elem_dofs);
-    b.addLocalVector(elem_dofs, Fe);
+    assembler.addLocalMatrix(ic, Ke, A);
+    assembler.addLocalVector(ic, Fe, b);
   }
 }
 

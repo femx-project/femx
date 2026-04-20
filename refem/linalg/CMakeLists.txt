@@ -6,11 +6,13 @@ target_sources(refem_linalg
     DenseMatrix.cpp
     FixedSparsityPattern.cpp
     HostCsrMatrix.cpp
+    LocalAssembler.cpp
     SparseMatrix.cpp
   PUBLIC
     DenseMatrix.hpp
     FixedSparsityPattern.hpp
     HostCsrMatrix.hpp
+    LocalAssembler.hpp
     MatrixBackend.hpp
     MatrixView.hpp
     SparseMatrix.hpp

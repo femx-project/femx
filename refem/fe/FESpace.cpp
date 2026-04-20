@@ -33,7 +33,7 @@ void FESpace::setup()
 
   for (index_type e = 0; e < num_elem; ++e)
   {
-    const auto& cell = mesh_->cells()[static_cast<std::size_t>(e)];
+    const auto& cell = mesh_->cell(e);
     if (cell.numNodes() != finite_element_->numNodes())
     {
       throw std::runtime_error(

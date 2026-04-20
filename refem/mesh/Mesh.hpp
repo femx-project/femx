@@ -68,6 +68,11 @@ public:
     return cells_;
   }
 
+  const Cell& cell(index_type i) const
+  {
+    return cells_[static_cast<std::size_t>(i)];
+  }
+
   const std::vector<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;

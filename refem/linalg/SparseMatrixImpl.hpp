@@ -15,8 +15,6 @@ public:
 
   virtual void setZero() = 0;
 
-  virtual void addLocalMatrix(index_type ic, const DenseMatrix& Ke) = 0;
-
   virtual index_type rows() const = 0;
   virtual index_type cols() const = 0;
   virtual index_type nnz() const  = 0;

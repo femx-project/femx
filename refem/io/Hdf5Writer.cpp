@@ -27,7 +27,7 @@ index_type nodesPerCell(const Mesh& mesh)
   const index_type nodes = mesh.cells().front().numNodes();
   for (index_type ic = 1; ic < mesh.numElems(); ++ic)
   {
-    if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != nodes)
+    if (mesh.cell(ic).numNodes() != nodes)
     {
       throw std::runtime_error("Hdf5Writer supports one cell type per mesh");
     }

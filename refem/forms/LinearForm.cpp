@@ -5,6 +5,7 @@
 #include <refem/fe/FiniteElement.hpp>
 #include <refem/forms/LinearForm.hpp>
 #include <refem/forms/integrators/DomainLinearIntegrator.hpp>
+#include <refem/linalg/LocalAssembler.hpp>
 #include <refem/linalg/Vector.hpp>
 
 namespace refem
@@ -40,15 +41,15 @@ void LinearForm::assemble()
       GaussQuadrature::make(fe.referenceElement(), 2);
 
   ElementValues ev(fe, quadrature);
+  LocalAssembler assembler(*space_);
 
   b_.setZero();
 
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
-    ev.reinit(mesh.cells()[static_cast<std::size_t>(ic)]);
+    ev.reinit(mesh.cell(ic));
 
-    const auto& dofs = space_->elemDofs(ic);
-    const index_type ndofs = static_cast<index_type>(dofs.size());
+    const index_type ndofs = space_->numDofsPerElem();
 
     Vector Fe(ndofs);
     Fe.setZero();
@@ -58,7 +59,7 @@ void LinearForm::assemble()
       term->assemble(ev, Fe);
     }
 
-    b_.addLocalVector(dofs, Fe);
+    assembler.addLocalVector(ic, Fe, b_);
   }
 }
 

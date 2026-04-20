@@ -7,6 +7,7 @@
 #include <refem/forms/BilinearForm.hpp>
 #include <refem/forms/integrators/DomainBilinearIntegrator.hpp>
 #include <refem/linalg/DenseMatrix.hpp>
+#include <refem/linalg/LocalAssembler.hpp>
 
 namespace refem
 {
@@ -37,12 +38,13 @@ void BilinearForm::assemble()
   auto quad = GaussQuadrature::make(fe.referenceElement(), 2);
 
   ElementValues ev(fe, quad);
+  LocalAssembler assembler(*space_, pattern_);
 
   K_.setZero();
 
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
-    ev.reinit(mesh.cells()[static_cast<std::size_t>(ic)]);
+    ev.reinit(mesh.cell(ic));
     const index_type ndofs = pattern_.elemNumDofs(ic);
 
     DenseMatrix Ke(ndofs, ndofs);
@@ -52,7 +54,7 @@ void BilinearForm::assemble()
     {
       term->assemble(ev, Ke);
     }
-    K_.addLocalMatrix(ic, Ke);
+    assembler.addLocalMatrix(ic, Ke, K_);
   }
 }
 

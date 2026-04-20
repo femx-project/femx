@@ -75,7 +75,7 @@ void checkMesh(const Mesh& mesh)
 
   for (index_type ic = 1; ic < mesh.numElems(); ++ic)
   {
-    const auto& cell = mesh.cells()[static_cast<std::size_t>(ic)];
+    const auto& cell = mesh.cell(ic);
     if (cell.numNodes() != cell_nodes || cell.shape() != shape)
     {
       throw std::runtime_error("TimeSeriesDataOut supports one cell type per mesh");
@@ -248,7 +248,7 @@ void writeMesh(hid_t file, const Mesh& mesh)
       static_cast<std::size_t>(cell_nodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
-    const auto& cell = mesh.cells()[static_cast<std::size_t>(ic)];
+    const auto& cell = mesh.cell(ic);
     if (cell.numNodes() != cell_nodes || cell.shape() != shape)
     {
       throw std::runtime_error("TimeSeriesDataOut supports one cell type per mesh");

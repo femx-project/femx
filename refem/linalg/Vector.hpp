@@ -54,27 +54,6 @@ public:
     std::fill(values_.begin(), values_.end(), real_type{});
   }
 
-  void addLocalVector(const std::vector<index_type>& dofs,
-                      const Vector&                  local)
-  {
-    if (static_cast<index_type>(dofs.size()) != local.size())
-    {
-      throw std::runtime_error("Local vector size does not match cell dofs");
-    }
-
-    for (index_type i = 0; i < local.size(); ++i)
-    {
-      const index_type dof = dofs[static_cast<std::size_t>(i)];
-
-      if (dof < 0 || dof >= size())
-      {
-        throw std::runtime_error("Vector dof is out of range");
-      }
-
-      values_[static_cast<std::size_t>(dof)] += local[i];
-    }
-  }
-
 private:
   std::vector<real_type> values_;
 };
