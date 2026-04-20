@@ -42,8 +42,8 @@ void XdmfWriter::write(const std::string&              filename,
   out << "  <Domain>\n";
   out << R"(    <Grid Name="mesh" GridType="Uniform">)" << '\n';
   out << R"(      <Topology TopologyType="Quadrilateral" NumberOfElements=")"
-      << mesh.numCells() << "\">\n";
-  out << R"(        <DataItem Dimensions=")" << mesh.numCells()
+      << mesh.numElems() << "\">\n";
+  out << R"(        <DataItem Dimensions=")" << mesh.numElems()
       << R"( 4" NumberType="Int" Precision="4" Format="HDF">)"
       << h5_ref << ":/Mesh/Topology</DataItem>\n";
   out << "      </Topology>\n";

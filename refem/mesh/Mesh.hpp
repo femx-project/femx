@@ -38,7 +38,7 @@ public:
     return static_cast<index_type>(nodes_.size());
   }
 
-  index_type numCells() const noexcept
+  index_type numElems() const noexcept
   {
     return static_cast<index_type>(cells_.size());
   }

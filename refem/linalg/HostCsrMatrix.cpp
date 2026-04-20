@@ -25,7 +25,7 @@ void HostCsrMatrixImpl::setZero()
 void HostCsrMatrixImpl::addLocalMatrix(index_type cell,
                                        const DenseMatrix& Ke)
 {
-  if (cell >= pattern_->numCells())
+  if (cell >= pattern_->numElems())
   {
     throw std::runtime_error("Cell index is out of range");
   }

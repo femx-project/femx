@@ -42,7 +42,7 @@ public:
 
   const Mesh& mesh() const noexcept;
   index_type  numFields() const noexcept;
-  index_type  numCells() const noexcept;
+  index_type  numElems() const noexcept;
   index_type  numDofs() const noexcept;
   index_type  numDofsPerElem() const noexcept;
 

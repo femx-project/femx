@@ -43,7 +43,7 @@ void LinearForm::assemble()
 
   b_.setZero();
 
-  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
+  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     ev.reinit(mesh.cells()[static_cast<std::size_t>(ic)]);
 

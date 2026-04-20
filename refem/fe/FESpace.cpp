@@ -24,7 +24,7 @@ FESpace::FESpace(const Mesh*          mesh,
 
 void FESpace::setup()
 {
-  const index_type num_elem = mesh_->numCells();
+  const index_type num_elem = mesh_->numElems();
   num_shapes_per_elem_      = finite_element_->numDofsPerElement();
   const index_type ndof_e   = components_ * num_shapes_per_elem_;
 
@@ -59,9 +59,9 @@ const DofMap& FESpace::dofMap() const noexcept
   return dof_map_;
 }
 
-index_type FESpace::numCells() const noexcept
+index_type FESpace::numElems() const noexcept
 {
-  return mesh_->numCells();
+  return mesh_->numElems();
 }
 
 index_type FESpace::numDofs() const noexcept

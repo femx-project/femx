@@ -58,7 +58,7 @@ void checkMesh(const Mesh& mesh)
     throw std::runtime_error("TimeSeriesDataOut supports 2D meshes for now");
   }
 
-  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
+  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != 4)
     {
@@ -214,8 +214,8 @@ void writeMesh(hid_t file, const Mesh& mesh)
   }
 
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numCells()) * 4);
-  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
+      static_cast<std::size_t>(mesh.numElems()) * 4);
+  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const index_type* nodes = mesh.cellNodeIds(ic);
     for (index_type i = 0; i < 4; ++i)
@@ -231,7 +231,7 @@ void writeMesh(hid_t file, const Mesh& mesh)
   writeIntDataset(file,
                   "/Mesh/Topology",
                   topology,
-                  {static_cast<hsize_t>(mesh.numCells()), 4});
+                  {static_cast<hsize_t>(mesh.numElems()), 4});
 }
 
 void writeHdf5(const std::string&                          filename,
@@ -296,8 +296,8 @@ void writeXdmf(const std::string&                          filename,
     out << R"(      <Grid Name=")" << step << R"(" GridType="Uniform">)" << '\n';
     out << R"(        <Time Value=")" << steps[s].time << R"("/>)" << '\n';
     out << R"(        <Topology TopologyType="Quadrilateral" NumberOfElements=")"
-        << mesh.numCells() << "\">\n";
-    out << R"(          <DataItem Dimensions=")" << mesh.numCells()
+        << mesh.numElems() << "\">\n";
+    out << R"(          <DataItem Dimensions=")" << mesh.numElems()
         << R"( 4" NumberType="Int" Precision="4" Format="HDF">)"
         << h5_ref << ":/Mesh/Topology</DataItem>\n";
     out << "        </Topology>\n";

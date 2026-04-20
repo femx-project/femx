@@ -1,1 +1,1 @@
-add_subdirectory(navier_gls)
+add_subdirectory(navier-gls)

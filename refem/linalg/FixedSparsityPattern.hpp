@@ -27,7 +27,7 @@ public:
   index_type cols() const;
   index_type nnz() const;
 
-  index_type numCells() const;
+  index_type numElems() const;
   index_type numCooEntries() const;
 
   const index_type* rowPtrData() const;

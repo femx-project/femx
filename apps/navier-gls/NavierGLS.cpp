@@ -237,7 +237,7 @@ void assembleSystem(const BlockFESpace& space,
   b.setZero();
   max_cfl = 0.0;
 
-  for (index_type ic = 0; ic < space.mesh().numCells(); ++ic)
+  for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
   {
     ev.reinit(space.mesh().cells()[static_cast<std::size_t>(ic)]);
     std::vector<QPState> state = makeCellState(ev,

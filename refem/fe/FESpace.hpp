@@ -22,7 +22,7 @@ public:
   const Mesh&             mesh() const noexcept;
   const FiniteElement&    finiteElement() const noexcept;
   const DofMap&           dofMap() const noexcept;
-  index_type              numCells() const noexcept;
+  index_type              numElems() const noexcept;
   index_type              numDofs() const noexcept;
   index_type              numComponents() const noexcept;
   index_type              numShapesPerElem() const noexcept;

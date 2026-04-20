@@ -25,7 +25,7 @@ void checkMeshAndFields(const Mesh&                            mesh,
     throw std::runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
+  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != 4)
     {
@@ -168,8 +168,8 @@ void Hdf5Writer::write(const std::string&             filename,
   }
 
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numCells()) * 4);
-  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
+      static_cast<std::size_t>(mesh.numElems()) * 4);
+  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const index_type* node_ids = mesh.cellNodeIds(ic);
     for (index_type i = 0; i < 4; ++i)
@@ -186,7 +186,7 @@ void Hdf5Writer::write(const std::string&             filename,
   writeIntDataset(file,
                   "/Mesh/Topology",
                   topology,
-                  {static_cast<hsize_t>(mesh.numCells()), 4});
+                  {static_cast<hsize_t>(mesh.numElems()), 4});
 
   for (const auto& field : nodal_fields)
   {

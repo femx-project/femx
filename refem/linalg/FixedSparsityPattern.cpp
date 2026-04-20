@@ -11,7 +11,7 @@ FixedSparsityPattern::FixedSparsityPattern(const FESpace& space)
 {
   num_rows_  = space.numDofs();
   num_cols_  = space.numDofs();
-  num_elems_ = space.numCells();
+  num_elems_ = space.numElems();
 
   elem_coo_offsets_ = new index_type[num_elems_ + 1];
   elem_num_dofs_    = new index_type[num_elems_];
@@ -34,7 +34,7 @@ FixedSparsityPattern::FixedSparsityPattern(const BlockFESpace& space)
 {
   num_rows_  = space.numDofs();
   num_cols_  = space.numDofs();
-  num_elems_ = space.numCells();
+  num_elems_ = space.numElems();
 
   elem_coo_offsets_ = new index_type[num_elems_ + 1];
   elem_num_dofs_    = new index_type[num_elems_];
@@ -293,7 +293,7 @@ index_type FixedSparsityPattern::nnz() const
   return nnz_;
 }
 
-index_type FixedSparsityPattern::numCells() const
+index_type FixedSparsityPattern::numElems() const
 {
   return num_elems_;
 }

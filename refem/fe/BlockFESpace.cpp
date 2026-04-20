@@ -102,9 +102,9 @@ index_type BlockFESpace::numFields() const noexcept
   return static_cast<index_type>(fields_.size());
 }
 
-index_type BlockFESpace::numCells() const noexcept
+index_type BlockFESpace::numElems() const noexcept
 {
-  return fields_[0].numCells();
+  return fields_[0].numElems();
 }
 
 index_type BlockFESpace::numDofs() const noexcept
