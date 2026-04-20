@@ -1,7 +1,9 @@
+#include <cmath>
 #include <memory>
-#include <utility>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
@@ -14,6 +16,10 @@
 #include <resolve/matrix/Csr.hpp>
 #include <resolve/resolve_defs.hpp>
 #include <resolve/vector/Vector.hpp>
+#include <resolve/workspace/LinAlgWorkspaceCpu.hpp>
+#if defined(RESOLVE_USE_CUDA)
+#include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
+#endif
 #endif
 
 namespace refem
@@ -22,65 +28,23 @@ namespace refem
 class ReSolveLinearSolver::Impl
 {
 public:
-  explicit Impl(ReSolve::LinAlgWorkspaceCpu* workspace)
+  explicit Impl(WorkspaceType workspace_type)
     : A_(nullptr),
-      workspace_type_(WorkspaceType::Cpu),
-      workspace_(workspace)
+      workspace_type_(workspace_type)
   {
 #if defined(REFEM_HAS_RESOLVE)
+    initializeWorkspace();
     resetSolver();
 #endif
   }
 
-  Impl(ReSolve::LinAlgWorkspaceCpu* workspace, ReSolveOptions options)
+  Impl(WorkspaceType workspace_type, ReSolveOptions options)
     : options_(std::move(options)),
       A_(nullptr),
-      workspace_type_(WorkspaceType::Cpu),
-      workspace_(workspace)
+      workspace_type_(workspace_type)
   {
 #if defined(REFEM_HAS_RESOLVE)
-    resetSolver();
-#endif
-  }
-
-  explicit Impl(ReSolve::LinAlgWorkspaceCUDA* workspace)
-    : A_(nullptr),
-      workspace_type_(WorkspaceType::Cuda),
-      workspace_(workspace)
-  {
-#if defined(REFEM_HAS_RESOLVE)
-    resetSolver();
-#endif
-  }
-
-  Impl(ReSolve::LinAlgWorkspaceCUDA* workspace, ReSolveOptions options)
-    : options_(std::move(options)),
-      A_(nullptr),
-      workspace_type_(WorkspaceType::Cuda),
-      workspace_(workspace)
-  {
-#if defined(REFEM_HAS_RESOLVE)
-    resetSolver();
-#endif
-  }
-
-  explicit Impl(ReSolve::LinAlgWorkspaceHIP* workspace)
-    : A_(nullptr),
-      workspace_type_(WorkspaceType::Hip),
-      workspace_(workspace)
-  {
-#if defined(REFEM_HAS_RESOLVE)
-    resetSolver();
-#endif
-  }
-
-  Impl(ReSolve::LinAlgWorkspaceHIP* workspace, ReSolveOptions options)
-    : options_(std::move(options)),
-      A_(nullptr),
-      workspace_type_(WorkspaceType::Hip),
-      workspace_(workspace)
-  {
-#if defined(REFEM_HAS_RESOLVE)
+    initializeWorkspace();
     resetSolver();
 #endif
   }
@@ -96,12 +60,21 @@ public:
     A_ = &A;
 
 #if defined(REFEM_HAS_RESOLVE)
-    resetSolver();
+    const bool reuse_matrix =
+        matrix_ != nullptr && matrix_rows_ == A.rows() && matrix_cols_ == A.cols() && matrix_nnz_ == A.nnz() && options_.factor == "none" && options_.refactor == "none";
 
-    matrix_ = std::make_unique<ReSolve::matrix::Csr>(
-        A.rows(),
-        A.cols(),
-        A.nnz());
+    if (!reuse_matrix)
+    {
+      resetSolver();
+
+      matrix_ = std::make_unique<ReSolve::matrix::Csr>(
+          A.rows(),
+          A.cols(),
+          A.nnz());
+      matrix_rows_ = A.rows();
+      matrix_cols_ = A.cols();
+      matrix_nnz_  = A.nnz();
+    }
 
     const auto memspace = memorySpace();
 
@@ -113,29 +86,40 @@ public:
                                   memspace),
         "ReSolve Csr::copyFromExternal failed");
 
-    checkStatus(solver_->setMatrix(matrix_.get()),
-                "ReSolve SystemSolver::setMatrix failed");
-
-    if (options_.factor != "none")
+    if (reuse_matrix)
     {
-      checkStatus(solver_->analyze(),
-                  "ReSolve SystemSolver::analyze failed");
-      checkStatus(solver_->factorize(),
-                  "ReSolve SystemSolver::factorize failed");
+      if (options_.precond != "none")
+      {
+        checkStatus(solver_->resetPreconditioner(matrix_.get()),
+                    "ReSolve SystemSolver::resetPreconditioner failed");
+      }
     }
-
-    if (options_.refactor != "none")
+    else
     {
-      checkStatus(solver_->refactorizationSetup(),
-                  "ReSolve SystemSolver::refactorizationSetup failed");
-      checkStatus(solver_->refactorize(),
-                  "ReSolve SystemSolver::refactorize failed");
-    }
+      checkStatus(solver_->setMatrix(matrix_.get()),
+                  "ReSolve SystemSolver::setMatrix failed");
 
-    if (options_.precond != "none")
-    {
-      checkStatus(solver_->preconditionerSetup(),
-                  "ReSolve SystemSolver::preconditionerSetup failed");
+      if (options_.factor != "none")
+      {
+        checkStatus(solver_->analyze(),
+                    "ReSolve SystemSolver::analyze failed");
+        checkStatus(solver_->factorize(),
+                    "ReSolve SystemSolver::factorize failed");
+      }
+
+      if (options_.refactor != "none")
+      {
+        checkStatus(solver_->refactorizationSetup(),
+                    "ReSolve SystemSolver::refactorizationSetup failed");
+        checkStatus(solver_->refactorize(),
+                    "ReSolve SystemSolver::refactorize failed");
+      }
+
+      if (options_.precond != "none")
+      {
+        checkStatus(solver_->preconditionerSetup(),
+                    "ReSolve SystemSolver::preconditionerSetup failed");
+      }
     }
 #endif
   }
@@ -182,6 +166,24 @@ public:
 
     checkStatus(solver_->solve(&rhs, &sol),
                 "ReSolve SystemSolver::solve failed");
+
+    if (options_.solve == "fgmres" || options_.solve == "randgmres")
+    {
+      const real_type residual =
+          solver_->getIterativeSolver().getFinalResidualNorm();
+      if (!std::isfinite(residual) || residual > 10.0 * options_.relative_tolerance)
+      {
+        std::ostringstream message;
+        message << "ReSolve iterative solve did not converge: final relative "
+                << "residual = " << residual
+                << ", tolerance = " << options_.relative_tolerance
+                << ", iterations = "
+                << solver_->getIterativeSolver().getNumIter()
+                << " / " << options_.max_iterations;
+        throw std::runtime_error(message.str());
+      }
+    }
+
     checkStatus(sol.copyToExternal(x.data(),
                                    memspace,
                                    ReSolve::memory::HOST),
@@ -210,7 +212,6 @@ private:
       return ReSolve::memory::HOST;
 
     case WorkspaceType::Cuda:
-    case WorkspaceType::Hip:
       return ReSolve::memory::DEVICE;
     }
 
@@ -223,7 +224,7 @@ private:
     {
     case WorkspaceType::Cpu:
       solver_ = std::make_unique<ReSolve::SystemSolver>(
-          static_cast<ReSolve::LinAlgWorkspaceCpu*>(workspace_),
+          cpu_workspace_.get(),
           options_.factor,
           options_.refactor,
           options_.solve,
@@ -234,7 +235,7 @@ private:
     case WorkspaceType::Cuda:
 #if defined(RESOLVE_USE_CUDA)
       solver_ = std::make_unique<ReSolve::SystemSolver>(
-          static_cast<ReSolve::LinAlgWorkspaceCUDA*>(workspace_),
+          cuda_workspace_.get(),
           options_.factor,
           options_.refactor,
           options_.solve,
@@ -245,24 +246,30 @@ private:
       throw std::runtime_error(
           "This ReSolve installation was not built with CUDA support");
 #endif
-
-    case WorkspaceType::Hip:
-#if defined(RESOLVE_USE_HIP)
-      solver_ = std::make_unique<ReSolve::SystemSolver>(
-          static_cast<ReSolve::LinAlgWorkspaceHIP*>(workspace_),
-          options_.factor,
-          options_.refactor,
-          options_.solve,
-          options_.precond,
-          options_.ir);
-      break;
-#else
-      throw std::runtime_error(
-          "This ReSolve installation was not built with HIP support");
-#endif
     }
 
     applyOptions();
+  }
+
+  void initializeWorkspace()
+  {
+    switch (workspace_type_)
+    {
+    case WorkspaceType::Cpu:
+      cpu_workspace_ = std::make_unique<ReSolve::LinAlgWorkspaceCpu>();
+      cpu_workspace_->initializeHandles();
+      break;
+
+    case WorkspaceType::Cuda:
+#if defined(RESOLVE_USE_CUDA)
+      cuda_workspace_ = std::make_unique<ReSolve::LinAlgWorkspaceCUDA>();
+      cuda_workspace_->initializeHandles();
+      break;
+#else
+      throw std::runtime_error(
+          "This ReSolve installation was not built with CUDA support");
+#endif
+    }
   }
 
   void applyOptions()
@@ -275,9 +282,14 @@ private:
       solver_->getIterativeSolver().setCliParam(
           "restart",
           std::to_string(options_.restart));
+      std::string flexible = "no";
+      if (options_.flexible)
+      {
+        flexible = "yes";
+      }
       solver_->getIterativeSolver().setCliParam(
           "flexible",
-          options_.flexible ? "1" : "0");
+          flexible);
 
       if (options_.solve == "randgmres")
       {
@@ -291,44 +303,28 @@ private:
   ReSolveOptions      options_;
   const SparseMatrix* A_;
   WorkspaceType       workspace_type_;
-  void*               workspace_;
+  index_type          matrix_rows_ = 0;
+  index_type          matrix_cols_ = 0;
+  index_type          matrix_nnz_  = 0;
 
 #if defined(REFEM_HAS_RESOLVE)
+  std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
+#if defined(RESOLVE_USE_CUDA)
+  std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_workspace_;
+#endif
   std::unique_ptr<ReSolve::SystemSolver> solver_;
   std::unique_ptr<ReSolve::matrix::Csr>  matrix_;
 #endif
 };
 
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace)
-  : impl_(std::make_unique<Impl>(workspace))
+ReSolveLinearSolver::ReSolveLinearSolver(WorkspaceType workspace_type)
+  : impl_(std::make_unique<Impl>(workspace_type))
 {
 }
 
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace,
-                                         ReSolveOptions               options)
-  : impl_(std::make_unique<Impl>(workspace, std::move(options)))
-{
-}
-
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace)
-  : impl_(std::make_unique<Impl>(workspace))
-{
-}
-
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace,
-                                         ReSolveOptions                options)
-  : impl_(std::make_unique<Impl>(workspace, std::move(options)))
-{
-}
-
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace)
-  : impl_(std::make_unique<Impl>(workspace))
-{
-}
-
-ReSolveLinearSolver::ReSolveLinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace,
-                                         ReSolveOptions               options)
-  : impl_(std::make_unique<Impl>(workspace, std::move(options)))
+ReSolveLinearSolver::ReSolveLinearSolver(WorkspaceType  workspace_type,
+                                         ReSolveOptions options)
+  : impl_(std::make_unique<Impl>(workspace_type, std::move(options)))
 {
 }
 

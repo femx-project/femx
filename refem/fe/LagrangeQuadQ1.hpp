@@ -8,10 +8,10 @@ namespace refem
 class LagrangeQuadQ1 : public FiniteElement
 {
 public:
-  static constexpr index_type dimension = 2;
-  static constexpr index_type nnodes    = 4;
-  static constexpr index_type ndofs     = 4;
-  static constexpr index_type degree    = 1;
+  static constexpr index_type dimen  = 2;
+  static constexpr index_type nnodes = 4;
+  static constexpr index_type ndofs  = 4;
+  static constexpr index_type degree = 1;
 
   std::string name() const override
   {
@@ -20,7 +20,7 @@ public:
 
   index_type dim() const override
   {
-    return dimension;
+    return dimen;
   }
 
   index_type numNodes() const override
@@ -61,8 +61,8 @@ public:
     const real_type r = qp[0];
     const real_type s = qp[1];
 
-    dNdr(0, 0) = -0.25 * (1.0 - s); // dN0/dr
-    dNdr(0, 1) = -0.25 * (1.0 - r); // dN0/ds
+    dNdr(0, 0) = -0.25 * (1.0 - s);
+    dNdr(0, 1) = -0.25 * (1.0 - r);
 
     dNdr(1, 0) = 0.25 * (1.0 - s);
     dNdr(1, 1) = -0.25 * (1.0 + r);

@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(REFEM_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
 option(REFEM_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
 option(REFEM_BUILD_EXAMPLES "Build refem examples" OFF)
+option(REFEM_BUILD_APPS "Build refem apps" ON)
 
 if(REFEM_ENABLE_RESOLVE)
   find_package(ReSolve CONFIG QUIET)
@@ -67,4 +68,8 @@ add_subdirectory(refem)
 
 if(REFEM_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+if(REFEM_BUILD_APPS)
+  add_subdirectory(apps)
 endif()

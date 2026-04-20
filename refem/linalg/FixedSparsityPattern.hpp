@@ -1,16 +1,22 @@
 #pragma once
 
+#include <vector>
+
 #include <refem/common/Types.hpp>
 
 namespace refem
 {
 
 class FESpace;
+class BlockFESpace;
 
 class FixedSparsityPattern
 {
 public:
   explicit FixedSparsityPattern(const FESpace& space);
+  explicit FixedSparsityPattern(const BlockFESpace& space);
+  FixedSparsityPattern(index_type                                  num_dofs,
+                       const std::vector<std::vector<index_type>>& cell_dofs);
 
   ~FixedSparsityPattern();
 
@@ -36,10 +42,22 @@ public:
 
 private:
   void countCooEntries(const FESpace& space);
+  void countCooEntries(const BlockFESpace& space);
+  void countCooEntries(
+      const std::vector<std::vector<index_type>>& cell_dofs);
   void setupCooArrays(const FESpace& space,
                       index_type*    coo_rows,
                       index_type*    coo_cols,
                       index_type*    order);
+  void setupCooArrays(const BlockFESpace& space,
+                      index_type*         coo_rows,
+                      index_type*         coo_cols,
+                      index_type*         order);
+  void setupCooArrays(
+      const std::vector<std::vector<index_type>>& cell_dofs,
+      index_type*                                 coo_rows,
+      index_type*                                 coo_cols,
+      index_type*                                 order);
   void setupCsrArrays(const index_type* coo_rows,
                       const index_type* coo_cols,
                       index_type*       order);
@@ -49,7 +67,7 @@ private:
   index_type num_cols_{0};
   index_type nnz_{0};
 
-  index_type num_cells_{0};
+  index_type num_elems_{0};
   index_type num_coo_entries_{0};
 
   index_type* row_ptr_{nullptr};

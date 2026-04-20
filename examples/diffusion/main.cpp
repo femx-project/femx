@@ -12,14 +12,10 @@
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
 #include <refem/mesh/Mesh.hpp>
+#include <refem/solver/LinearSolver.hpp>
 #include <refem/solver/ReSolverLinearSolver.hpp>
-#include <resolve/resolve_defs.hpp>
+#include <refem/solver/Workspace.hpp>
 #include <resolve/utilities/params/CliOptions.hpp>
-#include <resolve/workspace/LinAlgWorkspaceCpu.hpp>
-
-#ifdef RESOLVE_USE_CUDA
-#include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
-#endif
 
 #ifndef REFEM_DIFFUSION_OUTPUT_DIR
 #define REFEM_DIFFUSION_OUTPUT_DIR "."
@@ -36,8 +32,7 @@ void printHelpInfo()
   std::cout << "\t-h \tPrints this message.\n\n";
 }
 
-template <class workspace_type>
-int diffusion(const std::string& backend)
+int diffusion(WorkspaceType workspace_type, const std::string& backend)
 {
   constexpr index_type nx = 128;
   constexpr index_type ny = 128;
@@ -67,9 +62,6 @@ int diffusion(const std::string& backend)
   }
   boundary.apply(form.matrix(), b);
 
-  workspace_type workspace;
-  workspace.initializeHandles();
-
   ReSolveOptions options;
   options.factor             = "none";
   options.refactor           = "none";
@@ -83,7 +75,7 @@ int diffusion(const std::string& backend)
   options.restart            = 200;
   options.relative_tolerance = 1.0e-12;
 
-  ReSolveLinearSolver solver(&workspace, options);
+  LinearSolver solver(workspace_type, SolverBackend::ReSolve, options);
   solver.setOperator(form.matrix());
 
   const auto start = std::chrono::high_resolution_clock::now();
@@ -119,17 +111,15 @@ int main(int argc, char* argv[])
   if (!opt)
   {
     std::cout << "No backend option provided. Defaulting to CPU.\n";
-    return diffusion<ReSolve::LinAlgWorkspaceCpu>("cpu");
+    return diffusion(WorkspaceType::Cpu, "cpu");
   }
-#ifdef RESOLVE_USE_CUDA
   else if (opt->second == "cuda")
   {
-    return diffusion<ReSolve::LinAlgWorkspaceCUDA>("cuda");
+    return diffusion(WorkspaceType::Cuda, "cuda");
   }
-#endif
   else if (opt->second == "cpu")
   {
-    return diffusion<ReSolve::LinAlgWorkspaceCpu>("cpu");
+    return diffusion(WorkspaceType::Cpu, "cpu");
   }
   else
   {

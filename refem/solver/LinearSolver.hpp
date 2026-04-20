@@ -3,12 +3,7 @@
 #include <memory>
 #include <string>
 
-namespace ReSolve
-{
-class LinAlgWorkspaceCUDA;
-class LinAlgWorkspaceCpu;
-class LinAlgWorkspaceHIP;
-} // namespace ReSolve
+#include <refem/solver/Workspace.hpp>
 
 namespace refem
 {
@@ -28,18 +23,11 @@ enum class SolverBackend
 class LinearSolver
 {
 public:
-  explicit LinearSolver(SolverBackend backend = SolverBackend::ReSolve);
-  explicit LinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace);
-  LinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace,
-               ReSolveOptions               options);
-
-  explicit LinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace);
-  LinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace,
-               ReSolveOptions                options);
-
-  explicit LinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace);
-  LinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace,
-               ReSolveOptions               options);
+  explicit LinearSolver(WorkspaceType workspace_type,
+                        SolverBackend backend = SolverBackend::ReSolve);
+  LinearSolver(WorkspaceType  workspace_type,
+               SolverBackend  backend,
+               ReSolveOptions options);
 
   ~LinearSolver();
 

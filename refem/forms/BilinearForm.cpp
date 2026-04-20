@@ -5,7 +5,7 @@
 #include <refem/fe/FESpace.hpp>
 #include <refem/fe/FiniteElement.hpp>
 #include <refem/forms/BilinearForm.hpp>
-#include <refem/forms/integrators/DomainIntegrator.hpp>
+#include <refem/forms/integrators/DomainBilinearIntegrator.hpp>
 #include <refem/linalg/DenseMatrix.hpp>
 
 namespace refem
@@ -19,7 +19,7 @@ BilinearForm::BilinearForm(const FESpace* space)
 }
 
 void BilinearForm::addDomainIntegrator(
-    std::unique_ptr<DomainIntegrator> integrator)
+    std::unique_ptr<DomainBilinearIntegrator> integrator)
 {
   if (integrator == nullptr)
   {
@@ -37,14 +37,13 @@ void BilinearForm::assemble()
   GaussQuadrature quadrature =
       GaussQuadrature::make(fe.referenceElement(), 2);
 
-  ElementValues values(fe, quadrature);
+  ElementValues ev(fe, quadrature);
 
   K_.setZero();
 
-  index_type ic = 0;
-  for (const auto& cell : mesh.cells())
+  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
   {
-    values.reinit(cell);
+    ev.reinit(mesh.cells()[static_cast<std::size_t>(ic)]);
     const index_type ndofs = pattern_.elemNumDofs(ic);
 
     DenseMatrix Ke(ndofs, ndofs);
@@ -52,10 +51,9 @@ void BilinearForm::assemble()
 
     for (const auto& term : terms_)
     {
-      term->assemble(values, Ke);
+      term->assemble(ev, Ke);
     }
     K_.addLocalMatrix(ic, Ke);
-    ++ic;
   }
 }
 

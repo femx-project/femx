@@ -11,15 +11,14 @@ namespace refem
 {
 
 class FESpace;
-class DomainIntegrator;
+class DomainBilinearIntegrator;
 
 class BilinearForm
 {
 public:
   explicit BilinearForm(const FESpace* space);
 
-  void addDomainIntegrator(std::unique_ptr<DomainIntegrator> integrator);
-
+  void addDomainIntegrator(std::unique_ptr<DomainBilinearIntegrator> integrator);
   void assemble();
 
   const SparseMatrix& matrix() const;
@@ -31,7 +30,7 @@ private:
   FixedSparsityPattern pattern_;
   SparseMatrix         K_;
 
-  std::vector<std::unique_ptr<DomainIntegrator>> terms_;
+  std::vector<std::unique_ptr<DomainBilinearIntegrator>> terms_;
 };
 
 } // namespace refem

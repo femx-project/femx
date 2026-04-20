@@ -1,24 +1,25 @@
 #pragma once
 
+#include <vector>
+
 #include <refem/common/Types.hpp>
 #include <refem/forms/integrators/DomainBilinearIntegrator.hpp>
 
 namespace refem
 {
 
-class DiffusionIntegrator : public DomainBilinearIntegrator
+class AdvectionIntegrator : public DomainBilinearIntegrator
 {
 public:
-  explicit DiffusionIntegrator(real_type kappa)
-    : kappa_(kappa)
-  {
-  }
+  AdvectionIntegrator(std::vector<real_type> velocity,
+                      real_type              coefficient = 1.0);
 
   void assemble(const ElementValues& ev,
                 DenseMatrix&         Ke) const override;
 
 private:
-  real_type kappa_ = 1.0;
+  std::vector<real_type> velocity_;
+  real_type              coeff_{1.0};
 };
 
 } // namespace refem

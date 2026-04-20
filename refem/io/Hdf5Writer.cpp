@@ -25,9 +25,9 @@ void checkMeshAndFields(const Mesh&                            mesh,
     throw std::runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  for (const Cell& cell : mesh.cells())
+  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
   {
-    if (cell.numNodes() != 4)
+    if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != 4)
     {
       throw std::runtime_error("Hdf5Writer supports quadrilateral cells for now");
     }
@@ -158,23 +158,23 @@ void Hdf5Writer::write(const std::string&             filename,
 
   std::vector<double> geometry(
       static_cast<std::size_t>(mesh.numNodes()) * 3);
-  for (index_type node = 0; node < mesh.numNodes(); ++node)
+  for (index_type in = 0; in < mesh.numNodes(); ++in)
   {
     for (index_type d = 0; d < 3; ++d)
     {
-      geometry[static_cast<std::size_t>(node) * 3 +
-               static_cast<std::size_t>(d)] = mesh.node(node)[d];
+      geometry[static_cast<std::size_t>(in) * 3 +
+               static_cast<std::size_t>(d)] = mesh.node(in)[d];
     }
   }
 
   std::vector<index_type> topology(
       static_cast<std::size_t>(mesh.numCells()) * 4);
-  for (index_type cell = 0; cell < mesh.numCells(); ++cell)
+  for (index_type ic = 0; ic < mesh.numCells(); ++ic)
   {
-    const index_type* node_ids = mesh.cellNodeIds(cell);
+    const index_type* node_ids = mesh.cellNodeIds(ic);
     for (index_type i = 0; i < 4; ++i)
     {
-      topology[static_cast<std::size_t>(cell) * 4 +
+      topology[static_cast<std::size_t>(ic) * 4 +
                static_cast<std::size_t>(i)] = node_ids[i];
     }
   }

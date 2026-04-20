@@ -6,17 +6,17 @@
 namespace refem
 {
 
-void DiffusionIntegrator::assemble(const ElementValues& values,
+void DiffusionIntegrator::assemble(const ElementValues& ev,
                                    DenseMatrix&         Ke) const
 {
-  const index_type ndofs = values.numDofs();
-  const index_type dim   = values.dim();
-  const index_type nq    = values.numQuadraturePoints();
+  const index_type ndofs = ev.numDofs();
+  const index_type dim   = ev.dim();
+  const index_type nq    = ev.numQuadraturePoints();
 
   for (index_type q = 0; q < nq; ++q)
   {
-    const real_type wJ = values.weight(q) * values.detJ(q);
-    const auto      dNdx = values.dNdx(q);
+    const real_type wJ = ev.weight(q) * ev.detJ(q);
+    const auto      dNdx = ev.dNdx(q);
     for (index_type i = 0; i < ndofs; ++i)
     {
       for (index_type j = 0; j < ndofs; ++j)

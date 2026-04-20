@@ -5,26 +5,13 @@
 
 #include <refem/common/Types.hpp>
 #include <refem/solver/LinearSolverImpl.hpp>
-
-namespace ReSolve
-{
-class LinAlgWorkspaceCUDA;
-class LinAlgWorkspaceCpu;
-class LinAlgWorkspaceHIP;
-} // namespace ReSolve
+#include <refem/solver/Workspace.hpp>
 
 namespace refem
 {
 
 class SparseMatrix;
 class Vector;
-
-enum class WorkspaceType
-{
-  Cpu,
-  Cuda,
-  Hip
-};
 
 struct ReSolveOptions
 {
@@ -46,17 +33,9 @@ struct ReSolveOptions
 class ReSolveLinearSolver final : public LinearSolverImpl
 {
 public:
-  explicit ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace);
-  ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace,
-                      ReSolveOptions               options);
-
-  explicit ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace);
-  ReSolveLinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace,
-                      ReSolveOptions                options);
-
-  explicit ReSolveLinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace);
-  ReSolveLinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace,
-                      ReSolveOptions               options);
+  explicit ReSolveLinearSolver(WorkspaceType workspace_type);
+  ReSolveLinearSolver(WorkspaceType workspace_type,
+                      ReSolveOptions options);
 
   ~ReSolveLinearSolver() override;
 

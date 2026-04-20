@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include <refem/fe/BlockFESpace.hpp>
 #include <refem/fe/FESpace.hpp>
 #include <refem/linalg/FixedSparsityPattern.hpp>
 
@@ -10,10 +11,10 @@ FixedSparsityPattern::FixedSparsityPattern(const FESpace& space)
 {
   num_rows_  = space.numDofs();
   num_cols_  = space.numDofs();
-  num_cells_ = space.numCells();
+  num_elems_ = space.numCells();
 
-  elem_coo_offsets_ = new index_type[num_cells_ + 1];
-  elem_num_dofs_    = new index_type[num_cells_];
+  elem_coo_offsets_ = new index_type[num_elems_ + 1];
+  elem_num_dofs_    = new index_type[num_elems_];
 
   countCooEntries(space);
 
@@ -22,6 +23,54 @@ FixedSparsityPattern::FixedSparsityPattern(const FESpace& space)
   index_type* order    = new index_type[num_coo_entries_];
 
   setupCooArrays(space, coo_rows, coo_cols, order);
+  setupCsrArrays(coo_rows, coo_cols, order);
+
+  delete[] order;
+  delete[] coo_cols;
+  delete[] coo_rows;
+}
+
+FixedSparsityPattern::FixedSparsityPattern(const BlockFESpace& space)
+{
+  num_rows_  = space.numDofs();
+  num_cols_  = space.numDofs();
+  num_elems_ = space.numCells();
+
+  elem_coo_offsets_ = new index_type[num_elems_ + 1];
+  elem_num_dofs_    = new index_type[num_elems_];
+
+  countCooEntries(space);
+
+  index_type* coo_rows = new index_type[num_coo_entries_];
+  index_type* coo_cols = new index_type[num_coo_entries_];
+  index_type* order    = new index_type[num_coo_entries_];
+
+  setupCooArrays(space, coo_rows, coo_cols, order);
+  setupCsrArrays(coo_rows, coo_cols, order);
+
+  delete[] order;
+  delete[] coo_cols;
+  delete[] coo_rows;
+}
+
+FixedSparsityPattern::FixedSparsityPattern(
+    index_type                                  num_dofs,
+    const std::vector<std::vector<index_type>>& cell_dofs)
+{
+  num_rows_  = num_dofs;
+  num_cols_  = num_dofs;
+  num_elems_ = static_cast<index_type>(cell_dofs.size());
+
+  elem_coo_offsets_ = new index_type[num_elems_ + 1];
+  elem_num_dofs_    = new index_type[num_elems_];
+
+  countCooEntries(cell_dofs);
+
+  index_type* coo_rows = new index_type[num_coo_entries_];
+  index_type* coo_cols = new index_type[num_coo_entries_];
+  index_type* order    = new index_type[num_coo_entries_];
+
+  setupCooArrays(cell_dofs, coo_rows, coo_cols, order);
   setupCsrArrays(coo_rows, coo_cols, order);
 
   delete[] order;
@@ -42,13 +91,42 @@ void FixedSparsityPattern::countCooEntries(const FESpace& space)
 {
   num_coo_entries_ = 0;
 
-  for (index_type cell = 0; cell < num_cells_; ++cell)
+  for (index_type ic = 0; ic < num_elems_; ++ic)
   {
-    const auto dofs  = space.cellDofs(cell);
+    const auto dofs  = space.elemDofs(ic);
     const auto ndofs = static_cast<index_type>(dofs.size());
 
-    elem_num_dofs_[cell]  = ndofs;
-    num_coo_entries_     += ndofs * ndofs;
+    elem_num_dofs_[ic]  = ndofs;
+    num_coo_entries_   += ndofs * ndofs;
+  }
+}
+
+void FixedSparsityPattern::countCooEntries(const BlockFESpace& space)
+{
+  num_coo_entries_ = 0;
+
+  for (index_type ic = 0; ic < num_elems_; ++ic)
+  {
+    const auto dofs  = space.elemDofs(ic);
+    const auto ndofs = static_cast<index_type>(dofs.size());
+
+    elem_num_dofs_[ic]  = ndofs;
+    num_coo_entries_   += ndofs * ndofs;
+  }
+}
+
+void FixedSparsityPattern::countCooEntries(
+    const std::vector<std::vector<index_type>>& cell_dofs)
+{
+  num_coo_entries_ = 0;
+
+  for (index_type ic = 0; ic < num_elems_; ++ic)
+  {
+    const auto ndofs =
+        static_cast<index_type>(cell_dofs[static_cast<std::size_t>(ic)].size());
+
+    elem_num_dofs_[ic]  = ndofs;
+    num_coo_entries_   += ndofs * ndofs;
   }
 }
 
@@ -59,12 +137,12 @@ void FixedSparsityPattern::setupCooArrays(const FESpace& space,
 {
   index_type counter = 0;
 
-  for (index_type cell = 0; cell < num_cells_; ++cell)
+  for (index_type ic = 0; ic < num_elems_; ++ic)
   {
-    const auto       dofs  = space.cellDofs(cell);
-    const index_type ndofs = elem_num_dofs_[cell];
+    const auto       dofs  = space.elemDofs(ic);
+    const index_type ndofs = elem_num_dofs_[ic];
 
-    elem_coo_offsets_[cell] = counter;
+    elem_coo_offsets_[ic] = counter;
 
     for (index_type i = 0; i < ndofs; ++i)
     {
@@ -79,7 +157,68 @@ void FixedSparsityPattern::setupCooArrays(const FESpace& space,
     }
   }
 
-  elem_coo_offsets_[num_cells_] = num_coo_entries_;
+  elem_coo_offsets_[num_elems_] = num_coo_entries_;
+}
+
+void FixedSparsityPattern::setupCooArrays(const BlockFESpace& space,
+                                          index_type*         coo_rows,
+                                          index_type*         coo_cols,
+                                          index_type*         order)
+{
+  index_type counter = 0;
+
+  for (index_type ic = 0; ic < num_elems_; ++ic)
+  {
+    const auto       dofs  = space.elemDofs(ic);
+    const index_type ndofs = elem_num_dofs_[ic];
+
+    elem_coo_offsets_[ic] = counter;
+
+    for (index_type i = 0; i < ndofs; ++i)
+    {
+      for (index_type j = 0; j < ndofs; ++j)
+      {
+        coo_rows[counter] = dofs[i];
+        coo_cols[counter] = dofs[j];
+        order[counter]    = counter;
+
+        ++counter;
+      }
+    }
+  }
+
+  elem_coo_offsets_[num_elems_] = num_coo_entries_;
+}
+
+void FixedSparsityPattern::setupCooArrays(
+    const std::vector<std::vector<index_type>>& cell_dofs,
+    index_type*                                 coo_rows,
+    index_type*                                 coo_cols,
+    index_type*                                 order)
+{
+  index_type counter = 0;
+
+  for (index_type ic = 0; ic < num_elems_; ++ic)
+  {
+    const auto&      dofs  = cell_dofs[static_cast<std::size_t>(ic)];
+    const index_type ndofs = elem_num_dofs_[ic];
+
+    elem_coo_offsets_[ic] = counter;
+
+    for (index_type i = 0; i < ndofs; ++i)
+    {
+      for (index_type j = 0; j < ndofs; ++j)
+      {
+        coo_rows[counter] = dofs[static_cast<std::size_t>(i)];
+        coo_cols[counter] = dofs[static_cast<std::size_t>(j)];
+        order[counter]    = counter;
+
+        ++counter;
+      }
+    }
+  }
+
+  elem_coo_offsets_[num_elems_] = num_coo_entries_;
 }
 
 void FixedSparsityPattern::setupCsrArrays(const index_type* coo_rows,
@@ -109,9 +248,7 @@ void FixedSparsityPattern::setupCsrArrays(const index_type* coo_rows,
     const index_type current = order[k];
 
     const bool is_new =
-        k == 0 ||
-        coo_rows[current] != coo_rows[order[k - 1]] ||
-        coo_cols[current] != coo_cols[order[k - 1]];
+        k == 0 || coo_rows[current] != coo_rows[order[k - 1]] || coo_cols[current] != coo_cols[order[k - 1]];
 
     if (is_new)
     {
@@ -158,7 +295,7 @@ index_type FixedSparsityPattern::nnz() const
 
 index_type FixedSparsityPattern::numCells() const
 {
-  return num_cells_;
+  return num_elems_;
 }
 
 index_type FixedSparsityPattern::numCooEntries() const

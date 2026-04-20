@@ -53,21 +53,21 @@ DirichletCondition DirichletCondition::onBoundary(
   real_type min_coord[3] = {mesh.node(0)[0], mesh.node(0)[1], mesh.node(0)[2]};
   real_type max_coord[3] = {mesh.node(0)[0], mesh.node(0)[1], mesh.node(0)[2]};
 
-  for (index_type node = 1; node < mesh.numNodes(); ++node)
+  for (index_type in = 1; in < mesh.numNodes(); ++in)
   {
     for (index_type d = 0; d < mesh.dim(); ++d)
     {
-      min_coord[d] = std::min(min_coord[d], mesh.node(node)[d]);
-      max_coord[d] = std::max(max_coord[d], mesh.node(node)[d]);
+      min_coord[d] = std::min(min_coord[d], mesh.node(in)[d]);
+      max_coord[d] = std::max(max_coord[d], mesh.node(in)[d]);
     }
   }
 
   DirichletCondition condition;
-  for (index_type node = 0; node < mesh.numNodes(); ++node)
+  for (index_type in = 0; in < mesh.numNodes(); ++in)
   {
-    if (isBoundaryNode(mesh, node, min_coord, max_coord))
+    if (isBoundaryNode(mesh, in, min_coord, max_coord))
     {
-      condition.addDof(node, value(mesh.node(node)));
+      condition.addDof(in, value(mesh.node(in)));
     }
   }
 

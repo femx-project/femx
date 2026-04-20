@@ -8,8 +8,8 @@ target_sources(refem_solver
   PUBLIC
     LinearSolver.hpp
     LinearSolverImpl.hpp
-    ReSolveLinearSolver.hpp
     ReSolverLinearSolver.hpp
+    Workspace.hpp
 )
 
 target_link_libraries(refem_solver

@@ -7,14 +7,13 @@ namespace refem
 
 class DenseMatrix;
 class ElementValues;
-class FiniteElement;
 
-class DomainIntegrator
+class DomainBilinearIntegrator
 {
 public:
-  virtual ~DomainIntegrator() = default;
+  virtual ~DomainBilinearIntegrator() = default;
 
-  virtual void assemble(const ElementValues& values,
+  virtual void assemble(const ElementValues& ev,
                         DenseMatrix&         Ke) const = 0;
 };
 

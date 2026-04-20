@@ -10,17 +10,18 @@
 namespace refem
 {
 
-ElementValues::ElementValues(const FiniteElement&  finite_element,
+ElementValues::ElementValues(const FiniteElement&   finite_element,
                              const GaussQuadrature& quadrature)
   : finite_element_(&finite_element),
     quadrature_(&quadrature),
     num_nodes_(finite_element.numNodes()),
+    num_dofs_(finite_element.numDofsPerElement()),
     dim_(finite_element.dim()),
     num_qp_(quadrature.size())
 {
-  N_.resize(num_qp_ * num_nodes_);
-  dNdr_.resize(num_qp_ * num_nodes_ * dim_);
-  dNdx_.resize(num_qp_ * num_nodes_ * dim_);
+  N_.resize(num_qp_ * num_dofs_);
+  dNdr_.resize(num_qp_ * num_dofs_ * dim_);
+  dNdx_.resize(num_qp_ * num_dofs_ * dim_);
 
   detJ_.resize(num_qp_);
   weights_.resize(num_qp_);
@@ -43,7 +44,7 @@ index_type ElementValues::numNodes() const
 
 index_type ElementValues::numDofs() const
 {
-  return num_nodes_;
+  return num_dofs_;
 }
 
 index_type ElementValues::dim() const
@@ -59,23 +60,23 @@ index_type ElementValues::numQuadraturePoints() const
 VectorView<const real_type> ElementValues::N(index_type q) const
 {
   return VectorView<const real_type>(
-      N_.data() + q * num_nodes_,
-      num_nodes_);
+      N_.data() + q * num_dofs_,
+      num_dofs_);
 }
 
 MatrixView<const real_type> ElementValues::dNdr(index_type q) const
 {
   return MatrixView<const real_type>(
-      dNdr_.data() + q * num_nodes_ * dim_,
-      num_nodes_,
+      dNdr_.data() + q * num_dofs_ * dim_,
+      num_dofs_,
       dim_);
 }
 
 MatrixView<const real_type> ElementValues::dNdx(index_type q) const
 {
   return MatrixView<const real_type>(
-      dNdx_.data() + q * num_nodes_ * dim_,
-      num_nodes_,
+      dNdx_.data() + q * num_dofs_ * dim_,
+      num_dofs_,
       dim_);
 }
 
@@ -100,17 +101,17 @@ void ElementValues::calcReferenceValues()
   {
     const QuadraturePoint& qp = (*quadrature_)[q];
 
-    VectorView<real_type> Nq(
-        N_.data() + q * num_nodes_,
-        num_nodes_);
+    VectorView<real_type> N(
+        N_.data() + q * num_dofs_,
+        num_dofs_);
 
-    MatrixView<real_type> dNdr_q(
-        dNdr_.data() + q * num_nodes_ * dim_,
-        num_nodes_,
+    MatrixView<real_type> dNdr(
+        dNdr_.data() + q * num_dofs_ * dim_,
+        num_dofs_,
         dim_);
 
-    finite_element_->calcShape(qp, Nq);
-    finite_element_->calcShapeGrad(qp, dNdr_q);
+    finite_element_->calcShape(qp, N);
+    finite_element_->calcShapeGrad(qp, dNdr);
 
     weights_[q] = qp.weight;
   }
@@ -140,20 +141,20 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
     const real_type detJ = invJacobian(J_, invJ_, dim_);
     detJ_[q]             = std::abs(detJ);
 
-    MatrixView<real_type> dNdx_q(
-        dNdx_.data() + q * num_nodes_ * dim_,
-        num_nodes_,
+    MatrixView<real_type> dNdx(
+        dNdx_.data() + q * num_dofs_ * dim_,
+        num_dofs_,
         dim_);
 
-    for (index_type i = 0; i < num_nodes_; ++i)
+    for (index_type i = 0; i < num_dofs_; ++i)
     {
       for (index_type a = 0; a < dim_; ++a)
       {
-        dNdx_q(i, a) = 0.0;
+        dNdx(i, a) = 0.0;
 
         for (index_type b = 0; b < dim_; ++b)
         {
-          dNdx_q(i, a) += dNdr_q(i, b) * invJ_[b * dim_ + a];
+          dNdx(i, a) += dNdr_q(i, b) * invJ_[b * dim_ + a];
         }
       }
     }

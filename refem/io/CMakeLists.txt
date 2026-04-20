@@ -5,10 +5,12 @@ target_sources(refem_io
   PRIVATE
     DataOut.cpp
     Hdf5Writer.cpp
+    TimeSeriesDataOut.cpp
     XdmfWriter.cpp
   PUBLIC
     DataOut.hpp
     Hdf5Writer.hpp
+    TimeSeriesDataOut.hpp
     XdmfWriter.hpp
 )
 

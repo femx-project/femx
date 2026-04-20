@@ -12,7 +12,6 @@ target_sources(refem_linalg
     FixedSparsityPattern.hpp
     HostCsrMatrix.hpp
     MatrixBackend.hpp
-    MatrixVeiw.hpp
     MatrixView.hpp
     SparseMatrix.hpp
     SparseMatrixImpl.hpp

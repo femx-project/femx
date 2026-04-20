@@ -6,19 +6,16 @@
 namespace refem
 {
 
-class DiffusionIntegrator : public DomainBilinearIntegrator
+class MassIntegrator : public DomainBilinearIntegrator
 {
 public:
-  explicit DiffusionIntegrator(real_type kappa)
-    : kappa_(kappa)
-  {
-  }
+  explicit MassIntegrator(real_type coefficient = 1.0);
 
   void assemble(const ElementValues& ev,
                 DenseMatrix&         Ke) const override;
 
 private:
-  real_type kappa_ = 1.0;
+  real_type coeff_{1.0};
 };
 
 } // namespace refem

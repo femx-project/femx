@@ -16,7 +16,7 @@ class GaussQuadrature;
 class ElementValues
 {
 public:
-  ElementValues(const FiniteElement&  finite_element,
+  ElementValues(const FiniteElement&   finite_element,
                 const GaussQuadrature& quadrature);
 
   void reinit(const Cell& cell);
@@ -43,10 +43,11 @@ private:
                                index_type                    dim);
 
 private:
-  const FiniteElement*  finite_element_{nullptr};
+  const FiniteElement*   finite_element_{nullptr};
   const GaussQuadrature* quadrature_{nullptr};
 
   index_type num_nodes_{0};
+  index_type num_dofs_{0};
   index_type dim_{0};
   index_type num_qp_{0};
 

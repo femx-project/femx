@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <utility>
 
 #include <refem/solver/LinearSolver.hpp>
 #include <refem/solver/LinearSolverImpl.hpp>
@@ -7,13 +8,14 @@
 namespace refem
 {
 
-LinearSolver::LinearSolver(SolverBackend backend)
+LinearSolver::LinearSolver(WorkspaceType workspace_type,
+                           SolverBackend backend)
 {
   switch (backend)
   {
   case SolverBackend::ReSolve:
-    throw std::runtime_error(
-        "ReSolve LinearSolver requires a user-provided workspace");
+    impl_ = std::make_unique<ReSolveLinearSolver>(workspace_type);
+    break;
 
   case SolverBackend::Eigen:
     throw std::runtime_error("Eigen linear solver backend is not supported yet");
@@ -26,40 +28,26 @@ LinearSolver::LinearSolver(SolverBackend backend)
   }
 }
 
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace))
+LinearSolver::LinearSolver(WorkspaceType   workspace_type,
+                           SolverBackend  backend,
+                           ReSolveOptions options)
 {
-}
+  switch (backend)
+  {
+  case SolverBackend::ReSolve:
+    impl_ = std::make_unique<ReSolveLinearSolver>(workspace_type,
+                                                  std::move(options));
+    break;
 
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceCpu* workspace,
-                           ReSolveOptions               options)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace,
-                                                std::move(options)))
-{
-}
+  case SolverBackend::Eigen:
+    throw std::runtime_error("Eigen linear solver backend is not supported yet");
 
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace))
-{
-}
+  case SolverBackend::PETSc:
+    throw std::runtime_error("PETSc linear solver backend is not supported yet");
 
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceCUDA* workspace,
-                           ReSolveOptions                options)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace,
-                                                std::move(options)))
-{
-}
-
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace))
-{
-}
-
-LinearSolver::LinearSolver(ReSolve::LinAlgWorkspaceHIP* workspace,
-                           ReSolveOptions               options)
-  : impl_(std::make_unique<ReSolveLinearSolver>(workspace,
-                                                std::move(options)))
-{
+  default:
+    throw std::runtime_error("Unknown linear solver backend");
+  }
 }
 
 LinearSolver::~LinearSolver() = default;
