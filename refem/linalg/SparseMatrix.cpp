@@ -33,9 +33,9 @@ void SparseMatrix::setZero()
   impl_->setZero();
 }
 
-void SparseMatrix::addLocalMatrix(index_type cell, const DenseMatrix& Ke)
+void SparseMatrix::addLocalMatrix(index_type ic, const DenseMatrix& Ke)
 {
-  impl_->addLocalMatrix(cell, Ke);
+  impl_->addLocalMatrix(ic, Ke);
 }
 
 index_type SparseMatrix::rows() const

@@ -17,6 +17,24 @@ namespace refem
 namespace
 {
 
+index_type nodesPerCell(const Mesh& mesh)
+{
+  if (mesh.numElems() == 0)
+  {
+    throw std::runtime_error("Hdf5Writer needs a non-empty mesh");
+  }
+
+  const index_type nodes = mesh.cells().front().numNodes();
+  for (index_type ic = 1; ic < mesh.numElems(); ++ic)
+  {
+    if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != nodes)
+    {
+      throw std::runtime_error("Hdf5Writer supports one cell type per mesh");
+    }
+  }
+  return nodes;
+}
+
 void checkMeshAndFields(const Mesh&                            mesh,
                         const std::vector<Hdf5Writer::NodalField>& fields)
 {
@@ -25,12 +43,11 @@ void checkMeshAndFields(const Mesh&                            mesh,
     throw std::runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
+  const index_type cell_nodes = nodesPerCell(mesh);
+  if (cell_nodes != 3 && cell_nodes != 4)
   {
-    if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != 4)
-    {
-      throw std::runtime_error("Hdf5Writer supports quadrilateral cells for now");
-    }
+    throw std::runtime_error(
+        "Hdf5Writer supports triangle and quadrilateral cells for now");
   }
 
   for (const auto& field : fields)
@@ -167,14 +184,16 @@ void Hdf5Writer::write(const std::string&             filename,
     }
   }
 
+  const index_type cell_nodes = nodesPerCell(mesh);
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numElems()) * 4);
+      static_cast<std::size_t>(mesh.numElems()) *
+      static_cast<std::size_t>(cell_nodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const index_type* node_ids = mesh.cellNodeIds(ic);
-    for (index_type i = 0; i < 4; ++i)
+    for (index_type i = 0; i < cell_nodes; ++i)
     {
-      topology[static_cast<std::size_t>(ic) * 4 +
+      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(cell_nodes) +
                static_cast<std::size_t>(i)] = node_ids[i];
     }
   }
@@ -186,7 +205,8 @@ void Hdf5Writer::write(const std::string&             filename,
   writeIntDataset(file,
                   "/Mesh/Topology",
                   topology,
-                  {static_cast<hsize_t>(mesh.numElems()), 4});
+                  {static_cast<hsize_t>(mesh.numElems()),
+                   static_cast<hsize_t>(cell_nodes)});
 
   for (const auto& field : nodal_fields)
   {

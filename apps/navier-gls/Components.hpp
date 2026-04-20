@@ -4,112 +4,54 @@
 #include <vector>
 
 #include "NavierGLS.hpp"
-#include <refem/forms/integrators/DomainBilinearIntegrator.hpp>
-#include <refem/forms/integrators/DomainLinearIntegrator.hpp>
 
 namespace refem
 {
+
+class DenseMatrix;
+class ElementValues;
+class Vector;
 
 struct QPState
 {
   std::array<real_type, dim> u{};
   std::array<real_type, dim> u_adv{};
-  real_type                  grad[dim][dim]{};
-  std::array<real_type, dim> grad_u_adv{};
+  real_type                  grad_u[dim][dim]{};
+  std::array<real_type, dim> u_adv_grad_u{};
   std::array<real_type, dim> tau{};
 };
 
-class TransientLHS final : public DomainBilinearIntegrator
-{
-public:
-  void assemble(const ElementValues& ev,
-                DenseMatrix&         Ke) const override;
-};
+void assembleTransientLHS(const ElementValues& ev,
+                          DenseMatrix&         Ke);
 
-class TransientRHS final : public DomainLinearIntegrator
-{
-public:
-  explicit TransientRHS(const std::vector<QPState>& state);
+void assembleTransientRHS(const ElementValues&         ev,
+                          const std::vector<QPState>& qp_states,
+                          Vector&                     Fe);
 
-  void assemble(const ElementValues& ev,
-                Vector&              Fe) const override;
+void assembleAdvectionLHS(const ElementValues&         ev,
+                          const std::vector<QPState>& qp_states,
+                          DenseMatrix&                Ke);
 
-private:
-  const std::vector<QPState>& state_;
-};
+void assembleAdvectionRHS(const ElementValues&         ev,
+                          const std::vector<QPState>& qp_states,
+                          Vector&                     Fe);
 
-class AdvectionLHS final : public DomainBilinearIntegrator
-{
-public:
-  explicit AdvectionLHS(const std::vector<QPState>& state);
+void assembleViscousLHS(const ElementValues& ev,
+                        DenseMatrix&         Ke);
 
-  void assemble(const ElementValues& ev,
-                DenseMatrix&         Ke) const override;
+void assembleViscousRHS(const ElementValues&         ev,
+                        const std::vector<QPState>& qp_states,
+                        Vector&                     Fe);
 
-private:
-  const std::vector<QPState>& state_;
-};
+void assemblePressureVelocityCouplingLHS(const ElementValues& ev,
+                                         DenseMatrix&         Ke);
 
-class AdvectionRHS final : public DomainLinearIntegrator
-{
-public:
-  explicit AdvectionRHS(const std::vector<QPState>& state);
+void assembleStabilizationLHS(const ElementValues&         ev,
+                              const std::vector<QPState>& qp_states,
+                              DenseMatrix&                Ke);
 
-  void assemble(const ElementValues& ev,
-                Vector&              Fe) const override;
-
-private:
-  const std::vector<QPState>& state_;
-};
-
-class ViscousLHS final : public DomainBilinearIntegrator
-{
-public:
-  void assemble(const ElementValues& ev,
-                DenseMatrix&         Ke) const override;
-};
-
-class ViscousRHS final : public DomainLinearIntegrator
-{
-public:
-  explicit ViscousRHS(const std::vector<QPState>& state);
-
-  void assemble(const ElementValues& ev,
-                Vector&              Fe) const override;
-
-private:
-  const std::vector<QPState>& state_;
-};
-
-class PressureVelocityCouplingLHS final : public DomainBilinearIntegrator
-{
-public:
-  void assemble(const ElementValues& ev,
-                DenseMatrix&         Ke) const override;
-};
-
-class StabilizationLHS final : public DomainBilinearIntegrator
-{
-public:
-  explicit StabilizationLHS(const std::vector<QPState>& state);
-
-  void assemble(const ElementValues& ev,
-                DenseMatrix&         Ke) const override;
-
-private:
-  const std::vector<QPState>& state_;
-};
-
-class StabilizationRHS final : public DomainLinearIntegrator
-{
-public:
-  explicit StabilizationRHS(const std::vector<QPState>& state);
-
-  void assemble(const ElementValues& ev,
-                Vector&              Fe) const override;
-
-private:
-  const std::vector<QPState>& state_;
-};
+void assembleStabilizationRHS(const ElementValues&         ev,
+                              const std::vector<QPState>& qp_states,
+                              Vector&                     Fe);
 
 } // namespace refem

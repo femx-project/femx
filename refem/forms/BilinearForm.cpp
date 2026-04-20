@@ -34,10 +34,9 @@ void BilinearForm::assemble()
   const auto& fe   = space_->finiteElement();
   const auto& mesh = space_->mesh();
 
-  GaussQuadrature quadrature =
-      GaussQuadrature::make(fe.referenceElement(), 2);
+  auto quad = GaussQuadrature::make(fe.referenceElement(), 2);
 
-  ElementValues ev(fe, quadrature);
+  ElementValues ev(fe, quad);
 
   K_.setZero();
 

@@ -117,20 +117,28 @@ index_type BlockFESpace::numDofsPerElem() const noexcept
   return num_dofs_per_elem_;
 }
 
-std::vector<index_type> BlockFESpace::elemDofs(index_type cell) const
+void BlockFESpace::elemDofs(index_type               ic,
+                            std::vector<index_type>& dofs) const
 {
-  std::vector<index_type> dofs;
-  dofs.reserve(static_cast<std::size_t>(num_dofs_per_elem_));
+  dofs.resize(static_cast<std::size_t>(num_dofs_per_elem_));
 
+  index_type offset = 0;
   for (std::size_t i = 0; i < fields_.size(); ++i)
   {
-    const auto field_dofs = fields_[i].elemDofs(cell);
-    for (index_type dof : field_dofs)
+    const index_type* field_dofs = fields_[i].dofMap().elementDofsData(ic);
+    for (index_type j = 0; j < fields_[i].numDofsPerElem(); ++j)
     {
-      dofs.push_back(global_offsets_[i] + dof);
+      dofs[static_cast<std::size_t>(offset + j)] =
+          global_offsets_[i] + field_dofs[j];
     }
+    offset += fields_[i].numDofsPerElem();
   }
+}
 
+std::vector<index_type> BlockFESpace::elemDofs(index_type ic) const
+{
+  std::vector<index_type> dofs;
+  elemDofs(ic, dofs);
   return dofs;
 }
 

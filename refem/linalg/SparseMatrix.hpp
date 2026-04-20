@@ -23,7 +23,7 @@ public:
 
   void setZero();
 
-  void addLocalMatrix(index_type cell, const DenseMatrix& Ke);
+  void addLocalMatrix(index_type ic, const DenseMatrix& Ke);
 
   index_type rows() const;
   index_type cols() const;

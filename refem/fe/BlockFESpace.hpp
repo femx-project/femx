@@ -46,7 +46,9 @@ public:
   index_type  numDofs() const noexcept;
   index_type  numDofsPerElem() const noexcept;
 
-  std::vector<index_type> elemDofs(index_type cell) const;
+  void elemDofs(index_type ic,
+                std::vector<index_type>& dofs) const;
+  std::vector<index_type> elemDofs(index_type ic) const;
 
 private:
   std::vector<FESpace>    fields_;

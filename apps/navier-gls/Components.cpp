@@ -1,9 +1,6 @@
 #include "Components.hpp"
 
 #include <refem/fe/ElementValues.hpp>
-#include <refem/forms/integrators/AdvectionIntegrator.hpp>
-#include <refem/forms/integrators/DiffusionIntegrator.hpp>
-#include <refem/forms/integrators/MassIntegrator.hpp>
 #include <refem/linalg/DenseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
 
@@ -11,187 +8,184 @@ namespace refem
 {
 
 real_type advectionDerivative(const ElementValues& ev,
-                              const QPState&       point,
+                              const QPState&       qp,
                               index_type           q,
                               index_type           node)
 {
-  const auto dNdx = ev.dNdx(q);
-  return dNdx(node, 0) * point.u_adv[0] + dNdx(node, 1) * point.u_adv[1];
+  const auto dNdx  = ev.dNdx(q);
+  real_type  value = 0.0;
+  for (index_type d = 0; d < ev.dim(); ++d)
+  {
+    value += dNdx(node, d) * qp.u_adv[d];
+  }
+  return value;
 }
 
-void TransientLHS::assemble(const ElementValues& ev,
-                            DenseMatrix&         Ke) const
+void assembleTransientLHS(const ElementValues& ev,
+                          DenseMatrix&         Ke)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
+  const index_type nq         = ev.numQuadraturePoints();
+  const real_type  coeff      = rho / dt;
 
-  DenseMatrix Me(num_shapes, num_shapes);
-  Me.setZero();
-  MassIntegrator(rho / dt).assemble(ev, Me);
-
-  for (index_type a = 0; a < num_shapes; ++a)
+  for (index_type q = 0; q < nq; ++q)
   {
-    const index_type iu = dim * a;
-    const index_type iv = iu + 1;
+    const auto      N  = ev.N(q);
+    const real_type wJ = ev.JxW(q);
 
-    for (index_type b = 0; b < num_shapes; ++b)
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      const index_type ju = dim * b;
-      const index_type jv = ju + 1;
-
-      Ke(iu, ju) += Me(a, b);
-      Ke(iv, jv) += Me(a, b);
+      const real_type row = coeff * N[i] * wJ;
+      for (index_type j = 0; j < num_shapes; ++j)
+      {
+        const real_type value = row * N[j];
+        for (index_type c = 0; c < nd; ++c)
+        {
+          Ke(nd * i + c, nd * j + c) += value;
+        }
+      }
     }
   }
 }
 
-TransientRHS::TransientRHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void TransientRHS::assemble(const ElementValues& ev,
-                            Vector&              Fe) const
+void assembleTransientRHS(const ElementValues&        ev,
+                          const std::vector<QPState>& qp_states,
+                          Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    const auto  N     = ev.N(q);
-    const auto  wJ    = ev.JxW(q);
-    for (index_type a = 0; a < ev.numDofs(); ++a)
+    const auto& qp = qp_states[static_cast<std::size_t>(q)];
+    const auto  N  = ev.N(q);
+    const auto  wJ = ev.JxW(q);
+    for (index_type i = 0; i < ev.numDofs(); ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-
-      Fe[iu] += rho / dt * N[a] * point.u[0] * wJ;
-      Fe[iv] += rho / dt * N[a] * point.u[1] * wJ;
+      for (index_type c = 0; c < ev.dim(); ++c)
+      {
+        Fe[ev.dim() * i + c] += rho / dt * N[i] * qp.u[c] * wJ;
+      }
     }
   }
 }
 
-AdvectionLHS::AdvectionLHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void AdvectionLHS::assemble(const ElementValues& ev,
-                            DenseMatrix&         Ke) const
+void assembleAdvectionLHS(const ElementValues&        ev,
+                          const std::vector<QPState>& qp_states,
+                          DenseMatrix&                Ke)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
+  const index_type nq         = ev.numQuadraturePoints();
 
-  DenseMatrix Ce(num_shapes, num_shapes);
-  Ce.setZero();
-
-  std::vector<real_type> advection_velocity(
-      static_cast<std::size_t>(ev.numQuadraturePoints() * dim), 0.0);
-  for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
+  for (index_type q = 0; q < nq; ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    for (index_type d = 0; d < dim; ++d)
+    const auto&     qp   = qp_states[static_cast<std::size_t>(q)];
+    const auto      N    = ev.N(q);
+    const auto      dNdx = ev.dNdx(q);
+    const real_type wJ   = ev.JxW(q);
+
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      advection_velocity[static_cast<std::size_t>(q * dim + d)] =
-          point.u_adv[d];
-    }
-  }
+      const real_type row = 0.5 * rho * N[i] * wJ;
+      for (index_type j = 0; j < num_shapes; ++j)
+      {
+        real_type adv_grad = 0.0;
+        for (index_type d = 0; d < nd; ++d)
+        {
+          adv_grad += qp.u_adv[d] * dNdx(j, d);
+        }
 
-  AdvectionIntegrator(advection_velocity, 0.5 * rho)
-      .assemble(ev, Ce);
-
-  for (index_type a = 0; a < num_shapes; ++a)
-  {
-    const index_type iu = dim * a;
-    const index_type iv = iu + 1;
-
-    for (index_type b = 0; b < num_shapes; ++b)
-    {
-      const index_type ju = dim * b;
-      const index_type jv = ju + 1;
-
-      Ke(iu, ju) += Ce(a, b);
-      Ke(iv, jv) += Ce(a, b);
+        const real_type value = row * adv_grad;
+        for (index_type c = 0; c < nd; ++c)
+        {
+          Ke(nd * i + c, nd * j + c) += value;
+        }
+      }
     }
   }
 }
 
-AdvectionRHS::AdvectionRHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void AdvectionRHS::assemble(const ElementValues& ev,
-                            Vector&              Fe) const
+void assembleAdvectionRHS(const ElementValues&        ev,
+                          const std::vector<QPState>& qp_states,
+                          Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    const auto  N     = ev.N(q);
-    const auto  wJ    = ev.JxW(q);
-    for (index_type a = 0; a < ev.numDofs(); ++a)
+    const auto& qp = qp_states[static_cast<std::size_t>(q)];
+    const auto  N  = ev.N(q);
+    const auto  wJ = ev.JxW(q);
+    for (index_type i = 0; i < ev.numDofs(); ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-
-      Fe[iu] -= 0.5 * rho * N[a] * point.grad_u_adv[0] * wJ;
-      Fe[iv] -= 0.5 * rho * N[a] * point.grad_u_adv[1] * wJ;
+      for (index_type c = 0; c < ev.dim(); ++c)
+      {
+        Fe[ev.dim() * i + c] -=
+            0.5 * rho * N[i] * qp.u_adv_grad_u[c] * wJ;
+      }
     }
   }
 }
 
-void ViscousLHS::assemble(const ElementValues& ev,
-                          DenseMatrix&         Ke) const
+void assembleViscousLHS(const ElementValues& ev,
+                        DenseMatrix&         Ke)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
+  const index_type nq         = ev.numQuadraturePoints();
 
-  DenseMatrix De(num_shapes, num_shapes);
-  De.setZero();
-  DiffusionIntegrator(0.5 * mu).assemble(ev, De);
-
-  for (index_type a = 0; a < num_shapes; ++a)
+  for (index_type q = 0; q < nq; ++q)
   {
-    const index_type iu = dim * a;
-    const index_type iv = iu + 1;
+    const auto      dNdx = ev.dNdx(q);
+    const real_type wJ   = ev.JxW(q);
 
-    for (index_type b = 0; b < num_shapes; ++b)
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      const index_type ju = dim * b;
-      const index_type jv = ju + 1;
+      for (index_type j = 0; j < num_shapes; ++j)
+      {
+        real_type grad_dot = 0.0;
+        for (index_type d = 0; d < nd; ++d)
+        {
+          grad_dot += dNdx(i, d) * dNdx(j, d);
+        }
 
-      Ke(iu, ju) += De(a, b);
-      Ke(iv, jv) += De(a, b);
+        const real_type value = 0.5 * mu * grad_dot * wJ;
+        for (index_type c = 0; c < nd; ++c)
+        {
+          Ke(nd * i + c, nd * j + c) += value;
+        }
+      }
     }
   }
 }
 
-ViscousRHS::ViscousRHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void ViscousRHS::assemble(const ElementValues& ev,
-                          Vector&              Fe) const
+void assembleViscousRHS(const ElementValues&        ev,
+                        const std::vector<QPState>& qp_states,
+                        Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    const auto  dNdx  = ev.dNdx(q);
-    const auto  wJ    = ev.JxW(q);
+    const auto& qp   = qp_states[static_cast<std::size_t>(q)];
+    const auto  dNdx = ev.dNdx(q);
+    const auto  wJ   = ev.JxW(q);
 
-    for (index_type a = 0; a < ev.numDofs(); ++a)
+    for (index_type i = 0; i < ev.numDofs(); ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-
-      Fe[iu] -=
-          0.5 * mu * (dNdx(a, 0) * point.grad[0][0] + dNdx(a, 1) * point.grad[0][1]) * wJ;
-      Fe[iv] -=
-          0.5 * mu * (dNdx(a, 0) * point.grad[1][0] + dNdx(a, 1) * point.grad[1][1]) * wJ;
+      for (index_type c = 0; c < ev.dim(); ++c)
+      {
+        real_type grad_dot = 0.0;
+        for (index_type d = 0; d < ev.dim(); ++d)
+        {
+          grad_dot += dNdx(i, d) * qp.grad_u[c][d];
+        }
+        Fe[ev.dim() * i + c] -= 0.5 * mu * grad_dot * wJ;
+      }
     }
   }
 }
 
-void PressureVelocityCouplingLHS::assemble(const ElementValues& ev,
-                                           DenseMatrix&         Ke) const
+void assemblePressureVelocityCouplingLHS(const ElementValues& ev,
+                                         DenseMatrix&         Ke)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
 
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
@@ -199,126 +193,101 @@ void PressureVelocityCouplingLHS::assemble(const ElementValues& ev,
     const auto dNdx = ev.dNdx(q);
     const auto wJ   = ev.JxW(q);
 
-    for (index_type a = 0; a < num_shapes; ++a)
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-      const index_type ip = dim * num_shapes + a;
+      const index_type ip = nd * num_shapes + i;
 
-      for (index_type b = 0; b < num_shapes; ++b)
+      for (index_type j = 0; j < num_shapes; ++j)
       {
-        const index_type ju = dim * b;
-        const index_type jv = ju + 1;
-        const index_type jp = dim * num_shapes + b;
-
-        Ke(iu, jp) -= dNdx(a, 0) * N[b] * wJ;
-        Ke(iv, jp) -= dNdx(a, 1) * N[b] * wJ;
-
-        Ke(ip, ju) += N[a] * dNdx(b, 0) * wJ;
-        Ke(ip, jv) += N[a] * dNdx(b, 1) * wJ;
+        const index_type jp = nd * num_shapes + j;
+        for (index_type c = 0; c < nd; ++c)
+        {
+          Ke(nd * i + c, jp) -= dNdx(i, c) * N[j] * wJ;
+          Ke(ip, nd * j + c) += N[i] * dNdx(j, c) * wJ;
+        }
       }
     }
   }
 }
 
-StabilizationLHS::StabilizationLHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void StabilizationLHS::assemble(const ElementValues& ev,
-                                DenseMatrix&         Ke) const
+void assembleStabilizationLHS(const ElementValues&        ev,
+                              const std::vector<QPState>& qp_states,
+                              DenseMatrix&                Ke)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
 
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    const auto  N     = ev.N(q);
-    const auto  dNdx  = ev.dNdx(q);
-    const auto  wJ    = ev.JxW(q);
+    const auto& qp   = qp_states[static_cast<std::size_t>(q)];
+    const auto  N    = ev.N(q);
+    const auto  dNdx = ev.dNdx(q);
+    const auto  wJ   = ev.JxW(q);
 
-    for (index_type a = 0; a < num_shapes; ++a)
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-      const index_type ip = dim * num_shapes + a;
+      const index_type ip    = nd * num_shapes + i;
+      const real_type  dvidx = advectionDerivative(ev, qp, q, i);
 
-      const real_type advection_a = advectionDerivative(ev, point, q, a);
-
-      for (index_type b = 0; b < num_shapes; ++b)
+      for (index_type j = 0; j < num_shapes; ++j)
       {
-        const index_type ju = dim * b;
-        const index_type jv = ju + 1;
-        const index_type jp = dim * num_shapes + b;
+        const index_type jp    = nd * num_shapes + j;
+        const real_type  dvjdx = advectionDerivative(ev, qp, q, j);
 
-        const real_type advection_b = advectionDerivative(ev, point, q, b);
+        for (index_type c = 0; c < nd; ++c)
+        {
+          const index_type iu  = nd * i + c;
+          const index_type ju  = nd * j + c;
+          Ke(iu, ju)          += qp.tau[0] * rho / dt * dvidx * N[j] * wJ;
+          Ke(iu, ju)          += 0.5 * qp.tau[0] * rho * dvidx * dvjdx * wJ;
+          Ke(iu, jp)          += qp.tau[0] * dvidx * dNdx(j, c) * wJ;
+          Ke(ip, nd * j + c)  += qp.tau[1] / dt * dNdx(i, c) * N[j] * wJ;
+          Ke(ip, nd * j + c)  += 0.5 * qp.tau[1] * dNdx(i, c) * dvjdx * wJ;
+        }
 
-        Ke(iu, ju) +=
-            point.tau[0] * rho / dt * advection_a * N[b] * wJ;
-        Ke(iu, ju) +=
-            0.5 * point.tau[0] * rho * advection_a * advection_b * wJ;
-        Ke(iv, jv) +=
-            point.tau[0] * rho / dt * advection_a * N[b] * wJ;
-        Ke(iv, jv) +=
-            0.5 * point.tau[0] * rho * advection_a * advection_b * wJ;
-
-        Ke(iu, jp) += point.tau[0] * advection_a * dNdx(b, 0) * wJ;
-        Ke(iv, jp) += point.tau[0] * advection_a * dNdx(b, 1) * wJ;
-
-        Ke(ip, ju) +=
-            point.tau[1] / dt * dNdx(a, 0) * N[b] * wJ;
-        Ke(ip, ju) +=
-            0.5 * point.tau[1] * dNdx(a, 0) * advection_b * wJ;
-        Ke(ip, jv) +=
-            point.tau[1] / dt * dNdx(a, 1) * N[b] * wJ;
-        Ke(ip, jv) +=
-            0.5 * point.tau[1] * dNdx(a, 1) * advection_b * wJ;
-
-        Ke(ip, jp) +=
-            point.tau[1] / rho * (dNdx(a, 0) * dNdx(b, 0) + dNdx(a, 1) * dNdx(b, 1)) * wJ;
+        real_type grad_dot = 0.0;
+        for (index_type c = 0; c < nd; ++c)
+        {
+          grad_dot += dNdx(i, c) * dNdx(j, c);
+        }
+        Ke(ip, jp) += qp.tau[1] / rho * grad_dot * wJ;
       }
     }
   }
 }
 
-StabilizationRHS::StabilizationRHS(const std::vector<QPState>& state)
-  : state_(state)
-{
-}
-
-void StabilizationRHS::assemble(const ElementValues& ev,
-                                Vector&              Fe) const
+void assembleStabilizationRHS(const ElementValues&        ev,
+                              const std::vector<QPState>& qp_states,
+                              Vector&                     Fe)
 {
   const index_type num_shapes = ev.numDofs();
+  const index_type nd         = ev.dim();
 
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
   {
-    const auto& point = state_[static_cast<std::size_t>(q)];
-    const auto  dNdx  = ev.dNdx(q);
-    const auto  wJ    = ev.JxW(q);
+    const auto& qp   = qp_states[static_cast<std::size_t>(q)];
+    const auto  dNdx = ev.dNdx(q);
+    const auto  wJ   = ev.JxW(q);
 
-    for (index_type a = 0; a < num_shapes; ++a)
+    for (index_type i = 0; i < num_shapes; ++i)
     {
-      const index_type iu = dim * a;
-      const index_type iv = iu + 1;
-      const index_type ip = dim * num_shapes + a;
+      const index_type ip = nd * num_shapes + i;
 
-      const real_type advection_a = advectionDerivative(ev, point, q, a);
+      const real_type dvidx = advectionDerivative(ev, qp, q, i);
 
-      Fe[iu] +=
-          point.tau[0] * rho / dt * advection_a * point.u[0] * wJ;
-      Fe[iu] -=
-          0.5 * point.tau[0] * rho * advection_a * point.grad_u_adv[0] * wJ;
-      Fe[iv] +=
-          point.tau[0] * rho / dt * advection_a * point.u[1] * wJ;
-      Fe[iv] -=
-          0.5 * point.tau[0] * rho * advection_a * point.grad_u_adv[1] * wJ;
+      real_type div_u          = 0.0;
+      real_type div_adv_grad_u = 0.0;
+      for (index_type c = 0; c < nd; ++c)
+      {
+        const index_type iu  = nd * i + c;
+        Fe[iu]              += qp.tau[0] * rho / dt * dvidx * qp.u[c] * wJ;
+        Fe[iu]              -= 0.5 * qp.tau[0] * rho * dvidx * qp.u_adv_grad_u[c] * wJ;
+        div_u               += dNdx(i, c) * qp.u[c];
+        div_adv_grad_u      += dNdx(i, c) * qp.u_adv_grad_u[c];
+      }
 
-      Fe[ip] +=
-          point.tau[1] / dt * (dNdx(a, 0) * point.u[0] + dNdx(a, 1) * point.u[1]) * wJ;
-      Fe[ip] -=
-          0.5 * point.tau[1] * (dNdx(a, 0) * point.grad_u_adv[0] + dNdx(a, 1) * point.grad_u_adv[1]) * wJ;
+      Fe[ip] += qp.tau[1] / dt * div_u * wJ;
+      Fe[ip] -= 0.5 * qp.tau[1] * div_adv_grad_u * wJ;
     }
   }
 }

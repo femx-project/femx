@@ -76,15 +76,7 @@ public:
       matrix_nnz_  = A.nnz();
     }
 
-    const auto memspace = memorySpace();
-
-    checkStatus(
-        matrix_->copyFromExternal(A.rowPtrData(),
-                                  A.colIndData(),
-                                  A.valuesData(),
-                                  ReSolve::memory::HOST,
-                                  memspace),
-        "ReSolve Csr::copyFromExternal failed");
+    updateMatrixData(A);
 
     if (reuse_matrix)
     {
@@ -216,6 +208,29 @@ private:
     }
 
     return ReSolve::memory::HOST;
+  }
+
+  void updateMatrixData(const SparseMatrix& A)
+  {
+    if (workspace_type_ == WorkspaceType::Cpu)
+    {
+      checkStatus(
+          matrix_->setDataPointers(
+              const_cast<index_type*>(A.rowPtrData()),
+              const_cast<index_type*>(A.colIndData()),
+              const_cast<real_type*>(A.valuesData()),
+              ReSolve::memory::HOST),
+          "ReSolve Csr::setDataPointers failed");
+      return;
+    }
+
+    checkStatus(
+        matrix_->copyFromExternal(A.rowPtrData(),
+                                  A.colIndData(),
+                                  A.valuesData(),
+                                  ReSolve::memory::HOST,
+                                  memorySpace()),
+        "ReSolve Csr::copyFromExternal failed");
   }
 
   void resetSolver()

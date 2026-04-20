@@ -22,23 +22,22 @@ void HostCsrMatrixImpl::setZero()
   std::fill(values_.begin(), values_.end(), real_type{});
 }
 
-void HostCsrMatrixImpl::addLocalMatrix(index_type cell,
+void HostCsrMatrixImpl::addLocalMatrix(index_type ic,
                                        const DenseMatrix& Ke)
 {
-  if (cell >= pattern_->numElems())
+  if (ic >= pattern_->numElems())
   {
     throw std::runtime_error("Cell index is out of range");
   }
 
-  const index_type ndofs = pattern_->elemNumDofs(cell);
+  const index_type ndofs = pattern_->elemNumDofs(ic);
 
   if (Ke.rows() != ndofs || Ke.cols() != ndofs)
   {
     throw std::runtime_error("Local matrix size does not match cell dofs");
   }
 
-  const index_type offset = pattern_->elemCooOffset(cell);
-
+  const index_type offset = pattern_->elemCooOffset(ic);
   index_type local_index = 0;
 
   for (index_type i = 0; i < ndofs; ++i)

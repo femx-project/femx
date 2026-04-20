@@ -101,6 +101,10 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
   const index_type* col_ind = A.colIndData();
   real_type*        values  = A.valuesData();
 
+  std::vector<char>      is_dirichlet(static_cast<std::size_t>(A.rows()), 0);
+  std::vector<char>      found_diagonal(static_cast<std::size_t>(A.rows()), 0);
+  std::vector<real_type> dirichlet_values(static_cast<std::size_t>(A.rows()), 0.0);
+
   for (std::size_t c = 0; c < dofs_.size(); ++c)
   {
     const index_type dof   = dofs_[c];
@@ -111,38 +115,48 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
       throw std::runtime_error("Dirichlet dof is out of range");
     }
 
-    for (index_type row = 0; row < A.rows(); ++row)
+    is_dirichlet[static_cast<std::size_t>(dof)] = 1;
+    dirichlet_values[static_cast<std::size_t>(dof)] = value;
+  }
+
+  for (index_type row = 0; row < A.rows(); ++row)
+  {
+    const bool row_is_dirichlet =
+        is_dirichlet[static_cast<std::size_t>(row)] != 0;
+
+    for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
     {
-      for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      const index_type col = col_ind[k];
+
+      if (row_is_dirichlet)
       {
-        if (col_ind[k] == dof)
+        values[k] = 0.0;
+        if (col == row)
         {
-          if (row != dof)
-          {
-            b[row]    -= values[k] * value;
-            values[k]  = 0.0;
-          }
+          values[k] = 1.0;
+          found_diagonal[static_cast<std::size_t>(row)] = 1;
         }
       }
-    }
-
-    bool found_diagonal = false;
-    for (index_type k = row_ptr[dof]; k < row_ptr[dof + 1]; ++k)
-    {
-      values[k] = 0.0;
-      if (col_ind[k] == dof)
+      else if (is_dirichlet[static_cast<std::size_t>(col)] != 0)
       {
-        values[k]      = 1.0;
-        found_diagonal = true;
+        b[row] -= values[k] * dirichlet_values[static_cast<std::size_t>(col)];
+        values[k] = 0.0;
       }
     }
 
-    if (!found_diagonal)
+    if (row_is_dirichlet)
+    {
+      b[row] = dirichlet_values[static_cast<std::size_t>(row)];
+    }
+  }
+
+  for (index_type dof = 0; dof < A.rows(); ++dof)
+  {
+    if (is_dirichlet[static_cast<std::size_t>(dof)] != 0 &&
+        found_diagonal[static_cast<std::size_t>(dof)] == 0)
     {
       throw std::runtime_error("Dirichlet row has no diagonal entry");
     }
-
-    b[dof] = value;
   }
 }
 

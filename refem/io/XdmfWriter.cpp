@@ -11,6 +11,29 @@ namespace refem
 namespace
 {
 
+index_type nodesPerCell(const Mesh& mesh)
+{
+  if (mesh.numElems() == 0)
+  {
+    throw std::runtime_error("XdmfWriter needs a non-empty mesh");
+  }
+  return mesh.cells().front().numNodes();
+}
+
+std::string topologyType(const Mesh& mesh)
+{
+  const index_type nodes = nodesPerCell(mesh);
+  if (nodes == 3)
+  {
+    return "Triangle";
+  }
+  if (nodes == 4)
+  {
+    return "Quadrilateral";
+  }
+  throw std::runtime_error("XdmfWriter supports triangle and quadrilateral cells for now");
+}
+
 std::string filenameOnly(const std::string& path)
 {
   const std::size_t pos = path.find_last_of("/\\");
@@ -41,10 +64,12 @@ void XdmfWriter::write(const std::string&              filename,
   out << R"(<Xdmf Version="3.0">)" << '\n';
   out << "  <Domain>\n";
   out << R"(    <Grid Name="mesh" GridType="Uniform">)" << '\n';
-  out << R"(      <Topology TopologyType="Quadrilateral" NumberOfElements=")"
+  const index_type cell_nodes = nodesPerCell(mesh);
+  out << R"(      <Topology TopologyType=")" << topologyType(mesh)
+      << R"(" NumberOfElements=")"
       << mesh.numElems() << "\">\n";
   out << R"(        <DataItem Dimensions=")" << mesh.numElems()
-      << R"( 4" NumberType="Int" Precision="4" Format="HDF">)"
+      << " " << cell_nodes << R"(" NumberType="Int" Precision="4" Format="HDF">)"
       << h5_ref << ":/Mesh/Topology</DataItem>\n";
   out << "      </Topology>\n";
   out << R"(      <Geometry GeometryType="XYZ">)" << '\n';

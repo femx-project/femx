@@ -7,7 +7,8 @@ enum class ReferenceElement
 {
   Segment,
   Triangle,
-  Quadrilateral
+  Quadrilateral,
+  Tetrahedron
 };
 
 } // namespace refem

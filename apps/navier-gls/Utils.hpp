@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -20,10 +21,13 @@
 #define REFEM_NAVIERSTOKES_CONFIG_FILE "Config.json"
 #endif
 
+using namespace refem;
+
 struct Options
 {
   std::string backend = "cpu";
   std::string config  = REFEM_NAVIERSTOKES_CONFIG_FILE;
+  std::string mesh_file;
 };
 
 template <typename T>
@@ -51,33 +55,84 @@ void loadConfigFile(const std::string& path,
   if (config.contains("mesh"))
   {
     const auto& mesh = config.at("mesh");
-    assignIfPresent(mesh, "nx", refem::nx);
-    assignIfPresent(mesh, "ny", refem::ny);
+    assignIfPresent(mesh, "file", options.mesh_file);
   }
 
   if (config.contains("time"))
   {
     const auto& time = config.at("time");
-    assignIfPresent(time, "steps", refem::steps);
-    assignIfPresent(time, "dt", refem::dt);
+    assignIfPresent(time, "steps", steps);
+    assignIfPresent(time, "dt", dt);
   }
 
   if (config.contains("physics"))
   {
     const auto& physics = config.at("physics");
-    assignIfPresent(physics, "rho", refem::rho);
-    assignIfPresent(physics, "mu", refem::mu);
-    assignIfPresent(physics, "lid", refem::lid);
+    assignIfPresent(physics, "rho", rho);
+    assignIfPresent(physics, "mu", mu);
+    assignIfPresent(physics, "lid", lid);
+    assignIfPresent(physics, "inlet_velocity", inlet_velocity);
   }
 
-  if (config.contains("stability"))
+  if (config.contains("bcs"))
   {
-    assignIfPresent(config.at("stability"), "max_cfl", refem::max_cfl);
+    const auto& conditions = config.at("bcs");
+    if (!conditions.is_array())
+    {
+      throw std::runtime_error("Config bcs must be an array");
+    }
+
+    bcs.clear();
+    for (const auto& item : conditions)
+    {
+      BoundaryConditionSpec condition;
+      if (item.contains("physical"))
+      {
+        condition.physical_tag = item.at("physical").get<index_type>();
+      }
+      else if (item.contains("physical_tag"))
+      {
+        condition.physical_tag = item.at("physical_tag").get<index_type>();
+      }
+      else if (item.contains("tag"))
+      {
+        condition.physical_tag = item.at("tag").get<index_type>();
+      }
+      else
+      {
+        throw std::runtime_error(
+            "Each boundary condition needs physical, physical_tag, or tag");
+      }
+
+      assignIfPresent(item, "type", condition.type);
+      if (item.contains("ux"))
+      {
+        condition.ux     = item.at("ux").get<real_type>();
+        condition.has_ux = true;
+      }
+      if (item.contains("uy"))
+      {
+        condition.uy     = item.at("uy").get<real_type>();
+        condition.has_uy = true;
+      }
+      if (item.contains("uz"))
+      {
+        condition.uz     = item.at("uz").get<real_type>();
+        condition.has_uz = true;
+      }
+      if (item.contains("p"))
+      {
+        condition.p     = item.at("p").get<real_type>();
+        condition.has_p = true;
+      }
+
+      bcs.push_back(condition);
+    }
   }
 
   if (config.contains("output"))
   {
-    assignIfPresent(config.at("output"), "interval", refem::interval);
+    assignIfPresent(config.at("output"), "interval", interval);
   }
 
   if (config.contains("solver"))
@@ -88,14 +143,37 @@ void loadConfigFile(const std::string& path,
 
 void validateOptions(const Options& options)
 {
-  if (refem::nx <= 0 || refem::ny <= 0 || refem::steps <= 0 ||
-      refem::dt <= 0.0 || refem::max_cfl <= 0.0 || refem::rho <= 0.0 ||
-      refem::mu <= 0.0)
+  if (options.mesh_file.empty())
+  {
+    throw std::runtime_error("Config mesh.file is required");
+  }
+
+  if (steps <= 0 || dt <= 0.0 || rho <= 0.0 ||
+      mu <= 0.0 || inlet_velocity < 0.0)
   {
     throw std::runtime_error("Invalid non-positive Navier-Stokes parameter");
   }
 
-  refem::interval = std::max<refem::index_type>(1, refem::interval);
+  for (const auto& condition : bcs)
+  {
+    if (condition.physical_tag <= 0)
+    {
+      throw std::runtime_error("Boundary condition physical tag must be positive");
+    }
+    if (condition.type != "dirichlet")
+    {
+      throw std::runtime_error(
+          "Only dirichlet bcs are supported");
+    }
+    if (!condition.has_ux && !condition.has_uy &&
+        !condition.has_uz && !condition.has_p)
+    {
+      throw std::runtime_error(
+          "Boundary condition needs at least one of ux, uy, uz, or p");
+    }
+  }
+
+  interval = std::max<index_type>(1, interval);
 
   if (options.backend != "cpu" && options.backend != "cuda")
   {
@@ -121,7 +199,7 @@ Options parseOptions(int argc, char* argv[])
     const std::string key(argv[i]);
     if (key == "-h" || key == "--help")
     {
-      std::cout << "Usage: navier_gls [--config FILE]\n";
+      std::cout << "Usage: navier-gls [--config FILE]\n";
       std::exit(0);
     }
     else if (key == "--config")
@@ -135,13 +213,26 @@ Options parseOptions(int argc, char* argv[])
   }
 
   loadConfigFile(options.config, options);
+  if (!options.mesh_file.empty())
+  {
+    const std::filesystem::path mesh_path(options.mesh_file);
+    if (mesh_path.is_relative())
+    {
+      const std::filesystem::path config_dir =
+          std::filesystem::path(options.config).parent_path();
+      if (!config_dir.empty())
+      {
+        options.mesh_file = (config_dir / mesh_path).lexically_normal().string();
+      }
+    }
+  }
   validateOptions(options);
   return options;
 }
 
-bool isFinite(const refem::Vector& x)
+bool isFinite(const Vector& x)
 {
-  for (refem::index_type i = 0; i < x.size(); ++i)
+  for (index_type i = 0; i < x.size(); ++i)
   {
     if (!std::isfinite(x[i]))
     {
@@ -151,7 +242,7 @@ bool isFinite(const refem::Vector& x)
   return true;
 }
 
-void setSolverOptions(refem::ReSolveOptions& options)
+void setSolverOptions(ReSolveOptions& options)
 {
   options.factor             = "none";
   options.refactor           = "none";
@@ -164,21 +255,24 @@ void setSolverOptions(refem::ReSolveOptions& options)
   options.flexible           = true;
 }
 
-void writeTimeSeriesOutput(const refem::Mesh&                  mesh,
-                           const std::vector<refem::Snapshot>& snapshots)
+void writeTimeSeriesOutput(const Mesh&                  mesh,
+                           const std::vector<Snapshot>& snapshots)
 {
   const std::string root = std::string(REFEM_NAVIERSTOKES_OUTPUT_DIR);
 
-  refem::TimeSeriesDataOut velocity_out;
+  TimeSeriesDataOut velocity_out;
   velocity_out.attachMesh(mesh);
 
-  refem::TimeSeriesDataOut pressure_out;
+  TimeSeriesDataOut pressure_out;
   pressure_out.attachMesh(mesh);
 
-  for (const refem::Snapshot& snapshot : snapshots)
+  for (const Snapshot& snapshot : snapshots)
   {
     velocity_out.beginStep(snapshot.time);
-    velocity_out.addNodalVectorField("velocity", snapshot.ux, snapshot.uy);
+    velocity_out.addNodalVectorField("velocity",
+                                     snapshot.ux,
+                                     snapshot.uy,
+                                     snapshot.uz);
 
     pressure_out.beginStep(snapshot.time);
     pressure_out.addNodalScalarField("pressure", snapshot.p);

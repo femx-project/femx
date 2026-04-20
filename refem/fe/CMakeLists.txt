@@ -15,6 +15,8 @@ target_sources(refem_fe
     FiniteElement.hpp
     GaussQuadrature.hpp
     LagrangeQuadQ1.hpp
+    LagrangeTetrahedronP1.hpp
+    LagrangeTriangleP1.hpp
     ReferenceElement.hpp
 )
 

@@ -68,6 +68,9 @@ public:
 
     case ReferenceElement::Quadrilateral:
       return quadrilateral(order);
+
+    case ReferenceElement::Tetrahedron:
+      return tetrahedron(order);
     }
 
     throw std::runtime_error("Unsupported reference cell");
@@ -195,6 +198,40 @@ public:
 
     default:
       throw std::runtime_error("Unsupported triangle quadrature order");
+    }
+  }
+
+  static GaussQuadrature tetrahedron(index_type order)
+  {
+    switch (order)
+    {
+    case 1:
+    {
+      return GaussQuadrature(
+          ReferenceElement::Tetrahedron,
+          3,
+          {
+              QuadraturePoint{{0.25, 0.25, 0.25}, 1.0 / 6.0},
+          });
+    }
+
+    case 2:
+    {
+      constexpr real_type a = 0.1381966011250105;
+      constexpr real_type b = 0.5854101966249685;
+      return GaussQuadrature(
+          ReferenceElement::Tetrahedron,
+          3,
+          {
+              QuadraturePoint{{a, a, a}, 1.0 / 24.0},
+              QuadraturePoint{{b, a, a}, 1.0 / 24.0},
+              QuadraturePoint{{a, b, a}, 1.0 / 24.0},
+              QuadraturePoint{{a, a, b}, 1.0 / 24.0},
+          });
+    }
+
+    default:
+      throw std::runtime_error("Unsupported tetrahedron quadrature order");
     }
   }
 

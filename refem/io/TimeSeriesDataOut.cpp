@@ -53,17 +53,32 @@ std::string stepName(index_type step)
 
 void checkMesh(const Mesh& mesh)
 {
-  if (mesh.dim() != 2)
+  if (mesh.dim() != 2 && mesh.dim() != 3)
   {
-    throw std::runtime_error("TimeSeriesDataOut supports 2D meshes for now");
+    throw std::runtime_error("TimeSeriesDataOut supports 2D and 3D meshes");
   }
 
-  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
+  if (mesh.numElems() == 0)
   {
-    if (mesh.cells()[static_cast<std::size_t>(ic)].numNodes() != 4)
+    throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+  }
+
+  const index_type cell_nodes = mesh.cells().front().numNodes();
+  const Cell::Shape shape = mesh.cells().front().shape();
+  if (shape != Cell::Shape::Triangle &&
+      shape != Cell::Shape::Quadrilateral &&
+      shape != Cell::Shape::Tetrahedron)
+  {
+    throw std::runtime_error(
+        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
+  }
+
+  for (index_type ic = 1; ic < mesh.numElems(); ++ic)
+  {
+    const auto& cell = mesh.cells()[static_cast<std::size_t>(ic)];
+    if (cell.numNodes() != cell_nodes || cell.shape() != shape)
     {
-      throw std::runtime_error(
-          "TimeSeriesDataOut supports quadrilateral cells for now");
+      throw std::runtime_error("TimeSeriesDataOut supports one cell type per mesh");
     }
   }
 }
@@ -213,14 +228,35 @@ void writeMesh(hid_t file, const Mesh& mesh)
     }
   }
 
+  if (mesh.numElems() == 0)
+  {
+    throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+  }
+
+  const index_type cell_nodes = mesh.cells().front().numNodes();
+  const Cell::Shape shape = mesh.cells().front().shape();
+  if (shape != Cell::Shape::Triangle &&
+      shape != Cell::Shape::Quadrilateral &&
+      shape != Cell::Shape::Tetrahedron)
+  {
+    throw std::runtime_error(
+        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
+  }
+
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numElems()) * 4);
+      static_cast<std::size_t>(mesh.numElems()) *
+      static_cast<std::size_t>(cell_nodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
-    const index_type* nodes = mesh.cellNodeIds(ic);
-    for (index_type i = 0; i < 4; ++i)
+    const auto& cell = mesh.cells()[static_cast<std::size_t>(ic)];
+    if (cell.numNodes() != cell_nodes || cell.shape() != shape)
     {
-      topology[static_cast<std::size_t>(ic) * 4 + static_cast<std::size_t>(i)] = nodes[i];
+      throw std::runtime_error("TimeSeriesDataOut supports one cell type per mesh");
+    }
+    const index_type* nodes = mesh.cellNodeIds(ic);
+    for (index_type i = 0; i < cell_nodes; ++i)
+    {
+      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(cell_nodes) + static_cast<std::size_t>(i)] = nodes[i];
     }
   }
 
@@ -231,7 +267,8 @@ void writeMesh(hid_t file, const Mesh& mesh)
   writeIntDataset(file,
                   "/Mesh/Topology",
                   topology,
-                  {static_cast<hsize_t>(mesh.numElems()), 4});
+                  {static_cast<hsize_t>(mesh.numElems()),
+                   static_cast<hsize_t>(cell_nodes)});
 }
 
 void writeHdf5(const std::string&                          filename,
@@ -295,10 +332,27 @@ void writeXdmf(const std::string&                          filename,
     const std::string step = stepName(static_cast<index_type>(s));
     out << R"(      <Grid Name=")" << step << R"(" GridType="Uniform">)" << '\n';
     out << R"(        <Time Value=")" << steps[s].time << R"("/>)" << '\n';
-    out << R"(        <Topology TopologyType="Quadrilateral" NumberOfElements=")"
+    if (mesh.numElems() == 0)
+    {
+      throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+    }
+    const index_type cell_nodes = mesh.cells().front().numNodes();
+    const Cell::Shape shape = mesh.cells().front().shape();
+    const char* topology_type = "Triangle";
+    if (shape == Cell::Shape::Quadrilateral)
+    {
+      topology_type = "Quadrilateral";
+    }
+    else if (shape == Cell::Shape::Tetrahedron)
+    {
+      topology_type = "Tetrahedron";
+    }
+
+    out << R"(        <Topology TopologyType=")" << topology_type
+        << R"(" NumberOfElements=")"
         << mesh.numElems() << "\">\n";
     out << R"(          <DataItem Dimensions=")" << mesh.numElems()
-        << R"( 4" NumberType="Int" Precision="4" Format="HDF">)"
+        << " " << cell_nodes << R"(" NumberType="Int" Precision="4" Format="HDF">)"
         << h5_ref << ":/Mesh/Topology</DataItem>\n";
     out << "        </Topology>\n";
     out << R"(        <Geometry GeometryType="XYZ">)" << '\n';

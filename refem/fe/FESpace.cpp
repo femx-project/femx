@@ -33,6 +33,13 @@ void FESpace::setup()
 
   for (index_type e = 0; e < num_elem; ++e)
   {
+    const auto& cell = mesh_->cells()[static_cast<std::size_t>(e)];
+    if (cell.numNodes() != finite_element_->numNodes())
+    {
+      throw std::runtime_error(
+          "FESpace: finite element node count does not match mesh cell");
+    }
+
     const index_type* conn = mesh_->cellNodeIds(e);
     for (index_type a = 0; a < num_shapes_per_elem_; ++a)
     {
@@ -96,17 +103,22 @@ index_type FESpace::globalDof(index_type node,
   return components_ * node + component;
 }
 
-std::vector<index_type> FESpace::elemDofs(index_type cell) const
+void FESpace::elemDofs(index_type               ic,
+                       std::vector<index_type>& dofs) const
 {
-  std::vector<index_type> dofs(
-      static_cast<std::size_t>(dof_map_.numElementDofs()));
+  dofs.resize(static_cast<std::size_t>(dof_map_.numElementDofs()));
 
-  const index_type* data = dof_map_.elementDofsData(cell);
+  const index_type* data = dof_map_.elementDofsData(ic);
   for (index_type i = 0; i < dof_map_.numElementDofs(); ++i)
   {
     dofs[static_cast<std::size_t>(i)] = data[i];
   }
+}
 
+std::vector<index_type> FESpace::elemDofs(index_type ic) const
+{
+  std::vector<index_type> dofs;
+  elemDofs(ic, dofs);
   return dofs;
 }
 

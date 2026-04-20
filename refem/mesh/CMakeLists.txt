@@ -4,9 +4,11 @@ add_library(refem::mesh ALIAS refem_mesh)
 target_sources(refem_mesh
   PRIVATE
     Cell.cpp
+    GmshReader.cpp
     Mesh.cpp
   PUBLIC
     Cell.hpp
+    GmshReader.hpp
     Mesh.hpp
 )
 
