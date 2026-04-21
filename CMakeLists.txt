@@ -9,8 +9,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(REFEM_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
 option(REFEM_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
+option(REFEM_ENABLE_OPENMP "Enable OpenMP parallel assembly" ON)
 option(REFEM_BUILD_EXAMPLES "Build refem examples" OFF)
 option(REFEM_BUILD_APPS "Build refem apps" ON)
+
+if(REFEM_ENABLE_OPENMP)
+  find_package(OpenMP QUIET)
+endif()
 
 if(REFEM_ENABLE_RESOLVE)
   find_package(ReSolve CONFIG QUIET)
@@ -57,6 +62,10 @@ endif()
 
 if(HDF5_FOUND)
   target_compile_definitions(refem_config INTERFACE REFEM_HAS_HDF5=1)
+endif()
+
+if(REFEM_ENABLE_OPENMP AND OpenMP_CXX_FOUND)
+  target_link_libraries(refem_config INTERFACE OpenMP::OpenMP_CXX)
 endif()
 
 add_library(refem INTERFACE)

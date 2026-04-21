@@ -217,7 +217,6 @@ void updateCellState(std::vector<QPState>& qp_states,
           advectiveDerivative(qp.grad_u, qp.u_adv, c, nd);
     }
   }
-
 }
 
 void splitFields(const Vector&       x,
@@ -436,46 +435,52 @@ void assembleSystem(const BlockFESpace& space,
   const auto& element = space.field(0).space().finiteElement();
   const auto  quadrature =
       GaussQuadrature::make(element.referenceElement(), 2);
-  ElementValues ev(element, quadrature);
+  const index_type nq = quadrature.size();
 
   A.setZero();
   b.setZero();
   observed_max_cfl = 0.0;
 
-  std::vector<QPState> qp_states(
-      static_cast<std::size_t>(ev.numQuadraturePoints()));
-  LocalAssembler assembler(space, A.pattern());
-  DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
-  Vector      Fe(space.numDofsPerElem());
-
-  for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
+#pragma omp parallel reduction(max : observed_max_cfl)
   {
-    ev.reinit(space.mesh().cell(ic));
-    updateCellState(qp_states,
-                    ev,
-                    space,
-                    ic,
-                    x,
-                    xp,
-                    initial,
-                    observed_max_cfl);
+    ElementValues        ev(element, quadrature);
+    std::vector<QPState> qp_states(static_cast<std::size_t>(nq));
+    LocalAssembler       assembler(space,
+                                   A.pattern(),
+                                   LocalAssembler::AssemblyPolicy::Atomic);
+    DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
+    Vector               Fe(space.numDofsPerElem());
 
-    Ke.setZero();
-    Fe.setZero();
+#pragma omp for
+    for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
+    {
+      ev.reinit(space.mesh().cell(ic));
+      updateCellState(qp_states,
+                      ev,
+                      space,
+                      ic,
+                      x,
+                      xp,
+                      initial,
+                      observed_max_cfl);
 
-    assembleTransientLHS(ev, Ke);
-    assembleAdvectionLHS(ev, qp_states, Ke);
-    assembleViscousLHS(ev, Ke);
-    assemblePressureVelocityCouplingLHS(ev, Ke);
-    assembleStabilizationLHS(ev, qp_states, Ke);
+      Ke.setZero();
+      Fe.setZero();
 
-    assembleTransientRHS(ev, qp_states, Fe);
-    assembleAdvectionRHS(ev, qp_states, Fe);
-    assembleViscousRHS(ev, qp_states, Fe);
-    assembleStabilizationRHS(ev, qp_states, Fe);
+      assembleTransientLHS(ev, Ke);
+      assembleAdvectionLHS(ev, qp_states, Ke);
+      assembleViscousLHS(ev, Ke);
+      assemblePressureVelocityCouplingLHS(ev, Ke);
+      assembleStabilizationLHS(ev, qp_states, Ke);
 
-    assembler.addLocalMatrix(ic, Ke, A);
-    assembler.addLocalVector(ic, Fe, b);
+      assembleTransientRHS(ev, qp_states, Fe);
+      assembleAdvectionRHS(ev, qp_states, Fe);
+      assembleViscousRHS(ev, qp_states, Fe);
+      assembleStabilizationRHS(ev, qp_states, Fe);
+
+      assembler.addLocalMatrix(ic, Ke, A);
+      assembler.addLocalVector(ic, Fe, b);
+    }
   }
 }
 

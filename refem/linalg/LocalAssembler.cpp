@@ -12,27 +12,35 @@
 namespace refem
 {
 
-LocalAssembler::LocalAssembler(const FESpace& space)
-  : fe_space_(&space)
+LocalAssembler::LocalAssembler(const FESpace& space,
+                               AssemblyPolicy policy)
+  : fe_space_(&space),
+    policy_(policy)
 {
 }
 
-LocalAssembler::LocalAssembler(const BlockFESpace& space)
-  : block_space_(&space)
+LocalAssembler::LocalAssembler(const BlockFESpace& space,
+                               AssemblyPolicy policy)
+  : block_space_(&space),
+    policy_(policy)
 {
 }
 
 LocalAssembler::LocalAssembler(const FESpace&               space,
-                               const FixedSparsityPattern& pattern)
+                               const FixedSparsityPattern& pattern,
+                               AssemblyPolicy              policy)
   : fe_space_(&space),
-    pattern_(&pattern)
+    pattern_(&pattern),
+    policy_(policy)
 {
 }
 
 LocalAssembler::LocalAssembler(const BlockFESpace&          space,
-                               const FixedSparsityPattern& pattern)
+                               const FixedSparsityPattern& pattern,
+                               AssemblyPolicy              policy)
   : block_space_(&space),
-    pattern_(&pattern)
+    pattern_(&pattern),
+    policy_(policy)
 {
 }
 
@@ -77,7 +85,15 @@ void LocalAssembler::addLocalMatrix(index_type         ic,
       const index_type coo_index = offset + local_index;
       const index_type csr_index = pattern_->mapToCsr(coo_index);
 
-      values[static_cast<std::size_t>(csr_index)] += Ke(i, j);
+      if (policy_ == AssemblyPolicy::Atomic)
+      {
+#pragma omp atomic update
+        values[static_cast<std::size_t>(csr_index)] += Ke(i, j);
+      }
+      else
+      {
+        values[static_cast<std::size_t>(csr_index)] += Ke(i, j);
+      }
 
       ++local_index;
     }
@@ -103,7 +119,16 @@ void LocalAssembler::addLocalVector(index_type    ic,
       throw std::runtime_error("Vector dof is out of range");
     }
 
-    b[dof] += Fe[i];
+    real_type* values = b.data();
+    if (policy_ == AssemblyPolicy::Atomic)
+    {
+#pragma omp atomic update
+      values[static_cast<std::size_t>(dof)] += Fe[i];
+    }
+    else
+    {
+      values[static_cast<std::size_t>(dof)] += Fe[i];
+    }
   }
 }
 
