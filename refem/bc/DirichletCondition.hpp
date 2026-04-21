@@ -16,7 +16,7 @@ class Vector;
 class DirichletCondition
 {
 public:
-  using ValueFunction = std::function<real_type(const Mesh::Node&)>;
+  using ValueFunction = std::function<real_type(const Mesh::Node&, real_type)>;
 
   DirichletCondition() = default;
 
@@ -24,7 +24,8 @@ public:
                                        real_type      value = 0.0);
 
   static DirichletCondition onBoundary(const FESpace&     space,
-                                       const ValueFunction& value);
+                                       const ValueFunction& value,
+                                       real_type            time = 0.0);
 
   void addDof(index_type dof, real_type value);
 

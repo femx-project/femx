@@ -27,6 +27,233 @@ bool near(real_type a, real_type b)
   return std::abs(a - b) <= 1.0e-12;
 }
 
+real_type timeFactor(const BoundaryConditionSpec::TimeProfile& profile,
+                     real_type                                 time)
+{
+  if (profile.profile == "constant")
+  {
+    return profile.value;
+  }
+  if (profile.profile == "ramp")
+  {
+    if (near(profile.t0, profile.t1))
+    {
+      return time < profile.t0 ? profile.from : profile.to;
+    }
+    const real_type alpha =
+        std::max<real_type>(0.0,
+                            std::min<real_type>(1.0, (time - profile.t0) / (profile.t1 - profile.t0)));
+    return profile.from + alpha * (profile.to - profile.from);
+  }
+  if (profile.profile == "sin")
+  {
+    constexpr real_type pi = 3.141592653589793238462643383279502884;
+    return profile.mean + profile.amplitude * std::sin(2.0 * pi * profile.frequency * time + profile.phase);
+  }
+  throw std::runtime_error("Unsupported boundary time profile: " + profile.profile);
+}
+
+std::size_t lowerInterval(const std::vector<real_type>& points,
+                          real_type                     x)
+{
+  const auto upper = std::upper_bound(points.begin(), points.end(), x);
+  return static_cast<std::size_t>(
+      std::distance(points.begin(), upper) - 1);
+}
+
+real_type sampleFlowRateLinear(const BoundaryConditionSpec::FlowRate& flowrate,
+                               real_type                              time)
+{
+  if (flowrate.time.size() == 1 || time <= flowrate.time.front())
+  {
+    return flowrate.value.front();
+  }
+  if (time >= flowrate.time.back())
+  {
+    return flowrate.value.back();
+  }
+
+  const std::size_t i  = lowerInterval(flowrate.time, time);
+  const real_type   t0 = flowrate.time[i];
+  const real_type   t1 = flowrate.time[i + 1];
+  const real_type   a  = (time - t0) / (t1 - t0);
+  return flowrate.value[i] + a * (flowrate.value[i + 1] - flowrate.value[i]);
+}
+
+real_type sampleFlowRateConstant(const BoundaryConditionSpec::FlowRate& flowrate,
+                                 real_type                              time)
+{
+  if (flowrate.time.size() == 1 || time <= flowrate.time.front())
+  {
+    return flowrate.value.front();
+  }
+  if (time >= flowrate.time.back())
+  {
+    return flowrate.value.back();
+  }
+  return flowrate.value[lowerInterval(flowrate.time, time)];
+}
+
+real_type sampleFlowRateNearest(const BoundaryConditionSpec::FlowRate& flowrate,
+                                real_type                              time)
+{
+  if (flowrate.time.size() == 1 || time <= flowrate.time.front())
+  {
+    return flowrate.value.front();
+  }
+  if (time >= flowrate.time.back())
+  {
+    return flowrate.value.back();
+  }
+
+  const std::size_t i  = lowerInterval(flowrate.time, time);
+  const real_type   dl = time - flowrate.time[i];
+  const real_type   dr = flowrate.time[i + 1] - time;
+  return dl <= dr ? flowrate.value[i] : flowrate.value[i + 1];
+}
+
+real_type catmullRom(real_type y0,
+                     real_type y1,
+                     real_type y2,
+                     real_type y3,
+                     real_type a)
+{
+  const real_type a2 = a * a;
+  const real_type a3 = a2 * a;
+  return 0.5 * ((2.0 * y1) + (-y0 + y2) * a + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2 + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
+}
+
+real_type sampleFlowRateCubic(const BoundaryConditionSpec::FlowRate& flowrate,
+                              real_type                              time)
+{
+  if (flowrate.time.size() < 4)
+  {
+    return sampleFlowRateLinear(flowrate, time);
+  }
+  if (time <= flowrate.time.front())
+  {
+    return flowrate.value.front();
+  }
+  if (time >= flowrate.time.back())
+  {
+    return flowrate.value.back();
+  }
+
+  const std::size_t i  = lowerInterval(flowrate.time, time);
+  const std::size_t i0 = i == 0 ? i : i - 1;
+  const std::size_t i1 = i;
+  const std::size_t i2 = i + 1;
+  const std::size_t i3 = std::min<std::size_t>(i + 2, flowrate.value.size() - 1);
+  const real_type   a =
+      (time - flowrate.time[i1]) / (flowrate.time[i2] - flowrate.time[i1]);
+  return catmullRom(flowrate.value[i0],
+                    flowrate.value[i1],
+                    flowrate.value[i2],
+                    flowrate.value[i3],
+                    a);
+}
+
+real_type sampleFlowRate(const BoundaryConditionSpec::FlowRate& flowrate,
+                         real_type                              time)
+{
+  if (flowrate.interpolate == "constant")
+  {
+    return sampleFlowRateConstant(flowrate, time);
+  }
+  if (flowrate.interpolate == "nearest")
+  {
+    return sampleFlowRateNearest(flowrate, time);
+  }
+  if (flowrate.interpolate == "linear")
+  {
+    return sampleFlowRateLinear(flowrate, time);
+  }
+  if (flowrate.interpolate == "cubic")
+  {
+    return sampleFlowRateCubic(flowrate, time);
+  }
+  throw std::runtime_error("Unsupported flowrate interpolation: " + flowrate.interpolate);
+}
+
+std::array<real_type, dim> flowRateVelocity(
+    const BoundaryConditionSpec::FlowRate& flowrate,
+    real_type                              time)
+{
+  const real_type q = sampleFlowRate(flowrate, time);
+
+  real_type normal_mag2 = 0.0;
+  for (real_type component : flowrate.normal)
+  {
+    normal_mag2 += component * component;
+  }
+  const real_type normal_mag = std::sqrt(normal_mag2);
+  const real_type speed      = q / flowrate.area;
+
+  std::array<real_type, dim> velocity{};
+  for (index_type d = 0; d < dim; ++d)
+  {
+    const std::size_t i = static_cast<std::size_t>(d);
+    velocity[i]         = speed * flowrate.normal[i] / normal_mag;
+  }
+  return velocity;
+}
+
+std::array<real_type, 2> boundaryCoordinateRange(const Mesh&                 mesh,
+                                                 const std::set<index_type>& nodes,
+                                                 index_type                  axis)
+{
+  if (axis < 0 || axis >= mesh.dim())
+  {
+    throw std::runtime_error("Boundary profile axis exceeds mesh dimension");
+  }
+
+  std::array<real_type, 2> range{
+      std::numeric_limits<real_type>::max(),
+      std::numeric_limits<real_type>::lowest()};
+  for (index_type node : nodes)
+  {
+    const real_type coordinate = mesh.node(node)[axis];
+    range[0]                   = std::min(range[0], coordinate);
+    range[1]                   = std::max(range[1], coordinate);
+  }
+  return range;
+}
+
+std::array<real_type, 2> boundaryValueRange(
+    const Mesh&                         mesh,
+    const std::set<index_type>&         nodes,
+    const BoundaryConditionSpec::Value& value)
+{
+  if (value.profile == "parabolic")
+  {
+    return boundaryCoordinateRange(mesh, nodes, value.axis);
+  }
+  return {0.0, 0.0};
+}
+
+real_type boundaryValue(const BoundaryConditionSpec::Value& value,
+                        const Mesh::Node&                   point,
+                        const std::array<real_type, 2>&     range,
+                        real_type                           time)
+{
+  real_type spatial = value.value;
+  if (value.profile == "parabolic")
+  {
+    const real_type height = range[1] - range[0];
+    if (height > 1.0e-14)
+    {
+      const real_type center = 0.5 * (range[0] + range[1]);
+      const real_type eta    = 2.0 * (point[value.axis] - center) / height;
+      spatial                = value.value * std::max<real_type>(0.0, 1.0 - eta * eta);
+    }
+  }
+  else if (value.profile != "constant")
+  {
+    throw std::runtime_error("Unsupported boundary value profile: " + value.profile);
+  }
+  return spatial * timeFactor(value.time, time);
+}
+
 std::array<real_type, dim> velocityAtNode(const Vector&         x,
                                           const BlockFieldView& u_dof,
                                           index_type            in)
@@ -297,6 +524,7 @@ std::set<index_type> boundaryNodes(const Mesh& mesh,
 }
 
 DirichletCondition configuredBoundary(const BlockFESpace& space,
+                                      real_type           time,
                                       bool&               has_pressure_bc)
 {
   const Mesh& mesh  = space.mesh();
@@ -315,15 +543,63 @@ DirichletCondition configuredBoundary(const BlockFESpace& space,
           "No boundary facets found for physical tag " + std::to_string(condition.physical_tag));
     }
 
+    std::array<real_type, 2> ux_range{0.0, 0.0};
+    std::array<real_type, 2> uy_range{0.0, 0.0};
+    std::array<real_type, 2> uz_range{0.0, 0.0};
+    std::array<real_type, 2> p_range{0.0, 0.0};
+
+    if (condition.has_ux)
+    {
+      ux_range = boundaryValueRange(mesh, nodes, condition.ux);
+    }
+    if (condition.has_uy)
+    {
+      uy_range = boundaryValueRange(mesh, nodes, condition.uy);
+    }
+    if (condition.has_uz)
+    {
+      uz_range = boundaryValueRange(mesh, nodes, condition.uz);
+    }
+    if (condition.has_p)
+    {
+      p_range = boundaryValueRange(mesh, nodes, condition.p);
+    }
+
+    std::array<real_type, dim> flowrate_velocity{};
+    if (condition.has_flowrate)
+    {
+      flowrate_velocity = flowRateVelocity(condition.flowrate, time);
+      if (u_dof.numComponents() < 3 && std::abs(flowrate_velocity[2]) > 1.0e-14)
+      {
+        throw std::runtime_error("3D flowrate normal requires a 3D mesh");
+      }
+    }
+
     for (index_type node : nodes)
     {
+      if (condition.has_flowrate)
+      {
+        for (index_type d = 0; d < u_dof.numComponents(); ++d)
+        {
+          bc.addDof(u_dof.globalDof(node, d),
+                    flowrate_velocity[static_cast<std::size_t>(d)]);
+        }
+      }
       if (condition.has_ux)
       {
-        bc.addDof(u_dof.globalDof(node, 0), condition.ux);
+        bc.addDof(u_dof.globalDof(node, 0),
+                  boundaryValue(condition.ux,
+                                mesh.node(node),
+                                ux_range,
+                                time));
       }
       if (condition.has_uy)
       {
-        bc.addDof(u_dof.globalDof(node, 1), condition.uy);
+        bc.addDof(u_dof.globalDof(node, 1),
+                  boundaryValue(condition.uy,
+                                mesh.node(node),
+                                uy_range,
+                                time));
       }
       if (condition.has_uz)
       {
@@ -331,11 +607,19 @@ DirichletCondition configuredBoundary(const BlockFESpace& space,
         {
           throw std::runtime_error("uz boundary condition requires a 3D mesh");
         }
-        bc.addDof(u_dof.globalDof(node, 2), condition.uz);
+        bc.addDof(u_dof.globalDof(node, 2),
+                  boundaryValue(condition.uz,
+                                mesh.node(node),
+                                uz_range,
+                                time));
       }
       if (condition.has_p)
       {
-        bc.addDof(p_dof.globalDof(node), condition.p);
+        bc.addDof(p_dof.globalDof(node),
+                  boundaryValue(condition.p,
+                                mesh.node(node),
+                                p_range,
+                                time));
         has_pressure_bc = true;
       }
     }
@@ -344,7 +628,8 @@ DirichletCondition configuredBoundary(const BlockFESpace& space,
   return bc;
 }
 
-DirichletCondition navierBoundary(const BlockFESpace& space)
+DirichletCondition getBoundary(const BlockFESpace& space,
+                               real_type           time)
 {
   const Mesh& mesh = space.mesh();
   if (mesh.boundaryFacets().empty())
@@ -360,7 +645,7 @@ DirichletCondition navierBoundary(const BlockFESpace& space)
   {
     bool               has_pressure_bc = false;
     DirichletCondition configured_bc =
-        configuredBoundary(space, has_pressure_bc);
+        configuredBoundary(space, time, has_pressure_bc);
     if (!has_pressure_bc)
     {
       configured_bc.addDof(p_dof.globalDof(0), 0.0);
@@ -446,8 +731,8 @@ void assembleSystem(const BlockFESpace& space,
     ElementValues        ev(element, quadrature);
     std::vector<QPState> qp_states(static_cast<std::size_t>(nq));
     LocalAssembler       assembler(space,
-                                   A.pattern(),
-                                   LocalAssembler::AssemblyPolicy::Atomic);
+                             A.pattern(),
+                             LocalAssembler::AssemblyPolicy::Atomic);
     DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector               Fe(space.numDofsPerElem());
 
@@ -490,10 +775,10 @@ Snapshot makeSnapshot(const BlockFESpace& space,
 {
   const Mesh& mesh = space.mesh();
   Snapshot    snapshot{time,
-                       Vector(mesh.numNodes()),
-                       Vector(mesh.numNodes()),
-                       Vector(mesh.numNodes()),
-                       Vector(mesh.numNodes())};
+                    Vector(mesh.numNodes()),
+                    Vector(mesh.numNodes()),
+                    Vector(mesh.numNodes()),
+                    Vector(mesh.numNodes())};
   splitFields(x,
               space,
               mesh.numNodes(),

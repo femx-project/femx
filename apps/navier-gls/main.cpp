@@ -92,12 +92,12 @@ int run(const Options& options)
   }
 
   LinearSolver solver(workspace, solver_backend, solver_options);
-  const auto   bc = navierBoundary(space);
 
   std::vector<Snapshot> snapshots;
 
   for (index_type step = 1; step <= steps; ++step)
   {
+    const real_type time = step * dt;
     real_type  step_max_cfl   = 0.0;
     const auto assembly_start = std::chrono::high_resolution_clock::now();
     assembleSystem(space,
@@ -115,6 +115,7 @@ int run(const Options& options)
     }
 
     Vector x_old = x;
+    const auto bc = getBoundary(space, time);
 
     bc.apply(A, b);
     solver.setOperator(A);
@@ -130,12 +131,12 @@ int run(const Options& options)
     }
     xp = x_old;
 
-    double snapshot_seconds = 0.0;
     if (step % interval == 0 || step == steps)
     {
       snapshots.push_back(makeSnapshot(space,
                                        x,
-                                       step * dt));
+                                       time));
+      writeTimeSeriesOutput(mesh, snapshots);
     }
 
     const auto step_end = std::chrono::high_resolution_clock::now();
@@ -146,14 +147,11 @@ int run(const Options& options)
         solve_end - solve_start;
     std::cout << "step " << std::setw(5) << step << " / "
               << steps << ", t = " << std::setw(10)
-              << step * dt
+              << time
               << ", max CFL = " << step_max_cfl
               << ", assembly = " << assembly_elapsed.count() << " s"
               << ", solve = " << solve_elapsed.count() << " s\n";
   }
-
-  writeTimeSeriesOutput(mesh, snapshots);
-
   return 0;
 }
 

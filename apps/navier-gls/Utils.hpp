@@ -10,8 +10,9 @@
 #include <string>
 #include <vector>
 
-#include "NavierGLS.hpp"
 #include <nlohmann/json.hpp>
+
+#include "NavierGLS.hpp"
 #include <refem/io/TimeSeriesDataOut.hpp>
 #include <refem/linalg/Vector.hpp>
 #include <refem/mesh/Mesh.hpp>
@@ -39,6 +40,155 @@ void assignIfPresent(const nlohmann::json& node,
   {
     value = node.at(key).get<T>();
   }
+}
+
+index_type parseAxis(const nlohmann::json& node)
+{
+  if (node.is_number_integer())
+  {
+    return node.get<index_type>();
+  }
+  if (!node.is_string())
+  {
+    throw std::runtime_error("Boundary profile axis must be 0, 1, 2, x, y, or z");
+  }
+
+  const std::string axis = node.get<std::string>();
+  if (axis == "x")
+  {
+    return 0;
+  }
+  if (axis == "y")
+  {
+    return 1;
+  }
+  if (axis == "z")
+  {
+    return 2;
+  }
+  throw std::runtime_error("Boundary profile axis must be 0, 1, 2, x, y, or z");
+}
+
+BoundaryConditionSpec::TimeProfile parseTimeProfile(const nlohmann::json& node)
+{
+  BoundaryConditionSpec::TimeProfile time;
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Boundary time profile must be an object");
+  }
+
+  assignIfPresent(node, "profile", time.profile);
+  assignIfPresent(node, "value", time.value);
+  assignIfPresent(node, "from", time.from);
+  assignIfPresent(node, "to", time.to);
+  assignIfPresent(node, "t0", time.t0);
+  assignIfPresent(node, "t1", time.t1);
+  assignIfPresent(node, "mean", time.mean);
+  assignIfPresent(node, "amplitude", time.amplitude);
+  assignIfPresent(node, "frequency", time.frequency);
+  assignIfPresent(node, "phase", time.phase);
+  return time;
+}
+
+BoundaryConditionSpec::Value parseBoundaryValue(const nlohmann::json& node)
+{
+  BoundaryConditionSpec::Value value;
+  if (node.is_number())
+  {
+    value.value = node.get<real_type>();
+    return value;
+  }
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Boundary value must be a number or an object");
+  }
+
+  assignIfPresent(node, "profile", value.profile);
+  if (node.contains("value"))
+  {
+    value.value = node.at("value").get<real_type>();
+  }
+  else if (node.contains("max"))
+  {
+    value.value = node.at("max").get<real_type>();
+  }
+
+  if (node.contains("axis"))
+  {
+    value.axis = parseAxis(node.at("axis"));
+  }
+  if (node.contains("time"))
+  {
+    value.time = parseTimeProfile(node.at("time"));
+  }
+  return value;
+}
+
+std::array<real_type, dim> parseVector3(const nlohmann::json& node,
+                                        const std::string&    name)
+{
+  if (!node.is_array() || node.size() != static_cast<std::size_t>(dim))
+  {
+    throw std::runtime_error(name + " must be an array with 3 values");
+  }
+
+  std::array<real_type, dim> values{};
+  for (index_type i = 0; i < dim; ++i)
+  {
+    values[static_cast<std::size_t>(i)] = node.at(i).get<real_type>();
+  }
+  return values;
+}
+
+BoundaryConditionSpec::FlowRate parseFlowRate(const nlohmann::json& node)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Boundary flowrate must be an object");
+  }
+
+  BoundaryConditionSpec::FlowRate flowrate;
+  if (node.contains("time"))
+  {
+    flowrate.time = node.at("time").get<std::vector<real_type>>();
+  }
+  else
+  {
+    throw std::runtime_error("Boundary flowrate requires time");
+  }
+  if (node.contains("value"))
+  {
+    flowrate.value = node.at("value").get<std::vector<real_type>>();
+  }
+  else
+  {
+    throw std::runtime_error("Boundary flowrate requires value");
+  }
+
+  assignIfPresent(node, "area", flowrate.area);
+  if (node.contains("normal"))
+  {
+    flowrate.normal = parseVector3(node.at("normal"), "Boundary flowrate normal");
+  }
+
+  if (node.contains("interpolate"))
+  {
+    flowrate.interpolate = node.at("interpolate").get<std::string>();
+  }
+  else if (node.contains("methodInterpolate"))
+  {
+    flowrate.interpolate = node.at("methodInterpolate").get<std::string>();
+  }
+  else if (node.contains("methodinterpolate"))
+  {
+    flowrate.interpolate = node.at("methodinterpolate").get<std::string>();
+  }
+  else if (node.contains("method"))
+  {
+    flowrate.interpolate = node.at("method").get<std::string>();
+  }
+
+  return flowrate;
 }
 
 void loadConfigFile(const std::string& path,
@@ -107,23 +257,28 @@ void loadConfigFile(const std::string& path,
       assignIfPresent(item, "type", condition.type);
       if (item.contains("ux"))
       {
-        condition.ux     = item.at("ux").get<real_type>();
+        condition.ux     = parseBoundaryValue(item.at("ux"));
         condition.has_ux = true;
       }
       if (item.contains("uy"))
       {
-        condition.uy     = item.at("uy").get<real_type>();
+        condition.uy     = parseBoundaryValue(item.at("uy"));
         condition.has_uy = true;
       }
       if (item.contains("uz"))
       {
-        condition.uz     = item.at("uz").get<real_type>();
+        condition.uz     = parseBoundaryValue(item.at("uz"));
         condition.has_uz = true;
       }
       if (item.contains("p"))
       {
-        condition.p     = item.at("p").get<real_type>();
+        condition.p     = parseBoundaryValue(item.at("p"));
         condition.has_p = true;
+      }
+      if (item.contains("flowrate"))
+      {
+        condition.flowrate     = parseFlowRate(item.at("flowrate"));
+        condition.has_flowrate = true;
       }
 
       bcs.push_back(condition);
@@ -141,6 +296,71 @@ void loadConfigFile(const std::string& path,
   }
 }
 
+void validateFlowRate(const BoundaryConditionSpec::FlowRate& flowrate)
+{
+  if (flowrate.time.empty())
+  {
+    throw std::runtime_error("Boundary flowrate time must not be empty");
+  }
+  if (flowrate.time.size() != flowrate.value.size())
+  {
+    throw std::runtime_error(
+        "Boundary flowrate time and value must have the same length");
+  }
+  if (flowrate.area <= 0.0)
+  {
+    throw std::runtime_error("Boundary flowrate area must be positive");
+  }
+  for (std::size_t i = 1; i < flowrate.time.size(); ++i)
+  {
+    if (flowrate.time[i] <= flowrate.time[i - 1])
+    {
+      throw std::runtime_error(
+          "Boundary flowrate time values must be strictly increasing");
+    }
+  }
+
+  real_type normal_mag2 = 0.0;
+  for (real_type component : flowrate.normal)
+  {
+    normal_mag2 += component * component;
+  }
+  if (normal_mag2 <= 1.0e-28)
+  {
+    throw std::runtime_error("Boundary flowrate normal must be nonzero");
+  }
+
+  if (flowrate.interpolate != "constant" && flowrate.interpolate != "nearest" && flowrate.interpolate != "linear" && flowrate.interpolate != "cubic")
+  {
+    throw std::runtime_error(
+        "Boundary flowrate interpolate must be 'constant', 'nearest', 'linear', or 'cubic'");
+  }
+}
+
+void validateBoundaryValue(const BoundaryConditionSpec::Value& value)
+{
+  if (value.profile != "constant" && value.profile != "parabolic")
+  {
+    throw std::runtime_error(
+        "Boundary value profile must be 'constant' or 'parabolic'");
+  }
+  if (value.axis < 0 || value.axis >= 3)
+  {
+    throw std::runtime_error("Boundary value axis must be 0, 1, or 2");
+  }
+
+  const auto& time = value.time;
+  if (time.profile != "constant" && time.profile != "ramp" && time.profile != "sin")
+  {
+    throw std::runtime_error(
+        "Boundary time profile must be 'constant', 'ramp', or 'sin'");
+  }
+  if (time.profile == "ramp" && time.t1 < time.t0)
+  {
+    throw std::runtime_error("Boundary ramp time profile requires t1 >= t0");
+  }
+}
+
 void validateOptions(const Options& options)
 {
   if (options.mesh_file.empty())
@@ -148,8 +368,7 @@ void validateOptions(const Options& options)
     throw std::runtime_error("Config mesh.file is required");
   }
 
-  if (steps <= 0 || dt <= 0.0 || rho <= 0.0 ||
-      mu <= 0.0 || inlet_velocity < 0.0)
+  if (steps <= 0 || dt <= 0.0 || rho <= 0.0 || mu <= 0.0 || inlet_velocity < 0.0)
   {
     throw std::runtime_error("Invalid non-positive Navier-Stokes parameter");
   }
@@ -165,11 +384,30 @@ void validateOptions(const Options& options)
       throw std::runtime_error(
           "Only dirichlet bcs are supported");
     }
-    if (!condition.has_ux && !condition.has_uy &&
-        !condition.has_uz && !condition.has_p)
+    if (!condition.has_ux && !condition.has_uy && !condition.has_uz && !condition.has_p && !condition.has_flowrate)
     {
       throw std::runtime_error(
-          "Boundary condition needs at least one of ux, uy, uz, or p");
+          "Boundary condition needs at least one of ux, uy, uz, p, or flowrate");
+    }
+    if (condition.has_ux)
+    {
+      validateBoundaryValue(condition.ux);
+    }
+    if (condition.has_uy)
+    {
+      validateBoundaryValue(condition.uy);
+    }
+    if (condition.has_uz)
+    {
+      validateBoundaryValue(condition.uz);
+    }
+    if (condition.has_p)
+    {
+      validateBoundaryValue(condition.p);
+    }
+    if (condition.has_flowrate)
+    {
+      validateFlowRate(condition.flowrate);
     }
   }
 

@@ -40,13 +40,14 @@ DirichletCondition DirichletCondition::onBoundary(const FESpace& space,
                                                   real_type      value)
 {
   return onBoundary(space,
-                    [value](const Mesh::Node&)
+                    [value](const Mesh::Node&, real_type)
                     { return value; });
 }
 
 DirichletCondition DirichletCondition::onBoundary(
     const FESpace&       space,
-    const ValueFunction& value)
+    const ValueFunction& value,
+    real_type            time)
 {
   const Mesh& mesh = space.mesh();
 
@@ -67,7 +68,7 @@ DirichletCondition DirichletCondition::onBoundary(
   {
     if (isBoundaryNode(mesh, in, min_coord, max_coord))
     {
-      condition.addDof(in, value(mesh.node(in)));
+      condition.addDof(in, value(mesh.node(in), time));
     }
   }
 
@@ -115,7 +116,7 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
       throw std::runtime_error("Dirichlet dof is out of range");
     }
 
-    is_dirichlet[static_cast<std::size_t>(dof)] = 1;
+    is_dirichlet[static_cast<std::size_t>(dof)]     = 1;
     dirichlet_values[static_cast<std::size_t>(dof)] = value;
   }
 
@@ -133,14 +134,14 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
         values[k] = 0.0;
         if (col == row)
         {
-          values[k] = 1.0;
+          values[k]                                     = 1.0;
           found_diagonal[static_cast<std::size_t>(row)] = 1;
         }
       }
       else if (is_dirichlet[static_cast<std::size_t>(col)] != 0)
       {
-        b[row] -= values[k] * dirichlet_values[static_cast<std::size_t>(col)];
-        values[k] = 0.0;
+        b[row]    -= values[k] * dirichlet_values[static_cast<std::size_t>(col)];
+        values[k]  = 0.0;
       }
     }
 
@@ -152,8 +153,7 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
 
   for (index_type dof = 0; dof < A.rows(); ++dof)
   {
-    if (is_dirichlet[static_cast<std::size_t>(dof)] != 0 &&
-        found_diagonal[static_cast<std::size_t>(dof)] == 0)
+    if (is_dirichlet[static_cast<std::size_t>(dof)] != 0 && found_diagonal[static_cast<std::size_t>(dof)] == 0)
     {
       throw std::runtime_error("Dirichlet row has no diagonal entry");
     }

@@ -8,7 +8,7 @@ namespace refem
 class LagrangeTriangleP1 : public FiniteElement
 {
 public:
-  static constexpr index_type dimen  = 2;
+  static constexpr index_type dim = 2;
   static constexpr index_type nnodes = 3;
   static constexpr index_type ndofs  = 3;
   static constexpr index_type degree = 1;
@@ -20,7 +20,7 @@ public:
 
   index_type dim() const override
   {
-    return dimen;
+    return dim;
   }
 
   index_type numNodes() const override
