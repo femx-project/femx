@@ -140,7 +140,11 @@ real_type elementLength(const ElementValues&                  ev,
     sum += std::abs(grad_dir);
   }
 
-  return sum > 1.0e-14 ? 2.0 / sum : 0.0;
+  if (sum > 1.0e-14)
+  {
+    return 2.0 / sum;
+  }
+  return 0.0;
 }
 
 std::array<real_type, 3> stabilization(
@@ -197,7 +201,11 @@ void updateCellState(std::vector<QPState>& qp_states,
 
     for (index_type d = 0; d < nd; ++d)
     {
-      qp.u_adv[d] = initial ? qp.u[d] : 1.5 * qp.u[d] - 0.5 * u_prev[d];
+      qp.u_adv[d] = qp.u[d];
+      if (!initial)
+      {
+        qp.u_adv[d] = 1.5 * qp.u[d] - 0.5 * u_prev[d];
+      }
     }
 
     const real_type h = elementLength(ev, q, qp.u);

@@ -113,14 +113,22 @@ void splitFields(const Vector&       x,
   const Mesh&      mesh  = space.mesh();
   const auto       u_dof = space.field(0);
   const auto       p_dof = space.field(1);
-  const index_type nd    = u_dof.numComponents();
+  const index_type nc    = u_dof.numComponents();
 
-  for (index_type node = 0; node < mesh.numNodes(); ++node)
+  for (index_type in = 0; in < mesh.numNodes(); ++in)
   {
-    ux[node] = x[u_dof.globalDof(node, 0)];
-    uy[node] = nd > 1 ? x[u_dof.globalDof(node, 1)] : 0.0;
-    uz[node] = nd > 2 ? x[u_dof.globalDof(node, 2)] : 0.0;
-    p[node]  = x[p_dof.globalDof(node)];
+    ux[in] = x[u_dof.globalDof(in, 0)];
+    uy[in] = 0.0;
+    uz[in] = 0.0;
+    if (nc > 1)
+    {
+      uy[in] = x[u_dof.globalDof(in, 1)];
+    }
+    if (nc > 2)
+    {
+      uz[in] = x[u_dof.globalDof(in, 2)];
+    }
+    p[in] = x[p_dof.globalDof(in)];
   }
 }
 

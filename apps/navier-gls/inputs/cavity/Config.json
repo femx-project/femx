@@ -1,14 +1,14 @@
 {
   "mesh": {
-    "file": "../../../meshdata/2D/rectangle_res_high.msh"
+    "file": "../../../meshdata/2D/rectangle_res_mid.msh"
   },
   "time": {
     "steps": 100,
     "dt": 0.001
   },
   "fluid": {
-    "rho": 1.0,
-    "mu": 0.01
+    "rho": 1000,
+    "mu": 1
   },
   "bcs": [
     {

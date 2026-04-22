@@ -68,7 +68,11 @@ real_type sampleFlowRateCubic(const FlowRateParams& flowrate,
   }
 
   const std::size_t i  = lowerInterval(flowrate.time, time);
-  const std::size_t i0 = i == 0 ? i : i - 1;
+  std::size_t       i0 = i;
+  if (i > 0)
+  {
+    i0 = i - 1;
+  }
   const std::size_t i1 = i;
   const std::size_t i2 = i + 1;
   const std::size_t i3 =
