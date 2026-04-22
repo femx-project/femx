@@ -10,7 +10,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(REFEM_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
 option(REFEM_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
 option(REFEM_ENABLE_OPENMP "Enable OpenMP parallel assembly" ON)
-option(REFEM_BUILD_EXAMPLES "Build refem examples" OFF)
 option(REFEM_BUILD_APPS "Build refem apps" ON)
 
 if(REFEM_ENABLE_OPENMP)
@@ -75,10 +74,6 @@ add_library(refem::refem ALIAS refem)
 target_link_libraries(refem INTERFACE refem_config)
 
 add_subdirectory(refem)
-
-if(REFEM_BUILD_EXAMPLES)
-  add_subdirectory(examples)
-endif()
 
 if(REFEM_BUILD_APPS)
   add_subdirectory(apps)

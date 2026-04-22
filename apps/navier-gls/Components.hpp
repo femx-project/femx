@@ -19,11 +19,11 @@ namespace refem
  */
 struct QPState
 {
-  std::array<real_type, max_dim> u{};
-  std::array<real_type, max_dim> u_adv{};
-  real_type                      grad_u[max_dim][max_dim]{};
-  std::array<real_type, max_dim> u_adv_grad_u{};
-  std::array<real_type, max_dim> tau{};
+  std::array<real_type, 3> u{};
+  std::array<real_type, 3> u_adv{};
+  real_type                      grad_u[3][3]{};
+  std::array<real_type, 3> u_adv_grad_u{};
+  std::array<real_type, 3> tau{};
 };
 
 /** @brief Assemble the mass terms. */

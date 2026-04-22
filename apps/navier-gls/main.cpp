@@ -7,10 +7,6 @@
  * Galerkin finite element formulation. This improves stability for
  * pressure and advection-dominated problems.
  *
- * @ref Tezduyar1992
- * Tezduyar, T. E., Mittal, S., Ray, S. E., and Shih, R.,
- * "Stabilized finite element formulations for incompressible flow
- * computations", Computer Methods in Applied Mechanics and Engineering, 1992.
  */
 
 #include <chrono>

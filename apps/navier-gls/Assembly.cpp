@@ -17,11 +17,11 @@
 namespace refem
 {
 
-std::array<real_type, max_dim> velocityAtNode(const Vector&         x,
+std::array<real_type, 3> velocityAtNode(const Vector&         x,
                                               const BlockFieldView& u_dof,
                                               index_type            node)
 {
-  std::array<real_type, max_dim> u{};
+  std::array<real_type, 3> u{};
   for (index_type d = 0; d < u_dof.numComponents(); ++d)
   {
     u[static_cast<std::size_t>(d)] = x[u_dof.globalDof(node, d)];
@@ -34,7 +34,7 @@ void evaluateVelocity(const ElementValues&            ev,
                       index_type                      cell,
                       index_type                      q,
                       const Vector&                   x,
-                      std::array<real_type, max_dim>& u)
+                      std::array<real_type, 3>& u)
 {
   u                   = {};
   const index_type nd = ev.dim();
@@ -58,12 +58,12 @@ void evaluateVelocityGradient(const ElementValues& ev,
                               index_type           cell,
                               index_type           q,
                               const Vector&        x,
-                              real_type            dudx[max_dim][max_dim])
+                              real_type            dudx[3][3])
 {
   const index_type nd = ev.dim();
-  for (index_type c = 0; c < max_dim; ++c)
+  for (index_type c = 0; c < 3; ++c)
   {
-    for (index_type d = 0; d < max_dim; ++d)
+    for (index_type d = 0; d < 3; ++d)
     {
       dudx[c][d] = 0.0;
     }
@@ -86,8 +86,8 @@ void evaluateVelocityGradient(const ElementValues& ev,
   }
 }
 
-real_type advectiveDerivative(const real_type                       grad[max_dim][max_dim],
-                              const std::array<real_type, max_dim>& u_adv,
+real_type advectiveDerivative(const real_type                       grad[3][3],
+                              const std::array<real_type, 3>& u_adv,
                               index_type                            component,
                               index_type                            nd)
 {
@@ -101,7 +101,7 @@ real_type advectiveDerivative(const real_type                       grad[max_dim
 
 real_type elementLength(const ElementValues&                  ev,
                         index_type                            q,
-                        const std::array<real_type, max_dim>& u)
+                        const std::array<real_type, 3>& u)
 {
   const index_type nd   = ev.dim();
   real_type        mag2 = 0.0;
@@ -111,7 +111,7 @@ real_type elementLength(const ElementValues&                  ev,
   }
 
   const real_type                mag = std::sqrt(mag2);
-  std::array<real_type, max_dim> dir{};
+  std::array<real_type, 3> dir{};
   if (mag > 1.0e-10)
   {
     for (index_type d = 0; d < nd; ++d)
@@ -143,8 +143,8 @@ real_type elementLength(const ElementValues&                  ev,
   return sum > 1.0e-14 ? 2.0 / sum : 0.0;
 }
 
-std::array<real_type, max_dim> stabilization(
-    const std::array<real_type, max_dim>& u,
+std::array<real_type, 3> stabilization(
+    const std::array<real_type, 3>& u,
     const FluidParams&                    fluid,
     real_type                             dt,
     real_type                             h,
@@ -167,7 +167,7 @@ std::array<real_type, max_dim> stabilization(
     term3 = std::pow(4.0 * nu / (h * h), 2);
   }
 
-  std::array<real_type, max_dim> values{};
+  std::array<real_type, 3> values{};
   values.fill(1.0 / std::sqrt(term1 + term2 + term3));
   return values;
 }
@@ -190,7 +190,7 @@ void updateCellState(std::vector<QPState>& qp_states,
     auto& qp = qp_states[static_cast<std::size_t>(q)];
 
     const index_type               nd = ev.dim();
-    std::array<real_type, max_dim> u_prev{};
+    std::array<real_type, 3> u_prev{};
     evaluateVelocity(ev, space, cell, q, x, qp.u);
     evaluateVelocityGradient(ev, space, cell, q, x, qp.grad_u);
     evaluateVelocity(ev, space, cell, q, xp, u_prev);

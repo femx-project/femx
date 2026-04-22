@@ -15,8 +15,6 @@ class SparseMatrix;
 namespace refem
 {
 
-constexpr index_type max_dim = 3;
-
 struct AssemblyStats
 {
   real_type max_cfl = 0.0;
