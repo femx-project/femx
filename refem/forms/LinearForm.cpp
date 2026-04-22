@@ -40,7 +40,7 @@ void LinearForm::assemble()
   GaussQuadrature quadrature =
       GaussQuadrature::make(fe.referenceElement(), 2);
 
-  ElementValues ev(fe, quadrature);
+  ElementValues  ev(fe, quadrature);
   LocalAssembler assembler(*space_);
 
   b_.setZero();

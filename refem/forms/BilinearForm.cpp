@@ -37,7 +37,7 @@ void BilinearForm::assemble()
 
   auto quad = GaussQuadrature::make(fe.referenceElement(), 2);
 
-  ElementValues ev(fe, quad);
+  ElementValues  ev(fe, quad);
   LocalAssembler assembler(*space_, pattern_);
 
   K_.setZero();

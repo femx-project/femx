@@ -1,9 +1,8 @@
-#include <refem/io/Hdf5Writer.hpp>
-
 #include <stdexcept>
 #include <vector>
 
 #include <refem/common/Types.hpp>
+#include <refem/io/Hdf5Writer.hpp>
 #include <refem/linalg/Vector.hpp>
 #include <refem/mesh/Cell.hpp>
 #include <refem/mesh/Mesh.hpp>
@@ -35,7 +34,7 @@ index_type nodesPerCell(const Mesh& mesh)
   return nodes;
 }
 
-void checkMeshAndFields(const Mesh&                            mesh,
+void checkMeshAndFields(const Mesh&                                mesh,
                         const std::vector<Hdf5Writer::NodalField>& fields)
 {
   if (mesh.dim() != 2)
@@ -118,10 +117,10 @@ void writeDoubleDataset(hid_t                       file,
   checkHdf5(H5Sclose(dataspace), "Failed to close HDF5 dataspace " + path);
 }
 
-void writeIntDataset(hid_t                           file,
-                     const std::string&              path,
-                     const std::vector<index_type>&  data,
-                     const std::vector<hsize_t>&     dims)
+void writeIntDataset(hid_t                          file,
+                     const std::string&             path,
+                     const std::vector<index_type>& data,
+                     const std::vector<hsize_t>&    dims)
 {
   hid_t dataspace = H5Screate_simple(
       static_cast<int>(dims.size()), dims.data(), nullptr);
@@ -179,22 +178,19 @@ void Hdf5Writer::write(const std::string&             filename,
   {
     for (index_type d = 0; d < 3; ++d)
     {
-      geometry[static_cast<std::size_t>(in) * 3 +
-               static_cast<std::size_t>(d)] = mesh.node(in)[d];
+      geometry[static_cast<std::size_t>(in) * 3 + static_cast<std::size_t>(d)] = mesh.node(in)[d];
     }
   }
 
-  const index_type cell_nodes = nodesPerCell(mesh);
+  const index_type        cell_nodes = nodesPerCell(mesh);
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numElems()) *
-      static_cast<std::size_t>(cell_nodes));
+      static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(cell_nodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const index_type* node_ids = mesh.cellNodeIds(ic);
     for (index_type i = 0; i < cell_nodes; ++i)
     {
-      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(cell_nodes) +
-               static_cast<std::size_t>(i)] = node_ids[i];
+      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(cell_nodes) + static_cast<std::size_t>(i)] = node_ids[i];
     }
   }
 
@@ -224,7 +220,7 @@ void Hdf5Writer::write(const std::string&             filename,
 
   checkHdf5(H5Fclose(file), "Failed to close HDF5 file: " + filename);
 #else
-  (void)filename;
+  (void) filename;
   throw std::runtime_error(
       "HDF5 support is not enabled. Configure with REFEM_ENABLE_HDF5=ON "
       "and an available HDF5 C library.");

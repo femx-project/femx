@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(refem
+project(
+  refem
   VERSION 0.1.0
-  LANGUAGES CXX
-)
+  LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -26,19 +26,22 @@ if(REFEM_ENABLE_RESOLVE)
 endif()
 
 if(REFEM_ENABLE_HDF5)
-  find_package(HDF5 COMPONENTS C QUIET)
+  find_package(
+    HDF5
+    COMPONENTS C
+    QUIET)
 
   if(HDF5_FOUND)
     message(STATUS "Found HDF5: ${HDF5_VERSION}")
     if(HDF5_IS_PARALLEL)
-      find_package(MPI COMPONENTS CXX QUIET)
+      find_package(
+        MPI
+        COMPONENTS CXX
+        QUIET)
     endif()
     find_path(REFEM_MPI_INCLUDE_DIR mpi.h
-      HINTS
-        /usr/lib/x86_64-linux-gnu/openmpi/include
-        /usr/include/openmpi
-        /usr/local/include
-    )
+              HINTS /usr/lib/x86_64-linux-gnu/openmpi/include
+                    /usr/include/openmpi /usr/local/include)
   endif()
 endif()
 
@@ -46,11 +49,9 @@ add_library(refem_config INTERFACE)
 
 target_compile_features(refem_config INTERFACE cxx_std_17)
 
-target_include_directories(refem_config
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
+target_include_directories(
+  refem_config INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+                         $<INSTALL_INTERFACE:include>)
 
 if(REFEM_ENABLE_RESOLVE)
   target_compile_definitions(refem_config INTERFACE REFEM_ENABLE_RESOLVE=1)

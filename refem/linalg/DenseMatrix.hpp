@@ -25,7 +25,7 @@ public:
   real_type& operator()(index_type i, index_type j);
   real_type  operator()(index_type i, index_type j) const;
 
-  real_type* data();
+  real_type*       data();
   const real_type* data() const;
 
 private:

@@ -18,9 +18,9 @@ public:
     const Vector* values{nullptr};
   };
 
-  void write(const std::string&              filename,
-             const Mesh&                     mesh,
-             const std::vector<NodalField>&  nodal_fields) const;
+  void write(const std::string&             filename,
+             const Mesh&                    mesh,
+             const std::vector<NodalField>& nodal_fields) const;
 };
 
 } // namespace refem

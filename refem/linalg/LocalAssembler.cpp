@@ -20,13 +20,13 @@ LocalAssembler::LocalAssembler(const FESpace& space,
 }
 
 LocalAssembler::LocalAssembler(const BlockFESpace& space,
-                               AssemblyPolicy policy)
+                               AssemblyPolicy      policy)
   : block_space_(&space),
     policy_(policy)
 {
 }
 
-LocalAssembler::LocalAssembler(const FESpace&               space,
+LocalAssembler::LocalAssembler(const FESpace&              space,
                                const FixedSparsityPattern& pattern,
                                AssemblyPolicy              policy)
   : fe_space_(&space),
@@ -35,7 +35,7 @@ LocalAssembler::LocalAssembler(const FESpace&               space,
 {
 }
 
-LocalAssembler::LocalAssembler(const BlockFESpace&          space,
+LocalAssembler::LocalAssembler(const BlockFESpace&         space,
                                const FixedSparsityPattern& pattern,
                                AssemblyPolicy              policy)
   : block_space_(&space),

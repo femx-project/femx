@@ -7,7 +7,7 @@
 
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
-#include <refem/solver/ReSolverLinearSolver.hpp>
+#include <refem/solver/ReSolveLinearSolver.hpp>
 
 #if defined(REFEM_HAS_RESOLVE)
 #include <resolve/LinSolverIterative.hpp>

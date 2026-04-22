@@ -10,7 +10,7 @@ namespace refem
 {
 
 SparseMatrix::SparseMatrix(const FixedSparsityPattern& pattern,
-                           MatrixBackend              backend)
+                           MatrixBackend               backend)
   : pattern_(&pattern)
 {
   switch (backend)

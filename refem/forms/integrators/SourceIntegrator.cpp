@@ -1,6 +1,5 @@
-#include <refem/forms/integrators/SourceIntegrator.hpp>
-
 #include <refem/fe/ElementValues.hpp>
+#include <refem/forms/integrators/SourceIntegrator.hpp>
 #include <refem/linalg/Vector.hpp>
 
 namespace refem

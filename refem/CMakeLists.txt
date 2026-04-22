@@ -7,15 +7,14 @@ add_subdirectory(forms)
 add_subdirectory(io)
 add_subdirectory(solver)
 
-target_link_libraries(refem
-  INTERFACE
-    refem_common
-    refem_bc
-    refem_fe
-    refem_forms
-    refem_forms_integrators
-    refem_io
-    refem_linalg
-    refem_mesh
-    refem_solver
-)
+target_link_libraries(
+  refem
+  INTERFACE refem_common
+            refem_bc
+            refem_fe
+            refem_forms
+            refem_forms_integrators
+            refem_io
+            refem_linalg
+            refem_mesh
+            refem_solver)

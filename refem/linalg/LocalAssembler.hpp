@@ -26,11 +26,11 @@ public:
   explicit LocalAssembler(const FESpace& space,
                           AssemblyPolicy policy = AssemblyPolicy::Serial);
   explicit LocalAssembler(const BlockFESpace& space,
-                          AssemblyPolicy policy = AssemblyPolicy::Serial);
-  LocalAssembler(const FESpace&               space,
+                          AssemblyPolicy      policy = AssemblyPolicy::Serial);
+  LocalAssembler(const FESpace&              space,
                  const FixedSparsityPattern& pattern,
                  AssemblyPolicy              policy = AssemblyPolicy::Serial);
-  LocalAssembler(const BlockFESpace&          space,
+  LocalAssembler(const BlockFESpace&         space,
                  const FixedSparsityPattern& pattern,
                  AssemblyPolicy              policy = AssemblyPolicy::Serial);
 

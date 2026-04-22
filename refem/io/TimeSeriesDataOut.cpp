@@ -63,11 +63,9 @@ void checkMesh(const Mesh& mesh)
     throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const index_type cell_nodes = mesh.cells().front().numNodes();
-  const Cell::Shape shape = mesh.cells().front().shape();
-  if (shape != Cell::Shape::Triangle &&
-      shape != Cell::Shape::Quadrilateral &&
-      shape != Cell::Shape::Tetrahedron)
+  const index_type  cell_nodes = mesh.cells().front().numNodes();
+  const Cell::Shape shape      = mesh.cells().front().shape();
+  if (shape != Cell::Shape::Triangle && shape != Cell::Shape::Quadrilateral && shape != Cell::Shape::Tetrahedron)
   {
     throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
@@ -233,19 +231,16 @@ void writeMesh(hid_t file, const Mesh& mesh)
     throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const index_type cell_nodes = mesh.cells().front().numNodes();
-  const Cell::Shape shape = mesh.cells().front().shape();
-  if (shape != Cell::Shape::Triangle &&
-      shape != Cell::Shape::Quadrilateral &&
-      shape != Cell::Shape::Tetrahedron)
+  const index_type  cell_nodes = mesh.cells().front().numNodes();
+  const Cell::Shape shape      = mesh.cells().front().shape();
+  if (shape != Cell::Shape::Triangle && shape != Cell::Shape::Quadrilateral && shape != Cell::Shape::Tetrahedron)
   {
     throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
   }
 
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numElems()) *
-      static_cast<std::size_t>(cell_nodes));
+      static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(cell_nodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const auto& cell = mesh.cell(ic);
@@ -336,9 +331,9 @@ void writeXdmf(const std::string&                          filename,
     {
       throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
     }
-    const index_type cell_nodes = mesh.cells().front().numNodes();
-    const Cell::Shape shape = mesh.cells().front().shape();
-    const char* topology_type = "Triangle";
+    const index_type  cell_nodes    = mesh.cells().front().numNodes();
+    const Cell::Shape shape         = mesh.cells().front().shape();
+    const char*       topology_type = "Triangle";
     if (shape == Cell::Shape::Quadrilateral)
     {
       topology_type = "Quadrilateral";

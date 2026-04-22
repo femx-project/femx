@@ -31,7 +31,7 @@ public:
                                    index_type component) const noexcept;
   index_type              globalDof(index_type node,
                                     index_type component) const noexcept;
-  void                    elemDofs(index_type ic,
+  void                    elemDofs(index_type               ic,
                                    std::vector<index_type>& dofs) const;
   std::vector<index_type> elemDofs(index_type ic) const;
 

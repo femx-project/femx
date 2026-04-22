@@ -22,12 +22,14 @@ real_type advectionDerivative(const ElementValues& ev,
 }
 
 void assembleTransientLHS(const ElementValues& ev,
+                          const FluidParams&   fluid,
+                          real_type            dt,
                           DenseMatrix&         Ke)
 {
   const index_type num_shapes = ev.numDofs();
   const index_type nd         = ev.dim();
   const index_type nq         = ev.numQuadraturePoints();
-  const real_type  coeff      = rho / dt;
+  const real_type  coeff      = fluid.rho / dt;
 
   for (index_type q = 0; q < nq; ++q)
   {
@@ -51,6 +53,8 @@ void assembleTransientLHS(const ElementValues& ev,
 
 void assembleTransientRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qp_states,
+                          const FluidParams&          fluid,
+                          real_type                   dt,
                           Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
@@ -62,7 +66,7 @@ void assembleTransientRHS(const ElementValues&        ev,
     {
       for (index_type c = 0; c < ev.dim(); ++c)
       {
-        Fe[ev.dim() * i + c] += rho / dt * N[i] * qp.u[c] * wJ;
+        Fe[ev.dim() * i + c] += fluid.rho / dt * N[i] * qp.u[c] * wJ;
       }
     }
   }
@@ -70,6 +74,7 @@ void assembleTransientRHS(const ElementValues&        ev,
 
 void assembleAdvectionLHS(const ElementValues&        ev,
                           const std::vector<QPState>& qp_states,
+                          const FluidParams&          fluid,
                           DenseMatrix&                Ke)
 {
   const index_type num_shapes = ev.numDofs();
@@ -85,7 +90,7 @@ void assembleAdvectionLHS(const ElementValues&        ev,
 
     for (index_type i = 0; i < num_shapes; ++i)
     {
-      const real_type row = 0.5 * rho * N[i] * wJ;
+      const real_type row = 0.5 * fluid.rho * N[i] * wJ;
       for (index_type j = 0; j < num_shapes; ++j)
       {
         real_type adv_grad = 0.0;
@@ -106,6 +111,7 @@ void assembleAdvectionLHS(const ElementValues&        ev,
 
 void assembleAdvectionRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qp_states,
+                          const FluidParams&          fluid,
                           Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
@@ -118,13 +124,14 @@ void assembleAdvectionRHS(const ElementValues&        ev,
       for (index_type c = 0; c < ev.dim(); ++c)
       {
         Fe[ev.dim() * i + c] -=
-            0.5 * rho * N[i] * qp.u_adv_grad_u[c] * wJ;
+            0.5 * fluid.rho * N[i] * qp.u_adv_grad_u[c] * wJ;
       }
     }
   }
 }
 
 void assembleViscousLHS(const ElementValues& ev,
+                        const FluidParams&   fluid,
                         DenseMatrix&         Ke)
 {
   const index_type num_shapes = ev.numDofs();
@@ -146,7 +153,7 @@ void assembleViscousLHS(const ElementValues& ev,
           grad_dot += dNdx(i, d) * dNdx(j, d);
         }
 
-        const real_type value = 0.5 * mu * grad_dot * wJ;
+        const real_type value = 0.5 * fluid.mu * grad_dot * wJ;
         for (index_type c = 0; c < nd; ++c)
         {
           Ke(nd * i + c, nd * j + c) += value;
@@ -158,6 +165,7 @@ void assembleViscousLHS(const ElementValues& ev,
 
 void assembleViscousRHS(const ElementValues&        ev,
                         const std::vector<QPState>& qp_states,
+                        const FluidParams&          fluid,
                         Vector&                     Fe)
 {
   for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
@@ -175,7 +183,7 @@ void assembleViscousRHS(const ElementValues&        ev,
         {
           grad_dot += dNdx(i, d) * qp.grad_u[c][d];
         }
-        Fe[ev.dim() * i + c] -= 0.5 * mu * grad_dot * wJ;
+        Fe[ev.dim() * i + c] -= 0.5 * fluid.mu * grad_dot * wJ;
       }
     }
   }
@@ -212,6 +220,8 @@ void assemblePressureVelocityCouplingLHS(const ElementValues& ev,
 
 void assembleStabilizationLHS(const ElementValues&        ev,
                               const std::vector<QPState>& qp_states,
+                              const FluidParams&          fluid,
+                              real_type                   dt,
                               DenseMatrix&                Ke)
 {
   const index_type num_shapes = ev.numDofs();
@@ -238,8 +248,8 @@ void assembleStabilizationLHS(const ElementValues&        ev,
         {
           const index_type iu  = nd * i + c;
           const index_type ju  = nd * j + c;
-          Ke(iu, ju)          += qp.tau[0] * rho / dt * dvidx * N[j] * wJ;
-          Ke(iu, ju)          += 0.5 * qp.tau[0] * rho * dvidx * dvjdx * wJ;
+          Ke(iu, ju)          += qp.tau[0] * fluid.rho / dt * dvidx * N[j] * wJ;
+          Ke(iu, ju)          += 0.5 * qp.tau[0] * fluid.rho * dvidx * dvjdx * wJ;
           Ke(iu, jp)          += qp.tau[0] * dvidx * dNdx(j, c) * wJ;
           Ke(ip, nd * j + c)  += qp.tau[1] / dt * dNdx(i, c) * N[j] * wJ;
           Ke(ip, nd * j + c)  += 0.5 * qp.tau[1] * dNdx(i, c) * dvjdx * wJ;
@@ -250,7 +260,7 @@ void assembleStabilizationLHS(const ElementValues&        ev,
         {
           grad_dot += dNdx(i, c) * dNdx(j, c);
         }
-        Ke(ip, jp) += qp.tau[1] / rho * grad_dot * wJ;
+        Ke(ip, jp) += qp.tau[1] / fluid.rho * grad_dot * wJ;
       }
     }
   }
@@ -258,6 +268,8 @@ void assembleStabilizationLHS(const ElementValues&        ev,
 
 void assembleStabilizationRHS(const ElementValues&        ev,
                               const std::vector<QPState>& qp_states,
+                              const FluidParams&          fluid,
+                              real_type                   dt,
                               Vector&                     Fe)
 {
   const index_type num_shapes = ev.numDofs();
@@ -280,8 +292,8 @@ void assembleStabilizationRHS(const ElementValues&        ev,
       for (index_type c = 0; c < nd; ++c)
       {
         const index_type iu  = nd * i + c;
-        Fe[iu]              += qp.tau[0] * rho / dt * dvidx * qp.u[c] * wJ;
-        Fe[iu]              -= 0.5 * qp.tau[0] * rho * dvidx * qp.u_adv_grad_u[c] * wJ;
+        Fe[iu]              += qp.tau[0] * fluid.rho / dt * dvidx * qp.u[c] * wJ;
+        Fe[iu]              -= 0.5 * qp.tau[0] * fluid.rho * dvidx * qp.u_adv_grad_u[c] * wJ;
         div_u               += dNdx(i, c) * qp.u[c];
         div_adv_grad_u      += dNdx(i, c) * qp.u_adv_grad_u[c];
       }

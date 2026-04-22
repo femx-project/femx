@@ -154,18 +154,18 @@ public:
     boundary_facets_.push_back(std::move(facet));
   }
 
-  void addPhysicalName(index_type dim,
-                       index_type tag,
+  void addPhysicalName(index_type  dim,
+                       index_type  tag,
                        std::string name)
   {
     physical_names_[{dim, tag}] = std::move(name);
   }
 
 private:
-  index_type                                             dim_{0};
-  std::vector<Node>                                      nodes_;
-  std::vector<Cell>                                      cells_;
-  std::vector<BoundaryFacet>                             boundary_facets_;
+  index_type                 dim_{0};
+  std::vector<Node>          nodes_;
+  std::vector<Cell>          cells_;
+  std::vector<BoundaryFacet> boundary_facets_;
   std::map<std::pair<index_type, index_type>, std::string>
       physical_names_;
 };

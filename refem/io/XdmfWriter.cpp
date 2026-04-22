@@ -1,9 +1,8 @@
-#include <refem/io/XdmfWriter.hpp>
-
 #include <fstream>
 #include <stdexcept>
 #include <string>
 
+#include <refem/io/XdmfWriter.hpp>
 #include <refem/mesh/Mesh.hpp>
 
 namespace refem
@@ -54,8 +53,7 @@ void XdmfWriter::write(const std::string&              filename,
   std::ofstream out(filename);
   if (!out)
   {
-    throw std::runtime_error("Failed to open XDMF file for writing: " +
-                             filename);
+    throw std::runtime_error("Failed to open XDMF file for writing: " + filename);
   }
 
   const std::string h5_ref = filenameOnly(hdf5_filename);

@@ -1,9 +1,8 @@
-#include <refem/io/DataOut.hpp>
-
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include <refem/io/DataOut.hpp>
 #include <refem/io/XdmfWriter.hpp>
 
 namespace refem
@@ -15,8 +14,7 @@ std::string stripKnownExtension(std::string path)
 {
   const auto strip = [&path](const std::string& ext)
   {
-    if (path.size() >= ext.size() &&
-        path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
+    if (path.size() >= ext.size() && path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
     {
       path.resize(path.size() - ext.size());
       return true;

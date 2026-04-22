@@ -21,7 +21,7 @@ public:
   void write(const std::string& basename) const;
 
 private:
-  const Mesh*                    mesh_{nullptr};
+  const Mesh*                         mesh_{nullptr};
   std::vector<Hdf5Writer::NodalField> nodal_fields_;
 };
 

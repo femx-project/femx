@@ -15,7 +15,7 @@ void DiffusionIntegrator::assemble(const ElementValues& ev,
 
   for (index_type q = 0; q < nq; ++q)
   {
-    const real_type wJ = ev.weight(q) * ev.detJ(q);
+    const real_type wJ   = ev.weight(q) * ev.detJ(q);
     const auto      dNdx = ev.dNdx(q);
     for (index_type i = 0; i < ndofs; ++i)
     {

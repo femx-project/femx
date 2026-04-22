@@ -46,7 +46,7 @@ DirichletCondition DirichletCondition::onBoundary(const FESpace& space,
 
 DirichletCondition DirichletCondition::onBoundary(
     const FESpace&       space,
-    const ValueFunction& value,
+    const Function& value,
     real_type            time)
 {
   const Mesh& mesh = space.mesh();

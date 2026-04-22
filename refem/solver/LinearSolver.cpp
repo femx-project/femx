@@ -3,7 +3,7 @@
 
 #include <refem/solver/LinearSolver.hpp>
 #include <refem/solver/LinearSolverImpl.hpp>
-#include <refem/solver/ReSolverLinearSolver.hpp>
+#include <refem/solver/ReSolveLinearSolver.hpp>
 
 namespace refem
 {
@@ -28,7 +28,7 @@ LinearSolver::LinearSolver(WorkspaceType workspace_type,
   }
 }
 
-LinearSolver::LinearSolver(WorkspaceType   workspace_type,
+LinearSolver::LinearSolver(WorkspaceType  workspace_type,
                            SolverBackend  backend,
                            ReSolveOptions options)
 {

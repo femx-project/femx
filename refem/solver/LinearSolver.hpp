@@ -1,3 +1,9 @@
+/**
+ * @file   LinearSolver.h
+ * @author Kakeru Ueda (ueda.k.2290@m.isct.ac.jp)
+ *
+ */
+
 #pragma once
 
 #include <memory>

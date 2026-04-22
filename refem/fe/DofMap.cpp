@@ -1,6 +1,6 @@
-#include <refem/fe/DofMap.hpp>
-
 #include <stdexcept>
+
+#include <refem/fe/DofMap.hpp>
 
 namespace refem
 {

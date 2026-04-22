@@ -1,26 +1,13 @@
 add_library(refem_io)
 add_library(refem::io ALIAS refem_io)
 
-target_sources(refem_io
-  PRIVATE
-    DataOut.cpp
-    Hdf5Writer.cpp
-    TimeSeriesDataOut.cpp
-    XdmfWriter.cpp
-  PUBLIC
-    DataOut.hpp
-    Hdf5Writer.hpp
-    TimeSeriesDataOut.hpp
-    XdmfWriter.hpp
-)
+target_sources(
+  refem_io
+  PRIVATE DataOut.cpp Hdf5Writer.cpp TimeSeriesDataOut.cpp XdmfWriter.cpp
+  PUBLIC DataOut.hpp Hdf5Writer.hpp TimeSeriesDataOut.hpp XdmfWriter.hpp)
 
-target_link_libraries(refem_io
-  PUBLIC
-    refem_config
-    refem_common
-    refem_linalg
-    refem_mesh
-)
+target_link_libraries(refem_io PUBLIC refem_config refem_common refem_linalg
+                                      refem_mesh)
 
 if(HDF5_FOUND)
   target_include_directories(refem_io PRIVATE ${HDF5_INCLUDE_DIRS})

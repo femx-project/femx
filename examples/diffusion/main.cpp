@@ -15,7 +15,7 @@
 #include <refem/linalg/Vector.hpp>
 #include <refem/mesh/Mesh.hpp>
 #include <refem/solver/LinearSolver.hpp>
-#include <refem/solver/ReSolverLinearSolver.hpp>
+#include <refem/solver/ReSolveLinearSolver.hpp>
 #include <refem/solver/Workspace.hpp>
 
 #ifndef REFEM_DIFFUSION_OUTPUT_DIR
