@@ -102,6 +102,25 @@ q
 \end{aligned}
 ```
 
+The momentum residual used by the stabilization terms is
+
+```math
+\mathbf{R}_m^{n+1/2}
+=
+\rho
+\frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}
++
+\rho
+\left(
+\mathbf{u}_{\mathrm{adv}}^{n+1/2}
+\cdot
+\nabla
+\right)
+\mathbf{u}^{n+1/2}
++
+\nabla p^{n+1}.
+```
+
 The GLS stabilization contribution is
 
 ```math
@@ -111,30 +130,14 @@ F_{\mathrm{GLS}}^{n+1/2}
 \sum_{e=1}^{N_e}
 \int_{\Omega_e}
 \tau_m
-\left[
-\rho
 \left(
 \mathbf{u}_{\mathrm{adv}}^{n+1/2}
 \cdot
 \nabla
 \right)
 \mathbf{w}
-\right]
 \cdot
-\left[
-\rho
-\frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}
-+
-\rho
-\left(
-\mathbf{u}_{\mathrm{adv}}^{n+1/2}
-\cdot
-\nabla
-\right)
-\mathbf{u}^{n+1/2}
-+
-\nabla p^{n+1}
-\right]
+\mathbf{R}_m^{n+1/2}
 \, d\Omega
 \\
 &+
@@ -143,20 +146,7 @@ F_{\mathrm{GLS}}^{n+1/2}
 \frac{\tau_p}{\rho}
 \nabla q
 \cdot
-\left[
-\rho
-\frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}
-+
-\rho
-\left(
-\mathbf{u}_{\mathrm{adv}}^{n+1/2}
-\cdot
-\nabla
-\right)
-\mathbf{u}^{n+1/2}
-+
-\nabla p^{n+1}
-\right]
+\mathbf{R}_m^{n+1/2}
 \, d\Omega .
 \end{aligned}
 ```
