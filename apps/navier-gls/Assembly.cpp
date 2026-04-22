@@ -245,7 +245,7 @@ void assembleSystem(const BlockFESpace& space,
     std::vector<QPState> qp_states(static_cast<std::size_t>(nq));
     LocalAssembler       assembler(space,
                              A.pattern(),
-                             LocalAssembler::AssemblyPolicy::Atomic);
+                             LocalAssembler::AssemblyMode::Atomic);
     DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector               Fe(space.numDofsPerElem());
 
@@ -267,15 +267,15 @@ void assembleSystem(const BlockFESpace& space,
       Ke.setZero();
       Fe.setZero();
 
-      assembleTransientLHS(ev, fluid, dt, Ke);
+      assembleMassLHS(ev, fluid, dt, Ke);
       assembleAdvectionLHS(ev, qp_states, fluid, Ke);
-      assembleViscousLHS(ev, fluid, Ke);
+      assembleDiffusionLHS(ev, fluid, Ke);
       assemblePressureVelocityCouplingLHS(ev, Ke);
       assembleStabilizationLHS(ev, qp_states, fluid, dt, Ke);
 
-      assembleTransientRHS(ev, qp_states, fluid, dt, Fe);
+      assembleMassRHS(ev, qp_states, fluid, dt, Fe);
       assembleAdvectionRHS(ev, qp_states, fluid, Fe);
-      assembleViscousRHS(ev, qp_states, fluid, Fe);
+      assembleDiffusionRHS(ev, qp_states, fluid, Fe);
       assembleStabilizationRHS(ev, qp_states, fluid, dt, Fe);
 
       assembler.addLocalMatrix(cell, Ke, A);

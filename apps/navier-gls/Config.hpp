@@ -1,3 +1,10 @@
+/**
+ * @file Config.hpp
+ * @author Kakeru Ueda (ueda.k.2290@m.isct.ac.jp)
+ *
+ */
+
+
 #pragma once
 
 #include <array>

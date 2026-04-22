@@ -17,22 +17,22 @@ class Vector;
 class LocalAssembler
 {
 public:
-  enum class AssemblyPolicy
+  enum class AssemblyMode
   {
     Serial,
     Atomic
   };
 
   explicit LocalAssembler(const FESpace& space,
-                          AssemblyPolicy policy = AssemblyPolicy::Serial);
+                          AssemblyMode   mode = AssemblyMode::Serial);
   explicit LocalAssembler(const BlockFESpace& space,
-                          AssemblyPolicy      policy = AssemblyPolicy::Serial);
+                          AssemblyMode        mode = AssemblyMode::Serial);
   LocalAssembler(const FESpace&              space,
                  const FixedSparsityPattern& pattern,
-                 AssemblyPolicy              policy = AssemblyPolicy::Serial);
+                 AssemblyMode                mode = AssemblyMode::Serial);
   LocalAssembler(const BlockFESpace&         space,
                  const FixedSparsityPattern& pattern,
-                 AssemblyPolicy              policy = AssemblyPolicy::Serial);
+                 AssemblyMode                mode = AssemblyMode::Serial);
 
   void addLocalMatrix(index_type         ic,
                       const DenseMatrix& Ke,
@@ -49,7 +49,7 @@ private:
   const FESpace*              fe_space_{nullptr};
   const BlockFESpace*         block_space_{nullptr};
   const FixedSparsityPattern* pattern_{nullptr};
-  AssemblyPolicy              policy_{AssemblyPolicy::Serial};
+  AssemblyMode                mode_{AssemblyMode::Serial};
   std::vector<index_type>     elem_dofs_;
 };
 

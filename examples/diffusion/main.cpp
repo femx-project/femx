@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -106,15 +107,16 @@ int run(WorkspaceType workspace_type, const std::string& backend)
   Vector b(space.numDofs());
   Vector x(space.numDofs());
 
-  DirichletCondition boundary;
-  for (index_type j = 0; j <= ny; ++j)
-  {
-    const index_type left  = j * (nx + 1);
-    const index_type right = left + nx;
-
-    boundary.addDof(left, 1.0);
-    boundary.addDof(right, 0.0);
-  }
+  DirichletCondition  boundary;
+  constexpr real_type x_min = 0.0;
+  constexpr real_type x_max = 1.0;
+  constexpr real_type tol   = 1.0e-12;
+  boundary.addBoundary(space, [x_min, tol](const Mesh::Node& point, real_type)
+                       { return std::abs(point[0] - x_min) < tol; },
+                       1.0);
+  boundary.addBoundary(space, [x_max, tol](const Mesh::Node& point, real_type)
+                       { return std::abs(point[0] - x_max) < tol; },
+                       0.0);
   boundary.apply(form.matrix(), b);
 
   ReSolveOptions options;

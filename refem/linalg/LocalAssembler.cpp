@@ -13,34 +13,34 @@ namespace refem
 {
 
 LocalAssembler::LocalAssembler(const FESpace& space,
-                               AssemblyPolicy policy)
+                               AssemblyMode mode)
   : fe_space_(&space),
-    policy_(policy)
+    mode_(mode)
 {
 }
 
 LocalAssembler::LocalAssembler(const BlockFESpace& space,
-                               AssemblyPolicy      policy)
+                               AssemblyMode        mode)
   : block_space_(&space),
-    policy_(policy)
+    mode_(mode)
 {
 }
 
 LocalAssembler::LocalAssembler(const FESpace&              space,
                                const FixedSparsityPattern& pattern,
-                               AssemblyPolicy              policy)
+                               AssemblyMode                mode)
   : fe_space_(&space),
     pattern_(&pattern),
-    policy_(policy)
+    mode_(mode)
 {
 }
 
 LocalAssembler::LocalAssembler(const BlockFESpace&         space,
                                const FixedSparsityPattern& pattern,
-                               AssemblyPolicy              policy)
+                               AssemblyMode                mode)
   : block_space_(&space),
     pattern_(&pattern),
-    policy_(policy)
+    mode_(mode)
 {
 }
 
@@ -85,7 +85,7 @@ void LocalAssembler::addLocalMatrix(index_type         ic,
       const index_type coo_index = offset + local_index;
       const index_type csr_index = pattern_->mapToCsr(coo_index);
 
-      if (policy_ == AssemblyPolicy::Atomic)
+      if (mode_ == AssemblyMode::Atomic)
       {
 #pragma omp atomic update
         values[static_cast<std::size_t>(csr_index)] += Ke(i, j);
@@ -120,7 +120,7 @@ void LocalAssembler::addLocalVector(index_type    ic,
     }
 
     real_type* values = b.data();
-    if (policy_ == AssemblyPolicy::Atomic)
+    if (mode_ == AssemblyMode::Atomic)
     {
 #pragma omp atomic update
       values[static_cast<std::size_t>(dof)] += Fe[i];

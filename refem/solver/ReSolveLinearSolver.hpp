@@ -39,35 +39,23 @@ struct ReSolveOptions
 class ReSolveLinearSolver final : public LinearSolverImpl
 {
 public:
-  /**
-   * @brief Create a ReSolve linear solver for the given workspace.
-   */
+  /** @brief Create a ReSolve linear solver for the given workspace. */
   explicit ReSolveLinearSolver(WorkspaceType workspace_type);
 
-  /**
-   * @brief Create a ReSolve linear solver with explicit options.
-   */
+  /** @brief Create a ReSolve linear solver with explicit options. */
   ReSolveLinearSolver(WorkspaceType  workspace_type,
                       ReSolveOptions options);
 
-  /**
-   * @brief Destroy the solver and owned ReSolve resources.
-   */
+  /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /**
-   * @brief Set the system matrix used by subsequent solves.
-   */
+  /** @brief Set the system matrix used by subsequent solves. */
   void setOperator(const SparseMatrix& A) override;
 
-  /**
-   * @brief Select or update the preconditioner method.
-   */
+  /** @brief Select or update the preconditioner method. */
   void setPreconditioner(const std::string& method) override;
 
-  /**
-   * @brief Solve A x = b using the current operator.
-   */
+  /** @brief Solve A x = b using the current operator. */
   void solve(const Vector& b, Vector& x) override;
 
 private:

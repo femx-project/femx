@@ -9,29 +9,90 @@
 namespace refem
 {
 
+class BlockFieldView;
 class FESpace;
 class SparseMatrix;
 class Vector;
 
+/** @brief Stores and applies Dirichlet boundary constraints.
+ *
+ * Constraints can be added directly by degree of freedom, by physical boundary
+ * tag, or by a user-provided boundary marker.
+ */
 class DirichletCondition
 {
 public:
-  using Function = std::function<real_type(const Mesh::Node&, real_type)>;
+  /** @brief Marks whether a mesh node belongs to the constrained boundary. */
+  using BoundaryMarker = std::function<bool(const Mesh::Node&, real_type)>;
+
+  /** @brief Evaluates the prescribed boundary value at a mesh node and time. */
+  using BoundaryValue = std::function<real_type(const Mesh::Node&, real_type)>;
 
   DirichletCondition() = default;
 
-  static DirichletCondition onBoundary(const FESpace& space,
-                                       real_type      value = 0.0);
-
-  static DirichletCondition onBoundary(const FESpace&       space,
-                                       const Function& value,
-                                       real_type            time = 0.0);
-
+  /** @brief Add one constrained degree of freedom. */
   void addDof(index_type dof, real_type value);
 
-  const std::vector<index_type>& dofs() const noexcept;
-  const std::vector<real_type>&  values() const noexcept;
+  /** @brief Add a constant value on a physical boundary tag. */
+  void addBoundary(const FESpace& space,
+                   index_type     physical_tag,
+                   real_type      value,
+                   real_type      time      = 0.0,
+                   index_type     component = 0);
 
+  /** @brief Add a value function on a physical boundary tag. */
+  void addBoundary(const FESpace&       space,
+                   index_type           physical_tag,
+                   const BoundaryValue& value,
+                   real_type            time      = 0.0,
+                   index_type           component = 0);
+
+  /** @brief Add a constant value on a block field physical boundary tag. */
+  void addBoundary(const BlockFieldView& field,
+                   index_type            physical_tag,
+                   real_type             value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  /** @brief Add a value function on a block field physical boundary tag. */
+  void addBoundary(const BlockFieldView& field,
+                   index_type            physical_tag,
+                   const BoundaryValue&  value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  /** @brief Add a constant value on nodes selected by a boundary marker. */
+  void addBoundary(const FESpace&        space,
+                   const BoundaryMarker& marker,
+                   real_type             value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  /** @brief Add a value function on nodes selected by a boundary marker. */
+  void addBoundary(const FESpace&        space,
+                   const BoundaryMarker& marker,
+                   const BoundaryValue&  value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  /** @brief Add a constant value on block field nodes selected by a marker. */
+  void addBoundary(const BlockFieldView& field,
+                   const BoundaryMarker& marker,
+                   real_type             value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  /** @brief Add a value function on block field nodes selected by a marker. */
+  void addBoundary(const BlockFieldView& field,
+                   const BoundaryMarker& marker,
+                   const BoundaryValue&  value,
+                   real_type             time      = 0.0,
+                   index_type            component = 0);
+
+  const std::vector<index_type>& dofs() const noexcept;
+  const std::vector<real_type>& values() const noexcept;
+
+  /** @brief Apply the constraints to a matrix and right-hand side. */
   void apply(SparseMatrix& A, Vector& b) const;
 
 private:

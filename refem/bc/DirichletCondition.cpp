@@ -1,84 +1,180 @@
-#include <algorithm>
-#include <cmath>
+#include <set>
 #include <stdexcept>
+#include <string>
 
 #include <refem/bc/DirichletCondition.hpp>
+#include <refem/fe/BlockFESpace.hpp>
 #include <refem/fe/FESpace.hpp>
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
 
 namespace refem
 {
-namespace
-{
-
-bool isBoundaryNode(const Mesh&     mesh,
-                    index_type      node_id,
-                    const real_type min_coord[3],
-                    const real_type max_coord[3])
-{
-  constexpr real_type eps = 1.0e-12;
-
-  const auto& point = mesh.node(node_id);
-  for (index_type d = 0; d < mesh.dim(); ++d)
-  {
-    const real_type scale =
-        std::max<real_type>(1.0, std::abs(max_coord[d] - min_coord[d]));
-    const real_type tol = eps * scale;
-    if (std::abs(point[d] - min_coord[d]) <= tol || std::abs(point[d] - max_coord[d]) <= tol)
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-} // namespace
-
-DirichletCondition DirichletCondition::onBoundary(const FESpace& space,
-                                                  real_type      value)
-{
-  return onBoundary(space,
-                    [value](const Mesh::Node&, real_type)
-                    { return value; });
-}
-
-DirichletCondition DirichletCondition::onBoundary(
-    const FESpace&       space,
-    const Function& value,
-    real_type            time)
-{
-  const Mesh& mesh = space.mesh();
-
-  real_type min_coord[3] = {mesh.node(0)[0], mesh.node(0)[1], mesh.node(0)[2]};
-  real_type max_coord[3] = {mesh.node(0)[0], mesh.node(0)[1], mesh.node(0)[2]};
-
-  for (index_type in = 1; in < mesh.numNodes(); ++in)
-  {
-    for (index_type d = 0; d < mesh.dim(); ++d)
-    {
-      min_coord[d] = std::min(min_coord[d], mesh.node(in)[d]);
-      max_coord[d] = std::max(max_coord[d], mesh.node(in)[d]);
-    }
-  }
-
-  DirichletCondition condition;
-  for (index_type in = 0; in < mesh.numNodes(); ++in)
-  {
-    if (isBoundaryNode(mesh, in, min_coord, max_coord))
-    {
-      condition.addDof(in, value(mesh.node(in), time));
-    }
-  }
-
-  return condition;
-}
 
 void DirichletCondition::addDof(index_type dof, real_type value)
 {
   dofs_.push_back(dof);
   values_.push_back(value);
+}
+
+void DirichletCondition::addBoundary(const FESpace& space,
+                                     index_type     physical_tag,
+                                     real_type      value,
+                                     real_type      time,
+                                     index_type     component)
+{
+  addBoundary(space, physical_tag, [value](const Mesh::Node&, real_type)
+              { return value; },
+              time,
+              component);
+}
+
+void DirichletCondition::addBoundary(const FESpace&       space,
+                                     index_type           physical_tag,
+                                     const BoundaryValue& value,
+                                     real_type            time,
+                                     index_type           component)
+{
+  if (component < 0 || component >= space.numComponents())
+  {
+    throw std::runtime_error("Dirichlet boundary component is out of range");
+  }
+
+  const Mesh&          mesh = space.mesh();
+  std::set<index_type> nodes;
+  for (const auto& facet : mesh.boundaryFacets())
+  {
+    if (facet.physical_tag == physical_tag)
+    {
+      nodes.insert(facet.node_ids.begin(), facet.node_ids.end());
+    }
+  }
+
+  if (nodes.empty())
+  {
+    throw std::runtime_error(
+        "No boundary facets found for physical tag " + std::to_string(physical_tag));
+  }
+
+  for (index_type node : nodes)
+  {
+    const auto& point = mesh.node(node);
+    addDof(space.globalDof(node, component), value(point, time));
+  }
+}
+
+void DirichletCondition::addBoundary(const BlockFieldView& field,
+                                     index_type            physical_tag,
+                                     real_type             value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  addBoundary(field, physical_tag, [value](const Mesh::Node&, real_type)
+              { return value; },
+              time,
+              component);
+}
+
+void DirichletCondition::addBoundary(const BlockFieldView& field,
+                                     index_type            physical_tag,
+                                     const BoundaryValue&  value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  if (component < 0 || component >= field.numComponents())
+  {
+    throw std::runtime_error("Dirichlet boundary component is out of range");
+  }
+
+  const Mesh&          mesh = field.space().mesh();
+  std::set<index_type> nodes;
+  for (const auto& facet : mesh.boundaryFacets())
+  {
+    if (facet.physical_tag == physical_tag)
+    {
+      nodes.insert(facet.node_ids.begin(), facet.node_ids.end());
+    }
+  }
+
+  if (nodes.empty())
+  {
+    throw std::runtime_error(
+        "No boundary facets found for physical tag " + std::to_string(physical_tag));
+  }
+
+  for (index_type node : nodes)
+  {
+    const auto& point = mesh.node(node);
+    addDof(field.globalDof(node, component), value(point, time));
+  }
+}
+
+void DirichletCondition::addBoundary(const FESpace&        space,
+                                     const BoundaryMarker& marker,
+                                     real_type             value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  addBoundary(space, marker, [value](const Mesh::Node&, real_type)
+              { return value; },
+              time,
+              component);
+}
+
+void DirichletCondition::addBoundary(const FESpace&        space,
+                                     const BoundaryMarker& marker,
+                                     const BoundaryValue&  value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  if (component < 0 || component >= space.numComponents())
+  {
+    throw std::runtime_error("Dirichlet boundary component is out of range");
+  }
+
+  const Mesh& mesh = space.mesh();
+  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  {
+    const auto& point = mesh.node(in);
+    if (marker(point, time))
+    {
+      addDof(space.globalDof(in, component), value(point, time));
+    }
+  }
+}
+
+void DirichletCondition::addBoundary(const BlockFieldView& field,
+                                     const BoundaryMarker& marker,
+                                     real_type             value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  addBoundary(field, marker, [value](const Mesh::Node&, real_type)
+              { return value; },
+              time,
+              component);
+}
+
+void DirichletCondition::addBoundary(const BlockFieldView& field,
+                                     const BoundaryMarker& marker,
+                                     const BoundaryValue&  value,
+                                     real_type             time,
+                                     index_type            component)
+{
+  if (component < 0 || component >= field.numComponents())
+  {
+    throw std::runtime_error("Dirichlet boundary component is out of range");
+  }
+
+  const Mesh& mesh = field.space().mesh();
+  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  {
+    const auto& point = mesh.node(in);
+    if (marker(point, time))
+    {
+      addDof(field.globalDof(in, component), value(point, time));
+    }
+  }
 }
 
 const std::vector<index_type>& DirichletCondition::dofs() const noexcept

@@ -21,7 +21,7 @@ real_type advectionDerivative(const ElementValues& ev,
   return value;
 }
 
-void assembleTransientLHS(const ElementValues& ev,
+void assembleMassLHS(const ElementValues& ev,
                           const FluidParams&   fluid,
                           real_type            dt,
                           DenseMatrix&         Ke)
@@ -51,7 +51,7 @@ void assembleTransientLHS(const ElementValues& ev,
   }
 }
 
-void assembleTransientRHS(const ElementValues&        ev,
+void assembleMassRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qp_states,
                           const FluidParams&          fluid,
                           real_type                   dt,
@@ -130,7 +130,7 @@ void assembleAdvectionRHS(const ElementValues&        ev,
   }
 }
 
-void assembleViscousLHS(const ElementValues& ev,
+void assembleDiffusionLHS(const ElementValues& ev,
                         const FluidParams&   fluid,
                         DenseMatrix&         Ke)
 {
@@ -163,7 +163,7 @@ void assembleViscousLHS(const ElementValues& ev,
   }
 }
 
-void assembleViscousRHS(const ElementValues&        ev,
+void assembleDiffusionRHS(const ElementValues&        ev,
                         const std::vector<QPState>& qp_states,
                         const FluidParams&          fluid,
                         Vector&                     Fe)

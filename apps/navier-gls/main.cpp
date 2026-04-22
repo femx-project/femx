@@ -5,7 +5,7 @@
  *
  * GLS (Galerkin/least-squares) adds residual-based least-squares terms to the
  * Galerkin finite element formulation. This improves stability for
- * advection-dominated flow and equal-order velocity-pressure discretizations.
+ * pressure and advection-dominated problems.
  *
  * @ref Tezduyar1992
  * Tezduyar, T. E., Mittal, S., Ray, S. E., and Shih, R.,
