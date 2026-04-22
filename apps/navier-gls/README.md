@@ -4,7 +4,7 @@ This solver uses a Galerkin/least-squares (GLS) stabilized finite element formul
 
 The governing equations are written as
 
-$$
+```math
 \rho \frac{\partial \mathbf{u}}{\partial t}
 +
 \rho (\mathbf{u} \cdot \nabla)\mathbf{u}
@@ -15,12 +15,12 @@ $$
 =
 \mathbf{0}
 \quad \text{in } \Omega \times (0,T],
-$$
+```
 
-$$
+```math
 \nabla \cdot \mathbf{u} = 0
 \quad \text{in } \Omega \times (0,T],
-$$
+```
 
 where $\mathbf{u}$ is the velocity, $p$ is the pressure, $\rho$ is the density, and $\mu$ is the dynamic viscosity.
 
@@ -29,28 +29,28 @@ respectively.
 
 For time integration, the transient term is discretized by
 
-$$
+```math
 \frac{\partial \mathbf{u}}{\partial t}
 \approx
 \frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}.
-$$
+```
 
 The nonlinear advection term is treated by separating the convecting
 velocity from the transported velocity. The convecting velocity is
 extrapolated with Adams-Bashforth,
 
-$$
+```math
 \mathbf{u}_{\mathrm{adv}}^{n+1/2}
 =
 \frac{3}{2}\mathbf{u}^{n}
 -
 \frac{1}{2}\mathbf{u}^{n-1},
-$$
+```
 
 while the transported velocity in the advection term and the diffusion
 term are evaluated by Crank-Nicolson,
 
-$$
+```math
 \mathbf{u}^{n+1/2}
 =
 \frac{1}{2}
@@ -59,11 +59,11 @@ $$
 +
 \mathbf{u}^{n}
 \right).
-$$
+```
 
 The time-discrete Galerkin contribution is
 
-$$
+```math
 \begin{aligned}
 F_{\mathrm{G}}^{n+1/2}
 =&
@@ -100,11 +100,11 @@ q
 \nabla \cdot \mathbf{u}^{n+1}
 \right] d\Omega .
 \end{aligned}
-$$
+```
 
 The GLS stabilization contribution is
 
-$$
+```math
 \begin{aligned}
 F_{\mathrm{GLS}}^{n+1/2}
 =&
@@ -159,13 +159,13 @@ F_{\mathrm{GLS}}^{n+1/2}
 \right]
 \, d\Omega .
 \end{aligned}
-$$
+```
 
 The first integral is the SUPG contribution, and the second integral is the
 PSPG contribution. The diffusion part and body-force term are not included
 in the bracketed momentum expression. The full discrete weak form is
 
-$$
+```math
 F^{n+1/2}
 =
 F_{\mathrm{G}}^{n+1/2}
@@ -173,11 +173,11 @@ F_{\mathrm{G}}^{n+1/2}
 F_{\mathrm{GLS}}^{n+1/2}
 =
 0.
-$$
+```
 
 The stabilization parameter is computed element-wise as
 
-$$
+```math
 \tau_m
 =
 \tau_p
@@ -191,11 +191,13 @@ $$
 \right]^{-1/2},
 \qquad
 \nu = \frac{\mu}{\rho}.
-$$
+```
 
 This follows the UGN-based SUPG/PSPG parameter choice of Tezduyar and
-Sathe [1], with $\tau_m=\tau_p=(\tau_{\mathrm{SUPG}})_{\mathrm{UGN}}
-=(\tau_{\mathrm{PSPG}})_{\mathrm{UGN}}$, where $h$ is the element length.
+Sathe [1], with $\tau_m=\tau_p$,
+$(\tau_{\mathrm{SUPG}})_{\mathrm{UGN}}$, and
+$(\tau_{\mathrm{PSPG}})_{\mathrm{UGN}}$ taken to be equal, where $h$ is the
+element length.
 
 The linearized system obtained from this formulation is solved at each time step to update the velocity and pressure fields.
 
