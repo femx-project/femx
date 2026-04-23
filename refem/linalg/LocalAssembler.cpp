@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include <refem/fe/BlockFESpace.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 #include <refem/fe/FESpace.hpp>
 #include <refem/linalg/DenseMatrix.hpp>
 #include <refem/linalg/FixedSparsityPattern.hpp>
@@ -19,9 +19,9 @@ LocalAssembler::LocalAssembler(const FESpace& space,
 {
 }
 
-LocalAssembler::LocalAssembler(const BlockFESpace& space,
+LocalAssembler::LocalAssembler(const MixedFESpace& space,
                                AssemblyMode        mode)
-  : block_space_(&space),
+  : mixed_space_(&space),
     mode_(mode)
 {
 }
@@ -35,10 +35,10 @@ LocalAssembler::LocalAssembler(const FESpace&              space,
 {
 }
 
-LocalAssembler::LocalAssembler(const BlockFESpace&         space,
+LocalAssembler::LocalAssembler(const MixedFESpace&         space,
                                const FixedSparsityPattern& pattern,
                                AssemblyMode                mode)
-  : block_space_(&space),
+  : mixed_space_(&space),
     pattern_(&pattern),
     mode_(mode)
 {
@@ -139,9 +139,9 @@ void LocalAssembler::elemDofs(index_type ic)
     fe_space_->elemDofs(ic, elem_dofs_);
     return;
   }
-  if (block_space_ != nullptr)
+  if (mixed_space_ != nullptr)
   {
-    block_space_->elemDofs(ic, elem_dofs_);
+    mixed_space_->elemDofs(ic, elem_dofs_);
     return;
   }
 

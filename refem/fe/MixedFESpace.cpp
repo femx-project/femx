@@ -1,12 +1,12 @@
 #include <stdexcept>
 
-#include <refem/fe/BlockFESpace.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 #include <refem/mesh/Mesh.hpp>
 
 namespace refem
 {
 
-BlockFieldView::BlockFieldView(const FESpace* space,
+MixedFieldView::MixedFieldView(const FESpace* space,
                                index_type     local_offset,
                                index_type     global_offset)
   : space_(space),
@@ -15,48 +15,48 @@ BlockFieldView::BlockFieldView(const FESpace* space,
 {
 }
 
-const FESpace& BlockFieldView::space() const noexcept
+const FESpace& MixedFieldView::space() const noexcept
 {
   return *space_;
 }
 
-index_type BlockFieldView::numComponents() const noexcept
+index_type MixedFieldView::numComponents() const noexcept
 {
   return space_->numComponents();
 }
 
-index_type BlockFieldView::numShapesPerElem() const noexcept
+index_type MixedFieldView::numShapesPerElem() const noexcept
 {
   return space_->numShapesPerElem();
 }
 
-index_type BlockFieldView::numDofsPerElem() const noexcept
+index_type MixedFieldView::numDofsPerElem() const noexcept
 {
   return space_->numDofsPerElem();
 }
 
-index_type BlockFieldView::localDof(index_type shape_index,
+index_type MixedFieldView::localDof(index_type shape_index,
                                     index_type component) const noexcept
 {
   return local_offset_ + space_->localDof(shape_index, component);
 }
 
-index_type BlockFieldView::globalDof(index_type scalar_dof,
+index_type MixedFieldView::globalDof(index_type scalar_dof,
                                      index_type component) const noexcept
 {
   return global_offset_ + space_->globalDof(scalar_dof, component);
 }
 
-void BlockFESpace::addField(const FESpace& space)
+void MixedFESpace::addField(const FESpace& space)
 {
   fields_.push_back(space);
 }
 
-void BlockFESpace::setup()
+void MixedFESpace::setup()
 {
   if (fields_.empty())
   {
-    throw std::runtime_error("BlockFESpace: no fields");
+    throw std::runtime_error("MixedFESpace: no fields");
   }
 
   local_offsets_.assign(fields_.size(), 0);
@@ -70,7 +70,7 @@ void BlockFESpace::setup()
     FESpace& field = fields_[i];
     if (&field.mesh() != mesh)
     {
-      throw std::runtime_error("BlockFESpace: fields must share a mesh");
+      throw std::runtime_error("MixedFESpace: fields must share a mesh");
     }
 
     field.setup();
@@ -81,43 +81,43 @@ void BlockFESpace::setup()
   }
 }
 
-BlockFieldView BlockFESpace::field(index_type field_id) const
+MixedFieldView MixedFESpace::field(index_type field_id) const
 {
   if (field_id < 0 || field_id >= static_cast<index_type>(fields_.size()))
   {
-    throw std::runtime_error("BlockFESpace: field id out of range");
+    throw std::runtime_error("MixedFESpace: field id out of range");
   }
 
   const auto id = static_cast<std::size_t>(field_id);
-  return BlockFieldView(&fields_[id], local_offsets_[id], global_offsets_[id]);
+  return MixedFieldView(&fields_[id], local_offsets_[id], global_offsets_[id]);
 }
 
-const Mesh& BlockFESpace::mesh() const noexcept
+const Mesh& MixedFESpace::mesh() const noexcept
 {
   return fields_[0].mesh();
 }
 
-index_type BlockFESpace::numFields() const noexcept
+index_type MixedFESpace::numFields() const noexcept
 {
   return static_cast<index_type>(fields_.size());
 }
 
-index_type BlockFESpace::numElems() const noexcept
+index_type MixedFESpace::numElems() const noexcept
 {
   return fields_[0].numElems();
 }
 
-index_type BlockFESpace::numDofs() const noexcept
+index_type MixedFESpace::numDofs() const noexcept
 {
   return num_dofs_;
 }
 
-index_type BlockFESpace::numDofsPerElem() const noexcept
+index_type MixedFESpace::numDofsPerElem() const noexcept
 {
   return num_dofs_per_elem_;
 }
 
-void BlockFESpace::elemDofs(index_type               ic,
+void MixedFESpace::elemDofs(index_type               ic,
                             std::vector<index_type>& dofs) const
 {
   dofs.resize(static_cast<std::size_t>(num_dofs_per_elem_));
@@ -135,7 +135,7 @@ void BlockFESpace::elemDofs(index_type               ic,
   }
 }
 
-std::vector<index_type> BlockFESpace::elemDofs(index_type ic) const
+std::vector<index_type> MixedFESpace::elemDofs(index_type ic) const
 {
   std::vector<index_type> dofs;
   elemDofs(ic, dofs);

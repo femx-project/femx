@@ -9,7 +9,7 @@
 namespace refem
 {
 
-class BlockFieldView;
+class MixedFieldView;
 class FESpace;
 class SparseMatrix;
 class Vector;
@@ -47,15 +47,15 @@ public:
                    real_type            time      = 0.0,
                    index_type           component = 0);
 
-  /** @brief Add a constant value on a block field physical boundary tag. */
-  void addBoundary(const BlockFieldView& field,
+  /** @brief Add a constant value on a mixed field physical boundary tag. */
+  void addBoundary(const MixedFieldView& field,
                    index_type            physical_tag,
                    real_type             value,
                    real_type             time      = 0.0,
                    index_type            component = 0);
 
-  /** @brief Add a value function on a block field physical boundary tag. */
-  void addBoundary(const BlockFieldView& field,
+  /** @brief Add a value function on a mixed field physical boundary tag. */
+  void addBoundary(const MixedFieldView& field,
                    index_type            physical_tag,
                    const BoundaryValue&  value,
                    real_type             time      = 0.0,
@@ -75,15 +75,15 @@ public:
                    real_type             time      = 0.0,
                    index_type            component = 0);
 
-  /** @brief Add a constant value on block field nodes selected by a marker. */
-  void addBoundary(const BlockFieldView& field,
+  /** @brief Add a constant value on mixed field nodes selected by a marker. */
+  void addBoundary(const MixedFieldView& field,
                    const BoundaryMarker& marker,
                    real_type             value,
                    real_type             time      = 0.0,
                    index_type            component = 0);
 
-  /** @brief Add a value function on block field nodes selected by a marker. */
-  void addBoundary(const BlockFieldView& field,
+  /** @brief Add a value function on mixed field nodes selected by a marker. */
+  void addBoundary(const MixedFieldView& field,
                    const BoundaryMarker& marker,
                    const BoundaryValue&  value,
                    real_type             time      = 0.0,

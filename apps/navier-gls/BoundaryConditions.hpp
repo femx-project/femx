@@ -5,14 +5,14 @@
 
 namespace refem
 {
-class BlockFESpace;
+class MixedFESpace;
 }
 
 namespace refem
 {
 
 DirichletCondition makeBoundaryCondition(
-    const BlockFESpace&           space,
+    const MixedFESpace&           space,
     const std::vector<BCsParams>& bcs,
     real_type                     time);
 

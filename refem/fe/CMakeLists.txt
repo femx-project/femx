@@ -3,8 +3,8 @@ add_library(refem::fe ALIAS refem_fe)
 
 target_sources(
   refem_fe
-  PRIVATE BlockFESpace.cpp DofMap.cpp ElementValues.cpp FESpace.cpp
-  PUBLIC BlockFESpace.hpp
+  PRIVATE MixedFESpace.cpp DofMap.cpp ElementValues.cpp FESpace.cpp
+  PUBLIC MixedFESpace.hpp
          DofMap.hpp
          ElementValues.hpp
          FESpace.hpp

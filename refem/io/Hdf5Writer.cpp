@@ -182,15 +182,15 @@ void Hdf5Writer::write(const std::string&             filename,
     }
   }
 
-  const index_type        cell_nodes = nodesPerCell(mesh);
+  const index_type        nnodes = nodesPerCell(mesh);
   std::vector<index_type> topology(
-      static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(cell_nodes));
+      static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(nnodes));
   for (index_type ic = 0; ic < mesh.numElems(); ++ic)
   {
     const index_type* node_ids = mesh.cellNodeIds(ic);
-    for (index_type i = 0; i < cell_nodes; ++i)
+    for (index_type i = 0; i < nnodes; ++i)
     {
-      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(cell_nodes) + static_cast<std::size_t>(i)] = node_ids[i];
+      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(nnodes) + static_cast<std::size_t>(i)] = node_ids[i];
     }
   }
 
@@ -202,7 +202,7 @@ void Hdf5Writer::write(const std::string&             filename,
                   "/Mesh/Topology",
                   topology,
                   {static_cast<hsize_t>(mesh.numElems()),
-                   static_cast<hsize_t>(cell_nodes)});
+                   static_cast<hsize_t>(nnodes)});
 
   for (const auto& field : nodal_fields)
   {

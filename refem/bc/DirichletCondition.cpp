@@ -3,7 +3,7 @@
 #include <string>
 
 #include <refem/bc/DirichletCondition.hpp>
-#include <refem/fe/BlockFESpace.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 #include <refem/fe/FESpace.hpp>
 #include <refem/linalg/SparseMatrix.hpp>
 #include <refem/linalg/Vector.hpp>
@@ -63,7 +63,7 @@ void DirichletCondition::addBoundary(const FESpace&       space,
   }
 }
 
-void DirichletCondition::addBoundary(const BlockFieldView& field,
+void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      index_type            physical_tag,
                                      real_type             value,
                                      real_type             time,
@@ -75,7 +75,7 @@ void DirichletCondition::addBoundary(const BlockFieldView& field,
               component);
 }
 
-void DirichletCondition::addBoundary(const BlockFieldView& field,
+void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      index_type            physical_tag,
                                      const BoundaryValue&  value,
                                      real_type             time,
@@ -143,7 +143,7 @@ void DirichletCondition::addBoundary(const FESpace&        space,
   }
 }
 
-void DirichletCondition::addBoundary(const BlockFieldView& field,
+void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      const BoundaryMarker& marker,
                                      real_type             value,
                                      real_type             time,
@@ -155,7 +155,7 @@ void DirichletCondition::addBoundary(const BlockFieldView& field,
               component);
 }
 
-void DirichletCondition::addBoundary(const BlockFieldView& field,
+void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      const BoundaryMarker& marker,
                                      const BoundaryValue&  value,
                                      real_type             time,

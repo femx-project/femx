@@ -5,6 +5,7 @@ This solver uses a Galerkin/least-squares (GLS) stabilized finite element formul
 The governing equations are written as
 
 ```math
+\begin{aligned}
 \rho \frac{\partial \mathbf{u}}{\partial t}
 +
 \rho (\mathbf{u} \cdot \nabla)\mathbf{u}
@@ -12,14 +13,15 @@ The governing equations are written as
 \nabla p
 -
 \mu \nabla^2 \mathbf{u}
-=
+&=
 \mathbf{0}
-\quad \text{in } \Omega \times (0,T],
-```
-
-```math
-\nabla \cdot \mathbf{u} = 0
-\quad \text{in } \Omega \times (0,T],
+&& \quad \text{in } \Omega \times (0,T],
+\\
+\nabla \cdot \mathbf{u}
+&=
+0
+&& \quad \text{in } \Omega \times (0,T].
+\end{aligned}
 ```
 
 where $\mathbf{u}$ is the velocity, $p$ is the pressure, $\rho$ is the density, and $\mu$ is the dynamic viscosity.
@@ -102,11 +104,30 @@ q
 \end{aligned}
 ```
 
-The momentum residual used by the stabilization terms is
+The GLS stabilization contribution is
 
 ```math
-\mathbf{R}_m^{n+1/2}
-=
+\begin{aligned}
+F_{\mathrm{GLS}}^{n+1/2}
+=&
+\sum_{e=1}^{N_e}
+\int_{\Omega_e}
+\frac{1}{\rho}
+\left[
+\tau_m
+\rho
+\left(
+\mathbf{u}_{\mathrm{adv}}^{n+1/2}
+\cdot
+\nabla
+\right)
+\mathbf{w}
++
+\tau_p
+\nabla q
+\right]
+\cdot
+\left[
 \rho
 \frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}
 +
@@ -118,42 +139,21 @@ The momentum residual used by the stabilization terms is
 \right)
 \mathbf{u}^{n+1/2}
 +
-\nabla p^{n+1}.
-```
-
-The GLS stabilization contribution is
-
-```math
-\begin{aligned}
-F_{\mathrm{GLS}}^{n+1/2}
-=&
-\sum_{e=1}^{N_e}
-\int_{\Omega_e}
-\tau_m
-\left(
-\mathbf{u}_{\mathrm{adv}}^{n+1/2}
-\cdot
-\nabla
-\right)
-\mathbf{w}
-\cdot
-\mathbf{R}_m^{n+1/2}
+\nabla p^{n+1}
+\right]
 \, d\Omega
-\\
-&+
-\sum_{e=1}^{N_e}
-\int_{\Omega_e}
-\frac{\tau_p}{\rho}
-\nabla q
-\cdot
-\mathbf{R}_m^{n+1/2}
-\, d\Omega .
+.
 \end{aligned}
 ```
 
-The first integral is the SUPG contribution, and the second integral is the
-PSPG contribution. The diffusion part and body-force term are not included
-in the bracketed momentum expression. The full discrete weak form is
+The terms multiplied by $\tau_m$ and $\tau_p$ are the SUPG and PSPG
+contributions, respectively. The factor $1/\rho$ follows the scaling used by
+Tezduyar [1]. With this scaling, the SUPG part is equivalent to
+$\tau_m(\mathbf{u}_{\mathrm{adv}}\cdot\nabla)\mathbf{w}$ dotted with the
+momentum residual, while the PSPG part is equivalent to
+$(\tau_p/\rho)\nabla q$ dotted with the same residual. The diffusion part and
+body-force term are not included in the bracketed momentum expression. The full
+discrete weak form is
 
 ```math
 F^{n+1/2}
@@ -183,14 +183,12 @@ The stabilization parameter is computed element-wise as
 \nu = \frac{\mu}{\rho}.
 ```
 
-This follows the UGN-based SUPG/PSPG parameter choice of Tezduyar and
-Sathe [1], with $\tau_m=\tau_p$,
-$(\tau_{\mathrm{SUPG}})_{\mathrm{UGN}}$, and
-$(\tau_{\mathrm{PSPG}})_{\mathrm{UGN}}$ taken to be equal, where $h$ is the
-element length.
+This is a local length-scale approximation of the SUPG/PSPG stabilization
+parameter calculations described by Tezduyar [1], with $\tau_m=\tau_p$ and
+$h$ used as the element length.
 
 The linearized system obtained from this formulation is solved at each time step to update the velocity and pressure fields.
 
 ## References
 
-1. T. Tezduyar and S. Sathe, "Stabilization Parameters in SUPG and PSPG Formulations," *Journal of Computational and Applied Mechanics*, 4(1), 71-88, 2003. https://www.inf.ufes.br/~luciac/tei-femef/referencias/4-1-TEZDUYAR-V4N1.pdf
+1. T. E. Tezduyar, "Calculation of the Stabilization Parameters in SUPG and PSPG Formulations," 2002. https://www.tafsm.org/PUB_PRE/ipALL/ip90-MECOM02-SP.pdf

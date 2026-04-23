@@ -7,7 +7,7 @@
 namespace refem
 {
 
-class BlockFESpace;
+class MixedFESpace;
 class DenseMatrix;
 class FESpace;
 class FixedSparsityPattern;
@@ -25,12 +25,12 @@ public:
 
   explicit LocalAssembler(const FESpace& space,
                           AssemblyMode   mode = AssemblyMode::Serial);
-  explicit LocalAssembler(const BlockFESpace& space,
+  explicit LocalAssembler(const MixedFESpace& space,
                           AssemblyMode        mode = AssemblyMode::Serial);
   LocalAssembler(const FESpace&              space,
                  const FixedSparsityPattern& pattern,
                  AssemblyMode                mode = AssemblyMode::Serial);
-  LocalAssembler(const BlockFESpace&         space,
+  LocalAssembler(const MixedFESpace&         space,
                  const FixedSparsityPattern& pattern,
                  AssemblyMode                mode = AssemblyMode::Serial);
 
@@ -47,7 +47,7 @@ private:
 
 private:
   const FESpace*              fe_space_{nullptr};
-  const BlockFESpace*         block_space_{nullptr};
+  const MixedFESpace*         mixed_space_{nullptr};
   const FixedSparsityPattern* pattern_{nullptr};
   AssemblyMode                mode_{AssemblyMode::Serial};
   std::vector<index_type>     elem_dofs_;

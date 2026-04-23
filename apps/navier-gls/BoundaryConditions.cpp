@@ -5,7 +5,7 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <refem/fe/BlockFESpace.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 
 namespace refem
 {
@@ -101,8 +101,8 @@ real_type sampleFlowRate(const FlowRateParams& flowrate,
                            + flowrate.interpolate);
 }
 
-std::array<real_type, 3> flowRateVelocity(const FlowRateParams& flowrate,
-                                          real_type             time)
+std::array<real_type, 3> velocityFromFlowRate(const FlowRateParams& flowrate,
+                                              real_type             time)
 {
   const real_type q = sampleFlowRate(flowrate, time);
 
@@ -123,7 +123,7 @@ std::array<real_type, 3> flowRateVelocity(const FlowRateParams& flowrate,
 }
 
 DirichletCondition makeBoundaryCondition(
-    const BlockFESpace&           space,
+    const MixedFESpace&           space,
     const std::vector<BCsParams>& bcs,
     real_type                     time)
 {
@@ -135,12 +135,12 @@ DirichletCondition makeBoundaryCondition(
 
   for (const auto& condition : bcs)
   {
-    std::array<real_type, 3> flowrate_velocity{};
+    std::array<real_type, 3> velocity{};
     if (condition.flowrate)
     {
-      flowrate_velocity = flowRateVelocity(*condition.flowrate, time);
+      velocity = velocityFromFlowRate(*condition.flowrate, time);
       if (u_dof.numComponents() < 3
-          && std::abs(flowrate_velocity[2]) > 1.0e-14)
+          && std::abs(velocity[2]) > 1.0e-14)
       {
         throw std::runtime_error("3D flowrate normal requires a 3D mesh");
       }
@@ -152,7 +152,7 @@ DirichletCondition makeBoundaryCondition(
       {
         bc.addBoundary(u_dof,
                        condition.tag,
-                       flowrate_velocity[static_cast<std::size_t>(d)],
+                       velocity[static_cast<std::size_t>(d)],
                        time,
                        d);
       }

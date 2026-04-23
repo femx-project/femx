@@ -5,7 +5,7 @@
 #include <cmath>
 
 #include "Components.hpp"
-#include <refem/fe/BlockFESpace.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 #include <refem/fe/ElementValues.hpp>
 #include <refem/fe/FiniteElement.hpp>
 #include <refem/fe/GaussQuadrature.hpp>
@@ -18,8 +18,8 @@ namespace refem
 {
 
 std::array<real_type, 3> velocityAtNode(const Vector&         x,
-                                              const BlockFieldView& u_dof,
-                                              index_type            node)
+                                        const MixedFieldView& u_dof,
+                                        index_type            node)
 {
   std::array<real_type, 3> u{};
   for (index_type d = 0; d < u_dof.numComponents(); ++d)
@@ -29,11 +29,11 @@ std::array<real_type, 3> velocityAtNode(const Vector&         x,
   return u;
 }
 
-void evaluateVelocity(const ElementValues&            ev,
-                      const BlockFESpace&             space,
-                      index_type                      cell,
-                      index_type                      q,
-                      const Vector&                   x,
+void evaluateVelocity(const ElementValues&      ev,
+                      const MixedFESpace&       space,
+                      index_type                cell,
+                      index_type                q,
+                      const Vector&             x,
                       std::array<real_type, 3>& u)
 {
   u                   = {};
@@ -54,7 +54,7 @@ void evaluateVelocity(const ElementValues&            ev,
 }
 
 void evaluateVelocityGradient(const ElementValues& ev,
-                              const BlockFESpace&  space,
+                              const MixedFESpace&  space,
                               index_type           cell,
                               index_type           q,
                               const Vector&        x,
@@ -86,10 +86,10 @@ void evaluateVelocityGradient(const ElementValues& ev,
   }
 }
 
-real_type advectiveDerivative(const real_type                       grad[3][3],
+real_type advectiveDerivative(const real_type                 grad[3][3],
                               const std::array<real_type, 3>& u_adv,
-                              index_type                            component,
-                              index_type                            nd)
+                              index_type                      component,
+                              index_type                      nd)
 {
   real_type value = 0.0;
   for (index_type d = 0; d < nd; ++d)
@@ -99,8 +99,8 @@ real_type advectiveDerivative(const real_type                       grad[3][3],
   return value;
 }
 
-real_type elementLength(const ElementValues&                  ev,
-                        index_type                            q,
+real_type elementLength(const ElementValues&            ev,
+                        index_type                      q,
                         const std::array<real_type, 3>& u)
 {
   const index_type nd   = ev.dim();
@@ -110,7 +110,7 @@ real_type elementLength(const ElementValues&                  ev,
     mag2 += u[d] * u[d];
   }
 
-  const real_type                mag = std::sqrt(mag2);
+  const real_type          mag = std::sqrt(mag2);
   std::array<real_type, 3> dir{};
   if (mag > 1.0e-10)
   {
@@ -149,10 +149,10 @@ real_type elementLength(const ElementValues&                  ev,
 
 std::array<real_type, 3> stabilization(
     const std::array<real_type, 3>& u,
-    const FluidParams&                    fluid,
-    real_type                             dt,
-    real_type                             h,
-    index_type                            nd)
+    const FluidParams&              fluid,
+    real_type                       dt,
+    real_type                       h,
+    index_type                      nd)
 {
   const real_type nu       = fluid.mu / fluid.rho;
   real_type       vel_mag2 = 0.0;
@@ -176,9 +176,9 @@ std::array<real_type, 3> stabilization(
   return values;
 }
 
-void updateCellState(std::vector<QPState>& qp_states,
+void updateElemState(std::vector<QPState>& qp_states,
                      const ElementValues&  ev,
-                     const BlockFESpace&   space,
+                     const MixedFESpace&   space,
                      index_type            cell,
                      const Vector&         x,
                      const Vector&         xp,
@@ -193,11 +193,11 @@ void updateCellState(std::vector<QPState>& qp_states,
   {
     auto& qp = qp_states[static_cast<std::size_t>(q)];
 
-    const index_type               nd = ev.dim();
+    const index_type         nd = ev.dim();
     std::array<real_type, 3> u_prev{};
     evaluateVelocity(ev, space, cell, q, x, qp.u);
-    evaluateVelocityGradient(ev, space, cell, q, x, qp.grad_u);
     evaluateVelocity(ev, space, cell, q, xp, u_prev);
+    evaluateVelocityGradient(ev, space, cell, q, x, qp.grad_u);
 
     for (index_type d = 0; d < nd; ++d)
     {
@@ -228,7 +228,7 @@ void updateCellState(std::vector<QPState>& qp_states,
   }
 }
 
-void assembleSystem(const BlockFESpace& space,
+void assembleSystem(const MixedFESpace& space,
                     const Vector&       x,
                     const Vector&       xp,
                     bool                initial,
@@ -252,19 +252,19 @@ void assembleSystem(const BlockFESpace& space,
     ElementValues        ev(element, quadrature);
     std::vector<QPState> qp_states(static_cast<std::size_t>(nq));
     LocalAssembler       assembler(space,
-                             A.pattern(),
-                             LocalAssembler::AssemblyMode::Atomic);
+                                   A.pattern(),
+                                   LocalAssembler::AssemblyMode::Atomic);
     DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector               Fe(space.numDofsPerElem());
 
 #pragma omp for
-    for (index_type cell = 0; cell < space.mesh().numElems(); ++cell)
+    for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
     {
-      ev.reinit(space.mesh().cell(cell));
-      updateCellState(qp_states,
+      ev.reinit(space.mesh().cell(ic));
+      updateElemState(qp_states,
                       ev,
                       space,
-                      cell,
+                      ic,
                       x,
                       xp,
                       initial,
@@ -286,8 +286,8 @@ void assembleSystem(const BlockFESpace& space,
       assembleDiffusionRHS(ev, qp_states, fluid, Fe);
       assembleStabilizationRHS(ev, qp_states, fluid, dt, Fe);
 
-      assembler.addLocalMatrix(cell, Ke, A);
-      assembler.addLocalVector(cell, Fe, b);
+      assembler.addLocalMatrix(ic, Ke, A);
+      assembler.addLocalVector(ic, Fe, b);
     }
   }
   stats.max_cfl = max_cfl;

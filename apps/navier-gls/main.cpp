@@ -7,6 +7,10 @@
  * Galerkin finite element formulation. This improves stability for
  * pressure and advection-dominated problems.
  *
+ * Stabilization parameter choices follow @ref Tezduyar2002 "Tezduyar (2002)",
+ * "Calculation of the Stabilization Parameters in SUPG and PSPG Formulations":
+ * https://www.tafsm.org/PUB_PRE/ipALL/ip90-MECOM02-SP.pdf
+ *
  */
 
 #include <chrono>
@@ -20,12 +24,12 @@
 #include "Assembly.hpp"
 #include "BoundaryConditions.hpp"
 #include "Config.hpp"
-#include <refem/fe/BlockFESpace.hpp>
 #include <refem/fe/FESpace.hpp>
 #include <refem/fe/FiniteElement.hpp>
 #include <refem/fe/LagrangeQuadQ1.hpp>
 #include <refem/fe/LagrangeTetrahedronP1.hpp>
 #include <refem/fe/LagrangeTriangleP1.hpp>
+#include <refem/fe/MixedFESpace.hpp>
 #include <refem/io/TimeSeriesDataOut.hpp>
 #include <refem/linalg/FixedSparsityPattern.hpp>
 #include <refem/linalg/SparseMatrix.hpp>
@@ -104,7 +108,7 @@ WorkspaceType workspaceType(const SolverParams& solver)
 }
 
 void splitFields(const Vector&       x,
-                 const BlockFESpace& space,
+                 const MixedFESpace& space,
                  Vector&             ux,
                  Vector&             uy,
                  Vector&             uz,
@@ -132,7 +136,7 @@ void splitFields(const Vector&       x,
   }
 }
 
-Snapshot makeSnapshot(const BlockFESpace& space,
+Snapshot makeSnapshot(const MixedFESpace& space,
                       const Vector&       x,
                       real_type           time)
 {
@@ -173,12 +177,12 @@ int run(const Params& params)
   Mesh mesh    = GmshReader::read(params.mesh_file);
   auto element = makeElement(mesh);
 
-  FESpace velocity_space(&mesh, element.get(), mesh.dim());
-  FESpace pressure_space(&mesh, element.get());
+  FESpace u_space(&mesh, element.get(), mesh.dim());
+  FESpace p_space(&mesh, element.get());
 
-  BlockFESpace space;
-  space.addField(velocity_space);
-  space.addField(pressure_space);
+  MixedFESpace space;
+  space.addField(u_space);
+  space.addField(p_space);
   space.setup();
 
   FixedSparsityPattern pattern(space);

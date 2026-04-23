@@ -8,7 +8,7 @@
 
 namespace refem
 {
-class BlockFESpace;
+class MixedFESpace;
 class SparseMatrix;
 } // namespace refem
 
@@ -20,7 +20,7 @@ struct AssemblyStats
   real_type max_cfl = 0.0;
 };
 
-void assembleSystem(const BlockFESpace& space,
+void assembleSystem(const MixedFESpace& space,
                     const Vector&       x,
                     const Vector&       xp,
                     bool                initial,
