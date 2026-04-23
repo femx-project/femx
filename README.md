@@ -16,17 +16,10 @@ Dependencies:
 - HDF5 (optional, for HDF5/XDMF output)
 - OpenMP (optional, for parallel assembly)
 
-To build the library and applications:
+To build the library, examples and applications:
 
 ```shell
 $ cmake -S . -B build
-$ cmake --build build
-```
-
-To build the diffusion example as well:
-
-```shell
-$ cmake -S . -B build -DREFEM_BUILD_EXAMPLES=ON
 $ cmake --build build
 ```
 
