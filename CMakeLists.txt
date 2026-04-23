@@ -11,6 +11,7 @@ option(REFEM_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
 option(REFEM_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
 option(REFEM_ENABLE_OPENMP "Enable OpenMP parallel assembly" ON)
 option(REFEM_BUILD_APPS "Build refem apps" ON)
+option(REFEM_BUILD_TESTS "Build refem tests" ON)
 
 if(REFEM_ENABLE_OPENMP)
   find_package(OpenMP QUIET)
@@ -77,4 +78,9 @@ add_subdirectory(refem)
 
 if(REFEM_BUILD_APPS)
   add_subdirectory(apps)
+endif()
+
+if(REFEM_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
 endif()
