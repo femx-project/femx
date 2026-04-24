@@ -107,17 +107,17 @@ int run(WorkspaceType workspace_type, const std::string& backend)
   Vector b(space.numDofs());
   Vector x(space.numDofs());
 
-  DirichletCondition  boundary;
+  DirichletCondition  bc;
   constexpr real_type x_min = 0.0;
   constexpr real_type x_max = 1.0;
   constexpr real_type tol   = 1.0e-12;
-  boundary.addBoundary(space, [x_min, tol](const Mesh::Node& point, real_type)
-                       { return std::abs(point[0] - x_min) < tol; },
-                       1.0);
-  boundary.addBoundary(space, [x_max, tol](const Mesh::Node& point, real_type)
-                       { return std::abs(point[0] - x_max) < tol; },
-                       0.0);
-  boundary.apply(form.matrix(), b);
+  bc.addBoundary(space, [x_min, tol](const Mesh::Node& point, real_type)
+                 { return std::abs(point[0] - x_min) < tol; },
+                 1.0);
+  bc.addBoundary(space, [x_max, tol](const Mesh::Node& point, real_type)
+                 { return std::abs(point[0] - x_max) < tol; },
+                 0.0);
+  bc.apply(form.matrix(), b);
 
   ReSolveOptions options;
   options.factor             = "none";
@@ -135,10 +135,7 @@ int run(WorkspaceType workspace_type, const std::string& backend)
   LinearSolver solver(workspace_type, SolverBackend::ReSolve, options);
   solver.setOperator(form.matrix());
 
-  const auto start = std::chrono::high_resolution_clock::now();
   solver.solve(b, x);
-  const auto                          end  = std::chrono::high_resolution_clock::now();
-  const std::chrono::duration<double> time = end - start;
 
   DataOut dout;
   dout.attachMesh(mesh);
@@ -147,9 +144,6 @@ int run(WorkspaceType workspace_type, const std::string& backend)
   const std::string filename =
       std::string(REFEM_DIFFUSION_OUTPUT_DIR) + "/diffusion";
   dout.write(filename);
-
-  std::cout << "Backend: " << backend << '\n';
-  std::cout << "Solve time: " << time.count() << " s\n";
 
   return 0;
 }

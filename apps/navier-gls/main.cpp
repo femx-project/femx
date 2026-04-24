@@ -15,9 +15,12 @@
 
 #include <chrono>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -40,6 +43,34 @@
 #include <refem/solver/Workspace.hpp>
 
 using namespace refem;
+
+#ifndef REFEM_GIT_COMMIT
+#define REFEM_GIT_COMMIT "unknown"
+#endif
+
+#ifndef REFEM_CMAKE_BUILD_TYPE
+#define REFEM_CMAKE_BUILD_TYPE ""
+#endif
+
+#ifndef REFEM_CMAKE_CXX_COMPILER
+#define REFEM_CMAKE_CXX_COMPILER "unknown"
+#endif
+
+#ifndef REFEM_CMAKE_CUDA_ARCHITECTURES
+#define REFEM_CMAKE_CUDA_ARCHITECTURES ""
+#endif
+
+#ifndef REFEM_ENABLE_HDF5_OPTION
+#define REFEM_ENABLE_HDF5_OPTION "unknown"
+#endif
+
+#ifndef REFEM_ENABLE_OPENMP_OPTION
+#define REFEM_ENABLE_OPENMP_OPTION "unknown"
+#endif
+
+#ifndef REFEM_ENABLE_RESOLVE_OPTION
+#define REFEM_ENABLE_RESOLVE_OPTION "unknown"
+#endif
 
 struct Snapshot
 {
@@ -150,6 +181,8 @@ void writeOutput(const Mesh&                  mesh,
                  const OutputParams&          params,
                  const std::vector<Snapshot>& snapshots)
 {
+  std::filesystem::create_directories(params.directory);
+
   TimeSeriesDataOut velocity_out;
   velocity_out.attachMesh(mesh);
 
@@ -172,8 +205,43 @@ void writeOutput(const Mesh&                  mesh,
   pressure_out.write(params.directory + "/pressure");
 }
 
+void writeBuildInfo(const OutputParams& params)
+{
+  std::filesystem::create_directories(params.directory);
+
+  std::ofstream out(params.directory + "/build-info.txt");
+  if (!out)
+  {
+    throw std::runtime_error("Failed to open build-info.txt for writing");
+  }
+
+  out << "refem commit: " << REFEM_GIT_COMMIT << '\n';
+  out << "cmake build type: " << REFEM_CMAKE_BUILD_TYPE << '\n';
+  out << "cmake cxx compiler: " << REFEM_CMAKE_CXX_COMPILER << '\n';
+  out << "cmake cuda architectures: " << REFEM_CMAKE_CUDA_ARCHITECTURES
+      << '\n';
+  out << "REFEM_ENABLE_HDF5: " << REFEM_ENABLE_HDF5_OPTION << '\n';
+  out << "REFEM_ENABLE_OPENMP: " << REFEM_ENABLE_OPENMP_OPTION << '\n';
+  out << "REFEM_ENABLE_RESOLVE: " << REFEM_ENABLE_RESOLVE_OPTION << '\n';
+}
+
+std::ofstream openRunLog(const OutputParams& params)
+{
+  std::filesystem::create_directories(params.directory);
+
+  std::ofstream out(params.directory + "/run-info.txt");
+  if (!out)
+  {
+    throw std::runtime_error("Failed to open run-info.txt for writing");
+  }
+
+  return out;
+}
+
 int run(const Params& params)
 {
+  writeBuildInfo(params.output);
+
   Mesh mesh    = GmshReader::read(params.mesh_file);
   auto element = makeElement(mesh);
 
@@ -200,6 +268,7 @@ int run(const Params& params)
                       solver_options);
 
   std::vector<Snapshot> snapshots;
+  std::ofstream         run_log = openRunLog(params.output);
 
   for (index_type step = 1; step <= params.time.steps; ++step)
   {
@@ -248,11 +317,24 @@ int run(const Params& params)
         assembly_end - assembly_start;
     const std::chrono::duration<double> solve_elapsed =
         solve_end - solve_start;
-    std::cout << "step " << std::setw(5) << step << " / "
-              << params.time.steps << ", t = " << std::setw(10)
-              << time << ", max CFL = " << stats.max_cfl
-              << ", assembly = " << assembly_elapsed.count() << " s"
-              << ", solve = " << solve_elapsed.count() << " s\n";
+
+    std::ostringstream line;
+    line << "step " << std::setw(7) << step << " / " << std::setw(7)
+         << params.time.steps << ", t = " << std::setw(11) << time
+         << ", max CFL = " << std::setw(11) << stats.max_cfl
+         << ", assembly = " << std::setw(11) << assembly_elapsed.count()
+         << " s"
+         << ", solve = " << std::setw(11) << solve_elapsed.count() << " s";
+    std::cout << line.str() << '\n';
+
+    run_log << "step " << std::setw(7) << step << ", t = "
+            << std::setw(11) << time << ", max CFL = "
+            << std::setw(11) << stats.max_cfl << '\n';
+
+    if (step % params.output.interval == 0 || step == params.time.steps)
+    {
+      run_log.flush();
+    }
   }
 
   return 0;
