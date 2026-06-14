@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>

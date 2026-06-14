@@ -1,8 +1,8 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearOperator.hpp>
-#include <femx/equation/ResidualEquation.hpp>
+#include <femx/eq/ResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx

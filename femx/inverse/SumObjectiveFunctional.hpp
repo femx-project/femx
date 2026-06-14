@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/inverse/ObjectiveFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
 

@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearOperator.hpp>
 #include <femx/system/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>

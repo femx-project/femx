@@ -2,10 +2,10 @@
 
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearSolver.hpp>
 #include <femx/system/SystemMatrix.hpp>
-#include <femx/equation/AssembledResidualEquation.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/inverse/AdjointSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 

@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include <femx/system/SystemMatrix.hpp>
-#include <femx/equation/AssembledResidualEquation.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/ObservationOperator.hpp>
 #include <femx/inverse/QuadraticParameterRegularization.hpp>

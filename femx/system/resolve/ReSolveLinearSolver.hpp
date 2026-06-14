@@ -9,8 +9,8 @@
 #include <memory>
 #include <string>
 
-#include <femx/core/Types.hpp>
-#include <femx/core/Workspace.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/common/Workspace.hpp>
 
 namespace femx
 {

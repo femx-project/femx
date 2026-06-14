@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/mesh/Mesh.hpp>
 
 namespace femx

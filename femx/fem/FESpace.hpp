@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/DofMap.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/mesh/Mesh.hpp>

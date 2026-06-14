@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include <femx/ad/Enzyme.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 
 namespace
 {

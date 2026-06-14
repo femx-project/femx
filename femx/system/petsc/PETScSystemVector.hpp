@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemVector.hpp>
 #include <femx/system/petsc/VectorConversion.hpp>

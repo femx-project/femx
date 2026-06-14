@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/petsc/TaoReducedFunctionalAdapter.hpp>
 #include <femx/linalg/Vector.hpp>

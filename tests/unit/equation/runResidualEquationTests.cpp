@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <femx/equation/ResidualEquation.hpp>
+#include <femx/eq/ResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <tests/TestBase.hpp>
 

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/MatrixView.hpp>
 #include <femx/linalg/VectorView.hpp>
 

@@ -3,11 +3,11 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearSolver.hpp>
-#include <femx/equation/StateSolver.hpp>
+#include <femx/eq/StateSolver.hpp>
 #include <femx/system/SystemMatrix.hpp>
-#include <femx/equation/AssembledResidualEquation.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx

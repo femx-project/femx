@@ -16,7 +16,7 @@
 #include "Config.hpp"
 #include "RunSupport.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/core/Workspace.hpp>
+#include <femx/common/Workspace.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>

@@ -5,7 +5,7 @@
 
 #include "Components.hpp"
 #include "Config.hpp"
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 

@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "Config.hpp"
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx

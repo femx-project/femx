@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <femx/assembly/DofLayout.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/linalg/MatrixBackend.hpp>
 
 namespace femx

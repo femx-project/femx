@@ -1,6 +1,6 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearOperator.hpp>
 
 namespace femx

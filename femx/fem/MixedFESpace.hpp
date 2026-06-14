@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
 
 namespace femx

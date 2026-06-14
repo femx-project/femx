@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 
 #ifndef FEMX_NAVIERSTOKES_OUTPUT_DIR
 #define FEMX_NAVIERSTOKES_OUTPUT_DIR "."

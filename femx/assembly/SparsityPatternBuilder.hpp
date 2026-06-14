@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/CsrPattern.hpp>

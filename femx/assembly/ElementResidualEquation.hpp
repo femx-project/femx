@@ -3,9 +3,9 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/SystemMatrix.hpp>
-#include <femx/equation/AssembledResidualEquation.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/assembly/DofLayout.hpp>
 #include <femx/assembly/ElementKernel.hpp>
 #include <femx/assembly/SystemAssembler.hpp>

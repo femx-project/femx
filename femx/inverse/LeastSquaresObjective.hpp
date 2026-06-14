@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/inverse/ObjectiveFunctional.hpp>
 #include <femx/inverse/ObservationOperator.hpp>
 #include <femx/linalg/Vector.hpp>

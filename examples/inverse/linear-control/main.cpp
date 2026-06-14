@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "Problem.hpp"
-#include <femx/equation/MatrixNewtonStateSolver.hpp>
+#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/inverse/AdjointReducedFunctional.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>
 #include <femx/inverse/petsc/TaoOptimizer.hpp>

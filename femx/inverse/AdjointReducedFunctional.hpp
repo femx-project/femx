@@ -2,9 +2,9 @@
 
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
-#include <femx/equation/ResidualEquation.hpp>
-#include <femx/equation/StateSolver.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/eq/ResidualEquation.hpp>
+#include <femx/eq/StateSolver.hpp>
 #include <femx/inverse/AdjointSolver.hpp>
 #include <femx/inverse/ObjectiveFunctional.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>

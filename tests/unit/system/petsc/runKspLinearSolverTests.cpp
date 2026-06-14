@@ -3,8 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-#include <femx/equation/NewtonStateSolver.hpp>
-#include <femx/equation/ResidualEquation.hpp>
+#include <femx/eq/NewtonStateSolver.hpp>
+#include <femx/eq/ResidualEquation.hpp>
 #include <femx/inverse/EquationAdjointSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/LinearOperator.hpp>

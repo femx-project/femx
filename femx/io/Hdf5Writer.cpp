@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/io/Hdf5Writer.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Cell.hpp>

@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <femx/equation/AssembledResidualEquation.hpp>
-#include <femx/equation/MatrixNewtonStateSolver.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
+#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/inverse/AdjointReducedFunctional.hpp>
 #include <femx/inverse/DerivativeCheck.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>

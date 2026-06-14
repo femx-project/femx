@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include <femx/assembly/SystemAssembler.hpp>
-#include <femx/equation/AssembledResidualEquation.hpp>
-#include <femx/equation/MatrixNewtonStateSolver.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
+#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>

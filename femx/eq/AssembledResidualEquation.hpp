@@ -1,6 +1,6 @@
 #pragma once
 
-#include <femx/equation/ResidualEquation.hpp>
+#include <femx/eq/ResidualEquation.hpp>
 #include <femx/system/SystemMatrix.hpp>
 #include <femx/system/native/DenseSystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>

@@ -12,7 +12,7 @@
 #include <iostream>
 #include <limits>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 
 namespace femx
 {

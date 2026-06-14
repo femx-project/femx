@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/SystemVector.hpp>
 #include <femx/linalg/Vector.hpp>
 

@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/LinearSolver.hpp>
 
 namespace femx

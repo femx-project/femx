@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/system/SystemMatrix.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/MatrixBackend.hpp>

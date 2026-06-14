@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <femx/equation/StateSolver.hpp>
+#include <femx/eq/StateSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <tests/TestBase.hpp>
 

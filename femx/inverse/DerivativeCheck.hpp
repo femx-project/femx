@@ -3,8 +3,8 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
-#include <femx/equation/ResidualEquation.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/eq/ResidualEquation.hpp>
 #include <femx/inverse/ObjectiveFunctional.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
