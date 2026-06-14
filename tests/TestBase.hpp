@@ -12,9 +12,9 @@
 #include <iostream>
 #include <limits>
 
-#include <refem/common/Types.hpp>
+#include <femx/core/Types.hpp>
 
-namespace refem
+namespace femx
 {
 namespace tests
 {
@@ -252,4 +252,4 @@ protected:
 };
 
 } // namespace tests
-} // namespace refem
+} // namespace femx

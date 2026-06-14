@@ -1,0 +1,105 @@
+#include <iostream>
+
+#include <femx/inverse/DerivativeCheck.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <tests/TestBase.hpp>
+
+namespace femx
+{
+namespace tests
+{
+
+class QuadraticReducedFunctional final : public inverse::ReducedFunctional
+{
+public:
+  index_type numParams() const override
+  {
+    return 2;
+  }
+
+  real_type value(const Vector& params) override
+  {
+    return 0.5 * params[0] * params[0]
+           + 2.0 * params[0] * params[1]
+           + 3.0 * params[1] * params[1]
+           - params[0]
+           + 4.0 * params[1];
+  }
+
+  void grad(const Vector& params, Vector& out) override
+  {
+    resize(out, numParams());
+    out[0] = params[0] + 2.0 * params[1] - 1.0;
+    out[1] = 2.0 * params[0] + 6.0 * params[1] + 4.0;
+  }
+
+private:
+  static void resize(Vector& out, index_type size)
+  {
+    if (out.size() != size)
+    {
+      out.resize(size);
+    }
+    else
+    {
+      out.setZero();
+    }
+  }
+};
+
+class ReducedFunctionalTests : public TestBase
+{
+public:
+  TestOutcome quadraticReducedFunctionalOperations()
+  {
+    TestStatus status;
+    status = true;
+
+    QuadraticReducedFunctional functional;
+    status *= (functional.numParams() == 2);
+
+    Vector params(2);
+    params[0] = 0.25;
+    params[1] = -0.5;
+
+    const real_type expected_value =
+        0.5 * params[0] * params[0]
+        + 2.0 * params[0] * params[1]
+        + 3.0 * params[1] * params[1]
+        - params[0]
+        + 4.0 * params[1];
+    status *= isEqual(functional.value(params), expected_value);
+
+    Vector          grad;
+    const real_type value_from_value_grad  = functional.valueGrad(params, grad);
+    status                                *= isEqual(value_from_value_grad, expected_value);
+    status                                *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
+    status                                *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
+
+    Vector dir(2);
+    dir[0] = -0.75;
+    dir[1] = 0.5;
+
+    const inverse::DerivativeCheck check(1.0e-6);
+    status *= check.reducedGrad(functional, params, dir)
+                  .passed(1.0e-8, 1.0e-8);
+
+    return status.report(__func__);
+  }
+};
+
+} // namespace tests
+} // namespace femx
+
+int main(int, char**)
+{
+  std::cout << "Running reduced functional tests:\n";
+
+  femx::tests::ReducedFunctionalTests test;
+
+  femx::tests::TestingResults result;
+  result += test.quadraticReducedFunctionalOperations();
+
+  return result.summary();
+}

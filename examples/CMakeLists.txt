@@ -1,1 +1,1 @@
-add_subdirectory(diffusion)
+add_subdirectory(inverse)

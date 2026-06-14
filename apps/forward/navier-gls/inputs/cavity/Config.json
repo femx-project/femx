@@ -1,0 +1,45 @@
+{
+  "mesh": {
+    "file": "../../../../meshdata/2D/rectangle_res_low.msh"
+  },
+  "time": {
+    "steps": 300,
+    "dt": 0.02
+  },
+  "fluid": {
+    "rho": 1000,
+    "mu": 1
+  },
+  "bcs": [
+    {
+      "physical": 9,
+      "type": "dirichlet",
+      "ux": 1.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 10,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 11,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 12,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    }
+  ],
+  "output": {
+    "interval": 5
+  },
+  "solver": {
+    "backend": "cuda"
+  }
+}

@@ -1,0 +1,268 @@
+#pragma once
+
+#include <petsctao.h>
+
+#include <string>
+
+#include <femx/core/Types.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
+#include <femx/inverse/petsc/TaoReducedFunctionalAdapter.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/system/petsc/VectorConversion.hpp>
+
+namespace femx
+{
+namespace inverse
+{
+
+struct TaoOptions
+{
+  std::string type = TAOLMVM;
+
+  real_type grad_abs_tolerance  = 1.0e-8;
+  real_type grad_rel_tolerance  = 1.0e-8;
+  real_type grad_step_tolerance = 0.0;
+
+  index_type max_its     = 100;
+  bool       use_opts_db = true;
+};
+
+struct TaoResult
+{
+  Vector             params;
+  Vector             grad;
+  real_type          value             = 0.0;
+  real_type          grad_norm_squared = 0.0;
+  index_type         its               = 0;
+  TaoConvergedReason reason            = TAO_CONTINUE_ITERATING;
+
+  bool converged() const
+  {
+    return static_cast<int>(reason) > 0;
+  }
+};
+
+struct TaoBounds
+{
+  Vector lower;
+  Vector upper;
+};
+
+/** @brief PETSc/TAO optimizer for a ReducedFunctional. */
+class TaoOptimizer
+{
+private:
+  class ScopedVec
+  {
+  public:
+    ~ScopedVec()
+    {
+      if (vec_ != nullptr)
+      {
+        VecDestroy(&vec_);
+      }
+    }
+
+    Vec get() const
+    {
+      return vec_;
+    }
+
+    Vec* put()
+    {
+      return &vec_;
+    }
+
+  private:
+    Vec vec_{nullptr};
+  };
+
+  class ScopedTao
+  {
+  public:
+    ~ScopedTao()
+    {
+      if (tao_ != nullptr)
+      {
+        TaoDestroy(&tao_);
+      }
+    }
+
+    Tao get() const
+    {
+      return tao_;
+    }
+
+    Tao* put()
+    {
+      return &tao_;
+    }
+
+  private:
+    Tao tao_{nullptr};
+  };
+
+public:
+  explicit TaoOptimizer(ReducedFunctional& functional)
+    : functional_(&functional)
+  {
+  }
+
+  TaoOptions& options()
+  {
+    return options_;
+  }
+
+  const TaoOptions& options() const
+  {
+    return options_;
+  }
+
+  void setBounds(const Vector& lower, const Vector& upper)
+  {
+    bounds_.lower = lower;
+    bounds_.upper = upper;
+    has_bounds_   = true;
+  }
+
+  void clearBounds()
+  {
+    bounds_     = TaoBounds{};
+    has_bounds_ = false;
+  }
+
+  bool hasBounds() const
+  {
+    return has_bounds_;
+  }
+
+  const TaoBounds& bounds() const
+  {
+    return bounds_;
+  }
+
+  PetscErrorCode solve(const Vector& initial, TaoResult& result)
+  {
+    if (functional_ == nullptr)
+    {
+      return PETSC_ERR_ARG_NULL;
+    }
+    if (initial.size() != functional_->numParams())
+    {
+      return PETSC_ERR_ARG_SIZ;
+    }
+    const PetscErrorCode bounds_ierr = validateBounds();
+    if (bounds_ierr != PETSC_SUCCESS)
+    {
+      return bounds_ierr;
+    }
+
+    PetscBool initialized = PETSC_FALSE;
+    PetscCall(PetscInitialized(&initialized));
+    if (initialized != PETSC_TRUE)
+    {
+      return PETSC_ERR_ORDER;
+    }
+
+    ScopedVec params;
+    ScopedVec lower;
+    ScopedVec upper;
+    ScopedTao tao;
+
+    try
+    {
+      PetscCall(VecCreateSeq(PETSC_COMM_SELF,
+                             static_cast<PetscInt>(functional_->numParams()),
+                             params.put()));
+      PetscCall(::femx::system::detail::copyToPETSc(initial,
+                                                     params.get()));
+
+      TaoReducedFunctionalAdapter adapter(*functional_);
+
+      PetscCall(TaoCreate(PETSC_COMM_SELF, tao.put()));
+      PetscCall(TaoSetType(tao.get(), taoType()));
+      PetscCall(TaoSetSolution(tao.get(), params.get()));
+      PetscCall(adapter.setObjectiveAndGradient(tao.get()));
+      if (has_bounds_)
+      {
+        PetscCall(VecDuplicate(params.get(), lower.put()));
+        PetscCall(VecDuplicate(params.get(), upper.put()));
+        PetscCall(::femx::system::detail::copyToPETSc(bounds_.lower,
+                                                       lower.get()));
+        PetscCall(::femx::system::detail::copyToPETSc(bounds_.upper,
+                                                       upper.get()));
+        PetscCall(TaoSetVariableBounds(tao.get(), lower.get(), upper.get()));
+      }
+      PetscCall(TaoSetTolerances(
+          tao.get(),
+          static_cast<PetscReal>(options_.grad_abs_tolerance),
+          static_cast<PetscReal>(options_.grad_rel_tolerance),
+          static_cast<PetscReal>(options_.grad_step_tolerance)));
+      PetscCall(TaoSetMaximumIterations(
+          tao.get(), static_cast<PetscInt>(options_.max_its)));
+      if (options_.use_opts_db)
+      {
+        PetscCall(TaoSetFromOptions(tao.get()));
+      }
+      PetscCall(TaoSolve(tao.get()));
+
+      PetscCall(::femx::system::detail::copyFromPETSc(params.get(),
+                                                       result.params));
+      result.value = functional_->valueGrad(result.params, result.grad);
+      result.grad_norm_squared =
+          ::femx::system::detail::norm2(result.grad);
+
+      PetscInt its = 0;
+      PetscCall(TaoGetIterationNumber(tao.get(), &its));
+      result.its = static_cast<index_type>(its);
+
+      PetscCall(TaoGetConvergedReason(tao.get(), &result.reason));
+    }
+    catch (...)
+    {
+      return PETSC_ERR_LIB;
+    }
+
+    return PETSC_SUCCESS;
+  }
+
+private:
+  const char* taoType() const
+  {
+    if (has_bounds_ && options_.type == TAOLMVM)
+    {
+      return TAOBLMVM;
+    }
+    return options_.type.c_str();
+  }
+
+  PetscErrorCode validateBounds() const
+  {
+    if (!has_bounds_)
+    {
+      return PETSC_SUCCESS;
+    }
+    if (bounds_.lower.size() != functional_->numParams()
+        || bounds_.upper.size() != functional_->numParams())
+    {
+      return PETSC_ERR_ARG_SIZ;
+    }
+    for (index_type i = 0; i < functional_->numParams(); ++i)
+    {
+      if (bounds_.lower[i] > bounds_.upper[i])
+      {
+        return PETSC_ERR_ARG_OUTOFRANGE;
+      }
+    }
+    return PETSC_SUCCESS;
+  }
+
+private:
+  ReducedFunctional* functional_{nullptr};
+  TaoOptions         options_;
+  TaoBounds          bounds_;
+  bool               has_bounds_{false};
+};
+
+} // namespace inverse
+} // namespace femx
