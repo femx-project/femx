@@ -15,17 +15,17 @@ class ElementKernel
 public:
   virtual ~ElementKernel() = default;
 
-  virtual void res(index_type    cell,
+  virtual void res(Index         ic,
                    const Vector& u,
                    const Vector& m,
                    Vector&       out) const = 0;
 
-  virtual void stateJac(index_type    cell,
+  virtual void stateJac(Index         ic,
                         const Vector& u,
                         const Vector& m,
                         DenseMatrix&  out) const = 0;
 
-  virtual void paramJac(index_type    cell,
+  virtual void paramJac(Index         ic,
                         const Vector& u,
                         const Vector& m,
                         DenseMatrix&  out) const = 0;

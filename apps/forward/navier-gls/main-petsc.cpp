@@ -86,18 +86,18 @@ bool isRoot()
   return rank == 0;
 }
 
-CellRange localCellRange(index_type num_cells)
+CellRange localCellRange(Index num_cells)
 {
   PetscMPIInt rank = 0;
   PetscMPIInt size = 1;
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
   MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-  const index_type base  = num_cells / static_cast<index_type>(size);
-  const index_type extra = num_cells % static_cast<index_type>(size);
-  const index_type begin = static_cast<index_type>(rank) * base
-                           + std::min<index_type>(rank, extra);
-  const index_type count = base + (rank < extra ? 1 : 0);
+  const Index base  = num_cells / static_cast<Index>(size);
+  const Index extra = num_cells % static_cast<Index>(size);
+  const Index begin = static_cast<Index>(rank) * base
+                      + std::min<Index>(rank, extra);
+  const Index count = base + (rank < extra ? 1 : 0);
   return {begin, begin + count};
 }
 
@@ -114,7 +114,7 @@ void setKspDefaults(system::KspLinearSolver& solver)
 }
 
 void applyDirichletCondition(const DirichletCondition&  bc,
-                             index_type                 num_dofs,
+                             Index                      num_dofs,
                              system::PETScSystemMatrix& A,
                              system::PETScSystemVector& b,
                              system::PETScSystemVector& bc_vals)
@@ -124,10 +124,10 @@ void applyDirichletCondition(const DirichletCondition&  bc,
     throw std::runtime_error("DirichletCondition has inconsistent data");
   }
 
-  std::map<index_type, real_type> constrained;
+  std::map<Index, Real> constrained;
   for (std::size_t i = 0; i < bc.dofs().size(); ++i)
   {
-    const index_type dof = bc.dofs()[i];
+    const Index dof = bc.dofs()[i];
     if (dof < 0 || dof >= num_dofs)
     {
       throw std::runtime_error("Dirichlet dof is out of range");
@@ -138,7 +138,7 @@ void applyDirichletCondition(const DirichletCondition&  bc,
 
   bc_vals.setZero();
 
-  std::vector<index_type> rows;
+  std::vector<Index> rows;
   rows.reserve(constrained.size());
   for (const auto& [row, value] : constrained)
   {
@@ -196,7 +196,6 @@ int run(const Params& params, bool enable_output)
 
   std::vector<Snapshot> snapshots;
   std::ofstream         run_log;
-  TimingStats           timing;
   if (rank == 0 && enable_output)
   {
     run_log = openRunLog(params.output);
@@ -208,9 +207,9 @@ int run(const Params& params, bool enable_output)
               << ", cells = " << space.mesh().numElems() << '\n';
   }
 
-  for (index_type step = 1; step <= params.time.steps; ++step)
+  for (Index step = 1; step <= params.time.steps; ++step)
   {
-    const real_type time = step * params.time.dt;
+    const Real time = step * params.time.dt;
 
     const auto    step_start = Clock::now();
     AssemblyStats stats;
@@ -276,14 +275,7 @@ int run(const Params& params, bool enable_output)
           });
     }
 
-    const double total_time  = elapsedSeconds(step_start, Clock::now());
-    timing.assembly         += asm_time;
-    timing.bc               += bc_time;
-    timing.solve            += solve_time;
-    timing.gather           += gather_time;
-    timing.output           += out_time;
-    timing.total            += total_time;
-
+    const double total_time = elapsedSeconds(step_start, Clock::now());
     if (rank == 0)
     {
       std::ostringstream line;
@@ -315,11 +307,6 @@ int run(const Params& params, bool enable_output)
         }
       }
     }
-  }
-
-  if (rank == 0)
-  {
-    writeTimingSummary(std::cout, timing, params.time.steps, size);
   }
 
   return 0;

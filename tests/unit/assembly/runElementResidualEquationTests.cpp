@@ -21,53 +21,53 @@ namespace tests
 class LinearElementKernel final : public assembly::ElementKernel
 {
 public:
-  void res(index_type    cell,
+  void res(Index         ic,
            const Vector& u,
            const Vector& m,
            Vector&       out) const override
   {
     resize(out, u.size());
-    const real_type scale = stateScale(cell);
-    for (index_type i = 0; i < u.size(); ++i)
+    const Real scale = stateScale(ic);
+    for (Index i = 0; i < u.size(); ++i)
     {
       out[i] = scale * u[i] + 2.0 * m[i];
     }
   }
 
-  void stateJac(index_type    cell,
+  void stateJac(Index         ic,
                 const Vector& u,
                 const Vector& m,
                 DenseMatrix&  out) const override
   {
     (void) m;
     out.resize(u.size(), u.size());
-    const real_type scale = stateScale(cell);
-    for (index_type i = 0; i < u.size(); ++i)
+    const Real scale = stateScale(ic);
+    for (Index i = 0; i < u.size(); ++i)
     {
       out(i, i) = scale;
     }
   }
 
-  void paramJac(index_type    cell,
+  void paramJac(Index         ic,
                 const Vector& u,
                 const Vector& m,
                 DenseMatrix&  out) const override
   {
-    (void) cell;
+    (void) ic;
     out.resize(u.size(), m.size());
-    for (index_type i = 0; i < u.size(); ++i)
+    for (Index i = 0; i < u.size(); ++i)
     {
       out(i, i) = 2.0;
     }
   }
 
 private:
-  static real_type stateScale(index_type cell)
+  static Real stateScale(Index ic)
   {
-    return 1.0 + static_cast<real_type>(cell);
+    return 1.0 + static_cast<Real>(ic);
   }
 
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -103,8 +103,8 @@ public:
     Vector params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector residual;
-    equation.residual(state, params, residual);
+    Vector res;
+    equation.res(state, params, res);
 
     Vector      expected(space.numDofs());
     DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
@@ -113,10 +113,10 @@ public:
 
     status *= (equation.numStates() == space.numDofs());
     status *= (equation.numParams() == space.numDofs());
-    status *= (equation.numResiduals() == space.numDofs());
-    for (index_type i = 0; i < space.numDofs(); ++i)
+    status *= (equation.numRes() == space.numDofs());
+    for (Index i = 0; i < space.numDofs(); ++i)
     {
-      status *= isEqual(residual[i], expected[i]);
+      status *= isEqual(res[i], expected[i]);
     }
 
     return status.report(__func__);
@@ -142,13 +142,13 @@ public:
     Vector params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector      expected_residual(space.numDofs());
+    Vector      expected_res(space.numDofs());
     DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
     DenseMatrix expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
                      params,
-                     expected_residual,
+                     expected_res,
                      expected_state_jac,
                      expected_param_jac);
 
@@ -156,9 +156,9 @@ public:
     equation.assembleStateJac(state, params, state_jac);
     state_jac.finalize();
 
-    for (index_type i = 0; i < space.numDofs(); ++i)
+    for (Index i = 0; i < space.numDofs(); ++i)
     {
-      for (index_type j = 0; j < space.numDofs(); ++j)
+      for (Index j = 0; j < space.numDofs(); ++j)
       {
         status *= isEqual(state_jac.matrix()(i, j),
                           expected_state_jac(i, j));
@@ -166,9 +166,9 @@ public:
     }
 
     Vector dir(space.numDofs());
-    for (index_type i = 0; i < dir.size(); ++i)
+    for (Index i = 0; i < dir.size(); ++i)
     {
-      dir[i] = 0.25 * static_cast<real_type>(i + 1);
+      dir[i] = 0.25 * static_cast<Real>(i + 1);
     }
 
     Vector applied;
@@ -201,13 +201,13 @@ public:
     Vector params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector      expected_residual(space.numDofs());
+    Vector      expected_res(space.numDofs());
     DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
     DenseMatrix expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
                      params,
-                     expected_residual,
+                     expected_res,
                      expected_state_jac,
                      expected_param_jac);
 
@@ -217,9 +217,9 @@ public:
     param_jac.finalize();
 
     Vector dir(space.numDofs());
-    for (index_type i = 0; i < dir.size(); ++i)
+    for (Index i = 0; i < dir.size(); ++i)
     {
-      dir[i] = -0.5 + 0.1 * static_cast<real_type>(i);
+      dir[i] = -0.5 + 0.1 * static_cast<Real>(i);
     }
 
     Vector applied;
@@ -235,65 +235,65 @@ public:
 private:
   static void fillStateAndParams(Vector& state, Vector& params)
   {
-    for (index_type i = 0; i < state.size(); ++i)
+    for (Index i = 0; i < state.size(); ++i)
     {
-      state[i]  = 1.0 + static_cast<real_type>(i);
-      params[i] = 0.1 * static_cast<real_type>(i + 1);
+      state[i]  = 1.0 + static_cast<Real>(i);
+      params[i] = 0.1 * static_cast<Real>(i + 1);
     }
   }
 
   static void assembleExpected(const FESpace& space,
                                const Vector&  state,
                                const Vector&  params,
-                               Vector&        residual,
+                               Vector&        res,
                                DenseMatrix&   state_jac,
                                DenseMatrix&   param_jac)
   {
-    residual.setZero();
+    res.setZero();
     state_jac.setZero();
     param_jac.setZero();
 
-    for (index_type cell = 0; cell < space.numElems(); ++cell)
+    for (Index ic = 0; ic < space.numElems(); ++ic)
     {
-      const auto      dofs  = space.elemDofs(cell);
-      const real_type scale = 1.0 + static_cast<real_type>(cell);
+      const auto dofs  = space.elemDofs(ic);
+      const Real scale = 1.0 + static_cast<Real>(ic);
       for (std::size_t i = 0; i < dofs.size(); ++i)
       {
-        const index_type row  = dofs[i];
-        residual[row]        += scale * state[row] + 2.0 * params[row];
-        state_jac(row, row)  += scale;
-        param_jac(row, row)  += 2.0;
+        const Index row      = dofs[i];
+        res[row]            += scale * state[row] + 2.0 * params[row];
+        state_jac(row, row) += scale;
+        param_jac(row, row) += 2.0;
       }
     }
   }
 
   void checkMatVec(TestStatus&        status,
-                   const DenseMatrix& matrix,
+                   const DenseMatrix& mat,
                    const Vector&      dir,
                    const Vector&      applied)
   {
-    for (index_type i = 0; i < matrix.rows(); ++i)
+    for (Index i = 0; i < mat.rows(); ++i)
     {
-      real_type expected = 0.0;
-      for (index_type j = 0; j < matrix.cols(); ++j)
+      Real expected = 0.0;
+      for (Index j = 0; j < mat.cols(); ++j)
       {
-        expected += matrix(i, j) * dir[j];
+        expected += mat(i, j) * dir[j];
       }
       status *= isEqual(applied[i], expected);
     }
   }
 
   void checkMatTVec(TestStatus&        status,
-                    const DenseMatrix& matrix,
+                    const DenseMatrix& mat,
                     const Vector&      dir,
                     const Vector&      applied)
   {
-    for (index_type j = 0; j < matrix.cols(); ++j)
+    for (Index j = 0; j < mat.cols(); ++j)
     {
-      real_type expected = 0.0;
-      for (index_type i = 0; i < matrix.rows(); ++i)
+      Real expected = 0.0;
+      for (Index i = 0; i < mat.rows(); ++i)
       {
-        expected += matrix(i, j) * dir[i];
+        expected += mat(i, j) * dir[i];
       }
       status *= isEqual(applied[j], expected);
     }

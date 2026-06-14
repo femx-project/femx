@@ -39,19 +39,19 @@ public:
     Vector x_next(space.numDofs());
     Vector x(space.numDofs());
     Vector xp(space.numDofs());
-    for (index_type i = 0; i < space.numDofs(); ++i)
+    for (Index i = 0; i < space.numDofs(); ++i)
     {
-      x_next[i] = 0.11 + 0.013 * static_cast<real_type>(i);
-      x[i]      = 0.07 + 0.017 * static_cast<real_type>(i);
-      xp[i]     = 0.03 + 0.019 * static_cast<real_type>(i);
+      x_next[i] = 0.11 + 0.013 * static_cast<Real>(i);
+      x[i]      = 0.07 + 0.017 * static_cast<Real>(i);
+      xp[i]     = 0.03 + 0.019 * static_cast<Real>(i);
     }
 
     FluidParams fluid;
     fluid.rho = 1.2;
     fluid.mu  = 0.03;
 
-    const real_type dt   = 0.2;
-    const auto      quad = GaussQuadrature::make(elem.referenceElement(), 2);
+    const Real dt   = 0.2;
+    const auto quad = GaussQuadrature::make(elem.referenceElement(), 2);
 
     ElementValues        ev(elem, quad);
     std::vector<QPState> qp(
@@ -59,7 +59,7 @@ public:
     DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector      Fe(space.numDofsPerElem());
 
-    real_type max_cfl = 0.0;
+    Real max_cfl = 0.0;
     assembleElemSystem(space,
                        0,
                        ev,
@@ -76,11 +76,11 @@ public:
     Vector Re;
     elemResidualFromSystem(space, 0, Ke, Fe, x_next, Re);
 
-    const std::vector<index_type> dofs = space.elemDofs(0);
-    for (index_type i = 0; i < space.numDofsPerElem(); ++i)
+    const std::vector<Index> dofs = space.elemDofs(0);
+    for (Index i = 0; i < space.numDofsPerElem(); ++i)
     {
-      real_type expected = -Fe[i];
-      for (index_type j = 0; j < space.numDofsPerElem(); ++j)
+      Real expected = -Fe[i];
+      for (Index j = 0; j < space.numDofsPerElem(); ++j)
       {
         expected += Ke(i, j) * x_next[dofs[static_cast<std::size_t>(j)]];
       }
@@ -93,8 +93,8 @@ public:
       }
     }
 
-    Vector    assembled_residual;
-    real_type assembled_max_cfl = 0.0;
+    Vector assembled_res;
+    Real   assembled_max_cfl = 0.0;
     assembleElemResidual(space,
                          0,
                          ev,
@@ -105,16 +105,16 @@ public:
                          false,
                          fluid,
                          dt,
-                         assembled_residual,
+                         assembled_res,
                          assembled_max_cfl);
 
-    for (index_type i = 0; i < space.numDofsPerElem(); ++i)
+    for (Index i = 0; i < space.numDofsPerElem(); ++i)
     {
-      if (!isEqual(assembled_residual[i], Re[i]))
+      if (!isEqual(assembled_res[i], Re[i]))
       {
         std::cout << "assembleElemResidual mismatch at entry " << i
                   << ": expected " << Re[i] << ", got "
-                  << assembled_residual[i] << "\n";
+                  << assembled_res[i] << "\n";
         status = false;
       }
     }

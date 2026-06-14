@@ -14,12 +14,12 @@ class VectorView
 public:
   VectorView() = default;
 
-  VectorView(T* data, index_type size)
+  VectorView(T* data, Index size)
     : data_(data), size_(size)
   {
   }
 
-  T& operator[](index_type i) const
+  T& operator[](Index i) const
   {
     return data_[i];
   }
@@ -29,14 +29,14 @@ public:
     return data_;
   }
 
-  index_type size() const
+  Index size() const
   {
     return size_;
   }
 
 private:
-  T*         data_ = nullptr;
-  index_type size_ = 0;
+  T*    data_ = nullptr;
+  Index size_ = 0;
 };
 
 } // namespace femx

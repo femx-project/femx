@@ -4,22 +4,22 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/LinearSolver.hpp>
 #include <femx/eq/ResidualEquation.hpp>
 #include <femx/eq/StateJacobianOperator.hpp>
 #include <femx/eq/StateSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/LinearSolver.hpp>
 
 namespace femx
 {
-namespace equation
+namespace eq
 {
 
 struct NewtonStateSolverOptions
 {
-  index_type max_its     = 20;
-  real_type  residual_tolerance = 1.0e-10;
-  real_type  step_tolerance     = 0.0;
+  Index max_its        = 20;
+  Real  res_tol        = 1.0e-10;
+  Real  step_tolerance = 0.0;
 };
 
 /** @brief Newton solver for R(u,m)=0 using a matrix-free state Jacobian. */
@@ -27,11 +27,11 @@ class NewtonStateSolver final : public StateSolver
 {
 public:
   NewtonStateSolver(const ResidualEquation& equation,
-                    system::LinearSolver&     lin_solver)
-    : equation_(equation),
+                    system::LinearSolver&   lin_solver)
+    : eq_(equation),
       linear_solver_(lin_solver)
   {
-    if (equation_.numResiduals() != equation_.numStates())
+    if (eq_.numRes() != eq_.numStates())
     {
       throw std::runtime_error(
           "NewtonStateSolver requires square state residual dimensions");
@@ -65,14 +65,14 @@ public:
     has_initial_state_ = false;
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
-    return equation_.numStates();
+    return eq_.numStates();
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
-    return equation_.numParams();
+    return eq_.numParams();
   }
 
   void solve(const Vector& params, Vector& state) override
@@ -84,40 +84,40 @@ public:
 
     initializeState(state);
 
-    Vector residual;
+    Vector res;
     Vector rhs;
     Vector step;
-    for (index_type iteration = 0; iteration <= options_.max_its; ++iteration)
+    for (Index i = 0; i <= options_.max_its; ++i)
     {
-      equation_.residual(state, params, residual);
-      if (residual.size() != equation_.numResiduals())
+      eq_.res(state, params, res);
+      if (res.size() != eq_.numRes())
       {
         throw std::runtime_error("NewtonStateSolver residual size mismatch");
       }
 
-      if (norm2(residual) <= options_.residual_tolerance * options_.residual_tolerance)
+      if (norm2(res) <= options_.res_tol * options_.res_tol)
       {
         return;
       }
-      if (iteration == options_.max_its)
+      if (i == options_.max_its)
       {
         break;
       }
 
-      resize(rhs, residual.size());
-      for (index_type i = 0; i < residual.size(); ++i)
+      resize(rhs, res.size());
+      for (Index i = 0; i < res.size(); ++i)
       {
-        rhs[i] = -residual[i];
+        rhs[i] = -res[i];
       }
 
-      const StateJacobianOperator jacobian(equation_, state, params);
-      linear_solver_.solve(jacobian, rhs, step);
+      const StateJacobianOperator jac(eq_, state, params);
+      linear_solver_.solve(jac, rhs, step);
       if (step.size() != numStates())
       {
         throw std::runtime_error("NewtonStateSolver step size mismatch");
       }
 
-      for (index_type i = 0; i < numStates(); ++i)
+      for (Index i = 0; i < numStates(); ++i)
       {
         state[i] += step[i];
       }
@@ -142,7 +142,7 @@ private:
     resize(state, numStates());
   }
 
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -154,10 +154,10 @@ private:
     }
   }
 
-  static real_type norm2(const Vector& x)
+  static Real norm2(const Vector& x)
   {
-    real_type sum = 0.0;
-    for (index_type i = 0; i < x.size(); ++i)
+    Real sum = 0.0;
+    for (Index i = 0; i < x.size(); ++i)
     {
       sum += x[i] * x[i];
     }
@@ -165,12 +165,12 @@ private:
   }
 
 private:
-  const ResidualEquation&  equation_;
-  system::LinearSolver&      linear_solver_;
+  const ResidualEquation&  eq_;
+  system::LinearSolver&    linear_solver_;
   NewtonStateSolverOptions options_;
   Vector                   initial_state_;
   bool                     has_initial_state_{false};
 };
 
-} // namespace equation
+} // namespace eq
 } // namespace femx

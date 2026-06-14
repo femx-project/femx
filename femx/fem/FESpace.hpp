@@ -16,43 +16,43 @@ public:
   /** @brief Create a finite elem space on a mesh with the given component count. */
   FESpace(const Mesh*          mesh,
           const FiniteElement* finite_element,
-          index_type           components = 1);
+          Index                components = 1);
 
   /** @brief Build the elem-to-global-dof map for the space. */
   void setup();
 
-  // Accessors 
+  // Accessors
   const Mesh&          mesh() const noexcept;
   const FiniteElement& finiteElement() const noexcept;
   const DofMap&        dofMap() const noexcept;
-  index_type           numElems() const noexcept;
-  index_type           numDofs() const noexcept;
-  index_type           numComponents() const noexcept;
-  index_type           numShapesPerElem() const noexcept;
-  index_type           numDofsPerElem() const noexcept;
+  Index                numElems() const noexcept;
+  Index                numDofs() const noexcept;
+  Index                numComponents() const noexcept;
+  Index                numShapesPerElem() const noexcept;
+  Index                numDofsPerElem() const noexcept;
 
   /** @brief Return the local dof index for a shape function component. */
-  index_type localDof(index_type shape_index,
-                      index_type component) const noexcept;
+  Index localDof(Index shape_index,
+                 Index component) const noexcept;
 
   /** @brief Return the global dof index for a mesh node component. */
-  index_type globalDof(index_type node,
-                       index_type component) const noexcept;
+  Index globalDof(Index in,
+                  Index component) const noexcept;
 
   /** @brief Fill the global dof indices used by one elem. */
-  void elemDofs(index_type               ic,
-                std::vector<index_type>& dofs) const;
+  void elemDofs(Index               ic,
+                std::vector<Index>& dofs) const;
 
   /** @brief Return the global dof indices used by one elem. */
-  std::vector<index_type> elemDofs(index_type ic) const;
+  std::vector<Index> elemDofs(Index ic) const;
 
 private:
   const Mesh*          mesh_{nullptr};
-  const FiniteElement* finite_element_{nullptr};
+  const FiniteElement* finite_elem_{nullptr};
   DofMap               dof_map_;
-  index_type           components_{1};
-  index_type           num_shapes_per_elem_{0};
-  index_type           num_dofs_{0};
+  Index                components_{1};
+  Index                num_shapes_per_elem_{0};
+  Index                num_dofs_{0};
 };
 
 } // namespace femx

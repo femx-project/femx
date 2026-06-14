@@ -7,7 +7,7 @@
 namespace
 {
 
-femx::real_type polynomial(femx::real_type x)
+femx::Real polynomial(femx::Real x)
 {
   return x * x * x + femx::constants::TWO * x;
 }
@@ -16,9 +16,9 @@ femx::real_type polynomial(femx::real_type x)
 
 int main(int, char**)
 {
-  const femx::real_type x        = 3.0;
-  const femx::real_type expected = 3.0 * x * x + femx::constants::TWO;
-  const femx::real_type actual   = femx::ad::derivative(polynomial, x);
+  const femx::Real x        = 3.0;
+  const femx::Real expected = 3.0 * x * x + femx::constants::TWO;
+  const femx::Real actual   = femx::ad::derivative(polynomial, x);
 
   if (std::abs(actual - expected) > 1.0e-10)
   {

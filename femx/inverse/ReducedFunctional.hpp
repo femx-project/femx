@@ -14,15 +14,15 @@ class ReducedFunctional
 public:
   virtual ~ReducedFunctional() = default;
 
-  virtual index_type numParams() const = 0;
+  virtual Index numParams() const = 0;
 
-  virtual real_type value(const Vector& params) = 0;
+  virtual Real value(const Vector& params) = 0;
 
   virtual void grad(const Vector& params, Vector& out) = 0;
 
-  virtual real_type valueGrad(const Vector& params, Vector& grad_out)
+  virtual Real valueGrad(const Vector& params, Vector& grad_out)
   {
-    const real_type obj_val = value(params);
+    const Real obj_val = value(params);
     grad(params, grad_out);
     return obj_val;
   }

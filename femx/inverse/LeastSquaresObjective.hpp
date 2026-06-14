@@ -18,7 +18,7 @@ class LeastSquaresObjective final : public ObjectiveFunctional
 public:
   LeastSquaresObjective(const ObservationOperator& observation,
                         const Vector&              data,
-                        real_type                  weight = 1.0)
+                        Real                       weight = 1.0)
     : observation_(observation),
       data_(data),
       weight_(weight)
@@ -30,26 +30,26 @@ public:
     }
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
     return observation_.numStates();
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return observation_.numParams();
   }
 
-  real_type value(const Vector& state,
-                  const Vector& params) const override
+  Real value(const Vector& state,
+             const Vector& params) const override
   {
-    Vector residual;
-    observationResidual(state, params, residual);
+    Vector res;
+    observationResidual(state, params, res);
 
-    real_type value_out = 0.0;
-    for (index_type i = 0; i < residual.size(); ++i)
+    Real value_out = 0.0;
+    for (Index i = 0; i < res.size(); ++i)
     {
-      value_out += residual[i] * residual[i];
+      value_out += res[i] * res[i];
     }
     return 0.5 * weight_ * value_out;
   }
@@ -98,15 +98,15 @@ private:
           "LeastSquaresObjective observation size mismatch");
     }
 
-    for (index_type i = 0; i < out.size(); ++i)
+    for (Index i = 0; i < out.size(); ++i)
     {
       out[i] -= data_[i];
     }
   }
 
-  static void scale(Vector& out, real_type factor)
+  static void scale(Vector& out, Real factor)
   {
-    for (index_type i = 0; i < out.size(); ++i)
+    for (Index i = 0; i < out.size(); ++i)
     {
       out[i] *= factor;
     }
@@ -115,7 +115,7 @@ private:
 private:
   const ObservationOperator& observation_;
   Vector                     data_;
-  real_type                  weight_{1.0};
+  Real                       weight_{1.0};
 };
 
 } // namespace inverse

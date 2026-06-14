@@ -197,11 +197,11 @@ private:
     check(VecDuplicate(rhs_vec.get(), out_vec.put()), "VecDuplicate");
     check(detail::copyToPETSc(rhs, rhs_vec.get()), "copyToPETSc");
 
-    Mat matrix = matrixForOperator(op, context, shell, size);
+    Mat mat = matrixForOperator(op, context, shell, size);
 
     check(KSPCreate(PETSC_COMM_SELF, ksp.put()), "KSPCreate");
     configureKsp(ksp.get());
-    check(KSPSetOperators(ksp.get(), matrix, matrix), "KSPSetOperators");
+    check(KSPSetOperators(ksp.get(), mat, mat), "KSPSetOperators");
 
     if (transpose)
     {
@@ -230,8 +230,8 @@ private:
           "KspLinearSolver requires a square PETSc matrix");
     }
 
-    const index_type rhs_size = transpose ? op.numCols() : op.numRows();
-    const index_type out_size = transpose ? op.numRows() : op.numCols();
+    const Index rhs_size = transpose ? op.numCols() : op.numRows();
+    const Index out_size = transpose ? op.numRows() : op.numCols();
     if (rhs.size() != rhs_size || out.size() != out_size)
     {
       throw std::runtime_error(
@@ -265,10 +265,10 @@ private:
                                ScopedMat&            shell,
                                PetscInt              size)
   {
-    if (const auto* petsc_matrix =
+    if (const auto* petsc_mat =
             dynamic_cast<const PETScSystemMatrix*>(&op))
     {
-      return petsc_matrix->mat();
+      return petsc_mat->mat();
     }
 
     check(MatCreateShell(PETSC_COMM_SELF,

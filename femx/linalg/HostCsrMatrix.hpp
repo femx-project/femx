@@ -16,25 +16,25 @@ public:
 
   void setZero() override;
 
-  index_type rows() const override;
-  index_type cols() const override;
-  index_type nnz() const override;
+  Index rows() const override;
+  Index cols() const override;
+  Index nnz() const override;
 
   MatrixBackend backend() const override;
 
-  const index_type* rowPtrData() const override;
-  const index_type* colIndData() const override;
-  real_type*        valuesData() override;
-  const real_type*  valuesData() const override;
+  const Index* rowPtrData() const override;
+  const Index* colIndData() const override;
+  Real*        valuesData() override;
+  const Real*  valuesData() const override;
 
 private:
   const CsrPattern* pattern_;
 
-  index_type rows_;
-  index_type cols_;
-  index_type nnz_;
+  Index rows_;
+  Index cols_;
+  Index nnz_;
 
-  std::vector<real_type> values_;
+  std::vector<Real> values_;
 };
 
 } // namespace femx

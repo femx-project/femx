@@ -16,16 +16,16 @@ namespace femx
 namespace assembly
 {
 
+enum class AssemblyMode
+{
+  Serial,
+  Atomic
+};
+
 /** @brief Scatter-adds elem vectors and matrices into equation objects. */
 class SystemAssembler
 {
 public:
-  enum class AssemblyMode
-  {
-    Serial,
-    Atomic
-  };
-
   explicit SystemAssembler(DofLayout    space,
                            AssemblyMode mode = AssemblyMode::Serial)
     : row_layout_(space),
@@ -84,17 +84,17 @@ public:
   {
   }
 
-  index_type numCells() const
+  Index numCells() const
   {
     return row_layout_.numElems();
   }
 
-  index_type numRows() const
+  Index numRows() const
   {
     return row_layout_.numDofs();
   }
 
-  index_type numCols() const
+  Index numCols() const
   {
     return col_layout_.numDofs();
   }
@@ -123,7 +123,7 @@ public:
     out.setZero();
   }
 
-  void addVec(index_type cell, const Vector& local, Vector& out) const
+  void addVec(Index ic, const Vector& local, Vector& out) const
   {
     if (out.size() != numRows())
     {
@@ -131,21 +131,21 @@ public:
           "SystemAssembler global vector has incompatible size");
     }
 
-    std::vector<index_type> row_dofs;
-    row_layout_.elemDofs(cell, row_dofs);
-    if (local.size() != static_cast<index_type>(row_dofs.size()))
+    std::vector<Index> row_dofs;
+    row_layout_.elemDofs(ic, row_dofs);
+    if (local.size() != static_cast<Index>(row_dofs.size()))
     {
       throw std::runtime_error(
           "SystemAssembler local vector size does not match row dofs");
     }
 
-    for (index_type i = 0; i < local.size(); ++i)
+    for (Index i = 0; i < local.size(); ++i)
     {
-      const index_type row = row_dofs[static_cast<std::size_t>(i)];
+      const Index row = row_dofs[static_cast<std::size_t>(i)];
       checkDof(row, numRows(), "row");
       if (mode_ == AssemblyMode::Atomic)
       {
-        real_type* values = out.data();
+        Real* values = out.data();
 #pragma omp atomic update
         values[static_cast<std::size_t>(row)] += local[i];
       }
@@ -156,7 +156,7 @@ public:
     }
   }
 
-  void addVec(index_type            cell,
+  void addVec(Index                 ic,
               const Vector&         local,
               system::SystemVector& out) const
   {
@@ -166,17 +166,17 @@ public:
           "SystemAssembler global system vector has incompatible size");
     }
 
-    std::vector<index_type> row_dofs;
-    row_layout_.elemDofs(cell, row_dofs);
-    if (local.size() != static_cast<index_type>(row_dofs.size()))
+    std::vector<Index> row_dofs;
+    row_layout_.elemDofs(ic, row_dofs);
+    if (local.size() != static_cast<Index>(row_dofs.size()))
     {
       throw std::runtime_error(
           "SystemAssembler local vector size does not match row dofs");
     }
 
-    for (index_type i = 0; i < local.size(); ++i)
+    for (Index i = 0; i < local.size(); ++i)
     {
-      const index_type row = row_dofs[static_cast<std::size_t>(i)];
+      const Index row = row_dofs[static_cast<std::size_t>(i)];
       checkDof(row, numRows(), "row");
       if (mode_ == AssemblyMode::Atomic)
       {
@@ -189,7 +189,7 @@ public:
     }
   }
 
-  void addMat(index_type            cell,
+  void addMat(Index                 ic,
               const DenseMatrix&    local,
               system::SystemMatrix& out) const
   {
@@ -199,25 +199,25 @@ public:
           "SystemAssembler global matrix has incompatible size");
     }
 
-    std::vector<index_type> row_dofs;
-    std::vector<index_type> col_dofs;
-    row_layout_.elemDofs(cell, row_dofs);
-    col_layout_.elemDofs(cell, col_dofs);
+    std::vector<Index> row_dofs;
+    std::vector<Index> col_dofs;
+    row_layout_.elemDofs(ic, row_dofs);
+    col_layout_.elemDofs(ic, col_dofs);
 
-    if (local.rows() != static_cast<index_type>(row_dofs.size())
-        || local.cols() != static_cast<index_type>(col_dofs.size()))
+    if (local.rows() != static_cast<Index>(row_dofs.size())
+        || local.cols() != static_cast<Index>(col_dofs.size()))
     {
       throw std::runtime_error(
           "SystemAssembler local matrix size does not match elem dofs");
     }
 
-    for (index_type i = 0; i < local.rows(); ++i)
+    for (Index i = 0; i < local.rows(); ++i)
     {
-      const index_type row = row_dofs[static_cast<std::size_t>(i)];
+      const Index row = row_dofs[static_cast<std::size_t>(i)];
       checkDof(row, numRows(), "row");
-      for (index_type j = 0; j < local.cols(); ++j)
+      for (Index j = 0; j < local.cols(); ++j)
       {
-        const index_type col = col_dofs[static_cast<std::size_t>(j)];
+        const Index col = col_dofs[static_cast<std::size_t>(j)];
         checkDof(col, numCols(), "column");
         if (mode_ == AssemblyMode::Atomic)
         {
@@ -241,7 +241,7 @@ private:
     }
   }
 
-  static void checkDof(index_type dof, index_type size, const char* name)
+  static void checkDof(Index dof, Index size, const char* name)
   {
     if (dof < 0 || dof >= size)
     {

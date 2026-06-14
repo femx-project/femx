@@ -15,16 +15,16 @@ public:
 
   virtual void setZero() = 0;
 
-  virtual index_type rows() const = 0;
-  virtual index_type cols() const = 0;
-  virtual index_type nnz() const  = 0;
+  virtual Index rows() const = 0;
+  virtual Index cols() const = 0;
+  virtual Index nnz() const  = 0;
 
   virtual MatrixBackend backend() const = 0;
 
-  virtual const index_type* rowPtrData() const = 0;
-  virtual const index_type* colIndData() const = 0;
-  virtual real_type*        valuesData()       = 0;
-  virtual const real_type*  valuesData() const = 0;
+  virtual const Index* rowPtrData() const = 0;
+  virtual const Index* colIndData() const = 0;
+  virtual Real*        valuesData()       = 0;
+  virtual const Real*  valuesData() const = 0;
 };
 
 } // namespace femx

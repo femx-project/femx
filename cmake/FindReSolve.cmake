@@ -13,12 +13,16 @@ foreach(_var ReSolve_ROOT RESOLVE_ROOT)
 endforeach()
 
 find_package(
-  ReSolve CONFIG QUIET
-  HINTS ${_ReSolve_HINTS}
-  PATH_SUFFIXES share/resolve/cmake
-                share/ReSolve/cmake
-                lib/cmake/ReSolve
-                lib64/cmake/ReSolve)
+  ReSolve
+  CONFIG
+  QUIET
+  HINTS
+  ${_ReSolve_HINTS}
+  PATH_SUFFIXES
+  share/resolve/cmake
+  share/ReSolve/cmake
+  lib/cmake/ReSolve
+  lib64/cmake/ReSolve)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ReSolve CONFIG_MODE)

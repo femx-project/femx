@@ -226,15 +226,15 @@ TestingResults operator+(const TestOutcome outcome, const TestingResults& rhs)
   return TestingResults(rhs) += outcome;
 }
 
-static const real_type zero    = 0.0;
-static const real_type quarter = 0.25;
-static const real_type half    = 0.5;
-static const real_type one     = 1.0;
-static const real_type two     = 2.0;
-static const real_type three   = 3.0;
+static const Real zero    = 0.0;
+static const Real quarter = 0.25;
+static const Real half    = 0.5;
+static const Real one     = 1.0;
+static const Real two     = 2.0;
+static const Real three   = 3.0;
 
 /// @brief eps = 2.2e-15 for double type
-static const real_type eps = 10 * std::numeric_limits<real_type>::epsilon();
+static const Real eps = 10 * std::numeric_limits<Real>::epsilon();
 
 class TestBase
 {
@@ -245,7 +245,7 @@ public:
 protected:
   /// Returns true if two real numbers are equal within tolerance
   // [[nodiscard]] static <- uncomment when we switch to C++17
-  bool isEqual(const real_type a, const real_type b)
+  bool isEqual(const Real a, const Real b)
   {
     return (std::abs(a - b) / (1.0 + std::abs(b)) < eps);
   }

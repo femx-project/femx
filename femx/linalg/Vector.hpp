@@ -14,48 +14,48 @@ class Vector
 public:
   Vector() = default;
 
-  explicit Vector(index_type size)
-    : values_(static_cast<std::size_t>(size), real_type{})
+  explicit Vector(Index size)
+    : values_(static_cast<std::size_t>(size), Real{})
   {
   }
 
-  void resize(index_type size)
+  void resize(Index size)
   {
-    values_.assign(static_cast<std::size_t>(size), real_type{});
+    values_.assign(static_cast<std::size_t>(size), Real{});
   }
 
-  index_type size() const
+  Index size() const
   {
-    return static_cast<index_type>(values_.size());
+    return static_cast<Index>(values_.size());
   }
 
-  real_type& operator[](index_type i)
-  {
-    return values_[static_cast<std::size_t>(i)];
-  }
-
-  real_type operator[](index_type i) const
+  Real& operator[](Index i)
   {
     return values_[static_cast<std::size_t>(i)];
   }
 
-  real_type* data()
+  Real operator[](Index i) const
+  {
+    return values_[static_cast<std::size_t>(i)];
+  }
+
+  Real* data()
   {
     return values_.data();
   }
 
-  const real_type* data() const
+  const Real* data() const
   {
     return values_.data();
   }
 
   void setZero()
   {
-    std::fill(values_.begin(), values_.end(), real_type{});
+    std::fill(values_.begin(), values_.end(), Real{});
   }
 
 private:
-  std::vector<real_type> values_;
+  std::vector<Real> values_;
 };
 
 } // namespace femx

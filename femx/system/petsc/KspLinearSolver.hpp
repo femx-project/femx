@@ -21,11 +21,11 @@ struct KspOptions
   std::string type    = KSPGMRES;
   std::string pc_type = PCNONE;
 
-  real_type  rtol    = 1.0e-10;
-  real_type  atol    = 1.0e-50;
-  real_type  dtol    = 1.0e5;
-  index_type max_its = 1000;
-  index_type restart = 0;
+  Real  rtol    = 1.0e-10;
+  Real  atol    = 1.0e-50;
+  Real  dtol    = 1.0e5;
+  Index max_its = 1000;
+  Index restart = 0;
 
   bool nonzero_guess = false;
   bool use_opts_db   = true;

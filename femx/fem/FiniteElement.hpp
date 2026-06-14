@@ -21,27 +21,27 @@ public:
   virtual std::string name() const = 0;
 
   /** @brief Return the spatial dimension of the reference cell. */
-  virtual index_type dim() const               = 0;
+  virtual Index dim() const = 0;
 
   /** @brief Return the number of interpolation nodes in one elem. */
-  virtual index_type numNodes() const          = 0;
+  virtual Index numNodes() const = 0;
 
   /** @brief Return the number of scalar shape functions in one elem. */
-  virtual index_type numDofsPerElement() const = 0;
+  virtual Index numDofsPerElement() const = 0;
 
   /** @brief Return the polynomial order of the elem. */
-  virtual index_type order() const             = 0;
+  virtual Index order() const = 0;
 
   /** @brief Return the reference cell shape used by this elem. */
   virtual ReferenceElement referenceElement() const = 0;
 
   /** @brief Evaluate shape functions at a reference quad point. */
   virtual void calcShape(const QuadraturePoint& qp,
-                         VectorView<real_type>  N) const = 0;
+                         VectorView<Real>       N) const = 0;
 
   /** @brief Evaluate shape function gradients in reference coordinates. */
   virtual void calcShapeGrad(const QuadraturePoint& qp,
-                             MatrixView<real_type>  dNdxi) const = 0;
+                             MatrixView<Real>       dNdxi) const = 0;
 };
 
 } // namespace femx

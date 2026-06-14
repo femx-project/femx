@@ -27,37 +27,37 @@ namespace femx
 
 struct AssemblyStats
 {
-  real_type max_cfl = 0.0;
+  Real max_cfl = 0.0;
 };
 
 struct CellRange
 {
-  index_type begin = 0;
-  index_type end   = 0;
+  Index begin = 0;
+  Index end   = 0;
 };
 
 void assembleElemSystem(const MixedFESpace&   space,
-                        index_type            cell,
+                        Index                 ic,
                         ElementValues&        ev,
                         std::vector<QPState>& qps,
                         const Vector&         x,
                         const Vector&         xp,
                         bool                  initial,
                         const FluidParams&    fluid,
-                        real_type             dt,
+                        Real                  dt,
                         DenseMatrix&          Ke,
                         Vector&               Fe,
-                        real_type&            max_cfl);
+                        Real&                 max_cfl);
 
 void elemResidualFromSystem(const MixedFESpace& space,
-                            index_type          cell,
+                            Index               ic,
                             const DenseMatrix&  Ke,
                             const Vector&       Fe,
                             const Vector&       x_next,
                             Vector&             Re);
 
 void assembleElemResidual(const MixedFESpace&   space,
-                          index_type            cell,
+                          Index                 ic,
                           ElementValues&        ev,
                           std::vector<QPState>& qps,
                           const Vector&         x_next,
@@ -65,16 +65,16 @@ void assembleElemResidual(const MixedFESpace&   space,
                           const Vector&         xp,
                           bool                  initial,
                           const FluidParams&    fluid,
-                          real_type             dt,
+                          Real                  dt,
                           Vector&               Re,
-                          real_type&            max_cfl);
+                          Real&                 max_cfl);
 
 void assembleSystem(const MixedFESpace&         space,
                     const Vector&               x,
                     const Vector&               xp,
                     bool                        initial,
                     const FluidParams&          fluid,
-                    real_type                   dt,
+                    Real                        dt,
                     system::SparseSystemMatrix& A,
                     Vector&                     b,
                     AssemblyStats&              stats);
@@ -84,7 +84,7 @@ void assembleSystem(const MixedFESpace&        space,
                     const Vector&              xp,
                     bool                       initial,
                     const FluidParams&         fluid,
-                    real_type                  dt,
+                    Real                       dt,
                     const CellRange&           cells,
                     system::PETScSystemMatrix& A,
                     system::PETScSystemVector& b,

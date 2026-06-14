@@ -17,27 +17,27 @@ class SparseMatrix
 public:
   explicit SparseMatrix(
       const CsrPattern& pattern,
-      MatrixBackend               backend = MatrixBackend::HostCsr);
+      MatrixBackend     backend = MatrixBackend::HostCsr);
 
   ~SparseMatrix();
 
   void setZero();
 
-  index_type rows() const;
-  index_type cols() const;
-  index_type nnz() const;
+  Index rows() const;
+  Index cols() const;
+  Index nnz() const;
 
   const CsrPattern& pattern() const;
 
   MatrixBackend backend() const;
 
-  const index_type* rowPtrData() const;
-  const index_type* colIndData() const;
-  real_type*        valuesData();
-  const real_type*  valuesData() const;
+  const Index* rowPtrData() const;
+  const Index* colIndData() const;
+  Real*        valuesData();
+  const Real*  valuesData() const;
 
 private:
-  const CsrPattern*       pattern_{nullptr};
+  const CsrPattern*                 pattern_{nullptr};
   std::unique_ptr<SparseMatrixImpl> impl_;
 };
 

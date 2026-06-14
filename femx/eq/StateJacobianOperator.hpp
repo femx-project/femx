@@ -1,13 +1,13 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/system/LinearOperator.hpp>
 #include <femx/eq/ResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/LinearOperator.hpp>
 
 namespace femx
 {
-namespace equation
+namespace eq
 {
 
 /** @brief LinearOperator view of R_u(u,m). */
@@ -17,37 +17,37 @@ public:
   StateJacobianOperator(const ResidualEquation& equation,
                         const Vector&           state,
                         const Vector&           params)
-    : equation_(equation),
+    : eq_(equation),
       state_(state),
       params_(params)
   {
   }
 
-  index_type numRows() const override
+  Index numRows() const override
   {
-    return equation_.numResiduals();
+    return eq_.numRes();
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
-    return equation_.numStates();
+    return eq_.numStates();
   }
 
   void apply(const Vector& dir, Vector& out) const override
   {
-    equation_.applyStateJac(state_, params_, dir, out);
+    eq_.applyStateJac(state_, params_, dir, out);
   }
 
   void applyT(const Vector& dir, Vector& out) const override
   {
-    equation_.applyStateJacT(state_, params_, dir, out);
+    eq_.applyStateJacT(state_, params_, dir, out);
   }
 
 private:
-  const ResidualEquation& equation_;
+  const ResidualEquation& eq_;
   const Vector&           state_;
   const Vector&           params_;
 };
 
-} // namespace equation
+} // namespace eq
 } // namespace femx

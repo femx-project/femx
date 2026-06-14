@@ -53,7 +53,7 @@ AppOptions parseAppOptions(int   argc,
     }
     if (key == "--steps")
     {
-      options.steps = static_cast<index_type>(
+      options.steps = static_cast<Index>(
           std::stoi(requireValue(i, key)));
       if (*options.steps <= 0)
       {
@@ -120,7 +120,7 @@ std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
 
 bool isFinite(const Vector& x)
 {
-  for (index_type i = 0; i < x.size(); ++i)
+  for (Index i = 0; i < x.size(); ++i)
   {
     if (!std::isfinite(x[i]))
     {
@@ -130,8 +130,8 @@ bool isFinite(const Vector& x)
   return true;
 }
 
-bool shouldWriteOutput(index_type          step,
-                       index_type          num_steps,
+bool shouldWriteOutput(Index               step,
+                       Index               num_steps,
                        const OutputParams& params)
 {
   return step % params.interval == 0 || step == num_steps;
@@ -147,12 +147,12 @@ void splitFields(const Vector&       x,
                  Vector&             uz,
                  Vector&             p)
 {
-  const Mesh&      mesh  = space.mesh();
-  const auto       u_dof = space.field(0);
-  const auto       p_dof = space.field(1);
-  const index_type nc    = u_dof.numComponents();
+  const Mesh& mesh  = space.mesh();
+  const auto  u_dof = space.field(0);
+  const auto  p_dof = space.field(1);
+  const Index nc    = u_dof.numComponents();
 
-  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     ux[in] = x[u_dof.globalDof(in, 0)];
     uy[in] = 0.0;
@@ -173,10 +173,10 @@ void splitFields(const Vector&       x,
 
 Snapshot makeSnapshot(const MixedFESpace& space,
                       const Vector&       x,
-                      real_type           time)
+                      Real                time)
 {
-  const index_type nodes = space.mesh().numNodes();
-  Snapshot         snapshot{
+  const Index nodes = space.mesh().numNodes();
+  Snapshot    snapshot{
       time, Vector(nodes), Vector(nodes), Vector(nodes), Vector(nodes)};
   splitFields(x, space, snapshot.ux, snapshot.uy, snapshot.uz, snapshot.p);
   return snapshot;
@@ -237,29 +237,6 @@ std::ofstream openRunLog(const OutputParams& params)
   }
 
   return out;
-}
-
-void writeTimingSummary(std::ostream&      out,
-                        const TimingStats& timing,
-                        index_type         steps,
-                        index_type         ranks)
-{
-  const double count = static_cast<double>(steps);
-  out << "timing summary:"
-      << " ranks=" << ranks
-      << " steps=" << steps
-      << " assembly_total=" << timing.assembly
-      << " assembly_avg=" << timing.assembly / count
-      << " bc_total=" << timing.bc
-      << " bc_avg=" << timing.bc / count
-      << " solve_total=" << timing.solve
-      << " solve_avg=" << timing.solve / count
-      << " gather_total=" << timing.gather
-      << " gather_avg=" << timing.gather / count
-      << " output_total=" << timing.output
-      << " output_avg=" << timing.output / count
-      << " total=" << timing.total
-      << " total_avg=" << timing.total / count << '\n';
 }
 
 } // namespace femx

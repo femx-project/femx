@@ -13,12 +13,12 @@ namespace tests
 class QuadraticReducedFunctional final : public inverse::ReducedFunctional
 {
 public:
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  real_type value(const Vector& params) override
+  Real value(const Vector& params) override
   {
     return 0.5 * params[0] * params[0]
            + 2.0 * params[0] * params[1]
@@ -35,7 +35,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -63,7 +63,7 @@ public:
     params[0] = 0.25;
     params[1] = -0.5;
 
-    const real_type expected_value =
+    const Real expected_value =
         0.5 * params[0] * params[0]
         + 2.0 * params[0] * params[1]
         + 3.0 * params[1] * params[1]
@@ -71,11 +71,11 @@ public:
         + 4.0 * params[1];
     status *= isEqual(functional.value(params), expected_value);
 
-    Vector          grad;
-    const real_type value_from_value_grad  = functional.valueGrad(params, grad);
-    status                                *= isEqual(value_from_value_grad, expected_value);
-    status                                *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
-    status                                *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
+    Vector     grad;
+    const Real value_from_value_grad  = functional.valueGrad(params, grad);
+    status                           *= isEqual(value_from_value_grad, expected_value);
+    status                           *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
+    status                           *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
 
     Vector dir(2);
     dir[0] = -0.75;

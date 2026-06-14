@@ -20,7 +20,7 @@ namespace
 
 PetscErrorCode runOptimization()
 {
-  LinearResidualEquation    residual_equation;
+  LinearResidualEquation    res_eq;
   system::PETScSystemMatrix state_jac;
   system::PETScSystemMatrix adj_state_jac;
   system::KspLinearSolver   lin_solver;
@@ -29,14 +29,14 @@ PetscErrorCode runOptimization()
   lin_solver.options().atol        = 1.0e-14;
   lin_solver.options().use_opts_db = true;
 
-  equation::MatrixNewtonStateSolver state_solver(
-      residual_equation, state_jac, lin_solver);
+  eq::MatrixNewtonStateSolver state_solver(
+      res_eq, state_jac, lin_solver);
   inverse::MatrixEquationAdjointSolver adj_solver(
-      residual_equation, adj_state_jac, lin_solver);
+      res_eq, adj_state_jac, lin_solver);
   LinearControlObjectiveParts objective_parts;
 
   inverse::AdjointReducedFunctional functional(
-      state_solver, adj_solver, residual_equation, objective_parts.objective);
+      state_solver, adj_solver, res_eq, objective_parts.objective);
 
   Vector initial(2);
   initial[0] = 0.05;

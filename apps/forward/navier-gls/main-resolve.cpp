@@ -126,7 +126,6 @@ int run(const Params& params, bool enable_output)
 
   std::vector<Snapshot> snapshots;
   std::ofstream         run_log;
-  TimingStats           timing;
   if (enable_output)
   {
     run_log = openRunLog(params.output);
@@ -136,10 +135,10 @@ int run(const Params& params, bool enable_output)
             << ", dofs = " << space.numDofs()
             << ", cells = " << space.mesh().numElems() << '\n';
 
-  for (index_type step = 1; step <= params.time.steps; ++step)
+  for (Index step = 1; step <= params.time.steps; ++step)
   {
-    const real_type time       = step * params.time.dt;
-    const auto      step_start = Clock::now();
+    const Real time       = step * params.time.dt;
+    const auto step_start = Clock::now();
 
     AssemblyStats stats;
     const double  asm_time = timeBlock(
@@ -193,13 +192,7 @@ int run(const Params& params, bool enable_output)
           });
     }
 
-    const double total_time  = elapsedSeconds(step_start, Clock::now());
-    timing.assembly         += asm_time;
-    timing.bc               += bc_time;
-    timing.solve            += solve_time;
-    timing.output           += out_time;
-    timing.total            += total_time;
-
+    const double       total_time = elapsedSeconds(step_start, Clock::now());
     std::ostringstream line;
     line << "step " << std::setw(7) << step << " / " << std::setw(7)
          << params.time.steps << ", t = " << std::setw(11) << time
@@ -228,7 +221,6 @@ int run(const Params& params, bool enable_output)
     }
   }
 
-  writeTimingSummary(std::cout, timing, params.time.steps, 1);
   return 0;
 }
 

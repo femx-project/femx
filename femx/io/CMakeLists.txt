@@ -7,7 +7,7 @@ target_sources(
   PUBLIC DataOut.hpp Hdf5Writer.hpp TimeSeriesDataOut.hpp XdmfWriter.hpp)
 
 target_link_libraries(femx_io PUBLIC femx_config femx_common femx_linalg
-                                      femx_mesh)
+                                     femx_mesh)
 
 if(HDF5_FOUND)
   target_include_directories(femx_io PRIVATE ${HDF5_INCLUDE_DIRS})

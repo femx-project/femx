@@ -32,11 +32,11 @@ Return autodiff(Fn fn, Args... args)
 }
 
 template <typename Fn>
-real_type derivative(Fn fn, real_type x)
+Real derivative(Fn fn, Real x)
 {
-  static_assert(std::is_invocable_r_v<real_type, Fn, real_type>,
-                "derivative expects a scalar function real_type(real_type).");
-  return autodiff<real_type>(fn, x);
+  static_assert(std::is_invocable_r_v<Real, Fn, Real>,
+                "derivative expects a scalar function Real(Real).");
+  return autodiff<Real>(fn, x);
 }
 
 #else
@@ -55,7 +55,7 @@ Return autodiff(Fn, Args...)
 }
 
 template <typename Fn>
-real_type derivative(Fn, real_type)
+Real derivative(Fn, Real)
 {
   static_assert(always_false<Fn>,
                 "femx was built without Enzyme. Configure with "

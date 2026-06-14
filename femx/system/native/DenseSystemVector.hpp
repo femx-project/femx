@@ -4,8 +4,8 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/SystemVector.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/SystemVector.hpp>
 
 namespace femx
 {
@@ -16,42 +16,42 @@ namespace system
 class DenseSystemVector final : public SystemVector
 {
 public:
-  explicit DenseSystemVector(index_type size = 0)
-    : vector_(size)
+  explicit DenseSystemVector(Index size = 0)
+    : vec_(size)
   {
   }
 
-  index_type size() const override
+  Index size() const override
   {
-    return vector_.size();
+    return vec_.size();
   }
 
-  void resize(index_type size) override
+  void resize(Index size) override
   {
-    vector_.resize(size);
+    vec_.resize(size);
   }
 
   void setZero() override
   {
-    vector_.setZero();
+    vec_.setZero();
   }
 
-  void set(index_type row, real_type value) override
+  void set(Index row, Real value) override
   {
     checkIndex(row);
-    vector_[row] = value;
+    vec_[row] = value;
   }
 
-  void add(index_type row, real_type value) override
+  void add(Index row, Real value) override
   {
     checkIndex(row);
-    vector_[row] += value;
+    vec_[row] += value;
   }
 
-  void addAtomic(index_type row, real_type value) override
+  void addAtomic(Index row, Real value) override
   {
     checkIndex(row);
-    real_type* values = vector_.data();
+    Real* values = vec_.data();
 #pragma omp atomic update
     values[static_cast<std::size_t>(row)] += value;
   }
@@ -62,16 +62,16 @@ public:
 
   Vector& vector()
   {
-    return vector_;
+    return vec_;
   }
 
   const Vector& vector() const
   {
-    return vector_;
+    return vec_;
   }
 
 private:
-  void checkIndex(index_type row) const
+  void checkIndex(Index row) const
   {
     if (row < 0 || row >= size())
     {
@@ -80,7 +80,7 @@ private:
   }
 
 private:
-  Vector vector_;
+  Vector vec_;
 };
 
 } // namespace system

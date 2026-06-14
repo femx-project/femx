@@ -9,15 +9,15 @@ namespace femx
 namespace tests
 {
 
-class LinearStateSolver final : public equation::StateSolver
+class LinearStateSolver final : public eq::StateSolver
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }

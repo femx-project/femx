@@ -12,17 +12,17 @@ namespace tests
 class LinearAdjointSolver final : public inverse::AdjointSolver
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 1;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
@@ -35,18 +35,18 @@ public:
     (void) state;
     (void) params;
 
-    if (adjoint.size() != numResiduals())
+    if (adjoint.size() != numRes())
     {
-      adjoint.resize(numResiduals());
+      adjoint.resize(numRes());
     }
     else
     {
       adjoint.setZero();
     }
 
-    const real_type det = 2.0 * 11.0 - 7.0 * 3.0;
-    adjoint[0]          = (11.0 * rhs[0] - 7.0 * rhs[1]) / det;
-    adjoint[1]          = (-3.0 * rhs[0] + 2.0 * rhs[1]) / det;
+    const Real det = 2.0 * 11.0 - 7.0 * 3.0;
+    adjoint[0]     = (11.0 * rhs[0] - 7.0 * rhs[1]) / det;
+    adjoint[1]     = (-3.0 * rhs[0] + 2.0 * rhs[1]) / det;
   }
 };
 
@@ -61,7 +61,7 @@ public:
     LinearAdjointSolver solver;
     status *= (solver.numStates() == 2);
     status *= (solver.numParams() == 1);
-    status *= (solver.numResiduals() == 2);
+    status *= (solver.numRes() == 2);
 
     Vector state(2);
     state[0] = 0.25;
@@ -77,7 +77,7 @@ public:
     Vector adjoint;
     solver.solve(state, params, rhs, adjoint);
 
-    status *= (adjoint.size() == solver.numResiduals());
+    status *= (adjoint.size() == solver.numRes());
     status *= isEqual(2.0 * adjoint[0] + 7.0 * adjoint[1], rhs[0]);
     status *= isEqual(3.0 * adjoint[0] + 11.0 * adjoint[1], rhs[1]);
 

@@ -5,7 +5,7 @@
 
 namespace femx
 {
-namespace equation
+namespace eq
 {
 
 /** @brief Solver for the state u(m) satisfying a residual equation. */
@@ -14,11 +14,11 @@ class StateSolver
 public:
   virtual ~StateSolver() = default;
 
-  virtual index_type numStates() const = 0;
-  virtual index_type numParams() const = 0;
+  virtual Index numStates() const = 0;
+  virtual Index numParams() const = 0;
 
   virtual void solve(const Vector& params, Vector& state) = 0;
 };
 
-} // namespace equation
+} // namespace eq
 } // namespace femx

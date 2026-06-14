@@ -10,7 +10,7 @@ namespace femx
 namespace
 {
 
-index_type nodesPerCell(const Mesh& mesh)
+Index nodesPerCell(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
@@ -21,7 +21,7 @@ index_type nodesPerCell(const Mesh& mesh)
 
 std::string topologyType(const Mesh& mesh)
 {
-  const index_type nodes = nodesPerCell(mesh);
+  const Index nodes = nodesPerCell(mesh);
   if (nodes == 3)
   {
     return "Triangle";
@@ -62,7 +62,7 @@ void XdmfWriter::write(const std::string&              filename,
   out << R"(<Xdmf Version="3.0">)" << '\n';
   out << "  <Domain>\n";
   out << R"(    <Grid Name="mesh" GridType="Uniform">)" << '\n';
-  const index_type cell_nodes = nodesPerCell(mesh);
+  const Index cell_nodes = nodesPerCell(mesh);
   out << R"(      <Topology TopologyType=")" << topologyType(mesh)
       << R"(" NumberOfElements=")"
       << mesh.numElems() << "\">\n";

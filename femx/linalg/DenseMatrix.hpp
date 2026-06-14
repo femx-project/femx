@@ -12,27 +12,27 @@ class DenseMatrix
 public:
   DenseMatrix();
 
-  DenseMatrix(index_type rows, index_type cols);
+  DenseMatrix(Index rows, Index cols);
 
-  void resize(index_type rows, index_type cols);
+  void resize(Index rows, Index cols);
 
   void setZero();
 
-  index_type rows() const;
-  index_type cols() const;
-  index_type size() const;
+  Index rows() const;
+  Index cols() const;
+  Index size() const;
 
-  real_type& operator()(index_type i, index_type j);
-  real_type  operator()(index_type i, index_type j) const;
+  Real& operator()(Index i, Index j);
+  Real  operator()(Index i, Index j) const;
 
-  real_type*       data();
-  const real_type* data() const;
+  Real*       data();
+  const Real* data() const;
 
 private:
-  index_type rows_;
-  index_type cols_;
+  Index rows_;
+  Index cols_;
 
-  std::vector<real_type> values_;
+  std::vector<Real> values_;
 };
 
 } // namespace femx

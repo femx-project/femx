@@ -11,60 +11,60 @@ DenseMatrix::DenseMatrix()
 {
 }
 
-DenseMatrix::DenseMatrix(index_type rows, index_type cols)
+DenseMatrix::DenseMatrix(Index rows, Index cols)
   : rows_(rows),
     cols_(cols),
     values_(static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols),
-            real_type{})
+            Real{})
 {
 }
 
-void DenseMatrix::resize(index_type rows, index_type cols)
+void DenseMatrix::resize(Index rows, Index cols)
 {
   rows_ = rows;
   cols_ = cols;
 
   values_.assign(
       static_cast<std::size_t>(rows_) * static_cast<std::size_t>(cols_),
-      real_type{});
+      Real{});
 }
 
 void DenseMatrix::setZero()
 {
-  std::fill(values_.begin(), values_.end(), real_type{});
+  std::fill(values_.begin(), values_.end(), Real{});
 }
 
-index_type DenseMatrix::rows() const
+Index DenseMatrix::rows() const
 {
   return rows_;
 }
 
-index_type DenseMatrix::cols() const
+Index DenseMatrix::cols() const
 {
   return cols_;
 }
 
-index_type DenseMatrix::size() const
+Index DenseMatrix::size() const
 {
-  return static_cast<index_type>(values_.size());
+  return static_cast<Index>(values_.size());
 }
 
-real_type& DenseMatrix::operator()(index_type i, index_type j)
-{
-  return values_[static_cast<std::size_t>(i) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(j)];
-}
-
-real_type DenseMatrix::operator()(index_type i, index_type j) const
+Real& DenseMatrix::operator()(Index i, Index j)
 {
   return values_[static_cast<std::size_t>(i) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(j)];
 }
 
-real_type* DenseMatrix::data()
+Real DenseMatrix::operator()(Index i, Index j) const
+{
+  return values_[static_cast<std::size_t>(i) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(j)];
+}
+
+Real* DenseMatrix::data()
 {
   return values_.data();
 }
 
-const real_type* DenseMatrix::data() const
+const Real* DenseMatrix::data() const
 {
   return values_.data();
 }

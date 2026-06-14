@@ -29,14 +29,14 @@ public:
 
   struct Step
   {
-    real_type                time{0.0};
+    Real                     time{0.0};
     std::vector<ScalarField> scalars;
-    std::vector<VectorField> vectors;
+    std::vector<VectorField> vecs;
   };
 
   void attachMesh(const Mesh& mesh);
 
-  void beginStep(real_type time);
+  void beginStep(Real time);
   void addNodalScalarField(const std::string& name,
                            const Vector&      values);
   void addNodalVectorField(const std::string& name,

@@ -3,14 +3,14 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/common/Types.hpp>
-#include <femx/system/SystemMatrix.hpp>
-#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/assembly/DofLayout.hpp>
 #include <femx/assembly/ElementKernel.hpp>
 #include <femx/assembly/SystemAssembler.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -18,14 +18,14 @@ namespace assembly
 {
 
 /** @brief AssembledResidualEquation assembled from cell-local FEM kernels. */
-class ElementResidualEquation final : public equation::AssembledResidualEquation
+class ElementResidualEquation final : public eq::AssembledResidualEquation
 {
 public:
-  ElementResidualEquation(DofLayout            residual_layout,
+  ElementResidualEquation(DofLayout            res_layout,
                           DofLayout            state_layout,
                           DofLayout            param_layout,
                           const ElementKernel& kernel)
-    : residual_layout_(residual_layout),
+    : res_layout_(res_layout),
       state_layout_(state_layout),
       param_layout_(param_layout),
       kernel_(kernel)
@@ -40,94 +40,94 @@ public:
   {
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
     return state_layout_.numDofs();
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return param_layout_.numDofs();
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
-    return residual_layout_.numDofs();
+    return res_layout_.numDofs();
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
     checkGlobalSizes(state, params);
 
-    SystemAssembler assembler(residual_layout_);
+    SystemAssembler assembler(res_layout_);
     assembler.initVec(out);
 
     Vector state_e;
     Vector params_e;
-    Vector residual_e;
-    for (index_type cell = 0; cell < numCells(); ++cell)
+    Vector res_e;
+    for (Index ic = 0; ic < numCells(); ++ic)
     {
-      gather(state_layout_, state, cell, state_e);
-      gather(param_layout_, params, cell, params_e);
-      kernel_.res(cell, state_e, params_e, residual_e);
-      assembler.addVec(cell, residual_e, out);
+      gather(state_layout_, state, ic, state_e);
+      gather(param_layout_, params, ic, params_e);
+      kernel_.res(ic, state_e, params_e, res_e);
+      assembler.addVec(ic, res_e, out);
     }
   }
 
-  void assembleStateJac(const Vector& state,
-                        const Vector& params,
+  void assembleStateJac(const Vector&         state,
+                        const Vector&         params,
                         system::SystemMatrix& out) const override
   {
     checkGlobalSizes(state, params);
 
-    SystemAssembler assembler(residual_layout_, state_layout_);
+    SystemAssembler assembler(res_layout_, state_layout_);
     assembler.initMat(out);
 
     Vector      state_e;
     Vector      params_e;
     DenseMatrix jac_e;
-    for (index_type cell = 0; cell < numCells(); ++cell)
+    for (Index ic = 0; ic < numCells(); ++ic)
     {
-      gather(state_layout_, state, cell, state_e);
-      gather(param_layout_, params, cell, params_e);
-      kernel_.stateJac(cell, state_e, params_e, jac_e);
-      assembler.addMat(cell, jac_e, out);
+      gather(state_layout_, state, ic, state_e);
+      gather(param_layout_, params, ic, params_e);
+      kernel_.stateJac(ic, state_e, params_e, jac_e);
+      assembler.addMat(ic, jac_e, out);
     }
   }
 
-  void assembleParamJac(const Vector& state,
-                        const Vector& params,
+  void assembleParamJac(const Vector&         state,
+                        const Vector&         params,
                         system::SystemMatrix& out) const override
   {
     checkGlobalSizes(state, params);
 
-    SystemAssembler assembler(residual_layout_, param_layout_);
+    SystemAssembler assembler(res_layout_, param_layout_);
     assembler.initMat(out);
 
     Vector      state_e;
     Vector      params_e;
     DenseMatrix jac_e;
-    for (index_type cell = 0; cell < numCells(); ++cell)
+    for (Index ic = 0; ic < numCells(); ++ic)
     {
-      gather(state_layout_, state, cell, state_e);
-      gather(param_layout_, params, cell, params_e);
-      kernel_.paramJac(cell, state_e, params_e, jac_e);
-      assembler.addMat(cell, jac_e, out);
+      gather(state_layout_, state, ic, state_e);
+      gather(param_layout_, params, ic, params_e);
+      kernel_.paramJac(ic, state_e, params_e, jac_e);
+      assembler.addMat(ic, jac_e, out);
     }
   }
 
 private:
-  index_type numCells() const
+  Index numCells() const
   {
-    return residual_layout_.numElems();
+    return res_layout_.numElems();
   }
 
   void checkCellCounts() const
   {
-    if (residual_layout_.numElems() != state_layout_.numElems()
-        || residual_layout_.numElems() != param_layout_.numElems())
+    if (res_layout_.numElems() != state_layout_.numElems()
+        || res_layout_.numElems() != param_layout_.numElems())
     {
       throw std::runtime_error(
           "ElementResidualEquation layouts have different cell counts");
@@ -148,23 +148,23 @@ private:
 
   static void gather(const DofLayout& layout,
                      const Vector&    global,
-                     index_type       cell,
+                     Index            ic,
                      Vector&          local)
   {
-    std::vector<index_type> dofs;
-    layout.elemDofs(cell, dofs);
-    if (local.size() != static_cast<index_type>(dofs.size()))
+    std::vector<Index> dofs;
+    layout.elemDofs(ic, dofs);
+    if (local.size() != static_cast<Index>(dofs.size()))
     {
-      local.resize(static_cast<index_type>(dofs.size()));
+      local.resize(static_cast<Index>(dofs.size()));
     }
     else
     {
       local.setZero();
     }
 
-    for (index_type i = 0; i < local.size(); ++i)
+    for (Index i = 0; i < local.size(); ++i)
     {
-      const index_type dof = dofs[static_cast<std::size_t>(i)];
+      const Index dof = dofs[static_cast<std::size_t>(i)];
       if (dof < 0 || dof >= global.size())
       {
         throw std::runtime_error(
@@ -175,7 +175,7 @@ private:
   }
 
 private:
-  DofLayout            residual_layout_;
+  DofLayout            res_layout_;
   DofLayout            state_layout_;
   DofLayout            param_layout_;
   const ElementKernel& kernel_;

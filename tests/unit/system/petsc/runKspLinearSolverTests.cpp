@@ -18,7 +18,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, index_type size)
+void resize(Vector& out, Index size)
 {
   if (out.size() != size)
   {
@@ -33,12 +33,12 @@ void resize(Vector& out, index_type size)
 class TwoByTwoOperator final : public system::LinearOperator
 {
 public:
-  index_type numRows() const override
+  Index numRows() const override
   {
     return 2;
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
     return 2;
   }
@@ -58,29 +58,29 @@ public:
   }
 };
 
-class LinearResidualEquation final : public equation::ResidualEquation
+class LinearResidualEquation final : public eq::ResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * params[0] - 2.0 * params[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -94,7 +94,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
@@ -118,7 +118,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 5.0 * dir[0] - 2.0 * dir[1];
     out[1] = 13.0 * dir[0] + 4.0 * dir[1];
   }
@@ -177,7 +177,7 @@ public:
     lin_solver.options().atol        = 1.0e-14;
     lin_solver.options().use_opts_db = false;
 
-    equation::NewtonStateSolver    state_solver(equation, lin_solver);
+    eq::NewtonStateSolver          state_solver(equation, lin_solver);
     inverse::EquationAdjointSolver adj_solver(equation, lin_solver);
 
     Vector params(2);
@@ -208,14 +208,14 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix matrix;
-    matrix.resize(2, 2);
-    matrix.setZero();
-    matrix.set(0, 0, 4.0);
-    matrix.set(0, 1, 1.0);
-    matrix.set(1, 0, 2.0);
-    matrix.set(1, 1, 3.0);
-    matrix.finalize();
+    system::PETScSystemMatrix mat;
+    mat.resize(2, 2);
+    mat.setZero();
+    mat.set(0, 0, 4.0);
+    mat.set(0, 1, 1.0);
+    mat.set(1, 0, 2.0);
+    mat.set(1, 1, 3.0);
+    mat.finalize();
 
     system::PETScSystemVector rhs;
     system::PETScSystemVector x;
@@ -231,7 +231,7 @@ public:
     solver.options().atol        = 1.0e-14;
     solver.options().use_opts_db = false;
 
-    solver.solve(matrix, rhs, x);
+    solver.solve(mat, rhs, x);
 
     Vector out;
     x.copyToAll(out);

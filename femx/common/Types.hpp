@@ -6,18 +6,18 @@
 namespace femx
 {
 
-using real_type  = double;
-using index_type = std::int32_t;
+using Real  = double;
+using Index = std::int32_t;
 
 namespace constants
 {
-constexpr real_type ZERO      = 0.0;
-constexpr real_type ONE       = 1.0;
-constexpr real_type TWO       = 2.0;
-constexpr real_type HALF      = 0.5;
-constexpr real_type MINUS_ONE = -1.0;
+constexpr Real ZERO      = 0.0;
+constexpr Real ONE       = 1.0;
+constexpr Real TWO       = 2.0;
+constexpr Real HALF      = 0.5;
+constexpr Real MINUS_ONE = -1.0;
 
-constexpr real_type MACHINE_EPSILON = std::numeric_limits<real_type>::epsilon();
+constexpr Real MACHINE_EPSILON = std::numeric_limits<Real>::epsilon();
 } // namespace constants
 
 namespace colors

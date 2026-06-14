@@ -62,35 +62,35 @@ public:
     A_ = &A;
 
 #if defined(FEMX_HAS_RESOLVE)
-    const bool reuse_matrix =
-        matrix_ != nullptr && matrix_rows_ == A.rows() && matrix_cols_ == A.cols() && matrix_nnz_ == A.nnz() && options_.factor == "none" && options_.refactor == "none";
+    const bool reuse_mat =
+        mat_ != nullptr && mat_rows_ == A.rows() && mat_cols_ == A.cols() && mat_nnz_ == A.nnz() && options_.factor == "none" && options_.refactor == "none";
 
-    if (!reuse_matrix)
+    if (!reuse_mat)
     {
       resetSolver();
 
-      matrix_ = std::make_unique<ReSolve::matrix::Csr>(
+      mat_ = std::make_unique<ReSolve::matrix::Csr>(
           A.rows(),
           A.cols(),
           A.nnz());
-      matrix_rows_ = A.rows();
-      matrix_cols_ = A.cols();
-      matrix_nnz_  = A.nnz();
+      mat_rows_ = A.rows();
+      mat_cols_ = A.cols();
+      mat_nnz_  = A.nnz();
     }
 
     updateMatrixData(A);
 
-    if (reuse_matrix)
+    if (reuse_mat)
     {
       if (options_.precond != "none")
       {
-        checkStatus(solver_->resetPreconditioner(matrix_.get()),
+        checkStatus(solver_->resetPreconditioner(mat_.get()),
                     "ReSolve SystemSolver::resetPreconditioner failed");
       }
     }
     else
     {
-      checkStatus(solver_->setMatrix(matrix_.get()),
+      checkStatus(solver_->setMatrix(mat_.get()),
                   "ReSolve SystemSolver::setMatrix failed");
 
       if (options_.factor != "none")
@@ -163,13 +163,13 @@ public:
 
     if (options_.solve == "fgmres" || options_.solve == "randgmres")
     {
-      const real_type residual =
+      const Real res =
           solver_->getIterativeSolver().getFinalResidualNorm();
-      if (!std::isfinite(residual) || residual > 10.0 * options_.rtol)
+      if (!std::isfinite(res) || res > 10.0 * options_.rtol)
       {
         std::ostringstream message;
         message << "ReSolve iterative solve did not converge: final relative "
-                << "residual = " << residual
+                << "residual = " << res
                 << ", tolerance = " << options_.rtol
                 << ", its = "
                 << solver_->getIterativeSolver().getNumIter()
@@ -217,17 +217,17 @@ private:
     if (workspace_type_ == WorkspaceType::Cpu)
     {
       checkStatus(
-          matrix_->setDataPointers(
-              const_cast<index_type*>(A.rowPtrData()),
-              const_cast<index_type*>(A.colIndData()),
-              const_cast<real_type*>(A.valuesData()),
+          mat_->setDataPointers(
+              const_cast<Index*>(A.rowPtrData()),
+              const_cast<Index*>(A.colIndData()),
+              const_cast<Real*>(A.valuesData()),
               ReSolve::memory::HOST),
           "ReSolve Csr::setDataPointers failed");
       return;
     }
 
     checkStatus(
-        matrix_->copyFromExternal(A.rowPtrData(),
+        mat_->copyFromExternal(A.rowPtrData(),
                                   A.colIndData(),
                                   A.valuesData(),
                                   ReSolve::memory::HOST,
@@ -320,9 +320,9 @@ private:
   ReSolveOptions      options_;
   const SparseMatrix* A_;
   WorkspaceType       workspace_type_;
-  index_type          matrix_rows_ = 0;
-  index_type          matrix_cols_ = 0;
-  index_type          matrix_nnz_  = 0;
+  Index               mat_rows_ = 0;
+  Index               mat_cols_ = 0;
+  Index               mat_nnz_  = 0;
 
 #if defined(FEMX_HAS_RESOLVE)
   std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
@@ -330,7 +330,7 @@ private:
   std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_workspace_;
 #endif
   std::unique_ptr<ReSolve::SystemSolver> solver_;
-  std::unique_ptr<ReSolve::matrix::Csr>  matrix_;
+  std::unique_ptr<ReSolve::matrix::Csr>  mat_;
 #endif
 };
 

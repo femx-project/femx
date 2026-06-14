@@ -16,15 +16,15 @@ namespace femx
 namespace
 {
 
-index_type nodesPerCell(const Mesh& mesh)
+Index nodesPerCell(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
     throw std::runtime_error("Hdf5Writer needs a non-empty mesh");
   }
 
-  const index_type nodes = mesh.cells().front().numNodes();
-  for (index_type ic = 1; ic < mesh.numElems(); ++ic)
+  const Index nodes = mesh.cells().front().numNodes();
+  for (Index ic = 1; ic < mesh.numElems(); ++ic)
   {
     if (mesh.cell(ic).numNodes() != nodes)
     {
@@ -42,7 +42,7 @@ void checkMeshAndFields(const Mesh&                                mesh,
     throw std::runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  const index_type cell_nodes = nodesPerCell(mesh);
+  const Index cell_nodes = nodesPerCell(mesh);
   if (cell_nodes != 3 && cell_nodes != 4)
   {
     throw std::runtime_error(
@@ -117,10 +117,10 @@ void writeDoubleDataset(hid_t                       file,
   checkHdf5(H5Sclose(dataspace), "Failed to close HDF5 dataspace " + path);
 }
 
-void writeIntDataset(hid_t                          file,
-                     const std::string&             path,
-                     const std::vector<index_type>& data,
-                     const std::vector<hsize_t>&    dims)
+void writeIntDataset(hid_t                       file,
+                     const std::string&          path,
+                     const std::vector<Index>&   data,
+                     const std::vector<hsize_t>& dims)
 {
   hid_t dataspace = H5Screate_simple(
       static_cast<int>(dims.size()), dims.data(), nullptr);
@@ -174,21 +174,21 @@ void Hdf5Writer::write(const std::string&             filename,
 
   std::vector<double> geometry(
       static_cast<std::size_t>(mesh.numNodes()) * 3);
-  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    for (index_type d = 0; d < 3; ++d)
+    for (Index d = 0; d < 3; ++d)
     {
       geometry[static_cast<std::size_t>(in) * 3 + static_cast<std::size_t>(d)] = mesh.node(in)[d];
     }
   }
 
-  const index_type        nnodes = nodesPerCell(mesh);
-  std::vector<index_type> topology(
+  const Index        nnodes = nodesPerCell(mesh);
+  std::vector<Index> topology(
       static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(nnodes));
-  for (index_type ic = 0; ic < mesh.numElems(); ++ic)
+  for (Index ic = 0; ic < mesh.numElems(); ++ic)
   {
-    const index_type* node_ids = mesh.cellNodeIds(ic);
-    for (index_type i = 0; i < nnodes; ++i)
+    const Index* node_ids = mesh.cellNodeIds(ic);
+    for (Index i = 0; i < nnodes; ++i)
     {
       topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(nnodes) + static_cast<std::size_t>(i)] = node_ids[i];
     }
@@ -207,7 +207,7 @@ void Hdf5Writer::write(const std::string&             filename,
   for (const auto& field : nodal_fields)
   {
     std::vector<double> values(static_cast<std::size_t>(field.values->size()));
-    for (index_type i = 0; i < field.values->size(); ++i)
+    for (Index i = 0; i < field.values->size(); ++i)
     {
       values[static_cast<std::size_t>(i)] = (*field.values)[i];
     }

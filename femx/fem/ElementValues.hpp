@@ -21,45 +21,45 @@ public:
 
   void reinit(const Cell& cell);
 
-  index_type numNodes() const;
-  index_type numDofs() const;
-  index_type dim() const;
-  index_type numQuadraturePoints() const;
+  Index numNodes() const;
+  Index numDofs() const;
+  Index dim() const;
+  Index numQuadraturePoints() const;
 
-  VectorView<const real_type> N(index_type q) const;
-  MatrixView<const real_type> dNdr(index_type q) const;
-  MatrixView<const real_type> dNdx(index_type q) const;
+  VectorView<const Real> N(Index iq) const;
+  MatrixView<const Real> dNdr(Index iq) const;
+  MatrixView<const Real> dNdx(Index iq) const;
 
-  real_type detJ(index_type q) const;
-  real_type weight(index_type q) const;
-  real_type JxW(index_type q) const;
+  Real detJ(Index iq) const;
+  Real weight(Index iq) const;
+  Real JxW(Index iq) const;
 
 private:
   void calcReferenceValues();
   void calcPhysicalValues(const Cell& cell);
 
-  static real_type invJacobian(const std::vector<real_type>& J,
-                               std::vector<real_type>&       invJ,
-                               index_type                    dim);
+  static Real invJacobian(const std::vector<Real>& J,
+                          std::vector<Real>&       invJ,
+                          Index                    dim);
 
 private:
-  const FiniteElement*   finite_element_{nullptr};
+  const FiniteElement*   finite_elem_{nullptr};
   const GaussQuadrature* quadrature_{nullptr};
 
-  index_type num_nodes_{0};
-  index_type num_dofs_{0};
-  index_type dim_{0};
-  index_type num_qp_{0};
+  Index num_nodes_{0};
+  Index num_dofs_{0};
+  Index dim_{0};
+  Index num_qp_{0};
 
-  std::vector<real_type> N_;
-  std::vector<real_type> dNdr_;
-  std::vector<real_type> dNdx_;
+  std::vector<Real> N_;
+  std::vector<Real> dNdr_;
+  std::vector<Real> dNdx_;
 
-  std::vector<real_type> detJ_;
-  std::vector<real_type> weights_;
+  std::vector<Real> detJ_;
+  std::vector<Real> weights_;
 
-  std::vector<real_type> J_;
-  std::vector<real_type> invJ_;
+  std::vector<Real> J_;
+  std::vector<Real> invJ_;
 };
 
 } // namespace femx

@@ -6,9 +6,9 @@
 #include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/system/LinearOperator.hpp>
 #include <femx/system/LinearSolver.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -19,7 +19,7 @@ namespace system
 class DenseLinearSolver final : public LinearSolver
 {
 public:
-  explicit DenseLinearSolver(real_type pivot_tolerance = 1.0e-14)
+  explicit DenseLinearSolver(Real pivot_tolerance = 1.0e-14)
     : pivot_tolerance_(pivot_tolerance)
   {
   }
@@ -34,9 +34,9 @@ public:
           "DenseLinearSolver received inconsistent dimensions");
     }
 
-    std::vector<real_type> matrix;
-    sample(op, false, matrix);
-    solveDense(matrix, rhs, out, op.numCols());
+    std::vector<Real> mat;
+    sample(op, false, mat);
+    solveDense(mat, rhs, out, op.numCols());
   }
 
   void solveT(const LinearOperator& op,
@@ -49,22 +49,22 @@ public:
           "DenseLinearSolver received inconsistent transpose dimensions");
     }
 
-    std::vector<real_type> matrix;
-    sample(op, true, matrix);
-    solveDense(matrix, rhs, out, op.numRows());
+    std::vector<Real> mat;
+    sample(op, true, mat);
+    solveDense(mat, rhs, out, op.numRows());
   }
 
 private:
-  void sample(const LinearOperator&   op,
-              bool                    transpose,
-              std::vector<real_type>& matrix) const
+  void sample(const LinearOperator& op,
+              bool                  transpose,
+              std::vector<Real>&    mat) const
   {
-    const index_type n = transpose ? op.numRows() : op.numCols();
-    matrix.assign(static_cast<std::size_t>(n * n), 0.0);
+    const Index n = transpose ? op.numRows() : op.numCols();
+    mat.assign(static_cast<std::size_t>(n * n), 0.0);
 
     Vector basis(n);
     Vector column;
-    for (index_type j = 0; j < n; ++j)
+    for (Index j = 0; j < n; ++j)
     {
       basis.setZero();
       basis[j] = 1.0;
@@ -84,31 +84,34 @@ private:
             "DenseLinearSolver sampled operator with inconsistent size");
       }
 
-      for (index_type i = 0; i < n; ++i)
+      for (Index i = 0; i < n; ++i)
       {
-        matrix[entry(i, j, n)] = column[i];
+        mat[entry(i, j, n)] = column[i];
       }
     }
   }
 
-  void solveDense(std::vector<real_type> matrix,
-                  const Vector&          rhs,
-                  Vector&                out,
-                  index_type             size) const
+  void solveDense(std::vector<Real> mat,
+                  const Vector&     rhs,
+                  Vector&           out,
+                  Index             size) const
   {
-    std::vector<real_type> b(static_cast<std::size_t>(size), 0.0);
-    for (index_type i = 0; i < size; ++i)
+    std::vector<Real> b(static_cast<std::size_t>(size), 0.0);
+
+    for (Index i = 0; i < size; ++i)
     {
       b[static_cast<std::size_t>(i)] = rhs[i];
     }
 
-    for (index_type k = 0; k < size; ++k)
+    for (Index k = 0; k < size; ++k)
     {
-      index_type pivot = k;
-      real_type  best  = std::abs(matrix[entry(k, k, size)]);
-      for (index_type i = k + 1; i < size; ++i)
+      Index pivot = k;
+      Real  best  = std::abs(mat[entry(k, k, size)]);
+
+      for (Index i = k + 1; i < size; ++i)
       {
-        const real_type candidate = std::abs(matrix[entry(i, k, size)]);
+        const Real candidate = std::abs(mat[entry(i, k, size)]);
+
         if (candidate > best)
         {
           best  = candidate;
@@ -123,47 +126,48 @@ private:
 
       if (pivot != k)
       {
-        for (index_type j = k; j < size; ++j)
+        for (Index j = k; j < size; ++j)
         {
-          std::swap(matrix[entry(k, j, size)], matrix[entry(pivot, j, size)]);
+          std::swap(mat[entry(k, j, size)], mat[entry(pivot, j, size)]);
         }
         std::swap(b[static_cast<std::size_t>(k)],
                   b[static_cast<std::size_t>(pivot)]);
       }
 
-      for (index_type i = k + 1; i < size; ++i)
+      for (Index i = k + 1; i < size; ++i)
       {
-        const real_type factor =
-            matrix[entry(i, k, size)] / matrix[entry(k, k, size)];
-        matrix[entry(i, k, size)] = 0.0;
-        for (index_type j = k + 1; j < size; ++j)
+        const Real factor = mat[entry(i, k, size)] / mat[entry(k, k, size)];
+        mat[entry(i, k, size)] = 0.0;
+
+        for (Index j = k + 1; j < size; ++j)
         {
-          matrix[entry(i, j, size)] -= factor * matrix[entry(k, j, size)];
+          mat[entry(i, j, size)] -= factor * mat[entry(k, j, size)];
         }
         b[static_cast<std::size_t>(i)] -= factor * b[static_cast<std::size_t>(k)];
       }
     }
 
     resize(out, size);
-    for (index_type i = size; i-- > 0;)
+    for (Index i = size; i-- > 0;)
     {
-      real_type sum = b[static_cast<std::size_t>(i)];
-      for (index_type j = i + 1; j < size; ++j)
+      Real sum = b[static_cast<std::size_t>(i)];
+
+      for (Index j = i + 1; j < size; ++j)
       {
-        sum -= matrix[entry(i, j, size)] * out[j];
+        sum -= mat[entry(i, j, size)] * out[j];
       }
-      out[i] = sum / matrix[entry(i, i, size)];
+      out[i] = sum / mat[entry(i, i, size)];
     }
   }
 
-  static std::size_t entry(index_type row,
-                           index_type col,
-                           index_type size)
+  static std::size_t entry(Index row,
+                           Index col,
+                           Index size)
   {
     return static_cast<std::size_t>(row * size + col);
   }
 
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -176,7 +180,7 @@ private:
   }
 
 private:
-  real_type pivot_tolerance_{1.0e-14};
+  Real pivot_tolerance_{1.0e-14};
 };
 
 } // namespace system

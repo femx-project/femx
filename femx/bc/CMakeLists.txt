@@ -7,4 +7,4 @@ target_sources(
   PUBLIC DirichletCondition.hpp)
 
 target_link_libraries(femx_bc PUBLIC femx_config femx_common femx_fem
-                                      femx_linalg femx_mesh)
+                                     femx_linalg femx_mesh)

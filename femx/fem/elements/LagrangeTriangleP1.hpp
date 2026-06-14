@@ -8,32 +8,32 @@ namespace femx
 class LagrangeTriangleP1 : public FiniteElement
 {
 public:
-  static constexpr index_type spatial_dim = 2;
-  static constexpr index_type nnodes      = 3;
-  static constexpr index_type ndofs       = 3;
-  static constexpr index_type degree      = 1;
+  static constexpr Index spatial_dim = 2;
+  static constexpr Index nnodes      = 3;
+  static constexpr Index ndofs       = 3;
+  static constexpr Index degree      = 1;
 
   std::string name() const override
   {
     return "LagrangeTriangleP1";
   }
 
-  index_type dim() const override
+  Index dim() const override
   {
     return spatial_dim;
   }
 
-  index_type numNodes() const override
+  Index numNodes() const override
   {
     return nnodes;
   }
 
-  index_type numDofsPerElement() const override
+  Index numDofsPerElement() const override
   {
     return ndofs;
   }
 
-  index_type order() const override
+  Index order() const override
   {
     return degree;
   }
@@ -44,10 +44,10 @@ public:
   }
 
   void calcShape(const QuadraturePoint& qp,
-                 VectorView<real_type>  N) const override
+                 VectorView<Real>       N) const override
   {
-    const real_type r = qp[0];
-    const real_type s = qp[1];
+    const Real r = qp[0];
+    const Real s = qp[1];
 
     N[0] = 1.0 - r - s;
     N[1] = r;
@@ -55,7 +55,7 @@ public:
   }
 
   void calcShapeGrad(const QuadraturePoint&,
-                     MatrixView<real_type> dNdr) const override
+                     MatrixView<Real> dNdr) const override
   {
     dNdr(0, 0) = -1.0;
     dNdr(0, 1) = -1.0;

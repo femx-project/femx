@@ -13,27 +13,27 @@ class MixedFieldView
 public:
   /** @brief Create a view of one field inside a mixed finite elem space. */
   MixedFieldView(const FESpace* space,
-                 index_type     local_offset,
-                 index_type     global_offset);
+                 Index          local_offset,
+                 Index          global_offset);
 
   // Accessor
   const FESpace& space() const noexcept;
-  index_type     numComponents() const noexcept;
-  index_type     numShapesPerElem() const noexcept;
-  index_type     numDofsPerElem() const noexcept;
+  Index          numComponents() const noexcept;
+  Index          numShapesPerElem() const noexcept;
+  Index          numDofsPerElem() const noexcept;
 
   /** @brief Return the mixed-space local dof index for a shape function component. */
-  index_type localDof(index_type shape_index,
-                      index_type component = 0) const noexcept;
+  Index localDof(Index shape_index,
+                 Index component = 0) const noexcept;
 
   /** @brief Return the mixed-space global dof index for a scalar dof component. */
-  index_type globalDof(index_type scalar_dof,
-                       index_type component = 0) const noexcept;
+  Index globalDof(Index scalar_dof,
+                  Index component = 0) const noexcept;
 
 private:
   const FESpace* space_{nullptr};
-  index_type     local_offset_{0};
-  index_type     global_offset_{0};
+  Index          local_offset_{0};
+  Index          global_offset_{0};
 };
 
 class MixedFESpace
@@ -46,26 +46,26 @@ public:
   void setup();
 
   // Accessor
-  MixedFieldView field(index_type field_id) const;
+  MixedFieldView field(Index field_id) const;
   const Mesh&    mesh() const noexcept;
-  index_type     numFields() const noexcept;
-  index_type     numElems() const noexcept;
-  index_type     numDofs() const noexcept;
-  index_type     numDofsPerElem() const noexcept;
+  Index          numFields() const noexcept;
+  Index          numElems() const noexcept;
+  Index          numDofs() const noexcept;
+  Index          numDofsPerElem() const noexcept;
 
   /** @brief Fill the mixed-space global dof indices used by one elem. */
-  void elemDofs(index_type               ic,
-                std::vector<index_type>& dofs) const;
+  void elemDofs(Index               ic,
+                std::vector<Index>& dofs) const;
 
   /** @brief Return the mixed-space global dof indices used by one elem. */
-  std::vector<index_type> elemDofs(index_type ic) const;
+  std::vector<Index> elemDofs(Index ic) const;
 
 private:
-  std::vector<FESpace>    fields_;
-  std::vector<index_type> local_offsets_;
-  std::vector<index_type> global_offsets_;
-  index_type              num_dofs_per_elem_{0};
-  index_type              num_dofs_{0};
+  std::vector<FESpace> fields_;
+  std::vector<Index>   local_offsets_;
+  std::vector<Index>   global_offsets_;
+  Index                num_dofs_per_elem_{0};
+  Index                num_dofs_{0};
 };
 
 } // namespace femx

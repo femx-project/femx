@@ -35,7 +35,7 @@ public:
     }
   }
 
-  index_type size() const override
+  Index size() const override
   {
     return size_;
   }
@@ -54,7 +54,7 @@ public:
     return comm_;
   }
 
-  void resize(index_type size) override
+  void resize(Index size) override
   {
     checkInitialized();
 
@@ -91,17 +91,17 @@ public:
     check(VecZeroEntries(vec_), "VecZeroEntries");
   }
 
-  void set(index_type row, real_type value) override
+  void set(Index row, Real value) override
   {
     setValue(row, value, INSERT_VALUES);
   }
 
-  void add(index_type row, real_type value) override
+  void add(Index row, Real value) override
   {
     setValue(row, value, ADD_VALUES);
   }
 
-  void addAtomic(index_type row, real_type value) override
+  void addAtomic(Index row, Real value) override
   {
     add(row, value);
   }
@@ -131,7 +131,7 @@ public:
     for (PetscInt i = begin; i < end; ++i)
     {
       data[i - begin] =
-          static_cast<PetscScalar>(values[static_cast<index_type>(i)]);
+          static_cast<PetscScalar>(values[static_cast<Index>(i)]);
     }
     check(VecRestoreArray(vec(), &data), "VecRestoreArray");
   }
@@ -142,7 +142,7 @@ public:
   }
 
 private:
-  void setValue(index_type row, real_type value, InsertMode mode)
+  void setValue(Index row, Real value, InsertMode mode)
   {
     if (vec_ == nullptr)
     {
@@ -182,9 +182,9 @@ private:
   }
 
 private:
-  MPI_Comm   comm_{PETSC_COMM_SELF};
-  Vec        vec_{nullptr};
-  index_type size_{0};
+  MPI_Comm comm_{PETSC_COMM_SELF};
+  Vec      vec_{nullptr};
+  Index    size_{0};
 };
 
 } // namespace system

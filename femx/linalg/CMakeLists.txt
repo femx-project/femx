@@ -14,6 +14,4 @@ target_sources(
          Vector.hpp
          VectorView.hpp)
 
-target_link_libraries(
-  femx_linalg
-  PUBLIC femx_common femx_config)
+target_link_libraries(femx_linalg PUBLIC femx_common femx_config)

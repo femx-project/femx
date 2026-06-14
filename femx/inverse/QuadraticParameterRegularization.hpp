@@ -15,9 +15,9 @@ namespace inverse
 class QuadraticParameterRegularization final : public ObjectiveFunctional
 {
 public:
-  QuadraticParameterRegularization(index_type    num_states,
+  QuadraticParameterRegularization(Index         num_states,
                                    const Vector& reference,
-                                   real_type     weight)
+                                   Real          weight)
     : num_states_(num_states),
       reference_(reference),
       weight_(weight)
@@ -29,27 +29,27 @@ public:
     }
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
     return num_states_;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return reference_.size();
   }
 
-  real_type value(const Vector& state,
-                  const Vector& params) const override
+  Real value(const Vector& state,
+             const Vector& params) const override
   {
     (void) state;
     checkParams(params);
 
-    real_type value_out = 0.0;
-    for (index_type i = 0; i < numParams(); ++i)
+    Real value_out = 0.0;
+    for (Index i = 0; i < numParams(); ++i)
     {
-      const real_type diff  = params[i] - reference_[i];
-      value_out            += diff * diff;
+      const Real diff  = params[i] - reference_[i];
+      value_out       += diff * diff;
     }
     return 0.5 * weight_ * value_out;
   }
@@ -71,7 +71,7 @@ public:
     checkParams(params);
     resize(out, numParams());
 
-    for (index_type i = 0; i < numParams(); ++i)
+    for (Index i = 0; i < numParams(); ++i)
     {
       out[i] = weight_ * (params[i] - reference_[i]);
     }
@@ -87,7 +87,7 @@ private:
     }
   }
 
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -100,9 +100,9 @@ private:
   }
 
 private:
-  index_type num_states_{0};
-  Vector     reference_;
-  real_type  weight_{0.0};
+  Index  num_states_{0};
+  Vector reference_;
+  Real   weight_{0.0};
 };
 
 } // namespace inverse

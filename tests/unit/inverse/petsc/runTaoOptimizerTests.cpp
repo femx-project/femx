@@ -16,12 +16,12 @@ namespace tests
 class QuadraticReducedFunctional final : public inverse::ReducedFunctional
 {
 public:
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  real_type value(const Vector& params) override
+  Real value(const Vector& params) override
   {
     return 0.5 * (params[0] - 1.0) * (params[0] - 1.0)
            + (params[1] + 2.0) * (params[1] + 2.0);

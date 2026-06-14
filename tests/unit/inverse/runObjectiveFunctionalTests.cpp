@@ -12,18 +12,18 @@ namespace tests
 class QuadraticObjective final : public inverse::ObjectiveFunctional
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  real_type value(const Vector& state,
-                  const Vector& params) const override
+  Real value(const Vector& state,
+             const Vector& params) const override
   {
     return 0.5 * state[0] * state[0]
            + 2.0 * state[1] * state[1]
@@ -52,7 +52,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -86,7 +86,7 @@ public:
     params[0] = 2.0;
     params[1] = -1.5;
 
-    const real_type expected_value =
+    const Real expected_value =
         0.5 * state[0] * state[0]
         + 2.0 * state[1] * state[1]
         + 3.0 * state[0] * params[0]

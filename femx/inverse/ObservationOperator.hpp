@@ -14,9 +14,9 @@ class ObservationOperator
 public:
   virtual ~ObservationOperator() = default;
 
-  virtual index_type numStates() const       = 0;
-  virtual index_type numParams() const       = 0;
-  virtual index_type numObservations() const = 0;
+  virtual Index numStates() const       = 0;
+  virtual Index numParams() const       = 0;
+  virtual Index numObservations() const = 0;
 
   virtual void observe(const Vector& state,
                        const Vector& params,

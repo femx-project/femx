@@ -19,21 +19,21 @@ struct TaoOptions
 {
   std::string type = TAOLMVM;
 
-  real_type grad_abs_tolerance  = 1.0e-8;
-  real_type grad_rel_tolerance  = 1.0e-8;
-  real_type grad_step_tolerance = 0.0;
+  Real grad_abs_tolerance  = 1.0e-8;
+  Real grad_rel_tolerance  = 1.0e-8;
+  Real grad_step_tolerance = 0.0;
 
-  index_type max_its     = 100;
-  bool       use_opts_db = true;
+  Index max_its     = 100;
+  bool  use_opts_db = true;
 };
 
 struct TaoResult
 {
   Vector             params;
   Vector             grad;
-  real_type          value             = 0.0;
-  real_type          grad_norm_squared = 0.0;
-  index_type         its               = 0;
+  Real               value             = 0.0;
+  Real               grad_norm_squared = 0.0;
+  Index              its               = 0;
   TaoConvergedReason reason            = TAO_CONTINUE_ITERATING;
 
   bool converged() const
@@ -175,7 +175,7 @@ public:
                              static_cast<PetscInt>(functional_->numParams()),
                              params.put()));
       PetscCall(::femx::system::detail::copyToPETSc(initial,
-                                                     params.get()));
+                                                    params.get()));
 
       TaoReducedFunctionalAdapter adapter(*functional_);
 
@@ -188,9 +188,9 @@ public:
         PetscCall(VecDuplicate(params.get(), lower.put()));
         PetscCall(VecDuplicate(params.get(), upper.put()));
         PetscCall(::femx::system::detail::copyToPETSc(bounds_.lower,
-                                                       lower.get()));
+                                                      lower.get()));
         PetscCall(::femx::system::detail::copyToPETSc(bounds_.upper,
-                                                       upper.get()));
+                                                      upper.get()));
         PetscCall(TaoSetVariableBounds(tao.get(), lower.get(), upper.get()));
       }
       PetscCall(TaoSetTolerances(
@@ -207,14 +207,14 @@ public:
       PetscCall(TaoSolve(tao.get()));
 
       PetscCall(::femx::system::detail::copyFromPETSc(params.get(),
-                                                       result.params));
+                                                      result.params));
       result.value = functional_->valueGrad(result.params, result.grad);
       result.grad_norm_squared =
           ::femx::system::detail::norm2(result.grad);
 
       PetscInt its = 0;
       PetscCall(TaoGetIterationNumber(tao.get(), &its));
-      result.its = static_cast<index_type>(its);
+      result.its = static_cast<Index>(its);
 
       PetscCall(TaoGetConvergedReason(tao.get(), &result.reason));
     }
@@ -247,7 +247,7 @@ private:
     {
       return PETSC_ERR_ARG_SIZ;
     }
-    for (index_type i = 0; i < functional_->numParams(); ++i)
+    for (Index i = 0; i < functional_->numParams(); ++i)
     {
       if (bounds_.lower[i] > bounds_.upper[i])
       {

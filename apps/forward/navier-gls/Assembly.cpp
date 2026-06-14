@@ -18,36 +18,36 @@
 namespace femx
 {
 
-std::array<real_type, 3> velAtNode(const Vector&         x,
-                                   const MixedFieldView& u_dof,
-                                   index_type            node)
+std::array<Real, 3> velAtNode(const Vector&         x,
+                              const MixedFieldView& u_dof,
+                              Index                 in)
 {
-  std::array<real_type, 3> u{};
-  for (index_type d = 0; d < u_dof.numComponents(); ++d)
+  std::array<Real, 3> u{};
+  for (Index d = 0; d < u_dof.numComponents(); ++d)
   {
-    u[static_cast<std::size_t>(d)] = x[u_dof.globalDof(node, d)];
+    u[static_cast<std::size_t>(d)] = x[u_dof.globalDof(in, d)];
   }
   return u;
 }
 
-void evalVel(const ElementValues&      ev,
-             const MixedFESpace&       space,
-             index_type                cell,
-             index_type                q,
-             const Vector&             x,
-             std::array<real_type, 3>& u)
+void evalVel(const ElementValues& ev,
+             const MixedFESpace&  space,
+             Index                ic,
+             Index                iq,
+             const Vector&        x,
+             std::array<Real, 3>& u)
 {
-  u                   = {};
-  const index_type nd = ev.dim();
+  u              = {};
+  const Index nd = ev.dim();
 
-  const auto        N     = ev.N(q);
-  const index_type* nodes = space.mesh().cellNodeIds(cell);
-  const auto        u_dof = space.field(0);
+  const auto   N     = ev.N(iq);
+  const Index* nodes = space.mesh().cellNodeIds(ic);
+  const auto   u_dof = space.field(0);
 
-  for (index_type in = 0; in < ev.numNodes(); ++in)
+  for (Index in = 0; in < ev.numNodes(); ++in)
   {
     const auto un = velAtNode(x, u_dof, nodes[in]);
-    for (index_type c = 0; c < nd; ++c)
+    for (Index c = 0; c < nd; ++c)
     {
       u[c] += N[in] * un[c];
     }
@@ -56,30 +56,30 @@ void evalVel(const ElementValues&      ev,
 
 void evalVelGrad(const ElementValues& ev,
                  const MixedFESpace&  space,
-                 index_type           cell,
-                 index_type           q,
+                 Index                ic,
+                 Index                iq,
                  const Vector&        x,
-                 real_type            dudx[3][3])
+                 Real                 dudx[3][3])
 {
-  const index_type nd = ev.dim();
-  for (index_type c = 0; c < 3; ++c)
+  const Index nd = ev.dim();
+  for (Index c = 0; c < 3; ++c)
   {
-    for (index_type d = 0; d < 3; ++d)
+    for (Index d = 0; d < 3; ++d)
     {
       dudx[c][d] = 0.0;
     }
   }
 
-  const auto        dNdx  = ev.dNdx(q);
-  const index_type* nodes = space.mesh().cellNodeIds(cell);
-  const auto        u_dof = space.field(0);
+  const auto   dNdx  = ev.dNdx(iq);
+  const Index* nodes = space.mesh().cellNodeIds(ic);
+  const auto   u_dof = space.field(0);
 
-  for (index_type in = 0; in < ev.numNodes(); ++in)
+  for (Index in = 0; in < ev.numNodes(); ++in)
   {
     const auto un = velAtNode(x, u_dof, nodes[in]);
-    for (index_type c = 0; c < nd; ++c)
+    for (Index c = 0; c < nd; ++c)
     {
-      for (index_type d = 0; d < nd; ++d)
+      for (Index d = 0; d < nd; ++d)
       {
         dudx[c][d] += dNdx(in, d) * un[c];
       }
@@ -87,56 +87,56 @@ void evalVelGrad(const ElementValues& ev,
   }
 }
 
-real_type advectiveDerivative(const real_type                 grad[3][3],
-                              const std::array<real_type, 3>& u_adv,
-                              index_type                      comp,
-                              index_type                      nd)
+Real advectiveDerivative(const Real                 grad[3][3],
+                         const std::array<Real, 3>& u_adv,
+                         Index                      comp,
+                         Index                      nd)
 {
-  real_type value = 0.0;
-  for (index_type d = 0; d < nd; ++d)
+  Real value = 0.0;
+  for (Index d = 0; d < nd; ++d)
   {
     value += grad[comp][d] * u_adv[d];
   }
   return value;
 }
 
-real_type elemLength(const ElementValues&            ev,
-                     index_type                      q,
-                     const std::array<real_type, 3>& u)
+Real elemLength(const ElementValues&       ev,
+                Index                      iq,
+                const std::array<Real, 3>& u)
 {
-  const index_type nd   = ev.dim();
-  real_type        mag2 = 0.0;
-  for (index_type d = 0; d < nd; ++d)
+  const Index nd   = ev.dim();
+  Real        mag2 = 0.0;
+  for (Index d = 0; d < nd; ++d)
   {
     mag2 += u[d] * u[d];
   }
 
-  const real_type          mag = std::sqrt(mag2);
-  std::array<real_type, 3> dir{};
+  const Real          mag = std::sqrt(mag2);
+  std::array<Real, 3> dir{};
   if (mag > 1.0e-10)
   {
-    for (index_type d = 0; d < nd; ++d)
+    for (Index d = 0; d < nd; ++d)
     {
       dir[d] = u[d] / mag;
     }
   }
   else
   {
-    const real_type value = 1.0 / std::sqrt(static_cast<real_type>(nd));
-    for (index_type d = 0; d < nd; ++d)
+    const Real value = 1.0 / std::sqrt(static_cast<Real>(nd));
+    for (Index d = 0; d < nd; ++d)
     {
       dir[d] = value;
     }
   }
 
-  const auto dNdx = ev.dNdx(q);
-  real_type  sum  = 0.0;
-  for (index_type i = 0; i < ev.numNodes(); ++i)
+  const auto dNdx = ev.dNdx(iq);
+  Real       sum  = 0.0;
+  for (Index in = 0; in < ev.numNodes(); ++in)
   {
-    real_type grad_dir = 0.0;
-    for (index_type d = 0; d < nd; ++d)
+    Real grad_dir = 0.0;
+    for (Index d = 0; d < nd; ++d)
     {
-      grad_dir += dir[d] * dNdx(i, d);
+      grad_dir += dir[d] * dNdx(in, d);
     }
     sum += std::abs(grad_dir);
   }
@@ -148,31 +148,31 @@ real_type elemLength(const ElementValues&            ev,
   return 0.0;
 }
 
-std::array<real_type, 3> stabilization(
-    const std::array<real_type, 3>& u,
-    const FluidParams&              fluid,
-    real_type                       dt,
-    real_type                       h,
-    index_type                      nd)
+std::array<Real, 3> stabilization(
+    const std::array<Real, 3>& u,
+    const FluidParams&         fluid,
+    Real                       dt,
+    Real                       h,
+    Index                      nd)
 {
-  const real_type nu       = fluid.mu / fluid.rho;
-  real_type       vel_mag2 = 0.0;
-  for (index_type d = 0; d < nd; ++d)
+  const Real nu       = fluid.mu / fluid.rho;
+  Real       vel_mag2 = 0.0;
+  for (Index d = 0; d < nd; ++d)
   {
     vel_mag2 += u[d] * u[d];
   }
 
-  const real_type vel_mag = std::sqrt(vel_mag2);
-  const real_type term1   = std::pow(2.0 / dt, 2);
-  real_type       term2   = 0.0;
-  real_type       term3   = 0.0;
+  const Real vel_mag = std::sqrt(vel_mag2);
+  const Real term1   = std::pow(2.0 / dt, 2);
+  Real       term2   = 0.0;
+  Real       term3   = 0.0;
   if (h > 0.0)
   {
     term2 = std::pow(2.0 * vel_mag / h, 2);
     term3 = std::pow(4.0 * nu / (h * h), 2);
   }
 
-  std::array<real_type, 3> values{};
+  std::array<Real, 3> values{};
   values.fill(1.0 / std::sqrt(term1 + term2 + term3));
   return values;
 }
@@ -180,27 +180,27 @@ std::array<real_type, 3> stabilization(
 void updateElemState(std::vector<QPState>& qps,
                      const ElementValues&  ev,
                      const MixedFESpace&   space,
-                     index_type            cell,
+                     Index                 ic,
                      const Vector&         x,
                      const Vector&         xp,
                      bool                  initial,
                      const FluidParams&    fluid,
-                     real_type             dt,
-                     real_type&            max_cfl)
+                     Real                  dt,
+                     Real&                 max_cfl)
 {
   qps.resize(static_cast<std::size_t>(ev.numQuadraturePoints()));
 
-  for (index_type q = 0; q < ev.numQuadraturePoints(); ++q)
+  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
   {
-    auto& qp = qps[static_cast<std::size_t>(q)];
+    auto& qp = qps[static_cast<std::size_t>(iq)];
 
-    const index_type         nd = ev.dim();
-    std::array<real_type, 3> u_prev{};
-    evalVel(ev, space, cell, q, x, qp.u);
-    evalVel(ev, space, cell, q, xp, u_prev);
-    evalVelGrad(ev, space, cell, q, x, qp.grad_u);
+    const Index         nd = ev.dim();
+    std::array<Real, 3> u_prev{};
+    evalVel(ev, space, ic, iq, x, qp.u);
+    evalVel(ev, space, ic, iq, xp, u_prev);
+    evalVelGrad(ev, space, ic, iq, x, qp.grad_u);
 
-    for (index_type d = 0; d < nd; ++d)
+    for (Index d = 0; d < nd; ++d)
     {
       qp.u_adv[d] = qp.u[d];
       if (!initial)
@@ -209,11 +209,11 @@ void updateElemState(std::vector<QPState>& qps,
       }
     }
 
-    const real_type h = elemLength(ev, q, qp.u);
+    const Real h = elemLength(ev, iq, qp.u);
     if (h > 0.0)
     {
-      real_type vel_mag2 = 0.0;
-      for (index_type d = 0; d < nd; ++d)
+      Real vel_mag2 = 0.0;
+      for (Index d = 0; d < nd; ++d)
       {
         vel_mag2 += qp.u[d] * qp.u[d];
       }
@@ -221,7 +221,7 @@ void updateElemState(std::vector<QPState>& qps,
     }
 
     qp.tau = stabilization(qp.u, fluid, dt, h, nd);
-    for (index_type c = 0; c < nd; ++c)
+    for (Index c = 0; c < nd; ++c)
     {
       qp.u_adv_grad_u[c] =
           advectiveDerivative(qp.grad_u, qp.u_adv, c, nd);
@@ -230,23 +230,23 @@ void updateElemState(std::vector<QPState>& qps,
 }
 
 void assembleElemSystem(const MixedFESpace&   space,
-                        index_type            cell,
+                        Index                 ic,
                         ElementValues&        ev,
                         std::vector<QPState>& qps,
                         const Vector&         x,
                         const Vector&         xp,
                         bool                  initial,
                         const FluidParams&    fluid,
-                        real_type             dt,
+                        Real                  dt,
                         DenseMatrix&          Ke,
                         Vector&               Fe,
-                        real_type&            max_cfl)
+                        Real&                 max_cfl)
 {
-  ev.reinit(space.mesh().cell(cell));
+  ev.reinit(space.mesh().cell(ic));
   updateElemState(qps,
                   ev,
                   space,
-                  cell,
+                  ic,
                   x,
                   xp,
                   initial,
@@ -270,13 +270,13 @@ void assembleElemSystem(const MixedFESpace&   space,
 }
 
 void elemResidualFromSystem(const MixedFESpace& space,
-                            index_type          cell,
+                            Index               ic,
                             const DenseMatrix&  Ke,
                             const Vector&       Fe,
                             const Vector&       x_next,
                             Vector&             Re)
 {
-  const index_type ndofs = space.numDofsPerElem();
+  const Index ndofs = space.numDofsPerElem();
   if (Ke.rows() != ndofs || Ke.cols() != ndofs || Fe.size() != ndofs)
   {
     throw std::runtime_error("Element system size does not match mixed space");
@@ -291,13 +291,13 @@ void elemResidualFromSystem(const MixedFESpace& space,
     Re.setZero();
   }
 
-  std::vector<index_type> dofs;
-  space.elemDofs(cell, dofs);
+  std::vector<Index> dofs;
+  space.elemDofs(ic, dofs);
 
-  for (index_type i = 0; i < ndofs; ++i)
+  for (Index i = 0; i < ndofs; ++i)
   {
-    real_type value = -Fe[i];
-    for (index_type j = 0; j < ndofs; ++j)
+    Real value = -Fe[i];
+    for (Index j = 0; j < ndofs; ++j)
     {
       value += Ke(i, j) * x_next[dofs[static_cast<std::size_t>(j)]];
     }
@@ -306,7 +306,7 @@ void elemResidualFromSystem(const MixedFESpace& space,
 }
 
 void assembleElemResidual(const MixedFESpace&   space,
-                          index_type            cell,
+                          Index                 ic,
                           ElementValues&        ev,
                           std::vector<QPState>& qps,
                           const Vector&         x_next,
@@ -314,15 +314,15 @@ void assembleElemResidual(const MixedFESpace&   space,
                           const Vector&         xp,
                           bool                  initial,
                           const FluidParams&    fluid,
-                          real_type             dt,
+                          Real                  dt,
                           Vector&               Re,
-                          real_type&            max_cfl)
+                          Real&                 max_cfl)
 {
   DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
   Vector      Fe(space.numDofsPerElem());
 
   assembleElemSystem(space,
-                     cell,
+                     ic,
                      ev,
                      qps,
                      x,
@@ -333,7 +333,7 @@ void assembleElemResidual(const MixedFESpace&   space,
                      Ke,
                      Fe,
                      max_cfl);
-  elemResidualFromSystem(space, cell, Ke, Fe, x_next, Re);
+  elemResidualFromSystem(space, ic, Ke, Fe, x_next, Re);
 }
 
 void assembleSystem(const MixedFESpace&         space,
@@ -341,32 +341,31 @@ void assembleSystem(const MixedFESpace&         space,
                     const Vector&               xp,
                     bool                        initial,
                     const FluidParams&          fluid,
-                    real_type                   dt,
+                    Real                        dt,
                     system::SparseSystemMatrix& A,
                     Vector&                     b,
                     AssemblyStats&              stats)
 {
   const auto& elem = space.field(0).space().finiteElement();
-  const auto  quad =
-      GaussQuadrature::make(elem.referenceElement(), 2);
-  const index_type nq = quad.size();
+  const auto  quad = GaussQuadrature::make(elem.referenceElement(), 2);
+  const Index nq = quad.size();
 
   assembly::SystemAssembler initializer(space);
   initializer.initMat(A);
   initializer.initVec(b);
-  real_type max_cfl = 0.0;
+  Real max_cfl = 0.0;
 
 #pragma omp parallel reduction(max : max_cfl)
   {
     ElementValues             ev(elem, quad);
     std::vector<QPState>      qps(static_cast<std::size_t>(nq));
-    assembly::SystemAssembler assembler(
-        space, assembly::SystemAssembler::AssemblyMode::Atomic);
+    assembly::SystemAssembler assembler(space, assembly::AssemblyMode::Atomic);
+
     DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector      Fe(space.numDofsPerElem());
 
 #pragma omp for
-    for (index_type ic = 0; ic < space.mesh().numElems(); ++ic)
+    for (Index ic = 0; ic < space.mesh().numElems(); ++ic)
     {
       assembleElemSystem(space,
                          ic,

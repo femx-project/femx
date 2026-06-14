@@ -13,15 +13,15 @@ class SystemVector
 public:
   virtual ~SystemVector() = default;
 
-  virtual index_type size() const = 0;
+  virtual Index size() const = 0;
 
-  virtual void resize(index_type size)              = 0;
-  virtual void setZero()                            = 0;
-  virtual void set(index_type row, real_type value) = 0;
-  virtual void add(index_type row, real_type value) = 0;
-  virtual void finalize()                           = 0;
+  virtual void resize(Index size)         = 0;
+  virtual void setZero()                  = 0;
+  virtual void set(Index row, Real value) = 0;
+  virtual void add(Index row, Real value) = 0;
+  virtual void finalize()                 = 0;
 
-  virtual void addAtomic(index_type row, real_type value)
+  virtual void addAtomic(Index row, Real value)
   {
     add(row, value);
   }

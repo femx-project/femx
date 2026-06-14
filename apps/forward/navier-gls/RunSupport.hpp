@@ -21,10 +21,10 @@ class MixedFESpace;
 
 struct AppOptions
 {
-  std::string               config_file;
-  std::optional<index_type> steps;
-  bool                      help      = false;
-  bool                      no_output = false;
+  std::string          config_file;
+  std::optional<Index> steps;
+  bool                 help      = false;
+  bool                 no_output = false;
 };
 
 struct BuildInfo
@@ -34,21 +34,11 @@ struct BuildInfo
 
 struct Snapshot
 {
-  real_type time{0.0};
-  Vector    ux;
-  Vector    uy;
-  Vector    uz;
-  Vector    p;
-};
-
-struct TimingStats
-{
-  double assembly = 0.0;
-  double bc       = 0.0;
-  double solve    = 0.0;
-  double gather   = 0.0;
-  double output   = 0.0;
-  double total    = 0.0;
+  Real   time{0.0};
+  Vector ux;
+  Vector uy;
+  Vector uz;
+  Vector p;
 };
 
 using Clock = std::chrono::high_resolution_clock;
@@ -77,13 +67,13 @@ std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
 
 bool isFinite(const Vector& x);
 
-bool shouldWriteOutput(index_type          step,
-                       index_type          num_steps,
+bool shouldWriteOutput(Index               step,
+                       Index               num_steps,
                        const OutputParams& params);
 
 Snapshot makeSnapshot(const MixedFESpace& space,
                       const Vector&       x,
-                      real_type           time);
+                      Real                time);
 
 void writeOutput(const Mesh&                  mesh,
                  const OutputParams&          params,
@@ -92,10 +82,5 @@ void writeOutput(const Mesh&                  mesh,
 void writeBuildInfo(const OutputParams& params, const BuildInfo& info);
 
 std::ofstream openRunLog(const OutputParams& params);
-
-void writeTimingSummary(std::ostream&      out,
-                        const TimingStats& timing,
-                        index_type         steps,
-                        index_type         ranks);
 
 } // namespace femx

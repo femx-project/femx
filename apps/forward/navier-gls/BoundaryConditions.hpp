@@ -14,6 +14,6 @@ namespace femx
 DirichletCondition makeBoundaryCondition(
     const MixedFESpace&           space,
     const std::vector<BCsParams>& bcs,
-    real_type                     time);
+    Real                          time);
 
 } // namespace femx

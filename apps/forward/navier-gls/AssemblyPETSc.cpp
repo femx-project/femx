@@ -21,7 +21,7 @@ void assembleSystem(const MixedFESpace&        space,
                     const Vector&              xp,
                     bool                       initial,
                     const FluidParams&         fluid,
-                    real_type                  dt,
+                    Real                       dt,
                     const CellRange&           cells,
                     system::PETScSystemMatrix& A,
                     system::PETScSystemVector& b,
@@ -40,9 +40,9 @@ void assembleSystem(const MixedFESpace&        space,
   DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
   Vector               Fe(space.numDofsPerElem());
 
-  real_type cfl_local = 0.0;
+  Real cfl_local = 0.0;
 
-  for (index_type ic = cells.begin; ic < cells.end; ++ic)
+  for (Index ic = cells.begin; ic < cells.end; ++ic)
   {
     assembleElemSystem(space,
                        ic,
@@ -64,7 +64,7 @@ void assembleSystem(const MixedFESpace&        space,
   A.finalize();
   b.finalize();
 
-  real_type cfl_global = 0.0;
+  Real cfl_global = 0.0;
   MPI_Allreduce(&cfl_local,
                 &cfl_global,
                 1,

@@ -5,51 +5,51 @@
 namespace femx
 {
 
-DofMap::DofMap(index_type num_elements, index_type num_dofs_per_elem)
+DofMap::DofMap(Index num_elems, Index num_dofs_per_elem)
 {
-  allocate(num_elements, num_dofs_per_elem);
+  allocate(num_elems, num_dofs_per_elem);
 }
 
-void DofMap::allocate(index_type num_elements, index_type num_dofs_per_elem)
+void DofMap::allocate(Index num_elems, Index num_dofs_per_elem)
 {
-  if (num_elements < 0 || num_dofs_per_elem <= 0)
+  if (num_elems < 0 || num_dofs_per_elem <= 0)
   {
     throw std::runtime_error("DofMap: invalid size");
   }
 
-  num_elements_      = num_elements;
+  num_elems_      = num_elems;
   num_dofs_per_elem_ = num_dofs_per_elem;
-  elem_dofs_.assign(static_cast<std::size_t>(num_elements_) * static_cast<std::size_t>(num_dofs_per_elem_), 0);
+  elem_dofs_.assign(static_cast<std::size_t>(num_elems_) * static_cast<std::size_t>(num_dofs_per_elem_), 0);
 }
 
-index_type DofMap::numElements() const noexcept
+Index DofMap::numElements() const noexcept
 {
-  return num_elements_;
+  return num_elems_;
 }
 
-index_type DofMap::numElementDofs() const noexcept
+Index DofMap::numElementDofs() const noexcept
 {
   return num_dofs_per_elem_;
 }
 
-index_type DofMap::elementDof(index_type elem_id, index_type local_id) const noexcept
+Index DofMap::elementDof(Index ie, Index il) const noexcept
 {
-  return elem_dofs_[offset(elem_id, local_id)];
+  return elem_dofs_[offset(ie, il)];
 }
 
-void DofMap::setElementDof(index_type elem_id, index_type local_id, index_type gdof) noexcept
+void DofMap::setElementDof(Index ie, Index il, Index gdof) noexcept
 {
-  elem_dofs_[offset(elem_id, local_id)] = gdof;
+  elem_dofs_[offset(ie, il)] = gdof;
 }
 
-const index_type* DofMap::elementDofsData(index_type elem_id) const noexcept
+const Index* DofMap::elementDofsData(Index ie) const noexcept
 {
-  return elem_dofs_.data() + static_cast<std::size_t>(elem_id) * static_cast<std::size_t>(num_dofs_per_elem_);
+  return elem_dofs_.data() + static_cast<std::size_t>(ie) * static_cast<std::size_t>(num_dofs_per_elem_);
 }
 
-std::size_t DofMap::offset(index_type elem_id, index_type local_id) const noexcept
+std::size_t DofMap::offset(Index ie, Index il) const noexcept
 {
-  return static_cast<std::size_t>(elem_id) * static_cast<std::size_t>(num_dofs_per_elem_) + static_cast<std::size_t>(local_id);
+  return static_cast<std::size_t>(ie) * static_cast<std::size_t>(num_dofs_per_elem_) + static_cast<std::size_t>(il);
 }
 
 } // namespace femx

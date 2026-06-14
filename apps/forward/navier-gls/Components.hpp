@@ -19,24 +19,24 @@ namespace femx
  */
 struct QPState
 {
-  std::array<real_type, 3> u{};
-  std::array<real_type, 3> u_adv{};
-  real_type                grad_u[3][3]{};
-  std::array<real_type, 3> u_adv_grad_u{};
-  std::array<real_type, 3> tau{};
+  std::array<Real, 3> u{};
+  std::array<Real, 3> u_adv{};
+  Real                grad_u[3][3]{};
+  std::array<Real, 3> u_adv_grad_u{};
+  std::array<Real, 3> tau{};
 };
 
 /** @brief Assemble the mass terms. */
 void assembleMassLHS(const ElementValues& ev,
                      const FluidParams&   fluid,
-                     real_type            dt,
+                     Real                 dt,
                      DenseMatrix&         Ke);
 
 /** @brief Assemble the mass temrs. */
 void assembleMassRHS(const ElementValues&        ev,
                      const std::vector<QPState>& qps,
                      const FluidParams&          fluid,
-                     real_type                   dt,
+                     Real                        dt,
                      Vector&                     Fe);
 
 /** @brief Assemble the advection terms. */
@@ -70,14 +70,14 @@ void assemblePreVelCouplingLHS(const ElementValues& ev,
 void assembleStabilizationLHS(const ElementValues&        ev,
                               const std::vector<QPState>& qps,
                               const FluidParams&          fluid,
-                              real_type                   dt,
+                              Real                        dt,
                               DenseMatrix&                Ke);
 
 /** @brief Assemble GLS stabilization terms. */
 void assembleStabilizationRHS(const ElementValues&        ev,
                               const std::vector<QPState>& qps,
                               const FluidParams&          fluid,
-                              real_type                   dt,
+                              Real                        dt,
                               Vector&                     Fe);
 
 } // namespace femx

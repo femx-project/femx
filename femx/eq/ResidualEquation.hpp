@@ -5,7 +5,7 @@
 
 namespace femx
 {
-namespace equation
+namespace eq
 {
 
 /** @brief Nonlinear state equation represented by a residual R(u, m) = 0. */
@@ -14,13 +14,13 @@ class ResidualEquation
 public:
   virtual ~ResidualEquation() = default;
 
-  virtual index_type numStates() const    = 0;
-  virtual index_type numParams() const    = 0;
-  virtual index_type numResiduals() const = 0;
+  virtual Index numStates() const    = 0;
+  virtual Index numParams() const    = 0;
+  virtual Index numRes() const = 0;
 
-  virtual void residual(const Vector& state,
-                        const Vector& params,
-                        Vector&       out) const = 0;
+  virtual void res(const Vector& state,
+                   const Vector& params,
+                   Vector&       out) const = 0;
 
   virtual void applyStateJac(const Vector& state,
                              const Vector& params,
@@ -43,5 +43,5 @@ public:
                               Vector&       out) const = 0;
 };
 
-} // namespace equation
+} // namespace eq
 } // namespace femx

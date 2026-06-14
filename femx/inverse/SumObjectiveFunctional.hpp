@@ -16,8 +16,8 @@ namespace inverse
 class SumObjectiveFunctional final : public ObjectiveFunctional
 {
 public:
-  SumObjectiveFunctional(index_type num_states,
-                         index_type num_params)
+  SumObjectiveFunctional(Index num_states,
+                         Index num_params)
     : num_states_(num_states),
       num_params_(num_params)
   {
@@ -39,20 +39,20 @@ public:
     return *this;
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
     return num_states_;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return num_params_;
   }
 
-  real_type value(const Vector& state,
-                  const Vector& params) const override
+  Real value(const Vector& state,
+             const Vector& params) const override
   {
-    real_type value_out = 0.0;
+    Real value_out = 0.0;
     for (const ObjectiveFunctional* term : terms_)
     {
       value_out += term->value(state, params);
@@ -87,7 +87,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -99,22 +99,22 @@ private:
     }
   }
 
-  static void addInto(const Vector& input, Vector& out, index_type size)
+  static void addInto(const Vector& input, Vector& out, Index size)
   {
     if (input.size() != size)
     {
       throw std::runtime_error(
           "SumObjectiveFunctional term gradient size mismatch");
     }
-    for (index_type i = 0; i < size; ++i)
+    for (Index i = 0; i < size; ++i)
     {
       out[i] += input[i];
     }
   }
 
 private:
-  index_type                              num_states_{0};
-  index_type                              num_params_{0};
+  Index                                   num_states_{0};
+  Index                                   num_params_{0};
   std::vector<const ObjectiveFunctional*> terms_;
 };
 

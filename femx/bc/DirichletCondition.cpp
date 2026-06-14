@@ -3,45 +3,45 @@
 #include <string>
 
 #include <femx/bc/DirichletCondition.hpp>
-#include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/FESpace.hpp>
+#include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 
-void DirichletCondition::addDof(index_type dof, real_type value)
+void DirichletCondition::addDof(Index dof, Real value)
 {
   dofs_.push_back(dof);
   values_.push_back(value);
 }
 
 void DirichletCondition::addBoundary(const FESpace& space,
-                                     index_type     physical_tag,
-                                     real_type      value,
-                                     real_type      time,
-                                     index_type     component)
+                                     Index          physical_tag,
+                                     Real           value,
+                                     Real           time,
+                                     Index          component)
 {
-  addBoundary(space, physical_tag, [value](const Mesh::Node&, real_type)
+  addBoundary(space, physical_tag, [value](const Mesh::Node&, Real)
               { return value; },
               time,
               component);
 }
 
 void DirichletCondition::addBoundary(const FESpace&       space,
-                                     index_type           physical_tag,
+                                     Index                physical_tag,
                                      const BoundaryValue& value,
-                                     real_type            time,
-                                     index_type           component)
+                                     Real                 time,
+                                     Index                component)
 {
   if (component < 0 || component >= space.numComponents())
   {
     throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
-  const Mesh&          mesh = space.mesh();
-  std::set<index_type> nodes;
+  const Mesh&     mesh = space.mesh();
+  std::set<Index> nodes;
   for (const auto& facet : mesh.boundaryFacets())
   {
     if (facet.physical_tag == physical_tag)
@@ -56,38 +56,38 @@ void DirichletCondition::addBoundary(const FESpace&       space,
         "No boundary facets found for physical tag " + std::to_string(physical_tag));
   }
 
-  for (index_type node : nodes)
+  for (Index in : nodes)
   {
-    const auto& point = mesh.node(node);
-    addDof(space.globalDof(node, component), value(point, time));
+    const auto& point = mesh.node(in);
+    addDof(space.globalDof(in, component), value(point, time));
   }
 }
 
 void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     index_type            physical_tag,
-                                     real_type             value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Index                 physical_tag,
+                                     Real                  value,
+                                     Real                  time,
+                                     Index                 component)
 {
-  addBoundary(field, physical_tag, [value](const Mesh::Node&, real_type)
+  addBoundary(field, physical_tag, [value](const Mesh::Node&, Real)
               { return value; },
               time,
               component);
 }
 
 void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     index_type            physical_tag,
+                                     Index                 physical_tag,
                                      const BoundaryValue&  value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Real                  time,
+                                     Index                 component)
 {
   if (component < 0 || component >= field.numComponents())
   {
     throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
-  const Mesh&          mesh = field.space().mesh();
-  std::set<index_type> nodes;
+  const Mesh&     mesh = field.space().mesh();
+  std::set<Index> nodes;
   for (const auto& facet : mesh.boundaryFacets())
   {
     if (facet.physical_tag == physical_tag)
@@ -102,20 +102,20 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
         "No boundary facets found for physical tag " + std::to_string(physical_tag));
   }
 
-  for (index_type node : nodes)
+  for (Index in : nodes)
   {
-    const auto& point = mesh.node(node);
-    addDof(field.globalDof(node, component), value(point, time));
+    const auto& point = mesh.node(in);
+    addDof(field.globalDof(in, component), value(point, time));
   }
 }
 
 void DirichletCondition::addBoundary(const FESpace&        space,
                                      const BoundaryMarker& marker,
-                                     real_type             value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Real                  value,
+                                     Real                  time,
+                                     Index                 component)
 {
-  addBoundary(space, marker, [value](const Mesh::Node&, real_type)
+  addBoundary(space, marker, [value](const Mesh::Node&, Real)
               { return value; },
               time,
               component);
@@ -124,8 +124,8 @@ void DirichletCondition::addBoundary(const FESpace&        space,
 void DirichletCondition::addBoundary(const FESpace&        space,
                                      const BoundaryMarker& marker,
                                      const BoundaryValue&  value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Real                  time,
+                                     Index                 component)
 {
   if (component < 0 || component >= space.numComponents())
   {
@@ -133,7 +133,7 @@ void DirichletCondition::addBoundary(const FESpace&        space,
   }
 
   const Mesh& mesh = space.mesh();
-  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     const auto& point = mesh.node(in);
     if (marker(point, time))
@@ -145,11 +145,11 @@ void DirichletCondition::addBoundary(const FESpace&        space,
 
 void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      const BoundaryMarker& marker,
-                                     real_type             value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Real                  value,
+                                     Real                  time,
+                                     Index                 component)
 {
-  addBoundary(field, marker, [value](const Mesh::Node&, real_type)
+  addBoundary(field, marker, [value](const Mesh::Node&, Real)
               { return value; },
               time,
               component);
@@ -158,8 +158,8 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
 void DirichletCondition::addBoundary(const MixedFieldView& field,
                                      const BoundaryMarker& marker,
                                      const BoundaryValue&  value,
-                                     real_type             time,
-                                     index_type            component)
+                                     Real                  time,
+                                     Index                 component)
 {
   if (component < 0 || component >= field.numComponents())
   {
@@ -167,7 +167,7 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
   }
 
   const Mesh& mesh = field.space().mesh();
-  for (index_type in = 0; in < mesh.numNodes(); ++in)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     const auto& point = mesh.node(in);
     if (marker(point, time))
@@ -177,12 +177,12 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
   }
 }
 
-const std::vector<index_type>& DirichletCondition::dofs() const noexcept
+const std::vector<Index>& DirichletCondition::dofs() const noexcept
 {
   return dofs_;
 }
 
-const std::vector<real_type>& DirichletCondition::values() const noexcept
+const std::vector<Real>& DirichletCondition::values() const noexcept
 {
   return values_;
 }
@@ -194,18 +194,18 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
     throw std::runtime_error("DirichletCondition has inconsistent data");
   }
 
-  const index_type* row_ptr = A.rowPtrData();
-  const index_type* col_ind = A.colIndData();
-  real_type*        values  = A.valuesData();
+  const Index* row_ptr = A.rowPtrData();
+  const Index* col_ind = A.colIndData();
+  Real*        values  = A.valuesData();
 
-  std::vector<char>      is_dirichlet(static_cast<std::size_t>(A.rows()), 0);
-  std::vector<char>      found_diagonal(static_cast<std::size_t>(A.rows()), 0);
-  std::vector<real_type> dirichlet_values(static_cast<std::size_t>(A.rows()), 0.0);
+  std::vector<char> is_dirichlet(static_cast<std::size_t>(A.rows()), 0);
+  std::vector<char> found_diagonal(static_cast<std::size_t>(A.rows()), 0);
+  std::vector<Real> dirichlet_values(static_cast<std::size_t>(A.rows()), 0.0);
 
   for (std::size_t c = 0; c < dofs_.size(); ++c)
   {
-    const index_type dof   = dofs_[c];
-    const real_type  value = values_[c];
+    const Index dof   = dofs_[c];
+    const Real  value = values_[c];
 
     if (dof < 0 || dof >= A.rows() || dof >= b.size())
     {
@@ -216,14 +216,14 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
     dirichlet_values[static_cast<std::size_t>(dof)] = value;
   }
 
-  for (index_type row = 0; row < A.rows(); ++row)
+  for (Index row = 0; row < A.rows(); ++row)
   {
     const bool row_is_dirichlet =
         is_dirichlet[static_cast<std::size_t>(row)] != 0;
 
-    for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
     {
-      const index_type col = col_ind[k];
+      const Index col = col_ind[k];
 
       if (row_is_dirichlet)
       {
@@ -247,7 +247,7 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
     }
   }
 
-  for (index_type dof = 0; dof < A.rows(); ++dof)
+  for (Index dof = 0; dof < A.rows(); ++dof)
   {
     if (is_dirichlet[static_cast<std::size_t>(dof)] != 0 && found_diagonal[static_cast<std::size_t>(dof)] == 0)
     {

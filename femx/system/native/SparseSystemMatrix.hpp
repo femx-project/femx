@@ -4,11 +4,11 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/SystemMatrix.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/MatrixBackend.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -20,22 +20,22 @@ class SparseSystemMatrix final : public SystemMatrix
 {
 public:
   explicit SparseSystemMatrix(const CsrPattern& pattern,
-                              MatrixBackend               backend = MatrixBackend::HostCsr)
-    : matrix_(pattern, backend)
+                              MatrixBackend     backend = MatrixBackend::HostCsr)
+    : mat_(pattern, backend)
   {
   }
 
-  index_type numRows() const override
+  Index numRows() const override
   {
-    return matrix_.rows();
+    return mat_.rows();
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
-    return matrix_.cols();
+    return mat_.cols();
   }
 
-  void resize(index_type rows, index_type cols) override
+  void resize(Index rows, Index cols) override
   {
     if (rows != numRows() || cols != numCols())
     {
@@ -46,23 +46,23 @@ public:
 
   void setZero() override
   {
-    matrix_.setZero();
+    mat_.setZero();
   }
 
-  void set(index_type row, index_type col, real_type value) override
+  void set(Index row, Index col, Real value) override
   {
-    matrix_.valuesData()[findEntry(row, col)] = value;
+    mat_.valuesData()[findEntry(row, col)] = value;
   }
 
-  void add(index_type row, index_type col, real_type value) override
+  void add(Index row, Index col, Real value) override
   {
-    matrix_.valuesData()[findEntry(row, col)] += value;
+    mat_.valuesData()[findEntry(row, col)] += value;
   }
 
-  void addAtomic(index_type row, index_type col, real_type value) override
+  void addAtomic(Index row, Index col, Real value) override
   {
-    real_type*       values = matrix_.valuesData();
-    const index_type entry  = findEntry(row, col);
+    Real*       values = mat_.valuesData();
+    const Index entry  = findEntry(row, col);
 #pragma omp atomic update
     values[static_cast<std::size_t>(entry)] += value;
   }
@@ -80,14 +80,14 @@ public:
     }
 
     resizeVector(out, numRows());
-    const index_type* row_ptr = matrix_.rowPtrData();
-    const index_type* col_ind = matrix_.colIndData();
-    const real_type*  values  = matrix_.valuesData();
+    const Index* row_ptr = mat_.rowPtrData();
+    const Index* col_ind = mat_.colIndData();
+    const Real*  values  = mat_.valuesData();
 
-    for (index_type row = 0; row < numRows(); ++row)
+    for (Index row = 0; row < numRows(); ++row)
     {
-      real_type sum = 0.0;
-      for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      Real sum = 0.0;
+      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
       {
         sum += values[k] * dir[col_ind[k]];
       }
@@ -104,13 +104,13 @@ public:
     }
 
     resizeVector(out, numCols());
-    const index_type* row_ptr = matrix_.rowPtrData();
-    const index_type* col_ind = matrix_.colIndData();
-    const real_type*  values  = matrix_.valuesData();
+    const Index* row_ptr = mat_.rowPtrData();
+    const Index* col_ind = mat_.colIndData();
+    const Real*  values  = mat_.valuesData();
 
-    for (index_type row = 0; row < numRows(); ++row)
+    for (Index row = 0; row < numRows(); ++row)
     {
-      for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
       {
         out[col_ind[k]] += values[k] * dir[row];
       }
@@ -119,25 +119,25 @@ public:
 
   SparseMatrix& matrix()
   {
-    return matrix_;
+    return mat_;
   }
 
   const SparseMatrix& matrix() const
   {
-    return matrix_;
+    return mat_;
   }
 
 private:
-  index_type findEntry(index_type row, index_type col) const
+  Index findEntry(Index row, Index col) const
   {
     if (row < 0 || row >= numRows() || col < 0 || col >= numCols())
     {
       throw std::runtime_error("SparseSystemMatrix index is out of range");
     }
 
-    const index_type* row_ptr = matrix_.rowPtrData();
-    const index_type* col_ind = matrix_.colIndData();
-    for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+    const Index* row_ptr = mat_.rowPtrData();
+    const Index* col_ind = mat_.colIndData();
+    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
     {
       if (col_ind[k] == col)
       {
@@ -149,7 +149,7 @@ private:
         "SparseSystemMatrix entry is outside the sparsity pattern");
   }
 
-  static void resizeVector(Vector& out, index_type size)
+  static void resizeVector(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -162,7 +162,7 @@ private:
   }
 
 private:
-  SparseMatrix matrix_;
+  SparseMatrix mat_;
 };
 
 } // namespace system

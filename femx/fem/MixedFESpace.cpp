@@ -7,8 +7,8 @@ namespace femx
 {
 
 MixedFieldView::MixedFieldView(const FESpace* space,
-                               index_type     local_offset,
-                               index_type     global_offset)
+                               Index          local_offset,
+                               Index          global_offset)
   : space_(space),
     local_offset_(local_offset),
     global_offset_(global_offset)
@@ -20,29 +20,29 @@ const FESpace& MixedFieldView::space() const noexcept
   return *space_;
 }
 
-index_type MixedFieldView::numComponents() const noexcept
+Index MixedFieldView::numComponents() const noexcept
 {
   return space_->numComponents();
 }
 
-index_type MixedFieldView::numShapesPerElem() const noexcept
+Index MixedFieldView::numShapesPerElem() const noexcept
 {
   return space_->numShapesPerElem();
 }
 
-index_type MixedFieldView::numDofsPerElem() const noexcept
+Index MixedFieldView::numDofsPerElem() const noexcept
 {
   return space_->numDofsPerElem();
 }
 
-index_type MixedFieldView::localDof(index_type shape_index,
-                                    index_type component) const noexcept
+Index MixedFieldView::localDof(Index shape_index,
+                               Index component) const noexcept
 {
   return local_offset_ + space_->localDof(shape_index, component);
 }
 
-index_type MixedFieldView::globalDof(index_type scalar_dof,
-                                     index_type component) const noexcept
+Index MixedFieldView::globalDof(Index scalar_dof,
+                                Index component) const noexcept
 {
   return global_offset_ + space_->globalDof(scalar_dof, component);
 }
@@ -81,9 +81,9 @@ void MixedFESpace::setup()
   }
 }
 
-MixedFieldView MixedFESpace::field(index_type field_id) const
+MixedFieldView MixedFESpace::field(Index field_id) const
 {
-  if (field_id < 0 || field_id >= static_cast<index_type>(fields_.size()))
+  if (field_id < 0 || field_id >= static_cast<Index>(fields_.size()))
   {
     throw std::runtime_error("MixedFESpace: field id out of range");
   }
@@ -97,36 +97,36 @@ const Mesh& MixedFESpace::mesh() const noexcept
   return fields_[0].mesh();
 }
 
-index_type MixedFESpace::numFields() const noexcept
+Index MixedFESpace::numFields() const noexcept
 {
-  return static_cast<index_type>(fields_.size());
+  return static_cast<Index>(fields_.size());
 }
 
-index_type MixedFESpace::numElems() const noexcept
+Index MixedFESpace::numElems() const noexcept
 {
   return fields_[0].numElems();
 }
 
-index_type MixedFESpace::numDofs() const noexcept
+Index MixedFESpace::numDofs() const noexcept
 {
   return num_dofs_;
 }
 
-index_type MixedFESpace::numDofsPerElem() const noexcept
+Index MixedFESpace::numDofsPerElem() const noexcept
 {
   return num_dofs_per_elem_;
 }
 
-void MixedFESpace::elemDofs(index_type               ic,
-                            std::vector<index_type>& dofs) const
+void MixedFESpace::elemDofs(Index               ic,
+                            std::vector<Index>& dofs) const
 {
   dofs.resize(static_cast<std::size_t>(num_dofs_per_elem_));
 
-  index_type offset = 0;
+  Index offset = 0;
   for (std::size_t i = 0; i < fields_.size(); ++i)
   {
-    const index_type* field_dofs = fields_[i].dofMap().elementDofsData(ic);
-    for (index_type j = 0; j < fields_[i].numDofsPerElem(); ++j)
+    const Index* field_dofs = fields_[i].dofMap().elementDofsData(ic);
+    for (Index j = 0; j < fields_[i].numDofsPerElem(); ++j)
     {
       dofs[static_cast<std::size_t>(offset + j)] =
           global_offsets_[i] + field_dofs[j];
@@ -135,9 +135,9 @@ void MixedFESpace::elemDofs(index_type               ic,
   }
 }
 
-std::vector<index_type> MixedFESpace::elemDofs(index_type ic) const
+std::vector<Index> MixedFESpace::elemDofs(Index ic) const
 {
-  std::vector<index_type> dofs;
+  std::vector<Index> dofs;
   elemDofs(ic, dofs);
   return dofs;
 }

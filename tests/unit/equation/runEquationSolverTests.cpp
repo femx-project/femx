@@ -13,7 +13,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, index_type size)
+void resize(Vector& out, Index size)
 {
   if (out.size() != size)
   {
@@ -28,12 +28,12 @@ void resize(Vector& out, index_type size)
 class TwoByTwoOperator final : public system::LinearOperator
 {
 public:
-  index_type numRows() const override
+  Index numRows() const override
   {
     return 2;
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
     return 2;
   }
@@ -53,29 +53,29 @@ public:
   }
 };
 
-class LinearResidualEquation final : public equation::ResidualEquation
+class LinearResidualEquation final : public eq::ResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * params[0] - 2.0 * params[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -89,7 +89,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
@@ -113,7 +113,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 5.0 * dir[0] - 2.0 * dir[1];
     out[1] = 13.0 * dir[0] + 4.0 * dir[1];
   }
@@ -163,9 +163,9 @@ public:
     TestStatus status;
     status = true;
 
-    LinearResidualEquation      equation;
-    system::DenseLinearSolver   lin_solver;
-    equation::NewtonStateSolver state_solver(equation, lin_solver);
+    LinearResidualEquation    equation;
+    system::DenseLinearSolver lin_solver;
+    eq::NewtonStateSolver     state_solver(equation, lin_solver);
 
     Vector params(2);
     params[0] = 0.05;
@@ -177,10 +177,10 @@ public:
     status *= isEqual(state[0], -1.48);
     status *= isEqual(state[1], 0.89);
 
-    Vector residual;
-    equation.residual(state, params, residual);
-    status *= isEqual(residual[0], 0.0);
-    status *= isEqual(residual[1], 0.0);
+    Vector res;
+    equation.res(state, params, res);
+    status *= isEqual(res[0], 0.0);
+    status *= isEqual(res[1], 0.0);
 
     return status.report(__func__);
   }

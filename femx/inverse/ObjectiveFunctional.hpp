@@ -14,11 +14,11 @@ class ObjectiveFunctional
 public:
   virtual ~ObjectiveFunctional() = default;
 
-  virtual index_type numStates() const = 0;
-  virtual index_type numParams() const = 0;
+  virtual Index numStates() const = 0;
+  virtual Index numParams() const = 0;
 
-  virtual real_type value(const Vector& state,
-                          const Vector& params) const = 0;
+  virtual Real value(const Vector& state,
+                     const Vector& params) const = 0;
 
   virtual void stateGrad(const Vector& state,
                          const Vector& params,

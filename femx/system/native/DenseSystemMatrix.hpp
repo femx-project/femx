@@ -3,9 +3,9 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/SystemMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -16,39 +16,39 @@ namespace system
 class DenseSystemMatrix final : public SystemMatrix
 {
 public:
-  index_type numRows() const override
+  Index numRows() const override
   {
-    return matrix_.rows();
+    return mat_.rows();
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
-    return matrix_.cols();
+    return mat_.cols();
   }
 
-  void resize(index_type rows, index_type cols) override
+  void resize(Index rows, Index cols) override
   {
-    matrix_.resize(rows, cols);
+    mat_.resize(rows, cols);
   }
 
   void setZero() override
   {
-    matrix_.setZero();
+    mat_.setZero();
   }
 
-  void set(index_type row, index_type col, real_type value) override
+  void set(Index row, Index col, Real value) override
   {
-    matrix_(row, col) = value;
+    mat_(row, col) = value;
   }
 
-  void add(index_type row, index_type col, real_type value) override
+  void add(Index row, Index col, Real value) override
   {
-    matrix_(row, col) += value;
+    mat_(row, col) += value;
   }
 
-  void addAtomic(index_type row, index_type col, real_type value) override
+  void addAtomic(Index row, Index col, Real value) override
   {
-    real_type& entry = matrix_(row, col);
+    Real& entry = mat_(row, col);
 #pragma omp atomic update
     entry += value;
   }
@@ -66,11 +66,11 @@ public:
     }
 
     resizeVector(out, numRows());
-    for (index_type i = 0; i < numRows(); ++i)
+    for (Index i = 0; i < numRows(); ++i)
     {
-      for (index_type j = 0; j < numCols(); ++j)
+      for (Index j = 0; j < numCols(); ++j)
       {
-        out[i] += matrix_(i, j) * dir[j];
+        out[i] += mat_(i, j) * dir[j];
       }
     }
   }
@@ -84,27 +84,27 @@ public:
     }
 
     resizeVector(out, numCols());
-    for (index_type i = 0; i < numRows(); ++i)
+    for (Index i = 0; i < numRows(); ++i)
     {
-      for (index_type j = 0; j < numCols(); ++j)
+      for (Index j = 0; j < numCols(); ++j)
       {
-        out[j] += matrix_(i, j) * dir[i];
+        out[j] += mat_(i, j) * dir[i];
       }
     }
   }
 
   DenseMatrix& matrix()
   {
-    return matrix_;
+    return mat_;
   }
 
   const DenseMatrix& matrix() const
   {
-    return matrix_;
+    return mat_;
   }
 
 private:
-  static void resizeVector(Vector& out, index_type size)
+  static void resizeVector(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -117,7 +117,7 @@ private:
   }
 
 private:
-  DenseMatrix matrix_;
+  DenseMatrix mat_;
 };
 
 } // namespace system

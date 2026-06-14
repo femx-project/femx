@@ -14,13 +14,13 @@ class SystemMatrix : public LinearOperator
 public:
   ~SystemMatrix() override = default;
 
-  virtual void resize(index_type rows, index_type cols)             = 0;
-  virtual void setZero()                                            = 0;
-  virtual void set(index_type row, index_type col, real_type value) = 0;
-  virtual void add(index_type row, index_type col, real_type value) = 0;
-  virtual void finalize()                                           = 0;
+  virtual void resize(Index rows, Index cols)        = 0;
+  virtual void setZero()                             = 0;
+  virtual void set(Index row, Index col, Real value) = 0;
+  virtual void add(Index row, Index col, Real value) = 0;
+  virtual void finalize()                            = 0;
 
-  virtual void addAtomic(index_type row, index_type col, real_type value)
+  virtual void addAtomic(Index row, Index col, Real value)
   {
     add(row, col, value);
   }

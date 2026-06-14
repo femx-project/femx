@@ -10,7 +10,7 @@ namespace femx
 {
 
 SparseMatrix::SparseMatrix(const CsrPattern& pattern,
-                           MatrixBackend               backend)
+                           MatrixBackend     backend)
   : pattern_(&pattern)
 {
   switch (backend)
@@ -34,17 +34,17 @@ void SparseMatrix::setZero()
   impl_->setZero();
 }
 
-index_type SparseMatrix::rows() const
+Index SparseMatrix::rows() const
 {
   return impl_->rows();
 }
 
-index_type SparseMatrix::cols() const
+Index SparseMatrix::cols() const
 {
   return impl_->cols();
 }
 
-index_type SparseMatrix::nnz() const
+Index SparseMatrix::nnz() const
 {
   return impl_->nnz();
 }
@@ -59,22 +59,22 @@ MatrixBackend SparseMatrix::backend() const
   return impl_->backend();
 }
 
-const index_type* SparseMatrix::rowPtrData() const
+const Index* SparseMatrix::rowPtrData() const
 {
   return impl_->rowPtrData();
 }
 
-const index_type* SparseMatrix::colIndData() const
+const Index* SparseMatrix::colIndData() const
 {
   return impl_->colIndData();
 }
 
-real_type* SparseMatrix::valuesData()
+Real* SparseMatrix::valuesData()
 {
   return impl_->valuesData();
 }
 
-const real_type* SparseMatrix::valuesData() const
+const Real* SparseMatrix::valuesData() const
 {
   return impl_->valuesData();
 }

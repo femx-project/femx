@@ -14,17 +14,17 @@ namespace tests
 class LinearObservation final : public inverse::ObservationOperator
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numObservations() const override
+  Index numObservations() const override
   {
     return 2;
   }
@@ -87,7 +87,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {

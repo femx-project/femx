@@ -19,48 +19,48 @@ public:
 
   struct PhysicalName
   {
-    index_type  dim = 0;
-    index_type  tag = 0;
+    Index       dim = 0;
+    Index       tag = 0;
     std::string name;
   };
 
   struct BoundaryFacet
   {
-    index_type              dim          = 0;
-    index_type              entity_tag   = 0;
-    index_type              physical_tag = 0;
-    std::string             physical_name;
-    Cell::Shape             shape = Cell::Shape::Unknown;
-    std::vector<index_type> node_ids;
+    Index              dim          = 0;
+    Index              entity_tag   = 0;
+    Index              physical_tag = 0;
+    std::string        physical_name;
+    Cell::Shape        shape = Cell::Shape::Unknown;
+    std::vector<Index> node_ids;
   };
 
   Mesh() = default;
 
-  explicit Mesh(index_type dim)
+  explicit Mesh(Index dim)
     : dim_(dim)
   {
   }
 
-  static Mesh makeStructuredQuad(index_type nx,
-                                 index_type ny,
-                                 real_type  x_min = 0.0,
-                                 real_type  x_max = 1.0,
-                                 real_type  y_min = 0.0,
-                                 real_type  y_max = 1.0);
+  static Mesh makeStructuredQuad(Index nx,
+                                 Index ny,
+                                 Real  x_min = 0.0,
+                                 Real  x_max = 1.0,
+                                 Real  y_min = 0.0,
+                                 Real  y_max = 1.0);
 
-  index_type dim() const noexcept
+  Index dim() const noexcept
   {
     return dim_;
   }
 
-  index_type numNodes() const noexcept
+  Index numNodes() const noexcept
   {
-    return static_cast<index_type>(nodes_.size());
+    return static_cast<Index>(nodes_.size());
   }
 
-  index_type numElems() const noexcept
+  Index numElems() const noexcept
   {
-    return static_cast<index_type>(cells_.size());
+    return static_cast<Index>(cells_.size());
   }
 
   const std::vector<Cell>& cells() const noexcept
@@ -68,9 +68,9 @@ public:
     return cells_;
   }
 
-  const Cell& cell(index_type i) const
+  const Cell& cell(Index ic) const
   {
-    return cells_[static_cast<std::size_t>(i)];
+    return cells_[static_cast<std::size_t>(ic)];
   }
 
   const std::vector<BoundaryFacet>& boundaryFacets() const noexcept
@@ -91,13 +91,13 @@ public:
     return facets;
   }
 
-  const std::map<std::pair<index_type, index_type>, std::string>&
+  const std::map<std::pair<Index, Index>, std::string>&
   physicalNames() const noexcept
   {
     return physical_names_;
   }
 
-  std::string physicalName(index_type dim, index_type tag) const
+  std::string physicalName(Index dim, Index tag) const
   {
     const auto it = physical_names_.find({dim, tag});
     if (it == physical_names_.end())
@@ -107,14 +107,14 @@ public:
     return it->second;
   }
 
-  const Node& node(index_type i) const
+  const Node& node(Index in) const
   {
-    return nodes_[static_cast<std::size_t>(i)];
+    return nodes_[static_cast<std::size_t>(in)];
   }
 
-  const index_type* cellNodeIds(index_type cell) const
+  const Index* cellNodeIds(Index ic) const
   {
-    return cells_[static_cast<std::size_t>(cell)].nodeIdsData();
+    return cells_[static_cast<std::size_t>(ic)].nodeIdsData();
   }
 
   void addNode(const Node& node)
@@ -122,23 +122,23 @@ public:
     nodes_.push_back(node);
   }
 
-  void addCell(const std::vector<index_type>& node_ids)
+  void addCell(const std::vector<Index>& node_ids)
   {
     addCell(node_ids, Cell::Shape::Unknown, dim_, 0, 0, {});
   }
 
-  void addCell(const std::vector<index_type>& node_ids,
-               Cell::Shape                    shape,
-               index_type                     entity_dim,
-               index_type                     entity_tag,
-               index_type                     physical_tag,
-               std::string                    physical_name)
+  void addCell(const std::vector<Index>& node_ids,
+               Cell::Shape               shape,
+               Index                     entity_dim,
+               Index                     entity_tag,
+               Index                     physical_tag,
+               std::string               physical_name)
   {
     std::vector<Node> cell_nodes;
     cell_nodes.reserve(node_ids.size());
-    for (index_type id : node_ids)
+    for (Index in : node_ids)
     {
-      cell_nodes.push_back(node(id));
+      cell_nodes.push_back(node(in));
     }
     cells_.emplace_back(node_ids,
                         std::move(cell_nodes),
@@ -154,19 +154,19 @@ public:
     boundary_facets_.push_back(std::move(facet));
   }
 
-  void addPhysicalName(index_type  dim,
-                       index_type  tag,
+  void addPhysicalName(Index       dim,
+                       Index       tag,
                        std::string name)
   {
     physical_names_[{dim, tag}] = std::move(name);
   }
 
 private:
-  index_type                 dim_{0};
+  Index                      dim_{0};
   std::vector<Node>          nodes_;
   std::vector<Cell>          cells_;
   std::vector<BoundaryFacet> boundary_facets_;
-  std::map<std::pair<index_type, index_type>, std::string>
+  std::map<std::pair<Index, Index>, std::string>
       physical_names_;
 };
 

@@ -22,14 +22,14 @@ namespace femx
 
 struct TimeParams
 {
-  index_type steps = 100;
-  real_type  dt    = 0.01;
+  Index steps = 100;
+  Real  dt    = 0.01;
 };
 
 struct FluidParams
 {
-  real_type rho = 1.0;
-  real_type mu  = 0.01;
+  Real rho = 1.0;
+  Real mu  = 0.01;
 };
 
 struct SolverParams
@@ -39,27 +39,27 @@ struct SolverParams
 
 struct OutputParams
 {
-  index_type  interval  = 10;
+  Index       interval  = 10;
   std::string directory = FEMX_NAVIERSTOKES_OUTPUT_DIR;
 };
 
 struct FlowRateParams
 {
-  std::vector<real_type>   time;
-  std::vector<real_type>   value;
-  real_type                area   = 1.0;
-  std::array<real_type, 3> normal = {1.0, 0.0, 0.0};
-  std::string              interp = "linear";
+  std::vector<Real>   time;
+  std::vector<Real>   value;
+  Real                area   = 1.0;
+  std::array<Real, 3> normal = {1.0, 0.0, 0.0};
+  std::string         interp = "linear";
 };
 
 struct BCsParams
 {
-  index_type                    tag  = 0;
+  Index                         tag  = 0;
   std::string                   type = "dirichlet";
-  std::optional<real_type>      ux;
-  std::optional<real_type>      uy;
-  std::optional<real_type>      uz;
-  std::optional<real_type>      p;
+  std::optional<Real>           ux;
+  std::optional<Real>           uy;
+  std::optional<Real>           uz;
+  std::optional<Real>           p;
   std::optional<FlowRateParams> flow;
 };
 

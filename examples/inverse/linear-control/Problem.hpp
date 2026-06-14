@@ -2,20 +2,20 @@
 
 #include <iostream>
 
-#include <femx/system/SystemMatrix.hpp>
 #include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/ObservationOperator.hpp>
 #include <femx/inverse/QuadraticParameterRegularization.hpp>
 #include <femx/inverse/SumObjectiveFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
 namespace examples_inverse_linear_control
 {
 
-inline void resize(Vector& out, index_type size)
+inline void resize(Vector& out, Index size)
 {
   if (out.size() != size)
   {
@@ -27,42 +27,42 @@ inline void resize(Vector& out, index_type size)
   }
 }
 
-class LinearResidualEquation final : public equation::AssembledResidualEquation
+class LinearResidualEquation final : public eq::AssembledResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * params[0] - 2.0 * params[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void assembleStateJac(const Vector&           state,
-                        const Vector&           params,
+  void assembleStateJac(const Vector&         state,
+                        const Vector&         params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numStates());
+    out.resize(numRes(), numStates());
     out.setZero();
     out.set(0, 0, 2.0);
     out.set(0, 1, 3.0);
@@ -70,13 +70,13 @@ public:
     out.set(1, 1, 11.0);
   }
 
-  void assembleParamJac(const Vector&           state,
-                        const Vector&           params,
+  void assembleParamJac(const Vector&         state,
+                        const Vector&         params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numParams());
+    out.resize(numRes(), numParams());
     out.setZero();
     out.set(0, 0, 5.0);
     out.set(0, 1, -2.0);
@@ -88,17 +88,17 @@ public:
 class StateTrackingObservation final : public inverse::ObservationOperator
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numObservations() const override
+  Index numObservations() const override
   {
     return 2;
   }
@@ -201,7 +201,7 @@ inline void printVector(const char*   name,
                         std::ostream& out = std::cout)
 {
   out << name << " = [";
-  for (index_type i = 0; i < x.size(); ++i)
+  for (Index i = 0; i < x.size(); ++i)
   {
     if (i != 0)
     {

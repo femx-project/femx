@@ -3,11 +3,11 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/LinearSolver.hpp>
 #include <femx/eq/ResidualEquation.hpp>
 #include <femx/eq/StateJacobianOperator.hpp>
 #include <femx/inverse/AdjointSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/LinearSolver.hpp>
 
 namespace femx
 {
@@ -18,31 +18,31 @@ namespace inverse
 class EquationAdjointSolver final : public AdjointSolver
 {
 public:
-  EquationAdjointSolver(const equation::ResidualEquation& equation,
-                        system::LinearSolver&     lin_solver)
-    : equation_(equation),
+  EquationAdjointSolver(const eq::ResidualEquation& equation,
+                        system::LinearSolver&       lin_solver)
+    : eq_(equation),
       linear_solver_(lin_solver)
   {
-    if (equation_.numResiduals() != equation_.numStates())
+    if (eq_.numRes() != eq_.numStates())
     {
       throw std::runtime_error(
           "EquationAdjointSolver requires square state residual dimensions");
     }
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
-    return equation_.numStates();
+    return eq_.numStates();
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
-    return equation_.numParams();
+    return eq_.numParams();
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
-    return equation_.numResiduals();
+    return eq_.numRes();
   }
 
   void solve(const Vector& state,
@@ -56,17 +56,17 @@ public:
       throw std::runtime_error("EquationAdjointSolver size mismatch");
     }
 
-    const equation::StateJacobianOperator jacobian(equation_, state, params);
-    linear_solver_.solveT(jacobian, rhs, adjoint);
-    if (adjoint.size() != numResiduals())
+    const eq::StateJacobianOperator jac(eq_, state, params);
+    linear_solver_.solveT(jac, rhs, adjoint);
+    if (adjoint.size() != numRes())
     {
       throw std::runtime_error("EquationAdjointSolver adjoint size mismatch");
     }
   }
 
 private:
-  const equation::ResidualEquation& equation_;
-  system::LinearSolver&     linear_solver_;
+  const eq::ResidualEquation& eq_;
+  system::LinearSolver&       linear_solver_;
 };
 
 } // namespace inverse

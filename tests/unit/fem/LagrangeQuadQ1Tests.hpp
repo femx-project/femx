@@ -46,17 +46,17 @@ public:
         QuadraturePoint{{-1.0, 1.0, 0.0}, 0.0},
     };
 
-    for (index_type node = 0; node < LagrangeQuadQ1::nnodes; ++node)
+    for (Index in = 0; in < LagrangeQuadQ1::nnodes; ++in)
     {
-      std::array<real_type, LagrangeQuadQ1::nnodes> values = {};
-      elem.calcShape(nodes[node], VectorView<real_type>(values.data(), values.size()));
+      std::array<Real, LagrangeQuadQ1::nnodes> values = {};
+      elem.calcShape(nodes[in], VectorView<Real>(values.data(), values.size()));
 
-      for (index_type i = 0; i < LagrangeQuadQ1::nnodes; ++i)
+      for (Index i = 0; i < LagrangeQuadQ1::nnodes; ++i)
       {
-        const real_type expected = (i == node) ? 1.0 : 0.0;
+        const Real expected = (i == in) ? 1.0 : 0.0;
         if (!isEqual(values[i], expected))
         {
-          std::cout << "Incorrect shape value N[" << i << "] at reference node " << node
+          std::cout << "Incorrect shape value N[" << i << "] at reference node " << in
                     << ": expected " << expected << ", got " << values[i] << "\n";
           status = false;
         }
@@ -81,11 +81,11 @@ public:
 
     for (const auto& point : points)
     {
-      std::array<real_type, LagrangeQuadQ1::nnodes> values = {};
-      elem.calcShape(point, VectorView<real_type>(values.data(), values.size()));
+      std::array<Real, LagrangeQuadQ1::nnodes> values = {};
+      elem.calcShape(point, VectorView<Real>(values.data(), values.size()));
 
-      real_type sum = 0.0;
-      for (const real_type value : values)
+      Real sum = 0.0;
+      for (const Real value : values)
       {
         sum += value;
       }
@@ -108,26 +108,26 @@ public:
 
     LagrangeQuadQ1 elem;
 
-    const QuadraturePoint                                                       center{{0.0, 0.0, 0.0}, 0.0};
-    std::array<real_type, LagrangeQuadQ1::nnodes * LagrangeQuadQ1::spatial_dim> gradients = {};
+    const QuadraturePoint                                                  center{{0.0, 0.0, 0.0}, 0.0};
+    std::array<Real, LagrangeQuadQ1::nnodes * LagrangeQuadQ1::spatial_dim> gradients = {};
 
     elem.calcShapeGrad(
         center,
-        MatrixView<real_type>(gradients.data(), LagrangeQuadQ1::nnodes, LagrangeQuadQ1::spatial_dim));
+        MatrixView<Real>(gradients.data(), LagrangeQuadQ1::nnodes, LagrangeQuadQ1::spatial_dim));
 
-    const MatrixView<real_type> dNdr(
+    const MatrixView<Real> dNdr(
         gradients.data(), LagrangeQuadQ1::nnodes, LagrangeQuadQ1::spatial_dim);
 
-    const real_type expected[LagrangeQuadQ1::nnodes][LagrangeQuadQ1::spatial_dim] = {
+    const Real expected[LagrangeQuadQ1::nnodes][LagrangeQuadQ1::spatial_dim] = {
         {-0.25, -0.25},
         {0.25, -0.25},
         {0.25, 0.25},
         {-0.25, 0.25},
     };
 
-    for (index_type i = 0; i < LagrangeQuadQ1::nnodes; ++i)
+    for (Index i = 0; i < LagrangeQuadQ1::nnodes; ++i)
     {
-      for (index_type d = 0; d < LagrangeQuadQ1::spatial_dim; ++d)
+      for (Index d = 0; d < LagrangeQuadQ1::spatial_dim; ++d)
       {
         if (!isEqual(dNdr(i, d), expected[i][d]))
         {

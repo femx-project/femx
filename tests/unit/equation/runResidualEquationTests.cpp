@@ -9,29 +9,29 @@ namespace femx
 namespace tests
 {
 
-class LinearResidualEquation final : public equation::ResidualEquation
+class LinearResidualEquation final : public eq::ResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 1;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1] + 5.0 * params[0];
     out[1] = 7.0 * state[0] + 11.0 * state[1] + 13.0 * params[0];
   }
@@ -43,7 +43,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
@@ -67,7 +67,7 @@ public:
   {
     (void) state;
     (void) params;
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 5.0 * dir[0];
     out[1] = 13.0 * dir[0];
   }
@@ -84,7 +84,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, index_type size)
+  static void resize(Vector& out, Index size)
   {
     if (out.size() != size)
     {
@@ -109,7 +109,7 @@ public:
 
     status *= (equation.numStates() == 2);
     status *= (equation.numParams() == 1);
-    status *= (equation.numResiduals() == 2);
+    status *= (equation.numRes() == 2);
 
     Vector state(2);
     state[0] = 0.25;
@@ -119,7 +119,7 @@ public:
     params[0] = 2.0;
 
     Vector out;
-    equation.residual(state, params, out);
+    equation.res(state, params, out);
     status *= isEqual(out[0], 2.0 * state[0] + 3.0 * state[1] + 5.0 * params[0]);
     status *= isEqual(out[1], 7.0 * state[0] + 11.0 * state[1] + 13.0 * params[0]);
 

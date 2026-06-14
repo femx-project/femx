@@ -40,12 +40,12 @@ public:
     }
   }
 
-  index_type numRows() const override
+  Index numRows() const override
   {
     return rows_;
   }
 
-  index_type numCols() const override
+  Index numCols() const override
   {
     return cols_;
   }
@@ -64,7 +64,7 @@ public:
     return comm_;
   }
 
-  void setDefaultNonzerosPerRow(index_type count)
+  void setDefaultNonzerosPerRow(Index count)
   {
     if (count <= 0)
     {
@@ -74,7 +74,7 @@ public:
     default_nonzeros_per_row_ = count;
   }
 
-  void resize(index_type rows, index_type cols) override
+  void resize(Index rows, Index cols) override
   {
     checkInitialized();
 
@@ -100,7 +100,7 @@ public:
         comm_size == 1 ? petsc_rows : PETSC_DECIDE;
     const PetscInt local_cols =
         comm_size == 1 ? petsc_cols : PETSC_DECIDE;
-    index_type nonzeros_per_row = cols_ > 0 ? default_nonzeros_per_row_ : 1;
+    Index nonzeros_per_row = cols_ > 0 ? default_nonzeros_per_row_ : 1;
     if (cols_ > 0 && cols_ < nonzeros_per_row)
     {
       nonzeros_per_row = cols_;
@@ -181,17 +181,17 @@ public:
     check(MatZeroEntries(mat_), "MatZeroEntries");
   }
 
-  void set(index_type row, index_type col, real_type value) override
+  void set(Index row, Index col, Real value) override
   {
     setValue(row, col, value, INSERT_VALUES);
   }
 
-  void add(index_type row, index_type col, real_type value) override
+  void add(Index row, Index col, Real value) override
   {
     setValue(row, col, value, ADD_VALUES);
   }
 
-  void addAtomic(index_type row, index_type col, real_type value) override
+  void addAtomic(Index row, Index col, Real value) override
   {
     add(row, col, value);
   }
@@ -206,10 +206,10 @@ public:
     check(MatAssemblyEnd(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyEnd");
   }
 
-  void zeroRowsColumns(const std::vector<index_type>& rows,
-                       real_type                      diagonal,
-                       const PETScSystemVector&       values,
-                       PETScSystemVector&             rhs)
+  void zeroRowsColumns(const std::vector<Index>& rows,
+                       Real                      diagonal,
+                       const PETScSystemVector&  values,
+                       PETScSystemVector&        rhs)
   {
     if (values.size() != rows_ || rhs.size() != rows_)
     {
@@ -301,7 +301,7 @@ private:
     Vec vec_{nullptr};
   };
 
-  void createVec(index_type size, ScopedVec& out) const
+  void createVec(Index size, ScopedVec& out) const
   {
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
@@ -313,9 +313,9 @@ private:
     check(VecSetFromOptions(out.get()), "VecSetFromOptions");
   }
 
-  void setValue(index_type row,
-                index_type col,
-                real_type  value,
+  void setValue(Index      row,
+                Index      col,
+                Real       value,
                 InsertMode mode)
   {
     if (mat_ == nullptr)
@@ -366,13 +366,13 @@ private:
     d_nnz.assign(static_cast<std::size_t>(local_rows), 0);
     o_nnz.assign(static_cast<std::size_t>(local_rows), 0);
 
-    const index_type* row_ptr = pattern.rowPtrData();
-    const index_type* col_ind = pattern.colIndData();
+    const Index* row_ptr = pattern.rowPtrData();
+    const Index* col_ind = pattern.colIndData();
     for (PetscInt row = begin; row < end; ++row)
     {
       PetscInt diagonal = 0;
       PetscInt offdiag  = 0;
-      for (index_type k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
       {
         const PetscInt col = static_cast<PetscInt>(col_ind[k]);
         if (col >= begin && col < end)
@@ -390,11 +390,11 @@ private:
   }
 
 private:
-  MPI_Comm   comm_{PETSC_COMM_SELF};
-  Mat        mat_{nullptr};
-  index_type rows_{0};
-  index_type cols_{0};
-  index_type default_nonzeros_per_row_{32};
+  MPI_Comm comm_{PETSC_COMM_SELF};
+  Mat      mat_{nullptr};
+  Index    rows_{0};
+  Index    cols_{0};
+  Index    default_nonzeros_per_row_{32};
 };
 
 } // namespace system

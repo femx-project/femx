@@ -13,10 +13,10 @@ namespace femx
 
 struct QuadraturePoint
 {
-  real_type x[3]   = {0.0, 0.0, 0.0};
-  real_type weight = 0.0;
+  Real x[3]   = {0.0, 0.0, 0.0};
+  Real weight = 0.0;
 
-  real_type operator[](index_type i) const
+  Real operator[](Index i) const
   {
     return x[i];
   }
@@ -28,7 +28,7 @@ public:
   GaussQuadrature() = default;
 
   GaussQuadrature(ReferenceElement             elem,
-                  index_type                   dim,
+                  Index                        dim,
                   std::vector<QuadraturePoint> points)
     : cell_(elem),
       dim_(dim),
@@ -36,12 +36,12 @@ public:
   {
   }
 
-  index_type size() const
+  Index size() const
   {
-    return static_cast<index_type>(points_.size());
+    return static_cast<Index>(points_.size());
   }
 
-  index_type dim() const
+  Index dim() const
   {
     return dim_;
   }
@@ -51,12 +51,12 @@ public:
     return cell_;
   }
 
-  const QuadraturePoint& operator[](index_type q) const
+  const QuadraturePoint& operator[](Index iq) const
   {
-    return points_[q];
+    return points_[iq];
   }
 
-  static GaussQuadrature make(ReferenceElement cell, index_type order)
+  static GaussQuadrature make(ReferenceElement cell, Index order)
   {
     switch (cell)
     {
@@ -76,7 +76,7 @@ public:
     throw std::runtime_error("Unsupported reference cell");
   }
 
-  static GaussQuadrature segment(index_type n)
+  static GaussQuadrature segment(Index n)
   {
     switch (n)
     {
@@ -118,7 +118,7 @@ public:
     }
   }
 
-  static GaussQuadrature quadrilateral(index_type n)
+  static GaussQuadrature quadrilateral(Index n)
   {
     switch (n)
     {
@@ -170,7 +170,7 @@ public:
     }
   }
 
-  static GaussQuadrature triangle(index_type order)
+  static GaussQuadrature triangle(Index order)
   {
     switch (order)
     {
@@ -201,7 +201,7 @@ public:
     }
   }
 
-  static GaussQuadrature tetrahedron(index_type order)
+  static GaussQuadrature tetrahedron(Index order)
   {
     switch (order)
     {
@@ -217,8 +217,8 @@ public:
 
     case 2:
     {
-      constexpr real_type a = 0.1381966011250105;
-      constexpr real_type b = 0.5854101966249685;
+      constexpr Real a = 0.1381966011250105;
+      constexpr Real b = 0.5854101966249685;
       return GaussQuadrature(
           ReferenceElement::Tetrahedron,
           3,
@@ -237,7 +237,7 @@ public:
 
 private:
   ReferenceElement             cell_ = ReferenceElement::Segment;
-  index_type                   dim_  = 0;
+  Index                        dim_  = 0;
   std::vector<QuadraturePoint> points_;
 };
 

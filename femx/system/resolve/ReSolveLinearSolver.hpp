@@ -31,10 +31,10 @@ struct ReSolveOptions
   std::string gram_schmidt = "cgs2";
   std::string sketching    = "count";
 
-  index_type max_its  = 1000;
-  index_type restart  = 200;
-  real_type  rtol     = 1.0e-12;
-  bool       flexible = true;
+  Index max_its  = 1000;
+  Index restart  = 200;
+  Real  rtol     = 1.0e-12;
+  bool  flexible = true;
 };
 
 class ReSolveLinearSolver final

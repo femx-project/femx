@@ -34,11 +34,11 @@ public:
     FESpace scalar_space(&mesh, &elem);
     scalar_space.setup();
 
-    FESpace vector_space(&mesh, &elem, 2);
-    vector_space.setup();
+    FESpace vec_space(&mesh, &elem, 2);
+    vec_space.setup();
 
     MixedFESpace mixed_space;
-    mixed_space.addField(vector_space);
+    mixed_space.addField(vec_space);
     mixed_space.addField(scalar_space);
     mixed_space.setup();
 
@@ -47,7 +47,7 @@ public:
     status *= (scalar_layout.numDofs() == 4);
     status *= (scalar_layout.numDofsPerElem() == 4);
 
-    std::vector<index_type> dofs;
+    std::vector<Index> dofs;
     scalar_layout.elemDofs(0, dofs);
     status *= (dofs.size() == 4);
     status *= (dofs[0] == 0);
@@ -90,56 +90,56 @@ public:
 
     assembly::SystemAssembler assembler(space);
 
-    Vector global_vector;
-    assembler.initVec(global_vector);
+    Vector global_vec;
+    assembler.initVec(global_vec);
 
-    Vector local_vector(4);
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    Vector local_vec(4);
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 1.0;
+      local_vec[i] = 1.0;
     }
-    assembler.addVec(0, local_vector, global_vector);
+    assembler.addVec(0, local_vec, global_vec);
 
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 10.0;
+      local_vec[i] = 10.0;
     }
-    assembler.addVec(1, local_vector, global_vector);
+    assembler.addVec(1, local_vec, global_vec);
 
-    status *= (global_vector.size() == 6);
-    status *= isEqual(global_vector[0], 1.0);
-    status *= isEqual(global_vector[1], 11.0);
-    status *= isEqual(global_vector[2], 10.0);
-    status *= isEqual(global_vector[3], 1.0);
-    status *= isEqual(global_vector[4], 11.0);
-    status *= isEqual(global_vector[5], 10.0);
+    status *= (global_vec.size() == 6);
+    status *= isEqual(global_vec[0], 1.0);
+    status *= isEqual(global_vec[1], 11.0);
+    status *= isEqual(global_vec[2], 10.0);
+    status *= isEqual(global_vec[3], 1.0);
+    status *= isEqual(global_vec[4], 11.0);
+    status *= isEqual(global_vec[5], 10.0);
 
-    system::DenseSystemMatrix matrix;
+    system::DenseSystemMatrix mat;
     DenseMatrix               expected(space.numDofs(), space.numDofs());
-    DenseMatrix               local_matrix(4, 4);
-    assembler.initMat(matrix);
+    DenseMatrix               local_mat(4, 4);
+    assembler.initMat(mat);
 
-    for (index_type cell = 0; cell < space.numElems(); ++cell)
+    for (Index ic = 0; ic < space.numElems(); ++ic)
     {
-      fillLocalMatrix(cell, local_matrix);
-      assembler.addMat(cell, local_matrix, matrix);
+      fillLocalMatrix(ic, local_mat);
+      assembler.addMat(ic, local_mat, mat);
 
-      const auto dofs = space.elemDofs(cell);
-      for (index_type i = 0; i < local_matrix.rows(); ++i)
+      const auto dofs = space.elemDofs(ic);
+      for (Index i = 0; i < local_mat.rows(); ++i)
       {
-        for (index_type j = 0; j < local_matrix.cols(); ++j)
+        for (Index j = 0; j < local_mat.cols(); ++j)
         {
           expected(dofs[static_cast<std::size_t>(i)],
-                   dofs[static_cast<std::size_t>(j)]) += local_matrix(i, j);
+                   dofs[static_cast<std::size_t>(j)]) += local_mat(i, j);
         }
       }
     }
 
-    for (index_type i = 0; i < space.numDofs(); ++i)
+    for (Index i = 0; i < space.numDofs(); ++i)
     {
-      for (index_type j = 0; j < space.numDofs(); ++j)
+      for (Index j = 0; j < space.numDofs(); ++j)
       {
-        status *= isEqual(matrix.matrix()(i, j), expected(i, j));
+        status *= isEqual(mat.matrix()(i, j), expected(i, j));
       }
     }
 
@@ -161,35 +161,35 @@ public:
     col_space.setup();
 
     assembly::SystemAssembler assembler(row_space, col_space);
-    system::DenseSystemMatrix matrix;
-    assembler.initMat(matrix);
+    system::DenseSystemMatrix mat;
+    assembler.initMat(mat);
 
-    DenseMatrix local_matrix(row_space.numDofsPerElem(),
+    DenseMatrix local_mat(row_space.numDofsPerElem(),
                              col_space.numDofsPerElem());
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        local_matrix(i, j) = 10.0 * static_cast<real_type>(i)
-                             + static_cast<real_type>(j);
+        local_mat(i, j) = 10.0 * static_cast<Real>(i)
+                             + static_cast<Real>(j);
       }
     }
 
-    assembler.addMat(0, local_matrix, matrix);
+    assembler.addMat(0, local_mat, mat);
 
-    status *= (matrix.numRows() == row_space.numDofs());
-    status *= (matrix.numCols() == col_space.numDofs());
+    status *= (mat.numRows() == row_space.numDofs());
+    status *= (mat.numCols() == col_space.numDofs());
 
     const auto row_dofs = row_space.elemDofs(0);
     const auto col_dofs = col_space.elemDofs(0);
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
         status *= isEqual(
-            matrix.matrix()(row_dofs[static_cast<std::size_t>(i)],
-                            col_dofs[static_cast<std::size_t>(j)]),
-            local_matrix(i, j));
+            mat.matrix()(row_dofs[static_cast<std::size_t>(i)],
+                         col_dofs[static_cast<std::size_t>(j)]),
+            local_mat(i, j));
       }
     }
 
@@ -207,24 +207,24 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::DenseSystemVector global_vector;
-    assembler.initVec(global_vector);
+    system::DenseSystemVector global_vec;
+    assembler.initVec(global_vec);
 
-    Vector local_vector(space.numDofsPerElem());
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    Vector local_vec(space.numDofsPerElem());
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 1.0;
+      local_vec[i] = 1.0;
     }
-    assembler.addVec(0, local_vector, global_vector);
+    assembler.addVec(0, local_vec, global_vec);
 
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 10.0;
+      local_vec[i] = 10.0;
     }
-    assembler.addVec(1, local_vector, global_vector);
-    global_vector.finalize();
+    assembler.addVec(1, local_vec, global_vec);
+    global_vec.finalize();
 
-    const Vector& values  = global_vector.vector();
+    const Vector& values  = global_vec.vector();
     status               *= (values.size() == 6);
     status               *= isEqual(values[0], 1.0);
     status               *= isEqual(values[1], 11.0);
@@ -247,38 +247,38 @@ public:
     space.setup();
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix matrix(pattern);
+    system::SparseSystemMatrix mat(pattern);
     assembly::SystemAssembler  assembler(space);
-    assembler.initMat(matrix);
+    assembler.initMat(mat);
 
-    DenseMatrix local_matrix(space.numDofsPerElem(), space.numDofsPerElem());
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        local_matrix(i, j) = 1.0 + static_cast<real_type>(i + j);
+        local_mat(i, j) = 1.0 + static_cast<Real>(i + j);
       }
     }
 
-    assembler.addMat(0, local_matrix, matrix);
-    matrix.finalize();
+    assembler.addMat(0, local_mat, mat);
+    mat.finalize();
 
     Vector dir(space.numDofs());
-    for (index_type i = 0; i < dir.size(); ++i)
+    for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
     Vector out;
-    matrix.apply(dir, out);
+    mat.apply(dir, out);
 
     const auto dofs = space.elemDofs(0);
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      real_type expected = 0.0;
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      Real expected = 0.0;
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        expected += local_matrix(i, j);
+        expected += local_mat(i, j);
       }
       status *= isEqual(out[dofs[static_cast<std::size_t>(i)]], expected);
     }
@@ -297,62 +297,62 @@ public:
     space.setup();
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix matrix(pattern);
+    system::SparseSystemMatrix mat(pattern);
     assembly::SystemAssembler  assembler(
-        space, assembly::SystemAssembler::AssemblyMode::Atomic);
+        space, assembly::AssemblyMode::Atomic);
 
-    Vector global_vector;
-    assembler.initVec(global_vector);
-    assembler.initMat(matrix);
+    Vector global_vec;
+    assembler.initVec(global_vec);
+    assembler.initMat(mat);
 
-    Vector      local_vector(space.numDofsPerElem());
-    DenseMatrix local_matrix(space.numDofsPerElem(), space.numDofsPerElem());
-    for (index_type i = 0; i < space.numDofsPerElem(); ++i)
+    Vector      local_vec(space.numDofsPerElem());
+    DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
+    for (Index i = 0; i < space.numDofsPerElem(); ++i)
     {
-      local_vector[i] = 2.0;
-      for (index_type j = 0; j < space.numDofsPerElem(); ++j)
+      local_vec[i] = 2.0;
+      for (Index j = 0; j < space.numDofsPerElem(); ++j)
       {
-        local_matrix(i, j) = 1.0;
+        local_mat(i, j) = 1.0;
       }
     }
 
-    assembler.addVec(0, local_vector, global_vector);
-    assembler.addVec(0, local_vector, global_vector);
-    assembler.addMat(0, local_matrix, matrix);
-    assembler.addMat(0, local_matrix, matrix);
-    matrix.finalize();
+    assembler.addVec(0, local_vec, global_vec);
+    assembler.addVec(0, local_vec, global_vec);
+    assembler.addMat(0, local_mat, mat);
+    assembler.addMat(0, local_mat, mat);
+    mat.finalize();
 
-    for (index_type i = 0; i < global_vector.size(); ++i)
+    for (Index i = 0; i < global_vec.size(); ++i)
     {
-      status *= isEqual(global_vector[i], 4.0);
+      status *= isEqual(global_vec[i], 4.0);
     }
 
     Vector dir(space.numDofs());
-    for (index_type i = 0; i < dir.size(); ++i)
+    for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
     Vector out;
-    matrix.apply(dir, out);
-    for (index_type i = 0; i < out.size(); ++i)
+    mat.apply(dir, out);
+    for (Index i = 0; i < out.size(); ++i)
     {
-      status *= isEqual(out[i], 2.0 * static_cast<real_type>(space.numDofsPerElem()));
+      status *= isEqual(out[i], 2.0 * static_cast<Real>(space.numDofsPerElem()));
     }
 
     return status.report(__func__);
   }
 
 private:
-  static void fillLocalMatrix(index_type cell, DenseMatrix& local_matrix)
+  static void fillLocalMatrix(Index ic, DenseMatrix& local_mat)
   {
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        local_matrix(i, j) = 100.0 * static_cast<real_type>(cell + 1)
-                             + 10.0 * static_cast<real_type>(i)
-                             + static_cast<real_type>(j);
+        local_mat(i, j) = 100.0 * static_cast<Real>(ic + 1)
+                             + 10.0 * static_cast<Real>(i)
+                             + static_cast<Real>(j);
       }
     }
   }

@@ -3,11 +3,11 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/system/LinearSolver.hpp>
-#include <femx/system/SystemMatrix.hpp>
 #include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/inverse/AdjointSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/system/LinearSolver.hpp>
+#include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -18,33 +18,33 @@ namespace inverse
 class MatrixEquationAdjointSolver final : public AdjointSolver
 {
 public:
-  MatrixEquationAdjointSolver(const equation::AssembledResidualEquation& eq,
-                              system::SystemMatrix&                 state_jac,
-                              system::LinearSolver&           lin_solver)
-    : equation_(eq),
-      state_jacobian_(state_jac),
+  MatrixEquationAdjointSolver(const eq::AssembledResidualEquation& eq,
+                              system::SystemMatrix&                state_jac,
+                              system::LinearSolver&                lin_solver)
+    : eq_(eq),
+      state_jac_(state_jac),
       linear_solver_(lin_solver)
   {
-    if (equation_.numResiduals() != equation_.numStates())
+    if (eq_.numRes() != eq_.numStates())
     {
       throw std::runtime_error(
           "MatrixEquationAdjointSolver requires square state residual dimensions");
     }
   }
 
-  index_type numStates() const override
+  Index numStates() const override
   {
-    return equation_.numStates();
+    return eq_.numStates();
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
-    return equation_.numParams();
+    return eq_.numParams();
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
-    return equation_.numResiduals();
+    return eq_.numRes();
   }
 
   void solve(const Vector& state,
@@ -59,10 +59,10 @@ public:
           "MatrixEquationAdjointSolver size mismatch");
     }
 
-    equation_.assembleStateJac(state, params, state_jacobian_);
-    state_jacobian_.finalize();
-    linear_solver_.solveT(state_jacobian_, rhs, adjoint);
-    if (adjoint.size() != numResiduals())
+    eq_.assembleStateJac(state, params, state_jac_);
+    state_jac_.finalize();
+    linear_solver_.solveT(state_jac_, rhs, adjoint);
+    if (adjoint.size() != numRes())
     {
       throw std::runtime_error(
           "MatrixEquationAdjointSolver adjoint size mismatch");
@@ -70,9 +70,9 @@ public:
   }
 
 private:
-  const equation::AssembledResidualEquation& equation_;
-  system::SystemMatrix&                 state_jacobian_;
-  system::LinearSolver&           linear_solver_;
+  const eq::AssembledResidualEquation& eq_;
+  system::SystemMatrix&                state_jac_;
+  system::LinearSolver&                linear_solver_;
 };
 
 } // namespace inverse

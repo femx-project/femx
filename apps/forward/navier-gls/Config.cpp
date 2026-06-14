@@ -21,8 +21,8 @@ void assign(const nlohmann::json& node,
   }
 }
 
-std::optional<real_type> optionalReal(const nlohmann::json& node,
-                                      const char*           key)
+std::optional<Real> optionalReal(const nlohmann::json& node,
+                                 const char*           key)
 {
   if (!node.contains(key))
   {
@@ -32,21 +32,21 @@ std::optional<real_type> optionalReal(const nlohmann::json& node,
   {
     throw std::runtime_error(std::string("Boundary value ") + key + " must be a number");
   }
-  return node.at(key).get<real_type>();
+  return node.at(key).get<Real>();
 }
 
-std::array<real_type, 3> parseVector3(const nlohmann::json& node,
-                                      const std::string&    name)
+std::array<Real, 3> parseVector3(const nlohmann::json& node,
+                                 const std::string&    name)
 {
   if (!node.is_array() || node.size() != 3)
   {
     throw std::runtime_error(name + " must be an array with 3 values");
   }
 
-  std::array<real_type, 3> values{};
+  std::array<Real, 3> values{};
   for (std::size_t i = 0; i < values.size(); ++i)
   {
-    values[i] = node.at(i).get<real_type>();
+    values[i] = node.at(i).get<Real>();
   }
   return values;
 }
@@ -61,7 +61,7 @@ FlowRateParams parseFlowRate(const nlohmann::json& node)
   FlowRateParams flow;
   if (node.contains("time"))
   {
-    flow.time = node.at("time").get<std::vector<real_type>>();
+    flow.time = node.at("time").get<std::vector<Real>>();
   }
   else
   {
@@ -69,7 +69,7 @@ FlowRateParams parseFlowRate(const nlohmann::json& node)
   }
   if (node.contains("value"))
   {
-    flow.value = node.at("value").get<std::vector<real_type>>();
+    flow.value = node.at("value").get<std::vector<Real>>();
   }
   else
   {
@@ -112,15 +112,15 @@ BCsParams parseBoundaryCondition(const nlohmann::json& node)
   BCsParams cond;
   if (node.contains("physical"))
   {
-    cond.tag = node.at("physical").get<index_type>();
+    cond.tag = node.at("physical").get<Index>();
   }
   else if (node.contains("physical_tag"))
   {
-    cond.tag = node.at("physical_tag").get<index_type>();
+    cond.tag = node.at("physical_tag").get<Index>();
   }
   else if (node.contains("tag"))
   {
-    cond.tag = node.at("tag").get<index_type>();
+    cond.tag = node.at("tag").get<Index>();
   }
   else
   {
@@ -170,8 +170,8 @@ void validateFlowRate(const FlowRateParams& flow)
     }
   }
 
-  real_type normal_mag2 = 0.0;
-  for (real_type comp : flow.normal)
+  Real normal_mag2 = 0.0;
+  for (Real comp : flow.normal)
   {
     normal_mag2 += comp * comp;
   }
@@ -265,7 +265,7 @@ Params loadConfig(const std::string& path)
     assign(root.at("output"), "interval", params.output.interval);
     assign(root.at("output"), "directory", params.output.directory);
   }
-  params.output.interval = std::max<index_type>(1, params.output.interval);
+  params.output.interval = std::max<Index>(1, params.output.interval);
 
   if (root.contains("bcs"))
   {

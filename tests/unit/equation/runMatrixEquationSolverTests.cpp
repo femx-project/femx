@@ -17,7 +17,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, index_type size)
+void resize(Vector& out, Index size)
 {
   if (out.size() != size)
   {
@@ -30,29 +30,29 @@ void resize(Vector& out, index_type size)
 }
 
 class LinearAssembledResidualEquation final
-  : public equation::AssembledResidualEquation
+  : public eq::AssembledResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * params[0] - 2.0 * params[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -65,7 +65,7 @@ public:
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numStates());
+    out.resize(numRes(), numStates());
     out.setZero();
     out.set(0, 0, 2.0);
     out.set(0, 1, 3.0);
@@ -79,7 +79,7 @@ public:
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numParams());
+    out.resize(numRes(), numParams());
     out.setZero();
     out.set(0, 0, 5.0);
     out.set(0, 1, -2.0);
@@ -91,21 +91,21 @@ public:
 class TrackingObjective final : public inverse::ObjectiveFunctional
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  real_type value(const Vector& state,
-                  const Vector& params) const override
+  Real value(const Vector& state,
+             const Vector& params) const override
   {
-    const real_type e0 = state[0] - target_[0];
-    const real_type e1 = state[1] - target_[1];
+    const Real e0 = state[0] - target_[0];
+    const Real e1 = state[1] - target_[1];
     return 0.5 * (e0 * e0 + e1 * e1)
            + 0.5 * regularization_
                  * (params[0] * params[0] + params[1] * params[1]);
@@ -132,8 +132,8 @@ public:
   }
 
 private:
-  real_type target_[2] = {0.25, -0.75};
-  real_type regularization_{0.25};
+  Real target_[2] = {0.25, -0.75};
+  Real regularization_{0.25};
 };
 
 class MatrixEquationSolverTests : public TestBase
@@ -144,7 +144,7 @@ public:
     TestStatus status;
     status = true;
 
-    LinearAssembledResidualEquation residual_equation;
+    LinearAssembledResidualEquation res_eq;
 
     Vector state(2);
     state[0] = -1.48;
@@ -159,19 +159,19 @@ public:
     dir[1] = 0.4;
 
     Vector out;
-    residual_equation.applyStateJac(state, params, dir, out);
+    res_eq.applyStateJac(state, params, dir, out);
     status *= isEqual(out[0], -0.2);
     status *= isEqual(out[1], -0.5);
 
-    residual_equation.applyStateJacT(state, params, dir, out);
+    res_eq.applyStateJacT(state, params, dir, out);
     status *= isEqual(out[0], 1.4);
     status *= isEqual(out[1], 2.3);
 
-    residual_equation.applyParamJac(state, params, dir, out);
+    res_eq.applyParamJac(state, params, dir, out);
     status *= isEqual(out[0], -4.3);
     status *= isEqual(out[1], -7.5);
 
-    residual_equation.applyParamJacT(state, params, dir, out);
+    res_eq.applyParamJacT(state, params, dir, out);
     status *= isEqual(out[0], 1.7);
     status *= isEqual(out[1], 3.0);
 
@@ -183,14 +183,14 @@ public:
     TestStatus status;
     status = true;
 
-    LinearAssembledResidualEquation residual_equation;
+    LinearAssembledResidualEquation res_eq;
     system::DenseSystemMatrix       state_jac;
     system::DenseLinearSolver       lin_solver;
 
-    equation::MatrixNewtonStateSolver state_solver(
-        residual_equation, state_jac, lin_solver);
+    eq::MatrixNewtonStateSolver state_solver(
+        res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
-        residual_equation, state_jac, lin_solver);
+        res_eq, state_jac, lin_solver);
 
     Vector params(2);
     params[0] = 0.05;
@@ -201,10 +201,10 @@ public:
     status *= isEqual(state[0], -1.48);
     status *= isEqual(state[1], 0.89);
 
-    Vector residual;
-    residual_equation.residual(state, params, residual);
-    status *= isEqual(residual[0], 0.0);
-    status *= isEqual(residual[1], 0.0);
+    Vector res;
+    res_eq.res(state, params, res);
+    status *= isEqual(res[0], 0.0);
+    status *= isEqual(res[1], 0.0);
 
     Vector rhs(2);
     rhs[0] = -1.73;
@@ -223,17 +223,17 @@ public:
     TestStatus status;
     status = true;
 
-    LinearAssembledResidualEquation   residual_equation;
-    system::DenseSystemMatrix         state_jac;
-    system::DenseLinearSolver         lin_solver;
-    equation::MatrixNewtonStateSolver state_solver(
-        residual_equation, state_jac, lin_solver);
+    LinearAssembledResidualEquation res_eq;
+    system::DenseSystemMatrix       state_jac;
+    system::DenseLinearSolver       lin_solver;
+    eq::MatrixNewtonStateSolver     state_solver(
+        res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
-        residual_equation, state_jac, lin_solver);
+        res_eq, state_jac, lin_solver);
     TrackingObjective objective;
 
     inverse::AdjointReducedFunctional functional(
-        state_solver, adj_solver, residual_equation, objective);
+        state_solver, adj_solver, res_eq, objective);
 
     Vector params(2);
     params[0] = 0.05;

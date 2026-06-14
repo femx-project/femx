@@ -26,7 +26,7 @@ public:
   {
   }
 
-  index_type numElems() const
+  Index numElems() const
   {
     if (fe_space_ != nullptr)
     {
@@ -35,7 +35,7 @@ public:
     return mixedSpace().numElems();
   }
 
-  index_type numDofs() const
+  Index numDofs() const
   {
     if (fe_space_ != nullptr)
     {
@@ -44,7 +44,7 @@ public:
     return mixedSpace().numDofs();
   }
 
-  index_type numDofsPerElem() const
+  Index numDofsPerElem() const
   {
     if (fe_space_ != nullptr)
     {
@@ -53,18 +53,18 @@ public:
     return mixedSpace().numDofsPerElem();
   }
 
-  void elemDofs(index_type cell, std::vector<index_type>& dofs) const
+  void elemDofs(Index ic, std::vector<Index>& dofs) const
   {
-    if (cell < 0 || cell >= numElems())
+    if (ic < 0 || ic >= numElems())
     {
       throw std::runtime_error("DofLayout cell index is out of range");
     }
     if (fe_space_ != nullptr)
     {
-      fe_space_->elemDofs(cell, dofs);
+      fe_space_->elemDofs(ic, dofs);
       return;
     }
-    mixedSpace().elemDofs(cell, dofs);
+    mixedSpace().elemDofs(ic, dofs);
   }
 
 private:

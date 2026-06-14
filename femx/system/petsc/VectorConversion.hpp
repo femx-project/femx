@@ -16,7 +16,7 @@ inline PetscErrorCode copyFromPETSc(Vec input, Vector& output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(input, &size));
-  output.resize(static_cast<index_type>(size));
+  output.resize(static_cast<Index>(size));
 
   VecScatter scatter = nullptr;
   Vec        all     = nullptr;
@@ -36,7 +36,7 @@ inline PetscErrorCode copyFromPETSc(Vec input, Vector& output)
   PetscCall(VecGetArrayRead(all, &values));
   for (PetscInt i = 0; i < size; ++i)
   {
-    output[static_cast<index_type>(i)] = PetscRealPart(values[i]);
+    output[static_cast<Index>(i)] = PetscRealPart(values[i]);
   }
   PetscCall(VecRestoreArrayRead(all, &values));
 
@@ -49,7 +49,7 @@ inline PetscErrorCode copyToPETSc(const Vector& input, Vec output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(output, &size));
-  if (input.size() != static_cast<index_type>(size))
+  if (input.size() != static_cast<Index>(size))
   {
     return PETSC_ERR_ARG_SIZ;
   }
@@ -63,16 +63,16 @@ inline PetscErrorCode copyToPETSc(const Vector& input, Vec output)
   for (PetscInt i = begin; i < end; ++i)
   {
     values[i - begin] =
-        static_cast<PetscScalar>(input[static_cast<index_type>(i)]);
+        static_cast<PetscScalar>(input[static_cast<Index>(i)]);
   }
   PetscCall(VecRestoreArray(output, &values));
   return PETSC_SUCCESS;
 }
 
-inline real_type norm2(const Vector& input)
+inline Real norm2(const Vector& input)
 {
-  real_type sum = 0.0;
-  for (index_type i = 0; i < input.size(); ++i)
+  Real sum = 0.0;
+  for (Index i = 0; i < input.size(); ++i)
   {
     sum += input[i] * input[i];
   }

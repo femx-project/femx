@@ -22,7 +22,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, index_type size)
+void resize(Vector& out, Index size)
 {
   if (out.size() != size)
   {
@@ -35,29 +35,29 @@ void resize(Vector& out, index_type size)
 }
 
 class LinearAssembledResidualEquation final
-  : public equation::AssembledResidualEquation
+  : public eq::AssembledResidualEquation
 {
 public:
-  index_type numStates() const override
+  Index numStates() const override
   {
     return 2;
   }
 
-  index_type numParams() const override
+  Index numParams() const override
   {
     return 2;
   }
 
-  index_type numResiduals() const override
+  Index numRes() const override
   {
     return 2;
   }
 
-  void residual(const Vector& state,
-                const Vector& params,
-                Vector&       out) const override
+  void res(const Vector& state,
+           const Vector& params,
+           Vector&       out) const override
   {
-    resize(out, numResiduals());
+    resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * params[0] - 2.0 * params[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -70,7 +70,7 @@ public:
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numStates());
+    out.resize(numRes(), numStates());
     out.setZero();
     out.set(0, 0, 2.0);
     out.set(0, 1, 3.0);
@@ -84,7 +84,7 @@ public:
   {
     (void) state;
     (void) params;
-    out.resize(numResiduals(), numParams());
+    out.resize(numRes(), numParams());
     out.setZero();
     out.set(0, 0, 5.0);
     out.set(0, 1, -2.0);
@@ -101,19 +101,19 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix matrix;
-    fillTestMatrix(matrix);
+    system::PETScSystemMatrix mat;
+    fillTestMatrix(mat);
 
     Vector dir(2);
     dir[0] = 0.5;
     dir[1] = -1.0;
 
     Vector out;
-    matrix.apply(dir, out);
+    mat.apply(dir, out);
     status *= isEqual(out[0], 1.0);
     status *= isEqual(out[1], -2.0);
 
-    matrix.applyT(dir, out);
+    mat.applyT(dir, out);
     status *= isEqual(out[0], 0.0);
     status *= isEqual(out[1], -2.5);
 
@@ -125,8 +125,8 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix matrix;
-    fillTestMatrix(matrix);
+    system::PETScSystemMatrix mat;
+    fillTestMatrix(mat);
 
     system::KspLinearSolver solver;
     solver.options().pc_type     = PCJACOBI;
@@ -139,14 +139,14 @@ public:
     rhs[1] = 2.0;
 
     Vector x;
-    solver.solve(matrix, rhs, x);
+    solver.solve(mat, rhs, x);
     status *= (std::abs(4.0 * x[0] + x[1] - rhs[0]) < 1.0e-10);
     status *= (std::abs(2.0 * x[0] + 3.0 * x[1] - rhs[1]) < 1.0e-10);
 
     rhs[0] = 1.0;
     rhs[1] = 3.0;
 
-    solver.solveT(matrix, rhs, x);
+    solver.solveT(mat, rhs, x);
     status *= (std::abs(4.0 * x[0] + 2.0 * x[1] - rhs[0]) < 1.0e-10);
     status *= (std::abs(x[0] + 3.0 * x[1] - rhs[1]) < 1.0e-10);
 
@@ -158,7 +158,7 @@ public:
     TestStatus status;
     status = true;
 
-    LinearAssembledResidualEquation residual_equation;
+    LinearAssembledResidualEquation res_eq;
     system::PETScSystemMatrix       state_jac;
     system::KspLinearSolver         lin_solver;
     lin_solver.options().pc_type     = PCJACOBI;
@@ -166,10 +166,10 @@ public:
     lin_solver.options().atol        = 1.0e-14;
     lin_solver.options().use_opts_db = false;
 
-    equation::MatrixNewtonStateSolver state_solver(
-        residual_equation, state_jac, lin_solver);
+    eq::MatrixNewtonStateSolver state_solver(
+        res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
-        residual_equation, state_jac, lin_solver);
+        res_eq, state_jac, lin_solver);
 
     Vector params(2);
     params[0] = 0.05;
@@ -205,37 +205,37 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::PETScSystemMatrix matrix;
-    assembler.initMat(matrix);
+    system::PETScSystemMatrix mat;
+    assembler.initMat(mat);
 
-    DenseMatrix local_matrix(space.numDofsPerElem(), space.numDofsPerElem());
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        local_matrix(i, j) = 1.0 + static_cast<real_type>(i + j);
+        local_mat(i, j) = 1.0 + static_cast<Real>(i + j);
       }
     }
 
-    assembler.addMat(0, local_matrix, matrix);
-    matrix.finalize();
+    assembler.addMat(0, local_mat, mat);
+    mat.finalize();
 
     Vector dir(space.numDofs());
-    for (index_type i = 0; i < dir.size(); ++i)
+    for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
     Vector out;
-    matrix.apply(dir, out);
+    mat.apply(dir, out);
 
     const auto dofs = space.elemDofs(0);
-    for (index_type i = 0; i < local_matrix.rows(); ++i)
+    for (Index i = 0; i < local_mat.rows(); ++i)
     {
-      real_type expected = 0.0;
-      for (index_type j = 0; j < local_matrix.cols(); ++j)
+      Real expected = 0.0;
+      for (Index j = 0; j < local_mat.cols(); ++j)
       {
-        expected += local_matrix(i, j);
+        expected += local_mat(i, j);
       }
       status *= isEqual(out[dofs[static_cast<std::size_t>(i)]], expected);
     }
@@ -254,25 +254,25 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::PETScSystemVector vector;
-    assembler.initVec(vector);
+    system::PETScSystemVector vec;
+    assembler.initVec(vec);
 
-    Vector local_vector(space.numDofsPerElem());
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    Vector local_vec(space.numDofsPerElem());
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 1.0;
+      local_vec[i] = 1.0;
     }
-    assembler.addVec(0, local_vector, vector);
+    assembler.addVec(0, local_vec, vec);
 
-    for (index_type i = 0; i < local_vector.size(); ++i)
+    for (Index i = 0; i < local_vec.size(); ++i)
     {
-      local_vector[i] = 10.0;
+      local_vec[i] = 10.0;
     }
-    assembler.addVec(1, local_vector, vector);
-    vector.finalize();
+    assembler.addVec(1, local_vec, vec);
+    vec.finalize();
 
     Vector out;
-    vector.copyToAll(out);
+    vec.copyToAll(out);
     status *= (out.size() == 6);
     status *= isEqual(out[0], 1.0);
     status *= isEqual(out[1], 11.0);
@@ -285,15 +285,15 @@ public:
   }
 
 private:
-  static void fillTestMatrix(system::PETScSystemMatrix& matrix)
+  static void fillTestMatrix(system::PETScSystemMatrix& mat)
   {
-    matrix.resize(2, 2);
-    matrix.setZero();
-    matrix.set(0, 0, 4.0);
-    matrix.set(0, 1, 1.0);
-    matrix.set(1, 0, 2.0);
-    matrix.set(1, 1, 3.0);
-    matrix.finalize();
+    mat.resize(2, 2);
+    mat.setZero();
+    mat.set(0, 0, 4.0);
+    mat.set(0, 1, 1.0);
+    mat.set(1, 0, 2.0);
+    mat.set(1, 1, 3.0);
+    mat.finalize();
   }
 };
 

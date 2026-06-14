@@ -26,25 +26,25 @@ public:
   }
 
 private:
-  static std::vector<std::vector<index_type>> collect(const FESpace& space)
+  static std::vector<std::vector<Index>> collect(const FESpace& space)
   {
-    std::vector<std::vector<index_type>> cdofs(
+    std::vector<std::vector<Index>> cdofs(
         static_cast<std::size_t>(space.numElems()));
-    for (index_type cell = 0; cell < space.numElems(); ++cell)
+    for (Index ic = 0; ic < space.numElems(); ++ic)
     {
-      cdofs[static_cast<std::size_t>(cell)] = space.elemDofs(cell);
+      cdofs[static_cast<std::size_t>(ic)] = space.elemDofs(ic);
     }
     return cdofs;
   }
 
-  static std::vector<std::vector<index_type>> collect(
+  static std::vector<std::vector<Index>> collect(
       const MixedFESpace& space)
   {
-    std::vector<std::vector<index_type>> cdofs(
+    std::vector<std::vector<Index>> cdofs(
         static_cast<std::size_t>(space.numElems()));
-    for (index_type cell = 0; cell < space.numElems(); ++cell)
+    for (Index ic = 0; ic < space.numElems(); ++ic)
     {
-      cdofs[static_cast<std::size_t>(cell)] = space.elemDofs(cell);
+      cdofs[static_cast<std::size_t>(ic)] = space.elemDofs(ic);
     }
     return cdofs;
   }
