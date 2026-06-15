@@ -25,6 +25,10 @@ class PETScSystemVector;
 namespace femx
 {
 
+using system::PETScSystemMatrix;
+using system::PETScSystemVector;
+using system::SparseSystemMatrix;
+
 struct AssemblyStats
 {
   Real max_cfl = 0.0;
@@ -69,25 +73,25 @@ void assembleElemResidual(const MixedFESpace&   space,
                           Vector&               Re,
                           Real&                 max_cfl);
 
-void assembleSystem(const MixedFESpace&         space,
-                    const Vector&               x,
-                    const Vector&               xp,
-                    bool                        initial,
-                    const FluidParams&          fluid,
-                    Real                        dt,
-                    system::SparseSystemMatrix& A,
-                    Vector&                     b,
-                    AssemblyStats&              stats);
+void assembleSystem(const MixedFESpace& space,
+                    const Vector&       x,
+                    const Vector&       xp,
+                    bool                initial,
+                    const FluidParams&  fluid,
+                    Real                dt,
+                    SparseSystemMatrix& A,
+                    Vector&             b,
+                    AssemblyStats&      stats);
 
-void assembleSystem(const MixedFESpace&        space,
-                    const Vector&              x,
-                    const Vector&              xp,
-                    bool                       initial,
-                    const FluidParams&         fluid,
-                    Real                       dt,
-                    const CellRange&           cells,
-                    system::PETScSystemMatrix& A,
-                    system::PETScSystemVector& b,
-                    AssemblyStats&             stats);
+void assembleSystem(const MixedFESpace& space,
+                    const Vector&       x,
+                    const Vector&       xp,
+                    bool                initial,
+                    const FluidParams&  fluid,
+                    Real                dt,
+                    const CellRange&    cells,
+                    PETScSystemMatrix&  A,
+                    PETScSystemVector&  b,
+                    AssemblyStats&      stats);
 
 } // namespace femx

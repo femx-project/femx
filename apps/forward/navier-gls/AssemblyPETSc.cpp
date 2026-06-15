@@ -16,27 +16,29 @@
 namespace femx
 {
 
-void assembleSystem(const MixedFESpace&        space,
-                    const Vector&              x,
-                    const Vector&              xp,
-                    bool                       initial,
-                    const FluidParams&         fluid,
-                    Real                       dt,
-                    const CellRange&           cells,
-                    system::PETScSystemMatrix& A,
-                    system::PETScSystemVector& b,
-                    AssemblyStats&             stats)
+using namespace femx::assembly;
+using namespace femx::system;
+
+void assembleSystem(const MixedFESpace& space,
+                    const Vector&       x,
+                    const Vector&       xp,
+                    bool                initial,
+                    const FluidParams&  fluid,
+                    Real                dt,
+                    const CellRange&    cells,
+                    PETScSystemMatrix&  A,
+                    PETScSystemVector&  b,
+                    AssemblyStats&      stats)
 {
   const auto& elem = space.field(0).space().finiteElement();
   const auto  quad = GaussQuadrature::make(elem.referenceElement(), 2);
-  const auto  nq   = quad.size();
 
-  assembly::SystemAssembler assembler(space);
+  SystemAssembler assembler(space);
   assembler.initMat(A);
   assembler.initVec(b);
 
   ElementValues        ev(elem, quad);
-  std::vector<QPState> qps(static_cast<std::size_t>(nq));
+  std::vector<QPState> qps;
   DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
   Vector               Fe(space.numDofsPerElem());
 

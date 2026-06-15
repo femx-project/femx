@@ -26,6 +26,8 @@
 #include <femx/system/resolve/ReSolveLinearSolver.hpp>
 
 using namespace femx;
+using namespace femx::assembly;
+using namespace femx::system;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -70,7 +72,7 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_RESOLVE", FEMX_ENABLE_RESOLVE_OPTION}}};
 }
 
-void setSolverOptions(system::ReSolveOptions& options)
+void setSolverOptions(ReSolveOptions& options)
 {
   options.factor   = "none";
   options.refactor = "none";
@@ -110,19 +112,19 @@ int run(const Params& params, bool enable_output)
   space.addField(p_space);
   space.setup();
 
-  auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-  system::SparseSystemMatrix A(pattern);
-  Vector                     b(space.numDofs());
-  Vector                     x(space.numDofs());
-  Vector                     xp(space.numDofs());
+  auto               pattern = SparsityPatternBuilder::build(space);
+  SparseSystemMatrix A(pattern);
+  Vector             b(space.numDofs());
+  Vector             x(space.numDofs());
+  Vector             xp(space.numDofs());
   x.setZero();
   xp.setZero();
 
-  system::ReSolveOptions opts;
+  ReSolveOptions opts;
   setSolverOptions(opts);
 
-  auto                        work = workspaceType(params.solver);
-  system::ReSolveLinearSolver solver(work, opts);
+  auto                work = workspaceType(params.solver);
+  ReSolveLinearSolver solver(work, opts);
 
   std::vector<Snapshot> snapshots;
   std::ofstream         run_log;

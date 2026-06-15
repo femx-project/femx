@@ -4,8 +4,8 @@
 #include <vector>
 
 #include <femx/common/Workspace.hpp>
-#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/eq/AssembledNewtonStateSolver.hpp>
+#include <femx/eq/AssembledResidualEquation.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>

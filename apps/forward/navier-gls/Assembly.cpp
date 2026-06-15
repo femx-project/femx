@@ -18,6 +18,9 @@
 namespace femx
 {
 
+using namespace femx::assembly;
+using namespace femx::system;
+
 std::array<Real, 3> velAtNode(const Vector&         x,
                               const MixedFieldView& u_dof,
                               Index                 in)
@@ -25,7 +28,7 @@ std::array<Real, 3> velAtNode(const Vector&         x,
   std::array<Real, 3> u{};
   for (Index d = 0; d < u_dof.numComponents(); ++d)
   {
-    u[static_cast<std::size_t>(d)] = x[u_dof.globalDof(in, d)];
+    u[d] = x[u_dof.globalDof(in, d)];
   }
   return u;
 }
@@ -188,11 +191,12 @@ void updateElemState(std::vector<QPState>& qps,
                      Real                  dt,
                      Real&                 max_cfl)
 {
-  qps.resize(static_cast<std::size_t>(ev.numQuadraturePoints()));
+  qps.resize(ev.numQuadraturePoints());
 
-  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq, ++qp_it)
   {
-    auto& qp = qps[static_cast<std::size_t>(iq)];
+    QPState& qp = *qp_it;
 
     const Index         nd = ev.dim();
     std::array<Real, 3> u_prev{};
@@ -293,13 +297,14 @@ void elemResidualFromSystem(const MixedFESpace& space,
 
   std::vector<Index> dofs;
   space.elemDofs(ic, dofs);
+  const Index* dof = dofs.data();
 
   for (Index i = 0; i < ndofs; ++i)
   {
     Real value = -Fe[i];
     for (Index j = 0; j < ndofs; ++j)
     {
-      value += Ke(i, j) * x_next[dofs[static_cast<std::size_t>(j)]];
+      value += Ke(i, j) * x_next[dof[j]];
     }
     Re[i] = value;
   }
@@ -336,30 +341,29 @@ void assembleElemResidual(const MixedFESpace&   space,
   elemResidualFromSystem(space, ic, Ke, Fe, x_next, Re);
 }
 
-void assembleSystem(const MixedFESpace&         space,
-                    const Vector&               x,
-                    const Vector&               xp,
-                    bool                        initial,
-                    const FluidParams&          fluid,
-                    Real                        dt,
-                    system::SparseSystemMatrix& A,
-                    Vector&                     b,
-                    AssemblyStats&              stats)
+void assembleSystem(const MixedFESpace& space,
+                    const Vector&       x,
+                    const Vector&       xp,
+                    bool                initial,
+                    const FluidParams&  fluid,
+                    Real                dt,
+                    SparseSystemMatrix& A,
+                    Vector&             b,
+                    AssemblyStats&      stats)
 {
   const auto& elem = space.field(0).space().finiteElement();
   const auto  quad = GaussQuadrature::make(elem.referenceElement(), 2);
-  const Index nq   = quad.size();
 
-  assembly::SystemAssembler initializer(space);
+  SystemAssembler initializer(space);
   initializer.initMat(A);
   initializer.initVec(b);
   Real max_cfl = 0.0;
 
 #pragma omp parallel reduction(max : max_cfl)
   {
-    ElementValues             ev(elem, quad);
-    std::vector<QPState>      qps(static_cast<std::size_t>(nq));
-    assembly::SystemAssembler assembler(space, assembly::AssemblyMode::Atomic);
+    ElementValues        ev(elem, quad);
+    std::vector<QPState> qps;
+    SystemAssembler      assembler(space, AssemblyMode::Atomic);
 
     DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
     Vector      Fe(space.numDofsPerElem());

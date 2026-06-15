@@ -43,7 +43,7 @@ public:
     }
   }
 
-  void res(Index                       ib,
+  void res(Index                      ib,
            const Mesh::BoundaryFacet& facet,
            const Vector&              u,
            const Vector&              m,
@@ -62,7 +62,7 @@ public:
              out.data());
   }
 
-  void stateJac(Index                       ib,
+  void stateJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
                 const Vector&              u,
                 const Vector&              m,
@@ -118,7 +118,7 @@ public:
 #endif
   }
 
-  void paramJac(Index                       ib,
+  void paramJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
                 const Vector&              u,
                 const Vector&              m,

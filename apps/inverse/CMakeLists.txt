@@ -1,3 +1,3 @@
 if(TARGET femx::inverse_petsc AND FEMX_HAS_ENZYME)
-  add_subdirectory(poisson-boundary-flux)
+  add_subdirectory(poisson-bd-control)
 endif()

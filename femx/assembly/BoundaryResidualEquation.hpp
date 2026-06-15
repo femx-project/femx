@@ -22,9 +22,9 @@ class BoundaryResidualEquation final : public eq::AssembledResidualEquation
 {
 public:
   BoundaryResidualEquation(const eq::AssembledResidualEquation& interior,
-                           BoundaryDofLayout                   res_layout,
-                           BoundaryDofLayout                   state_layout,
-                           BoundaryDofLayout                   param_layout,
+                           BoundaryDofLayout                    res_layout,
+                           BoundaryDofLayout                    state_layout,
+                           BoundaryDofLayout                    param_layout,
                            const BoundaryElementKernel&         kernel)
     : interior_(interior),
       res_layout_(std::move(res_layout)),

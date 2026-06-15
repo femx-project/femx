@@ -26,6 +26,8 @@
 #include <femx/system/petsc/PETScSystemVector.hpp>
 
 using namespace femx;
+using namespace femx::assembly;
+using namespace femx::system;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -101,7 +103,7 @@ CellRange localCellRange(Index num_cells)
   return {begin, begin + count};
 }
 
-void setKspDefaults(system::KspLinearSolver& solver)
+void setKspDefaults(KspLinearSolver& solver)
 {
   auto& options         = solver.options();
   options.type          = KSPFGMRES;
@@ -113,11 +115,11 @@ void setKspDefaults(system::KspLinearSolver& solver)
   options.use_opts_db   = true;
 }
 
-void applyDirichletCondition(const DirichletCondition&  bc,
-                             Index                      num_dofs,
-                             system::PETScSystemMatrix& A,
-                             system::PETScSystemVector& b,
-                             system::PETScSystemVector& bc_vals)
+void applyDirichletCondition(const DirichletCondition& bc,
+                             Index                     num_dofs,
+                             PETScSystemMatrix&        A,
+                             PETScSystemVector&        b,
+                             PETScSystemVector&        bc_vals)
 {
   if (bc.dofs().size() != bc.values().size())
   {
@@ -125,15 +127,16 @@ void applyDirichletCondition(const DirichletCondition&  bc,
   }
 
   std::map<Index, Real> constrained;
-  for (std::size_t i = 0; i < bc.dofs().size(); ++i)
+  auto                  value_it = bc.values().begin();
+  for (Index dof : bc.dofs())
   {
-    const Index dof = bc.dofs()[i];
     if (dof < 0 || dof >= num_dofs)
     {
       throw std::runtime_error("Dirichlet dof is out of range");
     }
 
-    constrained[dof] = bc.values()[i];
+    constrained[dof] = *value_it;
+    ++value_it;
   }
 
   bc_vals.setZero();
@@ -173,23 +176,23 @@ int run(const Params& params, bool enable_output)
   space.addField(p_space);
   space.setup();
 
-  auto   pattern = assembly::SparsityPatternBuilder::build(space);
+  auto   pattern = SparsityPatternBuilder::build(space);
   Vector x(space.numDofs());
   Vector xp(space.numDofs());
   x.setZero();
   xp.setZero();
 
-  system::PETScSystemVector b(PETSC_COMM_WORLD);
-  system::PETScSystemVector x_petsc(PETSC_COMM_WORLD);
-  system::PETScSystemVector bc_vals(PETSC_COMM_WORLD);
+  PETScSystemVector b(PETSC_COMM_WORLD);
+  PETScSystemVector x_petsc(PETSC_COMM_WORLD);
+  PETScSystemVector bc_vals(PETSC_COMM_WORLD);
   b.resize(space.numDofs());
   x_petsc.resize(space.numDofs());
   bc_vals.resize(space.numDofs());
 
-  system::PETScSystemMatrix A(PETSC_COMM_WORLD);
+  PETScSystemMatrix A(PETSC_COMM_WORLD);
   A.resize(pattern, x_petsc);
 
-  system::KspLinearSolver solver(PETSC_COMM_WORLD);
+  KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspDefaults(solver);
 
   const auto cells = localCellRange(space.mesh().numElems());

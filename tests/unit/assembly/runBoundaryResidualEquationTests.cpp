@@ -104,7 +104,7 @@ private:
 class LinearBoundaryKernel final : public assembly::BoundaryElementKernel
 {
 public:
-  void res(Index                       ib,
+  void res(Index                      ib,
            const Mesh::BoundaryFacet& facet,
            const Vector&              u,
            const Vector&              m,
@@ -119,7 +119,7 @@ public:
     }
   }
 
-  void stateJac(Index                       ib,
+  void stateJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
                 const Vector&              u,
                 const Vector&              m,
@@ -135,7 +135,7 @@ public:
     }
   }
 
-  void paramJac(Index                       ib,
+  void paramJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
                 const Vector&              u,
                 const Vector&              m,
@@ -186,7 +186,7 @@ public:
     ZeroAssembledEquation base(space.numDofs());
     LinearBoundaryKernel  kernel;
 
-    assembly::BoundaryDofLayout boundary_layout(space, kBoundaryTag);
+    assembly::BoundaryDofLayout        boundary_layout(space, kBoundaryTag);
     assembly::BoundaryResidualEquation equation(
         base, boundary_layout, boundary_layout, boundary_layout, kernel);
 
@@ -241,8 +241,8 @@ public:
     status *= (state_layout.numDofs() == space.numDofs());
     status *= (param_layout.numDofs() == 3);
 
-    ZeroAssembledEquation base(space.numDofs(), param_layout.numDofs());
-    LinearBoundaryKernel  kernel;
+    ZeroAssembledEquation              base(space.numDofs(), param_layout.numDofs());
+    LinearBoundaryKernel               kernel;
     assembly::BoundaryResidualEquation equation(
         base, state_layout, state_layout, param_layout, kernel);
 

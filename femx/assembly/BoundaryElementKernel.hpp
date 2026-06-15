@@ -16,19 +16,19 @@ class BoundaryElementKernel
 public:
   virtual ~BoundaryElementKernel() = default;
 
-  virtual void res(Index                       ib,
+  virtual void res(Index                      ib,
                    const Mesh::BoundaryFacet& facet,
                    const Vector&              u,
                    const Vector&              m,
                    Vector&                    out) const = 0;
 
-  virtual void stateJac(Index                       ib,
+  virtual void stateJac(Index                      ib,
                         const Mesh::BoundaryFacet& facet,
                         const Vector&              u,
                         const Vector&              m,
                         DenseMatrix&               out) const = 0;
 
-  virtual void paramJac(Index                       ib,
+  virtual void paramJac(Index                      ib,
                         const Mesh::BoundaryFacet& facet,
                         const Vector&              u,
                         const Vector&              m,

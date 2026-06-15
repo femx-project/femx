@@ -10,11 +10,11 @@
 namespace femx
 {
 
-std::size_t lowerInterval(const std::vector<Real>& points,
-                          Real                     x)
+Index lowerInterval(const Vector& points,
+                    Real          x)
 {
   const auto upper = std::upper_bound(points.begin(), points.end(), x);
-  return static_cast<std::size_t>(
+  return static_cast<Index>(
       std::distance(points.begin(), upper) - 1);
 }
 
@@ -30,10 +30,10 @@ Real sampleFlowRateLinear(const FlowRateParams& flow,
     return flow.value.back();
   }
 
-  const std::size_t i  = lowerInterval(flow.time, time);
-  const Real        t0 = flow.time[i];
-  const Real        t1 = flow.time[i + 1];
-  const Real        a  = (time - t0) / (t1 - t0);
+  const Index i  = lowerInterval(flow.time, time);
+  const Real  t0 = flow.time[i];
+  const Real  t1 = flow.time[i + 1];
+  const Real  a  = (time - t0) / (t1 - t0);
   return flow.value[i] + a * (flow.value[i + 1] - flow.value[i]);
 }
 
@@ -67,15 +67,15 @@ Real sampleFlowRateCubic(const FlowRateParams& flow,
     return flow.value.back();
   }
 
-  const std::size_t i  = lowerInterval(flow.time, time);
-  std::size_t       i0 = i;
+  const Index i  = lowerInterval(flow.time, time);
+  Index       i0 = i;
   if (i > 0)
   {
     i0 = i - 1;
   }
-  const std::size_t i1 = i;
-  const std::size_t i2 = i + 1;
-  const std::size_t i3 = std::min<std::size_t>(i + 2, flow.value.size() - 1);
+  const Index i1 = i;
+  const Index i2 = i + 1;
+  const Index i3 = std::min(i + 2, flow.value.size() - 1);
 
   const Real a = (time - flow.time[i1]) / (flow.time[i2] - flow.time[i1]);
   return catmullRom(flow.value[i0],
@@ -99,8 +99,8 @@ Real sampleFlowRate(const FlowRateParams& flow,
   throw std::runtime_error("Unsupported flowrate interpolation: " + flow.interp);
 }
 
-std::array<Real, 3> velFromFlow(const FlowRateParams& flow,
-                                Real                  time)
+Vector velFromFlow(const FlowRateParams& flow,
+                   Real                  time)
 {
   const Real q = sampleFlowRate(flow, time);
 
@@ -112,8 +112,8 @@ std::array<Real, 3> velFromFlow(const FlowRateParams& flow,
   const Real normal_mag = std::sqrt(normal_mag2);
   const Real speed      = q / flow.area;
 
-  std::array<Real, 3> vel{};
-  for (std::size_t i = 0; i < vel.size(); ++i)
+  Vector vel(3);
+  for (Index i = 0; i < vel.size(); ++i)
   {
     vel[i] = speed * flow.normal[i] / normal_mag;
   }
@@ -133,7 +133,7 @@ DirichletCondition makeBoundaryCondition(
 
   for (const auto& cond : bcs)
   {
-    std::array<Real, 3> vel{};
+    Vector vel(3);
     if (cond.flow)
     {
       vel = velFromFlow(*cond.flow, time);
@@ -147,11 +147,7 @@ DirichletCondition makeBoundaryCondition(
     {
       for (Index d = 0; d < u_dof.numComponents(); ++d)
       {
-        bc.addBoundary(u_dof,
-                       cond.tag,
-                       vel[static_cast<std::size_t>(d)],
-                       time,
-                       d);
+        bc.addBoundary(u_dof, cond.tag, vel[d], time, d);
       }
     }
     if (cond.ux)

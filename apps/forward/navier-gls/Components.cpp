@@ -63,11 +63,12 @@ void assembleMassRHS(const ElementValues&        ev,
   const Index nd     = ev.dim();
   const Index nq     = ev.numQuadraturePoints();
 
-  for (Index iq = 0; iq < nq; ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < nq; ++iq, ++qp_it)
   {
-    const auto& qp = qps[static_cast<std::size_t>(iq)];
-    const auto  N  = ev.N(iq);
-    const auto  Jw = ev.JxW(iq);
+    const QPState& qp = *qp_it;
+    const auto     N  = ev.N(iq);
+    const auto     Jw = ev.JxW(iq);
 
     for (Index i = 0; i < nshape; ++i)
     {
@@ -88,12 +89,13 @@ void assembleAdvectionLHS(const ElementValues&        ev,
   const Index nd     = ev.dim();
   const Index nq     = ev.numQuadraturePoints();
 
-  for (Index iq = 0; iq < nq; ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < nq; ++iq, ++qp_it)
   {
-    const auto& qp   = qps[static_cast<std::size_t>(iq)];
-    const auto  N    = ev.N(iq);
-    const auto  dNdx = ev.dNdx(iq);
-    const Real  Jw   = ev.JxW(iq);
+    const QPState& qp   = *qp_it;
+    const auto     N    = ev.N(iq);
+    const auto     dNdx = ev.dNdx(iq);
+    const Real     Jw   = ev.JxW(iq);
 
     for (Index i = 0; i < nshape; ++i)
     {
@@ -125,11 +127,12 @@ void assembleAdvectionRHS(const ElementValues&        ev,
   const Index nd     = ev.dim();
   const Index nq     = ev.numQuadraturePoints();
 
-  for (Index iq = 0; iq < nq; ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < nq; ++iq, ++qp_it)
   {
-    const auto& qp = qps[static_cast<std::size_t>(iq)];
-    const auto  N  = ev.N(iq);
-    const auto  Jw = ev.JxW(iq);
+    const QPState& qp = *qp_it;
+    const auto     N  = ev.N(iq);
+    const auto     Jw = ev.JxW(iq);
     for (Index i = 0; i < nshape; ++i)
     {
       for (Index d = 0; d < nd; ++d)
@@ -183,11 +186,12 @@ void assembleDiffusionRHS(const ElementValues&        ev,
   const Index nd     = ev.dim();
   const Index nq     = ev.numQuadraturePoints();
 
-  for (Index iq = 0; iq < nq; ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < nq; ++iq, ++qp_it)
   {
-    const auto& qp   = qps[static_cast<std::size_t>(iq)];
-    const auto  dNdx = ev.dNdx(iq);
-    const auto  Jw   = ev.JxW(iq);
+    const QPState& qp   = *qp_it;
+    const auto     dNdx = ev.dNdx(iq);
+    const auto     Jw   = ev.JxW(iq);
 
     for (Index i = 0; i < nshape; ++i)
     {
@@ -242,12 +246,13 @@ void assembleStabilizationLHS(const ElementValues&        ev,
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();
 
-  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq, ++qp_it)
   {
-    const auto& qp   = qps[static_cast<std::size_t>(iq)];
-    const auto  N    = ev.N(iq);
-    const auto  dNdx = ev.dNdx(iq);
-    const auto  Jw   = ev.JxW(iq);
+    const QPState& qp   = *qp_it;
+    const auto     N    = ev.N(iq);
+    const auto     dNdx = ev.dNdx(iq);
+    const auto     Jw   = ev.JxW(iq);
 
     for (Index i = 0; i < nshape; ++i)
     {
@@ -290,11 +295,12 @@ void assembleStabilizationRHS(const ElementValues&        ev,
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();
 
-  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
+  auto qp_it = qps.begin();
+  for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq, ++qp_it)
   {
-    const auto& qp   = qps[static_cast<std::size_t>(iq)];
-    const auto  dNdx = ev.dNdx(iq);
-    const auto  Jw   = ev.JxW(iq);
+    const QPState& qp   = *qp_it;
+    const auto     dNdx = ev.dNdx(iq);
+    const auto     Jw   = ev.JxW(iq);
 
     for (Index i = 0; i < nshape; ++i)
     {

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 #ifndef FEMX_NAVIERSTOKES_OUTPUT_DIR
 #define FEMX_NAVIERSTOKES_OUTPUT_DIR "."
@@ -45,8 +46,8 @@ struct OutputParams
 
 struct FlowRateParams
 {
-  std::vector<Real>   time;
-  std::vector<Real>   value;
+  Vector              time;
+  Vector              value;
   Real                area   = 1.0;
   std::array<Real, 3> normal = {1.0, 0.0, 0.0};
   std::string         interp = "linear";

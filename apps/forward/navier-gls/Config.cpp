@@ -44,7 +44,23 @@ std::array<Real, 3> parseVector3(const nlohmann::json& node,
   }
 
   std::array<Real, 3> values{};
-  for (std::size_t i = 0; i < values.size(); ++i)
+  for (Index i = 0; i < 3; ++i)
+  {
+    values[i] = node.at(i).get<Real>();
+  }
+  return values;
+}
+
+Vector parseRealVector(const nlohmann::json& node,
+                       const std::string&    name)
+{
+  if (!node.is_array())
+  {
+    throw std::runtime_error(name + " must be an array");
+  }
+
+  Vector values(static_cast<Index>(node.size()));
+  for (Index i = 0; i < values.size(); ++i)
   {
     values[i] = node.at(i).get<Real>();
   }
@@ -61,7 +77,7 @@ FlowRateParams parseFlowRate(const nlohmann::json& node)
   FlowRateParams flow;
   if (node.contains("time"))
   {
-    flow.time = node.at("time").get<std::vector<Real>>();
+    flow.time = parseRealVector(node.at("time"), "Boundary flowrate time");
   }
   else
   {
@@ -69,7 +85,7 @@ FlowRateParams parseFlowRate(const nlohmann::json& node)
   }
   if (node.contains("value"))
   {
-    flow.value = node.at("value").get<std::vector<Real>>();
+    flow.value = parseRealVector(node.at("value"), "Boundary flowrate value");
   }
   else
   {
@@ -161,7 +177,7 @@ void validateFlowRate(const FlowRateParams& flow)
   {
     throw std::runtime_error("Boundary flowrate area must be positive");
   }
-  for (std::size_t i = 1; i < flow.time.size(); ++i)
+  for (Index i = 1; i < flow.time.size(); ++i)
   {
     if (flow.time[i] <= flow.time[i - 1])
     {
