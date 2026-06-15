@@ -21,41 +21,17 @@ CsrPattern::CsrPattern(
   num_cols_  = cols;
   num_elems_ = static_cast<Index>(cdofs.size());
 
-  elem_coo_offsets_ = new Index[num_elems_ + 1];
-  elem_num_dofs_    = new Index[num_elems_];
+  elem_coo_offsets_.assign(static_cast<std::size_t>(num_elems_ + 1), 0);
+  elem_num_dofs_.assign(static_cast<std::size_t>(num_elems_), 0);
 
   countCooEntries(cdofs);
 
-  Index* coo_rows = new Index[num_coo_entries_];
-  Index* coo_cols = new Index[num_coo_entries_];
-  Index* order    = new Index[num_coo_entries_];
+  std::vector<Index> coo_rows(static_cast<std::size_t>(num_coo_entries_));
+  std::vector<Index> coo_cols(static_cast<std::size_t>(num_coo_entries_));
+  std::vector<Index> order(static_cast<std::size_t>(num_coo_entries_));
 
   setupCooArrays(cdofs, coo_rows, coo_cols, order);
   setupCsrArrays(coo_rows, coo_cols, order);
-
-  delete[] order;
-  delete[] coo_cols;
-  delete[] coo_rows;
-}
-
-CsrPattern::~CsrPattern()
-{
-  release();
-}
-
-CsrPattern::CsrPattern(CsrPattern&& other) noexcept
-{
-  moveFrom(std::move(other));
-}
-
-CsrPattern& CsrPattern::operator=(CsrPattern&& other) noexcept
-{
-  if (this != &other)
-  {
-    release();
-    moveFrom(std::move(other));
-  }
-  return *this;
 }
 
 void CsrPattern::countCooEntries(
@@ -75,9 +51,9 @@ void CsrPattern::countCooEntries(
 
 void CsrPattern::setupCooArrays(
     const std::vector<std::vector<Index>>& cdofs,
-    Index*                                 coo_rows,
-    Index*                                 coo_cols,
-    Index*                                 order)
+    std::vector<Index>&                    coo_rows,
+    std::vector<Index>&                    coo_cols,
+    std::vector<Index>&                    order)
 {
   Index counter = 0;
 
@@ -110,13 +86,13 @@ void CsrPattern::setupCooArrays(
   elem_coo_offsets_[num_elems_] = num_coo_entries_;
 }
 
-void CsrPattern::setupCsrArrays(const Index* coo_rows,
-                                const Index* coo_cols,
-                                Index*       order)
+void CsrPattern::setupCsrArrays(const std::vector<Index>& coo_rows,
+                                const std::vector<Index>& coo_cols,
+                                std::vector<Index>&       order)
 {
-  std::sort(order,
-            order + num_coo_entries_,
-            [coo_rows, coo_cols](Index a, Index b)
+  std::sort(order.begin(),
+            order.end(),
+            [&coo_rows, &coo_cols](Index a, Index b)
             {
               if (coo_rows[a] != coo_rows[b])
               {
@@ -125,23 +101,26 @@ void CsrPattern::setupCsrArrays(const Index* coo_rows,
               return coo_cols[a] < coo_cols[b];
             });
 
-  row_ptr_    = new Index[num_rows_ + 1]();
-  map_to_csr_ = new Index[num_coo_entries_];
+  row_ptr_.assign(static_cast<std::size_t>(num_rows_ + 1), 0);
+  map_to_csr_.assign(static_cast<std::size_t>(num_coo_entries_), 0);
 
-  Index* col_tmp = new Index[num_coo_entries_];
-
+  std::vector<Index> col_tmp;
+  col_tmp.reserve(static_cast<std::size_t>(num_coo_entries_));
   nnz_ = 0;
 
   for (Index k = 0; k < num_coo_entries_; ++k)
   {
-    const Index current = order[k];
+    const Index current = order[static_cast<std::size_t>(k)];
+    const Index previous =
+        k == 0 ? current : order[static_cast<std::size_t>(k - 1)];
 
     const bool is_new =
-        k == 0 || coo_rows[current] != coo_rows[order[k - 1]] || coo_cols[current] != coo_cols[order[k - 1]];
+        k == 0 || coo_rows[current] != coo_rows[previous]
+        || coo_cols[current] != coo_cols[previous];
 
     if (is_new)
     {
-      col_tmp[nnz_] = coo_cols[current];
+      col_tmp.push_back(coo_cols[current]);
 
       const Index row = coo_rows[current];
       ++row_ptr_[row + 1];
@@ -157,14 +136,7 @@ void CsrPattern::setupCsrArrays(const Index* coo_rows,
     row_ptr_[r + 1] += row_ptr_[r];
   }
 
-  col_ind_ = new Index[nnz_];
-
-  for (Index k = 0; k < nnz_; ++k)
-  {
-    col_ind_[k] = col_tmp[k];
-  }
-
-  delete[] col_tmp;
+  col_ind_ = std::move(col_tmp);
 }
 
 Index CsrPattern::rows() const
@@ -194,82 +166,42 @@ Index CsrPattern::numCooEntries() const
 
 const Index* CsrPattern::rowPtrData() const
 {
-  return row_ptr_;
+  return row_ptr_.data();
 }
 
 const Index* CsrPattern::colIndData() const
 {
-  return col_ind_;
+  return col_ind_.data();
 }
 
 const Index* CsrPattern::cooToCsrData() const
 {
-  return map_to_csr_;
+  return map_to_csr_.data();
 }
 
 const Index* CsrPattern::elemCooOffsetData() const
 {
-  return elem_coo_offsets_;
+  return elem_coo_offsets_.data();
 }
 
 const Index* CsrPattern::cellNumDofsData() const
 {
-  return elem_num_dofs_;
+  return elem_num_dofs_.data();
 }
 
 Index CsrPattern::mapToCsr(Index i) const
 {
-  return map_to_csr_[i];
+  return map_to_csr_[static_cast<std::size_t>(i)];
 }
 
 Index CsrPattern::elemCooOffset(Index ic) const
 {
-  return elem_coo_offsets_[ic];
+  return elem_coo_offsets_[static_cast<std::size_t>(ic)];
 }
 
 Index CsrPattern::elemNumDofs(Index ic) const
 {
-  return elem_num_dofs_[ic];
-}
-
-void CsrPattern::release() noexcept
-{
-  delete[] row_ptr_;
-  delete[] col_ind_;
-  delete[] map_to_csr_;
-  delete[] elem_coo_offsets_;
-  delete[] elem_num_dofs_;
-
-  row_ptr_          = nullptr;
-  col_ind_          = nullptr;
-  map_to_csr_       = nullptr;
-  elem_coo_offsets_ = nullptr;
-  elem_num_dofs_    = nullptr;
-}
-
-void CsrPattern::moveFrom(CsrPattern&& other) noexcept
-{
-  num_rows_         = other.num_rows_;
-  num_cols_         = other.num_cols_;
-  nnz_              = other.nnz_;
-  num_elems_        = other.num_elems_;
-  num_coo_entries_  = other.num_coo_entries_;
-  row_ptr_          = other.row_ptr_;
-  col_ind_          = other.col_ind_;
-  map_to_csr_       = other.map_to_csr_;
-  elem_coo_offsets_ = other.elem_coo_offsets_;
-  elem_num_dofs_    = other.elem_num_dofs_;
-
-  other.num_rows_         = 0;
-  other.num_cols_         = 0;
-  other.nnz_              = 0;
-  other.num_elems_        = 0;
-  other.num_coo_entries_  = 0;
-  other.row_ptr_          = nullptr;
-  other.col_ind_          = nullptr;
-  other.map_to_csr_       = nullptr;
-  other.elem_coo_offsets_ = nullptr;
-  other.elem_num_dofs_    = nullptr;
+  return elem_num_dofs_[static_cast<std::size_t>(ic)];
 }
 
 } // namespace femx

@@ -36,7 +36,12 @@ Mesh Mesh::makeStructuredQuad(Index nx,
       const Index n1 = n0 + 1;
       const Index n3 = n0 + nodes_per_row;
       const Index n2 = n3 + 1;
-      mesh.addCell({n0, n1, n2, n3});
+      mesh.addCell({n0, n1, n2, n3},
+                   Cell::Shape::Quadrilateral,
+                   2,
+                   0,
+                   0,
+                   {});
     }
   }
 

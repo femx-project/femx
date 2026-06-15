@@ -14,14 +14,6 @@ public:
              Index                                  cols,
              const std::vector<std::vector<Index>>& cdofs);
 
-  ~CsrPattern();
-
-  CsrPattern(const CsrPattern&)            = delete;
-  CsrPattern& operator=(const CsrPattern&) = delete;
-
-  CsrPattern(CsrPattern&& other) noexcept;
-  CsrPattern& operator=(CsrPattern&& other) noexcept;
-
   Index rows() const;
   Index cols() const;
   Index nnz() const;
@@ -42,14 +34,12 @@ public:
 private:
   void countCooEntries(const std::vector<std::vector<Index>>& cdofs);
   void setupCooArrays(const std::vector<std::vector<Index>>& cdofs,
-                      Index*                                 coo_rows,
-                      Index*                                 coo_cols,
-                      Index*                                 order);
-  void setupCsrArrays(const Index* coo_rows,
-                      const Index* coo_cols,
-                      Index*       order);
-  void release() noexcept;
-  void moveFrom(CsrPattern&& other) noexcept;
+                      std::vector<Index>&                    coo_rows,
+                      std::vector<Index>&                    coo_cols,
+                      std::vector<Index>&                    order);
+  void setupCsrArrays(const std::vector<Index>& coo_rows,
+                      const std::vector<Index>& coo_cols,
+                      std::vector<Index>&       order);
 
 private:
   Index num_rows_{0};
@@ -59,12 +49,12 @@ private:
   Index num_elems_{0};
   Index num_coo_entries_{0};
 
-  Index* row_ptr_{nullptr};
-  Index* col_ind_{nullptr};
-  Index* map_to_csr_{nullptr};
+  std::vector<Index> row_ptr_;
+  std::vector<Index> col_ind_;
+  std::vector<Index> map_to_csr_;
 
-  Index* elem_coo_offsets_{nullptr};
-  Index* elem_num_dofs_{nullptr};
+  std::vector<Index> elem_coo_offsets_;
+  std::vector<Index> elem_num_dofs_;
 };
 
 } // namespace femx

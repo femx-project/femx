@@ -156,9 +156,7 @@ public:
     }
   }
 
-  void addVec(Index                 ic,
-              const Vector&         local,
-              system::SystemVector& out) const
+  void addVec(Index ic, const Vector& local, system::SystemVector& out) const
   {
     if (out.size() != numRows())
     {
@@ -189,9 +187,7 @@ public:
     }
   }
 
-  void addMat(Index                 ic,
-              const DenseMatrix&    local,
-              system::SystemMatrix& out) const
+  void addMat(Index ic, const DenseMatrix& local, system::SystemMatrix& out) const
   {
     if (out.numRows() != numRows() || out.numCols() != numCols())
     {

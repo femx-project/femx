@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "Problem.hpp"
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
+#include <femx/eq/AssembledNewtonStateSolver.hpp>
 #include <femx/inverse/AdjointReducedFunctional.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>
 #include <femx/inverse/petsc/TaoOptimizer.hpp>
@@ -29,7 +29,7 @@ PetscErrorCode runOptimization()
   lin_solver.options().atol        = 1.0e-14;
   lin_solver.options().use_opts_db = true;
 
-  eq::MatrixNewtonStateSolver state_solver(
+  eq::AssembledNewtonStateSolver state_solver(
       res_eq, state_jac, lin_solver);
   inverse::MatrixEquationAdjointSolver adj_solver(
       res_eq, adj_state_jac, lin_solver);

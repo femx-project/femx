@@ -219,7 +219,7 @@ private:
     result.computed  = computed;
     result.reference = reference;
     result.abs_err   = std::abs(computed - reference);
-    result.rel_err = result.abs_err / (1.0 + std::abs(reference));
+    result.rel_err   = result.abs_err / (1.0 + std::abs(reference));
     return result;
   }
 
@@ -241,7 +241,7 @@ private:
     result.computed  = norm(computed);
     result.reference = norm(reference);
     result.abs_err   = norm(error);
-    result.rel_err = result.abs_err / (1.0 + result.reference);
+    result.rel_err   = result.abs_err / (1.0 + result.reference);
     return result;
   }
 

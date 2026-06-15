@@ -1,7 +1,7 @@
 #include <iostream>
 
+#include <femx/eq/AssembledLinearStateSolver.hpp>
 #include <femx/eq/AssembledResidualEquation.hpp>
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/inverse/AdjointReducedFunctional.hpp>
 #include <femx/inverse/DerivativeCheck.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>
@@ -187,7 +187,7 @@ public:
     system::DenseSystemMatrix       state_jac;
     system::DenseLinearSolver       lin_solver;
 
-    eq::MatrixNewtonStateSolver state_solver(
+    eq::AssembledLinearStateSolver state_solver(
         res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
@@ -205,6 +205,15 @@ public:
     res_eq.res(state, params, res);
     status *= isEqual(res[0], 0.0);
     status *= isEqual(res[1], 0.0);
+
+    Vector reference(2);
+    reference[0] = 3.0;
+    reference[1] = -4.0;
+    state_solver.setReferenceState(reference);
+    state_solver.solve(params, state);
+    status *= isEqual(state[0], -1.48);
+    status *= isEqual(state[1], 0.89);
+    state_solver.clearReferenceState();
 
     Vector rhs(2);
     rhs[0] = -1.73;
@@ -226,7 +235,7 @@ public:
     LinearAssembledResidualEquation res_eq;
     system::DenseSystemMatrix       state_jac;
     system::DenseLinearSolver       lin_solver;
-    eq::MatrixNewtonStateSolver     state_solver(
+    eq::AssembledLinearStateSolver  state_solver(
         res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);

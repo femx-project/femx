@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <femx/eq/NewtonStateSolver.hpp>
+#include <femx/eq/MatrixFreeNewtonStateSolver.hpp>
 #include <femx/eq/ResidualEquation.hpp>
 #include <femx/inverse/EquationAdjointSolver.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -158,14 +158,14 @@ public:
     return status.report(__func__);
   }
 
-  TestOutcome newtonStateSolverSolvesLinearResidual()
+  TestOutcome matrixFreeNewtonStateSolverSolvesLinearResidual()
   {
     TestStatus status;
     status = true;
 
-    LinearResidualEquation    equation;
-    system::DenseLinearSolver lin_solver;
-    eq::NewtonStateSolver     state_solver(equation, lin_solver);
+    LinearResidualEquation          equation;
+    system::DenseLinearSolver       lin_solver;
+    eq::MatrixFreeNewtonStateSolver state_solver(equation, lin_solver);
 
     Vector params(2);
     params[0] = 0.05;
@@ -227,7 +227,7 @@ int main(int, char**)
 
   femx::tests::TestingResults result;
   result += test.denseSolverSolvesOperatorAndTranspose();
-  result += test.newtonStateSolverSolvesLinearResidual();
+  result += test.matrixFreeNewtonStateSolverSolvesLinearResidual();
   result += test.equationAdjointSolverSolvesTransposeJacobian();
 
   return result.summary();

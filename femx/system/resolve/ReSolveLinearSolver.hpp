@@ -11,6 +11,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/Workspace.hpp>
+#include <femx/system/LinearSolver.hpp>
 
 namespace femx
 {
@@ -37,7 +38,7 @@ struct ReSolveOptions
   bool  flexible = true;
 };
 
-class ReSolveLinearSolver final
+class ReSolveLinearSolver final : public LinearSolver
 {
 public:
   /** @brief Create a ReSolve linear solver for the given work. */
@@ -48,7 +49,17 @@ public:
                       ReSolveOptions options);
 
   /** @brief Destroy the solver and owned ReSolve resources. */
-  ~ReSolveLinearSolver();
+  ~ReSolveLinearSolver() override;
+
+  /** @brief Solve op x = rhs for a SparseSystemMatrix-backed operator. */
+  void solve(const LinearOperator& op,
+             const Vector&         rhs,
+             Vector&               out) override;
+
+  /** @brief Solve op^T x = rhs for a SparseSystemMatrix-backed operator. */
+  void solveT(const LinearOperator& op,
+              const Vector&         rhs,
+              Vector&               out) override;
 
   /** @brief Set the system matrix used by subsequent solves. */
   void setOperator(const SparseMatrix& A);

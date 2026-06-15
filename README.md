@@ -34,7 +34,8 @@ Common configuration options are:
 - `FEMX_ENABLE_HDF5=ON`: enable HDF5/XDMF output support.
 - `FEMX_ENABLE_OPENMP=ON`: enable OpenMP parallel assembly.
 - `FEMX_ENABLE_PETSC=ON`: enable PETSc applications when PETSc and MPI are found.
-- `FEMX_ENABLE_ENZYME=OFF`: enable Enzyme automatic differentiation support.
+- `FEMX_ENABLE_ENZYME=OFF`: enable Enzyme automatic differentiation support
+  when set to `ON`.
 - `FEMX_BUILD_APPS=ON`: build applications.
 - `FEMX_RESOLVE_BACKEND=AUTO`: requested ReSolve backend, one of `AUTO`, `CPU`,
   or `CUDA`.
@@ -47,7 +48,7 @@ $ cmake -S . -B build -DReSolve_ROOT=/path/to/resolve
 
 To build with Enzyme, enable the option and pass Enzyme's CMake package
 directory. The Enzyme package supplies the matching LLVM/Clang toolchain and
-the `LLDEnzymeFlags` target used by femx:
+the Enzyme compiler-plugin flags used by femx:
 
 ```shell
 $ cmake -S . -B build-enzyme \

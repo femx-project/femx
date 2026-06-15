@@ -3,8 +3,10 @@ add_library(femx::fem ALIAS femx_fem)
 
 target_sources(
   femx_fem
-  PRIVATE MixedFESpace.cpp DofMap.cpp ElementValues.cpp FESpace.cpp
-  PUBLIC MixedFESpace.hpp
+  PRIVATE BoundaryElementValues.cpp MixedFESpace.cpp DofMap.cpp
+          ElementValues.cpp FESpace.cpp
+  PUBLIC BoundaryElementValues.hpp
+         MixedFESpace.hpp
          DofMap.hpp
          ElementValues.hpp
          FESpace.hpp

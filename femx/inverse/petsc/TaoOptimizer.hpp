@@ -2,7 +2,9 @@
 
 #include <petsctao.h>
 
+#include <functional>
 #include <string>
+#include <utility>
 
 #include <femx/common/Types.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>
@@ -47,6 +49,19 @@ struct TaoBounds
   Vector lower;
   Vector upper;
 };
+
+struct TaoIterationInfo
+{
+  Index              its             = 0;
+  Real               value           = 0.0;
+  Real               grad_norm       = 0.0;
+  Real               constraint_norm = 0.0;
+  Real               step_norm       = 0.0;
+  TaoConvergedReason reason          = TAO_CONTINUE_ITERATING;
+};
+
+using TaoMonitorCallback =
+    std::function<void(const TaoIterationInfo&, const Vector&)>;
 
 /** @brief PETSc/TAO optimizer for a ReducedFunctional. */
 class TaoOptimizer
@@ -141,6 +156,16 @@ public:
     return bounds_;
   }
 
+  void setMonitor(TaoMonitorCallback monitor)
+  {
+    monitor_ = std::move(monitor);
+  }
+
+  void clearMonitor()
+  {
+    monitor_ = nullptr;
+  }
+
   PetscErrorCode solve(const Vector& initial, TaoResult& result)
   {
     if (functional_ == nullptr)
@@ -183,6 +208,16 @@ public:
       PetscCall(TaoSetType(tao.get(), taoType()));
       PetscCall(TaoSetSolution(tao.get(), params.get()));
       PetscCall(adapter.setObjectiveAndGradient(tao.get()));
+      if (monitor_)
+      {
+#if PETSC_VERSION_GE(3, 21, 0)
+        PetscCall(TaoMonitorSet(
+            tao.get(), &TaoOptimizer::monitorCallback, this, nullptr));
+#else
+        PetscCall(TaoSetMonitor(
+            tao.get(), &TaoOptimizer::monitorCallback, this, nullptr));
+#endif
+      }
       if (has_bounds_)
       {
         PetscCall(VecDuplicate(params.get(), lower.put()));
@@ -227,6 +262,52 @@ public:
   }
 
 private:
+  static PetscErrorCode monitorCallback(Tao tao, void* ctx)
+  {
+    auto* self = static_cast<TaoOptimizer*>(ctx);
+    if (self == nullptr || !self->monitor_)
+    {
+      return PETSC_SUCCESS;
+    }
+
+    PetscInt           its   = 0;
+    PetscReal          value = 0.0, grad_norm = 0.0, constraint_norm = 0.0;
+    PetscReal          step_norm = 0.0;
+    TaoConvergedReason reason    = TAO_CONTINUE_ITERATING;
+    PetscCall(TaoGetSolutionStatus(tao,
+                                   &its,
+                                   &value,
+                                   &grad_norm,
+                                   &constraint_norm,
+                                   &step_norm,
+                                   &reason));
+
+    Vec params = nullptr;
+    PetscCall(TaoGetSolution(tao, &params));
+
+    Vector current;
+    PetscCall(::femx::system::detail::copyFromPETSc(params, current));
+
+    const TaoIterationInfo info{
+        static_cast<Index>(its),
+        static_cast<Real>(value),
+        static_cast<Real>(grad_norm),
+        static_cast<Real>(constraint_norm),
+        static_cast<Real>(step_norm),
+        reason};
+
+    try
+    {
+      self->monitor_(info, current);
+    }
+    catch (...)
+    {
+      return PETSC_ERR_LIB;
+    }
+
+    return PETSC_SUCCESS;
+  }
+
   const char* taoType() const
   {
     if (has_bounds_ && options_.type == TAOLMVM)
@@ -262,6 +343,7 @@ private:
   TaoOptions         options_;
   TaoBounds          bounds_;
   bool               has_bounds_{false};
+  TaoMonitorCallback monitor_;
 };
 
 } // namespace inverse

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <type_traits>
-
 #include <femx/common/Types.hpp>
 
 #if defined(FEMX_HAS_ENZYME)
@@ -11,8 +9,8 @@ extern int enzyme_dupnoneed;
 extern int enzyme_const;
 extern int enzyme_out;
 
-template <typename Return, typename Fn, typename... Args>
-Return __enzyme_autodiff(Fn fn, Args... args);
+template <typename Return, typename... Args>
+Return __enzyme_autodiff(void* fn, Args... args);
 
 #endif
 
@@ -25,18 +23,16 @@ namespace ad
 
 inline constexpr bool has_enzyme = true;
 
-template <typename Return, typename Fn, typename... Args>
-Return autodiff(Fn fn, Args... args)
+template <auto Fn, typename Return, typename... Args>
+Return autodiff(Args... args)
 {
-  return __enzyme_autodiff<Return>(fn, args...);
+  return __enzyme_autodiff<Return>(reinterpret_cast<void*>(Fn), args...);
 }
 
-template <typename Fn>
-Real derivative(Fn fn, Real x)
+template <Real (*Fn)(Real)>
+Real derivative(Real x)
 {
-  static_assert(std::is_invocable_r_v<Real, Fn, Real>,
-                "derivative expects a scalar function Real(Real).");
-  return autodiff<Real>(fn, x);
+  return autodiff<Fn, Real>(x);
 }
 
 #else
@@ -46,18 +42,18 @@ inline constexpr bool has_enzyme = false;
 template <typename>
 inline constexpr bool always_false = false;
 
-template <typename Return, typename Fn, typename... Args>
-Return autodiff(Fn, Args...)
+template <auto, typename Return, typename... Args>
+Return autodiff(Args...)
 {
   static_assert(always_false<Return>,
                 "femx was built without Enzyme. Configure with "
                 "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
 }
 
-template <typename Fn>
-Real derivative(Fn, Real)
+template <Real (*)(Real)>
+Real derivative(Real)
 {
-  static_assert(always_false<Fn>,
+  static_assert(always_false<Real>,
                 "femx was built without Enzyme. Configure with "
                 "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
 }

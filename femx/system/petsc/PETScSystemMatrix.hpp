@@ -94,12 +94,13 @@ public:
 
     const PetscInt petsc_rows = static_cast<PetscInt>(rows_);
     const PetscInt petsc_cols = static_cast<PetscInt>(cols_);
-    PetscMPIInt    comm_size  = 1;
+
+    PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
-    const PetscInt local_rows =
-        comm_size == 1 ? petsc_rows : PETSC_DECIDE;
-    const PetscInt local_cols =
-        comm_size == 1 ? petsc_cols : PETSC_DECIDE;
+
+    const PetscInt local_rows = comm_size == 1 ? petsc_rows : PETSC_DECIDE;
+    const PetscInt local_cols = comm_size == 1 ? petsc_cols : PETSC_DECIDE;
+
     Index nonzeros_per_row = cols_ > 0 ? default_nonzeros_per_row_ : 1;
     if (cols_ > 0 && cols_ < nonzeros_per_row)
     {
@@ -167,8 +168,8 @@ public:
                        o_nnz.empty() ? nullptr : o_nnz.data(),
                        &mat_),
           "MatCreateAIJ");
-    check(MatSetOption(mat_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE),
-          "MatSetOption");
+
+    check(MatSetOption(mat_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE), "MatSetOption");
     check(MatSetUp(mat_), "MatSetUp");
   }
 

@@ -4,6 +4,13 @@ target_link_libraries(runLagrangeQuadQ1Tests PRIVATE femx::femx)
 
 add_test(NAME LagrangeQuadQ1Tests COMMAND runLagrangeQuadQ1Tests)
 
+add_executable(runBoundaryElementValuesTests
+               unit/fem/runBoundaryElementValuesTests.cpp)
+
+target_link_libraries(runBoundaryElementValuesTests PRIVATE femx::femx)
+
+add_test(NAME BoundaryElementValuesTests COMMAND runBoundaryElementValuesTests)
+
 add_executable(runResidualEquationTests
                unit/equation/runResidualEquationTests.cpp)
 
@@ -65,6 +72,23 @@ target_link_libraries(runElementResidualEquationTests PRIVATE femx::femx)
 
 add_test(NAME ElementResidualEquationTests
          COMMAND runElementResidualEquationTests)
+
+add_executable(runBoundaryResidualEquationTests
+               unit/assembly/runBoundaryResidualEquationTests.cpp)
+
+target_link_libraries(runBoundaryResidualEquationTests PRIVATE femx::femx)
+
+add_test(NAME BoundaryResidualEquationTests
+         COMMAND runBoundaryResidualEquationTests)
+
+if(ReSolve_FOUND)
+  add_executable(runReSolveLinearSolverTests
+                 unit/system/resolve/runReSolveLinearSolverTests.cpp)
+
+  target_link_libraries(runReSolveLinearSolverTests PRIVATE femx::femx)
+
+  add_test(NAME ReSolveLinearSolverTests COMMAND runReSolveLinearSolverTests)
+endif()
 
 add_executable(runReducedFunctionalTests
                unit/inverse/runReducedFunctionalTests.cpp)

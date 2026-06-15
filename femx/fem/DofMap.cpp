@@ -17,7 +17,7 @@ void DofMap::allocate(Index num_elems, Index num_dofs_per_elem)
     throw std::runtime_error("DofMap: invalid size");
   }
 
-  num_elems_      = num_elems;
+  num_elems_         = num_elems;
   num_dofs_per_elem_ = num_dofs_per_elem;
   elem_dofs_.assign(static_cast<std::size_t>(num_elems_) * static_cast<std::size_t>(num_dofs_per_elem_), 0);
 }

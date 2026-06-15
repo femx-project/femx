@@ -9,10 +9,10 @@ FESpace::FESpace(const Mesh*          mesh,
                  const FiniteElement* finite_element,
                  Index                components)
   : mesh_(mesh),
-    finite_elem_(finite_element),
+    fe_(finite_element),
     components_(components)
 {
-  if (!mesh_ || !finite_elem_)
+  if (!mesh_ || !fe_)
   {
     throw std::runtime_error("FESpace: null mesh or finite elem");
   }
@@ -25,7 +25,7 @@ FESpace::FESpace(const Mesh*          mesh,
 void FESpace::setup()
 {
   const Index num_elem = mesh_->numElems();
-  num_shapes_per_elem_ = finite_elem_->numDofsPerElement();
+  num_shapes_per_elem_ = fe_->numDofsPerElement();
   const Index ndof_e   = components_ * num_shapes_per_elem_;
 
   dof_map_.allocate(num_elem, ndof_e);
@@ -34,7 +34,7 @@ void FESpace::setup()
   for (Index ic = 0; ic < num_elem; ++ic)
   {
     const auto& cell = mesh_->cell(ic);
-    if (cell.numNodes() != finite_elem_->numNodes())
+    if (cell.numNodes() != fe_->numNodes())
     {
       throw std::runtime_error(
           "FESpace: finite elem node count does not match mesh cell");
@@ -58,7 +58,7 @@ const Mesh& FESpace::mesh() const noexcept
 
 const FiniteElement& FESpace::finiteElement() const noexcept
 {
-  return *finite_elem_;
+  return *fe_;
 }
 
 const DofMap& FESpace::dofMap() const noexcept

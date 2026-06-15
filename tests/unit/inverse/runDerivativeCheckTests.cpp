@@ -173,31 +173,31 @@ public:
     objective_params[0] = 2.0;
     objective_params[1] = -1.5;
 
-    Vector state_direction(2);
-    state_direction[0] = 1.5;
-    state_direction[1] = -2.0;
+    Vector state_dir(2);
+    state_dir[0] = 1.5;
+    state_dir[1] = -2.0;
 
-    Vector param_direction(2);
-    param_direction[0] = -0.75;
-    param_direction[1] = 0.5;
+    Vector param_dir(2);
+    param_dir[0] = -0.75;
+    param_dir[1] = 0.5;
 
     QuadraticObjective objective;
     status *= check.objStateGrad(objective,
                                  state,
                                  objective_params,
-                                 state_direction)
+                                 state_dir)
                   .passed(1.0e-8, 1.0e-8);
     status *= check.objParamGrad(objective,
                                  state,
                                  objective_params,
-                                 param_direction)
+                                 param_dir)
                   .passed(1.0e-8, 1.0e-8);
 
     Vector eq_params(1);
     eq_params[0] = 2.0;
 
-    Vector eq_param_direction(1);
-    eq_param_direction[0] = -0.75;
+    Vector eq_param_dir(1);
+    eq_param_dir[0] = -0.75;
 
     Vector lambda(2);
     lambda[0] = -3.0;
@@ -207,23 +207,23 @@ public:
     status *= check.resStateJac(equation,
                                 state,
                                 eq_params,
-                                state_direction)
+                                state_dir)
                   .passed(1.0e-8, 1.0e-8);
     status *= check.resParamJac(equation,
                                 state,
                                 eq_params,
-                                eq_param_direction)
+                                eq_param_dir)
                   .passed(1.0e-8, 1.0e-8);
     status *= check.stateJacT(equation,
                               state,
                               eq_params,
-                              state_direction,
+                              state_dir,
                               lambda)
                   .passed(1.0e-12, 1.0e-12);
     status *= check.paramJacT(equation,
                               state,
                               eq_params,
-                              eq_param_direction,
+                              eq_param_dir,
                               lambda)
                   .passed(1.0e-12, 1.0e-12);
 

@@ -348,7 +348,7 @@ void assembleSystem(const MixedFESpace&         space,
 {
   const auto& elem = space.field(0).space().finiteElement();
   const auto  quad = GaussQuadrature::make(elem.referenceElement(), 2);
-  const Index nq = quad.size();
+  const Index nq   = quad.size();
 
   assembly::SystemAssembler initializer(space);
   initializer.initMat(A);

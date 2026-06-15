@@ -5,7 +5,6 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/MatrixBackend.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>
@@ -19,9 +18,8 @@ namespace system
 class SparseSystemMatrix final : public SystemMatrix
 {
 public:
-  explicit SparseSystemMatrix(const CsrPattern& pattern,
-                              MatrixBackend     backend = MatrixBackend::HostCsr)
-    : mat_(pattern, backend)
+  explicit SparseSystemMatrix(const CsrPattern& pattern)
+    : mat_(pattern)
   {
   }
 

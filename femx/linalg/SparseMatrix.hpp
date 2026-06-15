@@ -1,25 +1,18 @@
 #pragma once
 
-#include <memory>
+#include <vector>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/MatrixBackend.hpp>
 
 namespace femx
 {
 
-class DenseMatrix;
 class CsrPattern;
-class SparseMatrixImpl;
 
 class SparseMatrix
 {
 public:
-  explicit SparseMatrix(
-      const CsrPattern& pattern,
-      MatrixBackend     backend = MatrixBackend::HostCsr);
-
-  ~SparseMatrix();
+  explicit SparseMatrix(const CsrPattern& pattern);
 
   void setZero();
 
@@ -29,16 +22,14 @@ public:
 
   const CsrPattern& pattern() const;
 
-  MatrixBackend backend() const;
-
   const Index* rowPtrData() const;
   const Index* colIndData() const;
   Real*        valuesData();
   const Real*  valuesData() const;
 
 private:
-  const CsrPattern*                 pattern_{nullptr};
-  std::unique_ptr<SparseMatrixImpl> impl_;
+  const CsrPattern* pattern_{nullptr};
+  std::vector<Real> values_;
 };
 
 } // namespace femx

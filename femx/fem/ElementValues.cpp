@@ -10,13 +10,13 @@
 namespace femx
 {
 
-ElementValues::ElementValues(const FiniteElement&   finite_element,
+ElementValues::ElementValues(const FiniteElement&   fe,
                              const GaussQuadrature& quad)
-  : finite_elem_(&finite_element),
-    quadrature_(&quad),
-    num_nodes_(finite_element.numNodes()),
-    num_dofs_(finite_element.numDofsPerElement()),
-    dim_(finite_element.dim()),
+  : fe_(&fe),
+    quad_(&quad),
+    num_nodes_(fe.numNodes()),
+    num_dofs_(fe.numDofsPerElement()),
+    dim_(fe.dim()),
     num_qp_(quad.size())
 {
   N_.resize(num_qp_ * num_dofs_);
@@ -99,7 +99,7 @@ void ElementValues::calcReferenceValues()
 {
   for (Index iq = 0; iq < num_qp_; ++iq)
   {
-    const QuadraturePoint& qp = (*quadrature_)[iq];
+    const QuadraturePoint& qp = (*quad_)[iq];
 
     VectorView<Real> N(
         N_.data() + iq * num_dofs_,
@@ -110,8 +110,8 @@ void ElementValues::calcReferenceValues()
         num_dofs_,
         dim_);
 
-    finite_elem_->calcShape(qp, N);
-    finite_elem_->calcShapeGrad(qp, dNdr);
+    fe_->calcShape(qp, N);
+    fe_->calcShapeGrad(qp, dNdr);
 
     weights_[iq] = qp.weight;
   }
@@ -139,7 +139,7 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
     }
 
     const Real detJ = invJacobian(J_, invJ_, dim_);
-    detJ_[iq]        = std::abs(detJ);
+    detJ_[iq]       = std::abs(detJ);
 
     MatrixView<Real> dNdx(
         dNdx_.data() + iq * num_dofs_ * dim_,

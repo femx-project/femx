@@ -48,7 +48,7 @@ public:
 
 private:
   const Mesh*          mesh_{nullptr};
-  const FiniteElement* finite_elem_{nullptr};
+  const FiniteElement* fe_{nullptr};
   DofMap               dof_map_;
   Index                components_{1};
   Index                num_shapes_per_elem_{0};

@@ -123,13 +123,13 @@ public:
     status *= isEqual(out[0], 2.0 * state[0] + 3.0 * state[1] + 5.0 * params[0]);
     status *= isEqual(out[1], 7.0 * state[0] + 11.0 * state[1] + 13.0 * params[0]);
 
-    Vector state_direction(2);
-    state_direction[0] = 1.5;
-    state_direction[1] = -2.0;
+    Vector state_dir(2);
+    state_dir[0] = 1.5;
+    state_dir[1] = -2.0;
 
-    equation.applyStateJac(state, params, state_direction, out);
-    status *= isEqual(out[0], 2.0 * state_direction[0] + 3.0 * state_direction[1]);
-    status *= isEqual(out[1], 7.0 * state_direction[0] + 11.0 * state_direction[1]);
+    equation.applyStateJac(state, params, state_dir, out);
+    status *= isEqual(out[0], 2.0 * state_dir[0] + 3.0 * state_dir[1]);
+    status *= isEqual(out[1], 7.0 * state_dir[0] + 11.0 * state_dir[1]);
 
     Vector lambda(2);
     lambda[0] = -3.0;
@@ -139,12 +139,12 @@ public:
     status *= isEqual(out[0], 2.0 * lambda[0] + 7.0 * lambda[1]);
     status *= isEqual(out[1], 3.0 * lambda[0] + 11.0 * lambda[1]);
 
-    Vector param_direction(1);
-    param_direction[0] = -0.75;
+    Vector param_dir(1);
+    param_dir[0] = -0.75;
 
-    equation.applyParamJac(state, params, param_direction, out);
-    status *= isEqual(out[0], 5.0 * param_direction[0]);
-    status *= isEqual(out[1], 13.0 * param_direction[0]);
+    equation.applyParamJac(state, params, param_dir, out);
+    status *= isEqual(out[0], 5.0 * param_dir[0]);
+    status *= isEqual(out[1], 13.0 * param_dir[0]);
 
     equation.applyParamJacT(state, params, lambda, out);
     status *= isEqual(out[0], 5.0 * lambda[0] + 13.0 * lambda[1]);

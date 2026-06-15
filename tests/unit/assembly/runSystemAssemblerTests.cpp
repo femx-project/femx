@@ -165,13 +165,13 @@ public:
     assembler.initMat(mat);
 
     DenseMatrix local_mat(row_space.numDofsPerElem(),
-                             col_space.numDofsPerElem());
+                          col_space.numDofsPerElem());
     for (Index i = 0; i < local_mat.rows(); ++i)
     {
       for (Index j = 0; j < local_mat.cols(); ++j)
       {
         local_mat(i, j) = 10.0 * static_cast<Real>(i)
-                             + static_cast<Real>(j);
+                          + static_cast<Real>(j);
       }
     }
 
@@ -351,8 +351,8 @@ private:
       for (Index j = 0; j < local_mat.cols(); ++j)
       {
         local_mat(i, j) = 100.0 * static_cast<Real>(ic + 1)
-                             + 10.0 * static_cast<Real>(i)
-                             + static_cast<Real>(j);
+                          + 10.0 * static_cast<Real>(i)
+                          + static_cast<Real>(j);
       }
     }
   }

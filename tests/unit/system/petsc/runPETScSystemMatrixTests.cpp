@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include <femx/assembly/SystemAssembler.hpp>
+#include <femx/eq/AssembledNewtonStateSolver.hpp>
 #include <femx/eq/AssembledResidualEquation.hpp>
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/inverse/MatrixEquationAdjointSolver.hpp>
@@ -166,7 +166,7 @@ public:
     lin_solver.options().atol        = 1.0e-14;
     lin_solver.options().use_opts_db = false;
 
-    eq::MatrixNewtonStateSolver state_solver(
+    eq::AssembledNewtonStateSolver state_solver(
         res_eq, state_jac, lin_solver);
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);

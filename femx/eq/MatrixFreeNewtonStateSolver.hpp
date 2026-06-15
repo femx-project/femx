@@ -15,7 +15,7 @@ namespace femx
 namespace eq
 {
 
-struct NewtonStateSolverOptions
+struct MatrixFreeNewtonStateSolverOptions
 {
   Index max_its        = 20;
   Real  res_tol        = 1.0e-10;
@@ -23,27 +23,27 @@ struct NewtonStateSolverOptions
 };
 
 /** @brief Newton solver for R(u,m)=0 using a matrix-free state Jacobian. */
-class NewtonStateSolver final : public StateSolver
+class MatrixFreeNewtonStateSolver final : public StateSolver
 {
 public:
-  NewtonStateSolver(const ResidualEquation& equation,
-                    system::LinearSolver&   lin_solver)
+  MatrixFreeNewtonStateSolver(const ResidualEquation& equation,
+                              system::LinearSolver&   lin_solver)
     : eq_(equation),
       linear_solver_(lin_solver)
   {
     if (eq_.numRes() != eq_.numStates())
     {
       throw std::runtime_error(
-          "NewtonStateSolver requires square state residual dimensions");
+          "MatrixFreeNewtonStateSolver requires square state residual dimensions");
     }
   }
 
-  NewtonStateSolverOptions& options()
+  MatrixFreeNewtonStateSolverOptions& options()
   {
     return options_;
   }
 
-  const NewtonStateSolverOptions& options() const
+  const MatrixFreeNewtonStateSolverOptions& options() const
   {
     return options_;
   }
@@ -53,7 +53,7 @@ public:
     if (state.size() != numStates())
     {
       throw std::runtime_error(
-          "NewtonStateSolver initial state size mismatch");
+          "MatrixFreeNewtonStateSolver initial state size mismatch");
     }
     initial_state_     = state;
     has_initial_state_ = true;
@@ -79,7 +79,8 @@ public:
   {
     if (params.size() != numParams())
     {
-      throw std::runtime_error("NewtonStateSolver parameter size mismatch");
+      throw std::runtime_error(
+          "MatrixFreeNewtonStateSolver parameter size mismatch");
     }
 
     initializeState(state);
@@ -92,7 +93,8 @@ public:
       eq_.res(state, params, res);
       if (res.size() != eq_.numRes())
       {
-        throw std::runtime_error("NewtonStateSolver residual size mismatch");
+        throw std::runtime_error(
+            "MatrixFreeNewtonStateSolver residual size mismatch");
       }
 
       if (norm2(res) <= options_.res_tol * options_.res_tol)
@@ -114,7 +116,8 @@ public:
       linear_solver_.solve(jac, rhs, step);
       if (step.size() != numStates())
       {
-        throw std::runtime_error("NewtonStateSolver step size mismatch");
+        throw std::runtime_error(
+            "MatrixFreeNewtonStateSolver step size mismatch");
       }
 
       for (Index i = 0; i < numStates(); ++i)
@@ -128,7 +131,7 @@ public:
       }
     }
 
-    throw std::runtime_error("NewtonStateSolver failed to converge");
+    throw std::runtime_error("MatrixFreeNewtonStateSolver failed to converge");
   }
 
 private:
@@ -165,11 +168,11 @@ private:
   }
 
 private:
-  const ResidualEquation&  eq_;
-  system::LinearSolver&    linear_solver_;
-  NewtonStateSolverOptions options_;
-  Vector                   initial_state_;
-  bool                     has_initial_state_{false};
+  const ResidualEquation&            eq_;
+  system::LinearSolver&              linear_solver_;
+  MatrixFreeNewtonStateSolverOptions options_;
+  Vector                             initial_state_;
+  bool                               has_initial_state_{false};
 };
 
 } // namespace eq

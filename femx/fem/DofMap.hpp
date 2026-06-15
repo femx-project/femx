@@ -34,7 +34,7 @@ private:
   /** @brief Return the flat storage offset for an elem-local dof pair. */
   std::size_t offset(Index ie, Index il) const noexcept;
 
-  Index              num_elems_      = 0;
+  Index              num_elems_         = 0;
   Index              num_dofs_per_elem_ = 0;
   std::vector<Index> elem_dofs_;
 };

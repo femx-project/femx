@@ -14,9 +14,9 @@ class ResidualEquation
 public:
   virtual ~ResidualEquation() = default;
 
-  virtual Index numStates() const    = 0;
-  virtual Index numParams() const    = 0;
-  virtual Index numRes() const = 0;
+  virtual Index numStates() const = 0;
+  virtual Index numParams() const = 0;
+  virtual Index numRes() const    = 0;
 
   virtual void res(const Vector& state,
                    const Vector& params,

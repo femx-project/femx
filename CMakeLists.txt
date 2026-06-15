@@ -48,6 +48,7 @@ if(RESOLVE_USE_CUDA)
 endif()
 
 set(FEMX_HAS_ENZYME OFF)
+set(FEMX_ENZYME_FLAGS_TARGET "")
 set(FEMX_HAS_PETSC OFF)
 set(FEMX_HAS_RESOLVE_CUDA OFF)
 
@@ -56,14 +57,18 @@ if(FEMX_ENABLE_ENZYME)
     message(FATAL_ERROR "FEMX_ENABLE_ENZYME requires a Clang C++ compiler.")
   endif()
 
-  if(NOT TARGET LLDEnzymeFlags)
+  if(TARGET ClangEnzymeFlags)
+    set(FEMX_ENZYME_FLAGS_TARGET ClangEnzymeFlags)
+  elseif(TARGET LLDEnzymeFlags)
+    set(FEMX_ENZYME_FLAGS_TARGET LLDEnzymeFlags)
+  else()
     message(
       FATAL_ERROR
-        "Enzyme was found, but the LLDEnzymeFlags target is unavailable.")
+        "Enzyme was found, but no supported Enzyme flags target is available.")
   endif()
 
   set(FEMX_HAS_ENZYME ON)
-  message(STATUS "Found Enzyme: ${Enzyme_DIR}")
+  message(STATUS "Found Enzyme: ${Enzyme_DIR} (${FEMX_ENZYME_FLAGS_TARGET})")
 endif()
 
 if(FEMX_ENABLE_OPENMP)
@@ -178,7 +183,7 @@ endif()
 
 if(FEMX_HAS_ENZYME)
   target_compile_definitions(femx_config INTERFACE FEMX_HAS_ENZYME=1)
-  target_link_libraries(femx_config INTERFACE LLDEnzymeFlags)
+  target_link_libraries(femx_config INTERFACE ${FEMX_ENZYME_FLAGS_TARGET})
 endif()
 
 if(FEMX_ENABLE_OPENMP AND OpenMP_CXX_FOUND)

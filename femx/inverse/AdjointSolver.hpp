@@ -14,9 +14,9 @@ class AdjointSolver
 public:
   virtual ~AdjointSolver() = default;
 
-  virtual Index numStates() const    = 0;
-  virtual Index numParams() const    = 0;
-  virtual Index numRes() const = 0;
+  virtual Index numStates() const = 0;
+  virtual Index numParams() const = 0;
+  virtual Index numRes() const    = 0;
 
   virtual void solve(const Vector& state,
                      const Vector& params,

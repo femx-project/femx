@@ -136,7 +136,7 @@ private:
 
       for (Index i = k + 1; i < size; ++i)
       {
-        const Real factor = mat[entry(i, k, size)] / mat[entry(k, k, size)];
+        const Real factor      = mat[entry(i, k, size)] / mat[entry(k, k, size)];
         mat[entry(i, k, size)] = 0.0;
 
         for (Index j = k + 1; j < size; ++j)

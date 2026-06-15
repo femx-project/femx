@@ -1,52 +1,35 @@
-#include <memory>
-#include <stdexcept>
+#include <algorithm>
 
 #include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/HostCsrMatrix.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
-#include <femx/linalg/SparseMatrixImpl.hpp>
 
 namespace femx
 {
 
-SparseMatrix::SparseMatrix(const CsrPattern& pattern,
-                           MatrixBackend     backend)
-  : pattern_(&pattern)
+SparseMatrix::SparseMatrix(const CsrPattern& pattern)
+  : pattern_(&pattern),
+    values_(static_cast<std::size_t>(pattern.nnz()), Real{})
 {
-  switch (backend)
-  {
-  case MatrixBackend::HostCsr:
-    impl_ = std::make_unique<HostCsrMatrixImpl>(pattern);
-    break;
-
-  case MatrixBackend::CudaCsr:
-    throw std::runtime_error("CudaCsr matrix backend is not supported yet");
-
-  default:
-    throw std::runtime_error("Unknown matrix backend");
-  }
 }
-
-SparseMatrix::~SparseMatrix() = default;
 
 void SparseMatrix::setZero()
 {
-  impl_->setZero();
+  std::fill(values_.begin(), values_.end(), Real{});
 }
 
 Index SparseMatrix::rows() const
 {
-  return impl_->rows();
+  return pattern_->rows();
 }
 
 Index SparseMatrix::cols() const
 {
-  return impl_->cols();
+  return pattern_->cols();
 }
 
 Index SparseMatrix::nnz() const
 {
-  return impl_->nnz();
+  return pattern_->nnz();
 }
 
 const CsrPattern& SparseMatrix::pattern() const
@@ -54,29 +37,24 @@ const CsrPattern& SparseMatrix::pattern() const
   return *pattern_;
 }
 
-MatrixBackend SparseMatrix::backend() const
-{
-  return impl_->backend();
-}
-
 const Index* SparseMatrix::rowPtrData() const
 {
-  return impl_->rowPtrData();
+  return pattern_->rowPtrData();
 }
 
 const Index* SparseMatrix::colIndData() const
 {
-  return impl_->colIndData();
+  return pattern_->colIndData();
 }
 
 Real* SparseMatrix::valuesData()
 {
-  return impl_->valuesData();
+  return values_.data();
 }
 
 const Real* SparseMatrix::valuesData() const
 {
-  return impl_->valuesData();
+  return values_.data();
 }
 
 } // namespace femx

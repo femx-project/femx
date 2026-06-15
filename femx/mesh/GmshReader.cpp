@@ -299,7 +299,7 @@ void readElementsV2(std::istream&                 in,
   {
     Index elem_tag  = 0;
     Index elem_type = 0;
-    Index num_tags     = 0;
+    Index num_tags  = 0;
     in >> elem_tag >> elem_type >> num_tags;
 
     std::vector<Index> tags(static_cast<std::size_t>(num_tags));
@@ -344,16 +344,16 @@ void readElementsV4(std::istream&                 in,
                     std::vector<ElementRecord>&   elements)
 {
   Index num_entity_blocks = 0;
-  Index num_elems      = 0;
-  Index min_elem_tag   = 0;
-  Index max_elem_tag   = 0;
+  Index num_elems         = 0;
+  Index min_elem_tag      = 0;
+  Index max_elem_tag      = 0;
   in >> num_entity_blocks >> num_elems >> min_elem_tag >> max_elem_tag;
 
   elements.reserve(static_cast<std::size_t>(num_elems));
   for (Index block = 0; block < num_entity_blocks; ++block)
   {
-    Index entity_dim            = 0;
-    Index entity_tag            = 0;
+    Index entity_dim         = 0;
+    Index entity_tag         = 0;
     Index elem_type          = 0;
     Index num_elems_in_block = 0;
     in >> entity_dim >> entity_tag >> elem_type >> num_elems_in_block;

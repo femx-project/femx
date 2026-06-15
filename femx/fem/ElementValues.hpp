@@ -43,8 +43,8 @@ private:
                           Index                    dim);
 
 private:
-  const FiniteElement*   finite_elem_{nullptr};
-  const GaussQuadrature* quadrature_{nullptr};
+  const FiniteElement*   fe_{nullptr};
+  const GaussQuadrature* quad_{nullptr};
 
   Index num_nodes_{0};
   Index num_dofs_{0};
