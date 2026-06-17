@@ -20,8 +20,8 @@ using namespace femx::assembly;
 using namespace femx::system;
 
 void assembleSystem(const MixedFESpace& space,
-                    const Vector&       x,
-                    const Vector&       xp,
+                    const Vector<Real>& x,
+                    const Vector<Real>& xp,
                     bool                initial,
                     const FluidParams&  fluid,
                     Real                dt,
@@ -40,7 +40,7 @@ void assembleSystem(const MixedFESpace& space,
   ElementValues        ev(elem, quad);
   std::vector<QPState> qps;
   DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
-  Vector               Fe(space.numDofsPerElem());
+  Vector<Real>         Fe(space.numDofsPerElem());
 
   Real cfl_local = 0.0;
 

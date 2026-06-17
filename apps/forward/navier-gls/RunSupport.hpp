@@ -34,11 +34,11 @@ struct BuildInfo
 
 struct Snapshot
 {
-  Real   time{0.0};
-  Vector ux;
-  Vector uy;
-  Vector uz;
-  Vector p;
+  Real         time{0.0};
+  Vector<Real> ux;
+  Vector<Real> uy;
+  Vector<Real> uz;
+  Vector<Real> p;
 };
 
 using Clock = std::chrono::high_resolution_clock;
@@ -65,14 +65,14 @@ void printUsage(std::ostream&                   out,
 std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
                                         const std::string& executable);
 
-bool isFinite(const Vector& x);
+bool isFinite(const Vector<Real>& x);
 
 bool shouldWriteOutput(Index               step,
                        Index               num_steps,
                        const OutputParams& params);
 
 Snapshot makeSnapshot(const MixedFESpace& space,
-                      const Vector&       x,
+                      const Vector<Real>& x,
                       Real                time);
 
 void writeOutput(const Mesh&                  mesh,

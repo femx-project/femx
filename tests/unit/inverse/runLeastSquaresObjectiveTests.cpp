@@ -29,19 +29,19 @@ public:
     return 2;
   }
 
-  void observe(const Vector& state,
-               const Vector& params,
-               Vector&       out) const override
+  void observe(const Vector<Real>& state,
+               const Vector<Real>& params,
+               Vector<Real>&       out) const override
   {
     resize(out, numObservations());
     out[0] = 2.0 * state[0] - state[1] + 3.0 * params[0];
     out[1] = -4.0 * state[0] + 5.0 * state[1] + 7.0 * params[1];
   }
 
-  void applyStateJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyStateJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -50,10 +50,10 @@ public:
     out[1] = -4.0 * dir[0] + 5.0 * dir[1];
   }
 
-  void applyStateJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& dir,
-                      Vector&       out) const override
+  void applyStateJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& dir,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -62,10 +62,10 @@ public:
     out[1] = -dir[0] + 5.0 * dir[1];
   }
 
-  void applyParamJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyParamJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -74,10 +74,10 @@ public:
     out[1] = 7.0 * dir[1];
   }
 
-  void applyParamJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& dir,
-                      Vector&       out) const override
+  void applyParamJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& dir,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -87,7 +87,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -110,17 +110,17 @@ public:
 
     LinearObservation observation;
 
-    Vector data(2);
+    Vector<Real> data(2);
     data[0] = 0.5;
     data[1] = -1.0;
 
     const inverse::LeastSquaresObjective objective(observation, data, 2.0);
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = 0.25;
     state[1] = -0.5;
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 1.0;
     params[1] = -2.0;
 
@@ -128,7 +128,7 @@ public:
     status *= (objective.numParams() == 2);
     status *= isEqual(objective.value(state, params), 284.5);
 
-    Vector grad;
+    Vector<Real> grad;
     objective.stateGrad(state, params, grad);
     status *= isEqual(grad[0], 146.0);
     status *= isEqual(grad[1], -172.0);
@@ -147,7 +147,7 @@ public:
 
     LinearObservation observation;
 
-    Vector data(1);
+    Vector<Real> data(1);
     data[0] = 0.5;
 
     bool threw = false;

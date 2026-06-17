@@ -21,10 +21,10 @@ namespace tests
 class LinearElementKernel final : public assembly::ElementKernel
 {
 public:
-  void res(Index         ic,
-           const Vector& u,
-           const Vector& m,
-           Vector&       out) const override
+  void res(Index               ic,
+           const Vector<Real>& u,
+           const Vector<Real>& m,
+           Vector<Real>&       out) const override
   {
     resize(out, u.size());
     const Real scale = stateScale(ic);
@@ -34,10 +34,10 @@ public:
     }
   }
 
-  void stateJac(Index         ic,
-                const Vector& u,
-                const Vector& m,
-                DenseMatrix&  out) const override
+  void stateJac(Index               ic,
+                const Vector<Real>& u,
+                const Vector<Real>& m,
+                DenseMatrix&        out) const override
   {
     (void) m;
     out.resize(u.size(), u.size());
@@ -48,10 +48,10 @@ public:
     }
   }
 
-  void paramJac(Index         ic,
-                const Vector& u,
-                const Vector& m,
-                DenseMatrix&  out) const override
+  void paramJac(Index               ic,
+                const Vector<Real>& u,
+                const Vector<Real>& m,
+                DenseMatrix&        out) const override
   {
     (void) ic;
     out.resize(u.size(), m.size());
@@ -67,7 +67,7 @@ private:
     return 1.0 + static_cast<Real>(ic);
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -99,16 +99,16 @@ public:
         assembly::DofLayout(space),
         kernel};
 
-    Vector state(space.numDofs());
-    Vector params(space.numDofs());
+    Vector<Real> state(space.numDofs());
+    Vector<Real> params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector res;
+    Vector<Real> res;
     equation.res(state, params, res);
 
-    Vector      expected(space.numDofs());
-    DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
-    DenseMatrix expected_param_jac(space.numDofs(), space.numDofs());
+    Vector<Real> expected(space.numDofs());
+    DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
+    DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space, state, params, expected, expected_state_jac, expected_param_jac);
 
     status *= (equation.numStates() == space.numDofs());
@@ -138,13 +138,13 @@ public:
         assembly::DofLayout(space),
         kernel};
 
-    Vector state(space.numDofs());
-    Vector params(space.numDofs());
+    Vector<Real> state(space.numDofs());
+    Vector<Real> params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector      expected_res(space.numDofs());
-    DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
-    DenseMatrix expected_param_jac(space.numDofs(), space.numDofs());
+    Vector<Real> expected_res(space.numDofs());
+    DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
+    DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
                      params,
@@ -165,13 +165,13 @@ public:
       }
     }
 
-    Vector dir(space.numDofs());
+    Vector<Real> dir(space.numDofs());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 0.25 * static_cast<Real>(i + 1);
     }
 
-    Vector applied;
+    Vector<Real> applied;
     equation.applyStateJac(state, params, dir, applied);
     checkMatVec(status, expected_state_jac, dir, applied);
 
@@ -197,13 +197,13 @@ public:
         assembly::DofLayout(space),
         kernel};
 
-    Vector state(space.numDofs());
-    Vector params(space.numDofs());
+    Vector<Real> state(space.numDofs());
+    Vector<Real> params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector      expected_res(space.numDofs());
-    DenseMatrix expected_state_jac(space.numDofs(), space.numDofs());
-    DenseMatrix expected_param_jac(space.numDofs(), space.numDofs());
+    Vector<Real> expected_res(space.numDofs());
+    DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
+    DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
                      params,
@@ -216,13 +216,13 @@ public:
     equation.assembleParamJac(state, params, param_jac);
     param_jac.finalize();
 
-    Vector dir(space.numDofs());
+    Vector<Real> dir(space.numDofs());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = -0.5 + 0.1 * static_cast<Real>(i);
     }
 
-    Vector applied;
+    Vector<Real> applied;
     param_jac.apply(dir, applied);
     checkMatVec(status, expected_param_jac, dir, applied);
 
@@ -233,7 +233,7 @@ public:
   }
 
 private:
-  static void fillStateAndParams(Vector& state, Vector& params)
+  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& params)
   {
     for (Index i = 0; i < state.size(); ++i)
     {
@@ -242,12 +242,12 @@ private:
     }
   }
 
-  static void assembleExpected(const FESpace& space,
-                               const Vector&  state,
-                               const Vector&  params,
-                               Vector&        res,
-                               DenseMatrix&   state_jac,
-                               DenseMatrix&   param_jac)
+  static void assembleExpected(const FESpace&      space,
+                               const Vector<Real>& state,
+                               const Vector<Real>& params,
+                               Vector<Real>&       res,
+                               DenseMatrix&        state_jac,
+                               DenseMatrix&        param_jac)
   {
     res.setZero();
     state_jac.setZero();
@@ -267,10 +267,10 @@ private:
     }
   }
 
-  void checkMatVec(TestStatus&        status,
-                   const DenseMatrix& mat,
-                   const Vector&      dir,
-                   const Vector&      applied)
+  void checkMatVec(TestStatus&         status,
+                   const DenseMatrix&  mat,
+                   const Vector<Real>& dir,
+                   const Vector<Real>& applied)
   {
     for (Index i = 0; i < mat.rows(); ++i)
     {
@@ -283,10 +283,10 @@ private:
     }
   }
 
-  void checkMatTVec(TestStatus&        status,
-                    const DenseMatrix& mat,
-                    const Vector&      dir,
-                    const Vector&      applied)
+  void checkMatTVec(TestStatus&         status,
+                    const DenseMatrix&  mat,
+                    const Vector<Real>& dir,
+                    const Vector<Real>& applied)
   {
     for (Index j = 0; j < mat.cols(); ++j)
     {

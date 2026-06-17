@@ -6,6 +6,7 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -26,9 +27,9 @@ public:
   }
 
 private:
-  static std::vector<std::vector<Index>> collect(const FESpace& space)
+  static std::vector<Vector<Index>> collect(const FESpace& space)
   {
-    std::vector<std::vector<Index>> cdofs(
+    std::vector<Vector<Index>> cdofs(
         static_cast<std::size_t>(space.numElems()));
     for (Index ic = 0; ic < space.numElems(); ++ic)
     {
@@ -37,10 +38,10 @@ private:
     return cdofs;
   }
 
-  static std::vector<std::vector<Index>> collect(
+  static std::vector<Vector<Index>> collect(
       const MixedFESpace& space)
   {
-    std::vector<std::vector<Index>> cdofs(
+    std::vector<Vector<Index>> cdofs(
         static_cast<std::size_t>(space.numElems()));
     for (Index ic = 0; ic < space.numElems(); ++ic)
     {

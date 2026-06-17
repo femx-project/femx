@@ -27,10 +27,10 @@ public:
     return 2;
   }
 
-  void solve(const Vector& state,
-             const Vector& params,
-             const Vector& rhs,
-             Vector&       adjoint) override
+  void solve(const Vector<Real>& state,
+             const Vector<Real>& params,
+             const Vector<Real>& rhs,
+             Vector<Real>&       adjoint) override
   {
     (void) state;
     (void) params;
@@ -63,18 +63,18 @@ public:
     status *= (solver.numParams() == 1);
     status *= (solver.numRes() == 2);
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = 0.25;
     state[1] = -0.5;
 
-    Vector params(1);
+    Vector<Real> params(1);
     params[0] = 2.0;
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = -1.5;
     rhs[1] = 4.0;
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     solver.solve(state, params, rhs, adjoint);
 
     status *= (adjoint.size() == solver.numRes());

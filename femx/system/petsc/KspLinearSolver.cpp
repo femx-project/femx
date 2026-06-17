@@ -19,8 +19,8 @@ private:
   struct ShellContext
   {
     const LinearOperator* op{nullptr};
-    Vector                input;
-    Vector                output;
+    Vector<Real>          input;
+    Vector<Real>          output;
   };
 
   class ScopedVec
@@ -123,15 +123,15 @@ public:
   }
 
   void solve(const LinearOperator& op,
-             const Vector&         rhs,
-             Vector&               out)
+             const Vector<Real>&   rhs,
+             Vector<Real>&         out)
   {
     solveLinearOperator(op, rhs, out, false);
   }
 
   void solveT(const LinearOperator& op,
-              const Vector&         rhs,
-              Vector&               out)
+              const Vector<Real>&   rhs,
+              Vector<Real>&         out)
   {
     solveLinearOperator(op, rhs, out, true);
   }
@@ -167,8 +167,8 @@ public:
 
 private:
   void solveLinearOperator(const LinearOperator& op,
-                           const Vector&         rhs,
-                           Vector&               out,
+                           const Vector<Real>&   rhs,
+                           Vector<Real>&         out,
                            bool                  transpose)
   {
     if (op.numRows() != op.numCols())
@@ -453,15 +453,15 @@ const KspOptions& KspLinearSolver::options() const
 }
 
 void KspLinearSolver::solve(const LinearOperator& op,
-                            const Vector&         rhs,
-                            Vector&               out)
+                            const Vector<Real>&   rhs,
+                            Vector<Real>&         out)
 {
   impl_->solve(op, rhs, out);
 }
 
 void KspLinearSolver::solveT(const LinearOperator& op,
-                             const Vector&         rhs,
-                             Vector&               out)
+                             const Vector<Real>&   rhs,
+                             Vector<Real>&         out)
 {
   impl_->solveT(op, rhs, out);
 }

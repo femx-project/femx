@@ -19,7 +19,7 @@ void DofMap::allocate(Index num_elems, Index num_dofs_per_elem)
 
   num_elems_         = num_elems;
   num_dofs_per_elem_ = num_dofs_per_elem;
-  elem_dofs_.assign(static_cast<std::size_t>(num_elems_) * static_cast<std::size_t>(num_dofs_per_elem_), 0);
+  elem_dofs_.resize(num_elems_ * num_dofs_per_elem_);
 }
 
 Index DofMap::numElements() const noexcept
@@ -44,12 +44,12 @@ void DofMap::setElementDof(Index ie, Index il, Index gdof) noexcept
 
 const Index* DofMap::elementDofsData(Index ie) const noexcept
 {
-  return elem_dofs_.data() + static_cast<std::size_t>(ie) * static_cast<std::size_t>(num_dofs_per_elem_);
+  return elem_dofs_.data() + ie * num_dofs_per_elem_;
 }
 
-std::size_t DofMap::offset(Index ie, Index il) const noexcept
+Index DofMap::offset(Index ie, Index il) const noexcept
 {
-  return static_cast<std::size_t>(ie) * static_cast<std::size_t>(num_dofs_per_elem_) + static_cast<std::size_t>(il);
+  return ie * num_dofs_per_elem_ + il;
 }
 
 } // namespace femx

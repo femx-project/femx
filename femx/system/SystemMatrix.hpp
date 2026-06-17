@@ -5,6 +5,9 @@
 
 namespace femx
 {
+
+class DenseMatrix;
+
 namespace system
 {
 
@@ -19,6 +22,11 @@ public:
   virtual void set(Index row, Index col, Real value) = 0;
   virtual void add(Index row, Index col, Real value) = 0;
   virtual void finalize()                            = 0;
+
+  virtual bool addLocalMatrix(Index, const DenseMatrix&, bool)
+  {
+    return false;
+  }
 
   virtual void addAtomic(Index row, Index col, Real value)
   {

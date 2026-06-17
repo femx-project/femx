@@ -8,9 +8,8 @@ target_sources(
             BoundaryResidualEquation.hpp
             DofLayout.hpp
             ElementKernel.hpp
-            EnzymeBoundaryElementKernel.hpp
-            EnzymeBoundaryIntegralKernel.hpp
-            EnzymeElementKernel.hpp
+            EnzymeBoundaryKernel.hpp
+            EnzymeVolumeKernel.hpp
             ElementResidualEquation.hpp
             SparsityPatternBuilder.hpp
             SystemAssembler.hpp)

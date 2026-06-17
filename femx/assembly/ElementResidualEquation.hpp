@@ -55,18 +55,18 @@ public:
     return res_layout_.numDofs();
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     checkGlobalSizes(state, params);
 
     SystemAssembler assembler(res_layout_);
     assembler.initVec(out);
 
-    Vector state_e;
-    Vector params_e;
-    Vector res_e;
+    Vector<Real> state_e;
+    Vector<Real> params_e;
+    Vector<Real> res_e;
     for (Index ic = 0; ic < numCells(); ++ic)
     {
       gather(state_layout_, state, ic, state_e);
@@ -76,8 +76,8 @@ public:
     }
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     checkGlobalSizes(state, params);
@@ -85,9 +85,9 @@ public:
     SystemAssembler assembler(res_layout_, state_layout_);
     assembler.initMat(out);
 
-    Vector      state_e;
-    Vector      params_e;
-    DenseMatrix jac_e;
+    Vector<Real> state_e;
+    Vector<Real> params_e;
+    DenseMatrix  jac_e;
     for (Index ic = 0; ic < numCells(); ++ic)
     {
       gather(state_layout_, state, ic, state_e);
@@ -97,8 +97,8 @@ public:
     }
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     checkGlobalSizes(state, params);
@@ -106,9 +106,9 @@ public:
     SystemAssembler assembler(res_layout_, param_layout_);
     assembler.initMat(out);
 
-    Vector      state_e;
-    Vector      params_e;
-    DenseMatrix jac_e;
+    Vector<Real> state_e;
+    Vector<Real> params_e;
+    DenseMatrix  jac_e;
     for (Index ic = 0; ic < numCells(); ++ic)
     {
       gather(state_layout_, state, ic, state_e);
@@ -134,7 +134,7 @@ private:
     }
   }
 
-  void checkGlobalSizes(const Vector& state, const Vector& params) const
+  void checkGlobalSizes(const Vector<Real>& state, const Vector<Real>& params) const
   {
     if (state.size() != numStates())
     {
@@ -146,16 +146,16 @@ private:
     }
   }
 
-  static void gather(const DofLayout& layout,
-                     const Vector&    global,
-                     Index            ic,
-                     Vector&          local)
+  static void gather(const DofLayout&    layout,
+                     const Vector<Real>& global,
+                     Index               ic,
+                     Vector<Real>&       local)
   {
-    std::vector<Index> dofs;
+    Vector<Index> dofs;
     layout.elemDofs(ic, dofs);
-    if (local.size() != static_cast<Index>(dofs.size()))
+    if (local.size() != dofs.size())
     {
-      local.resize(static_cast<Index>(dofs.size()));
+      local.resize(dofs.size());
     }
     else
     {
@@ -164,7 +164,7 @@ private:
 
     for (Index i = 0; i < local.size(); ++i)
     {
-      const Index dof = dofs[static_cast<std::size_t>(i)];
+      const Index dof = dofs[i];
       if (dof < 0 || dof >= global.size())
       {
         throw std::runtime_error(

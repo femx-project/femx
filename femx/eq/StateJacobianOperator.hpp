@@ -15,8 +15,8 @@ class StateJacobianOperator final : public system::LinearOperator
 {
 public:
   StateJacobianOperator(const ResidualEquation& equation,
-                        const Vector&           state,
-                        const Vector&           params)
+                        const Vector<Real>&     state,
+                        const Vector<Real>&     params)
     : eq_(equation),
       state_(state),
       params_(params)
@@ -33,20 +33,20 @@ public:
     return eq_.numStates();
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     eq_.applyStateJac(state_, params_, dir, out);
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     eq_.applyStateJacT(state_, params_, dir, out);
   }
 
 private:
   const ResidualEquation& eq_;
-  const Vector&           state_;
-  const Vector&           params_;
+  const Vector<Real>&     state_;
+  const Vector<Real>&     params_;
 };
 
 } // namespace eq

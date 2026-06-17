@@ -9,6 +9,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Mesh.hpp>
 
 namespace femx
@@ -25,7 +26,7 @@ public:
     : mesh_(&space.mesh()),
       num_dofs_(space.numDofs())
   {
-    buildByTag(physical_tag, [&space](const Mesh::BoundaryFacet& facet, std::vector<Index>& dofs)
+    buildByTag(physical_tag, [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
                { appendFacetDofs(space, facet, dofs); });
   }
 
@@ -34,7 +35,7 @@ public:
     : mesh_(&space.mesh()),
       num_dofs_(space.numDofs())
   {
-    buildByName(physical_name, [&space](const Mesh::BoundaryFacet& facet, std::vector<Index>& dofs)
+    buildByName(physical_name, [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
                 { appendFacetDofs(space, facet, dofs); });
   }
 
@@ -43,7 +44,7 @@ public:
     : mesh_(&space.mesh()),
       num_dofs_(space.numDofs())
   {
-    buildByTag(physical_tag, [&space](const Mesh::BoundaryFacet& facet, std::vector<Index>& dofs)
+    buildByTag(physical_tag, [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
                { appendFacetDofs(space, facet, dofs); });
   }
 
@@ -52,7 +53,7 @@ public:
     : mesh_(&space.mesh()),
       num_dofs_(space.numDofs())
   {
-    buildByName(physical_name, [&space](const Mesh::BoundaryFacet& facet, std::vector<Index>& dofs)
+    buildByName(physical_name, [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
                 { appendFacetDofs(space, facet, dofs); });
   }
 
@@ -93,17 +94,17 @@ public:
   const Mesh::BoundaryFacet& facet(Index ib) const
   {
     checkFacetIndex(ib);
-    const Index mesh_index = facet_indices_[static_cast<std::size_t>(ib)];
+    const Index mesh_index = facet_indices_[ib];
     return mesh().boundaryFacets()[static_cast<std::size_t>(mesh_index)];
   }
 
   Index meshFacetIndex(Index ib) const
   {
     checkFacetIndex(ib);
-    return facet_indices_[static_cast<std::size_t>(ib)];
+    return facet_indices_[ib];
   }
 
-  void facetDofs(Index ib, std::vector<Index>& dofs) const
+  void facetDofs(Index ib, Vector<Index>& dofs) const
   {
     checkFacetIndex(ib);
     dofs = facet_dofs_[static_cast<std::size_t>(ib)];
@@ -123,7 +124,7 @@ private:
     layout.buildByTag(physical_tag,
                       [&space, &compact_dofs](
                           const Mesh::BoundaryFacet& facet,
-                          std::vector<Index>&        dofs)
+                          Vector<Index>&             dofs)
                       {
                         appendCompactFacetDofs(
                             space, facet, compact_dofs, dofs);
@@ -143,7 +144,7 @@ private:
     layout.buildByName(physical_name,
                        [&space, &compact_dofs](
                            const Mesh::BoundaryFacet& facet,
-                           std::vector<Index>&        dofs)
+                           Vector<Index>&             dofs)
                        {
                          appendCompactFacetDofs(
                              space, facet, compact_dofs, dofs);
@@ -194,7 +195,7 @@ private:
                 const Mesh::BoundaryFacet& facet,
                 DofAppender                append_dofs)
   {
-    std::vector<Index> dofs;
+    Vector<Index> dofs;
     append_dofs(facet, dofs);
     if (dofs.empty())
     {
@@ -206,7 +207,7 @@ private:
 
   static void appendFacetDofs(const FESpace&             space,
                               const Mesh::BoundaryFacet& facet,
-                              std::vector<Index>&        dofs)
+                              Vector<Index>&             dofs)
   {
     for (Index node : facet.node_ids)
     {
@@ -219,7 +220,7 @@ private:
 
   static void appendFacetDofs(const MixedFESpace&        space,
                               const Mesh::BoundaryFacet& facet,
-                              std::vector<Index>&        dofs)
+                              Vector<Index>&             dofs)
   {
     for (Index field_id = 0; field_id < space.numFields(); ++field_id)
     {
@@ -239,9 +240,9 @@ private:
       const Space&               space,
       const Mesh::BoundaryFacet& facet,
       std::map<Index, Index>&    compact_dofs,
-      std::vector<Index>&        dofs)
+      Vector<Index>&             dofs)
   {
-    std::vector<Index> full_dofs;
+    Vector<Index> full_dofs;
     appendFacetDofs(space, facet, full_dofs);
     dofs.reserve(full_dofs.size());
 
@@ -276,10 +277,10 @@ private:
   }
 
 private:
-  const Mesh*                     mesh_{nullptr};
-  Index                           num_dofs_{0};
-  std::vector<Index>              facet_indices_;
-  std::vector<std::vector<Index>> facet_dofs_;
+  const Mesh*                mesh_{nullptr};
+  Index                      num_dofs_{0};
+  Vector<Index>              facet_indices_;
+  std::vector<Vector<Index>> facet_dofs_;
 };
 
 } // namespace assembly

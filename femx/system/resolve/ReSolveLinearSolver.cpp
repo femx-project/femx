@@ -116,7 +116,7 @@ public:
 #endif
   }
 
-  void solve(const Vector& b, Vector& x)
+  void solve(const Vector<Real>& b, Vector<Real>& x)
   {
     if (A_ == nullptr)
     {
@@ -139,7 +139,7 @@ public:
 #endif
   }
 
-  void solve(const LinearOperator& op, const Vector& rhs, Vector& out)
+  void solve(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
     const SparseSystemMatrix& sparse_op = requireSparseSystemMatrix(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
@@ -152,7 +152,7 @@ public:
     solve(rhs, out);
   }
 
-  void solveT(const LinearOperator& op, const Vector& rhs, Vector& out)
+  void solveT(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
     const SparseSystemMatrix& sparse_op = requireSparseSystemMatrix(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
@@ -189,7 +189,7 @@ private:
     return *sparse_op;
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -251,7 +251,7 @@ private:
   }
 
 #if defined(FEMX_HAS_RESOLVE)
-  void solveTranspose(const SparseMatrix& A, const Vector& b, Vector& x)
+  void solveTranspose(const SparseMatrix& A, const Vector<Real>& b, Vector<Real>& x)
   {
     if (A.rows() != A.cols() || b.size() != A.cols())
     {
@@ -420,8 +420,8 @@ private:
   }
 
   void solveWith(ReSolve::SystemSolver& solver,
-                 const Vector&          b,
-                 Vector&                x,
+                 const Vector<Real>&    b,
+                 Vector<Real>&          x,
                  const char*            operation)
   {
     const auto memspace = memorySpace();
@@ -432,11 +432,11 @@ private:
     checkStatus(rhs.copyFromExternal(b.data(),
                                      ReSolve::memory::HOST,
                                      memspace),
-                "ReSolve rhs Vector::copyFromExternal failed");
+                "ReSolve rhs Vector<Real>::copyFromExternal failed");
     checkStatus(sol.allocate(memspace),
-                "ReSolve solution Vector::allocate failed");
+                "ReSolve solution Vector<Real>::allocate failed");
     checkStatus(sol.setToZero(memspace),
-                "ReSolve solution Vector::setToZero failed");
+                "ReSolve solution Vector<Real>::setToZero failed");
 
     checkStatus(solver.solve(&rhs, &sol), operation);
     checkIterativeConvergence(solver);
@@ -444,7 +444,7 @@ private:
     checkStatus(sol.copyToExternal(x.data(),
                                    memspace,
                                    ReSolve::memory::HOST),
-                "ReSolve solution Vector::copyToExternal failed");
+                "ReSolve solution Vector<Real>::copyToExternal failed");
   }
 
   void checkIterativeConvergence(ReSolve::SystemSolver& solver) const
@@ -532,15 +532,15 @@ void ReSolveLinearSolver::setOperator(const SparseMatrix& A)
 }
 
 void ReSolveLinearSolver::solve(const LinearOperator& op,
-                                const Vector&         rhs,
-                                Vector&               out)
+                                const Vector<Real>&   rhs,
+                                Vector<Real>&         out)
 {
   impl_->solve(op, rhs, out);
 }
 
 void ReSolveLinearSolver::solveT(const LinearOperator& op,
-                                 const Vector&         rhs,
-                                 Vector&               out)
+                                 const Vector<Real>&   rhs,
+                                 Vector<Real>&         out)
 {
   impl_->solveT(op, rhs, out);
 }
@@ -550,7 +550,7 @@ void ReSolveLinearSolver::setPreconditioner(const std::string& method)
   impl_->setPreconditioner(method);
 }
 
-void ReSolveLinearSolver::solve(const Vector& b, Vector& x)
+void ReSolveLinearSolver::solve(const Vector<Real>& b, Vector<Real>& x)
 {
   impl_->solve(b, x);
 }

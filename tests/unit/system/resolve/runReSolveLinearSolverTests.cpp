@@ -19,7 +19,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, Index size)
+void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -44,14 +44,14 @@ public:
     return 2;
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     resize(out, numRows());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     resize(out, numCols());
     out[0] = 2.0 * dir[0] + 7.0 * dir[1];
@@ -78,9 +78,9 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
@@ -89,8 +89,8 @@ public:
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -103,8 +103,8 @@ public:
     out.set(1, 1, 11.0);
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -132,11 +132,11 @@ public:
 
     system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 3.0;
 
-    Vector x;
+    Vector<Real> x;
     solver.solve(mat, rhs, x);
     status *= isEqual(2.0 * x[0] + 3.0 * x[1], rhs[0]);
     status *= isEqual(7.0 * x[0] + 11.0 * x[1], rhs[1]);
@@ -158,11 +158,11 @@ public:
     fillMatrix(mat);
 
     system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
-    Vector                      rhs(2);
+    Vector<Real>                rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 3.0;
 
-    Vector x;
+    Vector<Real> x;
     solver.setOperator(mat.matrix());
     solver.solve(rhs, x);
     status *= isEqual(2.0 * x[0] + 3.0 * x[1], rhs[0]);
@@ -179,10 +179,10 @@ public:
     TwoByTwoOperator            op;
     system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 3.0;
-    Vector x;
+    Vector<Real> x;
 
     bool threw = false;
     try
@@ -213,20 +213,20 @@ public:
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector state;
+    Vector<Real> state;
     state_solver.solve(params, state);
     status *= isEqual(state[0], -1.48);
     status *= isEqual(state[1], 0.89);
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = -1.73;
     rhs[1] = 1.64;
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     adj_solver.solve(state, params, rhs, adjoint);
     status *= isEqual(2.0 * adjoint[0] + 7.0 * adjoint[1], rhs[0]);
     status *= isEqual(3.0 * adjoint[0] + 11.0 * adjoint[1], rhs[1]);
@@ -248,7 +248,7 @@ private:
 
   static CsrPattern makePattern()
   {
-    return CsrPattern(2, 2, std::vector<std::vector<Index>>{{0, 1}});
+    return CsrPattern(2, 2, std::vector<Vector<Index>>{{0, 1}});
   }
 
   static void fillMatrix(system::SparseSystemMatrix& mat)

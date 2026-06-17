@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -10,9 +11,9 @@ namespace femx
 class CsrPattern
 {
 public:
-  CsrPattern(Index                                  rows,
-             Index                                  cols,
-             const std::vector<std::vector<Index>>& cdofs);
+  CsrPattern(Index                             rows,
+             Index                             cols,
+             const std::vector<Vector<Index>>& cdofs);
 
   Index rows() const;
   Index cols() const;
@@ -32,11 +33,11 @@ public:
   Index elemNumDofs(Index ic) const;
 
 private:
-  void countCooEntries(const std::vector<std::vector<Index>>& cdofs);
-  void setupCooArrays(const std::vector<std::vector<Index>>& cdofs,
-                      std::vector<Index>&                    coo_rows,
-                      std::vector<Index>&                    coo_cols,
-                      std::vector<Index>&                    order);
+  void countCooEntries(const std::vector<Vector<Index>>& cdofs);
+  void setupCooArrays(const std::vector<Vector<Index>>& cdofs,
+                      std::vector<Index>&               coo_rows,
+                      std::vector<Index>&               coo_cols,
+                      std::vector<Index>&               order);
   void setupCsrArrays(const std::vector<Index>& coo_rows,
                       const std::vector<Index>& coo_cols,
                       std::vector<Index>&       order);

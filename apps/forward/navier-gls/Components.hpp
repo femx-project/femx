@@ -37,7 +37,7 @@ void assembleMassRHS(const ElementValues&        ev,
                      const std::vector<QPState>& qps,
                      const FluidParams&          fluid,
                      Real                        dt,
-                     Vector&                     Fe);
+                     Vector<Real>&               Fe);
 
 /** @brief Assemble the advection terms. */
 void assembleAdvectionLHS(const ElementValues&        ev,
@@ -49,7 +49,7 @@ void assembleAdvectionLHS(const ElementValues&        ev,
 void assembleAdvectionRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qps,
                           const FluidParams&          fluid,
-                          Vector&                     Fe);
+                          Vector<Real>&               Fe);
 
 /** @brief Assemble the diffusion terms. */
 void assembleDiffusionLHS(const ElementValues& ev,
@@ -60,7 +60,7 @@ void assembleDiffusionLHS(const ElementValues& ev,
 void assembleDiffusionRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qps,
                           const FluidParams&          fluid,
-                          Vector&                     Fe);
+                          Vector<Real>&               Fe);
 
 /** @brief Assemble the pressure-velocity coupling terms. */
 void assemblePreVelCouplingLHS(const ElementValues& ev,
@@ -78,6 +78,6 @@ void assembleStabilizationRHS(const ElementValues&        ev,
                               const std::vector<QPState>& qps,
                               const FluidParams&          fluid,
                               Real                        dt,
-                              Vector&                     Fe);
+                              Vector<Real>&               Fe);
 
 } // namespace femx

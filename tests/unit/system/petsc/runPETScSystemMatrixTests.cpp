@@ -22,7 +22,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, Index size)
+void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -53,9 +53,9 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
@@ -64,8 +64,8 @@ public:
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -78,8 +78,8 @@ public:
     out.set(1, 1, 11.0);
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -104,11 +104,11 @@ public:
     system::PETScSystemMatrix mat;
     fillTestMatrix(mat);
 
-    Vector dir(2);
+    Vector<Real> dir(2);
     dir[0] = 0.5;
     dir[1] = -1.0;
 
-    Vector out;
+    Vector<Real> out;
     mat.apply(dir, out);
     status *= isEqual(out[0], 1.0);
     status *= isEqual(out[1], -2.0);
@@ -134,11 +134,11 @@ public:
     solver.options().atol        = 1.0e-14;
     solver.options().use_opts_db = false;
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 2.0;
 
-    Vector x;
+    Vector<Real> x;
     solver.solve(mat, rhs, x);
     status *= (std::abs(4.0 * x[0] + x[1] - rhs[0]) < 1.0e-10);
     status *= (std::abs(2.0 * x[0] + 3.0 * x[1] - rhs[1]) < 1.0e-10);
@@ -171,20 +171,20 @@ public:
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector state;
+    Vector<Real> state;
     state_solver.solve(params, state);
     status *= (std::abs(state[0] + 1.48) < 1.0e-10);
     status *= (std::abs(state[1] - 0.89) < 1.0e-10);
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = -1.73;
     rhs[1] = 1.64;
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     adj_solver.solve(state, params, rhs, adjoint);
     status *= (std::abs(2.0 * adjoint[0] + 7.0 * adjoint[1] - rhs[0])
                < 1.0e-10);
@@ -220,13 +220,13 @@ public:
     assembler.addMat(0, local_mat, mat);
     mat.finalize();
 
-    Vector dir(space.numDofs());
+    Vector<Real> dir(space.numDofs());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
-    Vector out;
+    Vector<Real> out;
     mat.apply(dir, out);
 
     const auto dofs = space.elemDofs(0);
@@ -237,7 +237,7 @@ public:
       {
         expected += local_mat(i, j);
       }
-      status *= isEqual(out[dofs[static_cast<std::size_t>(i)]], expected);
+      status *= isEqual(out[dofs[i]], expected);
     }
 
     return status.report(__func__);
@@ -257,7 +257,7 @@ public:
     system::PETScSystemVector vec;
     assembler.initVec(vec);
 
-    Vector local_vec(space.numDofsPerElem());
+    Vector<Real> local_vec(space.numDofsPerElem());
     for (Index i = 0; i < local_vec.size(); ++i)
     {
       local_vec[i] = 1.0;
@@ -271,7 +271,7 @@ public:
     assembler.addVec(1, local_vec, vec);
     vec.finalize();
 
-    Vector out;
+    Vector<Real> out;
     vec.copyToAll(out);
     status *= (out.size() == 6);
     status *= isEqual(out[0], 1.0);

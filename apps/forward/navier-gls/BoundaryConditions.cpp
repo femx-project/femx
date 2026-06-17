@@ -4,37 +4,91 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include <femx/fem/MixedFESpace.hpp>
 
 namespace femx
 {
 
-Index lowerInterval(const Vector& points,
-                    Real          x)
+Index lowerInterval(const Vector<Real>& points,
+                    Real                x)
 {
   const auto upper = std::upper_bound(points.begin(), points.end(), x);
   return static_cast<Index>(
       std::distance(points.begin(), upper) - 1);
 }
 
-Real sampleFlowRateLinear(const FlowRateParams& flow,
-                          Real                  time)
+Real periodicTime(const VelocityParams& velocity,
+                  Real                  time)
 {
-  if (flow.time.size() == 1 || time <= flow.time.front())
+  if (velocity.period <= 0.0)
   {
-    return flow.value.front();
-  }
-  if (time >= flow.time.back())
-  {
-    return flow.value.back();
+    return time;
   }
 
-  const Index i  = lowerInterval(flow.time, time);
-  const Real  t0 = flow.time[i];
-  const Real  t1 = flow.time[i + 1];
+  const Real start = velocity.time.front();
+  Real       local = std::fmod(time - start, velocity.period);
+  if (local < 0.0)
+  {
+    local += velocity.period;
+  }
+  return start + local;
+}
+
+Real sampleVelocityConstant(const VelocityParams& velocity,
+                            Real                  time)
+{
+  if (velocity.time.size() == 1 || time <= velocity.time.front())
+  {
+    return velocity.value.front();
+  }
+  if (time >= velocity.time.back())
+  {
+    return velocity.value.back();
+  }
+
+  return velocity.value[lowerInterval(velocity.time, time)];
+}
+
+Real sampleVelocityNearest(const VelocityParams& velocity,
+                           Real                  time)
+{
+  if (velocity.time.size() == 1 || time <= velocity.time.front())
+  {
+    return velocity.value.front();
+  }
+  if (time >= velocity.time.back())
+  {
+    return velocity.value.back();
+  }
+
+  const Index i = lowerInterval(velocity.time, time);
+  if (time - velocity.time[i] <= velocity.time[i + 1] - time)
+  {
+    return velocity.value[i];
+  }
+  return velocity.value[i + 1];
+}
+
+Real sampleVelocityLinear(const VelocityParams& velocity,
+                          Real                  time)
+{
+  if (velocity.time.size() == 1 || time <= velocity.time.front())
+  {
+    return velocity.value.front();
+  }
+  if (time >= velocity.time.back())
+  {
+    return velocity.value.back();
+  }
+
+  const Index i  = lowerInterval(velocity.time, time);
+  const Real  t0 = velocity.time[i];
+  const Real  t1 = velocity.time[i + 1];
   const Real  a  = (time - t0) / (t1 - t0);
-  return flow.value[i] + a * (flow.value[i + 1] - flow.value[i]);
+  return velocity.value[i]
+         + a * (velocity.value[i + 1] - velocity.value[i]);
 }
 
 Real catmullRom(Real y0,
@@ -51,23 +105,23 @@ Real catmullRom(Real y0,
             + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
 }
 
-Real sampleFlowRateCubic(const FlowRateParams& flow,
+Real sampleVelocityCubic(const VelocityParams& velocity,
                          Real                  time)
 {
-  if (flow.time.size() < 4)
+  if (velocity.time.size() < 4)
   {
-    return sampleFlowRateLinear(flow, time);
+    return sampleVelocityLinear(velocity, time);
   }
-  if (time <= flow.time.front())
+  if (time <= velocity.time.front())
   {
-    return flow.value.front();
+    return velocity.value.front();
   }
-  if (time >= flow.time.back())
+  if (time >= velocity.time.back())
   {
-    return flow.value.back();
+    return velocity.value.back();
   }
 
-  const Index i  = lowerInterval(flow.time, time);
+  const Index i  = lowerInterval(velocity.time, time);
   Index       i0 = i;
   if (i > 0)
   {
@@ -75,49 +129,216 @@ Real sampleFlowRateCubic(const FlowRateParams& flow,
   }
   const Index i1 = i;
   const Index i2 = i + 1;
-  const Index i3 = std::min(i + 2, flow.value.size() - 1);
+  Index       i3 = i + 2;
+  if (i3 >= velocity.value.size())
+  {
+    i3 = velocity.period > 0.0 ? i3 - (velocity.value.size() - 1)
+                               : velocity.value.size() - 1;
+  }
 
-  const Real a = (time - flow.time[i1]) / (flow.time[i2] - flow.time[i1]);
-  return catmullRom(flow.value[i0],
-                    flow.value[i1],
-                    flow.value[i2],
-                    flow.value[i3],
+  const Real a = (time - velocity.time[i1])
+                 / (velocity.time[i2] - velocity.time[i1]);
+  return catmullRom(velocity.value[i0],
+                    velocity.value[i1],
+                    velocity.value[i2],
+                    velocity.value[i3],
                     a);
 }
 
-Real sampleFlowRate(const FlowRateParams& flow,
-                    Real                  time)
+Real sampleVelocityValue(const VelocityParams& velocity,
+                         Real                  time)
 {
-  if (flow.interp == "linear")
+  const Real sample_time = periodicTime(velocity, time);
+  if (velocity.interp == "constant")
   {
-    return sampleFlowRateLinear(flow, time);
+    return sampleVelocityConstant(velocity, sample_time);
   }
-  if (flow.interp == "cubic")
+  if (velocity.interp == "nearest")
   {
-    return sampleFlowRateCubic(flow, time);
+    return sampleVelocityNearest(velocity, sample_time);
   }
-  throw std::runtime_error("Unsupported flowrate interpolation: " + flow.interp);
+  if (velocity.interp == "linear")
+  {
+    return sampleVelocityLinear(velocity, sample_time);
+  }
+  if (velocity.interp == "cubic")
+  {
+    return sampleVelocityCubic(velocity, sample_time);
+  }
+  throw std::runtime_error("Unsupported velocity interpolation: "
+                           + velocity.interp);
 }
 
-Vector velFromFlow(const FlowRateParams& flow,
-                   Real                  time)
+Real norm3(Real x,
+           Real y,
+           Real z)
 {
-  const Real q = sampleFlowRate(flow, time);
+  return std::sqrt(x * x + y * y + z * z);
+}
 
+std::array<Real, 3> unitNormal(const VelocityParams& velocity)
+{
   Real normal_mag2 = 0.0;
-  for (Real comp : flow.normal)
+  for (Real comp : velocity.normal)
   {
     normal_mag2 += comp * comp;
   }
   const Real normal_mag = std::sqrt(normal_mag2);
-  const Real speed      = q / flow.area;
 
-  Vector vel(3);
-  for (Index i = 0; i < vel.size(); ++i)
+  return {velocity.normal[0] / normal_mag,
+          velocity.normal[1] / normal_mag,
+          velocity.normal[2] / normal_mag};
+}
+
+std::array<Real, 3> boundaryCenter(const Mesh& mesh,
+                                   Index       physical_tag)
+{
+  std::array<Real, 3> center       = {0.0, 0.0, 0.0};
+  Real                total_weight = 0.0;
+
+  for (const auto& facet : mesh.boundaryFacets())
   {
-    vel[i] = speed * flow.normal[i] / normal_mag;
+    if (facet.physical_tag != physical_tag || facet.node_ids.empty())
+    {
+      continue;
+    }
+
+    std::array<Real, 3> facet_center = {0.0, 0.0, 0.0};
+    for (Index node_id : facet.node_ids)
+    {
+      const auto& point = mesh.node(node_id);
+      for (Index d = 0; d < 3; ++d)
+      {
+        facet_center[static_cast<std::size_t>(d)] += point[d];
+      }
+    }
+    for (Index d = 0; d < 3; ++d)
+    {
+      facet_center[static_cast<std::size_t>(d)] /=
+          static_cast<Real>(facet.node_ids.size());
+    }
+
+    Real weight = 1.0;
+    if (facet.node_ids.size() == 2)
+    {
+      const auto& x0 = mesh.node(facet.node_ids[0]);
+      const auto& x1 = mesh.node(facet.node_ids[1]);
+      weight         = norm3(x1[0] - x0[0], x1[1] - x0[1], x1[2] - x0[2]);
+    }
+    else if (facet.node_ids.size() == 3)
+    {
+      const auto& x0  = mesh.node(facet.node_ids[0]);
+      const auto& x1  = mesh.node(facet.node_ids[1]);
+      const auto& x2  = mesh.node(facet.node_ids[2]);
+      const Real  e1x = x1[0] - x0[0];
+      const Real  e1y = x1[1] - x0[1];
+      const Real  e1z = x1[2] - x0[2];
+      const Real  e2x = x2[0] - x0[0];
+      const Real  e2y = x2[1] - x0[1];
+      const Real  e2z = x2[2] - x0[2];
+      const Real  nx  = e1y * e2z - e1z * e2y;
+      const Real  ny  = e1z * e2x - e1x * e2z;
+      const Real  nz  = e1x * e2y - e1y * e2x;
+      weight          = 0.5 * norm3(nx, ny, nz);
+    }
+
+    for (Index d = 0; d < 3; ++d)
+    {
+      center[static_cast<std::size_t>(d)] +=
+          weight * facet_center[static_cast<std::size_t>(d)];
+    }
+    total_weight += weight;
   }
-  return vel;
+
+  if (total_weight <= 0.0)
+  {
+    throw std::runtime_error(
+        "No boundary facets found for physical tag "
+        + std::to_string(physical_tag));
+  }
+
+  for (Index d = 0; d < 3; ++d)
+  {
+    center[static_cast<std::size_t>(d)] /= total_weight;
+  }
+  return center;
+}
+
+Real peakSpeed(const VelocityParams& velocity,
+               Real                  scalar)
+{
+  if (velocity.profile.type == "uniform")
+  {
+    if (velocity.quantity == "flowrate")
+    {
+      return scalar / velocity.area;
+    }
+    return scalar;
+  }
+
+  if (velocity.quantity == "flowrate")
+  {
+    return 2.0 * scalar / velocity.area;
+  }
+  if (velocity.quantity == "mean_velocity")
+  {
+    return 2.0 * scalar;
+  }
+  return scalar;
+}
+
+struct VelocityEvalContext
+{
+  VelocityProfileParams profile;
+  std::array<Real, 3>   normal     = {1.0, 0.0, 0.0};
+  std::array<Real, 3>   center     = {0.0, 0.0, 0.0};
+  Real                  peak_speed = 0.0;
+};
+
+VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
+                                            const Mesh&           mesh,
+                                            Index                 physical_tag,
+                                            Real                  time)
+{
+  VelocityEvalContext ctx;
+  ctx.profile    = velocity.profile;
+  ctx.normal     = unitNormal(velocity);
+  ctx.peak_speed = peakSpeed(velocity, sampleVelocityValue(velocity, time));
+  if (velocity.profile.type == "poiseuille")
+  {
+    ctx.center = velocity.profile.center
+                     ? *velocity.profile.center
+                     : boundaryCenter(mesh, physical_tag);
+  }
+  return ctx;
+}
+
+Real profileFactor(const VelocityEvalContext& ctx,
+                   const Mesh::Node&          point)
+{
+  if (ctx.profile.type == "uniform")
+  {
+    return 1.0;
+  }
+
+  const Real dx = point[0] - ctx.center[0];
+  const Real dy = point[1] - ctx.center[1];
+  const Real dz = point[2] - ctx.center[2];
+  const Real axial =
+      dx * ctx.normal[0] + dy * ctx.normal[1] + dz * ctx.normal[2];
+  Real radial2 = dx * dx + dy * dy + dz * dz - axial * axial;
+  radial2      = std::max<Real>(0.0, radial2);
+
+  const Real radius2 = ctx.profile.radius * ctx.profile.radius;
+  return std::max<Real>(0.0, 1.0 - radial2 / radius2);
+}
+
+Real velocityComponent(const VelocityEvalContext& ctx,
+                       const Mesh::Node&          point,
+                       Index                      component)
+{
+  return ctx.peak_speed * profileFactor(ctx, point)
+         * ctx.normal[static_cast<std::size_t>(component)];
 }
 
 DirichletCondition makeBoundaryCondition(
@@ -133,21 +354,23 @@ DirichletCondition makeBoundaryCondition(
 
   for (const auto& cond : bcs)
   {
-    Vector vel(3);
-    if (cond.flow)
+    if (cond.velocity)
     {
-      vel = velFromFlow(*cond.flow, time);
-      if (u_dof.numComponents() < 3 && std::abs(vel[2]) > 1.0e-14)
+      const auto ctx = makeVelocityEvalContext(*cond.velocity,
+                                               u_dof.space().mesh(),
+                                               cond.tag,
+                                               time);
+      if (u_dof.numComponents() < 3 && std::abs(ctx.normal[2]) > 1.0e-14)
       {
-        throw std::runtime_error("3D flowrate normal requires a 3D mesh");
+        throw std::runtime_error("3D velocity normal requires a 3D mesh");
       }
-    }
 
-    if (cond.flow)
-    {
       for (Index d = 0; d < u_dof.numComponents(); ++d)
       {
-        bc.addBoundary(u_dof, cond.tag, vel[d], time, d);
+        bc.addBoundary(u_dof, cond.tag, [ctx, d](const Mesh::Node& point, Real)
+                       { return velocityComponent(ctx, point, d); },
+                       time,
+                       d);
       }
     }
     if (cond.ux)

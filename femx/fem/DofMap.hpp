@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -32,11 +31,11 @@ public:
 
 private:
   /** @brief Return the flat storage offset for an elem-local dof pair. */
-  std::size_t offset(Index ie, Index il) const noexcept;
+  Index offset(Index ie, Index il) const noexcept;
 
-  Index              num_elems_         = 0;
-  Index              num_dofs_per_elem_ = 0;
-  std::vector<Index> elem_dofs_;
+  Index         num_elems_         = 0;
+  Index         num_dofs_per_elem_ = 0;
+  Vector<Index> elem_dofs_;
 };
 
 } // namespace femx

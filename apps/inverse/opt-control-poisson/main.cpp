@@ -12,7 +12,8 @@
 
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryResidualEquation.hpp>
-#include <femx/assembly/EnzymeBoundaryIntegralKernel.hpp>
+#include <femx/assembly/EnzymeBoundaryKernel.hpp>
+#include <femx/assembly/EnzymeVolumeKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/eq/AssembledLinearStateSolver.hpp>
 #include <femx/eq/AssembledResidualEquation.hpp>
@@ -41,7 +42,7 @@ using namespace femx::eq;
 using namespace femx::inverse;
 using namespace femx::system;
 
-using Dofs = std::vector<Index>;
+using Dofs = Vector<Index>;
 
 constexpr Index kLeftTag     = 1;
 constexpr Index kRightTag    = 2;
@@ -66,7 +67,7 @@ void checkPetsc(PetscErrorCode ierr, const std::string& action)
   }
 }
 
-void resize(Vector& out, Index size)
+void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -78,7 +79,7 @@ void resize(Vector& out, Index size)
   }
 }
 
-Real dot(const Vector& x, const Vector& y)
+Real dot(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
@@ -93,7 +94,7 @@ Real dot(const Vector& x, const Vector& y)
   return value;
 }
 
-Real norm2(const Vector& x)
+Real norm2(const Vector<Real>& x)
 {
   return std::sqrt(dot(x, x));
 }
@@ -201,7 +202,7 @@ Dofs makeDirichletDofs(const FESpace& space)
 {
   constexpr Real eps = 1.0e-14;
 
-  Vector constrained(space.numDofs());
+  Vector<Real> constrained(space.numDofs());
   for (Index in = 0; in < space.mesh().numNodes(); ++in)
   {
     const auto& x = space.mesh().node(in);
@@ -223,18 +224,69 @@ Dofs makeDirichletDofs(const FESpace& space)
   return dofs;
 }
 
-void gatherCell(const FESpace& space,
-                const Vector&  global,
-                Index          ic,
-                Dofs&          dofs,
-                Vector&        local)
+void gatherCell(const FESpace&      space,
+                const Vector<Real>& global,
+                Index               ic,
+                Dofs&               dofs,
+                Vector<Real>&       local)
 {
   space.elemDofs(ic, dofs);
   const Index num_local_dofs = dofs.size();
+
   resize(local, num_local_dofs);
   for (Index i = 0; i < local.size(); ++i)
   {
     local[i] = global[dofs[i]];
+  }
+}
+
+void poissonInteriorResidual(Index       cell,
+                             Index       num_qp,
+                             Index       num_nodes,
+                             Index       dim,
+                             Index       num_res,
+                             Index       num_states,
+                             Index       num_params,
+                             const Real* N,
+                             const Real* dNdx,
+                             const Real* JxW,
+                             const Real* state,
+                             const Real* params,
+                             Real*       out)
+{
+  (void) cell;
+  (void) num_nodes;
+  (void) num_params;
+  (void) N;
+  (void) params;
+
+  for (Index a = 0; a < num_res; ++a)
+  {
+    out[a] = 0.0;
+  }
+
+  for (Index iq = 0; iq < num_qp; ++iq)
+  {
+    const Real* dNdx_q = dNdx + iq * num_states * dim;
+
+    Real grad_u[3] = {0.0, 0.0, 0.0};
+    for (Index b = 0; b < num_states; ++b)
+    {
+      for (Index d = 0; d < dim; ++d)
+      {
+        grad_u[d] += state[b] * dNdx_q[b * dim + d];
+      }
+    }
+
+    for (Index a = 0; a < num_res; ++a)
+    {
+      Real term = 0.0;
+      for (Index d = 0; d < dim; ++d)
+      {
+        term += dNdx_q[a * dim + d] * grad_u[d];
+      }
+      out[a] += term * JxW[iq];
+    }
   }
 }
 
@@ -247,7 +299,11 @@ public:
                           const GaussQuadrature& quad)
     : space_(space),
       num_params_(num_params),
-      quad_(quad)
+      kernel_(space,
+              quad,
+              space.numDofsPerElem(),
+              space.numDofsPerElem(),
+              0)
   {
   }
 
@@ -266,47 +322,22 @@ public:
     return space_.numDofs();
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, numRes());
 
-    ElementValues values(space_.finiteElement(), quad_);
-    Dofs          dofs;
-    Vector        state_e;
-    Vector        res_e(space_.numDofsPerElem());
+    Dofs         dofs;
+    Vector<Real> state_e;
+    Vector<Real> params_e;
+    Vector<Real> res_e(space_.numDofsPerElem());
 
     for (Index ic = 0; ic < space_.numElems(); ++ic)
     {
       gatherCell(space_, state, ic, dofs, state_e);
-      res_e.setZero();
-
-      values.reinit(space_.mesh().cell(ic));
-      for (Index iq = 0; iq < values.numQuadraturePoints(); ++iq)
-      {
-        const auto dNdx = values.dNdx(iq);
-
-        Real grad_u[2] = {0.0, 0.0};
-        for (Index b = 0; b < values.numDofs(); ++b)
-        {
-          for (Index d = 0; d < values.dim(); ++d)
-          {
-            grad_u[d] += state_e[b] * dNdx(b, d);
-          }
-        }
-
-        for (Index a = 0; a < values.numDofs(); ++a)
-        {
-          Real grad_term = 0.0;
-          for (Index d = 0; d < values.dim(); ++d)
-          {
-            grad_term += dNdx(a, d) * grad_u[d];
-          }
-          res_e[a] += grad_term * values.JxW(iq);
-        }
-      }
+      kernel_.res(ic, state_e, params_e, res_e);
 
       for (Index a = 0; a < res_e.size(); ++a)
       {
@@ -315,46 +346,36 @@ public:
     }
   }
 
-  void assembleStateJac(const Vector& state,
-                        const Vector& params,
-                        SystemMatrix& out) const override
+  void assembleStateJac(const Vector<Real>& state,
+                        const Vector<Real>& params,
+                        SystemMatrix&       out) const override
   {
     checkSizes(state, params);
     out.resize(numRes(), numStates());
     out.setZero();
 
-    ElementValues values(space_.finiteElement(), quad_);
-    Dofs          dofs;
+    Dofs         dofs;
+    Vector<Real> state_e;
+    Vector<Real> params_e;
+    DenseMatrix  jac_e;
 
     for (Index ic = 0; ic < space_.numElems(); ++ic)
     {
-      space_.elemDofs(ic, dofs);
-      values.reinit(space_.mesh().cell(ic));
-
-      for (Index iq = 0; iq < values.numQuadraturePoints(); ++iq)
+      gatherCell(space_, state, ic, dofs, state_e);
+      kernel_.stateJac(ic, state_e, params_e, jac_e);
+      for (Index a = 0; a < jac_e.rows(); ++a)
       {
-        const auto dNdx = values.dNdx(iq);
-        for (Index a = 0; a < values.numDofs(); ++a)
+        for (Index b = 0; b < jac_e.cols(); ++b)
         {
-          for (Index b = 0; b < values.numDofs(); ++b)
-          {
-            Real entry = 0.0;
-            for (Index d = 0; d < values.dim(); ++d)
-            {
-              entry += dNdx(a, d) * dNdx(b, d);
-            }
-            out.add(dofs[a],
-                    dofs[b],
-                    entry * values.JxW(iq));
-          }
+          out.add(dofs[a], dofs[b], jac_e(a, b));
         }
       }
     }
   }
 
-  void assembleParamJac(const Vector& state,
-                        const Vector& params,
-                        SystemMatrix& out) const override
+  void assembleParamJac(const Vector<Real>& state,
+                        const Vector<Real>& params,
+                        SystemMatrix&       out) const override
   {
     checkSizes(state, params);
     out.resize(numRes(), numParams());
@@ -362,8 +383,8 @@ public:
   }
 
 private:
-  void checkSizes(const Vector& state,
-                  const Vector& params) const
+  void checkSizes(const Vector<Real>& state,
+                  const Vector<Real>& params) const
   {
     if (state.size() != numStates() || params.size() != numParams())
     {
@@ -372,9 +393,9 @@ private:
   }
 
 private:
-  const FESpace&  space_;
-  Index           num_params_{0};
-  GaussQuadrature quad_;
+  const FESpace&                              space_;
+  Index                                       num_params_{0};
+  EnzymeVolumeKernel<poissonInteriorResidual> kernel_;
 };
 
 class DirichletResidualEquation final
@@ -404,9 +425,9 @@ public:
     return interior_.numRes();
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     interior_.res(state, params, out);
     for (Index dof : dofs_)
@@ -415,9 +436,9 @@ public:
     }
   }
 
-  void assembleStateJac(const Vector& state,
-                        const Vector& params,
-                        SystemMatrix& out) const override
+  void assembleStateJac(const Vector<Real>& state,
+                        const Vector<Real>& params,
+                        SystemMatrix&       out) const override
   {
     interior_.assembleStateJac(state, params, out);
     for (Index row : dofs_)
@@ -430,9 +451,9 @@ public:
     }
   }
 
-  void assembleParamJac(const Vector& state,
-                        const Vector& params,
-                        SystemMatrix& out) const override
+  void assembleParamJac(const Vector<Real>& state,
+                        const Vector<Real>& params,
+                        SystemMatrix&       out) const override
   {
     interior_.assembleParamJac(state, params, out);
     for (Index row : dofs_)
@@ -501,7 +522,7 @@ class StateTrackingObjective final
 public:
   StateTrackingObjective(const FESpace&         space,
                          Index                  num_params,
-                         const Vector&          data,
+                         const Vector<Real>&    data,
                          const GaussQuadrature& quad,
                          Real                   weight)
     : space_(space),
@@ -527,8 +548,8 @@ public:
     return num_params_;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     checkSizes(state, params);
 
@@ -540,9 +561,9 @@ public:
     return value_out;
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, numStates());
@@ -557,9 +578,9 @@ public:
         ignored);
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, numParams());
@@ -567,9 +588,9 @@ public:
 
 private:
   template <typename AddGradient>
-  void integrateStateDifference(const Vector& state,
-                                AddGradient   add_gradient,
-                                Real&         value_out) const
+  void integrateStateDifference(const Vector<Real>& state,
+                                AddGradient         add_gradient,
+                                Real&               value_out) const
   {
     ElementValues values(space_.finiteElement(), quad_);
     Dofs          dofs;
@@ -602,8 +623,8 @@ private:
     }
   }
 
-  void checkSizes(const Vector& state,
-                  const Vector& params) const
+  void checkSizes(const Vector<Real>& state,
+                  const Vector<Real>& params) const
   {
     if (state.size() != numStates() || params.size() != numParams())
     {
@@ -614,7 +635,7 @@ private:
 private:
   const FESpace&  space_;
   Index           num_params_{0};
-  Vector          data_;
+  Vector<Real>    data_;
   GaussQuadrature quad_;
   Real            weight_{1.0};
 };
@@ -652,8 +673,8 @@ public:
     return param_layout_.numDofs();
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     checkSizes(state, params);
 
@@ -662,17 +683,17 @@ public:
     return value_out;
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, numStates());
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, numParams());
@@ -685,9 +706,9 @@ public:
 
 private:
   template <typename AddGradient>
-  void integrate(const Vector& params,
-                 AddGradient   add_gradient,
-                 Real&         value_out) const
+  void integrate(const Vector<Real>& params,
+                 AddGradient         add_gradient,
+                 Real&               value_out) const
   {
     BoundaryElementValues values(quad_);
     Dofs                  dofs;
@@ -718,8 +739,8 @@ private:
     }
   }
 
-  void checkSizes(const Vector& state,
-                  const Vector& params) const
+  void checkSizes(const Vector<Real>& state,
+                  const Vector<Real>& params) const
   {
     if (state.size() != numStates() || params.size() != numParams())
     {
@@ -735,12 +756,12 @@ private:
   Real              weight_{0.0};
 };
 
-Vector boundaryCoordinates(const Mesh&              mesh,
-                           const BoundaryDofLayout& layout)
+Vector<Real> boundaryCoordinates(const Mesh&              mesh,
+                                 const BoundaryDofLayout& layout)
 {
-  Vector x(layout.numDofs());
-  Vector seen(layout.numDofs());
-  Dofs   dofs;
+  Vector<Real> x(layout.numDofs());
+  Vector<Real> seen(layout.numDofs());
+  Dofs         dofs;
 
   for (Index ib = 0; ib < layout.numFacets(); ++ib)
   {
@@ -762,9 +783,9 @@ Vector boundaryCoordinates(const Mesh&              mesh,
   return x;
 }
 
-Vector makeTrueFlux(const Vector& x)
+Vector<Real> makeTrueFlux(const Vector<Real>& x)
 {
-  Vector flux(x.size());
+  Vector<Real> flux(x.size());
   for (Index i = 0; i < flux.size(); ++i)
   {
     flux[i] = std::sin(2.0 * kPi * x[i]);
@@ -772,7 +793,7 @@ Vector makeTrueFlux(const Vector& x)
   return flux;
 }
 
-Real rmse(const Vector& x, const Vector& y)
+Real rmse(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
@@ -788,14 +809,14 @@ Real rmse(const Vector& x, const Vector& y)
   return std::sqrt(sum / x.size());
 }
 
-Vector difference(const Vector& x, const Vector& y)
+Vector<Real> difference(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
     throw std::runtime_error("difference received incompatible vectors");
   }
 
-  Vector diff(x.size());
+  Vector<Real> diff(x.size());
   for (Index i = 0; i < x.size(); ++i)
   {
     diff[i] = x[i] - y[i];
@@ -803,17 +824,17 @@ Vector difference(const Vector& x, const Vector& y)
   return diff;
 }
 
-Vector boundaryFieldOnMesh(const Mesh&              mesh,
-                           const BoundaryDofLayout& layout,
-                           const Vector&            values)
+Vector<Real> boundaryFieldOnMesh(const Mesh&              mesh,
+                                 const BoundaryDofLayout& layout,
+                                 const Vector<Real>&      values)
 {
   if (values.size() != layout.numDofs())
   {
     throw std::runtime_error("boundaryFieldOnMesh size mismatch");
   }
 
-  Vector field(mesh.numNodes());
-  Dofs   dofs;
+  Vector<Real> field(mesh.numNodes());
+  Dofs         dofs;
   for (Index ib = 0; ib < layout.numFacets(); ++ib)
   {
     layout.facetDofs(ib, dofs);
@@ -834,8 +855,8 @@ public:
   OptimizationHistoryOutput(const Mesh&              mesh,
                             const BoundaryDofLayout& param_layout,
                             StateSolver&             state_solver,
-                            const Vector&            observed_state,
-                            const Vector&            true_params,
+                            const Vector<Real>&      observed_state,
+                            const Vector<Real>&      true_params,
                             VisualizationOptions     options)
     : mesh_(mesh),
       param_layout_(param_layout),
@@ -861,7 +882,7 @@ public:
     return recorded_;
   }
 
-  void record(Index iter, const Vector& params, bool force = false)
+  void record(Index iter, const Vector<Real>& params, bool force = false)
   {
     if (!options_.enabled)
     {
@@ -876,7 +897,7 @@ public:
       return;
     }
 
-    Vector state;
+    Vector<Real> state;
     state_solver_.solve(params, state);
 
     out_.beginStep(static_cast<Real>(iter));
@@ -906,9 +927,9 @@ private:
   const Mesh&              mesh_;
   const BoundaryDofLayout& param_layout_;
   StateSolver&             state_solver_;
-  const Vector&            observed_state_;
-  const Vector&            true_params_;
-  Vector                   true_param_field_;
+  const Vector<Real>&      observed_state_;
+  const Vector<Real>&      true_params_;
+  Vector<Real>             true_param_field_;
   VisualizationOptions     options_;
   TimeSeriesDataOut        out_;
   bool                     recorded_{false};
@@ -916,13 +937,13 @@ private:
 };
 
 Real DirectionalDerivative(
-    ReducedFunctional& functional,
-    const Vector&      params,
-    const Vector&      dir,
-    Real               eps)
+    ReducedFunctional&  functional,
+    const Vector<Real>& params,
+    const Vector<Real>& dir,
+    Real                eps)
 {
-  Vector plus(params.size());
-  Vector minus(params.size());
+  Vector<Real> plus(params.size());
+  Vector<Real> minus(params.size());
   for (Index i = 0; i < params.size(); ++i)
   {
     plus[i]  = params[i] + eps * dir[i];
@@ -953,7 +974,7 @@ int run()
   PoissonInteriorEquation interior(
       space, top_param_layout.numDofs(), volume_quad);
 
-  EnzymeBoundaryIntegralKernel<boundaryFluxResidual>
+  EnzymeBoundaryKernel<boundaryFluxResidual>
       flux_kernel(mesh, boundary_quad, 2, 2, 2);
 
   BoundaryResidualEquation flux_eq(
@@ -971,10 +992,10 @@ int run()
   AssembledLinearStateSolver state_solver(
       equation, state_jac, state_lin_solver);
 
-  const auto top_x  = boundaryCoordinates(mesh, top_param_layout);
-  Vector     m_true = makeTrueFlux(top_x);
+  const auto   top_x  = boundaryCoordinates(mesh, top_param_layout);
+  Vector<Real> m_true = makeTrueFlux(top_x);
 
-  Vector u_obs;
+  Vector<Real> u_obs;
   state_solver.solve(m_true, u_obs);
 
   StateTrackingObjective tracking(
@@ -998,7 +1019,7 @@ int run()
   AdjointReducedFunctional reduced(
       state_solver, adj_solver, equation, objective);
 
-  Vector initial(top_param_layout.numDofs());
+  Vector<Real> initial(top_param_layout.numDofs());
   initial.setZero();
 
   const VisualizationOptions viz_options = readVisualizationOptions();
@@ -1011,10 +1032,10 @@ int run()
       viz_options);
   history.record(0, initial, true);
 
-  Vector     initial_grad;
-  const Real initial_value = reduced.valueGrad(initial, initial_grad);
+  Vector<Real> initial_grad;
+  const Real   initial_value = reduced.valueGrad(initial, initial_grad);
 
-  Vector dir(top_param_layout.numDofs());
+  Vector<Real> dir(top_param_layout.numDofs());
   for (Index i = 0; i < dir.size(); ++i)
   {
     dir[i] = std::cos(0.73 * (i + 1));
@@ -1036,7 +1057,7 @@ int run()
   optimizer.options().max_its             = 160;
   optimizer.options().use_opts_db         = true;
   optimizer.setMonitor(
-      [&history](const TaoIterationInfo& info, const Vector& params)
+      [&history](const TaoIterationInfo& info, const Vector<Real>& params)
       {
         history.record(info.its, params);
       });

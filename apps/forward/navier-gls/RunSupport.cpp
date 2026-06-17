@@ -118,7 +118,7 @@ std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
   throw std::runtime_error("Unsupported mesh cell type for " + executable);
 }
 
-bool isFinite(const Vector& x)
+bool isFinite(const Vector<Real>& x)
 {
   for (Index i = 0; i < x.size(); ++i)
   {
@@ -140,12 +140,12 @@ bool shouldWriteOutput(Index               step,
 namespace
 {
 
-void splitFields(const Vector&       x,
+void splitFields(const Vector<Real>& x,
                  const MixedFESpace& space,
-                 Vector&             ux,
-                 Vector&             uy,
-                 Vector&             uz,
-                 Vector&             p)
+                 Vector<Real>&       ux,
+                 Vector<Real>&       uy,
+                 Vector<Real>&       uz,
+                 Vector<Real>&       p)
 {
   const Mesh& mesh  = space.mesh();
   const auto  u_dof = space.field(0);
@@ -172,12 +172,12 @@ void splitFields(const Vector&       x,
 } // namespace
 
 Snapshot makeSnapshot(const MixedFESpace& space,
-                      const Vector&       x,
+                      const Vector<Real>& x,
                       Real                time)
 {
   const Index nodes = space.mesh().numNodes();
   Snapshot    snapshot{
-      time, Vector(nodes), Vector(nodes), Vector(nodes), Vector(nodes)};
+      time, Vector<Real>(nodes), Vector<Real>(nodes), Vector<Real>(nodes), Vector<Real>(nodes)};
   splitFields(x, space, snapshot.ux, snapshot.uy, snapshot.uz, snapshot.p);
   return snapshot;
 }

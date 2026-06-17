@@ -57,7 +57,7 @@ public:
   {
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numCols())
     {
@@ -75,7 +75,7 @@ public:
     }
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numRows())
     {
@@ -104,7 +104,7 @@ public:
   }
 
 private:
-  static void resizeVector(Vector& out, Index size)
+  static void resizeVector(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {

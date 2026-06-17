@@ -60,12 +60,12 @@ public:
   {
   }
 
-  Vector& vector()
+  Vector<Real>& vector()
   {
     return vec_;
   }
 
-  const Vector& vector() const
+  const Vector<Real>& vector() const
   {
     return vec_;
   }
@@ -80,7 +80,7 @@ private:
   }
 
 private:
-  Vector vec_;
+  Vector<Real> vec_;
 };
 
 } // namespace system

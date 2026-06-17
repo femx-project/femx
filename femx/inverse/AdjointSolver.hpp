@@ -18,10 +18,10 @@ public:
   virtual Index numParams() const = 0;
   virtual Index numRes() const    = 0;
 
-  virtual void solve(const Vector& state,
-                     const Vector& params,
-                     const Vector& rhs,
-                     Vector&       adjoint) = 0;
+  virtual void solve(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& rhs,
+                     Vector<Real>&       adjoint) = 0;
 };
 
 } // namespace inverse

@@ -103,21 +103,21 @@ Index FESpace::globalDof(Index in,
   return components_ * in + component;
 }
 
-void FESpace::elemDofs(Index               ic,
-                       std::vector<Index>& dofs) const
+void FESpace::elemDofs(Index          ic,
+                       Vector<Index>& dofs) const
 {
-  dofs.resize(static_cast<std::size_t>(dof_map_.numElementDofs()));
+  dofs.resize(dof_map_.numElementDofs());
 
   const Index* data = dof_map_.elementDofsData(ic);
   for (Index i = 0; i < dof_map_.numElementDofs(); ++i)
   {
-    dofs[static_cast<std::size_t>(i)] = data[i];
+    dofs[i] = data[i];
   }
 }
 
-std::vector<Index> FESpace::elemDofs(Index ic) const
+Vector<Index> FESpace::elemDofs(Index ic) const
 {
-  std::vector<Index> dofs;
+  Vector<Index> dofs;
   elemDofs(ic, dofs);
   return dofs;
 }

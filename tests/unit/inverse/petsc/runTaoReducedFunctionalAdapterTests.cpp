@@ -20,13 +20,13 @@ public:
     return 2;
   }
 
-  Real value(const Vector& params) override
+  Real value(const Vector<Real>& params) override
   {
     return 0.5 * (params[0] - 1.0) * (params[0] - 1.0)
            + (params[1] + 2.0) * (params[1] + 2.0);
   }
 
-  void grad(const Vector& params, Vector& out) override
+  void grad(const Vector<Real>& params, Vector<Real>& out) override
   {
     if (out.size() != numParams())
     {

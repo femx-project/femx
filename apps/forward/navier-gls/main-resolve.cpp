@@ -114,9 +114,9 @@ int run(const Params& params, bool enable_output)
 
   auto               pattern = SparsityPatternBuilder::build(space);
   SparseSystemMatrix A(pattern);
-  Vector             b(space.numDofs());
-  Vector             x(space.numDofs());
-  Vector             xp(space.numDofs());
+  Vector<Real>       b(space.numDofs());
+  Vector<Real>       x(space.numDofs());
+  Vector<Real>       xp(space.numDofs());
   x.setZero();
   xp.setZero();
 
@@ -162,13 +162,9 @@ int run(const Params& params, bool enable_output)
       throw std::runtime_error("Stopping as CFL became invalid");
     }
 
-    Vector       x_old   = x;
-    const auto   bc      = makeBoundaryCondition(space, params.bcs, time);
-    const double bc_time = timeBlock(
-        [&]
-        {
-          bc.apply(A.matrix(), b);
-        });
+    Vector<Real> x_old = x;
+    const auto   bc    = makeBoundaryCondition(space, params.bcs, time);
+    bc.apply(A.matrix(), b);
 
     const double solve_time = timeBlock(
         [&]
@@ -183,15 +179,10 @@ int run(const Params& params, bool enable_output)
     }
     xp = x_old;
 
-    double out_time = 0.0;
     if (enable_output && shouldWriteOutput(step, params.time.steps, params.output))
     {
-      out_time = timeBlock(
-          [&]
-          {
-            snapshots.push_back(makeSnapshot(space, x, time));
-            writeOutput(mesh, params.output, snapshots);
-          });
+      snapshots.push_back(makeSnapshot(space, x, time));
+      writeOutput(mesh, params.output, snapshots);
     }
 
     const double       total_time = elapsedSeconds(step_start, Clock::now());
@@ -200,9 +191,7 @@ int run(const Params& params, bool enable_output)
          << params.time.steps << ", t = " << std::setw(11) << time
          << ", max CFL = " << std::setw(11) << stats.max_cfl
          << ", assembly = " << std::setw(11) << asm_time << " s"
-         << ", bc = " << std::setw(11) << bc_time << " s"
          << ", solve = " << std::setw(11) << solve_time << " s"
-         << ", output = " << std::setw(11) << out_time << " s"
          << ", total = " << std::setw(11) << total_time << " s";
     std::cout << line.str() << '\n';
 
@@ -212,9 +201,7 @@ int run(const Params& params, bool enable_output)
               << std::setw(11) << time << ", max CFL = "
               << std::setw(11) << stats.max_cfl
               << ", assembly = " << asm_time
-              << ", bc = " << bc_time
               << ", solve = " << solve_time
-              << ", output = " << out_time
               << ", total = " << total_time << '\n';
       if (shouldWriteOutput(step, params.time.steps, params.output))
       {

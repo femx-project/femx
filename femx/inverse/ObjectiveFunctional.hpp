@@ -17,16 +17,16 @@ public:
   virtual Index numStates() const = 0;
   virtual Index numParams() const = 0;
 
-  virtual Real value(const Vector& state,
-                     const Vector& params) const = 0;
+  virtual Real value(const Vector<Real>& state,
+                     const Vector<Real>& params) const = 0;
 
-  virtual void stateGrad(const Vector& state,
-                         const Vector& params,
-                         Vector&       out) const = 0;
+  virtual void stateGrad(const Vector<Real>& state,
+                         const Vector<Real>& params,
+                         Vector<Real>&       out) const = 0;
 
-  virtual void paramGrad(const Vector& state,
-                         const Vector& params,
-                         Vector&       out) const = 0;
+  virtual void paramGrad(const Vector<Real>& state,
+                         const Vector<Real>& params,
+                         Vector<Real>&       out) const = 0;
 };
 
 } // namespace inverse

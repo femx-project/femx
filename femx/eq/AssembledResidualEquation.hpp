@@ -16,18 +16,18 @@ class AssembledResidualEquation : public ResidualEquation
 public:
   ~AssembledResidualEquation() override = default;
 
-  virtual void assembleStateJac(const Vector&         state,
-                                const Vector&         params,
+  virtual void assembleStateJac(const Vector<Real>&   state,
+                                const Vector<Real>&   params,
                                 system::SystemMatrix& out) const = 0;
 
-  virtual void assembleParamJac(const Vector&         state,
-                                const Vector&         params,
+  virtual void assembleParamJac(const Vector<Real>&   state,
+                                const Vector<Real>&   params,
                                 system::SystemMatrix& out) const = 0;
 
-  void applyStateJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyStateJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     system::DenseSystemMatrix jac;
     assembleStateJac(state, params, jac);
@@ -35,10 +35,10 @@ public:
     jac.apply(dir, out);
   }
 
-  void applyStateJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyStateJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     system::DenseSystemMatrix jac;
     assembleStateJac(state, params, jac);
@@ -46,10 +46,10 @@ public:
     jac.applyT(lambda, out);
   }
 
-  void applyParamJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyParamJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     system::DenseSystemMatrix jac;
     assembleParamJac(state, params, jac);
@@ -57,10 +57,10 @@ public:
     jac.apply(dir, out);
   }
 
-  void applyParamJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyParamJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     system::DenseSystemMatrix jac;
     assembleParamJac(state, params, jac);

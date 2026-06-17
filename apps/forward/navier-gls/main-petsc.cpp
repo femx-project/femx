@@ -141,8 +141,8 @@ void applyDirichletCondition(const DirichletCondition& bc,
 
   bc_vals.setZero();
 
-  std::vector<Index> rows;
-  rows.reserve(constrained.size());
+  Vector<Index> rows;
+  rows.reserve(static_cast<Index>(constrained.size()));
   for (const auto& [row, value] : constrained)
   {
     rows.push_back(row);
@@ -176,9 +176,9 @@ int run(const Params& params, bool enable_output)
   space.addField(p_space);
   space.setup();
 
-  auto   pattern = SparsityPatternBuilder::build(space);
-  Vector x(space.numDofs());
-  Vector xp(space.numDofs());
+  auto         pattern = SparsityPatternBuilder::build(space);
+  Vector<Real> x(space.numDofs());
+  Vector<Real> xp(space.numDofs());
   x.setZero();
   xp.setZero();
 
@@ -236,14 +236,10 @@ int run(const Params& params, bool enable_output)
       throw std::runtime_error("Stopping as CFL became invalid");
     }
 
-    const auto   bc      = makeBoundaryCondition(space, params.bcs, time);
-    const double bc_time = timeCollective(
-        [&]
-        {
-          applyDirichletCondition(bc, space.numDofs(), A, b, bc_vals);
-        });
+    const auto bc = makeBoundaryCondition(space, params.bcs, time);
+    applyDirichletCondition(bc, space.numDofs(), A, b, bc_vals);
 
-    Vector x_old = x;
+    Vector<Real> x_old = x;
     x_petsc.copyOwnedFrom(x);
 
     const double solve_time = timeCollective(
@@ -266,16 +262,11 @@ int run(const Params& params, bool enable_output)
     }
     xp = x_old;
 
-    double out_time = 0.0;
     if (enable_output && rank == 0
         && shouldWriteOutput(step, params.time.steps, params.output))
     {
-      out_time = timeBlock(
-          [&]
-          {
-            snapshots.push_back(makeSnapshot(space, x, time));
-            writeOutput(mesh, params.output, snapshots);
-          });
+      snapshots.push_back(makeSnapshot(space, x, time));
+      writeOutput(mesh, params.output, snapshots);
     }
 
     const double total_time = elapsedSeconds(step_start, Clock::now());
@@ -288,10 +279,8 @@ int run(const Params& params, bool enable_output)
            << ", KSP its = " << std::setw(6) << its
            << ", |r| = " << std::setw(11) << rnorm
            << ", assembly = " << std::setw(11) << asm_time << " s"
-           << ", bc = " << std::setw(11) << bc_time << " s"
            << ", solve = " << std::setw(11) << solve_time << " s"
            << ", gather = " << std::setw(11) << gather_time << " s"
-           << ", output = " << std::setw(11) << out_time << " s"
            << ", total = " << std::setw(11) << total_time << " s";
       std::cout << line.str() << '\n';
 
@@ -301,8 +290,8 @@ int run(const Params& params, bool enable_output)
                 << std::setw(11) << time << ", max CFL = "
                 << std::setw(11) << stats.max_cfl << ", KSP its = " << its
                 << ", residual = " << rnorm << ", assembly = " << asm_time
-                << ", bc = " << bc_time << ", solve = " << solve_time
-                << ", gather = " << gather_time << ", output = " << out_time
+                << ", solve = " << solve_time
+                << ", gather = " << gather_time
                 << ", total = " << total_time << '\n';
         if (shouldWriteOutput(step, params.time.steps, params.output))
         {

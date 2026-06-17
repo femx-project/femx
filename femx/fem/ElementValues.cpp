@@ -25,6 +25,7 @@ ElementValues::ElementValues(const FiniteElement&   fe,
 
   detJ_.resize(num_qp_);
   weights_.resize(num_qp_);
+  JxW_.resize(num_qp_);
 
   J_.resize(dim_ * dim_);
   invJ_.resize(dim_ * dim_);
@@ -92,7 +93,22 @@ Real ElementValues::weight(Index iq) const
 
 Real ElementValues::JxW(Index iq) const
 {
-  return detJ_[iq] * weights_[iq];
+  return JxW_[iq];
+}
+
+const Real* ElementValues::NData() const
+{
+  return N_.data();
+}
+
+const Real* ElementValues::dNdxData() const
+{
+  return dNdx_.data();
+}
+
+const Real* ElementValues::JxWData() const
+{
+  return JxW_.data();
 }
 
 void ElementValues::calcReferenceValues()
@@ -140,6 +156,7 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
 
     const Real detJ = invJacobian(J_, invJ_, dim_);
     detJ_[iq]       = std::abs(detJ);
+    JxW_[iq]        = detJ_[iq] * weights_[iq];
 
     MatrixView<Real> dNdx(
         dNdx_.data() + iq * num_dofs_ * dim_,

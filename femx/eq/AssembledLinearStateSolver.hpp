@@ -25,12 +25,12 @@ namespace eq
 class AssembledLinearStateSolver final : public StateSolver
 {
 public:
-  AssembledLinearStateSolver(const AssembledResidualEquation& equation,
+  AssembledLinearStateSolver(const AssembledResidualEquation& eq,
                              system::SystemMatrix&            state_jac,
                              system::LinearSolver&            lin_solver)
-    : eq_(equation),
+    : eq_(eq),
       state_jac_(state_jac),
-      linear_solver_(lin_solver)
+      lin_solver_(lin_solver)
   {
     if (eq_.numRes() != eq_.numStates())
     {
@@ -39,7 +39,7 @@ public:
     }
   }
 
-  void setReferenceState(const Vector& state)
+  void setReferenceState(const Vector<Real>& state)
   {
     if (state.size() != numStates())
     {
@@ -52,7 +52,7 @@ public:
 
   void clearReferenceState()
   {
-    reference_state_     = Vector{};
+    reference_state_     = Vector<Real>{};
     has_reference_state_ = false;
   }
 
@@ -66,7 +66,7 @@ public:
     return eq_.numParams();
   }
 
-  void solve(const Vector& params, Vector& state) override
+  void solve(const Vector<Real>& params, Vector<Real>& state) override
   {
     if (params.size() != numParams())
     {
@@ -74,10 +74,10 @@ public:
           "AssembledLinearStateSolver parameter size mismatch");
     }
 
-    Vector reference;
+    Vector<Real> reference;
     initializeReferenceState(reference);
 
-    Vector rhs;
+    Vector<Real> rhs;
     eq_.res(reference, params, rhs);
     if (rhs.size() != eq_.numRes())
     {
@@ -93,8 +93,8 @@ public:
     eq_.assembleStateJac(reference, params, state_jac_);
     state_jac_.finalize();
 
-    Vector step;
-    linear_solver_.solve(state_jac_, rhs, step);
+    Vector<Real> step;
+    lin_solver_.solve(state_jac_, rhs, step);
     if (step.size() != numStates())
     {
       throw std::runtime_error(
@@ -109,7 +109,7 @@ public:
   }
 
 private:
-  void initializeReferenceState(Vector& state) const
+  void initializeReferenceState(Vector<Real>& state) const
   {
     if (has_reference_state_)
     {
@@ -130,8 +130,8 @@ private:
 private:
   const AssembledResidualEquation& eq_;
   system::SystemMatrix&            state_jac_;
-  system::LinearSolver&            linear_solver_;
-  Vector                           reference_state_;
+  system::LinearSolver&            lin_solver_;
+  Vector<Real>                     reference_state_;
   bool                             has_reference_state_{false};
 };
 

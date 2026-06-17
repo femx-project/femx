@@ -44,13 +44,23 @@ struct OutputParams
   std::string directory = FEMX_NAVIERSTOKES_OUTPUT_DIR;
 };
 
-struct FlowRateParams
+struct VelocityProfileParams
 {
-  Vector              time;
-  Vector              value;
-  Real                area   = 1.0;
-  std::array<Real, 3> normal = {1.0, 0.0, 0.0};
-  std::string         interp = "linear";
+  std::string                        type   = "uniform";
+  Real                               radius = 0.0;
+  std::optional<std::array<Real, 3>> center;
+};
+
+struct VelocityParams
+{
+  Vector<Real>          time;
+  Vector<Real>          value;
+  Real                  area     = 1.0;
+  Real                  period   = 0.0;
+  std::array<Real, 3>   normal   = {1.0, 0.0, 0.0};
+  std::string           interp   = "linear";
+  std::string           quantity = "flowrate";
+  VelocityProfileParams profile;
 };
 
 struct BCsParams
@@ -61,7 +71,7 @@ struct BCsParams
   std::optional<Real>           uy;
   std::optional<Real>           uz;
   std::optional<Real>           p;
-  std::optional<FlowRateParams> flow;
+  std::optional<VelocityParams> velocity;
 };
 
 struct Params

@@ -3,10 +3,13 @@
 #include <string>
 #include <vector>
 
+#include <femx/common/Types.hpp>
+
 namespace femx
 {
 
 class Mesh;
+template <typename T>
 class Vector;
 
 class Hdf5Writer
@@ -14,8 +17,8 @@ class Hdf5Writer
 public:
   struct NodalField
   {
-    std::string   name;
-    const Vector* values{nullptr};
+    std::string         name;
+    const Vector<Real>* values{nullptr};
   };
 
   void write(const std::string&             filename,

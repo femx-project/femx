@@ -177,17 +177,17 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
   }
 }
 
-const std::vector<Index>& DirichletCondition::dofs() const noexcept
+const Vector<Index>& DirichletCondition::dofs() const noexcept
 {
   return dofs_;
 }
 
-const std::vector<Real>& DirichletCondition::values() const noexcept
+const Vector<Real>& DirichletCondition::values() const noexcept
 {
   return values_;
 }
 
-void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
+void DirichletCondition::apply(SparseMatrix& A, Vector<Real>& b) const
 {
   if (dofs_.size() != values_.size())
   {
@@ -200,9 +200,9 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
 
   std::vector<char> is_dirichlet(static_cast<std::size_t>(A.rows()), 0);
   std::vector<char> found_diagonal(static_cast<std::size_t>(A.rows()), 0);
-  std::vector<Real> dirichlet_values(static_cast<std::size_t>(A.rows()), 0.0);
+  Vector<Real>      dirichlet_values(A.rows());
 
-  for (std::size_t c = 0; c < dofs_.size(); ++c)
+  for (Index c = 0; c < dofs_.size(); ++c)
   {
     const Index dof   = dofs_[c];
     const Real  value = values_[c];
@@ -212,8 +212,8 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
       throw std::runtime_error("Dirichlet dof is out of range");
     }
 
-    is_dirichlet[static_cast<std::size_t>(dof)]     = 1;
-    dirichlet_values[static_cast<std::size_t>(dof)] = value;
+    is_dirichlet[static_cast<std::size_t>(dof)] = 1;
+    dirichlet_values[dof]                       = value;
   }
 
   for (Index row = 0; row < A.rows(); ++row)
@@ -236,14 +236,14 @@ void DirichletCondition::apply(SparseMatrix& A, Vector& b) const
       }
       else if (is_dirichlet[static_cast<std::size_t>(col)] != 0)
       {
-        b[row]    -= values[k] * dirichlet_values[static_cast<std::size_t>(col)];
+        b[row]    -= values[k] * dirichlet_values[col];
         values[k]  = 0.0;
       }
     }
 
     if (row_is_dirichlet)
     {
-      b[row] = dirichlet_values[static_cast<std::size_t>(row)];
+      b[row] = dirichlet_values[row];
     }
   }
 

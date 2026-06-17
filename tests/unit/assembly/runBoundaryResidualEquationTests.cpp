@@ -49,16 +49,16 @@ public:
     return size_;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     checkSizes(state, params);
     resize(out, size_);
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     checkSizes(state, params);
@@ -66,8 +66,8 @@ public:
     out.setZero();
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     checkSizes(state, params);
@@ -76,7 +76,7 @@ public:
   }
 
 private:
-  void checkSizes(const Vector& state, const Vector& params) const
+  void checkSizes(const Vector<Real>& state, const Vector<Real>& params) const
   {
     if (state.size() != size_ || params.size() != num_params_)
     {
@@ -84,7 +84,7 @@ private:
     }
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -106,9 +106,9 @@ class LinearBoundaryKernel final : public assembly::BoundaryElementKernel
 public:
   void res(Index                      ib,
            const Mesh::BoundaryFacet& facet,
-           const Vector&              u,
-           const Vector&              m,
-           Vector&                    out) const override
+           const Vector<Real>&        u,
+           const Vector<Real>&        m,
+           Vector<Real>&              out) const override
   {
     (void) facet;
     resize(out, u.size());
@@ -121,8 +121,8 @@ public:
 
   void stateJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
-                const Vector&              u,
-                const Vector&              m,
+                const Vector<Real>&        u,
+                const Vector<Real>&        m,
                 DenseMatrix&               out) const override
   {
     (void) facet;
@@ -137,8 +137,8 @@ public:
 
   void paramJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
-                const Vector&              u,
-                const Vector&              m,
+                const Vector<Real>&        u,
+                const Vector<Real>&        m,
                 DenseMatrix&               out) const override
   {
     (void) ib;
@@ -156,7 +156,7 @@ private:
     return 3.0 + static_cast<Real>(ib);
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -190,11 +190,11 @@ public:
     assembly::BoundaryResidualEquation equation(
         base, boundary_layout, boundary_layout, boundary_layout, kernel);
 
-    Vector state(space.numDofs());
-    Vector params(space.numDofs());
+    Vector<Real> state(space.numDofs());
+    Vector<Real> params(space.numDofs());
     fillStateAndParams(state, params);
 
-    Vector res;
+    Vector<Real> res;
     equation.res(state, params, res);
 
     status *= isEqual(res[0], 3.0 * state[0] + 2.0 * params[0]);
@@ -246,18 +246,18 @@ public:
     assembly::BoundaryResidualEquation equation(
         base, state_layout, state_layout, param_layout, kernel);
 
-    Vector state(space.numDofs());
+    Vector<Real> state(space.numDofs());
     for (Index i = 0; i < state.size(); ++i)
     {
       state[i] = 1.0 + static_cast<Real>(i);
     }
 
-    Vector params(param_layout.numDofs());
+    Vector<Real> params(param_layout.numDofs());
     params[0] = -1.0;
     params[1] = 2.0;
     params[2] = 4.0;
 
-    Vector res;
+    Vector<Real> res;
     equation.res(state, params, res);
 
     status *= isEqual(res[3], 3.0 * state[3] + 2.0 * params[0]);
@@ -315,7 +315,7 @@ private:
     return mesh;
   }
 
-  static void fillStateAndParams(Vector& state, Vector& params)
+  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& params)
   {
     for (Index i = 0; i < state.size(); ++i)
     {

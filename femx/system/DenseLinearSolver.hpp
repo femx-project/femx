@@ -25,8 +25,8 @@ public:
   }
 
   void solve(const LinearOperator& op,
-             const Vector&         rhs,
-             Vector&               out) override
+             const Vector<Real>&   rhs,
+             Vector<Real>&         out) override
   {
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
     {
@@ -40,8 +40,8 @@ public:
   }
 
   void solveT(const LinearOperator& op,
-              const Vector&         rhs,
-              Vector&               out) override
+              const Vector<Real>&   rhs,
+              Vector<Real>&         out) override
   {
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
     {
@@ -62,8 +62,8 @@ private:
     const Index n = transpose ? op.numRows() : op.numCols();
     mat.assign(static_cast<std::size_t>(n * n), 0.0);
 
-    Vector basis(n);
-    Vector column;
+    Vector<Real> basis(n);
+    Vector<Real> column;
     for (Index j = 0; j < n; ++j)
     {
       basis.setZero();
@@ -91,10 +91,10 @@ private:
     }
   }
 
-  void solveDense(std::vector<Real> mat,
-                  const Vector&     rhs,
-                  Vector&           out,
-                  Index             size) const
+  void solveDense(std::vector<Real>   mat,
+                  const Vector<Real>& rhs,
+                  Vector<Real>&       out,
+                  Index               size) const
   {
     std::vector<Real> b(static_cast<std::size_t>(size), 0.0);
 
@@ -167,7 +167,7 @@ private:
     return static_cast<std::size_t>(row * size + col);
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {

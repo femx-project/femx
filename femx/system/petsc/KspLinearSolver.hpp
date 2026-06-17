@@ -47,12 +47,12 @@ public:
   const KspOptions& options() const;
 
   void solve(const LinearOperator& op,
-             const Vector&         rhs,
-             Vector&               out) override;
+             const Vector<Real>&   rhs,
+             Vector<Real>&         out) override;
 
   void solveT(const LinearOperator& op,
-              const Vector&         rhs,
-              Vector&               out) override;
+              const Vector<Real>&   rhs,
+              Vector<Real>&         out) override;
 
   void solve(const PETScSystemMatrix& op,
              const PETScSystemVector& rhs,

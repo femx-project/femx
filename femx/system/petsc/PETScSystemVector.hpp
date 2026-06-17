@@ -116,7 +116,7 @@ public:
     check(VecAssemblyEnd(vec_), "VecAssemblyEnd");
   }
 
-  void copyOwnedFrom(const Vector& values)
+  void copyOwnedFrom(const Vector<Real>& values)
   {
     if (values.size() != size())
     {
@@ -136,7 +136,7 @@ public:
     check(VecRestoreArray(vec(), &data), "VecRestoreArray");
   }
 
-  void copyToAll(Vector& values) const
+  void copyToAll(Vector<Real>& values) const
   {
     check(detail::copyFromPETSc(vec(), values), "copyFromPETSc");
   }

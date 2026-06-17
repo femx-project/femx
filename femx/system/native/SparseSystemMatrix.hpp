@@ -5,6 +5,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>
@@ -65,11 +66,24 @@ public:
     values[static_cast<std::size_t>(entry)] += value;
   }
 
+  bool addLocalMatrix(Index ic, const DenseMatrix& local, bool atomic) override
+  {
+    if (atomic)
+    {
+      addLocalMatrixAtomic(ic, local);
+    }
+    else
+    {
+      addLocalMatrixSerial(ic, local);
+    }
+    return true;
+  }
+
   void finalize() override
   {
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numCols())
     {
@@ -93,7 +107,7 @@ public:
     }
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numRows())
     {
@@ -126,6 +140,71 @@ public:
   }
 
 private:
+  void checkLocalMatrix(Index ic, const DenseMatrix& local) const
+  {
+    const CsrPattern& pattern = mat_.pattern();
+    if (ic < 0 || ic >= pattern.numElems())
+    {
+      throw std::runtime_error("SparseSystemMatrix cell index is out of range");
+    }
+
+    const Index ndofs = pattern.elemNumDofs(ic);
+    if (local.rows() != ndofs || local.cols() != ndofs)
+    {
+      throw std::runtime_error(
+          "SparseSystemMatrix local matrix size does not match cell dofs");
+    }
+  }
+
+  void addLocalMatrixSerial(Index ic, const DenseMatrix& local)
+  {
+    checkLocalMatrix(ic, local);
+
+    const CsrPattern& pattern    = mat_.pattern();
+    const Index       ndofs      = pattern.elemNumDofs(ic);
+    const Index       coo_offset = pattern.elemCooOffset(ic);
+    const Index*      coo_to_csr = pattern.cooToCsrData();
+    const Real*       local_vals = local.data();
+    Real*             values     = mat_.valuesData();
+
+    for (Index i = 0; i < ndofs; ++i)
+    {
+      for (Index j = 0; j < ndofs; ++j)
+      {
+        const Index local_entry = i * ndofs + j;
+        const Index coo_entry   = coo_offset + local_entry;
+        const Index csr_entry   = coo_to_csr[coo_entry];
+        values[static_cast<std::size_t>(csr_entry)] +=
+            local_vals[static_cast<std::size_t>(local_entry)];
+      }
+    }
+  }
+
+  void addLocalMatrixAtomic(Index ic, const DenseMatrix& local)
+  {
+    checkLocalMatrix(ic, local);
+
+    const CsrPattern& pattern    = mat_.pattern();
+    const Index       ndofs      = pattern.elemNumDofs(ic);
+    const Index       coo_offset = pattern.elemCooOffset(ic);
+    const Index*      coo_to_csr = pattern.cooToCsrData();
+    const Real*       local_vals = local.data();
+    Real*             values     = mat_.valuesData();
+
+    for (Index i = 0; i < ndofs; ++i)
+    {
+      for (Index j = 0; j < ndofs; ++j)
+      {
+        const Index local_entry = i * ndofs + j;
+        const Index coo_entry   = coo_offset + local_entry;
+        const Index csr_entry   = coo_to_csr[coo_entry];
+#pragma omp atomic update
+        values[static_cast<std::size_t>(csr_entry)] +=
+            local_vals[static_cast<std::size_t>(local_entry)];
+      }
+    }
+  }
+
   Index findEntry(Index row, Index col) const
   {
     if (row < 0 || row >= numRows() || col < 0 || col >= numCols())
@@ -147,7 +226,7 @@ private:
         "SparseSystemMatrix entry is outside the sparsity pattern");
   }
 
-  static void resizeVector(Vector& out, Index size)
+  static void resizeVector(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {

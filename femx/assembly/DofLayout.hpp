@@ -1,11 +1,11 @@
 #pragma once
 
 #include <stdexcept>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -53,7 +53,7 @@ public:
     return mixedSpace().numDofsPerElem();
   }
 
-  void elemDofs(Index ic, std::vector<Index>& dofs) const
+  void elemDofs(Index ic, Vector<Index>& dofs) const
   {
     if (ic < 0 || ic >= numElems())
     {

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <functional>
-#include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Mesh.hpp>
 
 namespace femx
@@ -12,7 +12,6 @@ namespace femx
 class MixedFieldView;
 class FESpace;
 class SparseMatrix;
-class Vector;
 
 /** @brief Stores and applies Dirichlet boundary constraints.
  *
@@ -89,15 +88,15 @@ public:
                    Real                  time      = 0.0,
                    Index                 component = 0);
 
-  const std::vector<Index>& dofs() const noexcept;
-  const std::vector<Real>&  values() const noexcept;
+  const Vector<Index>& dofs() const noexcept;
+  const Vector<Real>&  values() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
-  void apply(SparseMatrix& A, Vector& b) const;
+  void apply(SparseMatrix& A, Vector<Real>& b) const;
 
 private:
-  std::vector<Index> dofs_;
-  std::vector<Real>  values_;
+  Vector<Index> dofs_;
+  Vector<Real>  values_;
 };
 
 } // namespace femx

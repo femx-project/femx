@@ -17,14 +17,14 @@ class TimeSeriesDataOut
 public:
   struct ScalarField
   {
-    std::string name;
-    Vector      values;
+    std::string  name;
+    Vector<Real> values;
   };
 
   struct VectorField
   {
-    std::string           name;
-    std::array<Vector, 3> values;
+    std::string                 name;
+    std::array<Vector<Real>, 3> values;
   };
 
   struct Step
@@ -37,15 +37,15 @@ public:
   void attachMesh(const Mesh& mesh);
 
   void beginStep(Real time);
-  void addNodalScalarField(const std::string& name,
-                           const Vector&      values);
-  void addNodalVectorField(const std::string& name,
-                           const Vector&      x,
-                           const Vector&      y);
-  void addNodalVectorField(const std::string& name,
-                           const Vector&      x,
-                           const Vector&      y,
-                           const Vector&      z);
+  void addNodalScalarField(const std::string&  name,
+                           const Vector<Real>& values);
+  void addNodalVectorField(const std::string&  name,
+                           const Vector<Real>& x,
+                           const Vector<Real>& y);
+  void addNodalVectorField(const std::string&  name,
+                           const Vector<Real>& x,
+                           const Vector<Real>& y,
+                           const Vector<Real>& z);
   void clear();
 
   void write(const std::string& basename) const;

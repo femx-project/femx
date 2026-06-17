@@ -155,6 +155,20 @@ if(TARGET femx::inverse_petsc)
 endif()
 
 if(TARGET navier_gls_kernels)
+  add_executable(
+    runNavierConfigTests
+    unit/navier/runNavierConfigTests.cpp ../apps/forward/navier-gls/Config.cpp
+    ../apps/forward/navier-gls/BoundaryConditions.cpp)
+
+  target_include_directories(
+    runNavierConfigTests
+    PRIVATE ${CMAKE_SOURCE_DIR}/apps/forward/navier-gls
+            ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
+
+  target_link_libraries(runNavierConfigTests PRIVATE femx::femx)
+
+  add_test(NAME NavierConfigTests COMMAND runNavierConfigTests)
+
   add_executable(runNavierElementResidualTests
                  unit/navier/runNavierElementResidualTests.cpp)
 

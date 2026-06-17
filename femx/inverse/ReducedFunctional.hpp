@@ -16,11 +16,11 @@ public:
 
   virtual Index numParams() const = 0;
 
-  virtual Real value(const Vector& params) = 0;
+  virtual Real value(const Vector<Real>& params) = 0;
 
-  virtual void grad(const Vector& params, Vector& out) = 0;
+  virtual void grad(const Vector<Real>& params, Vector<Real>& out) = 0;
 
-  virtual Real valueGrad(const Vector& params, Vector& grad_out)
+  virtual Real valueGrad(const Vector<Real>& params, Vector<Real>& grad_out)
   {
     const Real obj_val = value(params);
     grad(params, grad_out);

@@ -15,12 +15,12 @@ public:
   virtual ~LinearSolver() = default;
 
   virtual void solve(const LinearOperator& op,
-                     const Vector&         rhs,
-                     Vector&               out) = 0;
+                     const Vector<Real>&   rhs,
+                     Vector<Real>&         out) = 0;
 
   virtual void solveT(const LinearOperator& op,
-                      const Vector&         rhs,
-                      Vector&               out) = 0;
+                      const Vector<Real>&   rhs,
+                      Vector<Real>&         out) = 0;
 };
 
 } // namespace system

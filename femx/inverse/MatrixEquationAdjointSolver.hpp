@@ -23,7 +23,7 @@ public:
                               system::LinearSolver&                lin_solver)
     : eq_(eq),
       state_jac_(state_jac),
-      linear_solver_(lin_solver)
+      lin_solver_(lin_solver)
   {
     if (eq_.numRes() != eq_.numStates())
     {
@@ -47,10 +47,10 @@ public:
     return eq_.numRes();
   }
 
-  void solve(const Vector& state,
-             const Vector& params,
-             const Vector& rhs,
-             Vector&       adjoint) override
+  void solve(const Vector<Real>& state,
+             const Vector<Real>& params,
+             const Vector<Real>& rhs,
+             Vector<Real>&       adjoint) override
   {
     if (state.size() != numStates() || params.size() != numParams()
         || rhs.size() != numStates())
@@ -61,7 +61,7 @@ public:
 
     eq_.assembleStateJac(state, params, state_jac_);
     state_jac_.finalize();
-    linear_solver_.solveT(state_jac_, rhs, adjoint);
+    lin_solver_.solveT(state_jac_, rhs, adjoint);
     if (adjoint.size() != numRes())
     {
       throw std::runtime_error(
@@ -72,7 +72,7 @@ public:
 private:
   const eq::AssembledResidualEquation& eq_;
   system::SystemMatrix&                state_jac_;
-  system::LinearSolver&                linear_solver_;
+  system::LinearSolver&                lin_solver_;
 };
 
 } // namespace inverse

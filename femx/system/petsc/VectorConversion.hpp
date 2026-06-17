@@ -12,7 +12,7 @@ namespace system
 namespace detail
 {
 
-inline PetscErrorCode copyFromPETSc(Vec input, Vector& output)
+inline PetscErrorCode copyFromPETSc(Vec input, Vector<Real>& output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(input, &size));
@@ -45,7 +45,7 @@ inline PetscErrorCode copyFromPETSc(Vec input, Vector& output)
   return PETSC_SUCCESS;
 }
 
-inline PetscErrorCode copyToPETSc(const Vector& input, Vec output)
+inline PetscErrorCode copyToPETSc(const Vector<Real>& input, Vec output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(output, &size));
@@ -69,7 +69,7 @@ inline PetscErrorCode copyToPETSc(const Vector& input, Vec output)
   return PETSC_SUCCESS;
 }
 
-inline Real norm2(const Vector& input)
+inline Real norm2(const Vector<Real>& input)
 {
   Real sum = 0.0;
   for (Index i = 0; i < input.size(); ++i)

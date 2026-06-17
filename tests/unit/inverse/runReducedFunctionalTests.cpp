@@ -18,7 +18,7 @@ public:
     return 2;
   }
 
-  Real value(const Vector& params) override
+  Real value(const Vector<Real>& params) override
   {
     return 0.5 * params[0] * params[0]
            + 2.0 * params[0] * params[1]
@@ -27,7 +27,7 @@ public:
            + 4.0 * params[1];
   }
 
-  void grad(const Vector& params, Vector& out) override
+  void grad(const Vector<Real>& params, Vector<Real>& out) override
   {
     resize(out, numParams());
     out[0] = params[0] + 2.0 * params[1] - 1.0;
@@ -35,7 +35,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -59,7 +59,7 @@ public:
     QuadraticReducedFunctional functional;
     status *= (functional.numParams() == 2);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.25;
     params[1] = -0.5;
 
@@ -71,13 +71,13 @@ public:
         + 4.0 * params[1];
     status *= isEqual(functional.value(params), expected_value);
 
-    Vector     grad;
-    const Real value_from_value_grad  = functional.valueGrad(params, grad);
-    status                           *= isEqual(value_from_value_grad, expected_value);
-    status                           *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
-    status                           *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
+    Vector<Real> grad;
+    const Real   value_from_value_grad  = functional.valueGrad(params, grad);
+    status                             *= isEqual(value_from_value_grad, expected_value);
+    status                             *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
+    status                             *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
 
-    Vector dir(2);
+    Vector<Real> dir(2);
     dir[0] = -0.75;
     dir[1] = 0.5;
 

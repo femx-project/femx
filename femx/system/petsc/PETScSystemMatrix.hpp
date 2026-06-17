@@ -207,10 +207,10 @@ public:
     check(MatAssemblyEnd(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyEnd");
   }
 
-  void zeroRowsColumns(const std::vector<Index>& rows,
-                       Real                      diagonal,
-                       const PETScSystemVector&  values,
-                       PETScSystemVector&        rhs)
+  void zeroRowsColumns(const Vector<Index>&     rows,
+                       Real                     diagonal,
+                       const PETScSystemVector& values,
+                       PETScSystemVector&       rhs)
   {
     if (values.size() != rows_ || rhs.size() != rows_)
     {
@@ -222,15 +222,16 @@ public:
       return;
     }
 
-    std::vector<PetscInt> petsc_rows(rows.size());
-    for (std::size_t i = 0; i < rows.size(); ++i)
+    std::vector<PetscInt> petsc_rows;
+    petsc_rows.reserve(static_cast<std::size_t>(rows.size()));
+    for (Index row : rows)
     {
-      if (rows[i] < 0 || rows[i] >= rows_)
+      if (row < 0 || row >= rows_)
       {
         throw std::runtime_error(
             "PETScSystemMatrix zeroRowsColumns row is out of range");
       }
-      petsc_rows[i] = static_cast<PetscInt>(rows[i]);
+      petsc_rows.push_back(static_cast<PetscInt>(row));
     }
 
     check(MatZeroRowsColumns(mat(),
@@ -242,7 +243,7 @@ public:
           "MatZeroRowsColumns");
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numCols())
     {
@@ -259,7 +260,7 @@ public:
     check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     if (dir.size() != numRows())
     {
@@ -306,9 +307,10 @@ private:
   {
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
+
     const PetscInt global_size = static_cast<PetscInt>(size);
-    const PetscInt local_size =
-        comm_size == 1 ? global_size : PETSC_DECIDE;
+    const PetscInt local_size  = comm_size == 1 ? global_size : PETSC_DECIDE;
+
     check(VecCreate(comm_, out.put()), "VecCreate");
     check(VecSetSizes(out.get(), local_size, global_size), "VecSetSizes");
     check(VecSetFromOptions(out.get()), "VecSetFromOptions");

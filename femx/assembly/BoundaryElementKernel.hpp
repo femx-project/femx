@@ -18,20 +18,20 @@ public:
 
   virtual void res(Index                      ib,
                    const Mesh::BoundaryFacet& facet,
-                   const Vector&              u,
-                   const Vector&              m,
-                   Vector&                    out) const = 0;
+                   const Vector<Real>&        u,
+                   const Vector<Real>&        m,
+                   Vector<Real>&              out) const = 0;
 
   virtual void stateJac(Index                      ib,
                         const Mesh::BoundaryFacet& facet,
-                        const Vector&              u,
-                        const Vector&              m,
+                        const Vector<Real>&        u,
+                        const Vector<Real>&        m,
                         DenseMatrix&               out) const = 0;
 
   virtual void paramJac(Index                      ib,
                         const Mesh::BoundaryFacet& facet,
-                        const Vector&              u,
-                        const Vector&              m,
+                        const Vector<Real>&        u,
+                        const Vector<Real>&        m,
                         DenseMatrix&               out) const = 0;
 };
 

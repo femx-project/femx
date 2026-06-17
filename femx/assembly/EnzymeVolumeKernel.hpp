@@ -3,21 +3,21 @@
 #include <stdexcept>
 
 #include <femx/ad/Enzyme.hpp>
-#include <femx/assembly/BoundaryElementKernel.hpp>
+#include <femx/assembly/ElementKernel.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/fem/BoundaryElementValues.hpp>
+#include <femx/fem/ElementValues.hpp>
+#include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
 
 namespace femx
 {
 namespace assembly
 {
 
-using LocalBoundaryIntegralResidualFunction =
-    void (*)(Index       facet,
+using LocalVolumeResidualFunction =
+    void (*)(Index       cell,
              Index       num_qp,
              Index       num_nodes,
              Index       dim,
@@ -25,24 +25,23 @@ using LocalBoundaryIntegralResidualFunction =
              Index       num_states,
              Index       num_params,
              const Real* N,
-             const Real* point,
-             const Real* normal,
+             const Real* dNdx,
              const Real* JxW,
              const Real* state,
              const Real* params,
              Real*       out);
 
-/** @brief Enzyme boundary kernel with boundary element values. */
-template <LocalBoundaryIntegralResidualFunction Residual>
-class EnzymeBoundaryIntegralKernel final : public BoundaryElementKernel
+/** @brief Enzyme element kernel with volume element values. */
+template <LocalVolumeResidualFunction Residual>
+class EnzymeVolumeKernel final : public ElementKernel
 {
 public:
-  EnzymeBoundaryIntegralKernel(const Mesh&            mesh,
-                               const GaussQuadrature& quadrature,
-                               Index                  num_res,
-                               Index                  num_states,
-                               Index                  num_params)
-    : mesh_(mesh),
+  EnzymeVolumeKernel(const FESpace&         space,
+                     const GaussQuadrature& quadrature,
+                     Index                  num_res,
+                     Index                  num_states,
+                     Index                  num_params)
+    : space_(space),
       quad_(quadrature),
       num_res_(num_res),
       num_states_(num_states),
@@ -51,22 +50,21 @@ public:
     if (num_res_ < 0 || num_states_ < 0 || num_params_ < 0)
     {
       throw std::runtime_error(
-          "EnzymeBoundaryIntegralKernel received invalid dimensions");
+          "EnzymeVolumeKernel received invalid dimensions");
     }
   }
 
-  void res(Index                      ib,
-           const Mesh::BoundaryFacet& facet,
-           const Vector&              u,
-           const Vector&              m,
-           Vector&                    out) const override
+  void res(Index         ic,
+           const Vector<Real>& u,
+           const Vector<Real>& m,
+           Vector<Real>&       out) const override
   {
     checkInputSizes(u, m);
     resize(out, num_res_);
 
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
-    Residual(ib,
+    ElementValues values(space_.finiteElement(), quad_);
+    values.reinit(space_.mesh().cell(ic));
+    Residual(ic,
              values.numQuadraturePoints(),
              values.numNodes(),
              values.dim(),
@@ -74,30 +72,28 @@ public:
              num_states_,
              num_params_,
              values.NData(),
-             values.pointData(),
-             values.normalData(),
+             values.dNdxData(),
              values.JxWData(),
              u.data(),
              m.data(),
              out.data());
   }
 
-  void stateJac(Index                      ib,
-                const Mesh::BoundaryFacet& facet,
-                const Vector&              u,
-                const Vector&              m,
-                DenseMatrix&               out) const override
+  void stateJac(Index         ic,
+                const Vector<Real>& u,
+                const Vector<Real>& m,
+                DenseMatrix&  out) const override
   {
     checkInputSizes(u, m);
     out.resize(num_res_, num_states_);
 
 #if defined(FEMX_HAS_ENZYME)
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
+    ElementValues values(space_.finiteElement(), quad_);
+    values.reinit(space_.mesh().cell(ic));
 
-    Vector primal_out(num_res_);
-    Vector out_adj(num_res_);
-    Vector state_adj(num_states_);
+    Vector<Real> primal_out(num_res_);
+    Vector<Real> out_adj(num_res_);
+    Vector<Real> state_adj(num_states_);
 
     for (Index row = 0; row < num_res_; ++row)
     {
@@ -108,7 +104,7 @@ public:
 
       __enzyme_autodiff<void>(reinterpret_cast<void*>(Residual),
                               enzyme_const,
-                              ib,
+                              ic,
                               enzyme_const,
                               values.numQuadraturePoints(),
                               enzyme_const,
@@ -124,9 +120,7 @@ public:
                               enzyme_const,
                               values.NData(),
                               enzyme_const,
-                              values.pointData(),
-                              enzyme_const,
-                              values.normalData(),
+                              values.dNdxData(),
                               enzyme_const,
                               values.JxWData(),
                               enzyme_dup,
@@ -144,29 +138,27 @@ public:
       }
     }
 #else
-    (void) ib;
-    (void) facet;
+    (void) ic;
     (void) out;
     throwUnavailable();
 #endif
   }
 
-  void paramJac(Index                      ib,
-                const Mesh::BoundaryFacet& facet,
-                const Vector&              u,
-                const Vector&              m,
-                DenseMatrix&               out) const override
+  void paramJac(Index         ic,
+                const Vector<Real>& u,
+                const Vector<Real>& m,
+                DenseMatrix&  out) const override
   {
     checkInputSizes(u, m);
     out.resize(num_res_, num_params_);
 
 #if defined(FEMX_HAS_ENZYME)
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
+    ElementValues values(space_.finiteElement(), quad_);
+    values.reinit(space_.mesh().cell(ic));
 
-    Vector primal_out(num_res_);
-    Vector out_adj(num_res_);
-    Vector param_adj(num_params_);
+    Vector<Real> primal_out(num_res_);
+    Vector<Real> out_adj(num_res_);
+    Vector<Real> param_adj(num_params_);
 
     for (Index row = 0; row < num_res_; ++row)
     {
@@ -177,7 +169,7 @@ public:
 
       __enzyme_autodiff<void>(reinterpret_cast<void*>(Residual),
                               enzyme_const,
-                              ib,
+                              ic,
                               enzyme_const,
                               values.numQuadraturePoints(),
                               enzyme_const,
@@ -193,9 +185,7 @@ public:
                               enzyme_const,
                               values.NData(),
                               enzyme_const,
-                              values.pointData(),
-                              enzyme_const,
-                              values.normalData(),
+                              values.dNdxData(),
                               enzyme_const,
                               values.JxWData(),
                               enzyme_const,
@@ -213,24 +203,23 @@ public:
       }
     }
 #else
-    (void) ib;
-    (void) facet;
+    (void) ic;
     (void) out;
     throwUnavailable();
 #endif
   }
 
 private:
-  void checkInputSizes(const Vector& u, const Vector& m) const
+  void checkInputSizes(const Vector<Real>& u, const Vector<Real>& m) const
   {
     if (u.size() != num_states_ || m.size() != num_params_)
     {
       throw std::runtime_error(
-          "EnzymeBoundaryIntegralKernel input size mismatch");
+          "EnzymeVolumeKernel input size mismatch");
     }
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -245,11 +234,11 @@ private:
   [[noreturn]] static void throwUnavailable()
   {
     throw std::runtime_error(
-        "EnzymeBoundaryIntegralKernel requires FEMX_ENABLE_ENZYME=ON");
+        "EnzymeVolumeKernel requires FEMX_ENABLE_ENZYME=ON");
   }
 
 private:
-  const Mesh&            mesh_;
+  const FESpace&         space_;
   const GaussQuadrature& quad_;
   Index                  num_res_{0};
   Index                  num_states_{0};

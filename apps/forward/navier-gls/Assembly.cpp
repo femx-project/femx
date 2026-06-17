@@ -21,7 +21,7 @@ namespace femx
 using namespace femx::assembly;
 using namespace femx::system;
 
-std::array<Real, 3> velAtNode(const Vector&         x,
+std::array<Real, 3> velAtNode(const Vector<Real>&   x,
                               const MixedFieldView& u_dof,
                               Index                 in)
 {
@@ -37,7 +37,7 @@ void evalVel(const ElementValues& ev,
              const MixedFESpace&  space,
              Index                ic,
              Index                iq,
-             const Vector&        x,
+             const Vector<Real>&  x,
              std::array<Real, 3>& u)
 {
   u              = {};
@@ -61,7 +61,7 @@ void evalVelGrad(const ElementValues& ev,
                  const MixedFESpace&  space,
                  Index                ic,
                  Index                iq,
-                 const Vector&        x,
+                 const Vector<Real>&  x,
                  Real                 dudx[3][3])
 {
   const Index nd = ev.dim();
@@ -184,8 +184,8 @@ void updateElemState(std::vector<QPState>& qps,
                      const ElementValues&  ev,
                      const MixedFESpace&   space,
                      Index                 ic,
-                     const Vector&         x,
-                     const Vector&         xp,
+                     const Vector<Real>&   x,
+                     const Vector<Real>&   xp,
                      bool                  initial,
                      const FluidParams&    fluid,
                      Real                  dt,
@@ -237,13 +237,13 @@ void assembleElemSystem(const MixedFESpace&   space,
                         Index                 ic,
                         ElementValues&        ev,
                         std::vector<QPState>& qps,
-                        const Vector&         x,
-                        const Vector&         xp,
+                        const Vector<Real>&   x,
+                        const Vector<Real>&   xp,
                         bool                  initial,
                         const FluidParams&    fluid,
                         Real                  dt,
                         DenseMatrix&          Ke,
-                        Vector&               Fe,
+                        Vector<Real>&         Fe,
                         Real&                 max_cfl)
 {
   ev.reinit(space.mesh().cell(ic));
@@ -276,9 +276,9 @@ void assembleElemSystem(const MixedFESpace&   space,
 void elemResidualFromSystem(const MixedFESpace& space,
                             Index               ic,
                             const DenseMatrix&  Ke,
-                            const Vector&       Fe,
-                            const Vector&       x_next,
-                            Vector&             Re)
+                            const Vector<Real>& Fe,
+                            const Vector<Real>& x_next,
+                            Vector<Real>&       Re)
 {
   const Index ndofs = space.numDofsPerElem();
   if (Ke.rows() != ndofs || Ke.cols() != ndofs || Fe.size() != ndofs)
@@ -295,7 +295,7 @@ void elemResidualFromSystem(const MixedFESpace& space,
     Re.setZero();
   }
 
-  std::vector<Index> dofs;
+  Vector<Index> dofs;
   space.elemDofs(ic, dofs);
   const Index* dof = dofs.data();
 
@@ -314,17 +314,17 @@ void assembleElemResidual(const MixedFESpace&   space,
                           Index                 ic,
                           ElementValues&        ev,
                           std::vector<QPState>& qps,
-                          const Vector&         x_next,
-                          const Vector&         x,
-                          const Vector&         xp,
+                          const Vector<Real>&   x_next,
+                          const Vector<Real>&   x,
+                          const Vector<Real>&   xp,
                           bool                  initial,
                           const FluidParams&    fluid,
                           Real                  dt,
-                          Vector&               Re,
+                          Vector<Real>&         Re,
                           Real&                 max_cfl)
 {
-  DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
-  Vector      Fe(space.numDofsPerElem());
+  DenseMatrix  Ke(space.numDofsPerElem(), space.numDofsPerElem());
+  Vector<Real> Fe(space.numDofsPerElem());
 
   assembleElemSystem(space,
                      ic,
@@ -342,13 +342,13 @@ void assembleElemResidual(const MixedFESpace&   space,
 }
 
 void assembleSystem(const MixedFESpace& space,
-                    const Vector&       x,
-                    const Vector&       xp,
+                    const Vector<Real>& x,
+                    const Vector<Real>& xp,
                     bool                initial,
                     const FluidParams&  fluid,
                     Real                dt,
                     SparseSystemMatrix& A,
-                    Vector&             b,
+                    Vector<Real>&       b,
                     AssemblyStats&      stats)
 {
   const auto& elem = space.field(0).space().finiteElement();
@@ -365,8 +365,8 @@ void assembleSystem(const MixedFESpace& space,
     std::vector<QPState> qps;
     SystemAssembler      assembler(space, AssemblyMode::Atomic);
 
-    DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
-    Vector      Fe(space.numDofsPerElem());
+    DenseMatrix  Ke(space.numDofsPerElem(), space.numDofsPerElem());
+    Vector<Real> Fe(space.numDofsPerElem());
 
 #pragma omp for
     for (Index ic = 0; ic < space.mesh().numElems(); ++ic)

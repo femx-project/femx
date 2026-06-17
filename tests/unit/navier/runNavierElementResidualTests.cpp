@@ -36,9 +36,9 @@ public:
     space.addField(p_space);
     space.setup();
 
-    Vector x_next(space.numDofs());
-    Vector x(space.numDofs());
-    Vector xp(space.numDofs());
+    Vector<Real> x_next(space.numDofs());
+    Vector<Real> x(space.numDofs());
+    Vector<Real> xp(space.numDofs());
     for (Index i = 0; i < space.numDofs(); ++i)
     {
       x_next[i] = 0.11 + 0.013 * static_cast<Real>(i);
@@ -56,8 +56,8 @@ public:
     ElementValues        ev(elem, quad);
     std::vector<QPState> qp(
         static_cast<std::size_t>(quad.size()));
-    DenseMatrix Ke(space.numDofsPerElem(), space.numDofsPerElem());
-    Vector      Fe(space.numDofsPerElem());
+    DenseMatrix  Ke(space.numDofsPerElem(), space.numDofsPerElem());
+    Vector<Real> Fe(space.numDofsPerElem());
 
     Real max_cfl = 0.0;
     assembleElemSystem(space,
@@ -73,16 +73,16 @@ public:
                        Fe,
                        max_cfl);
 
-    Vector Re;
+    Vector<Real> Re;
     elemResidualFromSystem(space, 0, Ke, Fe, x_next, Re);
 
-    const std::vector<Index> dofs = space.elemDofs(0);
+    const Vector<Index> dofs = space.elemDofs(0);
     for (Index i = 0; i < space.numDofsPerElem(); ++i)
     {
       Real expected = -Fe[i];
       for (Index j = 0; j < space.numDofsPerElem(); ++j)
       {
-        expected += Ke(i, j) * x_next[dofs[static_cast<std::size_t>(j)]];
+        expected += Ke(i, j) * x_next[dofs[j]];
       }
 
       if (!isEqual(Re[i], expected))
@@ -93,8 +93,8 @@ public:
       }
     }
 
-    Vector assembled_res;
-    Real   assembled_max_cfl = 0.0;
+    Vector<Real> assembled_res;
+    Real         assembled_max_cfl = 0.0;
     assembleElemResidual(space,
                          0,
                          ev,

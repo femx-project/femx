@@ -15,20 +15,20 @@ class ElementKernel
 public:
   virtual ~ElementKernel() = default;
 
-  virtual void res(Index         ic,
-                   const Vector& u,
-                   const Vector& m,
-                   Vector&       out) const = 0;
+  virtual void res(Index               ic,
+                   const Vector<Real>& u,
+                   const Vector<Real>& m,
+                   Vector<Real>&       out) const = 0;
 
-  virtual void stateJac(Index         ic,
-                        const Vector& u,
-                        const Vector& m,
-                        DenseMatrix&  out) const = 0;
+  virtual void stateJac(Index               ic,
+                        const Vector<Real>& u,
+                        const Vector<Real>& m,
+                        DenseMatrix&        out) const = 0;
 
-  virtual void paramJac(Index         ic,
-                        const Vector& u,
-                        const Vector& m,
-                        DenseMatrix&  out) const = 0;
+  virtual void paramJac(Index               ic,
+                        const Vector<Real>& u,
+                        const Vector<Real>& m,
+                        DenseMatrix&        out) const = 0;
 };
 
 } // namespace assembly

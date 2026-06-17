@@ -42,100 +42,100 @@ public:
   }
 
   DerivativeCheckResult objStateGrad(const ObjectiveFunctional& objective,
-                                     const Vector&              state,
-                                     const Vector&              params,
-                                     const Vector&              dir) const
+                                     const Vector<Real>&        state,
+                                     const Vector<Real>&        params,
+                                     const Vector<Real>&        dir) const
   {
-    const Vector state_plus  = shifted(state, dir, step_);
-    const Vector state_minus = shifted(state, dir, -step_);
-    const Real   reference =
+    const Vector<Real> state_plus  = shifted(state, dir, step_);
+    const Vector<Real> state_minus = shifted(state, dir, -step_);
+    const Real         reference =
         (objective.value(state_plus, params)
          - objective.value(state_minus, params))
         / (2.0 * step_);
 
-    Vector grad;
+    Vector<Real> grad;
     objective.stateGrad(state, params, grad);
     return compareScalars(dot(grad, dir), reference);
   }
 
   DerivativeCheckResult objParamGrad(const ObjectiveFunctional& objective,
-                                     const Vector&              state,
-                                     const Vector&              params,
-                                     const Vector&              dir) const
+                                     const Vector<Real>&        state,
+                                     const Vector<Real>&        params,
+                                     const Vector<Real>&        dir) const
   {
-    const Vector param_p = shifted(params, dir, step_);
-    const Vector param_m = shifted(params, dir, -step_);
-    const Real   reference =
+    const Vector<Real> param_p = shifted(params, dir, step_);
+    const Vector<Real> param_m = shifted(params, dir, -step_);
+    const Real         reference =
         (objective.value(state, param_p)
          - objective.value(state, param_m))
         / (2.0 * step_);
 
-    Vector grad;
+    Vector<Real> grad;
     objective.paramGrad(state, params, grad);
     return compareScalars(dot(grad, dir), reference);
   }
 
-  DerivativeCheckResult reducedGrad(ReducedFunctional& functional,
-                                    const Vector&      params,
-                                    const Vector&      dir) const
+  DerivativeCheckResult reducedGrad(ReducedFunctional&  functional,
+                                    const Vector<Real>& params,
+                                    const Vector<Real>& dir) const
   {
-    const Vector param_p = shifted(params, dir, step_);
-    const Vector param_m = shifted(params, dir, -step_);
-    const Real   reference =
+    const Vector<Real> param_p = shifted(params, dir, step_);
+    const Vector<Real> param_m = shifted(params, dir, -step_);
+    const Real         reference =
         (functional.value(param_p) - functional.value(param_m))
         / (2.0 * step_);
 
-    Vector grad;
+    Vector<Real> grad;
     functional.grad(params, grad);
     return compareScalars(dot(grad, dir), reference);
   }
 
   DerivativeCheckResult resStateJac(const eq::ResidualEquation& equation,
-                                    const Vector&               state,
-                                    const Vector&               params,
-                                    const Vector&               dir) const
+                                    const Vector<Real>&         state,
+                                    const Vector<Real>&         params,
+                                    const Vector<Real>&         dir) const
   {
-    const Vector state_plus  = shifted(state, dir, step_);
-    const Vector state_minus = shifted(state, dir, -step_);
+    const Vector<Real> state_plus  = shifted(state, dir, step_);
+    const Vector<Real> state_minus = shifted(state, dir, -step_);
 
-    Vector res_p;
-    Vector res_m;
+    Vector<Real> res_p;
+    Vector<Real> res_m;
     equation.res(state_plus, params, res_p);
     equation.res(state_minus, params, res_m);
-    const Vector reference = centralDifference(res_p, res_m);
+    const Vector<Real> reference = centralDifference(res_p, res_m);
 
-    Vector applied;
+    Vector<Real> applied;
     equation.applyStateJac(state, params, dir, applied);
     return compareVectors(applied, reference);
   }
 
   DerivativeCheckResult resParamJac(const eq::ResidualEquation& equation,
-                                    const Vector&               state,
-                                    const Vector&               params,
-                                    const Vector&               dir) const
+                                    const Vector<Real>&         state,
+                                    const Vector<Real>&         params,
+                                    const Vector<Real>&         dir) const
   {
-    const Vector param_p = shifted(params, dir, step_);
-    const Vector param_m = shifted(params, dir, -step_);
+    const Vector<Real> param_p = shifted(params, dir, step_);
+    const Vector<Real> param_m = shifted(params, dir, -step_);
 
-    Vector res_p;
-    Vector res_m;
+    Vector<Real> res_p;
+    Vector<Real> res_m;
     equation.res(state, param_p, res_p);
     equation.res(state, param_m, res_m);
-    const Vector reference = centralDifference(res_p, res_m);
+    const Vector<Real> reference = centralDifference(res_p, res_m);
 
-    Vector applied;
+    Vector<Real> applied;
     equation.applyParamJac(state, params, dir, applied);
     return compareVectors(applied, reference);
   }
 
   DerivativeCheckResult stateJacT(const eq::ResidualEquation& equation,
-                                  const Vector&               state,
-                                  const Vector&               params,
-                                  const Vector&               dir,
-                                  const Vector&               lambda) const
+                                  const Vector<Real>&         state,
+                                  const Vector<Real>&         params,
+                                  const Vector<Real>&         dir,
+                                  const Vector<Real>&         lambda) const
   {
-    Vector jac_dir;
-    Vector jt_lam;
+    Vector<Real> jac_dir;
+    Vector<Real> jt_lam;
     equation.applyStateJac(state, params, dir, jac_dir);
     equation.applyStateJacT(state, params, lambda, jt_lam);
 
@@ -144,13 +144,13 @@ public:
   }
 
   DerivativeCheckResult paramJacT(const eq::ResidualEquation& equation,
-                                  const Vector&               state,
-                                  const Vector&               params,
-                                  const Vector&               dir,
-                                  const Vector&               lambda) const
+                                  const Vector<Real>&         state,
+                                  const Vector<Real>&         params,
+                                  const Vector<Real>&         dir,
+                                  const Vector<Real>&         lambda) const
   {
-    Vector jac_dir;
-    Vector jt_lam;
+    Vector<Real> jac_dir;
+    Vector<Real> jt_lam;
     equation.applyParamJac(state, params, dir, jac_dir);
     equation.applyParamJacT(state, params, lambda, jt_lam);
 
@@ -159,16 +159,16 @@ public:
   }
 
 private:
-  Vector shifted(const Vector& base,
-                 const Vector& dir,
-                 Real          scale) const
+  Vector<Real> shifted(const Vector<Real>& base,
+                       const Vector<Real>& dir,
+                       Real                scale) const
   {
     if (base.size() != dir.size())
     {
       throw std::runtime_error("DerivativeCheck vector size mismatch");
     }
 
-    Vector out(base.size());
+    Vector<Real> out(base.size());
     for (Index i = 0; i < base.size(); ++i)
     {
       out[i] = base[i] + scale * dir[i];
@@ -176,15 +176,15 @@ private:
     return out;
   }
 
-  Vector centralDifference(const Vector& plus,
-                           const Vector& minus) const
+  Vector<Real> centralDifference(const Vector<Real>& plus,
+                                 const Vector<Real>& minus) const
   {
     if (plus.size() != minus.size())
     {
       throw std::runtime_error("DerivativeCheck residual size mismatch");
     }
 
-    Vector out(plus.size());
+    Vector<Real> out(plus.size());
     for (Index i = 0; i < plus.size(); ++i)
     {
       out[i] = (plus[i] - minus[i]) / (2.0 * step_);
@@ -192,7 +192,7 @@ private:
     return out;
   }
 
-  static Real dot(const Vector& x, const Vector& y)
+  static Real dot(const Vector<Real>& x, const Vector<Real>& y)
   {
     if (x.size() != y.size())
     {
@@ -207,7 +207,7 @@ private:
     return value;
   }
 
-  static Real norm(const Vector& x)
+  static Real norm(const Vector<Real>& x)
   {
     return std::sqrt(dot(x, x));
   }
@@ -223,15 +223,15 @@ private:
     return result;
   }
 
-  static DerivativeCheckResult compareVectors(const Vector& computed,
-                                              const Vector& reference)
+  static DerivativeCheckResult compareVectors(const Vector<Real>& computed,
+                                              const Vector<Real>& reference)
   {
     if (computed.size() != reference.size())
     {
       throw std::runtime_error("DerivativeCheck comparison size mismatch");
     }
 
-    Vector error(computed.size());
+    Vector<Real> error(computed.size());
     for (Index i = 0; i < computed.size(); ++i)
     {
       error[i] = computed[i] - reference[i];

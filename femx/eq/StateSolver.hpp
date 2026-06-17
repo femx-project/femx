@@ -17,7 +17,7 @@ public:
   virtual Index numStates() const = 0;
   virtual Index numParams() const = 0;
 
-  virtual void solve(const Vector& params, Vector& state) = 0;
+  virtual void solve(const Vector<Real>& params, Vector<Real>& state) = 0;
 };
 
 } // namespace eq

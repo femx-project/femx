@@ -36,23 +36,23 @@ public:
     return state_solver_.numParams();
   }
 
-  Real value(const Vector& params) override
+  Real value(const Vector<Real>& params) override
   {
-    Vector state;
+    Vector<Real> state;
     state_solver_.solve(params, state);
     return objective_.value(state, params);
   }
 
-  void grad(const Vector& params, Vector& out) override
+  void grad(const Vector<Real>& params, Vector<Real>& out) override
   {
-    Vector state;
+    Vector<Real> state;
     state_solver_.solve(params, state);
     gradientAtState(state, params, out);
   }
 
-  Real valueGrad(const Vector& params, Vector& grad_out) override
+  Real valueGrad(const Vector<Real>& params, Vector<Real>& grad_out) override
   {
-    Vector state;
+    Vector<Real> state;
     state_solver_.solve(params, state);
     const Real obj_val = objective_.value(state, params);
     gradientAtState(state, params, grad_out);
@@ -75,20 +75,20 @@ private:
     }
   }
 
-  void gradientAtState(const Vector& state,
-                       const Vector& params,
-                       Vector&       out) const
+  void gradientAtState(const Vector<Real>& state,
+                       const Vector<Real>& params,
+                       Vector<Real>&       out) const
   {
-    Vector state_grad;
+    Vector<Real> state_grad;
     objective_.stateGrad(state, params, state_grad);
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     adjoint_solver_.solve(state, params, state_grad, adjoint);
 
-    Vector param_grad;
+    Vector<Real> param_grad;
     objective_.paramGrad(state, params, param_grad);
 
-    Vector res_param_adj;
+    Vector<Real> res_param_adj;
     eq_.applyParamJacT(state, params, adjoint, res_param_adj);
 
     if (param_grad.size() != numParams()

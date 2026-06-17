@@ -33,7 +33,7 @@ void DataOut::attachMesh(const Mesh& mesh)
   mesh_ = &mesh;
 }
 
-void DataOut::addNodalField(const std::string& name, const Vector& values)
+void DataOut::addNodalField(const std::string& name, const Vector<Real>& values)
 {
   nodal_fields_.push_back({name, &values});
 }

@@ -47,7 +47,7 @@ public:
     status *= (scalar_layout.numDofs() == 4);
     status *= (scalar_layout.numDofsPerElem() == 4);
 
-    std::vector<Index> dofs;
+    Vector<Index> dofs;
     scalar_layout.elemDofs(0, dofs);
     status *= (dofs.size() == 4);
     status *= (dofs[0] == 0);
@@ -90,10 +90,10 @@ public:
 
     assembly::SystemAssembler assembler(space);
 
-    Vector global_vec;
+    Vector<Real> global_vec;
     assembler.initVec(global_vec);
 
-    Vector local_vec(4);
+    Vector<Real> local_vec(4);
     for (Index i = 0; i < local_vec.size(); ++i)
     {
       local_vec[i] = 1.0;
@@ -129,8 +129,7 @@ public:
       {
         for (Index j = 0; j < local_mat.cols(); ++j)
         {
-          expected(dofs[static_cast<std::size_t>(i)],
-                   dofs[static_cast<std::size_t>(j)]) += local_mat(i, j);
+          expected(dofs[i], dofs[j]) += local_mat(i, j);
         }
       }
     }
@@ -187,8 +186,7 @@ public:
       for (Index j = 0; j < local_mat.cols(); ++j)
       {
         status *= isEqual(
-            mat.matrix()(row_dofs[static_cast<std::size_t>(i)],
-                         col_dofs[static_cast<std::size_t>(j)]),
+            mat.matrix()(row_dofs[i], col_dofs[j]),
             local_mat(i, j));
       }
     }
@@ -210,7 +208,7 @@ public:
     system::DenseSystemVector global_vec;
     assembler.initVec(global_vec);
 
-    Vector local_vec(space.numDofsPerElem());
+    Vector<Real> local_vec(space.numDofsPerElem());
     for (Index i = 0; i < local_vec.size(); ++i)
     {
       local_vec[i] = 1.0;
@@ -224,14 +222,14 @@ public:
     assembler.addVec(1, local_vec, global_vec);
     global_vec.finalize();
 
-    const Vector& values  = global_vec.vector();
-    status               *= (values.size() == 6);
-    status               *= isEqual(values[0], 1.0);
-    status               *= isEqual(values[1], 11.0);
-    status               *= isEqual(values[2], 10.0);
-    status               *= isEqual(values[3], 1.0);
-    status               *= isEqual(values[4], 11.0);
-    status               *= isEqual(values[5], 10.0);
+    const Vector<Real>& values  = global_vec.vector();
+    status                     *= (values.size() == 6);
+    status                     *= isEqual(values[0], 1.0);
+    status                     *= isEqual(values[1], 11.0);
+    status                     *= isEqual(values[2], 10.0);
+    status                     *= isEqual(values[3], 1.0);
+    status                     *= isEqual(values[4], 11.0);
+    status                     *= isEqual(values[5], 10.0);
 
     return status.report(__func__);
   }
@@ -263,13 +261,13 @@ public:
     assembler.addMat(0, local_mat, mat);
     mat.finalize();
 
-    Vector dir(space.numDofs());
+    Vector<Real> dir(space.numDofs());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
-    Vector out;
+    Vector<Real> out;
     mat.apply(dir, out);
 
     const auto dofs = space.elemDofs(0);
@@ -280,7 +278,62 @@ public:
       {
         expected += local_mat(i, j);
       }
-      status *= isEqual(out[dofs[static_cast<std::size_t>(i)]], expected);
+      status *= isEqual(out[dofs[i]], expected);
+    }
+
+    return status.report(__func__);
+  }
+
+  TestOutcome scattersSparseMatrixWithSharedDofs()
+  {
+    TestStatus status;
+    status = true;
+
+    Mesh           mesh = Mesh::makeStructuredQuad(2, 1);
+    LagrangeQuadQ1 elem;
+    FESpace        space(&mesh, &elem);
+    space.setup();
+
+    auto                       pattern = assembly::SparsityPatternBuilder::build(space);
+    system::SparseSystemMatrix mat(pattern);
+    assembly::SystemAssembler  assembler(space);
+    assembler.initMat(mat);
+
+    DenseMatrix expected(space.numDofs(), space.numDofs());
+    DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
+
+    for (Index ic = 0; ic < space.numElems(); ++ic)
+    {
+      fillLocalMatrix(ic, local_mat);
+      assembler.addMat(ic, local_mat, mat);
+
+      const auto dofs = space.elemDofs(ic);
+      for (Index i = 0; i < local_mat.rows(); ++i)
+      {
+        for (Index j = 0; j < local_mat.cols(); ++j)
+        {
+          expected(dofs[i], dofs[j]) += local_mat(i, j);
+        }
+      }
+    }
+    mat.finalize();
+
+    Vector<Real> dir(space.numDofs());
+    for (Index i = 0; i < dir.size(); ++i)
+    {
+      dir[i] = 1.0;
+    }
+
+    Vector<Real> out;
+    mat.apply(dir, out);
+    for (Index i = 0; i < space.numDofs(); ++i)
+    {
+      Real expected_sum = 0.0;
+      for (Index j = 0; j < space.numDofs(); ++j)
+      {
+        expected_sum += expected(i, j);
+      }
+      status *= isEqual(out[i], expected_sum);
     }
 
     return status.report(__func__);
@@ -301,12 +354,12 @@ public:
     assembly::SystemAssembler  assembler(
         space, assembly::AssemblyMode::Atomic);
 
-    Vector global_vec;
+    Vector<Real> global_vec;
     assembler.initVec(global_vec);
     assembler.initMat(mat);
 
-    Vector      local_vec(space.numDofsPerElem());
-    DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
+    Vector<Real> local_vec(space.numDofsPerElem());
+    DenseMatrix  local_mat(space.numDofsPerElem(), space.numDofsPerElem());
     for (Index i = 0; i < space.numDofsPerElem(); ++i)
     {
       local_vec[i] = 2.0;
@@ -327,13 +380,13 @@ public:
       status *= isEqual(global_vec[i], 4.0);
     }
 
-    Vector dir(space.numDofs());
+    Vector<Real> dir(space.numDofs());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 1.0;
     }
 
-    Vector out;
+    Vector<Real> out;
     mat.apply(dir, out);
     for (Index i = 0; i < out.size(); ++i)
     {
@@ -373,6 +426,7 @@ int main(int, char**)
   result += test.scattersRectangularDenseMatrix();
   result += test.scattersIntoDenseSystemVector();
   result += test.scattersSparseMatrixAndAppliesIt();
+  result += test.scattersSparseMatrixWithSharedDofs();
   result += test.atomicModeScattersSparseMatrixAndVector();
 
   return result.summary();

@@ -18,7 +18,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, Index size)
+void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -43,14 +43,14 @@ public:
     return 2;
   }
 
-  void apply(const Vector& dir, Vector& out) const override
+  void apply(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     resize(out, numRows());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
 
-  void applyT(const Vector& dir, Vector& out) const override
+  void applyT(const Vector<Real>& dir, Vector<Real>& out) const override
   {
     resize(out, numCols());
     out[0] = 2.0 * dir[0] + 7.0 * dir[1];
@@ -76,9 +76,9 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
@@ -87,10 +87,10 @@ public:
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void applyStateJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyStateJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -99,10 +99,10 @@ public:
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
 
-  void applyStateJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyStateJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -111,10 +111,10 @@ public:
     out[1] = 3.0 * lambda[0] + 11.0 * lambda[1];
   }
 
-  void applyParamJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyParamJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -123,10 +123,10 @@ public:
     out[1] = 13.0 * dir[0] + 4.0 * dir[1];
   }
 
-  void applyParamJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyParamJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -150,11 +150,11 @@ public:
     solver.options().atol        = 1.0e-14;
     solver.options().use_opts_db = false;
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 3.0;
 
-    Vector x;
+    Vector<Real> x;
     solver.solve(op, rhs, x);
     status *= (std::abs(2.0 * x[0] + 3.0 * x[1] - rhs[0]) < 1.0e-10);
     status *= (std::abs(7.0 * x[0] + 11.0 * x[1] - rhs[1]) < 1.0e-10);
@@ -180,20 +180,20 @@ public:
     eq::MatrixFreeNewtonStateSolver state_solver(equation, lin_solver);
     inverse::EquationAdjointSolver  adj_solver(equation, lin_solver);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector state;
+    Vector<Real> state;
     state_solver.solve(params, state);
     status *= (std::abs(state[0] + 1.48) < 1.0e-10);
     status *= (std::abs(state[1] - 0.89) < 1.0e-10);
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = -1.73;
     rhs[1] = 1.64;
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     adj_solver.solve(state, params, rhs, adjoint);
     status *= (std::abs(2.0 * adjoint[0] + 7.0 * adjoint[1] - rhs[0])
                < 1.0e-10);
@@ -233,7 +233,7 @@ public:
 
     solver.solve(mat, rhs, x);
 
-    Vector out;
+    Vector<Real> out;
     x.copyToAll(out);
     status *= (std::abs(4.0 * out[0] + out[1] - 1.0) < 1.0e-10);
     status *= (std::abs(2.0 * out[0] + 3.0 * out[1] - 2.0) < 1.0e-10);

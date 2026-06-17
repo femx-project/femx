@@ -74,8 +74,8 @@ public:
 
 private:
   ReducedFunctional* functional_{nullptr};
-  Vector             params_;
-  Vector             gradient_;
+  Vector<Real>       params_;
+  Vector<Real>       gradient_;
 };
 
 } // namespace inverse

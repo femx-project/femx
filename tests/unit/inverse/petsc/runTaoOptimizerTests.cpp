@@ -21,13 +21,13 @@ public:
     return 2;
   }
 
-  Real value(const Vector& params) override
+  Real value(const Vector<Real>& params) override
   {
     return 0.5 * (params[0] - 1.0) * (params[0] - 1.0)
            + (params[1] + 2.0) * (params[1] + 2.0);
   }
 
-  void grad(const Vector& params, Vector& out) override
+  void grad(const Vector<Real>& params, Vector<Real>& out) override
   {
     if (out.size() != numParams())
     {
@@ -58,7 +58,7 @@ public:
     optimizer.options().max_its            = 50;
     optimizer.options().use_opts_db        = false;
 
-    Vector initial(2);
+    Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
@@ -83,7 +83,7 @@ public:
     QuadraticReducedFunctional functional;
     inverse::TaoOptimizer      optimizer(functional);
 
-    Vector initial(1);
+    Vector<Real> initial(1);
     initial[0] = 0.25;
 
     inverse::TaoResult   result;
@@ -106,17 +106,17 @@ public:
     optimizer.options().max_its            = 50;
     optimizer.options().use_opts_db        = false;
 
-    Vector lower(2);
+    Vector<Real> lower(2);
     lower[0] = 0.0;
     lower[1] = -1.0;
 
-    Vector upper(2);
+    Vector<Real> upper(2);
     upper[0] = 0.5;
     upper[1] = 0.0;
 
     optimizer.setBounds(lower, upper);
 
-    Vector initial(2);
+    Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
@@ -140,16 +140,16 @@ public:
     QuadraticReducedFunctional functional;
     inverse::TaoOptimizer      optimizer(functional);
 
-    Vector lower(1);
+    Vector<Real> lower(1);
     lower[0] = 0.0;
 
-    Vector upper(2);
+    Vector<Real> upper(2);
     upper[0] = 1.0;
     upper[1] = 1.0;
 
     optimizer.setBounds(lower, upper);
 
-    Vector initial(2);
+    Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
@@ -169,17 +169,17 @@ public:
     QuadraticReducedFunctional functional;
     inverse::TaoOptimizer      optimizer(functional);
 
-    Vector lower(2);
+    Vector<Real> lower(2);
     lower[0] = 2.0;
     lower[1] = -1.0;
 
-    Vector upper(2);
+    Vector<Real> upper(2);
     upper[0] = 1.0;
     upper[1] = 1.0;
 
     optimizer.setBounds(lower, upper);
 
-    Vector initial(2);
+    Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 

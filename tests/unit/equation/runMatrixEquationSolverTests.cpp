@@ -17,7 +17,7 @@ namespace femx
 namespace tests
 {
 
-void resize(Vector& out, Index size)
+void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -48,9 +48,9 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
@@ -59,8 +59,8 @@ public:
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -73,8 +73,8 @@ public:
     out.set(1, 1, 11.0);
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   params,
                         system::SystemMatrix& out) const override
   {
     (void) state;
@@ -101,8 +101,8 @@ public:
     return 2;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     const Real e0 = state[0] - target_[0];
     const Real e1 = state[1] - target_[1];
@@ -111,9 +111,9 @@ public:
                  * (params[0] * params[0] + params[1] * params[1]);
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) params;
     resize(out, numStates());
@@ -121,9 +121,9 @@ public:
     out[1] = state[1] - target_[1];
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     resize(out, numParams());
@@ -146,19 +146,19 @@ public:
 
     LinearAssembledResidualEquation res_eq;
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = -1.48;
     state[1] = 0.89;
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector dir(2);
+    Vector<Real> dir(2);
     dir[0] = -0.7;
     dir[1] = 0.4;
 
-    Vector out;
+    Vector<Real> out;
     res_eq.applyStateJac(state, params, dir, out);
     status *= isEqual(out[0], -0.2);
     status *= isEqual(out[1], -0.5);
@@ -192,21 +192,21 @@ public:
     inverse::MatrixEquationAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector state;
+    Vector<Real> state;
     state_solver.solve(params, state);
     status *= isEqual(state[0], -1.48);
     status *= isEqual(state[1], 0.89);
 
-    Vector res;
+    Vector<Real> res;
     res_eq.res(state, params, res);
     status *= isEqual(res[0], 0.0);
     status *= isEqual(res[1], 0.0);
 
-    Vector reference(2);
+    Vector<Real> reference(2);
     reference[0] = 3.0;
     reference[1] = -4.0;
     state_solver.setReferenceState(reference);
@@ -215,11 +215,11 @@ public:
     status *= isEqual(state[1], 0.89);
     state_solver.clearReferenceState();
 
-    Vector rhs(2);
+    Vector<Real> rhs(2);
     rhs[0] = -1.73;
     rhs[1] = 1.64;
 
-    Vector adjoint;
+    Vector<Real> adjoint;
     adj_solver.solve(state, params, rhs, adjoint);
     status *= isEqual(2.0 * adjoint[0] + 7.0 * adjoint[1], rhs[0]);
     status *= isEqual(3.0 * adjoint[0] + 11.0 * adjoint[1], rhs[1]);
@@ -244,11 +244,11 @@ public:
     inverse::AdjointReducedFunctional functional(
         state_solver, adj_solver, res_eq, objective);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector dir(2);
+    Vector<Real> dir(2);
     dir[0] = -0.7;
     dir[1] = 0.4;
 

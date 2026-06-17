@@ -17,7 +17,7 @@ class LeastSquaresObjective final : public ObjectiveFunctional
 {
 public:
   LeastSquaresObjective(const ObservationOperator& observation,
-                        const Vector&              data,
+                        const Vector<Real>&        data,
                         Real                       weight = 1.0)
     : observation_(observation),
       data_(data),
@@ -40,10 +40,10 @@ public:
     return observation_.numParams();
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
-    Vector res;
+    Vector<Real> res;
     observationResidual(state, params, res);
 
     Real value_out = 0.0;
@@ -54,11 +54,11 @@ public:
     return 0.5 * weight_ * value_out;
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
-    Vector wres;
+    Vector<Real> wres;
     observationResidual(state, params, wres);
     scale(wres, weight_);
 
@@ -70,11 +70,11 @@ public:
     }
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
-    Vector wres;
+    Vector<Real> wres;
     observationResidual(state, params, wres);
     scale(wres, weight_);
 
@@ -87,9 +87,9 @@ public:
   }
 
 private:
-  void observationResidual(const Vector& state,
-                           const Vector& params,
-                           Vector&       out) const
+  void observationResidual(const Vector<Real>& state,
+                           const Vector<Real>& params,
+                           Vector<Real>&       out) const
   {
     observation_.observe(state, params, out);
     if (out.size() != data_.size())
@@ -104,7 +104,7 @@ private:
     }
   }
 
-  static void scale(Vector& out, Real factor)
+  static void scale(Vector<Real>& out, Real factor)
   {
     for (Index i = 0; i < out.size(); ++i)
     {
@@ -114,7 +114,7 @@ private:
 
 private:
   const ObservationOperator& observation_;
-  Vector                     data_;
+  Vector<Real>               data_;
   Real                       weight_{1.0};
 };
 

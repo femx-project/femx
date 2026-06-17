@@ -28,9 +28,9 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& params,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
@@ -39,10 +39,10 @@ public:
              + 13.0 * params[0] + 4.0 * params[1];
   }
 
-  void applyStateJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyStateJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -51,10 +51,10 @@ public:
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
 
-  void applyStateJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyStateJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -63,10 +63,10 @@ public:
     out[1] = 3.0 * lambda[0] + 11.0 * lambda[1];
   }
 
-  void applyParamJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyParamJac(const Vector<Real>& state,
+                     const Vector<Real>& params,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -75,10 +75,10 @@ public:
     out[1] = 13.0 * dir[0] + 4.0 * dir[1];
   }
 
-  void applyParamJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& lambda,
-                      Vector&       out) const override
+  void applyParamJacT(const Vector<Real>& state,
+                      const Vector<Real>& params,
+                      const Vector<Real>& lambda,
+                      Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -88,7 +88,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -114,7 +114,7 @@ public:
     return 2;
   }
 
-  void solve(const Vector& params, Vector& state) override
+  void solve(const Vector<Real>& params, Vector<Real>& state) override
   {
     resize(state, numStates());
 
@@ -126,7 +126,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -157,10 +157,10 @@ public:
     return 2;
   }
 
-  void solve(const Vector& state,
-             const Vector& params,
-             const Vector& rhs,
-             Vector&       adjoint) override
+  void solve(const Vector<Real>& state,
+             const Vector<Real>& params,
+             const Vector<Real>& rhs,
+             Vector<Real>&       adjoint) override
   {
     (void) state;
     (void) params;
@@ -172,7 +172,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -198,8 +198,8 @@ public:
     return 2;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     const Real e0 = state[0] - target_[0];
     const Real e1 = state[1] - target_[1];
@@ -207,9 +207,9 @@ public:
            + 0.5 * regularization_ * (params[0] * params[0] + params[1] * params[1]);
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) params;
     resize(out, numStates());
@@ -217,9 +217,9 @@ public:
     out[1] = state[1] - target_[1];
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     resize(out, numParams());
@@ -228,7 +228,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -263,22 +263,22 @@ public:
 
     status *= (functional.numParams() == 2);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.05;
     params[1] = -0.02;
 
-    Vector state;
+    Vector<Real> state;
     state_solver.solve(params, state);
 
     status *= isEqual(functional.value(params),
                       objective.value(state, params));
 
-    Vector     grad;
-    const Real value_from_value_grad  = functional.valueGrad(params, grad);
-    status                           *= isEqual(value_from_value_grad, functional.value(params));
-    status                           *= (grad.size() == functional.numParams());
+    Vector<Real> grad;
+    const Real   value_from_value_grad  = functional.valueGrad(params, grad);
+    status                             *= isEqual(value_from_value_grad, functional.value(params));
+    status                             *= (grad.size() == functional.numParams());
 
-    Vector dir(2);
+    Vector<Real> dir(2);
     dir[0] = -0.7;
     dir[1] = 0.4;
 

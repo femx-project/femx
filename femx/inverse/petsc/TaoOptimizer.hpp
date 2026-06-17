@@ -31,8 +31,8 @@ struct TaoOptions
 
 struct TaoResult
 {
-  Vector             params;
-  Vector             grad;
+  Vector<Real>       params;
+  Vector<Real>       grad;
   Real               value             = 0.0;
   Real               grad_norm_squared = 0.0;
   Index              its               = 0;
@@ -46,8 +46,8 @@ struct TaoResult
 
 struct TaoBounds
 {
-  Vector lower;
-  Vector upper;
+  Vector<Real> lower;
+  Vector<Real> upper;
 };
 
 struct TaoIterationInfo
@@ -61,7 +61,7 @@ struct TaoIterationInfo
 };
 
 using TaoMonitorCallback =
-    std::function<void(const TaoIterationInfo&, const Vector&)>;
+    std::function<void(const TaoIterationInfo&, const Vector<Real>&)>;
 
 /** @brief PETSc/TAO optimizer for a ReducedFunctional. */
 class TaoOptimizer
@@ -133,7 +133,7 @@ public:
     return options_;
   }
 
-  void setBounds(const Vector& lower, const Vector& upper)
+  void setBounds(const Vector<Real>& lower, const Vector<Real>& upper)
   {
     bounds_.lower = lower;
     bounds_.upper = upper;
@@ -166,7 +166,7 @@ public:
     monitor_ = nullptr;
   }
 
-  PetscErrorCode solve(const Vector& initial, TaoResult& result)
+  PetscErrorCode solve(const Vector<Real>& initial, TaoResult& result)
   {
     if (functional_ == nullptr)
     {
@@ -285,7 +285,7 @@ private:
     Vec params = nullptr;
     PetscCall(TaoGetSolution(tao, &params));
 
-    Vector current;
+    Vector<Real> current;
     PetscCall(::femx::system::detail::copyFromPETSc(params, current));
 
     const TaoIterationInfo info{

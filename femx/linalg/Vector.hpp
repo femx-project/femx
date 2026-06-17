@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <initializer_list>
 #include <stdexcept>
 #include <vector>
 
@@ -9,19 +10,25 @@
 namespace femx
 {
 
+template <typename T>
 class Vector
 {
 public:
   Vector() = default;
 
+  Vector(std::initializer_list<T> values)
+    : values_(values)
+  {
+  }
+
   explicit Vector(Index size)
-    : values_(static_cast<std::size_t>(size), Real{})
+    : values_(static_cast<std::size_t>(size), T{})
   {
   }
 
   void resize(Index size)
   {
-    values_.assign(static_cast<std::size_t>(size), Real{});
+    values_.assign(static_cast<std::size_t>(size), T{});
   }
 
   Index size() const
@@ -34,42 +41,57 @@ public:
     return values_.empty();
   }
 
-  Real& front()
+  void clear()
+  {
+    values_.clear();
+  }
+
+  void reserve(Index size)
+  {
+    values_.reserve(static_cast<std::size_t>(size));
+  }
+
+  void push_back(const T& value)
+  {
+    values_.push_back(value);
+  }
+
+  T& front()
   {
     return values_.front();
   }
 
-  Real front() const
+  T front() const
   {
     return values_.front();
   }
 
-  Real& back()
+  T& back()
   {
     return values_.back();
   }
 
-  Real back() const
+  T back() const
   {
     return values_.back();
   }
 
-  Real& operator[](Index i)
+  T& operator[](Index i)
   {
     return values_[static_cast<std::size_t>(i)];
   }
 
-  Real operator[](Index i) const
+  T operator[](Index i) const
   {
     return values_[static_cast<std::size_t>(i)];
   }
 
-  Real* data()
+  T* data()
   {
     return values_.data();
   }
 
-  const Real* data() const
+  const T* data() const
   {
     return values_.data();
   }
@@ -96,11 +118,11 @@ public:
 
   void setZero()
   {
-    std::fill(values_.begin(), values_.end(), Real{});
+    std::fill(values_.begin(), values_.end(), T{});
   }
 
 private:
-  std::vector<Real> values_;
+  std::vector<T> values_;
 };
 
 } // namespace femx

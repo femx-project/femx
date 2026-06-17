@@ -15,9 +15,9 @@ namespace inverse
 class QuadraticParameterRegularization final : public ObjectiveFunctional
 {
 public:
-  QuadraticParameterRegularization(Index         num_states,
-                                   const Vector& reference,
-                                   Real          weight)
+  QuadraticParameterRegularization(Index               num_states,
+                                   const Vector<Real>& reference,
+                                   Real                weight)
     : num_states_(num_states),
       reference_(reference),
       weight_(weight)
@@ -39,8 +39,8 @@ public:
     return reference_.size();
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     (void) state;
     checkParams(params);
@@ -54,18 +54,18 @@ public:
     return 0.5 * weight_ * value_out;
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
     resize(out, numStates());
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     checkParams(params);
@@ -78,7 +78,7 @@ public:
   }
 
 private:
-  void checkParams(const Vector& params) const
+  void checkParams(const Vector<Real>& params) const
   {
     if (params.size() != numParams())
     {
@@ -87,7 +87,7 @@ private:
     }
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -100,9 +100,9 @@ private:
   }
 
 private:
-  Index  num_states_{0};
-  Vector reference_;
-  Real   weight_{0.0};
+  Index        num_states_{0};
+  Vector<Real> reference_;
+  Real         weight_{0.0};
 };
 
 } // namespace inverse

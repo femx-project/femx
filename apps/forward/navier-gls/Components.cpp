@@ -57,7 +57,7 @@ void assembleMassRHS(const ElementValues&        ev,
                      const std::vector<QPState>& qps,
                      const FluidParams&          fluid,
                      Real                        dt,
-                     Vector&                     Fe)
+                     Vector<Real>&               Fe)
 {
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();
@@ -121,7 +121,7 @@ void assembleAdvectionLHS(const ElementValues&        ev,
 void assembleAdvectionRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qps,
                           const FluidParams&          fluid,
-                          Vector&                     Fe)
+                          Vector<Real>&               Fe)
 {
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();
@@ -180,7 +180,7 @@ void assembleDiffusionLHS(const ElementValues& ev,
 void assembleDiffusionRHS(const ElementValues&        ev,
                           const std::vector<QPState>& qps,
                           const FluidParams&          fluid,
-                          Vector&                     Fe)
+                          Vector<Real>&               Fe)
 {
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();
@@ -290,7 +290,7 @@ void assembleStabilizationRHS(const ElementValues&        ev,
                               const std::vector<QPState>& qps,
                               const FluidParams&          fluid,
                               Real                        dt,
-                              Vector&                     Fe)
+                              Vector<Real>&               Fe)
 {
   const Index nshape = ev.numDofs();
   const Index nd     = ev.dim();

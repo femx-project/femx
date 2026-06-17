@@ -29,7 +29,7 @@ public:
   MatrixFreeNewtonStateSolver(const ResidualEquation& equation,
                               system::LinearSolver&   lin_solver)
     : eq_(equation),
-      linear_solver_(lin_solver)
+      lin_solver_(lin_solver)
   {
     if (eq_.numRes() != eq_.numStates())
     {
@@ -48,7 +48,7 @@ public:
     return options_;
   }
 
-  void setInitialState(const Vector& state)
+  void setInitialState(const Vector<Real>& state)
   {
     if (state.size() != numStates())
     {
@@ -61,7 +61,7 @@ public:
 
   void clearInitialState()
   {
-    initial_state_     = Vector{};
+    initial_state_     = Vector<Real>{};
     has_initial_state_ = false;
   }
 
@@ -75,7 +75,7 @@ public:
     return eq_.numParams();
   }
 
-  void solve(const Vector& params, Vector& state) override
+  void solve(const Vector<Real>& params, Vector<Real>& state) override
   {
     if (params.size() != numParams())
     {
@@ -85,9 +85,9 @@ public:
 
     initializeState(state);
 
-    Vector res;
-    Vector rhs;
-    Vector step;
+    Vector<Real> res;
+    Vector<Real> rhs;
+    Vector<Real> step;
     for (Index i = 0; i <= options_.max_its; ++i)
     {
       eq_.res(state, params, res);
@@ -113,7 +113,7 @@ public:
       }
 
       const StateJacobianOperator jac(eq_, state, params);
-      linear_solver_.solve(jac, rhs, step);
+      lin_solver_.solve(jac, rhs, step);
       if (step.size() != numStates())
       {
         throw std::runtime_error(
@@ -135,7 +135,7 @@ public:
   }
 
 private:
-  void initializeState(Vector& state) const
+  void initializeState(Vector<Real>& state) const
   {
     if (has_initial_state_)
     {
@@ -145,7 +145,7 @@ private:
     resize(state, numStates());
   }
 
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -157,7 +157,7 @@ private:
     }
   }
 
-  static Real norm2(const Vector& x)
+  static Real norm2(const Vector<Real>& x)
   {
     Real sum = 0.0;
     for (Index i = 0; i < x.size(); ++i)
@@ -169,9 +169,9 @@ private:
 
 private:
   const ResidualEquation&            eq_;
-  system::LinearSolver&              linear_solver_;
+  system::LinearSolver&              lin_solver_;
   MatrixFreeNewtonStateSolverOptions options_;
-  Vector                             initial_state_;
+  Vector<Real>                       initial_state_;
   bool                               has_initial_state_{false};
 };
 

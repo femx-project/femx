@@ -2,11 +2,12 @@
 #include <iostream>
 
 #include <femx/ad/Enzyme.hpp>
-#include <femx/assembly/EnzymeBoundaryElementKernel.hpp>
-#include <femx/assembly/EnzymeBoundaryIntegralKernel.hpp>
-#include <femx/assembly/EnzymeElementKernel.hpp>
+#include <femx/assembly/EnzymeBoundaryKernel.hpp>
+#include <femx/assembly/EnzymeVolumeKernel.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Mesh.hpp>
@@ -19,61 +20,66 @@ femx::Real polynomial(femx::Real x)
   return x * x * x + femx::constants::TWO * x;
 }
 
-void localResidual(femx::Index       ic,
-                   femx::Index       num_res,
-                   femx::Index       num_states,
-                   femx::Index       num_params,
-                   const femx::Real* u,
-                   const femx::Real* m,
-                   femx::Real*       out)
+void localVolumeResidual(femx::Index       cell,
+                         femx::Index       num_qp,
+                         femx::Index       num_nodes,
+                         femx::Index       dim,
+                         femx::Index       num_res,
+                         femx::Index       num_states,
+                         femx::Index       num_params,
+                         const femx::Real* N,
+                         const femx::Real* dNdx,
+                         const femx::Real* JxW,
+                         const femx::Real* u,
+                         const femx::Real* m,
+                         femx::Real*       out)
 {
+  (void) cell;
+  (void) dim;
   (void) num_res;
   (void) num_states;
   (void) num_params;
+  (void) dNdx;
 
-  const femx::Real scale = 1.0 + static_cast<femx::Real>(ic);
-  out[0]                 = scale * u[0] * u[0] + u[1] + 2.0 * m[0];
-  out[1]                 = u[0] * u[1] + m[0] * m[0] + 3.0 * m[1];
+  for (femx::Index i = 0; i < num_nodes; ++i)
+  {
+    out[i] = 0.0;
+  }
+
+  for (femx::Index iq = 0; iq < num_qp; ++iq)
+  {
+    const femx::Real* Nq = N + iq * num_nodes;
+
+    femx::Real uq = 0.0;
+    femx::Real mq = 0.0;
+    for (femx::Index a = 0; a < num_nodes; ++a)
+    {
+      uq += Nq[a] * u[a];
+      mq += Nq[a] * m[a];
+    }
+
+    const femx::Real source = uq * uq + 2.0 * mq;
+    for (femx::Index a = 0; a < num_nodes; ++a)
+    {
+      out[a] += Nq[a] * source * JxW[iq];
+    }
+  }
 }
 
-void localBoundaryResidual(femx::Index       ib,
-                           femx::Index       entity_tag,
-                           femx::Index       physical_tag,
+void localBoundaryResidual(femx::Index       facet,
+                           femx::Index       num_qp,
+                           femx::Index       num_nodes,
+                           femx::Index       dim,
                            femx::Index       num_res,
                            femx::Index       num_states,
                            femx::Index       num_params,
+                           const femx::Real* N,
+                           const femx::Real* point,
+                           const femx::Real* normal,
+                           const femx::Real* JxW,
                            const femx::Real* u,
                            const femx::Real* m,
                            femx::Real*       out)
-{
-  (void) ib;
-  (void) num_res;
-  (void) num_states;
-  (void) num_params;
-
-  const femx::Real state_scale =
-      1.0 + static_cast<femx::Real>(entity_tag);
-  const femx::Real param_scale =
-      0.5 * static_cast<femx::Real>(physical_tag);
-
-  out[0] = state_scale * u[0] * u[0] + u[1] + 2.0 * m[0];
-  out[1] = u[0] * u[1] + param_scale * m[0] * m[0] + 3.0 * m[1];
-}
-
-void localBoundaryIntegralResidual(femx::Index       facet,
-                                   femx::Index       num_qp,
-                                   femx::Index       num_nodes,
-                                   femx::Index       dim,
-                                   femx::Index       num_res,
-                                   femx::Index       num_states,
-                                   femx::Index       num_params,
-                                   const femx::Real* N,
-                                   const femx::Real* point,
-                                   const femx::Real* normal,
-                                   const femx::Real* JxW,
-                                   const femx::Real* u,
-                                   const femx::Real* m,
-                                   femx::Real*       out)
 {
   (void) facet;
   (void) dim;
@@ -128,94 +134,83 @@ int main(int, char**)
     return 1;
   }
 
-  femx::assembly::EnzymeElementKernel<localResidual> kernel(2, 2, 2);
+  femx::Mesh           volume_mesh = femx::Mesh::makeStructuredQuad(1, 1);
+  femx::LagrangeQuadQ1 volume_elem;
+  femx::FESpace        volume_space(&volume_mesh, &volume_elem);
+  volume_space.setup();
 
-  femx::Vector u(2);
+  femx::Vector<Real> u(4);
   u[0] = 1.5;
   u[1] = -0.25;
+  u[2] = 0.75;
+  u[3] = 2.0;
 
-  femx::Vector m(2);
+  femx::Vector<Real> m(4);
   m[0] = 0.2;
   m[1] = -0.4;
+  m[2] = 0.6;
+  m[3] = 0.8;
 
-  femx::Vector res;
-  kernel.res(2, u, m, res);
+  const auto volume_quad = femx::GaussQuadrature::quadrilateral(1);
+  femx::assembly::EnzymeVolumeKernel<localVolumeResidual>
+      volume_kernel(volume_space, volume_quad, 4, 4, 4);
 
-  const femx::Real scale = 3.0;
-  if (!near(res[0], scale * u[0] * u[0] + u[1] + 2.0 * m[0])
-      || !near(res[1], u[0] * u[1] + m[0] * m[0] + 3.0 * m[1]))
+  femx::Vector<Real> volume_res;
+  volume_kernel.res(0, u, m, volume_res);
+
+  const femx::Real volume_uq =
+      0.25 * (u[0] + u[1] + u[2] + u[3]);
+  const femx::Real volume_mq =
+      0.25 * (m[0] + m[1] + m[2] + m[3]);
+  const femx::Real volume_source =
+      volume_uq * volume_uq + 2.0 * volume_mq;
+
+  for (femx::Index i = 0; i < 4; ++i)
   {
-    std::cerr << "Incorrect Enzyme residual evaluation\n";
-    return 1;
+    if (!near(volume_res[i], 0.25 * volume_source))
+    {
+      std::cerr << "Incorrect Enzyme volume residual\n";
+      return 1;
+    }
   }
 
-  femx::DenseMatrix state_jac;
-  kernel.stateJac(2, u, m, state_jac);
+  femx::DenseMatrix volume_state_jac;
+  volume_kernel.stateJac(0, u, m, volume_state_jac);
 
-  if (!near(state_jac(0, 0), 2.0 * scale * u[0])
-      || !near(state_jac(0, 1), 1.0)
-      || !near(state_jac(1, 0), u[1])
-      || !near(state_jac(1, 1), u[0]))
+  for (femx::Index i = 0; i < 4; ++i)
   {
-    std::cerr << "Incorrect Enzyme state Jacobian\n";
-    return 1;
+    for (femx::Index j = 0; j < 4; ++j)
+    {
+      if (!near(volume_state_jac(i, j), 0.125 * volume_uq))
+      {
+        std::cerr << "Incorrect Enzyme volume state Jacobian\n";
+        return 1;
+      }
+    }
   }
 
-  femx::DenseMatrix param_jac;
-  kernel.paramJac(2, u, m, param_jac);
+  femx::DenseMatrix volume_param_jac;
+  volume_kernel.paramJac(0, u, m, volume_param_jac);
 
-  if (!near(param_jac(0, 0), 2.0)
-      || !near(param_jac(0, 1), 0.0)
-      || !near(param_jac(1, 0), 2.0 * m[0])
-      || !near(param_jac(1, 1), 3.0))
+  for (femx::Index i = 0; i < 4; ++i)
   {
-    std::cerr << "Incorrect Enzyme parameter Jacobian\n";
-    return 1;
+    for (femx::Index j = 0; j < 4; ++j)
+    {
+      if (!near(volume_param_jac(i, j), 0.125))
+      {
+        std::cerr << "Incorrect Enzyme volume parameter Jacobian\n";
+        return 1;
+      }
+    }
   }
 
-  femx::Mesh::BoundaryFacet facet;
-  facet.entity_tag   = 4;
-  facet.physical_tag = 6;
+  femx::Vector<Real> boundary_u(2);
+  boundary_u[0] = 1.5;
+  boundary_u[1] = -0.25;
 
-  femx::assembly::EnzymeBoundaryElementKernel<localBoundaryResidual>
-      boundary_kernel(2, 2, 2);
-
-  femx::Vector boundary_res;
-  boundary_kernel.res(3, facet, u, m, boundary_res);
-
-  const femx::Real state_scale = 5.0;
-  const femx::Real param_scale = 3.0;
-  if (!near(boundary_res[0], state_scale * u[0] * u[0] + u[1] + 2.0 * m[0])
-      || !near(boundary_res[1],
-               u[0] * u[1] + param_scale * m[0] * m[0] + 3.0 * m[1]))
-  {
-    std::cerr << "Incorrect Enzyme boundary residual evaluation\n";
-    return 1;
-  }
-
-  femx::DenseMatrix boundary_state_jac;
-  boundary_kernel.stateJac(3, facet, u, m, boundary_state_jac);
-
-  if (!near(boundary_state_jac(0, 0), 2.0 * state_scale * u[0])
-      || !near(boundary_state_jac(0, 1), 1.0)
-      || !near(boundary_state_jac(1, 0), u[1])
-      || !near(boundary_state_jac(1, 1), u[0]))
-  {
-    std::cerr << "Incorrect Enzyme boundary state Jacobian\n";
-    return 1;
-  }
-
-  femx::DenseMatrix boundary_param_jac;
-  boundary_kernel.paramJac(3, facet, u, m, boundary_param_jac);
-
-  if (!near(boundary_param_jac(0, 0), 2.0)
-      || !near(boundary_param_jac(0, 1), 0.0)
-      || !near(boundary_param_jac(1, 0), 2.0 * param_scale * m[0])
-      || !near(boundary_param_jac(1, 1), 3.0))
-  {
-    std::cerr << "Incorrect Enzyme boundary parameter Jacobian\n";
-    return 1;
-  }
+  femx::Vector<Real> boundary_m(2);
+  boundary_m[0] = 0.2;
+  boundary_m[1] = -0.4;
 
   femx::Mesh mesh(2);
   mesh.addNode({0.0, 0.0, 0.0});
@@ -226,15 +221,14 @@ int main(int, char**)
   integral_facet.node_ids = {0, 1};
 
   const auto quad = femx::GaussQuadrature::segment(1);
-  femx::assembly::EnzymeBoundaryIntegralKernel<
-      localBoundaryIntegralResidual>
-      integral_kernel(mesh, quad, 2, 2, 2);
+  femx::assembly::EnzymeBoundaryKernel<localBoundaryResidual>
+      boundary_kernel(mesh, quad, 2, 2, 2);
 
-  femx::Vector integral_res;
-  integral_kernel.res(0, integral_facet, u, m, integral_res);
+  femx::Vector<Real> integral_res;
+  boundary_kernel.res(0, integral_facet, boundary_u, boundary_m, integral_res);
 
-  const femx::Real uq     = 0.5 * (u[0] + u[1]);
-  const femx::Real mq     = 0.5 * (m[0] + m[1]);
+  const femx::Real uq     = 0.5 * (boundary_u[0] + boundary_u[1]);
+  const femx::Real mq     = 0.5 * (boundary_m[0] + boundary_m[1]);
   const femx::Real source = uq * uq + 2.0 * mq;
 
   if (!near(integral_res[0], source) || !near(integral_res[1], source))
@@ -244,7 +238,8 @@ int main(int, char**)
   }
 
   femx::DenseMatrix integral_state_jac;
-  integral_kernel.stateJac(0, integral_facet, u, m, integral_state_jac);
+  boundary_kernel.stateJac(
+      0, integral_facet, boundary_u, boundary_m, integral_state_jac);
 
   for (femx::Index i = 0; i < 2; ++i)
   {
@@ -259,7 +254,8 @@ int main(int, char**)
   }
 
   femx::DenseMatrix integral_param_jac;
-  integral_kernel.paramJac(0, integral_facet, u, m, integral_param_jac);
+  boundary_kernel.paramJac(
+      0, integral_facet, boundary_u, boundary_m, integral_param_jac);
 
   for (femx::Index i = 0; i < 2; ++i)
   {

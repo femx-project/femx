@@ -34,6 +34,10 @@ public:
   Real weight(Index iq) const;
   Real JxW(Index iq) const;
 
+  const Real* NData() const;
+  const Real* dNdxData() const;
+  const Real* JxWData() const;
+
 private:
   void calcReferenceValues();
   void calcPhysicalValues(const Cell& cell);
@@ -57,6 +61,7 @@ private:
 
   std::vector<Real> detJ_;
   std::vector<Real> weights_;
+  std::vector<Real> JxW_;
 
   std::vector<Real> J_;
   std::vector<Real> invJ_;

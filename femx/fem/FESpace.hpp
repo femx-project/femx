@@ -1,10 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofMap.hpp>
 #include <femx/fem/FiniteElement.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Mesh.hpp>
 
 namespace femx
@@ -40,11 +39,11 @@ public:
                   Index component) const noexcept;
 
   /** @brief Fill the global dof indices used by one elem. */
-  void elemDofs(Index               ic,
-                std::vector<Index>& dofs) const;
+  void elemDofs(Index          ic,
+                Vector<Index>& dofs) const;
 
   /** @brief Return the global dof indices used by one elem. */
-  std::vector<Index> elemDofs(Index ic) const;
+  Vector<Index> elemDofs(Index ic) const;
 
 private:
   const Mesh*          mesh_{nullptr};

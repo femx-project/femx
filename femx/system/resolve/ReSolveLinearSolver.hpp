@@ -16,6 +16,7 @@
 namespace femx
 {
 class SparseMatrix;
+template <typename T>
 class Vector;
 
 namespace system
@@ -53,13 +54,13 @@ public:
 
   /** @brief Solve op x = rhs for a SparseSystemMatrix-backed operator. */
   void solve(const LinearOperator& op,
-             const Vector&         rhs,
-             Vector&               out) override;
+             const Vector<Real>&   rhs,
+             Vector<Real>&         out) override;
 
   /** @brief Solve op^T x = rhs for a SparseSystemMatrix-backed operator. */
   void solveT(const LinearOperator& op,
-              const Vector&         rhs,
-              Vector&               out) override;
+              const Vector<Real>&   rhs,
+              Vector<Real>&         out) override;
 
   /** @brief Set the system matrix used by subsequent solves. */
   void setOperator(const SparseMatrix& A);
@@ -68,7 +69,7 @@ public:
   void setPreconditioner(const std::string& method);
 
   /** @brief Solve A x = b using the current operator. */
-  void solve(const Vector& b, Vector& x);
+  void solve(const Vector<Real>& b, Vector<Real>& x);
 
 private:
   class Impl;

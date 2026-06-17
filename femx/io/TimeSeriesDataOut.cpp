@@ -81,7 +81,7 @@ void checkMesh(const Mesh& mesh)
   }
 }
 
-void checkFieldSize(const Mesh& mesh, const Vector& values)
+void checkFieldSize(const Mesh& mesh, const Vector<Real>& values)
 {
   if (values.size() != mesh.numNodes())
   {
@@ -168,9 +168,9 @@ void writeIntDataset(hid_t                       file,
   checkHdf5(H5Sclose(dataspace), "Failed to close HDF5 dataspace " + path);
 }
 
-void writeScalarDataset(hid_t              file,
-                        const std::string& path,
-                        const Vector&      values)
+void writeScalarDataset(hid_t               file,
+                        const std::string&  path,
+                        const Vector<Real>& values)
 {
   std::vector<double> data(static_cast<std::size_t>(values.size()));
   for (Index i = 0; i < values.size(); ++i)
@@ -184,9 +184,9 @@ void writeScalarDataset(hid_t              file,
                      {static_cast<hsize_t>(values.size())});
 }
 
-void writeVectorDataset(hid_t                        file,
-                        const std::string&           path,
-                        const std::array<Vector, 3>& values)
+void writeVectorDataset(hid_t                              file,
+                        const std::string&                 path,
+                        const std::array<Vector<Real>, 3>& values)
 {
   const Index         nodes = values[0].size();
   std::vector<double> data(static_cast<std::size_t>(nodes) * 3);
@@ -370,7 +370,7 @@ void writeXdmf(const std::string&                          filename,
     for (const auto& vec : steps[s].vecs)
     {
       out << R"(        <Attribute Name=")" << vec.name
-          << R"(" AttributeType="Vector" Center="Node">)" << '\n';
+          << R"(" AttributeType="Vector<Real>" Center="Node">)" << '\n';
       out << R"(          <DataItem Dimensions=")" << mesh.numNodes()
           << R"( 3" NumberType="Float" Precision="8" Format="HDF">)"
           << h5_ref << ":/Data/" << step << "/" << vec.name
@@ -399,8 +399,8 @@ void TimeSeriesDataOut::beginStep(Real time)
   steps_.back().time = time;
 }
 
-void TimeSeriesDataOut::addNodalScalarField(const std::string& name,
-                                            const Vector&      values)
+void TimeSeriesDataOut::addNodalScalarField(const std::string&  name,
+                                            const Vector<Real>& values)
 {
   if (name.empty())
   {
@@ -409,19 +409,19 @@ void TimeSeriesDataOut::addNodalScalarField(const std::string& name,
   currentStep().scalars.push_back({name, values});
 }
 
-void TimeSeriesDataOut::addNodalVectorField(const std::string& name,
-                                            const Vector&      x,
-                                            const Vector&      y)
+void TimeSeriesDataOut::addNodalVectorField(const std::string&  name,
+                                            const Vector<Real>& x,
+                                            const Vector<Real>& y)
 {
-  Vector z(x.size());
+  Vector<Real> z(x.size());
   z.setZero();
   addNodalVectorField(name, x, y, z);
 }
 
-void TimeSeriesDataOut::addNodalVectorField(const std::string& name,
-                                            const Vector&      x,
-                                            const Vector&      y,
-                                            const Vector&      z)
+void TimeSeriesDataOut::addNodalVectorField(const std::string&  name,
+                                            const Vector<Real>& x,
+                                            const Vector<Real>& y,
+                                            const Vector<Real>& z)
 {
   if (name.empty())
   {
@@ -486,7 +486,7 @@ void TimeSeriesDataOut::checkReady() const
     }
     for (const auto& vec : step.vecs)
     {
-      for (const Vector& component : vec.values)
+      for (const Vector<Real>& component : vec.values)
       {
         checkFieldSize(*mesh_, component);
       }

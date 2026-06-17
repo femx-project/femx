@@ -4,6 +4,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -54,16 +55,16 @@ public:
   Index          numDofsPerElem() const noexcept;
 
   /** @brief Fill the mixed-space global dof indices used by one elem. */
-  void elemDofs(Index               ic,
-                std::vector<Index>& dofs) const;
+  void elemDofs(Index          ic,
+                Vector<Index>& dofs) const;
 
   /** @brief Return the mixed-space global dof indices used by one elem. */
-  std::vector<Index> elemDofs(Index ic) const;
+  Vector<Index> elemDofs(Index ic) const;
 
 private:
   std::vector<FESpace> fields_;
-  std::vector<Index>   local_offsets_;
-  std::vector<Index>   global_offsets_;
+  Vector<Index>        local_offsets_;
+  Vector<Index>        global_offsets_;
   Index                num_dofs_per_elem_{0};
   Index                num_dofs_{0};
 };

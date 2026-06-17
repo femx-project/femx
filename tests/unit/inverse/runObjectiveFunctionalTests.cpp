@@ -22,8 +22,8 @@ public:
     return 2;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     return 0.5 * state[0] * state[0]
            + 2.0 * state[1] * state[1]
@@ -33,18 +33,18 @@ public:
            + 3.5 * params[1] * params[1];
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     resize(out, numStates());
     out[0] = state[0] + 3.0 * params[0];
     out[1] = 4.0 * state[1] - 2.0 * params[1];
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     resize(out, numParams());
     out[0] = 3.0 * state[0] + 5.0 * params[0];
@@ -52,7 +52,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -78,11 +78,11 @@ public:
     status *= (objective.numStates() == 2);
     status *= (objective.numParams() == 2);
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = 0.25;
     state[1] = -0.5;
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 2.0;
     params[1] = -1.5;
 
@@ -95,7 +95,7 @@ public:
         + 3.5 * params[1] * params[1];
     status *= isEqual(objective.value(state, params), expected_value);
 
-    Vector out;
+    Vector<Real> out;
     objective.stateGrad(state, params, out);
     status *= isEqual(out[0], state[0] + 3.0 * params[0]);
     status *= isEqual(out[1], 4.0 * state[1] - 2.0 * params[1]);

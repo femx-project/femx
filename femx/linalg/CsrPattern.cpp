@@ -8,9 +8,9 @@ namespace femx
 {
 
 CsrPattern::CsrPattern(
-    Index                                  rows,
-    Index                                  cols,
-    const std::vector<std::vector<Index>>& cdofs)
+    Index                             rows,
+    Index                             cols,
+    const std::vector<Vector<Index>>& cdofs)
 {
   if (rows < 0 || cols < 0)
   {
@@ -35,14 +35,14 @@ CsrPattern::CsrPattern(
 }
 
 void CsrPattern::countCooEntries(
-    const std::vector<std::vector<Index>>& cdofs)
+    const std::vector<Vector<Index>>& cdofs)
 {
   num_coo_entries_ = 0;
 
   for (Index ic = 0; ic < num_elems_; ++ic)
   {
     const auto& dofs  = cdofs[static_cast<std::size_t>(ic)];
-    const auto  ndofs = static_cast<Index>(dofs.size());
+    const Index ndofs = dofs.size();
 
     elem_num_dofs_[ic]  = ndofs;
     num_coo_entries_   += ndofs * ndofs;
@@ -50,10 +50,10 @@ void CsrPattern::countCooEntries(
 }
 
 void CsrPattern::setupCooArrays(
-    const std::vector<std::vector<Index>>& cdofs,
-    std::vector<Index>&                    coo_rows,
-    std::vector<Index>&                    coo_cols,
-    std::vector<Index>&                    order)
+    const std::vector<Vector<Index>>& cdofs,
+    std::vector<Index>&               coo_rows,
+    std::vector<Index>&               coo_cols,
+    std::vector<Index>&               order)
 {
   Index counter = 0;
 
@@ -68,8 +68,8 @@ void CsrPattern::setupCooArrays(
     {
       for (Index j = 0; j < ndofs; ++j)
       {
-        const Index row = dofs[static_cast<std::size_t>(i)];
-        const Index col = dofs[static_cast<std::size_t>(j)];
+        const Index row = dofs[i];
+        const Index col = dofs[j];
         if (row < 0 || row >= num_rows_ || col < 0 || col >= num_cols_)
         {
           throw std::runtime_error("CsrPattern cell dof is out of range");

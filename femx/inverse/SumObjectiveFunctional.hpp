@@ -49,8 +49,8 @@ public:
     return num_params_;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     Real value_out = 0.0;
     for (const ObjectiveFunctional* term : terms_)
@@ -60,12 +60,12 @@ public:
     return value_out;
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     resize(out, numStates());
-    Vector term_grad;
+    Vector<Real> term_grad;
     for (const ObjectiveFunctional* term : terms_)
     {
       term->stateGrad(state, params, term_grad);
@@ -73,12 +73,12 @@ public:
     }
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     resize(out, numParams());
-    Vector term_grad;
+    Vector<Real> term_grad;
     for (const ObjectiveFunctional* term : terms_)
     {
       term->paramGrad(state, params, term_grad);
@@ -87,7 +87,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -99,7 +99,7 @@ private:
     }
   }
 
-  static void addInto(const Vector& input, Vector& out, Index size)
+  static void addInto(const Vector<Real>& input, Vector<Real>& out, Index size)
   {
     if (input.size() != size)
     {

@@ -22,7 +22,7 @@ public:
     return 2;
   }
 
-  void solve(const Vector& params, Vector& state) override
+  void solve(const Vector<Real>& params, Vector<Real>& state) override
   {
     if (state.size() != numStates())
     {
@@ -50,11 +50,11 @@ public:
     status *= (solver.numStates() == 2);
     status *= (solver.numParams() == 2);
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 0.25;
     params[1] = -0.5;
 
-    Vector state;
+    Vector<Real> state;
     solver.solve(params, state);
 
     status *= (state.size() == solver.numStates());

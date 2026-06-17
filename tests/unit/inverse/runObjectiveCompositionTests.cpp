@@ -25,15 +25,15 @@ public:
     return 2;
   }
 
-  Real value(const Vector& state,
-             const Vector& params) const override
+  Real value(const Vector<Real>& state,
+             const Vector<Real>& params) const override
   {
     return 2.0 * state[0] - state[1] + 3.0 * params[0] - 4.0 * params[1];
   }
 
-  void stateGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void stateGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -42,9 +42,9 @@ public:
     out[1] = -1.0;
   }
 
-  void paramGrad(const Vector& state,
-                 const Vector& params,
-                 Vector&       out) const override
+  void paramGrad(const Vector<Real>& state,
+                 const Vector<Real>& params,
+                 Vector<Real>&       out) const override
   {
     (void) state;
     (void) params;
@@ -54,7 +54,7 @@ public:
   }
 
 private:
-  static void resize(Vector& out, Index size)
+  static void resize(Vector<Real>& out, Index size)
   {
     if (out.size() != size)
     {
@@ -75,24 +75,24 @@ public:
     TestStatus status;
     status = true;
 
-    Vector reference(2);
+    Vector<Real> reference(2);
     reference[0] = 1.0;
     reference[1] = -2.0;
 
     const inverse::QuadraticParameterRegularization regularization(
         2, reference, 0.5);
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = -1.0;
     state[1] = 3.0;
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 3.0;
     params[1] = -5.0;
 
     status *= isEqual(regularization.value(state, params), 3.25);
 
-    Vector grad;
+    Vector<Real> grad;
     regularization.stateGrad(state, params, grad);
     status *= isEqual(grad[0], 0.0);
     status *= isEqual(grad[1], 0.0);
@@ -111,7 +111,7 @@ public:
 
     LinearObjective linear;
 
-    Vector reference(2);
+    Vector<Real> reference(2);
     reference[0] = 1.0;
     reference[1] = -2.0;
 
@@ -121,11 +121,11 @@ public:
     inverse::SumObjectiveFunctional sum(2, 2);
     sum.add(linear).add(regularization);
 
-    Vector state(2);
+    Vector<Real> state(2);
     state[0] = -1.0;
     state[1] = 3.0;
 
-    Vector params(2);
+    Vector<Real> params(2);
     params[0] = 3.0;
     params[1] = -5.0;
 
@@ -133,7 +133,7 @@ public:
                       linear.value(state, params)
                           + regularization.value(state, params));
 
-    Vector grad;
+    Vector<Real> grad;
     sum.stateGrad(state, params, grad);
     status *= isEqual(grad[0], 2.0);
     status *= isEqual(grad[1], -1.0);
@@ -150,7 +150,7 @@ public:
     TestStatus status;
     status = true;
 
-    Vector reference(1);
+    Vector<Real> reference(1);
     reference[0] = 0.0;
     const inverse::QuadraticParameterRegularization regularization(
         2, reference, 1.0);
