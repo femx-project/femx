@@ -148,8 +148,8 @@ private:
       throw std::runtime_error("SparseSystemMatrix cell index is out of range");
     }
 
-    const Index ndofs = pattern.elemNumDofs(ic);
-    if (local.rows() != ndofs || local.cols() != ndofs)
+    const Index num_dofs = pattern.elemNumDofs(ic);
+    if (local.rows() != num_dofs || local.cols() != num_dofs)
     {
       throw std::runtime_error(
           "SparseSystemMatrix local matrix size does not match cell dofs");
@@ -161,17 +161,17 @@ private:
     checkLocalMatrix(ic, local);
 
     const CsrPattern& pattern    = mat_.pattern();
-    const Index       ndofs      = pattern.elemNumDofs(ic);
+    const Index       num_dofs      = pattern.elemNumDofs(ic);
     const Index       coo_offset = pattern.elemCooOffset(ic);
     const Index*      coo_to_csr = pattern.cooToCsrData();
     const Real*       local_vals = local.data();
     Real*             values     = mat_.valuesData();
 
-    for (Index i = 0; i < ndofs; ++i)
+    for (Index i = 0; i < num_dofs; ++i)
     {
-      for (Index j = 0; j < ndofs; ++j)
+      for (Index j = 0; j < num_dofs; ++j)
       {
-        const Index local_entry = i * ndofs + j;
+        const Index local_entry = i * num_dofs + j;
         const Index coo_entry   = coo_offset + local_entry;
         const Index csr_entry   = coo_to_csr[coo_entry];
         values[static_cast<std::size_t>(csr_entry)] +=
@@ -185,17 +185,17 @@ private:
     checkLocalMatrix(ic, local);
 
     const CsrPattern& pattern    = mat_.pattern();
-    const Index       ndofs      = pattern.elemNumDofs(ic);
+    const Index       num_dofs      = pattern.elemNumDofs(ic);
     const Index       coo_offset = pattern.elemCooOffset(ic);
     const Index*      coo_to_csr = pattern.cooToCsrData();
     const Real*       local_vals = local.data();
     Real*             values     = mat_.valuesData();
 
-    for (Index i = 0; i < ndofs; ++i)
+    for (Index i = 0; i < num_dofs; ++i)
     {
-      for (Index j = 0; j < ndofs; ++j)
+      for (Index j = 0; j < num_dofs; ++j)
       {
-        const Index local_entry = i * ndofs + j;
+        const Index local_entry = i * num_dofs + j;
         const Index coo_entry   = coo_offset + local_entry;
         const Index csr_entry   = coo_to_csr[coo_entry];
 #pragma omp atomic update

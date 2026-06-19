@@ -69,16 +69,6 @@ inline PetscErrorCode copyToPETSc(const Vector<Real>& input, Vec output)
   return PETSC_SUCCESS;
 }
 
-inline Real norm2(const Vector<Real>& input)
-{
-  Real sum = 0.0;
-  for (Index i = 0; i < input.size(); ++i)
-  {
-    sum += input[i] * input[i];
-  }
-  return sum;
-}
-
 } // namespace detail
 } // namespace system
 } // namespace femx

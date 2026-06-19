@@ -18,14 +18,14 @@ public:
   virtual Index numParams() const = 0;
 
   virtual Real value(const Vector<Real>& state,
-                     const Vector<Real>& params) const = 0;
+                     const Vector<Real>& prm) const = 0;
 
   virtual void stateGrad(const Vector<Real>& state,
-                         const Vector<Real>& params,
+                         const Vector<Real>& prm,
                          Vector<Real>&       out) const = 0;
 
   virtual void paramGrad(const Vector<Real>& state,
-                         const Vector<Real>& params,
+                         const Vector<Real>& prm,
                          Vector<Real>&       out) const = 0;
 };
 

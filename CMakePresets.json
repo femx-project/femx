@@ -54,6 +54,21 @@
       }
     },
     {
+      "name": "resolve-cuda-petsc",
+      "displayName": "ReSolve CUDA + PETSc",
+      "description": "Build PETSc/TAO apps with the CUDA-enabled ReSolve backend.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/resolve-cuda-petsc",
+      "cacheVariables": {
+        "FEMX_ENABLE_RESOLVE": "ON",
+        "FEMX_ENABLE_PETSC": "ON",
+        "FEMX_REQUIRE_RESOLVE": "ON",
+        "FEMX_RESOLVE_BACKEND": "CUDA",
+        "RESOLVE_USE_CUDA": "ON",
+        "CMAKE_CUDA_ARCHITECTURES": "60"
+      }
+    },
+    {
       "name": "petsc",
       "displayName": "PETSc",
       "description": "Build apps/tests with PETSc enabled and ReSolve disabled.",
@@ -62,6 +77,20 @@
       "cacheVariables": {
         "FEMX_ENABLE_RESOLVE": "OFF",
         "FEMX_ENABLE_PETSC": "ON"
+      }
+    },
+    {
+      "name": "petsc-enzyme",
+      "displayName": "PETSc + Enzyme",
+      "description": "Build apps/tests with PETSc and Enzyme enabled, and ReSolve disabled.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/petsc-enzyme",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "Enzyme_DIR": "$env{HOME}/opt/enzyme-llvm18/lib/cmake/Enzyme",
+        "FEMX_ENABLE_RESOLVE": "OFF",
+        "FEMX_ENABLE_PETSC": "ON",
+        "FEMX_ENABLE_ENZYME": "ON"
       }
     }
   ],
@@ -75,8 +104,16 @@
       "configurePreset": "resolve-cuda"
     },
     {
+      "name": "resolve-cuda-petsc",
+      "configurePreset": "resolve-cuda-petsc"
+    },
+    {
       "name": "petsc",
       "configurePreset": "petsc"
+    },
+    {
+      "name": "petsc-enzyme",
+      "configurePreset": "petsc-enzyme"
     }
   ],
   "testPresets": [
@@ -95,8 +132,22 @@
       }
     },
     {
+      "name": "resolve-cuda-petsc",
+      "configurePreset": "resolve-cuda-petsc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
       "name": "petsc",
       "configurePreset": "petsc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "petsc-enzyme",
+      "configurePreset": "petsc-enzyme",
       "output": {
         "outputOnFailure": true
       }

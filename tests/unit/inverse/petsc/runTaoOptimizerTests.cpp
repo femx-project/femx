@@ -21,13 +21,13 @@ public:
     return 2;
   }
 
-  Real value(const Vector<Real>& params) override
+  Real value(const Vector<Real>& prm) override
   {
-    return 0.5 * (params[0] - 1.0) * (params[0] - 1.0)
-           + (params[1] + 2.0) * (params[1] + 2.0);
+    return 0.5 * (prm[0] - 1.0) * (prm[0] - 1.0)
+           + (prm[1] + 2.0) * (prm[1] + 2.0);
   }
 
-  void grad(const Vector<Real>& params, Vector<Real>& out) override
+  void grad(const Vector<Real>& prm, Vector<Real>& out) override
   {
     if (out.size() != numParams())
     {
@@ -38,8 +38,8 @@ public:
       out.setZero();
     }
 
-    out[0] = params[0] - 1.0;
-    out[1] = 2.0 * (params[1] + 2.0);
+    out[0] = prm[0] - 1.0;
+    out[1] = 2.0 * (prm[1] + 2.0);
   }
 };
 
@@ -52,25 +52,25 @@ public:
     status = true;
 
     QuadraticReducedFunctional functional;
-    inverse::TaoOptimizer      optimizer(functional);
-    optimizer.options().grad_abs_tolerance = 1.0e-12;
-    optimizer.options().grad_rel_tolerance = 1.0e-12;
-    optimizer.options().max_its            = 50;
-    optimizer.options().use_opts_db        = false;
+    inverse::TaoOptimizer      opt(functional);
+    opt.options().grad_abs_tolerance = 1.0e-12;
+    opt.options().grad_rel_tolerance = 1.0e-12;
+    opt.options().max_its            = 50;
+    opt.options().use_opts_db        = false;
 
     Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
     inverse::TaoResult   result;
-    const PetscErrorCode ierr = optimizer.solve(initial, result);
+    const PetscErrorCode ierr = opt.solve(initial, result);
 
     status *= (ierr == PETSC_SUCCESS);
     status *= result.converged();
     status *= (result.value < 1.0e-20);
     status *= (result.grad_norm_squared < 1.0e-20);
-    status *= (std::abs(result.params[0] - 1.0) < 1.0e-10);
-    status *= (std::abs(result.params[1] + 2.0) < 1.0e-10);
+    status *= (std::abs(result.prm[0] - 1.0) < 1.0e-10);
+    status *= (std::abs(result.prm[1] + 2.0) < 1.0e-10);
 
     return status.report(__func__);
   }
@@ -81,13 +81,13 @@ public:
     status = true;
 
     QuadraticReducedFunctional functional;
-    inverse::TaoOptimizer      optimizer(functional);
+    inverse::TaoOptimizer      opt(functional);
 
     Vector<Real> initial(1);
     initial[0] = 0.25;
 
     inverse::TaoResult   result;
-    const PetscErrorCode ierr = optimizer.solve(initial, result);
+    const PetscErrorCode ierr = opt.solve(initial, result);
 
     status *= (ierr == PETSC_ERR_ARG_SIZ);
 
@@ -100,11 +100,11 @@ public:
     status = true;
 
     QuadraticReducedFunctional functional;
-    inverse::TaoOptimizer      optimizer(functional);
-    optimizer.options().grad_abs_tolerance = 1.0e-12;
-    optimizer.options().grad_rel_tolerance = 1.0e-12;
-    optimizer.options().max_its            = 50;
-    optimizer.options().use_opts_db        = false;
+    inverse::TaoOptimizer      opt(functional);
+    opt.options().grad_abs_tolerance = 1.0e-12;
+    opt.options().grad_rel_tolerance = 1.0e-12;
+    opt.options().max_its            = 50;
+    opt.options().use_opts_db        = false;
 
     Vector<Real> lower(2);
     lower[0] = 0.0;
@@ -114,19 +114,19 @@ public:
     upper[0] = 0.5;
     upper[1] = 0.0;
 
-    optimizer.setBounds(lower, upper);
+    opt.setBounds(lower, upper);
 
     Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
     inverse::TaoResult   result;
-    const PetscErrorCode ierr = optimizer.solve(initial, result);
+    const PetscErrorCode ierr = opt.solve(initial, result);
 
     status *= (ierr == PETSC_SUCCESS);
     status *= result.converged();
-    status *= (std::abs(result.params[0] - 0.5) < 1.0e-10);
-    status *= (std::abs(result.params[1] + 1.0) < 1.0e-10);
+    status *= (std::abs(result.prm[0] - 0.5) < 1.0e-10);
+    status *= (std::abs(result.prm[1] + 1.0) < 1.0e-10);
     status *= (std::abs(result.value - 1.125) < 1.0e-10);
 
     return status.report(__func__);
@@ -138,7 +138,7 @@ public:
     status = true;
 
     QuadraticReducedFunctional functional;
-    inverse::TaoOptimizer      optimizer(functional);
+    inverse::TaoOptimizer      opt(functional);
 
     Vector<Real> lower(1);
     lower[0] = 0.0;
@@ -147,14 +147,14 @@ public:
     upper[0] = 1.0;
     upper[1] = 1.0;
 
-    optimizer.setBounds(lower, upper);
+    opt.setBounds(lower, upper);
 
     Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
     inverse::TaoResult   result;
-    const PetscErrorCode ierr = optimizer.solve(initial, result);
+    const PetscErrorCode ierr = opt.solve(initial, result);
 
     status *= (ierr == PETSC_ERR_ARG_SIZ);
 
@@ -167,7 +167,7 @@ public:
     status = true;
 
     QuadraticReducedFunctional functional;
-    inverse::TaoOptimizer      optimizer(functional);
+    inverse::TaoOptimizer      opt(functional);
 
     Vector<Real> lower(2);
     lower[0] = 2.0;
@@ -177,14 +177,14 @@ public:
     upper[0] = 1.0;
     upper[1] = 1.0;
 
-    optimizer.setBounds(lower, upper);
+    opt.setBounds(lower, upper);
 
     Vector<Real> initial(2);
     initial[0] = 0.25;
     initial[1] = -0.5;
 
     inverse::TaoResult   result;
-    const PetscErrorCode ierr = optimizer.solve(initial, result);
+    const PetscErrorCode ierr = opt.solve(initial, result);
 
     status *= (ierr == PETSC_ERR_ARG_OUTOFRANGE);
 

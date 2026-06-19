@@ -16,16 +16,11 @@ public:
 
   virtual Index numParams() const = 0;
 
-  virtual Real value(const Vector<Real>& params) = 0;
+  virtual Real value(const Vector<Real>& prm) = 0;
 
-  virtual void grad(const Vector<Real>& params, Vector<Real>& out) = 0;
+  virtual void grad(const Vector<Real>& prm, Vector<Real>& out) = 0;
 
-  virtual Real valueGrad(const Vector<Real>& params, Vector<Real>& grad_out)
-  {
-    const Real obj_val = value(params);
-    grad(params, grad_out);
-    return obj_val;
-  }
+  virtual Real valueGrad(const Vector<Real>& prm, Vector<Real>& grad_out);
 };
 
 } // namespace inverse

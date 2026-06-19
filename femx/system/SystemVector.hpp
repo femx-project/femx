@@ -7,7 +7,7 @@ namespace femx
 namespace system
 {
 
-/** @brief Mutable global vector assembled from elem contributions. */
+/** @brief Mutable global vector formed from elem contributions. */
 class SystemVector
 {
 public:

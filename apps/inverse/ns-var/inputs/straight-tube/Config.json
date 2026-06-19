@@ -1,0 +1,76 @@
+{
+  "simulation": {
+    "mesh": {
+      "file": "../../../../meshdata/2D/straighttube.msh"
+    },
+    "time": {
+      "dt": 0.01,
+      "end_time": 1.0
+    },
+    "fluid": {
+      "rho": 1.0,
+      "mu": 4.0e-7
+    },
+    "bcs": [
+      {
+        "name": "inlet",
+        "physical": 4,
+        "type": "dirichlet",
+        "ux": 0.0,
+        "uy": 0.0
+      },
+      {
+        "name": "outlet",
+        "physical": 5,
+        "type": "dirichlet",
+        "p": 0.0
+      },
+      {
+        "name": "wall",
+        "physical": 6,
+        "type": "dirichlet",
+        "ux": 0.0,
+        "uy": 0.0
+      }
+    ],
+    "output": {
+      "basename": "ns-var-straight-tube-inlet-control"
+    },
+    "solver": {
+      "backend": "cuda"
+    }
+  },
+  "inverse": {
+    "control": {
+      "name": "inlet"
+    },
+    "alpha": 1.0,
+    "reg": {
+      "time": 1.0e-9,
+      "l2": 1.0e-11
+    },
+    "opt": {
+      "type": "lmvm",
+      "max_iterations": 20,
+      "grad_abs_tolerance": 5.0e-6,
+      "grad_rel_tolerance": 1.0e-8,
+      "grad_step_tolerance": 0.0,
+      "use_options_database": true
+    },
+    "bounds": {
+      "axial_min": 0.0,
+      "axial_max": 0.0162,
+      "normal": [1.0, 0.0, 0.0],
+      "fix_non_axial": true
+    },
+    "initial_velocity": {
+      "enabled": true,
+      "lower": -0.0162,
+      "upper": 0.0162,
+      "l2": 1.0e-11
+    },
+    "obs": {
+      "file": "../../../make-obs/inputs/straight-tube/output/straight-tube-grid-obs.txt"
+    }
+  }
+}

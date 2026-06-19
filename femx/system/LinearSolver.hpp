@@ -8,7 +8,7 @@ namespace femx
 namespace system
 {
 
-/** @brief Solver for A x = b and A^T x = b with a matrix-free operator. */
+/** @brief Solver for A x = b and A^T x = b with a linear operator. */
 class LinearSolver
 {
 public:

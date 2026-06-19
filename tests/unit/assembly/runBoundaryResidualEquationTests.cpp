@@ -4,7 +4,7 @@
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryElementKernel.hpp>
 #include <femx/assembly/BoundaryResidualEquation.hpp>
-#include <femx/eq/AssembledResidualEquation.hpp>
+#include <femx/eq/MatrixResidualEquation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
@@ -18,19 +18,19 @@ namespace femx
 namespace tests
 {
 
-class ZeroAssembledEquation final : public eq::AssembledResidualEquation
+class ZeroMatrixResidualEquation final : public eq::MatrixResidualEquation
 {
 public:
-  explicit ZeroAssembledEquation(Index size)
+  explicit ZeroMatrixResidualEquation(Index size)
     : size_(size),
-      num_params_(size)
+      num_prm_(size)
   {
   }
 
-  ZeroAssembledEquation(Index size,
-                        Index num_params)
+  ZeroMatrixResidualEquation(Index size,
+                             Index num_prm)
     : size_(size),
-      num_params_(num_params)
+      num_prm_(num_prm)
   {
   }
 
@@ -41,7 +41,7 @@ public:
 
   Index numParams() const override
   {
-    return num_params_;
+    return num_prm_;
   }
 
   Index numRes() const override
@@ -50,37 +50,37 @@ public:
   }
 
   void res(const Vector<Real>& state,
-           const Vector<Real>& params,
+           const Vector<Real>& prm,
            Vector<Real>&       out) const override
   {
-    checkSizes(state, params);
+    checkSizes(state, prm);
     resize(out, size_);
   }
 
   void assembleStateJac(const Vector<Real>&   state,
-                        const Vector<Real>&   params,
+                        const Vector<Real>&   prm,
                         system::SystemMatrix& out) const override
   {
-    checkSizes(state, params);
+    checkSizes(state, prm);
     out.resize(size_, size_);
     out.setZero();
   }
 
   void assembleParamJac(const Vector<Real>&   state,
-                        const Vector<Real>&   params,
+                        const Vector<Real>&   prm,
                         system::SystemMatrix& out) const override
   {
-    checkSizes(state, params);
-    out.resize(size_, num_params_);
+    checkSizes(state, prm);
+    out.resize(size_, num_prm_);
     out.setZero();
   }
 
 private:
-  void checkSizes(const Vector<Real>& state, const Vector<Real>& params) const
+  void checkSizes(const Vector<Real>& state, const Vector<Real>& prm) const
   {
-    if (state.size() != size_ || params.size() != num_params_)
+    if (state.size() != size_ || prm.size() != num_prm_)
     {
-      throw std::runtime_error("ZeroAssembledEquation size mismatch");
+      throw std::runtime_error("ZeroMatrixResidualEquation size mismatch");
     }
   }
 
@@ -98,7 +98,7 @@ private:
 
 private:
   Index size_{0};
-  Index num_params_{0};
+  Index num_prm_{0};
 };
 
 class LinearBoundaryKernel final : public assembly::BoundaryElementKernel
@@ -183,27 +183,27 @@ public:
     FESpace        space(&mesh, &elem);
     space.setup();
 
-    ZeroAssembledEquation base(space.numDofs());
-    LinearBoundaryKernel  kernel;
+    ZeroMatrixResidualEquation base(space.numDofs());
+    LinearBoundaryKernel       kernel;
 
     assembly::BoundaryDofLayout        boundary_layout(space, kBoundaryTag);
-    assembly::BoundaryResidualEquation equation(
+    assembly::BoundaryResidualEquation eq(
         base, boundary_layout, boundary_layout, boundary_layout, kernel);
 
     Vector<Real> state(space.numDofs());
-    Vector<Real> params(space.numDofs());
-    fillStateAndParams(state, params);
+    Vector<Real> prm(space.numDofs());
+    fillStateAndParams(state, prm);
 
     Vector<Real> res;
-    equation.res(state, params, res);
+    eq.res(state, prm, res);
 
-    status *= isEqual(res[0], 3.0 * state[0] + 2.0 * params[0]);
-    status *= isEqual(res[1], 3.0 * state[1] + 2.0 * params[1]);
+    status *= isEqual(res[0], 3.0 * state[0] + 2.0 * prm[0]);
+    status *= isEqual(res[1], 3.0 * state[1] + 2.0 * prm[1]);
     status *= isEqual(res[2], 0.0);
     status *= isEqual(res[3], 0.0);
 
     system::DenseSystemMatrix state_jac;
-    equation.assembleStateJac(state, params, state_jac);
+    eq.assembleStateJac(state, prm, state_jac);
     state_jac.finalize();
 
     status *= isEqual(state_jac.matrix()(0, 0), 3.0);
@@ -212,7 +212,7 @@ public:
     status *= isEqual(state_jac.matrix()(3, 3), 0.0);
 
     system::DenseSystemMatrix param_jac;
-    equation.assembleParamJac(state, params, param_jac);
+    eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 
     status *= isEqual(param_jac.matrix()(0, 0), 2.0);
@@ -241,9 +241,9 @@ public:
     status *= (state_layout.numDofs() == space.numDofs());
     status *= (param_layout.numDofs() == 3);
 
-    ZeroAssembledEquation              base(space.numDofs(), param_layout.numDofs());
+    ZeroMatrixResidualEquation         base(space.numDofs(), param_layout.numDofs());
     LinearBoundaryKernel               kernel;
-    assembly::BoundaryResidualEquation equation(
+    assembly::BoundaryResidualEquation eq(
         base, state_layout, state_layout, param_layout, kernel);
 
     Vector<Real> state(space.numDofs());
@@ -252,22 +252,22 @@ public:
       state[i] = 1.0 + static_cast<Real>(i);
     }
 
-    Vector<Real> params(param_layout.numDofs());
-    params[0] = -1.0;
-    params[1] = 2.0;
-    params[2] = 4.0;
+    Vector<Real> prm(param_layout.numDofs());
+    prm[0] = -1.0;
+    prm[1] = 2.0;
+    prm[2] = 4.0;
 
     Vector<Real> res;
-    equation.res(state, params, res);
+    eq.res(state, prm, res);
 
-    status *= isEqual(res[3], 3.0 * state[3] + 2.0 * params[0]);
+    status *= isEqual(res[3], 3.0 * state[3] + 2.0 * prm[0]);
     status *= isEqual(res[4],
-                      3.0 * state[4] + 2.0 * params[1]
-                          + 4.0 * state[4] + 2.0 * params[1]);
-    status *= isEqual(res[5], 4.0 * state[5] + 2.0 * params[2]);
+                      3.0 * state[4] + 2.0 * prm[1]
+                          + 4.0 * state[4] + 2.0 * prm[1]);
+    status *= isEqual(res[5], 4.0 * state[5] + 2.0 * prm[2]);
 
     system::DenseSystemMatrix param_jac;
-    equation.assembleParamJac(state, params, param_jac);
+    eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 
     status *= (param_jac.numCols() == 3);
@@ -315,12 +315,12 @@ private:
     return mesh;
   }
 
-  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& params)
+  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& prm)
   {
     for (Index i = 0; i < state.size(); ++i)
     {
       state[i]  = 1.0 + static_cast<Real>(i);
-      params[i] = -0.25 + 0.1 * static_cast<Real>(i);
+      prm[i] = -0.25 + 0.1 * static_cast<Real>(i);
     }
   }
 

@@ -94,26 +94,26 @@ public:
     space.setup();
 
     LinearElementKernel               kernel;
-    assembly::ElementResidualEquation equation{
+    assembly::ElementResidualEquation eq{
         assembly::DofLayout(space),
         assembly::DofLayout(space),
         kernel};
 
     Vector<Real> state(space.numDofs());
-    Vector<Real> params(space.numDofs());
-    fillStateAndParams(state, params);
+    Vector<Real> prm(space.numDofs());
+    fillStateAndParams(state, prm);
 
     Vector<Real> res;
-    equation.res(state, params, res);
+    eq.res(state, prm, res);
 
     Vector<Real> expected(space.numDofs());
     DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
     DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
-    assembleExpected(space, state, params, expected, expected_state_jac, expected_param_jac);
+    assembleExpected(space, state, prm, expected, expected_state_jac, expected_param_jac);
 
-    status *= (equation.numStates() == space.numDofs());
-    status *= (equation.numParams() == space.numDofs());
-    status *= (equation.numRes() == space.numDofs());
+    status *= (eq.numStates() == space.numDofs());
+    status *= (eq.numParams() == space.numDofs());
+    status *= (eq.numRes() == space.numDofs());
     for (Index i = 0; i < space.numDofs(); ++i)
     {
       status *= isEqual(res[i], expected[i]);
@@ -133,27 +133,27 @@ public:
     space.setup();
 
     LinearElementKernel               kernel;
-    assembly::ElementResidualEquation equation{
+    assembly::ElementResidualEquation eq{
         assembly::DofLayout(space),
         assembly::DofLayout(space),
         kernel};
 
     Vector<Real> state(space.numDofs());
-    Vector<Real> params(space.numDofs());
-    fillStateAndParams(state, params);
+    Vector<Real> prm(space.numDofs());
+    fillStateAndParams(state, prm);
 
     Vector<Real> expected_res(space.numDofs());
     DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
     DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
-                     params,
+                     prm,
                      expected_res,
                      expected_state_jac,
                      expected_param_jac);
 
     system::DenseSystemMatrix state_jac;
-    equation.assembleStateJac(state, params, state_jac);
+    eq.assembleStateJac(state, prm, state_jac);
     state_jac.finalize();
 
     for (Index i = 0; i < space.numDofs(); ++i)
@@ -172,10 +172,10 @@ public:
     }
 
     Vector<Real> applied;
-    equation.applyStateJac(state, params, dir, applied);
+    eq.applyStateJac(state, prm, dir, applied);
     checkMatVec(status, expected_state_jac, dir, applied);
 
-    equation.applyStateJacT(state, params, dir, applied);
+    eq.applyStateJacT(state, prm, dir, applied);
     checkMatTVec(status, expected_state_jac, dir, applied);
 
     return status.report(__func__);
@@ -192,28 +192,28 @@ public:
     space.setup();
 
     LinearElementKernel               kernel;
-    assembly::ElementResidualEquation equation{
+    assembly::ElementResidualEquation eq{
         assembly::DofLayout(space),
         assembly::DofLayout(space),
         kernel};
 
     Vector<Real> state(space.numDofs());
-    Vector<Real> params(space.numDofs());
-    fillStateAndParams(state, params);
+    Vector<Real> prm(space.numDofs());
+    fillStateAndParams(state, prm);
 
     Vector<Real> expected_res(space.numDofs());
     DenseMatrix  expected_state_jac(space.numDofs(), space.numDofs());
     DenseMatrix  expected_param_jac(space.numDofs(), space.numDofs());
     assembleExpected(space,
                      state,
-                     params,
+                     prm,
                      expected_res,
                      expected_state_jac,
                      expected_param_jac);
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
     system::SparseSystemMatrix param_jac(pattern);
-    equation.assembleParamJac(state, params, param_jac);
+    eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 
     Vector<Real> dir(space.numDofs());
@@ -233,18 +233,18 @@ public:
   }
 
 private:
-  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& params)
+  static void fillStateAndParams(Vector<Real>& state, Vector<Real>& prm)
   {
     for (Index i = 0; i < state.size(); ++i)
     {
       state[i]  = 1.0 + static_cast<Real>(i);
-      params[i] = 0.1 * static_cast<Real>(i + 1);
+      prm[i] = 0.1 * static_cast<Real>(i + 1);
     }
   }
 
   static void assembleExpected(const FESpace&      space,
                                const Vector<Real>& state,
-                               const Vector<Real>& params,
+                               const Vector<Real>& prm,
                                Vector<Real>&       res,
                                DenseMatrix&        state_jac,
                                DenseMatrix&        param_jac)
@@ -260,7 +260,7 @@ private:
       for (std::size_t i = 0; i < dofs.size(); ++i)
       {
         const Index row      = dofs[i];
-        res[row]            += scale * state[row] + 2.0 * params[row];
+        res[row]            += scale * state[row] + 2.0 * prm[row];
         state_jac(row, row) += scale;
         param_jac(row, row) += 2.0;
       }

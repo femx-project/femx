@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/petsc/TaoReducedFunctionalAdapter.hpp>
@@ -31,7 +32,7 @@ struct TaoOptions
 
 struct TaoResult
 {
-  Vector<Real>       params;
+  Vector<Real>       prm;
   Vector<Real>       grad;
   Real               value             = 0.0;
   Real               grad_norm_squared = 0.0;
@@ -118,8 +119,10 @@ private:
   };
 
 public:
-  explicit TaoOptimizer(ReducedFunctional& functional)
-    : functional_(&functional)
+  explicit TaoOptimizer(ReducedFunctional& functional,
+                        MPI_Comm           comm = PETSC_COMM_SELF)
+    : functional_(&functional),
+      comm_(comm)
   {
   }
 
@@ -166,13 +169,13 @@ public:
     monitor_ = nullptr;
   }
 
-  PetscErrorCode solve(const Vector<Real>& initial, TaoResult& result)
+  PetscErrorCode solve(const Vector<Real>& init, TaoResult& result)
   {
     if (functional_ == nullptr)
     {
       return PETSC_ERR_ARG_NULL;
     }
-    if (initial.size() != functional_->numParams())
+    if (init.size() != functional_->numParams())
     {
       return PETSC_ERR_ARG_SIZ;
     }
@@ -189,25 +192,25 @@ public:
       return PETSC_ERR_ORDER;
     }
 
-    ScopedVec params;
+    ScopedVec prm;
     ScopedVec lower;
     ScopedVec upper;
     ScopedTao tao;
 
     try
     {
-      PetscCall(VecCreateSeq(PETSC_COMM_SELF,
-                             static_cast<PetscInt>(functional_->numParams()),
-                             params.put()));
-      PetscCall(::femx::system::detail::copyToPETSc(initial,
-                                                    params.get()));
+      PetscCall(createVec(comm_,
+                          static_cast<PetscInt>(functional_->numParams()),
+                          prm));
+      PetscCall(::femx::system::detail::copyToPETSc(init,
+                                                    prm.get()));
 
       TaoReducedFunctionalAdapter adapter(*functional_);
 
-      PetscCall(TaoCreate(PETSC_COMM_SELF, tao.put()));
+      PetscCall(TaoCreate(comm_, tao.put()));
       PetscCall(TaoSetType(tao.get(), taoType()));
-      PetscCall(TaoSetSolution(tao.get(), params.get()));
-      PetscCall(adapter.setObjectiveAndGradient(tao.get()));
+      PetscCall(TaoSetSolution(tao.get(), prm.get()));
+      PetscCall(adapter.setValueGrad(tao.get()));
       if (monitor_)
       {
 #if PETSC_VERSION_GE(3, 21, 0)
@@ -220,8 +223,8 @@ public:
       }
       if (has_bounds_)
       {
-        PetscCall(VecDuplicate(params.get(), lower.put()));
-        PetscCall(VecDuplicate(params.get(), upper.put()));
+        PetscCall(VecDuplicate(prm.get(), lower.put()));
+        PetscCall(VecDuplicate(prm.get(), upper.put()));
         PetscCall(::femx::system::detail::copyToPETSc(bounds_.lower,
                                                       lower.get()));
         PetscCall(::femx::system::detail::copyToPETSc(bounds_.upper,
@@ -241,11 +244,9 @@ public:
       }
       PetscCall(TaoSolve(tao.get()));
 
-      PetscCall(::femx::system::detail::copyFromPETSc(params.get(),
-                                                      result.params));
-      result.value = functional_->valueGrad(result.params, result.grad);
-      result.grad_norm_squared =
-          ::femx::system::detail::norm2(result.grad);
+      PetscCall(::femx::system::detail::copyFromPETSc(prm.get(), result.prm));
+      result.value             = functional_->valueGrad(result.prm, result.grad);
+      result.grad_norm_squared = ::femx::squaredNorm(result.grad);
 
       PetscInt its = 0;
       PetscCall(TaoGetIterationNumber(tao.get(), &its));
@@ -282,11 +283,11 @@ private:
                                    &step_norm,
                                    &reason));
 
-    Vec params = nullptr;
-    PetscCall(TaoGetSolution(tao, &params));
+    Vec prm = nullptr;
+    PetscCall(TaoGetSolution(tao, &prm));
 
     Vector<Real> current;
-    PetscCall(::femx::system::detail::copyFromPETSc(params, current));
+    PetscCall(::femx::system::detail::copyFromPETSc(prm, current));
 
     const TaoIterationInfo info{
         static_cast<Index>(its),
@@ -338,8 +339,23 @@ private:
     return PETSC_SUCCESS;
   }
 
+  static PetscErrorCode createVec(MPI_Comm comm,
+                                  PetscInt size,
+                                  ScopedVec& vec)
+  {
+    PetscMPIInt comm_size = 1;
+    PetscCallMPI(MPI_Comm_size(comm, &comm_size));
+    const PetscInt local_size = comm_size == 1 ? size : PETSC_DECIDE;
+
+    PetscCall(VecCreate(comm, vec.put()));
+    PetscCall(VecSetSizes(vec.get(), local_size, size));
+    PetscCall(VecSetFromOptions(vec.get()));
+    return PETSC_SUCCESS;
+  }
+
 private:
   ReducedFunctional* functional_{nullptr};
+  MPI_Comm           comm_{PETSC_COMM_SELF};
   TaoOptions         options_;
   TaoBounds          bounds_;
   bool               has_bounds_{false};

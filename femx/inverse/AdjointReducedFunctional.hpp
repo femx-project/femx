@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdexcept>
-
 #include <femx/common/Types.hpp>
 #include <femx/eq/ResidualEquation.hpp>
 #include <femx/eq/StateSolver.hpp>
@@ -21,103 +19,31 @@ class AdjointReducedFunctional : public ReducedFunctional
 public:
   AdjointReducedFunctional(eq::StateSolver&            state_solver,
                            AdjointSolver&              adj_solver,
-                           const eq::ResidualEquation& equation,
-                           const ObjectiveFunctional&  objective)
-    : state_solver_(state_solver),
-      adjoint_solver_(adj_solver),
-      eq_(equation),
-      objective_(objective)
-  {
-    checkDimensions();
-  }
+                           const eq::ResidualEquation& eq,
+                           const ObjectiveFunctional&  obj);
 
-  Index numParams() const override
-  {
-    return state_solver_.numParams();
-  }
+  Index numParams() const override;
 
-  Real value(const Vector<Real>& params) override
-  {
-    Vector<Real> state;
-    state_solver_.solve(params, state);
-    return objective_.value(state, params);
-  }
+  Real value(const Vector<Real>& prm) override;
 
-  void grad(const Vector<Real>& params, Vector<Real>& out) override
-  {
-    Vector<Real> state;
-    state_solver_.solve(params, state);
-    gradientAtState(state, params, out);
-  }
+  void grad(const Vector<Real>& prm,
+            Vector<Real>&       out) override;
 
-  Real valueGrad(const Vector<Real>& params, Vector<Real>& grad_out) override
-  {
-    Vector<Real> state;
-    state_solver_.solve(params, state);
-    const Real obj_val = objective_.value(state, params);
-    gradientAtState(state, params, grad_out);
-    return obj_val;
-  }
+  Real valueGrad(const Vector<Real>& prm,
+                 Vector<Real>&       grad_out) override;
 
 private:
-  void checkDimensions() const
-  {
-    if (state_solver_.numStates() != objective_.numStates()
-        || state_solver_.numParams() != objective_.numParams()
-        || state_solver_.numStates() != eq_.numStates()
-        || state_solver_.numParams() != eq_.numParams()
-        || state_solver_.numStates() != adjoint_solver_.numStates()
-        || state_solver_.numParams() != adjoint_solver_.numParams()
-        || eq_.numRes() != adjoint_solver_.numRes())
-    {
-      throw std::runtime_error(
-          "AdjointReducedFunctional received inconsistent dimensions");
-    }
-  }
+  void checkDims() const;
 
-  void gradientAtState(const Vector<Real>& state,
-                       const Vector<Real>& params,
-                       Vector<Real>&       out) const
-  {
-    Vector<Real> state_grad;
-    objective_.stateGrad(state, params, state_grad);
-
-    Vector<Real> adjoint;
-    adjoint_solver_.solve(state, params, state_grad, adjoint);
-
-    Vector<Real> param_grad;
-    objective_.paramGrad(state, params, param_grad);
-
-    Vector<Real> res_param_adj;
-    eq_.applyParamJacT(state, params, adjoint, res_param_adj);
-
-    if (param_grad.size() != numParams()
-        || res_param_adj.size() != numParams())
-    {
-      throw std::runtime_error(
-          "AdjointReducedFunctional gradient size mismatch");
-    }
-
-    if (out.size() != numParams())
-    {
-      out.resize(numParams());
-    }
-    else
-    {
-      out.setZero();
-    }
-
-    for (Index i = 0; i < numParams(); ++i)
-    {
-      out[i] = param_grad[i] - res_param_adj[i];
-    }
-  }
+  void gradAt(const Vector<Real>& state,
+              const Vector<Real>& prm,
+              Vector<Real>&       out) const;
 
 private:
   eq::StateSolver&            state_solver_;
-  AdjointSolver&              adjoint_solver_;
+  AdjointSolver&              adj_solver_;
   const eq::ResidualEquation& eq_;
-  const ObjectiveFunctional&  objective_;
+  const ObjectiveFunctional&  obj_;
 };
 
 } // namespace inverse

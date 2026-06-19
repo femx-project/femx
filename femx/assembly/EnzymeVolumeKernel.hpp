@@ -23,13 +23,30 @@ using LocalVolumeResidualFunction =
              Index       dim,
              Index       num_res,
              Index       num_states,
-             Index       num_params,
+             Index       num_prm,
              const Real* N,
              const Real* dNdx,
              const Real* JxW,
              const Real* state,
-             const Real* params,
+             const Real* prm,
              Real*       out);
+
+inline bool canUseEnzymeVolumeKernel(const ElementValues& values,
+                                     Index                local_size,
+                                     Index                max_nodes,
+                                     Index                max_local_size)
+{
+#if defined(FEMX_HAS_ENZYME)
+  return values.numDofs() <= max_nodes && values.dim() <= 3
+         && local_size <= max_local_size;
+#else
+  (void) values;
+  (void) local_size;
+  (void) max_nodes;
+  (void) max_local_size;
+  return false;
+#endif
+}
 
 /** @brief Enzyme element kernel with volume element values. */
 template <LocalVolumeResidualFunction Residual>
@@ -40,21 +57,21 @@ public:
                      const GaussQuadrature& quadrature,
                      Index                  num_res,
                      Index                  num_states,
-                     Index                  num_params)
+                     Index                  num_prm)
     : space_(space),
       quad_(quadrature),
       num_res_(num_res),
       num_states_(num_states),
-      num_params_(num_params)
+      num_prm_(num_prm)
   {
-    if (num_res_ < 0 || num_states_ < 0 || num_params_ < 0)
+    if (num_res_ < 0 || num_states_ < 0 || num_prm_ < 0)
     {
       throw std::runtime_error(
           "EnzymeVolumeKernel received invalid dimensions");
     }
   }
 
-  void res(Index         ic,
+  void res(Index               ic,
            const Vector<Real>& u,
            const Vector<Real>& m,
            Vector<Real>&       out) const override
@@ -70,7 +87,7 @@ public:
              values.dim(),
              num_res_,
              num_states_,
-             num_params_,
+             num_prm_,
              values.NData(),
              values.dNdxData(),
              values.JxWData(),
@@ -79,10 +96,10 @@ public:
              out.data());
   }
 
-  void stateJac(Index         ic,
+  void stateJac(Index               ic,
                 const Vector<Real>& u,
                 const Vector<Real>& m,
-                DenseMatrix&  out) const override
+                DenseMatrix&        out) const override
   {
     checkInputSizes(u, m);
     out.resize(num_res_, num_states_);
@@ -116,7 +133,7 @@ public:
                               enzyme_const,
                               num_states_,
                               enzyme_const,
-                              num_params_,
+                              num_prm_,
                               enzyme_const,
                               values.NData(),
                               enzyme_const,
@@ -144,13 +161,13 @@ public:
 #endif
   }
 
-  void paramJac(Index         ic,
+  void paramJac(Index               ic,
                 const Vector<Real>& u,
                 const Vector<Real>& m,
-                DenseMatrix&  out) const override
+                DenseMatrix&        out) const override
   {
     checkInputSizes(u, m);
-    out.resize(num_res_, num_params_);
+    out.resize(num_res_, num_prm_);
 
 #if defined(FEMX_HAS_ENZYME)
     ElementValues values(space_.finiteElement(), quad_);
@@ -158,7 +175,7 @@ public:
 
     Vector<Real> primal_out(num_res_);
     Vector<Real> out_adj(num_res_);
-    Vector<Real> param_adj(num_params_);
+    Vector<Real> param_adj(num_prm_);
 
     for (Index row = 0; row < num_res_; ++row)
     {
@@ -181,7 +198,7 @@ public:
                               enzyme_const,
                               num_states_,
                               enzyme_const,
-                              num_params_,
+                              num_prm_,
                               enzyme_const,
                               values.NData(),
                               enzyme_const,
@@ -197,7 +214,7 @@ public:
                               primal_out.data(),
                               out_adj.data());
 
-      for (Index col = 0; col < num_params_; ++col)
+      for (Index col = 0; col < num_prm_; ++col)
       {
         out(row, col) = param_adj[col];
       }
@@ -212,7 +229,7 @@ public:
 private:
   void checkInputSizes(const Vector<Real>& u, const Vector<Real>& m) const
   {
-    if (u.size() != num_states_ || m.size() != num_params_)
+    if (u.size() != num_states_ || m.size() != num_prm_)
     {
       throw std::runtime_error(
           "EnzymeVolumeKernel input size mismatch");
@@ -242,7 +259,7 @@ private:
   const GaussQuadrature& quad_;
   Index                  num_res_{0};
   Index                  num_states_{0};
-  Index                  num_params_{0};
+  Index                  num_prm_{0};
 };
 
 } // namespace assembly

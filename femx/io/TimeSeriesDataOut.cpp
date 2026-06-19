@@ -370,7 +370,7 @@ void writeXdmf(const std::string&                          filename,
     for (const auto& vec : steps[s].vecs)
     {
       out << R"(        <Attribute Name=")" << vec.name
-          << R"(" AttributeType="Vector<Real>" Center="Node">)" << '\n';
+          << R"(" AttributeType="Vector" Center="Node">)" << '\n';
       out << R"(          <DataItem Dimensions=")" << mesh.numNodes()
           << R"( 3" NumberType="Float" Precision="8" Format="HDF">)"
           << h5_ref << ":/Data/" << step << "/" << vec.name

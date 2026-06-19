@@ -106,6 +106,34 @@ public:
     add(row, value);
   }
 
+  void addValues(const PetscInt*     rows,
+                 Index               count,
+                 const Vector<Real>& values)
+  {
+    if (values.size() != count)
+    {
+      throw std::runtime_error(
+          "PETScSystemVector local values size does not match dofs");
+    }
+    addValues(rows, count, values.data());
+  }
+
+  void addValues(const PetscInt* rows,
+                 Index           count,
+                 const Real*     values)
+  {
+    if (vec_ == nullptr)
+    {
+      throw std::runtime_error("PETScSystemVector is not initialized");
+    }
+    check(VecSetValues(vec_,
+                       static_cast<PetscInt>(count),
+                       rows,
+                       values,
+                       ADD_VALUES),
+          "VecSetValues");
+  }
+
   void finalize() override
   {
     if (vec_ == nullptr)
@@ -130,8 +158,7 @@ public:
     check(VecGetArray(vec(), &data), "VecGetArray");
     for (PetscInt i = begin; i < end; ++i)
     {
-      data[i - begin] =
-          static_cast<PetscScalar>(values[static_cast<Index>(i)]);
+      data[i - begin] = static_cast<PetscScalar>(values[static_cast<Index>(i)]);
     }
     check(VecRestoreArray(vec(), &data), "VecRestoreArray");
   }

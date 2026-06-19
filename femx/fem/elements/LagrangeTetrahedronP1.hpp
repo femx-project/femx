@@ -10,7 +10,7 @@ class LagrangeTetrahedronP1 : public FiniteElement
 public:
   static constexpr Index spatial_dim = 3;
   static constexpr Index nnodes      = 4;
-  static constexpr Index ndofs       = 4;
+  static constexpr Index num_dofs       = 4;
   static constexpr Index degree      = 1;
 
   std::string name() const override
@@ -30,7 +30,7 @@ public:
 
   Index numDofsPerElement() const override
   {
-    return ndofs;
+    return num_dofs;
   }
 
   Index order() const override

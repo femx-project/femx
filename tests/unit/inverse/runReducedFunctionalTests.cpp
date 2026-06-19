@@ -18,20 +18,20 @@ public:
     return 2;
   }
 
-  Real value(const Vector<Real>& params) override
+  Real value(const Vector<Real>& prm) override
   {
-    return 0.5 * params[0] * params[0]
-           + 2.0 * params[0] * params[1]
-           + 3.0 * params[1] * params[1]
-           - params[0]
-           + 4.0 * params[1];
+    return 0.5 * prm[0] * prm[0]
+           + 2.0 * prm[0] * prm[1]
+           + 3.0 * prm[1] * prm[1]
+           - prm[0]
+           + 4.0 * prm[1];
   }
 
-  void grad(const Vector<Real>& params, Vector<Real>& out) override
+  void grad(const Vector<Real>& prm, Vector<Real>& out) override
   {
     resize(out, numParams());
-    out[0] = params[0] + 2.0 * params[1] - 1.0;
-    out[1] = 2.0 * params[0] + 6.0 * params[1] + 4.0;
+    out[0] = prm[0] + 2.0 * prm[1] - 1.0;
+    out[1] = 2.0 * prm[0] + 6.0 * prm[1] + 4.0;
   }
 
 private:
@@ -59,30 +59,30 @@ public:
     QuadraticReducedFunctional functional;
     status *= (functional.numParams() == 2);
 
-    Vector<Real> params(2);
-    params[0] = 0.25;
-    params[1] = -0.5;
+    Vector<Real> prm(2);
+    prm[0] = 0.25;
+    prm[1] = -0.5;
 
     const Real expected_value =
-        0.5 * params[0] * params[0]
-        + 2.0 * params[0] * params[1]
-        + 3.0 * params[1] * params[1]
-        - params[0]
-        + 4.0 * params[1];
-    status *= isEqual(functional.value(params), expected_value);
+        0.5 * prm[0] * prm[0]
+        + 2.0 * prm[0] * prm[1]
+        + 3.0 * prm[1] * prm[1]
+        - prm[0]
+        + 4.0 * prm[1];
+    status *= isEqual(functional.value(prm), expected_value);
 
     Vector<Real> grad;
-    const Real   value_from_value_grad  = functional.valueGrad(params, grad);
+    const Real   value_from_value_grad  = functional.valueGrad(prm, grad);
     status                             *= isEqual(value_from_value_grad, expected_value);
-    status                             *= isEqual(grad[0], params[0] + 2.0 * params[1] - 1.0);
-    status                             *= isEqual(grad[1], 2.0 * params[0] + 6.0 * params[1] + 4.0);
+    status                             *= isEqual(grad[0], prm[0] + 2.0 * prm[1] - 1.0);
+    status                             *= isEqual(grad[1], 2.0 * prm[0] + 6.0 * prm[1] + 4.0);
 
     Vector<Real> dir(2);
     dir[0] = -0.75;
     dir[1] = 0.5;
 
     const inverse::DerivativeCheck check(1.0e-6);
-    status *= check.reducedGrad(functional, params, dir)
+    status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-8, 1.0e-8);
 
     return status.report(__func__);

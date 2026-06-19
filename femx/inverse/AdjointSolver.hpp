@@ -19,7 +19,7 @@ public:
   virtual Index numRes() const    = 0;
 
   virtual void solve(const Vector<Real>& state,
-                     const Vector<Real>& params,
+                     const Vector<Real>& prm,
                      const Vector<Real>& rhs,
                      Vector<Real>&       adjoint) = 0;
 };

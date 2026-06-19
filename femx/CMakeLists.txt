@@ -16,7 +16,7 @@ target_link_libraries(
             femx_ad
             femx_assembly
             femx_bc
-            femx_equation
+            femx_eq
             femx_fem
             femx_inverse
             femx_io

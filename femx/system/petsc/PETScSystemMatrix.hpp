@@ -10,6 +10,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>
 #include <femx/system/petsc/PETScSystemVector.hpp>
@@ -194,7 +195,58 @@ public:
 
   void addAtomic(Index row, Index col, Real value) override
   {
-    add(row, col, value);
+#pragma omp critical(femx_petsc_matrix_set_value)
+    {
+      add(row, col, value);
+    }
+  }
+
+  void addBlock(const PetscInt*    dofs,
+                Index              num_dofs,
+                const DenseMatrix& local)
+  {
+    addBlock(dofs, num_dofs, dofs, num_dofs, local);
+  }
+
+  void addBlock(const PetscInt* dofs,
+                Index           num_dofs,
+                const Real*     values)
+  {
+    addBlock(dofs, num_dofs, dofs, num_dofs, values);
+  }
+
+  void addBlock(const PetscInt*    rows,
+                Index              num_rows,
+                const PetscInt*    cols,
+                Index              num_cols,
+                const DenseMatrix& local)
+  {
+    if (local.rows() != num_rows || local.cols() != num_cols)
+    {
+      throw std::runtime_error(
+          "PETScSystemMatrix local block size does not match dofs");
+    }
+    addBlock(rows, num_rows, cols, num_cols, local.data());
+  }
+
+  void addBlock(const PetscInt* rows,
+                Index           num_rows,
+                const PetscInt* cols,
+                Index           num_cols,
+                const Real*     values)
+  {
+    if (mat_ == nullptr)
+    {
+      throw std::runtime_error("PETScSystemMatrix is not initialized");
+    }
+    check(MatSetValues(mat_,
+                       static_cast<PetscInt>(num_rows),
+                       rows,
+                       static_cast<PetscInt>(num_cols),
+                       cols,
+                       values,
+                       ADD_VALUES),
+          "MatSetValues");
   }
 
   void finalize() override
@@ -241,6 +293,34 @@ public:
                              values.vec(),
                              rhs.vec()),
           "MatZeroRowsColumns");
+  }
+
+  void zeroRows(const Vector<Index>& rows, Real diagonal)
+  {
+    if (rows.empty())
+    {
+      return;
+    }
+
+    std::vector<PetscInt> petsc_rows;
+    petsc_rows.reserve(static_cast<std::size_t>(rows.size()));
+    for (Index row : rows)
+    {
+      if (row < 0 || row >= rows_)
+      {
+        throw std::runtime_error(
+            "PETScSystemMatrix zeroRows row is out of range");
+      }
+      petsc_rows.push_back(static_cast<PetscInt>(row));
+    }
+
+    check(MatZeroRows(mat(),
+                      static_cast<PetscInt>(petsc_rows.size()),
+                      petsc_rows.data(),
+                      static_cast<PetscScalar>(diagonal),
+                      nullptr,
+                      nullptr),
+          "MatZeroRows");
   }
 
   void apply(const Vector<Real>& dir, Vector<Real>& out) const override

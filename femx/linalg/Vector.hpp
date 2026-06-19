@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <initializer_list>
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <femx/common/Types.hpp>
@@ -26,103 +28,210 @@ public:
   {
   }
 
+  Vector(const Vector& other)
+    : values_(other.begin(), other.end())
+  {
+  }
+
+  Vector(Vector&& other) noexcept
+    : values_(std::move(other.values_)),
+      view_data_(other.view_data_),
+      view_size_(other.view_size_)
+  {
+    other.view_data_ = nullptr;
+    other.view_size_ = 0;
+  }
+
+  Vector& operator=(const Vector& other)
+  {
+    assign(other.begin(), other.end(), other.size());
+    return *this;
+  }
+
+  Vector& operator=(Vector&& other)
+  {
+    if (isView())
+    {
+      assign(other.begin(), other.end(), other.size());
+    }
+    else if (other.isView())
+    {
+      values_.assign(other.begin(), other.end());
+    }
+    else
+    {
+      values_ = std::move(other.values_);
+    }
+    return *this;
+  }
+
+  Vector& operator=(std::initializer_list<T> values)
+  {
+    assign(values.begin(),
+           values.end(),
+           static_cast<Index>(values.size()));
+    return *this;
+  }
+
+  static Vector view(T* data,
+                     Index size)
+  {
+    if (size < 0)
+    {
+      throw std::runtime_error("Vector view size must be non-negative");
+    }
+    Vector out;
+    out.view_data_ = data;
+    out.view_size_ = size;
+    return out;
+  }
+
   void resize(Index size)
   {
+    if (size < 0)
+    {
+      throw std::runtime_error("Vector size must be non-negative");
+    }
+    if (isView())
+    {
+      if (size != view_size_)
+      {
+        throw std::runtime_error("Cannot resize a Vector view");
+      }
+      setZero();
+      return;
+    }
     values_.assign(static_cast<std::size_t>(size), T{});
   }
 
   Index size() const
   {
-    return static_cast<Index>(values_.size());
+    return isView() ? view_size_ : static_cast<Index>(values_.size());
   }
 
   bool empty() const
   {
-    return values_.empty();
+    return size() == 0;
   }
 
   void clear()
   {
+    ensureOwning("clear");
     values_.clear();
   }
 
   void reserve(Index size)
   {
+    ensureOwning("reserve");
     values_.reserve(static_cast<std::size_t>(size));
   }
 
   void push_back(const T& value)
   {
+    ensureOwning("push_back");
     values_.push_back(value);
   }
 
   T& front()
   {
-    return values_.front();
+    return data()[0];
   }
 
   T front() const
   {
-    return values_.front();
+    return data()[0];
   }
 
   T& back()
   {
-    return values_.back();
+    return data()[size() - 1];
   }
 
   T back() const
   {
-    return values_.back();
+    return data()[size() - 1];
   }
 
   T& operator[](Index i)
   {
-    return values_[static_cast<std::size_t>(i)];
+    return data()[static_cast<std::size_t>(i)];
   }
 
   T operator[](Index i) const
   {
-    return values_[static_cast<std::size_t>(i)];
+    return data()[static_cast<std::size_t>(i)];
   }
 
   T* data()
   {
-    return values_.data();
+    return isView() ? view_data_ : values_.data();
   }
 
   const T* data() const
   {
-    return values_.data();
+    return isView() ? view_data_ : values_.data();
   }
 
-  auto begin()
+  T* begin()
   {
-    return values_.begin();
+    return data();
   }
 
-  auto begin() const
+  const T* begin() const
   {
-    return values_.begin();
+    return data();
   }
 
-  auto end()
+  T* end()
   {
-    return values_.end();
+    return data() + size();
   }
 
-  auto end() const
+  const T* end() const
   {
-    return values_.end();
+    return data() + size();
   }
 
   void setZero()
   {
-    std::fill(values_.begin(), values_.end(), T{});
+    std::fill(begin(), end(), T{});
   }
 
 private:
+  bool isView() const
+  {
+    return view_data_ != nullptr;
+  }
+
+  void ensureOwning(const char* operation) const
+  {
+    if (isView())
+    {
+      throw std::runtime_error(std::string("Cannot ") + operation
+                               + " a Vector view");
+    }
+  }
+
+  template <typename It>
+  void assign(It begin_it,
+              It end_it,
+              Index input_size)
+  {
+    if (isView())
+    {
+      if (input_size != view_size_)
+      {
+        throw std::runtime_error("Vector view assignment size mismatch");
+      }
+      std::copy(begin_it, end_it, data());
+      return;
+    }
+    values_.assign(begin_it, end_it);
+  }
+
   std::vector<T> values_;
+  T*             view_data_{nullptr};
+  Index          view_size_{0};
 };
 
 } // namespace femx

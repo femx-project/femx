@@ -29,59 +29,59 @@ public:
   }
 
   void res(const Vector<Real>& state,
-           const Vector<Real>& params,
+           const Vector<Real>& prm,
            Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
-             + 5.0 * params[0] - 2.0 * params[1];
+             + 5.0 * prm[0] - 2.0 * prm[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
-             + 13.0 * params[0] + 4.0 * params[1];
+             + 13.0 * prm[0] + 4.0 * prm[1];
   }
 
   void applyStateJac(const Vector<Real>& state,
-                     const Vector<Real>& params,
+                     const Vector<Real>& prm,
                      const Vector<Real>& dir,
                      Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numRes());
     out[0] = 2.0 * dir[0] + 3.0 * dir[1];
     out[1] = 7.0 * dir[0] + 11.0 * dir[1];
   }
 
   void applyStateJacT(const Vector<Real>& state,
-                      const Vector<Real>& params,
+                      const Vector<Real>& prm,
                       const Vector<Real>& lambda,
                       Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numStates());
     out[0] = 2.0 * lambda[0] + 7.0 * lambda[1];
     out[1] = 3.0 * lambda[0] + 11.0 * lambda[1];
   }
 
   void applyParamJac(const Vector<Real>& state,
-                     const Vector<Real>& params,
+                     const Vector<Real>& prm,
                      const Vector<Real>& dir,
                      Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numRes());
     out[0] = 5.0 * dir[0] - 2.0 * dir[1];
     out[1] = 13.0 * dir[0] + 4.0 * dir[1];
   }
 
   void applyParamJacT(const Vector<Real>& state,
-                      const Vector<Real>& params,
+                      const Vector<Real>& prm,
                       const Vector<Real>& lambda,
                       Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numParams());
     out[0] = 5.0 * lambda[0] + 13.0 * lambda[1];
     out[1] = -2.0 * lambda[0] + 4.0 * lambda[1];
@@ -114,12 +114,12 @@ public:
     return 2;
   }
 
-  void solve(const Vector<Real>& params, Vector<Real>& state) override
+  void solve(const Vector<Real>& prm, Vector<Real>& state) override
   {
     resize(state, numStates());
 
-    const Real b0 = 5.0 * params[0] - 2.0 * params[1];
-    const Real b1 = 13.0 * params[0] + 4.0 * params[1];
+    const Real b0 = 5.0 * prm[0] - 2.0 * prm[1];
+    const Real b1 = 13.0 * prm[0] + 4.0 * prm[1];
 
     state[0] = -(11.0 * b0 - 3.0 * b1);
     state[1] = -(-7.0 * b0 + 2.0 * b1);
@@ -158,12 +158,12 @@ public:
   }
 
   void solve(const Vector<Real>& state,
-             const Vector<Real>& params,
+             const Vector<Real>& prm,
              const Vector<Real>& rhs,
              Vector<Real>&       adjoint) override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(adjoint, numRes());
 
     const Real det = 2.0 * 11.0 - 7.0 * 3.0;
@@ -199,32 +199,32 @@ public:
   }
 
   Real value(const Vector<Real>& state,
-             const Vector<Real>& params) const override
+             const Vector<Real>& prm) const override
   {
     const Real e0 = state[0] - target_[0];
     const Real e1 = state[1] - target_[1];
     return 0.5 * (e0 * e0 + e1 * e1)
-           + 0.5 * regularization_ * (params[0] * params[0] + params[1] * params[1]);
+           + 0.5 * regularization_ * (prm[0] * prm[0] + prm[1] * prm[1]);
   }
 
   void stateGrad(const Vector<Real>& state,
-                 const Vector<Real>& params,
+                 const Vector<Real>& prm,
                  Vector<Real>&       out) const override
   {
-    (void) params;
+    (void) prm;
     resize(out, numStates());
     out[0] = state[0] - target_[0];
     out[1] = state[1] - target_[1];
   }
 
   void paramGrad(const Vector<Real>& state,
-                 const Vector<Real>& params,
+                 const Vector<Real>& prm,
                  Vector<Real>&       out) const override
   {
     (void) state;
     resize(out, numParams());
-    out[0] = regularization_ * params[0];
-    out[1] = regularization_ * params[1];
+    out[0] = regularization_ * prm[0];
+    out[1] = regularization_ * prm[1];
   }
 
 private:
@@ -255,27 +255,27 @@ public:
 
     LinearStateSolver      state_solver;
     LinearAdjointSolver    adj_solver;
-    LinearResidualEquation equation;
-    TrackingObjective      objective;
+    LinearResidualEquation eq;
+    TrackingObjective      obj;
 
     inverse::AdjointReducedFunctional functional(
-        state_solver, adj_solver, equation, objective);
+        state_solver, adj_solver, eq, obj);
 
     status *= (functional.numParams() == 2);
 
-    Vector<Real> params(2);
-    params[0] = 0.05;
-    params[1] = -0.02;
+    Vector<Real> prm(2);
+    prm[0] = 0.05;
+    prm[1] = -0.02;
 
     Vector<Real> state;
-    state_solver.solve(params, state);
+    state_solver.solve(prm, state);
 
-    status *= isEqual(functional.value(params),
-                      objective.value(state, params));
+    status *= isEqual(functional.value(prm),
+                      obj.value(state, prm));
 
     Vector<Real> grad;
-    const Real   value_from_value_grad  = functional.valueGrad(params, grad);
-    status                             *= isEqual(value_from_value_grad, functional.value(params));
+    const Real   value_from_value_grad  = functional.valueGrad(prm, grad);
+    status                             *= isEqual(value_from_value_grad, functional.value(prm));
     status                             *= (grad.size() == functional.numParams());
 
     Vector<Real> dir(2);
@@ -283,7 +283,7 @@ public:
     dir[1] = 0.4;
 
     const inverse::DerivativeCheck check(1.0e-6);
-    status *= check.reducedGrad(functional, params, dir)
+    status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 
     return status.report(__func__);

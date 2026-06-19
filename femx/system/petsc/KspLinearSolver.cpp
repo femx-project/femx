@@ -171,6 +171,13 @@ private:
                            Vector<Real>&         out,
                            bool                  transpose)
   {
+    if (const auto* petsc_mat =
+            dynamic_cast<const PETScSystemMatrix*>(&op))
+    {
+      solveSystem(*petsc_mat, rhs, out, transpose);
+      return;
+    }
+
     if (op.numRows() != op.numCols())
     {
       throw std::runtime_error("KspLinearSolver requires a square operator");
@@ -196,6 +203,7 @@ private:
     check(VecCreateSeq(PETSC_COMM_SELF, size, rhs_vec.put()), "VecCreateSeq");
     check(VecDuplicate(rhs_vec.get(), out_vec.put()), "VecDuplicate");
     check(detail::copyToPETSc(rhs, rhs_vec.get()), "copyToPETSc");
+    setInitialGuess(out_vec.get(), out, op.numRows());
 
     Mat mat = matrixForOperator(op, context, shell, size);
 
@@ -214,6 +222,53 @@ private:
     }
 
     updateStats(ksp.get());
+    checkConverged();
+
+    check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
+  }
+
+  void solveSystem(const PETScSystemMatrix& op,
+                   const Vector<Real>&      rhs,
+                   Vector<Real>&            out,
+                   bool                     transpose)
+  {
+    if (op.numRows() != op.numCols())
+    {
+      throw std::runtime_error(
+          "KspLinearSolver requires a square PETSc matrix");
+    }
+    if (rhs.size() != op.numRows())
+    {
+      throw std::runtime_error(
+          "KspLinearSolver received inconsistent rhs size");
+    }
+
+    checkSameComm(comm_, op.comm(), "matrix");
+
+    const PetscInt size = static_cast<PetscInt>(op.numRows());
+
+    ScopedVec rhs_vec;
+    ScopedVec out_vec;
+    createVec(op.comm(), size, rhs_vec);
+    check(VecDuplicate(rhs_vec.get(), out_vec.put()), "VecDuplicate");
+    check(detail::copyToPETSc(rhs, rhs_vec.get()), "copyToPETSc");
+    setInitialGuess(out_vec.get(), out, op.numRows());
+
+    ensureKsp();
+    configureKsp(ksp_);
+    check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
+
+    if (transpose)
+    {
+      check(KSPSolveTranspose(ksp_, rhs_vec.get(), out_vec.get()),
+            "KSPSolveTranspose");
+    }
+    else
+    {
+      check(KSPSolve(ksp_, rhs_vec.get(), out_vec.get()), "KSPSolve");
+    }
+
+    updateStats(ksp_);
     checkConverged();
 
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
@@ -291,6 +346,31 @@ private:
     return shell.get();
   }
 
+  static void createVec(MPI_Comm comm,
+                        PetscInt size,
+                        ScopedVec& vec)
+  {
+    PetscMPIInt comm_size = 1;
+    checkMPI(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
+    const PetscInt local_size = comm_size == 1 ? size : PETSC_DECIDE;
+
+    check(VecCreate(comm, vec.put()), "VecCreate");
+    check(VecSetSizes(vec.get(), local_size, size), "VecSetSizes");
+    check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
+  }
+
+  void setInitialGuess(Vec                 vec,
+                       const Vector<Real>& guess,
+                       Index               size)
+  {
+    if (options_.nonzero_guess && guess.size() == size)
+    {
+      check(detail::copyToPETSc(guess, vec), "copyToPETSc");
+      return;
+    }
+    check(VecSet(vec, 0.0), "VecSet");
+  }
+
   static PetscErrorCode matMult(Mat shell, Vec x, Vec y)
   {
     ShellContext* context = nullptr;
@@ -340,6 +420,14 @@ private:
   static void check(PetscErrorCode ierr, const char* operation)
   {
     if (ierr != PETSC_SUCCESS)
+    {
+      throw std::runtime_error(std::string(operation) + " failed");
+    }
+  }
+
+  static void checkMPI(int ierr, const char* operation)
+  {
+    if (ierr != MPI_SUCCESS)
     {
       throw std::runtime_error(std::string(operation) + " failed");
     }

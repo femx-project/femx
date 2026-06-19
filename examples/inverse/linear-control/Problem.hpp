@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include <femx/eq/AssembledResidualEquation.hpp>
+#include <femx/eq/MatrixResidualEquation.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/ObservationOperator.hpp>
 #include <femx/inverse/QuadraticParameterRegularization.hpp>
@@ -15,7 +15,7 @@ namespace femx
 namespace examples_inverse_linear_control
 {
 
-inline void resize(Vector& out, Index size)
+inline void resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -27,7 +27,7 @@ inline void resize(Vector& out, Index size)
   }
 }
 
-class LinearResidualEquation final : public eq::AssembledResidualEquation
+class LinearResidualEquation final : public eq::MatrixResidualEquation
 {
 public:
   Index numStates() const override
@@ -45,23 +45,23 @@ public:
     return 2;
   }
 
-  void res(const Vector& state,
-           const Vector& params,
-           Vector&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& prm,
+           Vector<Real>&       out) const override
   {
     resize(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
-             + 5.0 * params[0] - 2.0 * params[1];
+             + 5.0 * prm[0] - 2.0 * prm[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
-             + 13.0 * params[0] + 4.0 * params[1];
+             + 13.0 * prm[0] + 4.0 * prm[1];
   }
 
-  void assembleStateJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleStateJac(const Vector<Real>&   state,
+                        const Vector<Real>&   prm,
                         system::SystemMatrix& out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     out.resize(numRes(), numStates());
     out.setZero();
     out.set(0, 0, 2.0);
@@ -70,12 +70,12 @@ public:
     out.set(1, 1, 11.0);
   }
 
-  void assembleParamJac(const Vector&         state,
-                        const Vector&         params,
+  void assembleParamJac(const Vector<Real>&   state,
+                        const Vector<Real>&   prm,
                         system::SystemMatrix& out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     out.resize(numRes(), numParams());
     out.setZero();
     out.set(0, 0, 5.0);
@@ -103,74 +103,74 @@ public:
     return 2;
   }
 
-  void observe(const Vector& state,
-               const Vector& params,
-               Vector&       out) const override
+  void observe(const Vector<Real>& state,
+               const Vector<Real>& prm,
+               Vector<Real>&       out) const override
   {
-    (void) params;
+    (void) prm;
     resize(out, numObservations());
     out[0] = state[0];
     out[1] = state[1];
   }
 
-  void applyStateJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyStateJac(const Vector<Real>& state,
+                     const Vector<Real>& prm,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numObservations());
     out[0] = dir[0];
     out[1] = dir[1];
   }
 
-  void applyStateJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& dir,
-                      Vector&       out) const override
+  void applyStateJacT(const Vector<Real>& state,
+                      const Vector<Real>& prm,
+                      const Vector<Real>& dir,
+                      Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     resize(out, numStates());
     out[0] = dir[0];
     out[1] = dir[1];
   }
 
-  void applyParamJac(const Vector& state,
-                     const Vector& params,
-                     const Vector& dir,
-                     Vector&       out) const override
+  void applyParamJac(const Vector<Real>& state,
+                     const Vector<Real>& prm,
+                     const Vector<Real>& dir,
+                     Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     (void) dir;
     resize(out, numObservations());
   }
 
-  void applyParamJacT(const Vector& state,
-                      const Vector& params,
-                      const Vector& dir,
-                      Vector&       out) const override
+  void applyParamJacT(const Vector<Real>& state,
+                      const Vector<Real>& prm,
+                      const Vector<Real>& dir,
+                      Vector<Real>&       out) const override
   {
     (void) state;
-    (void) params;
+    (void) prm;
     (void) dir;
     resize(out, numParams());
   }
 };
 
-inline Vector makeStateTarget()
+inline Vector<Real> makeStateTarget()
 {
-  Vector target(2);
+  Vector<Real> target(2);
   target[0] = 0.25;
   target[1] = -0.75;
   return target;
 }
 
-inline Vector makeZeroParams()
+inline Vector<Real> makeZeroParams()
 {
-  Vector reference(2);
+  Vector<Real> reference(2);
   reference[0] = 0.0;
   reference[1] = 0.0;
   return reference;
@@ -179,9 +179,9 @@ inline Vector makeZeroParams()
 struct LinearControlObjectiveParts
 {
   StateTrackingObservation                  observation;
-  Vector                                    target;
+  Vector<Real>                              target;
   inverse::LeastSquaresObjective            tracking;
-  Vector                                    reference;
+  Vector<Real>                              reference;
   inverse::QuadraticParameterRegularization regularization;
   inverse::SumObjectiveFunctional           objective;
 
@@ -196,9 +196,9 @@ struct LinearControlObjectiveParts
   }
 };
 
-inline void printVector(const char*   name,
-                        const Vector& x,
-                        std::ostream& out = std::cout)
+inline void printVector(const char*         name,
+                        const Vector<Real>& x,
+                        std::ostream&       out = std::cout)
 {
   out << name << " = [";
   for (Index i = 0; i < x.size(); ++i)

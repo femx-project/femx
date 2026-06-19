@@ -28,12 +28,12 @@ public:
   }
 
   void solve(const Vector<Real>& state,
-             const Vector<Real>& params,
+             const Vector<Real>& prm,
              const Vector<Real>& rhs,
              Vector<Real>&       adjoint) override
   {
     (void) state;
-    (void) params;
+    (void) prm;
 
     if (adjoint.size() != numRes())
     {
@@ -67,15 +67,15 @@ public:
     state[0] = 0.25;
     state[1] = -0.5;
 
-    Vector<Real> params(1);
-    params[0] = 2.0;
+    Vector<Real> prm(1);
+    prm[0] = 2.0;
 
     Vector<Real> rhs(2);
     rhs[0] = -1.5;
     rhs[1] = 4.0;
 
     Vector<Real> adjoint;
-    solver.solve(state, params, rhs, adjoint);
+    solver.solve(state, prm, rhs, adjoint);
 
     status *= (adjoint.size() == solver.numRes());
     status *= isEqual(2.0 * adjoint[0] + 7.0 * adjoint[1], rhs[0]);

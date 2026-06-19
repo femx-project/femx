@@ -26,7 +26,7 @@ void localVolumeResidual(femx::Index       cell,
                          femx::Index       dim,
                          femx::Index       num_res,
                          femx::Index       num_states,
-                         femx::Index       num_params,
+                         femx::Index       num_prm,
                          const femx::Real* N,
                          const femx::Real* dNdx,
                          const femx::Real* JxW,
@@ -38,7 +38,7 @@ void localVolumeResidual(femx::Index       cell,
   (void) dim;
   (void) num_res;
   (void) num_states;
-  (void) num_params;
+  (void) num_prm;
   (void) dNdx;
 
   for (femx::Index i = 0; i < num_nodes; ++i)
@@ -72,7 +72,7 @@ void localBoundaryResidual(femx::Index       facet,
                            femx::Index       dim,
                            femx::Index       num_res,
                            femx::Index       num_states,
-                           femx::Index       num_params,
+                           femx::Index       num_prm,
                            const femx::Real* N,
                            const femx::Real* point,
                            const femx::Real* normal,
@@ -85,7 +85,7 @@ void localBoundaryResidual(femx::Index       facet,
   (void) dim;
   (void) num_res;
   (void) num_states;
-  (void) num_params;
+  (void) num_prm;
   (void) point;
   (void) normal;
 
@@ -139,13 +139,13 @@ int main(int, char**)
   femx::FESpace        volume_space(&volume_mesh, &volume_elem);
   volume_space.setup();
 
-  femx::Vector<Real> u(4);
+  femx::Vector<femx::Real> u(4);
   u[0] = 1.5;
   u[1] = -0.25;
   u[2] = 0.75;
   u[3] = 2.0;
 
-  femx::Vector<Real> m(4);
+  femx::Vector<femx::Real> m(4);
   m[0] = 0.2;
   m[1] = -0.4;
   m[2] = 0.6;
@@ -155,7 +155,7 @@ int main(int, char**)
   femx::assembly::EnzymeVolumeKernel<localVolumeResidual>
       volume_kernel(volume_space, volume_quad, 4, 4, 4);
 
-  femx::Vector<Real> volume_res;
+  femx::Vector<femx::Real> volume_res;
   volume_kernel.res(0, u, m, volume_res);
 
   const femx::Real volume_uq =
@@ -204,11 +204,11 @@ int main(int, char**)
     }
   }
 
-  femx::Vector<Real> boundary_u(2);
+  femx::Vector<femx::Real> boundary_u(2);
   boundary_u[0] = 1.5;
   boundary_u[1] = -0.25;
 
-  femx::Vector<Real> boundary_m(2);
+  femx::Vector<femx::Real> boundary_m(2);
   boundary_m[0] = 0.2;
   boundary_m[1] = -0.4;
 
@@ -224,7 +224,7 @@ int main(int, char**)
   femx::assembly::EnzymeBoundaryKernel<localBoundaryResidual>
       boundary_kernel(mesh, quad, 2, 2, 2);
 
-  femx::Vector<Real> integral_res;
+  femx::Vector<femx::Real> integral_res;
   boundary_kernel.res(0, integral_facet, boundary_u, boundary_m, integral_res);
 
   const femx::Real uq     = 0.5 * (boundary_u[0] + boundary_u[1]);

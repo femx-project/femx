@@ -4,9 +4,9 @@
 #include <iostream>
 
 #include "Problem.hpp"
-#include <femx/eq/AssembledNewtonStateSolver.hpp>
+#include <femx/eq/MatrixNewtonStateSolver.hpp>
 #include <femx/inverse/AdjointReducedFunctional.hpp>
-#include <femx/inverse/MatrixEquationAdjointSolver.hpp>
+#include <femx/inverse/MatrixAdjointSolver.hpp>
 #include <femx/inverse/petsc/TaoOptimizer.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/petsc/KspLinearSolver.hpp>
@@ -29,16 +29,16 @@ PetscErrorCode runOptimization()
   lin_solver.options().atol        = 1.0e-14;
   lin_solver.options().use_opts_db = true;
 
-  eq::AssembledNewtonStateSolver state_solver(
+  eq::MatrixNewtonStateSolver state_solver(
       res_eq, state_jac, lin_solver);
-  inverse::MatrixEquationAdjointSolver adj_solver(
+  inverse::MatrixAdjointSolver adj_solver(
       res_eq, adj_state_jac, lin_solver);
   LinearControlObjectiveParts objective_parts;
 
   inverse::AdjointReducedFunctional functional(
       state_solver, adj_solver, res_eq, objective_parts.objective);
 
-  Vector initial(2);
+  Vector<Real> initial(2);
   initial[0] = 0.05;
   initial[1] = -0.02;
 
@@ -51,13 +51,13 @@ PetscErrorCode runOptimization()
   inverse::TaoResult result;
   PetscCall(optimizer.solve(initial, result));
 
-  Vector state;
-  state_solver.solve(result.params, state);
+  Vector<Real> state;
+  state_solver.solve(result.prm, state);
 
   std::cout << std::setprecision(12);
   std::cout << "example-inverse-linear-control\n";
-  printVector("initial params", initial);
-  printVector("params", result.params);
+  printVector("initial prm", initial);
+  printVector("prm", result.prm);
   printVector("state", state);
   std::cout << "value = " << result.value << '\n';
   printVector("grad", result.grad);

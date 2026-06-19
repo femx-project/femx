@@ -1,16 +1,16 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include <femx/linalg/CsrPattern.hpp>
 
 namespace femx
 {
 
-CsrPattern::CsrPattern(
-    Index                             rows,
-    Index                             cols,
-    const std::vector<Vector<Index>>& cdofs)
+CsrPattern::CsrPattern(Index               rows,
+                       Index               cols,
+                       const IndexSetList& cdofs)
 {
   if (rows < 0 || cols < 0)
   {
@@ -19,54 +19,52 @@ CsrPattern::CsrPattern(
 
   num_rows_  = rows;
   num_cols_  = cols;
-  num_elems_ = static_cast<Index>(cdofs.size());
+  num_elems_ = cdofs.numSets();
 
   elem_coo_offsets_.assign(static_cast<std::size_t>(num_elems_ + 1), 0);
   elem_num_dofs_.assign(static_cast<std::size_t>(num_elems_), 0);
 
   countCooEntries(cdofs);
 
-  std::vector<Index> coo_rows(static_cast<std::size_t>(num_coo_entries_));
-  std::vector<Index> coo_cols(static_cast<std::size_t>(num_coo_entries_));
-  std::vector<Index> order(static_cast<std::size_t>(num_coo_entries_));
+  Vector<Index> coo_rows(num_coo_entries_);
+  Vector<Index> coo_cols(num_coo_entries_);
+  Vector<Index> order(num_coo_entries_);
 
   setupCooArrays(cdofs, coo_rows, coo_cols, order);
   setupCsrArrays(coo_rows, coo_cols, order);
 }
 
-void CsrPattern::countCooEntries(
-    const std::vector<Vector<Index>>& cdofs)
+void CsrPattern::countCooEntries(const IndexSetList& cdofs)
 {
   num_coo_entries_ = 0;
 
   for (Index ic = 0; ic < num_elems_; ++ic)
   {
-    const auto& dofs  = cdofs[static_cast<std::size_t>(ic)];
-    const Index ndofs = dofs.size();
+    const Index num_dofs = cdofs.setSize(ic);
 
-    elem_num_dofs_[ic]  = ndofs;
-    num_coo_entries_   += ndofs * ndofs;
+    elem_num_dofs_[ic]  = num_dofs;
+    num_coo_entries_   += num_dofs * num_dofs;
   }
 }
 
 void CsrPattern::setupCooArrays(
-    const std::vector<Vector<Index>>& cdofs,
-    std::vector<Index>&               coo_rows,
-    std::vector<Index>&               coo_cols,
-    std::vector<Index>&               order)
+    const IndexSetList& cdofs,
+    Vector<Index>&      coo_rows,
+    Vector<Index>&      coo_cols,
+    Vector<Index>&      order)
 {
   Index counter = 0;
 
   for (Index ic = 0; ic < num_elems_; ++ic)
   {
-    const auto& dofs  = cdofs[static_cast<std::size_t>(ic)];
-    const Index ndofs = elem_num_dofs_[ic];
+    const Vector<Index> dofs = cdofs.set(ic);
+    const Index num_dofs = elem_num_dofs_[ic];
 
     elem_coo_offsets_[ic] = counter;
 
-    for (Index i = 0; i < ndofs; ++i)
+    for (Index i = 0; i < num_dofs; ++i)
     {
-      for (Index j = 0; j < ndofs; ++j)
+      for (Index j = 0; j < num_dofs; ++j)
       {
         const Index row = dofs[i];
         const Index col = dofs[j];
@@ -86,9 +84,9 @@ void CsrPattern::setupCooArrays(
   elem_coo_offsets_[num_elems_] = num_coo_entries_;
 }
 
-void CsrPattern::setupCsrArrays(const std::vector<Index>& coo_rows,
-                                const std::vector<Index>& coo_cols,
-                                std::vector<Index>&       order)
+void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
+                                const Vector<Index>& coo_cols,
+                                Vector<Index>&       order)
 {
   std::sort(order.begin(),
             order.end(),

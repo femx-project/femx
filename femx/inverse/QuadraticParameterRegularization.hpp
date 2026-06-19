@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdexcept>
-
 #include <femx/common/Types.hpp>
 #include <femx/inverse/ObjectiveFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -17,87 +15,27 @@ class QuadraticParameterRegularization final : public ObjectiveFunctional
 public:
   QuadraticParameterRegularization(Index               num_states,
                                    const Vector<Real>& reference,
-                                   Real                weight)
-    : num_states_(num_states),
-      reference_(reference),
-      weight_(weight)
-  {
-    if (num_states_ < 0 || weight_ < 0.0)
-    {
-      throw std::runtime_error(
-          "QuadraticParameterRegularization received invalid dimensions or weight");
-    }
-  }
+                                   Real                weight);
 
-  Index numStates() const override
-  {
-    return num_states_;
-  }
+  Index numStates() const override;
 
-  Index numParams() const override
-  {
-    return reference_.size();
-  }
+  Index numParams() const override;
 
   Real value(const Vector<Real>& state,
-             const Vector<Real>& params) const override
-  {
-    (void) state;
-    checkParams(params);
-
-    Real value_out = 0.0;
-    for (Index i = 0; i < numParams(); ++i)
-    {
-      const Real diff  = params[i] - reference_[i];
-      value_out       += diff * diff;
-    }
-    return 0.5 * weight_ * value_out;
-  }
+             const Vector<Real>& prm) const override;
 
   void stateGrad(const Vector<Real>& state,
-                 const Vector<Real>& params,
-                 Vector<Real>&       out) const override
-  {
-    (void) state;
-    (void) params;
-    resize(out, numStates());
-  }
+                 const Vector<Real>& prm,
+                 Vector<Real>&       out) const override;
 
   void paramGrad(const Vector<Real>& state,
-                 const Vector<Real>& params,
-                 Vector<Real>&       out) const override
-  {
-    (void) state;
-    checkParams(params);
-    resize(out, numParams());
-
-    for (Index i = 0; i < numParams(); ++i)
-    {
-      out[i] = weight_ * (params[i] - reference_[i]);
-    }
-  }
+                 const Vector<Real>& prm,
+                 Vector<Real>&       out) const override;
 
 private:
-  void checkParams(const Vector<Real>& params) const
-  {
-    if (params.size() != numParams())
-    {
-      throw std::runtime_error(
-          "QuadraticParameterRegularization parameter size mismatch");
-    }
-  }
+  void checkParams(const Vector<Real>& prm) const;
 
-  static void resize(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
-    }
-  }
+  static void resize(Vector<Real>& out, Index size);
 
 private:
   Index        num_states_{0};

@@ -1,3 +1,15 @@
+add_executable(runMathTests unit/common/runMathTests.cpp)
+
+target_link_libraries(runMathTests PRIVATE femx::femx)
+
+add_test(NAME MathTests COMMAND runMathTests)
+
+add_executable(runVelocityProfileTests unit/bc/runVelocityProfileTests.cpp)
+
+target_link_libraries(runVelocityProfileTests PRIVATE femx::femx)
+
+add_test(NAME VelocityProfileTests COMMAND runVelocityProfileTests)
+
 add_executable(runLagrangeQuadQ1Tests unit/fem/runLagrangeQuadQ1Tests.cpp)
 
 target_link_libraries(runLagrangeQuadQ1Tests PRIVATE femx::femx)
@@ -32,6 +44,38 @@ target_link_libraries(runLeastSquaresObjectiveTests PRIVATE femx::femx)
 
 add_test(NAME LeastSquaresObjectiveTests COMMAND runLeastSquaresObjectiveTests)
 
+add_executable(runTimeLeastSquaresObjectiveTests
+               unit/inverse/runTimeLeastSquaresObjectiveTests.cpp)
+
+target_link_libraries(runTimeLeastSquaresObjectiveTests PRIVATE femx::femx)
+
+add_test(NAME TimeLeastSquaresObjectiveTests
+         COMMAND runTimeLeastSquaresObjectiveTests)
+
+add_executable(runTimePointSamplerTests
+               unit/inverse/runTimePointSamplerTests.cpp)
+
+target_link_libraries(runTimePointSamplerTests PRIVATE femx::femx)
+
+add_test(NAME TimePointSamplerTests COMMAND runTimePointSamplerTests)
+
+add_executable(runVtiWriterTests unit/io/runVtiWriterTests.cpp)
+
+target_link_libraries(runVtiWriterTests PRIVATE femx::femx)
+
+add_test(NAME VtiWriterTests COMMAND runVtiWriterTests)
+
+if(TARGET make_obs_config)
+  add_executable(runMakeObsObservationVtiTests
+                 unit/io/runMakeObsObservationVtiTests.cpp)
+
+  target_link_libraries(runMakeObsObservationVtiTests
+                        PRIVATE make_obs_config femx::femx)
+
+  add_test(NAME MakeObsObservationVtiTests
+           COMMAND runMakeObsObservationVtiTests)
+endif()
+
 add_executable(runObjectiveCompositionTests
                unit/inverse/runObjectiveCompositionTests.cpp)
 
@@ -45,18 +89,17 @@ target_link_libraries(runDerivativeCheckTests PRIVATE femx::femx)
 
 add_test(NAME DerivativeCheckTests COMMAND runDerivativeCheckTests)
 
-add_executable(runEquationSolverTests unit/equation/runEquationSolverTests.cpp)
+add_executable(runOperatorSolverTests unit/equation/runOperatorSolverTests.cpp)
 
-target_link_libraries(runEquationSolverTests PRIVATE femx::femx)
+target_link_libraries(runOperatorSolverTests PRIVATE femx::femx)
 
-add_test(NAME EquationSolverTests COMMAND runEquationSolverTests)
+add_test(NAME OperatorSolverTests COMMAND runOperatorSolverTests)
 
-add_executable(runMatrixEquationSolverTests
-               unit/equation/runMatrixEquationSolverTests.cpp)
+add_executable(runMatrixSolverTests unit/equation/runMatrixSolverTests.cpp)
 
-target_link_libraries(runMatrixEquationSolverTests PRIVATE femx::femx)
+target_link_libraries(runMatrixSolverTests PRIVATE femx::femx)
 
-add_test(NAME MatrixEquationSolverTests COMMAND runMatrixEquationSolverTests)
+add_test(NAME MatrixSolverTests COMMAND runMatrixSolverTests)
 
 add_executable(runSystemAssemblerTests
                unit/assembly/runSystemAssemblerTests.cpp)
@@ -80,6 +123,12 @@ target_link_libraries(runBoundaryResidualEquationTests PRIVATE femx::femx)
 
 add_test(NAME BoundaryResidualEquationTests
          COMMAND runBoundaryResidualEquationTests)
+
+add_executable(runForwardADTests unit/ad/runForwardADTests.cpp)
+
+target_link_libraries(runForwardADTests PRIVATE femx::femx)
+
+add_test(NAME ForwardADTests COMMAND runForwardADTests)
 
 if(ReSolve_FOUND)
   add_executable(runReSolveLinearSolverTests
@@ -116,6 +165,49 @@ target_link_libraries(runAdjointReducedFunctionalTests PRIVATE femx::femx)
 
 add_test(NAME AdjointReducedFunctionalTests
          COMMAND runAdjointReducedFunctionalTests)
+
+add_executable(runTimeAdjointReducedFunctionalTests
+               unit/inverse/runTimeAdjointReducedFunctionalTests.cpp)
+
+target_link_libraries(runTimeAdjointReducedFunctionalTests
+                      PRIVATE femx::femx)
+
+add_test(NAME TimeAdjointReducedFunctionalTests
+         COMMAND runTimeAdjointReducedFunctionalTests)
+
+if(TARGET navier_var_kernels)
+  add_executable(runNavierVarConfigTests
+                 unit/stokes/runNavierVarConfigTests.cpp)
+
+  target_link_libraries(runNavierVarConfigTests
+                        PRIVATE navier_var_kernels femx::femx)
+
+  add_test(NAME NavierVarConfigTests COMMAND runNavierVarConfigTests)
+
+  add_executable(runNavierStokesEquationTests
+                 unit/stokes/runTimeNavierStokesResidualEquationTests.cpp)
+
+  target_link_libraries(runNavierStokesEquationTests
+                        PRIVATE navier_var_kernels femx::femx)
+
+  add_test(NAME NavierStokesEquationTests
+           COMMAND runNavierStokesEquationTests)
+
+  add_executable(runNavierVarRunSupportTests
+                 unit/stokes/runNavierVarRunSupportTests.cpp)
+
+  target_link_libraries(runNavierVarRunSupportTests
+                        PRIVATE navier_var_kernels femx::femx)
+
+  add_test(NAME NavierVarRunSupportTests
+           COMMAND runNavierVarRunSupportTests)
+
+  add_executable(runTimeNavierStokesAssemblyBenchmark
+                 unit/stokes/runTimeNavierStokesAssemblyBenchmark.cpp)
+
+  target_link_libraries(runTimeNavierStokesAssemblyBenchmark
+                        PRIVATE navier_var_kernels femx::femx)
+endif()
 
 if(TARGET femx::system_petsc)
   add_executable(runKspLinearSolverTests
@@ -157,12 +249,12 @@ endif()
 if(TARGET navier_gls_kernels)
   add_executable(
     runNavierConfigTests
-    unit/navier/runNavierConfigTests.cpp ../apps/forward/navier-gls/Config.cpp
-    ../apps/forward/navier-gls/BoundaryConditions.cpp)
+    unit/navier/runNavierConfigTests.cpp ../apps/forward/ns-gls/Config.cpp
+    ../apps/forward/ns-gls/BoundaryConditions.cpp)
 
   target_include_directories(
     runNavierConfigTests
-    PRIVATE ${CMAKE_SOURCE_DIR}/apps/forward/navier-gls
+    PRIVATE ${CMAKE_SOURCE_DIR}/apps/forward/ns-gls
             ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
 
   target_link_libraries(runNavierConfigTests PRIVATE femx::femx)

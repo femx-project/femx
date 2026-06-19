@@ -23,22 +23,21 @@ public:
   {
   }
 
-  PetscErrorCode setObjectiveAndGradient(Tao tao, Vec gradient_template = nullptr)
+  PetscErrorCode setValueGrad(Tao tao, Vec grad_template = nullptr)
   {
     return TaoSetObjectiveAndGradient(
-        tao, gradient_template, formObjectiveAndGradient, this);
+        tao, grad_template, formValueGrad, this);
   }
 
-  static PetscErrorCode formObjectiveAndGradient(Tao        tao,
-                                                 Vec        params,
-                                                 PetscReal* value,
-                                                 Vec        gradient,
-                                                 void*      context)
+  static PetscErrorCode formValueGrad(Tao        tao,
+                                      Vec        prm,
+                                      PetscReal* value,
+                                      Vec        grad,
+                                      void*      context)
   {
     (void) tao;
 
-    auto* adapter =
-        static_cast<TaoReducedFunctionalAdapter*>(context);
+    auto* adapter = static_cast<TaoReducedFunctionalAdapter*>(context);
     if (adapter == nullptr || value == nullptr)
     {
       return PETSC_ERR_ARG_NULL;
@@ -47,21 +46,21 @@ public:
     try
     {
       PetscCall(::femx::system::detail::copyFromPETSc(
-          params, adapter->params_));
-      if (adapter->params_.size() != adapter->functional_->numParams())
+          prm, adapter->prm_));
+      if (adapter->prm_.size() != adapter->functional_->numParams())
       {
         throw std::runtime_error(
             "TAO parameter vector size does not match ReducedFunctional");
       }
 
       *value = static_cast<PetscReal>(
-          adapter->functional_->valueGrad(adapter->params_,
-                                          adapter->gradient_));
+          adapter->functional_->valueGrad(adapter->prm_,
+                                          adapter->grad_));
 
-      if (gradient != nullptr)
+      if (grad != nullptr)
       {
         PetscCall(::femx::system::detail::copyToPETSc(
-            adapter->gradient_, gradient));
+            adapter->grad_, grad));
       }
     }
     catch (...)
@@ -74,8 +73,8 @@ public:
 
 private:
   ReducedFunctional* functional_{nullptr};
-  Vector<Real>       params_;
-  Vector<Real>       gradient_;
+  Vector<Real>       prm_;
+  Vector<Real>       grad_;
 };
 
 } // namespace inverse

@@ -1,13 +1,9 @@
 #pragma once
 
-#include <stdexcept>
-#include <utility>
-#include <vector>
-
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryElementKernel.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/eq/AssembledResidualEquation.hpp>
+#include <femx/eq/MatrixResidualEquation.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>
@@ -17,242 +13,67 @@ namespace femx
 namespace assembly
 {
 
-/** @brief Adds boundary-facet residual terms to an assembled equation. */
-class BoundaryResidualEquation final : public eq::AssembledResidualEquation
+/** @brief Adds boundary-facet residual terms to a volume residual equation. */
+class BoundaryResidualEquation final : public eq::MatrixResidualEquation
 {
 public:
-  BoundaryResidualEquation(const eq::AssembledResidualEquation& interior,
-                           BoundaryDofLayout                    res_layout,
-                           BoundaryDofLayout                    state_layout,
-                           BoundaryDofLayout                    param_layout,
-                           const BoundaryElementKernel&         kernel)
-    : interior_(interior),
-      res_layout_(std::move(res_layout)),
-      state_layout_(std::move(state_layout)),
-      param_layout_(std::move(param_layout)),
-      kernel_(kernel)
-  {
-    checkDimensions();
-    checkFacetCompatibility();
-  }
+  BoundaryResidualEquation(const eq::MatrixResidualEquation& volume_eq,
+                           BoundaryDofLayout                 res_layout,
+                           BoundaryDofLayout                 state_layout,
+                           BoundaryDofLayout                 param_layout,
+                           const BoundaryElementKernel&      kernel);
 
-  Index numStates() const override
-  {
-    return interior_.numStates();
-  }
+  Index numStates() const override;
 
-  Index numParams() const override
-  {
-    return interior_.numParams();
-  }
+  Index numParams() const override;
 
-  Index numRes() const override
-  {
-    return interior_.numRes();
-  }
+  Index numRes() const override;
 
   void res(const Vector<Real>& state,
-           const Vector<Real>& params,
-           Vector<Real>&       out) const override
-  {
-    interior_.res(state, params, out);
-    checkGlobalSizes(state, params, out);
-
-    Vector<Real> state_b;
-    Vector<Real> params_b;
-    Vector<Real> res_b;
-    for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
-    {
-      gather(state_layout_, state, ib, state_b);
-      gather(param_layout_, params, ib, params_b);
-      kernel_.res(ib, res_layout_.facet(ib), state_b, params_b, res_b);
-      addVec(res_layout_, ib, res_b, out);
-    }
-  }
+           const Vector<Real>& prm,
+           Vector<Real>&       out) const override;
 
   void assembleStateJac(const Vector<Real>&   state,
-                        const Vector<Real>&   params,
-                        system::SystemMatrix& out) const override
-  {
-    interior_.assembleStateJac(state, params, out);
-    if (out.numRows() != numRes() || out.numCols() != numStates())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation state Jacobian size mismatch");
-    }
-
-    Vector<Real> state_b;
-    Vector<Real> params_b;
-    DenseMatrix  jac_b;
-    for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
-    {
-      gather(state_layout_, state, ib, state_b);
-      gather(param_layout_, params, ib, params_b);
-      kernel_.stateJac(
-          ib, res_layout_.facet(ib), state_b, params_b, jac_b);
-      addMat(res_layout_, state_layout_, ib, jac_b, out);
-    }
-  }
+                        const Vector<Real>&   prm,
+                        system::SystemMatrix& out) const override;
 
   void assembleParamJac(const Vector<Real>&   state,
-                        const Vector<Real>&   params,
-                        system::SystemMatrix& out) const override
-  {
-    interior_.assembleParamJac(state, params, out);
-    if (out.numRows() != numRes() || out.numCols() != numParams())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation parameter Jacobian size mismatch");
-    }
-
-    Vector<Real> state_b;
-    Vector<Real> params_b;
-    DenseMatrix  jac_b;
-    for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
-    {
-      gather(state_layout_, state, ib, state_b);
-      gather(param_layout_, params, ib, params_b);
-      kernel_.paramJac(
-          ib, res_layout_.facet(ib), state_b, params_b, jac_b);
-      addMat(res_layout_, param_layout_, ib, jac_b, out);
-    }
-  }
+                        const Vector<Real>&   prm,
+                        system::SystemMatrix& out) const override;
 
 private:
-  void checkDimensions() const
-  {
-    if (res_layout_.numDofs() != numRes()
-        || state_layout_.numDofs() != numStates()
-        || param_layout_.numDofs() != numParams())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation received inconsistent dimensions");
-    }
-  }
+  void checkDimensions() const;
 
-  void checkFacetCompatibility() const
-  {
-    if (state_layout_.numFacets() != res_layout_.numFacets()
-        || param_layout_.numFacets() != res_layout_.numFacets())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation layouts have different facet counts");
-    }
-
-    for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
-    {
-      if (state_layout_.meshFacetIndex(ib) != res_layout_.meshFacetIndex(ib)
-          || param_layout_.meshFacetIndex(ib)
-                 != res_layout_.meshFacetIndex(ib))
-      {
-        throw std::runtime_error(
-            "BoundaryResidualEquation layouts select different facets");
-      }
-    }
-  }
+  void checkFacetCompatibility() const;
 
   void checkGlobalSizes(const Vector<Real>& state,
-                        const Vector<Real>& params,
-                        const Vector<Real>& res_out) const
-  {
-    if (state.size() != numStates() || params.size() != numParams()
-        || res_out.size() != numRes())
-    {
-      throw std::runtime_error("BoundaryResidualEquation size mismatch");
-    }
-  }
+                        const Vector<Real>& prm,
+                        const Vector<Real>& res_out) const;
 
   static void gather(const BoundaryDofLayout& layout,
                      const Vector<Real>&      global,
                      Index                    ib,
-                     Vector<Real>&            local)
-  {
-    Vector<Index> dofs;
-    layout.facetDofs(ib, dofs);
-    if (local.size() != dofs.size())
-    {
-      local.resize(dofs.size());
-    }
-    else
-    {
-      local.setZero();
-    }
-
-    for (Index i = 0; i < local.size(); ++i)
-    {
-      const Index dof = dofs[i];
-      checkDof(dof, global.size());
-      local[i] = global[dof];
-    }
-  }
+                     Vector<Real>&            local);
 
   static void addVec(const BoundaryDofLayout& layout,
                      Index                    ib,
                      const Vector<Real>&      local,
-                     Vector<Real>&            out)
-  {
-    Vector<Index> dofs;
-    layout.facetDofs(ib, dofs);
-    if (local.size() != dofs.size())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation local residual size mismatch");
-    }
-
-    for (Index i = 0; i < local.size(); ++i)
-    {
-      const Index row = dofs[i];
-      checkDof(row, out.size());
-      out[row] += local[i];
-    }
-  }
+                     Vector<Real>&            out);
 
   static void addMat(const BoundaryDofLayout& row_layout,
                      const BoundaryDofLayout& col_layout,
                      Index                    ib,
                      const DenseMatrix&       local,
-                     system::SystemMatrix&    out)
-  {
-    Vector<Index> row_dofs;
-    Vector<Index> col_dofs;
-    row_layout.facetDofs(ib, row_dofs);
-    col_layout.facetDofs(ib, col_dofs);
+                     system::SystemMatrix&    out);
 
-    if (local.rows() != row_dofs.size()
-        || local.cols() != col_dofs.size())
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation local matrix size mismatch");
-    }
-
-    for (Index i = 0; i < local.rows(); ++i)
-    {
-      const Index row = row_dofs[i];
-      checkDof(row, out.numRows());
-      for (Index j = 0; j < local.cols(); ++j)
-      {
-        const Index col = col_dofs[j];
-        checkDof(col, out.numCols());
-        out.add(row, col, local(i, j));
-      }
-    }
-  }
-
-  static void checkDof(Index dof, Index size)
-  {
-    if (dof < 0 || dof >= size)
-    {
-      throw std::runtime_error(
-          "BoundaryResidualEquation dof is out of range");
-    }
-  }
+  static void checkDof(Index dof, Index size);
 
 private:
-  const eq::AssembledResidualEquation& interior_;
-  BoundaryDofLayout                    res_layout_;
-  BoundaryDofLayout                    state_layout_;
-  BoundaryDofLayout                    param_layout_;
-  const BoundaryElementKernel&         kernel_;
+  const eq::MatrixResidualEquation& volume_eq_;
+  BoundaryDofLayout                 res_layout_;
+  BoundaryDofLayout                 state_layout_;
+  BoundaryDofLayout                 param_layout_;
+  const BoundaryElementKernel&      kernel_;
 };
 
 } // namespace assembly

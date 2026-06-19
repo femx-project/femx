@@ -109,6 +109,7 @@ public:
     options_.precond = method;
 
 #if defined(FEMX_HAS_RESOLVE)
+    resetTransposeOperator();
     if (A_ != nullptr)
     {
       setOperator(*A_);
@@ -260,18 +261,55 @@ private:
     }
     resize(x, A.rows());
 
-    HostCsrData          transpose = transposeHost(A);
-    ReSolve::matrix::Csr mat_t(A.cols(), A.rows(), A.nnz());
-    updateMatrixData(transpose, mat_t);
-
-    auto transpose_solver = makeSolver();
-    checkStatus(transpose_solver->setMatrix(&mat_t),
-                "ReSolve transpose SystemSolver::setMatrix failed");
-    setupSolver(*transpose_solver, "ReSolve transpose");
-    solveWith(*transpose_solver,
+    setTransposeOperator(A);
+    solveWith(*transpose_solver_,
               b,
               x,
               "ReSolve transpose SystemSolver::solve failed");
+  }
+
+  void setTransposeOperator(const SparseMatrix& A)
+  {
+    transpose_data_ = transposeHost(A);
+
+    const bool reuse_mat =
+        mat_t_ != nullptr
+        && mat_t_rows_ == A.cols()
+        && mat_t_cols_ == A.rows()
+        && mat_t_nnz_ == A.nnz()
+        && options_.factor == "none"
+        && options_.refactor == "none";
+
+    if (!reuse_mat)
+    {
+      resetTransposeSolver();
+
+      mat_t_ = std::make_unique<ReSolve::matrix::Csr>(
+          A.cols(),
+          A.rows(),
+          A.nnz());
+      mat_t_rows_ = A.cols();
+      mat_t_cols_ = A.rows();
+      mat_t_nnz_  = A.nnz();
+    }
+
+    updateMatrixData(transpose_data_, *mat_t_);
+
+    if (reuse_mat)
+    {
+      if (options_.precond != "none")
+      {
+        checkStatus(
+            transpose_solver_->resetPreconditioner(mat_t_.get()),
+            "ReSolve transpose SystemSolver::resetPreconditioner failed");
+      }
+    }
+    else
+    {
+      checkStatus(transpose_solver_->setMatrix(mat_t_.get()),
+                  "ReSolve transpose SystemSolver::setMatrix failed");
+      setupSolver(*transpose_solver_, "ReSolve transpose");
+    }
   }
 
   ReSolve::memory::MemorySpace memorySpace() const
@@ -302,6 +340,20 @@ private:
       return;
     }
 
+    if (options_.factor == "klu")
+    {
+      checkStatus(
+          mat_->copyFromExternal(A.rowPtrData(),
+                                 A.colIndData(),
+                                 A.valuesData(),
+                                 ReSolve::memory::HOST,
+                                 ReSolve::memory::HOST),
+          "ReSolve Csr::copyFromExternal to host failed");
+      checkStatus(mat_->syncData(memorySpace()),
+                  "ReSolve Csr::syncData failed");
+      return;
+    }
+
     checkStatus(
         mat_->copyFromExternal(A.rowPtrData(),
                                A.colIndData(),
@@ -325,6 +377,20 @@ private:
       return;
     }
 
+    if (options_.factor == "klu")
+    {
+      checkStatus(
+          A.copyFromExternal(data.row_ptr.data(),
+                             data.col_ind.data(),
+                             data.values.data(),
+                             ReSolve::memory::HOST,
+                             ReSolve::memory::HOST),
+          "ReSolve transpose Csr::copyFromExternal to host failed");
+      checkStatus(A.syncData(memorySpace()),
+                  "ReSolve transpose Csr::syncData failed");
+      return;
+    }
+
     checkStatus(
         A.copyFromExternal(data.row_ptr.data(),
                            data.col_ind.data(),
@@ -338,6 +404,22 @@ private:
   {
     solver_ = makeSolver();
     applyOptions(*solver_);
+  }
+
+  void resetTransposeSolver()
+  {
+    transpose_solver_ = makeSolver();
+    applyOptions(*transpose_solver_);
+  }
+
+  void resetTransposeOperator()
+  {
+    transpose_solver_.reset();
+    mat_t_.reset();
+    mat_t_rows_     = 0;
+    mat_t_cols_     = 0;
+    mat_t_nnz_      = 0;
+    transpose_data_ = HostCsrData{};
   }
 
   std::unique_ptr<ReSolve::SystemSolver> makeSolver()
@@ -502,6 +584,10 @@ private:
   Index               mat_rows_ = 0;
   Index               mat_cols_ = 0;
   Index               mat_nnz_  = 0;
+  HostCsrData         transpose_data_;
+  Index               mat_t_rows_ = 0;
+  Index               mat_t_cols_ = 0;
+  Index               mat_t_nnz_  = 0;
 
 #if defined(FEMX_HAS_RESOLVE)
   std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
@@ -510,6 +596,8 @@ private:
 #endif
   std::unique_ptr<ReSolve::SystemSolver> solver_;
   std::unique_ptr<ReSolve::matrix::Csr>  mat_;
+  std::unique_ptr<ReSolve::SystemSolver> transpose_solver_;
+  std::unique_ptr<ReSolve::matrix::Csr>  mat_t_;
 #endif
 };
 

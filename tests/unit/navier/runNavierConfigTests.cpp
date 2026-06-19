@@ -64,20 +64,20 @@ public:
 })";
     }
 
-    const Params params = loadConfig(config_path.string());
-    if (params.mesh_file != (dir / "mesh.msh").lexically_normal().string())
+    const Params prm = loadConfig(config_path.string());
+    if (prm.mesh_file != (dir / "mesh.msh").lexically_normal().string())
     {
       std::cout << "mesh path was not resolved relative to config\n";
       status = false;
     }
-    if (params.bcs.size() != 1 || !params.bcs[0].velocity)
+    if (prm.bcs.size() != 1 || !prm.bcs[0].velocity)
     {
       std::cout << "velocity boundary was not loaded\n";
       status = false;
       return status.report(__func__);
     }
 
-    const VelocityParams& velocity = *params.bcs[0].velocity;
+    const VelocityParams& velocity = *prm.bcs[0].velocity;
     if (velocity.time.size() != 3 || velocity.value.size() != 3)
     {
       std::cout << "velocity table size mismatch\n";
@@ -145,15 +145,15 @@ public:
 })";
     }
 
-    const Params params = loadConfig(config_path.string());
-    if (params.bcs.size() != 1 || !params.bcs[0].velocity)
+    const Params prm = loadConfig(config_path.string());
+    if (prm.bcs.size() != 1 || !prm.bcs[0].velocity)
     {
       std::cout << "legacy flowrate boundary was not loaded\n";
       status = false;
       return status.report(__func__);
     }
 
-    const VelocityParams& velocity = *params.bcs[0].velocity;
+    const VelocityParams& velocity = *prm.bcs[0].velocity;
     if (velocity.quantity != "flowrate" || velocity.profile.type != "uniform")
     {
       std::cout << "legacy flowrate was not mapped to uniform flowrate velocity\n";

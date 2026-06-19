@@ -25,7 +25,7 @@ public:
     status *= (elem.name() == "LagrangeQuadQ1");
     status *= (elem.dim() == LagrangeQuadQ1::spatial_dim);
     status *= (elem.numNodes() == LagrangeQuadQ1::nnodes);
-    status *= (elem.numDofsPerElement() == LagrangeQuadQ1::ndofs);
+    status *= (elem.numDofsPerElement() == LagrangeQuadQ1::num_dofs);
     status *= (elem.order() == LagrangeQuadQ1::degree);
     status *= (elem.referenceElement() == ReferenceElement::Quadrilateral);
 

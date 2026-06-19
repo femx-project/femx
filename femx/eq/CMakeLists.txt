@@ -1,15 +1,34 @@
-add_library(femx_equation INTERFACE)
-add_library(femx::equation ALIAS femx_equation)
+add_library(femx_eq)
+add_library(femx::eq ALIAS femx_eq)
 
 target_sources(
-  femx_equation
-  INTERFACE MatrixFreeNewtonStateSolver.hpp
-            ResidualEquation.hpp
-            StateJacobianOperator.hpp
-            StateSolver.hpp
-            AssembledLinearStateSolver.hpp
-            AssembledNewtonStateSolver.hpp
-            AssembledResidualEquation.hpp)
+  femx_eq
+  PRIVATE MatrixLinearStateSolver.cpp
+          MatrixNewtonStateSolver.cpp
+          MatrixResidualEquation.cpp
+          OperatorNewtonStateSolver.cpp
+          StateJacobianOperator.cpp
+          TimeMatrixLinearStateSolver.cpp
+          TimeMatrixNewtonStateSolver.cpp
+          TimeMatrixResidualEquation.cpp
+          TimeNewtonStateSolver.cpp
+          TimeStateJacobianOperator.cpp
+          TimeStateTrajectory.cpp
+  PUBLIC MatrixLinearStateSolver.hpp
+         MatrixNewtonStateSolver.hpp
+         MatrixResidualEquation.hpp
+         OperatorNewtonStateSolver.hpp
+         ResidualEquation.hpp
+         StateJacobianOperator.hpp
+         StateSolver.hpp
+         TimeMatrixLinearStateSolver.hpp
+         TimeMatrixNewtonStateSolver.hpp
+         TimeMatrixResidualEquation.hpp
+         TimeNewtonStateSolver.hpp
+         TimeResidualEquation.hpp
+         TimeStateJacobianOperator.hpp
+         TimeStateSolver.hpp
+         TimeStateTrajectory.hpp)
 
-target_link_libraries(femx_equation INTERFACE femx_common femx_config
-                                              femx_linalg femx_system)
+target_link_libraries(femx_eq PUBLIC femx_common femx_config femx_linalg
+                                      femx_system)

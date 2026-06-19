@@ -22,7 +22,7 @@ public:
     return 2;
   }
 
-  void solve(const Vector<Real>& params, Vector<Real>& state) override
+  void solve(const Vector<Real>& prm, Vector<Real>& state) override
   {
     if (state.size() != numStates())
     {
@@ -33,8 +33,8 @@ public:
       state.setZero();
     }
 
-    state[0] = 2.0 * params[0] + params[1];
-    state[1] = -params[0] + 3.0 * params[1];
+    state[0] = 2.0 * prm[0] + prm[1];
+    state[1] = -prm[0] + 3.0 * prm[1];
   }
 };
 
@@ -50,16 +50,16 @@ public:
     status *= (solver.numStates() == 2);
     status *= (solver.numParams() == 2);
 
-    Vector<Real> params(2);
-    params[0] = 0.25;
-    params[1] = -0.5;
+    Vector<Real> prm(2);
+    prm[0] = 0.25;
+    prm[1] = -0.5;
 
     Vector<Real> state;
-    solver.solve(params, state);
+    solver.solve(prm, state);
 
     status *= (state.size() == solver.numStates());
-    status *= isEqual(state[0], 2.0 * params[0] + params[1]);
-    status *= isEqual(state[1], -params[0] + 3.0 * params[1]);
+    status *= isEqual(state[0], 2.0 * prm[0] + prm[1]);
+    status *= isEqual(state[1], -prm[0] + 3.0 * prm[1]);
 
     return status.report(__func__);
   }

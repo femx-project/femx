@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
 
 if(FEMX_ENABLE_ENZYME)
-  find_package(Enzyme REQUIRED CONFIG)
+  find_package(Enzyme REQUIRED)
 
   if(Enzyme_LLVM_BINARY_DIR AND NOT CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER "${Enzyme_LLVM_BINARY_DIR}/bin/clang++")
@@ -16,7 +18,6 @@ project(
   LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FEMX_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
 option(FEMX_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
@@ -26,6 +27,9 @@ option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
 option(FEMX_BUILD_TESTS "Build femx tests" ON)
 option(FEMX_REQUIRE_RESOLVE "Fail if ReSolve is enabled but not found" OFF)
+set(FEMX_OPENMP_ROOT
+    ""
+    CACHE PATH "Optional LLVM OpenMP runtime prefix for Clang builds")
 option(RESOLVE_USE_CUDA "Request a CUDA-enabled ReSolve package" OFF)
 
 set(FEMX_RESOLVE_BACKEND
@@ -50,6 +54,7 @@ endif()
 set(FEMX_HAS_ENZYME OFF)
 set(FEMX_ENZYME_FLAGS_TARGET "")
 set(FEMX_HAS_PETSC OFF)
+set(FEMX_HAS_RESOLVE OFF)
 set(FEMX_HAS_RESOLVE_CUDA OFF)
 
 if(FEMX_ENABLE_ENZYME)
@@ -73,6 +78,63 @@ endif()
 
 if(FEMX_ENABLE_OPENMP)
   find_package(OpenMP QUIET)
+
+  if(NOT OpenMP_CXX_FOUND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    string(REGEX MATCH "^[0-9]+" FEMX_CLANG_MAJOR
+                 "${CMAKE_CXX_COMPILER_VERSION}")
+
+    set(FEMX_CLANG_OPENMP_ROOT_HINTS)
+    if(FEMX_OPENMP_ROOT)
+      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "${FEMX_OPENMP_ROOT}")
+    endif()
+    if(DEFINED ENV{FEMX_OPENMP_ROOT})
+      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "$ENV{FEMX_OPENMP_ROOT}")
+    endif()
+    if(DEFINED ENV{HOME} AND FEMX_CLANG_MAJOR)
+      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS
+           "$ENV{HOME}/opt/libomp-${FEMX_CLANG_MAJOR}")
+    endif()
+    if(FEMX_CLANG_MAJOR)
+      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS
+           "/usr/lib/llvm-${FEMX_CLANG_MAJOR}"
+           "/usr/local/opt/llvm@${FEMX_CLANG_MAJOR}"
+           "/opt/homebrew/opt/llvm@${FEMX_CLANG_MAJOR}")
+    endif()
+
+    find_path(
+      FEMX_CLANG_OPENMP_INCLUDE_DIR
+      NAMES omp.h
+      HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
+      PATH_SUFFIXES include lib/clang/${FEMX_CLANG_MAJOR}/include
+                    lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include
+                    usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include)
+
+    find_library(
+      FEMX_CLANG_OPENMP_LIBRARY
+      NAMES omp libomp
+      HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
+      PATH_SUFFIXES lib lib64 usr/lib
+                    usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib
+                    usr/lib/x86_64-linux-gnu)
+
+    if(FEMX_CLANG_OPENMP_INCLUDE_DIR AND FEMX_CLANG_OPENMP_LIBRARY
+       AND NOT TARGET OpenMP::OpenMP_CXX)
+      get_filename_component(FEMX_CLANG_OPENMP_LIBRARY_DIR
+                             "${FEMX_CLANG_OPENMP_LIBRARY}" DIRECTORY)
+      add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED)
+      set_target_properties(
+        OpenMP::OpenMP_CXX
+        PROPERTIES
+          INTERFACE_COMPILE_OPTIONS "-fopenmp=libomp"
+          INTERFACE_INCLUDE_DIRECTORIES "${FEMX_CLANG_OPENMP_INCLUDE_DIR}"
+          INTERFACE_LINK_LIBRARIES "${FEMX_CLANG_OPENMP_LIBRARY}"
+          INTERFACE_LINK_OPTIONS
+          "$<$<PLATFORM_ID:Linux>:-Wl,-rpath,${FEMX_CLANG_OPENMP_LIBRARY_DIR}>")
+      set(OpenMP_CXX_FOUND TRUE)
+      set(OpenMP_FOUND TRUE)
+      message(STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
+    endif()
+  endif()
 endif()
 
 if(FEMX_ENABLE_RESOLVE)
@@ -80,6 +142,7 @@ if(FEMX_ENABLE_RESOLVE)
 
   if(ReSolve_FOUND)
     message(STATUS "Found ReSolve: ${ReSolve_DIR}")
+    set(FEMX_HAS_RESOLVE ON)
     if(TARGET ReSolve::CUDA OR TARGET ReSolve::resolve_backend_cuda)
       set(FEMX_HAS_RESOLVE_CUDA ON)
     endif()

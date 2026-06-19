@@ -3,7 +3,7 @@ add_library(femx::system ALIAS femx_system)
 
 target_sources(
   femx_system
-  PRIVATE resolve/ReSolveLinearSolver.cpp
+  PRIVATE DenseLinearSolver.cpp resolve/ReSolveLinearSolver.cpp
   PUBLIC DenseLinearSolver.hpp
          LinearOperator.hpp
          LinearSolver.hpp
