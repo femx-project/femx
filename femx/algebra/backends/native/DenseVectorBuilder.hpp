@@ -5,50 +5,49 @@
 
 #include <femx/core/Types.hpp>
 #include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemVector.hpp>
 
 namespace femx
 {
 namespace algebra
 {
 
-/** @brief In-memory SystemVector backed by femx::Vector. */
-class DenseSystemVector final : public SystemVector
+/** @brief In-memory mutable vector assembly target. */
+class DenseVectorBuilder final
 {
 public:
-  explicit DenseSystemVector(Index size = 0)
+  explicit DenseVectorBuilder(Index size = 0)
     : vec_(size)
   {
   }
 
-  Index size() const override
+  Index size() const
   {
     return vec_.size();
   }
 
-  void resize(Index size) override
+  void resize(Index size)
   {
     vec_.resize(size);
   }
 
-  void setZero() override
+  void setZero()
   {
     vec_.setZero();
   }
 
-  void set(Index row, Real value) override
+  void set(Index row, Real value)
   {
     checkIndex(row);
     vec_[row] = value;
   }
 
-  void add(Index row, Real value) override
+  void add(Index row, Real value)
   {
     checkIndex(row);
     vec_[row] += value;
   }
 
-  void addAtomic(Index row, Real value) override
+  void addAtomic(Index row, Real value)
   {
     checkIndex(row);
     Real* values = vec_.data();
@@ -56,7 +55,7 @@ public:
     values[static_cast<std::size_t>(row)] += value;
   }
 
-  void finalize() override
+  void finalize()
   {
   }
 
@@ -75,7 +74,7 @@ private:
   {
     if (row < 0 || row >= size())
     {
-      throw std::runtime_error("DenseSystemVector index is out of range");
+      throw std::runtime_error("DenseVectorBuilder index is out of range");
     }
   }
 

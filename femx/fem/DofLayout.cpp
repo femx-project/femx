@@ -1,12 +1,10 @@
 #include <stdexcept>
 
-#include <femx/assembly/DofLayout.hpp>
+#include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
 namespace femx
-{
-namespace assembly
 {
 
 DofLayout::DofLayout(const FESpace& space)
@@ -46,8 +44,7 @@ Index DofLayout::numDofsPerElem() const
   return mixedSpace().numDofsPerElem();
 }
 
-void DofLayout::elemDofs(Index          ic,
-                         Vector<Index>& dofs) const
+void DofLayout::elemDofs(Index ic, Vector<Index>& dofs) const
 {
   if (ic < 0 || ic >= numElems())
   {
@@ -70,5 +67,4 @@ const MixedFESpace& DofLayout::mixedSpace() const
   return *mixed_space_;
 }
 
-} // namespace assembly
 } // namespace femx

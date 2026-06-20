@@ -7,7 +7,6 @@
 
 #include <femx/core/Types.hpp>
 #include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemVector.hpp>
 #include <femx/algebra/backends/petsc/VectorConversion.hpp>
 
 namespace femx
@@ -15,19 +14,19 @@ namespace femx
 namespace algebra
 {
 
-/** @brief PETSc-backed implementation of SystemVector. */
-class PETScSystemVector final : public SystemVector
+/** @brief PETSc-backed mutable vector assembly target. */
+class PETScVectorBuilder final
 {
 public:
-  explicit PETScSystemVector(MPI_Comm comm = PETSC_COMM_SELF)
+  explicit PETScVectorBuilder(MPI_Comm comm = PETSC_COMM_SELF)
     : comm_(comm)
   {
   }
 
-  PETScSystemVector(const PETScSystemVector&)            = delete;
-  PETScSystemVector& operator=(const PETScSystemVector&) = delete;
+  PETScVectorBuilder(const PETScVectorBuilder&)            = delete;
+  PETScVectorBuilder& operator=(const PETScVectorBuilder&) = delete;
 
-  ~PETScSystemVector() override
+  ~PETScVectorBuilder()
   {
     if (vec_ != nullptr)
     {
@@ -35,7 +34,7 @@ public:
     }
   }
 
-  Index size() const override
+  Index size() const
   {
     return size_;
   }
@@ -44,7 +43,7 @@ public:
   {
     if (vec_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemVector is not initialized");
+      throw std::runtime_error("PETScVectorBuilder is not initialized");
     }
     return vec_;
   }
@@ -54,7 +53,7 @@ public:
     return comm_;
   }
 
-  void resize(Index size) override
+  void resize(Index size)
   {
     checkInitialized();
 
@@ -82,7 +81,7 @@ public:
     setZero();
   }
 
-  void setZero() override
+  void setZero()
   {
     if (vec_ == nullptr)
     {
@@ -91,17 +90,17 @@ public:
     check(VecZeroEntries(vec_), "VecZeroEntries");
   }
 
-  void set(Index row, Real value) override
+  void set(Index row, Real value)
   {
     setValue(row, value, INSERT_VALUES);
   }
 
-  void add(Index row, Real value) override
+  void add(Index row, Real value)
   {
     setValue(row, value, ADD_VALUES);
   }
 
-  void addAtomic(Index row, Real value) override
+  void addAtomic(Index row, Real value)
   {
     add(row, value);
   }
@@ -113,7 +112,7 @@ public:
     if (values.size() != count)
     {
       throw std::runtime_error(
-          "PETScSystemVector local values size does not match dofs");
+          "PETScVectorBuilder local values size does not match dofs");
     }
     addValues(rows, count, values.data());
   }
@@ -124,7 +123,7 @@ public:
   {
     if (vec_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemVector is not initialized");
+      throw std::runtime_error("PETScVectorBuilder is not initialized");
     }
     check(VecSetValues(vec_,
                        static_cast<PetscInt>(count),
@@ -134,11 +133,11 @@ public:
           "VecSetValues");
   }
 
-  void finalize() override
+  void finalize()
   {
     if (vec_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemVector is not initialized");
+      throw std::runtime_error("PETScVectorBuilder is not initialized");
     }
     check(VecAssemblyBegin(vec_), "VecAssemblyBegin");
     check(VecAssemblyEnd(vec_), "VecAssemblyEnd");
@@ -148,7 +147,7 @@ public:
   {
     if (values.size() != size())
     {
-      throw std::runtime_error("PETScSystemVector copy size mismatch");
+      throw std::runtime_error("PETScVectorBuilder copy size mismatch");
     }
     PetscInt begin = 0;
     PetscInt end   = 0;
@@ -173,7 +172,7 @@ private:
   {
     if (vec_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemVector is not initialized");
+      throw std::runtime_error("PETScVectorBuilder is not initialized");
     }
     check(VecSetValue(vec_,
                       static_cast<PetscInt>(row),
@@ -188,7 +187,7 @@ private:
     check(PetscInitialized(&initialized), "PetscInitialized");
     if (initialized != PETSC_TRUE)
     {
-      throw std::runtime_error("PETScSystemVector requires initialized PETSc");
+      throw std::runtime_error("PETScVectorBuilder requires initialized PETSc");
     }
   }
 

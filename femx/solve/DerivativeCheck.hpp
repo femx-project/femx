@@ -1,17 +1,16 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
-#include <femx/problem/ResidualEquation.hpp>
-#include <femx/problem/ObjectiveFunctional.hpp>
-#include <femx/solve/ReducedObjective.hpp>
 #include <femx/algebra/Vector.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/problem/Linearization.hpp>
+#include <femx/problem/Objective.hpp>
+#include <femx/problem/Residual.hpp>
+#include <femx/solve/ReducedFunctional.hpp>
 
 namespace femx
 {
 namespace solve
 {
-
-using problem::ObjectiveFunctional;
 
 struct DerivativeCheckResult
 {
@@ -29,41 +28,49 @@ class DerivativeCheck
 public:
   explicit DerivativeCheck(Real step = 1.0e-6);
 
-  DerivativeCheckResult objStateGrad(const ObjectiveFunctional& obj,
-                                     const Vector<Real>&        state,
-                                     const Vector<Real>&        prm,
-                                     const Vector<Real>&        dir) const;
+  DerivativeCheckResult objectiveStateGrad(const problem::Objective& obj,
+                                           const Vector<Real>& state,
+                                           const Vector<Real>& prm,
+                                           const Vector<Real>& dir) const;
 
-  DerivativeCheckResult objParamGrad(const ObjectiveFunctional& obj,
-                                     const Vector<Real>&        state,
-                                     const Vector<Real>&        prm,
-                                     const Vector<Real>&        dir) const;
+  DerivativeCheckResult objectiveParamGrad(const problem::Objective& obj,
+                                           const Vector<Real>& state,
+                                           const Vector<Real>& prm,
+                                           const Vector<Real>& dir) const;
 
-  DerivativeCheckResult reducedGrad(ReducedObjective&   functional,
+  DerivativeCheckResult reducedGrad(ReducedFunctional&  functional,
                                     const Vector<Real>& prm,
                                     const Vector<Real>& dir) const;
 
-  DerivativeCheckResult resStateJac(const problem::ResidualEquation& eq,
-                                    const Vector<Real>&         state,
-                                    const Vector<Real>&         prm,
-                                    const Vector<Real>&         dir) const;
+  DerivativeCheckResult residualStateJacobian(
+      const problem::Residual& problem,
+      problem::Linearization&  linearization,
+      const Vector<Real>&      state,
+      const Vector<Real>&      prm,
+      const Vector<Real>&      dir) const;
 
-  DerivativeCheckResult resParamJac(const problem::ResidualEquation& eq,
-                                    const Vector<Real>&         state,
-                                    const Vector<Real>&         prm,
-                                    const Vector<Real>&         dir) const;
+  DerivativeCheckResult residualParamJacobian(
+      const problem::Residual& problem,
+      problem::Linearization&  linearization,
+      const Vector<Real>&      state,
+      const Vector<Real>&      prm,
+      const Vector<Real>&      dir) const;
 
-  DerivativeCheckResult stateJacT(const problem::ResidualEquation& eq,
-                                  const Vector<Real>&         state,
-                                  const Vector<Real>&         prm,
-                                  const Vector<Real>&         dir,
-                                  const Vector<Real>&         lambda) const;
+  DerivativeCheckResult stateJacobianTranspose(
+      const problem::Residual& problem,
+      problem::Linearization&  linearization,
+      const Vector<Real>&      state,
+      const Vector<Real>&      prm,
+      const Vector<Real>&      dir,
+      const Vector<Real>&      lambda) const;
 
-  DerivativeCheckResult paramJacT(const problem::ResidualEquation& eq,
-                                  const Vector<Real>&         state,
-                                  const Vector<Real>&         prm,
-                                  const Vector<Real>&         dir,
-                                  const Vector<Real>&         lambda) const;
+  DerivativeCheckResult paramJacobianTranspose(
+      const problem::Residual& problem,
+      problem::Linearization&  linearization,
+      const Vector<Real>&      state,
+      const Vector<Real>&      prm,
+      const Vector<Real>&      dir,
+      const Vector<Real>&      lambda) const;
 
 private:
   Vector<Real> shifted(const Vector<Real>& base,

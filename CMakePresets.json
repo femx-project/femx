@@ -12,9 +12,9 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "FEMX_ENABLE_ENZYME": "OFF",
         "FEMX_ENABLE_HDF5": "ON",
         "FEMX_ENABLE_OPENMP": "ON",
+        "FEMX_ENABLE_ENZYME": "OFF",
         "FEMX_BUILD_APPS": "ON",
         "FEMX_BUILD_EXAMPLES": "ON",
         "FEMX_BUILD_TESTS": "ON"
@@ -82,14 +82,10 @@
     {
       "name": "petsc-enzyme",
       "displayName": "PETSc + Enzyme",
-      "description": "Build apps/tests with PETSc and Enzyme enabled, and ReSolve disabled.",
-      "inherits": "base",
+      "description": "Build PETSc apps with Enzyme automatic differentiation.",
+      "inherits": "petsc",
       "binaryDir": "${sourceDir}/build/petsc-enzyme",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++",
-        "Enzyme_DIR": "$env{HOME}/opt/enzyme-llvm18/lib/cmake/Enzyme",
-        "FEMX_ENABLE_RESOLVE": "OFF",
-        "FEMX_ENABLE_PETSC": "ON",
         "FEMX_ENABLE_ENZYME": "ON"
       }
     }

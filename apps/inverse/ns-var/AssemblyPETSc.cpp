@@ -11,7 +11,7 @@
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScMatrixOperator.hpp>
 
 using namespace femx::algebra;
 
@@ -36,7 +36,7 @@ void assemblePETScJac(const MixedFESpace&               space,
                       const Vector<Real>&               x,
                       const TimeNavierStokesParameters& prm,
                       const NavierVarCellRange&         cells,
-                      PETScSystemMatrix&                out,
+                      PETScMatrixOperator&              out,
                       ElemMatrixFn                      elem_matrix)
 {
   const Index num_dofs = space.numDofsPerElem();
@@ -81,7 +81,7 @@ void assembleNextStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               PETScSystemMatrix&                out)
+                               PETScMatrixOperator&              out)
 {
   assemblePETScJac(space,
                    quad,
@@ -99,7 +99,7 @@ void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               PETScSystemMatrix&                out)
+                               PETScMatrixOperator&              out)
 {
   assemblePETScJac(space,
                    quad,

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 #include <femx/core/Types.hpp>
 
 #if defined(FEMX_HAS_ENZYME)
@@ -39,23 +41,20 @@ Real derivative(Real x)
 
 inline constexpr bool has_enzyme = false;
 
-template <typename>
-inline constexpr bool always_false = false;
-
 template <auto, typename Return, typename... Args>
 Return autodiff(Args...)
 {
-  static_assert(always_false<Return>,
-                "femx was built without Enzyme. Configure with "
-                "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
+  throw std::runtime_error(
+      "femx was built without Enzyme. Configure with "
+      "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
 }
 
 template <Real (*)(Real)>
 Real derivative(Real)
 {
-  static_assert(always_false<Real>,
-                "femx was built without Enzyme. Configure with "
-                "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
+  throw std::runtime_error(
+      "femx was built without Enzyme. Configure with "
+      "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
 }
 
 #endif

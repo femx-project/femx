@@ -52,12 +52,12 @@ public:
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /** @brief Solve op x = rhs for a SparseSystemMatrix-backed operator. */
+  /** @brief Solve op x = rhs for a SparseMatrixOperator-backed operator. */
   void solve(const LinearOperator& op,
              const Vector<Real>&   rhs,
              Vector<Real>&         out) override;
 
-  /** @brief Solve op^T x = rhs for a SparseSystemMatrix-backed operator. */
+  /** @brief Solve op^T x = rhs for a SparseMatrixOperator-backed operator. */
   void solveT(const LinearOperator& op,
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;

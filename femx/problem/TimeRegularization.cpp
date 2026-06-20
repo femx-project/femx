@@ -2,19 +2,17 @@
 
 #include <femx/problem/TimeRegularization.hpp>
 
-using namespace femx::solve;
-
 namespace femx
 {
 namespace problem
 {
 
-TimeRegularization::TimeRegularization(Index               num_steps,
-                                       Index               num_states,
-                                       Index               num_levels,
-                                       Index               block_size,
-                                       Real                beta_difference,
-                                       Real                beta_value,
+TimeRegularization::TimeRegularization(Index num_steps,
+                                       Index num_states,
+                                       Index num_levels,
+                                       Index block_size,
+                                       Real beta_difference,
+                                       Real beta_value,
                                        const Vector<Real>& reference)
   : num_steps_(num_steps),
     num_states_(num_states),
@@ -28,7 +26,6 @@ TimeRegularization::TimeRegularization(Index               num_steps,
   {
     throw std::runtime_error("TimeRegularization received invalid inputs");
   }
-
   if (reference.empty())
   {
     reference_.resize(numParams());
@@ -58,8 +55,8 @@ Index TimeRegularization::numParams() const
   return num_levels_ * block_size_;
 }
 
-Real TimeRegularization::value(const TimeStateTrajectory& tr,
-                               const Vector<Real>&        prm) const
+Real TimeRegularization::value(const solve::TimeTrajectory& tr,
+                               const Vector<Real>& prm) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -67,10 +64,9 @@ Real TimeRegularization::value(const TimeStateTrajectory& tr,
   Real value_out = 0.0;
   for (Index i = 0; i < numParams(); ++i)
   {
-    const Real diff  = prm[i] - reference_[i];
-    value_out       += 0.5 * beta_value_ * diff * diff;
+    const Real diff = prm[i] - reference_[i];
+    value_out += 0.5 * beta_value_ * diff * diff;
   }
-
   for (Index level = 1; level < num_levels_; ++level)
   {
     for (Index c = 0; c < block_size_; ++c)
@@ -80,14 +76,13 @@ Real TimeRegularization::value(const TimeStateTrajectory& tr,
       value_out += 0.5 * beta_difference_ * diff * diff;
     }
   }
-
   return value_out;
 }
 
-void TimeRegularization::stateGrad(Index                      level,
-                                   const TimeStateTrajectory& tr,
-                                   const Vector<Real>&        prm,
-                                   Vector<Real>&              out) const
+void TimeRegularization::stateGrad(Index level,
+                                   const solve::TimeTrajectory& tr,
+                                   const Vector<Real>& prm,
+                                   Vector<Real>& out) const
 {
   (void) level;
   (void) tr;
@@ -95,9 +90,9 @@ void TimeRegularization::stateGrad(Index                      level,
   resize(out, numStates());
 }
 
-void TimeRegularization::paramGrad(const TimeStateTrajectory& tr,
-                                   const Vector<Real>&        prm,
-                                   Vector<Real>&              out) const
+void TimeRegularization::paramGrad(const solve::TimeTrajectory& tr,
+                                   const Vector<Real>& prm,
+                                   Vector<Real>& out) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -107,28 +102,26 @@ void TimeRegularization::paramGrad(const TimeStateTrajectory& tr,
   {
     out[i] += beta_value_ * (prm[i] - reference_[i]);
   }
-
   for (Index level = 1; level < num_levels_; ++level)
   {
     for (Index c = 0; c < block_size_; ++c)
     {
       const Real diff =
           centered(prm, level, c) - centered(prm, level - 1, c);
-      out[index(level, c)]     += beta_difference_ * diff;
+      out[index(level, c)] += beta_difference_ * diff;
       out[index(level - 1, c)] -= beta_difference_ * diff;
     }
   }
 }
 
-Index TimeRegularization::index(Index level,
-                                Index component) const
+Index TimeRegularization::index(Index level, Index component) const
 {
   return level * block_size_ + component;
 }
 
 Real TimeRegularization::centered(const Vector<Real>& prm,
-                                  Index               level,
-                                  Index               component) const
+                                  Index level,
+                                  Index component) const
 {
   const Index i = index(level, component);
   return prm[i] - reference_[i];
@@ -142,8 +135,7 @@ void TimeRegularization::checkParamSize(const Vector<Real>& prm) const
   }
 }
 
-void TimeRegularization::resize(Vector<Real>& out,
-                                Index         size)
+void TimeRegularization::resize(Vector<Real>& out, Index size)
 {
   if (out.size() != size)
   {

@@ -3,10 +3,8 @@ add_library(femx::io ALIAS femx_io)
 
 target_sources(
   femx_io
-  PRIVATE DataOut.cpp Hdf5Writer.cpp TimeSeriesDataIn.cpp
-          TimeSeriesDataOut.cpp VtiWriter.cpp XdmfWriter.cpp
-  PUBLIC DataOut.hpp Hdf5Writer.hpp TimeSeriesDataIn.hpp
-         TimeSeriesDataOut.hpp VtiWriter.hpp XdmfWriter.hpp)
+  PRIVATE DataOut.cpp Hdf5Writer.cpp TimeSeriesDataOut.cpp XdmfWriter.cpp
+  PUBLIC DataOut.hpp Hdf5Writer.hpp TimeSeriesDataOut.hpp XdmfWriter.hpp)
 
 target_link_libraries(femx_io PUBLIC femx_config femx_core femx_algebra
                                      femx_fem)

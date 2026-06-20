@@ -8,9 +8,9 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/VelocityProfile.hpp>
 #include <femx/core/Types.hpp>
-#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
+#include <femx/solve/TimeLinearStateSolver.hpp>
 #include <femx/solve/TimeStateSolver.hpp>
-#include <femx/solve/TimeStateTrajectory.hpp>
+#include <femx/solve/TimeTrajectory.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/problem/TimeObjective.hpp>
@@ -50,7 +50,7 @@ struct FixedDofValues
 class InitialVelocityStateSolver final : public solve::TimeStateSolver
 {
 public:
-  InitialVelocityStateSolver(solve::TimeMatrixLinearStateSolver& solver,
+  InitialVelocityStateSolver(solve::TimeLinearStateSolver& solver,
                              Vector<Index>                    velocity_dofs,
                              InverseParameterLayout           layout,
                              Vector<Real> base_initial_state = {});
@@ -60,10 +60,10 @@ public:
   Index numParams() const override;
 
   void solve(const Vector<Real>&      prm,
-             solve::TimeStateTrajectory& tr) override;
+             solve::TimeTrajectory& tr) override;
 
 private:
-  solve::TimeMatrixLinearStateSolver& solver_;
+  solve::TimeLinearStateSolver& solver_;
   Vector<Index>                    velocity_dofs_;
   InverseParameterLayout           layout_;
   Vector<Real>                     base_initial_state_;
@@ -71,11 +71,11 @@ private:
 };
 
 class ParameterSliceTimeObjective final
-  : public problem::TimeObjectiveFunctional
+  : public problem::TimeObjective
 {
 public:
   ParameterSliceTimeObjective(
-      const problem::TimeObjectiveFunctional& base,
+      const problem::TimeObjective& base,
       Index                                   total_params,
       Index                                   offset);
 
@@ -83,15 +83,15 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const solve::TimeStateTrajectory& tr,
+  Real value(const solve::TimeTrajectory& tr,
              const Vector<Real>&            prm) const override;
 
   void stateGrad(Index                          level,
-                 const solve::TimeStateTrajectory& tr,
+                 const solve::TimeTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
-  void paramGrad(const solve::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
@@ -99,13 +99,13 @@ private:
   Vector<Real> slice(const Vector<Real>& prm) const;
 
 private:
-  const problem::TimeObjectiveFunctional& base_;
+  const problem::TimeObjective& base_;
   Index                                   total_params_{0};
   Index                                   offset_{0};
 };
 
 class InitialVelocityRegularization final
-  : public problem::TimeObjectiveFunctional
+  : public problem::TimeObjective
 {
 public:
   InitialVelocityRegularization(Index                  num_steps,
@@ -117,15 +117,15 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const solve::TimeStateTrajectory& tr,
+  Real value(const solve::TimeTrajectory& tr,
              const Vector<Real>&            prm) const override;
 
   void stateGrad(Index                          level,
-                 const solve::TimeStateTrajectory& tr,
+                 const solve::TimeTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
-  void paramGrad(const solve::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
@@ -183,7 +183,7 @@ FixedDofValues fixedDofValues(const MixedFESpace&     space,
                               Index                   steps,
                               Real                    dt);
 
-std::unique_ptr<problem::TimeObservationOperator> makeObs(
+std::unique_ptr<problem::TimeObservation> makeObs(
     const MixedFESpace&      space,
     const ObservationParams& prm,
     Index                    steps,
@@ -194,7 +194,7 @@ void setObsLayout(problem::TimeObservationData& data,
                   const MixedFESpace&           space,
                   const ObservationParams&      prm);
 
-std::unique_ptr<problem::TimeObservationOperator> makeObsFromData(
+std::unique_ptr<problem::TimeObservation> makeObsFromData(
     const MixedFESpace&                 space,
     const problem::TimeObservationData& data,
     Index                               steps,
@@ -267,7 +267,7 @@ void seedInitialVelocityFromConstantPoiseuille(
     const Params&                    prm,
     const InverseParameterLayout&    layout,
     const Vector<Index>&             velocity_dofs,
-    solve::TimeMatrixLinearStateSolver& state_solver,
+    solve::TimeLinearStateSolver& state_solver,
     Vector<Real>&                    prm_init);
 
 void initialStateFromParams(const Vector<Index>&          velocity_dofs,
@@ -323,8 +323,8 @@ Index centerControlIndex(const MixedFESpace&     space,
 void writeViz(const Mesh&                    mesh,
               const MixedFESpace&            space,
               const DirichletControl&        control,
-              const solve::TimeStateTrajectory& target_tr,
-              const solve::TimeStateTrajectory& opt_tr,
+              const solve::TimeTrajectory& target_tr,
+              const solve::TimeTrajectory& opt_tr,
               const Vector<Real>&            true_prm,
               const Vector<Real>&            opt_prm,
               Real                           dt,
@@ -332,7 +332,7 @@ void writeViz(const Mesh&                    mesh,
 
 void writeForwardViz(const Mesh&                    mesh,
                      const MixedFESpace&            space,
-                     const solve::TimeStateTrajectory& tr,
+                     const solve::TimeTrajectory& tr,
                      Real                           dt,
                      const VizOptions&              opts,
                      Real                           time_offset = 0.0);

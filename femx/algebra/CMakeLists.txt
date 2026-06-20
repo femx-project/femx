@@ -8,7 +8,6 @@ target_sources(
           DenseLinearSolver.cpp
           DenseMatrix.cpp
           SparseMatrix.cpp
-          backends/resolve/ReSolveLinearSolver.cpp
   PUBLIC CsrPattern.hpp
          DenseMatrix.hpp
          DenseLinearSolver.hpp
@@ -19,12 +18,12 @@ target_sources(
          MatrixOperator.hpp
          MatrixView.hpp
          SparseMatrix.hpp
-         SystemMatrix.hpp
-         SystemVector.hpp
          Vector.hpp
          VectorView.hpp)
 
 target_link_libraries(femx_algebra PUBLIC femx_config femx_core)
 
 add_subdirectory(backends/native)
-add_subdirectory(backends/resolve)
+if(FEMX_ENABLE_RESOLVE)
+  add_subdirectory(backends/resolve)
+endif()

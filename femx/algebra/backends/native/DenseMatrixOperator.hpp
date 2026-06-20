@@ -4,16 +4,16 @@
 
 #include <femx/core/Types.hpp>
 #include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/MatrixOperator.hpp>
 #include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
 namespace algebra
 {
 
-/** @brief Dense in-memory implementation of SystemMatrix. */
-class DenseSystemMatrix final : public SystemMatrix
+/** @brief Dense in-memory matrix operator and assembly target. */
+class DenseMatrixOperator final : public MatrixOperator
 {
 public:
   Index numRows() const override
@@ -62,7 +62,7 @@ public:
     if (dir.size() != numCols())
     {
       throw std::runtime_error(
-          "DenseSystemMatrix apply received incompatible vector");
+          "DenseMatrixOperator apply received incompatible vector");
     }
 
     resizeVector(out, numRows());
@@ -80,7 +80,7 @@ public:
     if (dir.size() != numRows())
     {
       throw std::runtime_error(
-          "DenseSystemMatrix transpose apply received incompatible vector");
+          "DenseMatrixOperator transpose apply received incompatible vector");
     }
 
     resizeVector(out, numCols());

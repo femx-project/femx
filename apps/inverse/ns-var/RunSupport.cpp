@@ -511,7 +511,7 @@ void ensureDir(const std::string& basename)
 } // namespace
 
 InitialVelocityStateSolver::InitialVelocityStateSolver(
-    TimeMatrixLinearStateSolver& solver,
+    TimeLinearStateSolver& solver,
     Vector<Index>                velocity_dofs,
     InverseParameterLayout       layout,
     Vector<Real>                 base_initial_state)
@@ -562,7 +562,7 @@ Index InitialVelocityStateSolver::numParams() const
 }
 
 void InitialVelocityStateSolver::solve(const Vector<Real>&  prm,
-                                       TimeStateTrajectory& tr)
+                                       TimeTrajectory& tr)
 {
   initialStateFromParams(
       velocity_dofs_, layout_, base_initial_state_, prm, initial_state_);
@@ -571,7 +571,7 @@ void InitialVelocityStateSolver::solve(const Vector<Real>&  prm,
 }
 
 ParameterSliceTimeObjective::ParameterSliceTimeObjective(
-    const TimeObjectiveFunctional& base,
+    const TimeObjective& base,
     Index                          total_params,
     Index                          offset)
   : base_(base),
@@ -601,21 +601,21 @@ Index ParameterSliceTimeObjective::numParams() const
   return total_params_;
 }
 
-Real ParameterSliceTimeObjective::value(const TimeStateTrajectory& tr,
+Real ParameterSliceTimeObjective::value(const TimeTrajectory& tr,
                                         const Vector<Real>&        prm) const
 {
   return base_.value(tr, slice(prm));
 }
 
 void ParameterSliceTimeObjective::stateGrad(Index                      level,
-                                            const TimeStateTrajectory& tr,
+                                            const TimeTrajectory& tr,
                                             const Vector<Real>&        prm,
                                             Vector<Real>&              out) const
 {
   base_.stateGrad(level, tr, slice(prm), out);
 }
 
-void ParameterSliceTimeObjective::paramGrad(const TimeStateTrajectory& tr,
+void ParameterSliceTimeObjective::paramGrad(const TimeTrajectory& tr,
                                             const Vector<Real>&        prm,
                                             Vector<Real>&              out) const
 {
@@ -689,7 +689,7 @@ Index InitialVelocityRegularization::numParams() const
   return layout_.total_size;
 }
 
-Real InitialVelocityRegularization::value(const TimeStateTrajectory& tr,
+Real InitialVelocityRegularization::value(const TimeTrajectory& tr,
                                           const Vector<Real>&        prm) const
 {
   (void) tr;
@@ -710,7 +710,7 @@ Real InitialVelocityRegularization::value(const TimeStateTrajectory& tr,
 
 void InitialVelocityRegularization::stateGrad(
     Index                      level,
-    const TimeStateTrajectory& tr,
+    const TimeTrajectory& tr,
     const Vector<Real>&        prm,
     Vector<Real>&              out) const
 {
@@ -721,7 +721,7 @@ void InitialVelocityRegularization::stateGrad(
 }
 
 void InitialVelocityRegularization::paramGrad(
-    const TimeStateTrajectory& tr,
+    const TimeTrajectory& tr,
     const Vector<Real>&        prm,
     Vector<Real>&              out) const
 {
@@ -1031,7 +1031,7 @@ FixedDofValues fixedDofValues(const MixedFESpace&     space,
   return toFixedDofValues(values, steps);
 }
 
-std::unique_ptr<TimeObservationOperator> makeObs(
+std::unique_ptr<TimeObservation> makeObs(
     const MixedFESpace&      space,
     const ObservationParams& prm,
     Index                    steps,
@@ -1060,7 +1060,7 @@ void setObsLayout(TimeObservationData&     data,
       "point", activeObsPoints(space, prm), obsComponents(space, prm));
 }
 
-std::unique_ptr<TimeObservationOperator> makeObsFromData(
+std::unique_ptr<TimeObservation> makeObsFromData(
     const MixedFESpace&        space,
     const TimeObservationData& data,
     Index                      steps,
@@ -1380,7 +1380,7 @@ void seedInitialVelocityFromConstantPoiseuille(
     const Params&                    prm,
     const InverseParameterLayout&    layout,
     const Vector<Index>&             velocity_dofs,
-    TimeMatrixLinearStateSolver&     state_solver,
+    TimeLinearStateSolver&     state_solver,
     Vector<Real>&                    prm_init)
 {
   if (prm_init.size() != layout.total_size)
@@ -1402,7 +1402,7 @@ void seedInitialVelocityFromConstantPoiseuille(
   seed_prm.setZero();
   seedControlParams(layout, control_prm, seed_prm);
 
-  TimeStateTrajectory seed_tr;
+  TimeTrajectory seed_tr;
   state_solver.solve(seed_prm, seed_tr);
   seedInitialVelocityParamsFromState(velocity_dofs,
                                      layout,
@@ -1700,8 +1700,8 @@ Index centerControlIndex(const MixedFESpace&     space,
 void writeViz(const Mesh&                mesh,
               const MixedFESpace&        space,
               const DirichletControl&    control,
-              const TimeStateTrajectory& target_tr,
-              const TimeStateTrajectory& opt_tr,
+              const TimeTrajectory& target_tr,
+              const TimeTrajectory& opt_tr,
               const Vector<Real>&        true_prm,
               const Vector<Real>&        opt_prm,
               Real                       dt,
@@ -1762,7 +1762,7 @@ void writeViz(const Mesh&                mesh,
 
 void writeForwardViz(const Mesh&                mesh,
                      const MixedFESpace&        space,
-                     const TimeStateTrajectory& tr,
+                     const TimeTrajectory& tr,
                      Real                       dt,
                      const VizOptions&          opts,
                      Real                       time_offset)

@@ -11,9 +11,9 @@
 #include <femx/core/Types.hpp>
 #include <femx/algebra/CsrPattern.hpp>
 #include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/MatrixOperator.hpp>
 #include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemMatrix.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
+#include <femx/algebra/backends/petsc/PETScVectorBuilder.hpp>
 #include <femx/algebra/backends/petsc/VectorConversion.hpp>
 
 namespace femx
@@ -21,19 +21,19 @@ namespace femx
 namespace algebra
 {
 
-/** @brief PETSc-backed implementation of SystemMatrix. */
-class PETScSystemMatrix final : public SystemMatrix
+/** @brief PETSc-backed matrix operator and assembly target. */
+class PETScMatrixOperator final : public MatrixOperator
 {
 public:
-  explicit PETScSystemMatrix(MPI_Comm comm = PETSC_COMM_SELF)
+  explicit PETScMatrixOperator(MPI_Comm comm = PETSC_COMM_SELF)
     : comm_(comm)
   {
   }
 
-  PETScSystemMatrix(const PETScSystemMatrix&)            = delete;
-  PETScSystemMatrix& operator=(const PETScSystemMatrix&) = delete;
+  PETScMatrixOperator(const PETScMatrixOperator&)            = delete;
+  PETScMatrixOperator& operator=(const PETScMatrixOperator&) = delete;
 
-  ~PETScSystemMatrix() override
+  ~PETScMatrixOperator() override
   {
     if (mat_ != nullptr)
     {
@@ -55,7 +55,7 @@ public:
   {
     if (mat_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemMatrix is not initialized");
+      throw std::runtime_error("PETScMatrixOperator is not initialized");
     }
     return mat_;
   }
@@ -70,7 +70,7 @@ public:
     if (count <= 0)
     {
       throw std::runtime_error(
-          "PETScSystemMatrix preallocation must be positive");
+          "PETScMatrixOperator preallocation must be positive");
     }
     default_nonzeros_per_row_ = count;
   }
@@ -124,14 +124,14 @@ public:
   }
 
   void resize(const CsrPattern&        pattern,
-              const PETScSystemVector& layout)
+              const PETScVectorBuilder& layout)
   {
     checkInitialized();
 
     if (layout.size() != pattern.rows())
     {
       throw std::runtime_error(
-          "PETScSystemMatrix row layout does not match sparsity pattern");
+          "PETScMatrixOperator row layout does not match sparsity pattern");
     }
 
     if (mat_ != nullptr && rows_ == pattern.rows() && cols_ == pattern.cols())
@@ -224,7 +224,7 @@ public:
     if (local.rows() != num_rows || local.cols() != num_cols)
     {
       throw std::runtime_error(
-          "PETScSystemMatrix local block size does not match dofs");
+          "PETScMatrixOperator local block size does not match dofs");
     }
     addBlock(rows, num_rows, cols, num_cols, local.data());
   }
@@ -237,7 +237,7 @@ public:
   {
     if (mat_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemMatrix is not initialized");
+      throw std::runtime_error("PETScMatrixOperator is not initialized");
     }
     check(MatSetValues(mat_,
                        static_cast<PetscInt>(num_rows),
@@ -253,7 +253,7 @@ public:
   {
     if (mat_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemMatrix is not initialized");
+      throw std::runtime_error("PETScMatrixOperator is not initialized");
     }
     check(MatAssemblyBegin(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyBegin");
     check(MatAssemblyEnd(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyEnd");
@@ -261,13 +261,13 @@ public:
 
   void zeroRowsColumns(const Vector<Index>&     rows,
                        Real                     diagonal,
-                       const PETScSystemVector& values,
-                       PETScSystemVector&       rhs)
+                       const PETScVectorBuilder& values,
+                       PETScVectorBuilder&       rhs)
   {
     if (values.size() != rows_ || rhs.size() != rows_)
     {
       throw std::runtime_error(
-          "PETScSystemMatrix zeroRowsColumns received incompatible vectors");
+          "PETScMatrixOperator zeroRowsColumns received incompatible vectors");
     }
     if (rows.empty())
     {
@@ -281,7 +281,7 @@ public:
       if (row < 0 || row >= rows_)
       {
         throw std::runtime_error(
-            "PETScSystemMatrix zeroRowsColumns row is out of range");
+            "PETScMatrixOperator zeroRowsColumns row is out of range");
       }
       petsc_rows.push_back(static_cast<PetscInt>(row));
     }
@@ -309,7 +309,7 @@ public:
       if (row < 0 || row >= rows_)
       {
         throw std::runtime_error(
-            "PETScSystemMatrix zeroRows row is out of range");
+            "PETScMatrixOperator zeroRows row is out of range");
       }
       petsc_rows.push_back(static_cast<PetscInt>(row));
     }
@@ -328,7 +328,7 @@ public:
     if (dir.size() != numCols())
     {
       throw std::runtime_error(
-          "PETScSystemMatrix apply received incompatible vector");
+          "PETScMatrixOperator apply received incompatible vector");
     }
 
     ScopedVec x;
@@ -345,7 +345,7 @@ public:
     if (dir.size() != numRows())
     {
       throw std::runtime_error(
-          "PETScSystemMatrix transpose apply received incompatible vector");
+          "PETScMatrixOperator transpose apply received incompatible vector");
     }
 
     ScopedVec x;
@@ -403,7 +403,7 @@ private:
   {
     if (mat_ == nullptr)
     {
-      throw std::runtime_error("PETScSystemMatrix is not initialized");
+      throw std::runtime_error("PETScMatrixOperator is not initialized");
     }
     check(MatSetValue(mat_,
                       static_cast<PetscInt>(row),
@@ -419,7 +419,7 @@ private:
     check(PetscInitialized(&initialized), "PetscInitialized");
     if (initialized != PETSC_TRUE)
     {
-      throw std::runtime_error("PETScSystemMatrix requires initialized PETSc");
+      throw std::runtime_error("PETScMatrixOperator requires initialized PETSc");
     }
   }
 

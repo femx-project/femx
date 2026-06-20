@@ -4,7 +4,7 @@
 
 #include <femx/core/Math.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/problem/TimeObservation.hpp>
 #include <femx/algebra/Vector.hpp>
 
 namespace femx
@@ -12,10 +12,10 @@ namespace femx
 namespace fem
 {
 
-using problem::TimeObservationOperator;
+using problem::TimeObservation;
 
 /** @brief Samples field components at physical points on each time level. */
-class TimePointSampler final : public TimeObservationOperator
+class TimePointSampler final : public TimeObservation
 {
 public:
   TimePointSampler(Index               num_steps,

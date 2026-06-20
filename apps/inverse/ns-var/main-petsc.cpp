@@ -18,8 +18,8 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/core/Math.hpp>
 #include <femx/core/Types.hpp>
-#include <femx/problem/TimeDirichletControlEquation.hpp>
-#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
+#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/solve/TimeLinearStateSolver.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/problem/SumTimeObjective.hpp>
 #include <femx/problem/TimeLeastSquaresObjective.hpp>
@@ -31,8 +31,8 @@
 #include <femx/fem/GmshReader.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
+#include <femx/algebra/backends/petsc/PETScMatrixOperator.hpp>
+#include <femx/algebra/backends/petsc/PETScVectorBuilder.hpp>
 
 #ifndef FEMX_NAVIER_VAR_APP_NAME
 #define FEMX_NAVIER_VAR_APP_NAME "ns-var"
@@ -351,7 +351,7 @@ int run(const Params& prm)
 
   const FixedDofValues fixed = fixedDofValues(space, prm, ctr, steps, dt);
 
-  TimeDirichletControlEquation eq(base_eq,
+  TimeDirichletControlResidual eq(base_eq,
                                   ctr,
                                   fixed.dofs,
                                   param_layout.control_offset,
@@ -360,16 +360,16 @@ int run(const Params& prm)
 
   const CsrPattern pattern = SparsityPatternBuilder::build(space);
 
-  PETScSystemVector matrix_layout(PETSC_COMM_WORLD);
+  PETScVectorBuilder matrix_layout(PETSC_COMM_WORLD);
   matrix_layout.resize(space.numDofs());
 
-  PETScSystemMatrix next_jac(PETSC_COMM_WORLD);
+  PETScMatrixOperator next_jac(PETSC_COMM_WORLD);
   next_jac.resize(pattern, matrix_layout);
 
   KspLinearSolver state_lin_solver(PETSC_COMM_WORLD);
   setKspDefaults(state_lin_solver);
 
-  TimeMatrixLinearStateSolver state_solver(
+  TimeLinearStateSolver state_solver(
       eq, next_jac, state_lin_solver);
 
   state_solver.setInitialState(x_init);
@@ -423,16 +423,17 @@ int run(const Params& prm)
       param_layout,
       prm.inverse.initial_velocity.l2);
 
-  SumTimeObjectiveFunctional obj(steps, eq.numStates(), eq.numParams());
+  SumTimeObjective obj(steps, eq.numStates(), eq.numParams());
   obj.add(misfit).add(control_reg);
+  
   if (param_layout.hasInitialVelocity()
       && prm.inverse.initial_velocity.l2 > 0.0)
   {
     obj.add(initial_velocity_reg);
   }
 
-  PETScSystemMatrix adj_next_jac(PETSC_COMM_WORLD);
-  PETScSystemMatrix adj_prev_jac(PETSC_COMM_WORLD);
+  PETScMatrixOperator adj_next_jac(PETSC_COMM_WORLD);
+  PETScMatrixOperator adj_prev_jac(PETSC_COMM_WORLD);
   adj_next_jac.resize(pattern, matrix_layout);
   adj_prev_jac.resize(pattern, matrix_layout);
 
@@ -517,7 +518,7 @@ int run(const Params& prm)
   const Index adj_solve_calls    = reduced.solveCalls();
 
   prog.beginPhase("write output");
-  TimeStateTrajectory opt_tr;
+  TimeTrajectory opt_tr;
   reduced_state_solver->solve(result.prm, opt_tr);
   if (rank == 0)
   {

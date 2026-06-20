@@ -1,8 +1,8 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
-#include <femx/solve/TimeStateTrajectory.hpp>
 #include <femx/algebra/Vector.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/solve/TimeTrajectory.hpp>
 
 namespace femx
 {
@@ -19,8 +19,8 @@ public:
   virtual Index numStates() const = 0;
   virtual Index numParams() const = 0;
 
-  virtual void solve(const Vector<Real>&  prm,
-                     TimeStateTrajectory& tr) = 0;
+  virtual void solve(const Vector<Real>& prm,
+                     TimeTrajectory&     tr) = 0;
 };
 
 } // namespace solve

@@ -5,7 +5,7 @@
 #include <femx/algebra/DenseMatrix.hpp>
 #include <femx/algebra/Vector.hpp>
 #if defined(FEMX_HAS_PETSC)
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScMatrixOperator.hpp>
 #endif
 
 namespace femx
@@ -17,7 +17,7 @@ class MixedFESpace;
 namespace algebra
 {
 #if !defined(FEMX_HAS_PETSC)
-class PETScSystemMatrix;
+class PETScMatrixOperator;
 #endif
 } // namespace algebra
 } // namespace femx
@@ -64,7 +64,7 @@ void assembleNextStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               algebra::PETScSystemMatrix&       out);
+                               algebra::PETScMatrixOperator&     out);
 
 void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const GaussQuadrature&            quad,
@@ -72,7 +72,7 @@ void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               algebra::PETScSystemMatrix&       out);
+                               algebra::PETScMatrixOperator&     out);
 #endif
 
 } // namespace femx

@@ -1,11 +1,11 @@
 add_subdirectory(core)
 add_subdirectory(algebra)
 add_subdirectory(ad)
+add_subdirectory(problem)
 add_subdirectory(fem)
 if(FEMX_HAS_PETSC)
   add_subdirectory(algebra/backends/petsc)
 endif()
-add_subdirectory(problem)
 add_subdirectory(solve)
 add_subdirectory(assembly)
 if(FEMX_HAS_PETSC)
@@ -26,4 +26,8 @@ target_link_libraries(
 
 if(FEMX_HAS_PETSC)
   target_link_libraries(femx INTERFACE femx_optimize)
+endif()
+
+if(TARGET femx_algebra_resolve)
+  target_link_libraries(femx INTERFACE femx_algebra_resolve)
 endif()

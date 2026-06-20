@@ -17,8 +17,8 @@
 #include <femx/core/Math.hpp>
 #include <femx/core/Types.hpp>
 #include <femx/core/Workspace.hpp>
-#include <femx/problem/TimeDirichletControlEquation.hpp>
-#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
+#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/solve/TimeLinearStateSolver.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/problem/SumTimeObjective.hpp>
 #include <femx/problem/TimeLeastSquaresObjective.hpp>
@@ -29,7 +29,7 @@
 #include <femx/algebra/Vector.hpp>
 #include <femx/fem/GmshReader.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/SparseMatrixOperator.hpp>
 #include <femx/algebra/backends/resolve/ReSolveLinearSolver.hpp>
 
 #ifndef FEMX_NAVIER_VAR_APP_NAME
@@ -308,7 +308,7 @@ int run(const Params& prm)
 
   const FixedDofValues fixed = fixedDofValues(space, prm, ctr, steps, dt);
 
-  TimeDirichletControlEquation eq(ns,
+  TimeDirichletControlResidual eq(ns,
                                   ctr,
                                   fixed.dofs,
                                   param_layout.control_offset,
@@ -317,10 +317,10 @@ int run(const Params& prm)
 
   const CsrPattern pattern = SparsityPatternBuilder::build(space);
 
-  SparseSystemMatrix  next_jac(pattern);
+  SparseMatrixOperator  next_jac(pattern);
   ReSolveLinearSolver lin_solver(work, makeReSolveOptions());
 
-  TimeMatrixLinearStateSolver state_solver(eq, next_jac, lin_solver);
+  TimeLinearStateSolver state_solver(eq, next_jac, lin_solver);
 
   state_solver.setInitialState(x_init);
   std::optional<InitialVelocityStateSolver> initial_state_solver;
@@ -373,7 +373,7 @@ int run(const Params& prm)
       param_layout,
       prm.inverse.initial_velocity.l2);
 
-  SumTimeObjectiveFunctional obj(steps, eq.numStates(), eq.numParams());
+  SumTimeObjective obj(steps, eq.numStates(), eq.numParams());
   obj.add(misfit).add(control_reg);
   if (param_layout.hasInitialVelocity()
       && prm.inverse.initial_velocity.l2 > 0.0)
@@ -381,8 +381,8 @@ int run(const Params& prm)
     obj.add(initial_velocity_reg);
   }
 
-  SparseSystemMatrix  adj_next_jac(pattern);
-  SparseSystemMatrix  adj_prev_jac(pattern);
+  SparseMatrixOperator  adj_next_jac(pattern);
+  SparseMatrixOperator  adj_prev_jac(pattern);
   ReSolveLinearSolver adj_solver(work, makeReSolveOptions());
 
   TimeReducedFunctional reduced(
@@ -464,7 +464,7 @@ int run(const Params& prm)
   const Index adj_solve_calls    = reduced.solveCalls();
 
   prog.beginPhase("write output");
-  TimeStateTrajectory opt_tr;
+  TimeTrajectory opt_tr;
   reduced_state_solver->solve(result.prm, opt_tr);
   const Real viz_time_offset =
       prm.inverse.initial_velocity.enabled ? -dt : 0.0;

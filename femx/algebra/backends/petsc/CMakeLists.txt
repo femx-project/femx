@@ -5,16 +5,9 @@ target_sources(
   femx_algebra_petsc
   PRIVATE KspLinearSolver.cpp
   PUBLIC KspLinearSolver.hpp
-         PETScSystemMatrix.hpp
-         PETScSystemVector.hpp
+         PETScMatrixOperator.hpp
+         PETScVectorBuilder.hpp
          VectorConversion.hpp)
 
 target_link_libraries(
   femx_algebra_petsc PUBLIC femx_algebra PkgConfig::PETSC MPI::MPI_CXX)
-
-target_sources(
-  femx_algebra
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/KspLinearSolver.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/PETScSystemMatrix.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/PETScSystemVector.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/VectorConversion.hpp)

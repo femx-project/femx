@@ -8,7 +8,7 @@
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
 
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScMatrixOperator.hpp>
 #endif
 
 using namespace femx::assembly;
@@ -77,6 +77,11 @@ Index NavierStokesEquation::numSteps() const
   return prm_.steps;
 }
 
+problem::TimeDimensions NavierStokesEquation::dimensions() const
+{
+  return {numSteps(), numStates(), numParams(), numRes()};
+}
+
 Index NavierStokesEquation::numStates() const
 {
   return space_.numDofs();
@@ -92,6 +97,93 @@ Index NavierStokesEquation::numRes() const
   return space_.numDofs();
 }
 
+void NavierStokesEquation::residual(const problem::TimeContext& ctx,
+                                    Vector<Real>& out) const
+{
+  if (ctx.previous_state == nullptr || ctx.next_state == nullptr
+      || ctx.prm == nullptr)
+  {
+    throw std::runtime_error("NavierStokesEquation received incomplete context");
+  }
+  res(ctx.step, *ctx.next_state, *ctx.previous_state, *ctx.prm, out);
+}
+
+void NavierStokesEquation::applyJacobian(const problem::TimeContext& ctx,
+                                         problem::VariableBlock wrt,
+                                         const Vector<Real>& dir,
+                                         Vector<Real>& out) const
+{
+  (void) ctx;
+  (void) wrt;
+  (void) dir;
+  (void) out;
+  throw std::runtime_error(
+      "NavierStokesEquation uses assembled Jacobians");
+}
+
+void NavierStokesEquation::applyJacobianT(const problem::TimeContext& ctx,
+                                          problem::VariableBlock wrt,
+                                          const Vector<Real>& adjoint,
+                                          Vector<Real>& out) const
+{
+  if (wrt == problem::VariableBlock::Parameter)
+  {
+    if (ctx.previous_state == nullptr || ctx.next_state == nullptr
+        || ctx.prm == nullptr)
+    {
+      throw std::runtime_error(
+          "NavierStokesEquation received incomplete context");
+    }
+    checkSizes(ctx.step, *ctx.next_state, *ctx.previous_state, *ctx.prm);
+    if (adjoint.size() != numRes())
+    {
+      throw std::runtime_error(
+          "NavierStokesEquation parameter adjoint size mismatch");
+    }
+    if (out.size() != numParams())
+    {
+      out.resize(numParams());
+    }
+    else
+    {
+      out.setZero();
+    }
+    return;
+  }
+
+  (void) adjoint;
+  (void) out;
+  throw std::runtime_error(
+      "NavierStokesEquation uses assembled state Jacobians");
+}
+
+bool NavierStokesEquation::assembleJacobian(const problem::TimeContext& ctx,
+                                            problem::VariableBlock wrt,
+                                            MatrixBuilder& out) const
+{
+  if (ctx.previous_state == nullptr || ctx.next_state == nullptr
+      || ctx.prm == nullptr)
+  {
+    throw std::runtime_error("NavierStokesEquation received incomplete context");
+  }
+
+  if (wrt == problem::VariableBlock::NextState)
+  {
+    assembleNextStateJac(
+        ctx.step, *ctx.next_state, *ctx.previous_state, *ctx.prm, out);
+    return true;
+  }
+  if (wrt == problem::VariableBlock::PreviousState)
+  {
+    assemblePrevStateJac(
+        ctx.step, *ctx.next_state, *ctx.previous_state, *ctx.prm, out);
+    return true;
+  }
+
+  assembleParamJac(ctx.step, *ctx.next_state, *ctx.previous_state, *ctx.prm, out);
+  return true;
+}
+
 void NavierStokesEquation::res(Index               step,
                                const Vector<Real>& x_next,
                                const Vector<Real>& x,
@@ -101,20 +193,20 @@ void NavierStokesEquation::res(Index               step,
   checkSizes(step, x_next, x, prm);
 
   const auto&     elem = space_.field(0).space().finiteElement();
-  SystemAssembler initializer(space_);
-  initializer.initVec(out);
+  Assembler initializer(space_);
+  initializer.initVector(out);
 
 #pragma omp parallel
   {
     ElementValues   ev(elem, quad_);
     Vector<Real>    Re(space_.numDofsPerElem());
-    SystemAssembler assembler(space_, AssemblyMode::Atomic);
+    Assembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
     for (Index ic = cell_begin_; ic < cell_end_; ++ic)
     {
       assembleElemResidual(space_, ic, ev, x_next, x, prm_, Re);
-      assembler.addVec(ic, Re, out);
+      assembler.addVector(ic, Re, out);
     }
   }
 
@@ -131,7 +223,7 @@ void NavierStokesEquation::assembleNextStateJac(
     const Vector<Real>& x_next,
     const Vector<Real>& x,
     const Vector<Real>& prm,
-    SystemMatrix&       out) const
+    MatrixBuilder&      out) const
 {
   checkSizes(step, x_next, x, prm);
 
@@ -141,7 +233,7 @@ void NavierStokesEquation::assembleNextStateJac(
 #endif
 
 #if defined(FEMX_HAS_PETSC)
-  if (auto* petsc = dynamic_cast<PETScSystemMatrix*>(&out))
+  if (auto* petsc = dynamic_cast<PETScMatrixOperator*>(&out))
   {
     assembleNextStateJacPETSc(
         space_, quad_, x_next, x, prm_, {cell_begin_, cell_end_}, *petsc);
@@ -149,8 +241,8 @@ void NavierStokesEquation::assembleNextStateJac(
   }
 #endif
 
-  SystemAssembler initializer(space_);
-  initializer.initMat(out);
+  Assembler initializer(space_);
+  initializer.initMatrix(out);
 
   const auto& elem = space_.field(0).space().finiteElement();
 
@@ -158,13 +250,13 @@ void NavierStokesEquation::assembleNextStateJac(
   {
     ElementValues   ev(elem, quad_);
     DenseMatrix     Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
-    SystemAssembler assembler(space_, AssemblyMode::Atomic);
+    Assembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
     for (Index ic = 0; ic < space_.numElems(); ++ic)
     {
       assembleNextElemMatrix(space_, ic, ev, quad_, x_next, x, prm_, Ke);
-      assembler.addMat(ic, Ke, out);
+      assembler.addMatrix(ic, Ke, out);
     }
   }
 }
@@ -174,7 +266,7 @@ void NavierStokesEquation::assemblePrevStateJac(
     const Vector<Real>& x_next,
     const Vector<Real>& x,
     const Vector<Real>& prm,
-    SystemMatrix&       out) const
+    MatrixBuilder&      out) const
 {
   checkSizes(step, x_next, x, prm);
 
@@ -184,7 +276,7 @@ void NavierStokesEquation::assemblePrevStateJac(
 #endif
 
 #if defined(FEMX_HAS_PETSC)
-  if (auto* petsc = dynamic_cast<PETScSystemMatrix*>(&out))
+  if (auto* petsc = dynamic_cast<PETScMatrixOperator*>(&out))
   {
     assemblePrevStateJacPETSc(
         space_, quad_, x_next, x, prm_, {cell_begin_, cell_end_}, *petsc);
@@ -192,8 +284,8 @@ void NavierStokesEquation::assemblePrevStateJac(
   }
 #endif
 
-  SystemAssembler initializer(space_);
-  initializer.initMat(out);
+  Assembler initializer(space_);
+  initializer.initMatrix(out);
 
   const auto& elem = space_.field(0).space().finiteElement();
 
@@ -201,13 +293,13 @@ void NavierStokesEquation::assemblePrevStateJac(
   {
     ElementValues   ev(elem, quad_);
     DenseMatrix     Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
-    SystemAssembler assembler(space_, AssemblyMode::Atomic);
+    Assembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
     for (Index ic = 0; ic < space_.numElems(); ++ic)
     {
       assemblePrevElemMatrix(space_, ic, ev, quad_, x_next, x, prm_, Ke);
-      assembler.addMat(ic, Ke, out);
+      assembler.addMatrix(ic, Ke, out);
     }
   }
 }
@@ -217,7 +309,7 @@ void NavierStokesEquation::assembleParamJac(
     const Vector<Real>& x_next,
     const Vector<Real>& x,
     const Vector<Real>& prm,
-    SystemMatrix&       out) const
+    MatrixBuilder&      out) const
 {
   checkSizes(step, x_next, x, prm);
   out.resize(numRes(), numParams());

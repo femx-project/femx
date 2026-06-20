@@ -9,7 +9,7 @@
 #include <femx/algebra/SparseMatrix.hpp>
 #include <femx/algebra/Vector.hpp>
 #include <femx/algebra/LinearOperator.hpp>
-#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/SparseMatrixOperator.hpp>
 #include <femx/algebra/backends/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -142,7 +142,7 @@ public:
 
   void solve(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const SparseSystemMatrix& sparse_op = requireSparseSystemMatrix(op);
+    const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
     {
       throw std::runtime_error(
@@ -155,7 +155,7 @@ public:
 
   void solveT(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const SparseSystemMatrix& sparse_op = requireSparseSystemMatrix(op);
+    const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
     {
       throw std::runtime_error(
@@ -178,14 +178,14 @@ private:
     std::vector<Real>  values;
   };
 
-  static const SparseSystemMatrix& requireSparseSystemMatrix(
+  static const SparseMatrixOperator& requireSparseMatrixOperator(
       const LinearOperator& op)
   {
-    const auto* sparse_op = dynamic_cast<const SparseSystemMatrix*>(&op);
+    const auto* sparse_op = dynamic_cast<const SparseMatrixOperator*>(&op);
     if (sparse_op == nullptr)
     {
       throw std::runtime_error(
-          "ReSolveLinearSolver currently supports SparseSystemMatrix only");
+          "ReSolveLinearSolver currently supports SparseMatrixOperator only");
     }
     return *sparse_op;
   }

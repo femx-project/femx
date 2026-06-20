@@ -6,20 +6,20 @@
 #include <femx/core/Types.hpp>
 #include <femx/algebra/CsrPattern.hpp>
 #include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/MatrixOperator.hpp>
 #include <femx/algebra/SparseMatrix.hpp>
 #include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
 namespace algebra
 {
 
-/** @brief Sparse SystemMatrix backed by femx::SparseMatrix. */
-class SparseSystemMatrix final : public SystemMatrix
+/** @brief Sparse matrix operator and assembly target. */
+class SparseMatrixOperator final : public MatrixOperator
 {
 public:
-  explicit SparseSystemMatrix(const CsrPattern& pattern)
+  explicit SparseMatrixOperator(const CsrPattern& pattern)
     : mat_(pattern)
   {
   }
@@ -39,7 +39,7 @@ public:
     if (rows != numRows() || cols != numCols())
     {
       throw std::runtime_error(
-          "SparseSystemMatrix cannot resize away from its sparsity pattern");
+          "SparseMatrixOperator cannot resize away from its sparsity pattern");
     }
   }
 
@@ -88,7 +88,7 @@ public:
     if (dir.size() != numCols())
     {
       throw std::runtime_error(
-          "SparseSystemMatrix apply received incompatible vector");
+          "SparseMatrixOperator apply received incompatible vector");
     }
 
     resizeVector(out, numRows());
@@ -112,7 +112,7 @@ public:
     if (dir.size() != numRows())
     {
       throw std::runtime_error(
-          "SparseSystemMatrix transpose apply received incompatible vector");
+          "SparseMatrixOperator transpose apply received incompatible vector");
     }
 
     resizeVector(out, numCols());
@@ -145,14 +145,14 @@ private:
     const CsrPattern& pattern = mat_.pattern();
     if (ic < 0 || ic >= pattern.numElems())
     {
-      throw std::runtime_error("SparseSystemMatrix cell index is out of range");
+      throw std::runtime_error("SparseMatrixOperator cell index is out of range");
     }
 
     const Index num_dofs = pattern.elemNumDofs(ic);
     if (local.rows() != num_dofs || local.cols() != num_dofs)
     {
       throw std::runtime_error(
-          "SparseSystemMatrix local matrix size does not match cell dofs");
+          "SparseMatrixOperator local matrix size does not match cell dofs");
     }
   }
 
@@ -209,7 +209,7 @@ private:
   {
     if (row < 0 || row >= numRows() || col < 0 || col >= numCols())
     {
-      throw std::runtime_error("SparseSystemMatrix index is out of range");
+      throw std::runtime_error("SparseMatrixOperator index is out of range");
     }
 
     const Index* row_ptr = mat_.rowPtrData();
@@ -223,7 +223,7 @@ private:
     }
 
     throw std::runtime_error(
-        "SparseSystemMatrix entry is outside the sparsity pattern");
+        "SparseMatrixOperator entry is outside the sparsity pattern");
   }
 
   static void resizeVector(Vector<Real>& out, Index size)

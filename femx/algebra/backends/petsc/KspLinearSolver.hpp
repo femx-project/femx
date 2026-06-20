@@ -13,8 +13,8 @@ namespace femx
 namespace algebra
 {
 
-class PETScSystemMatrix;
-class PETScSystemVector;
+class PETScMatrixOperator;
+class PETScVectorBuilder;
 
 struct KspOptions
 {
@@ -54,13 +54,13 @@ public:
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;
 
-  void solve(const PETScSystemMatrix& op,
-             const PETScSystemVector& rhs,
-             PETScSystemVector&       out);
+  void solve(const PETScMatrixOperator& op,
+             const PETScVectorBuilder& rhs,
+             PETScVectorBuilder&       out);
 
-  void solveT(const PETScSystemMatrix& op,
-              const PETScSystemVector& rhs,
-              PETScSystemVector&       out);
+  void solveT(const PETScMatrixOperator& op,
+              const PETScVectorBuilder& rhs,
+              PETScVectorBuilder&       out);
 
   KSPConvergedReason convergedReason() const;
 

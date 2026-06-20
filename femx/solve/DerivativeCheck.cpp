@@ -27,8 +27,8 @@ DerivativeCheck::DerivativeCheck(Real step)
   }
 }
 
-DerivativeCheckResult DerivativeCheck::objStateGrad(
-    const ObjectiveFunctional& obj,
+DerivativeCheckResult DerivativeCheck::objectiveStateGrad(
+    const problem::Objective& obj,
     const Vector<Real>&        state,
     const Vector<Real>&        prm,
     const Vector<Real>&        dir) const
@@ -45,8 +45,8 @@ DerivativeCheckResult DerivativeCheck::objStateGrad(
   return compareScalars(dot(grad, dir), reference);
 }
 
-DerivativeCheckResult DerivativeCheck::objParamGrad(
-    const ObjectiveFunctional& obj,
+DerivativeCheckResult DerivativeCheck::objectiveParamGrad(
+    const problem::Objective& obj,
     const Vector<Real>&        state,
     const Vector<Real>&        prm,
     const Vector<Real>&        dir) const
@@ -62,7 +62,7 @@ DerivativeCheckResult DerivativeCheck::objParamGrad(
   return compareScalars(dot(grad, dir), reference);
 }
 
-DerivativeCheckResult DerivativeCheck::reducedGrad(ReducedObjective&  functional,
+DerivativeCheckResult DerivativeCheck::reducedGrad(ReducedFunctional& functional,
     const Vector<Real>& prm,
     const Vector<Real>& dir) const
 {
@@ -77,72 +77,82 @@ DerivativeCheckResult DerivativeCheck::reducedGrad(ReducedObjective&  functional
   return compareScalars(dot(grad, dir), reference);
 }
 
-DerivativeCheckResult DerivativeCheck::resStateJac(
-    const ResidualEquation& eq,
-    const Vector<Real>&     state,
-    const Vector<Real>&     prm,
-    const Vector<Real>&     dir) const
+DerivativeCheckResult DerivativeCheck::residualStateJacobian(
+    const problem::Residual& problem,
+    problem::Linearization&  linearization,
+    const Vector<Real>&      state,
+    const Vector<Real>&      prm,
+    const Vector<Real>&      dir) const
 {
   const Vector<Real> state_plus  = shifted(state, dir, step_);
   const Vector<Real> state_minus = shifted(state, dir, -step_);
 
   Vector<Real> res_p;
   Vector<Real> res_m;
-  eq.res(state_plus, prm, res_p);
-  eq.res(state_minus, prm, res_m);
+  problem.residual(state_plus, prm, res_p);
+  problem.residual(state_minus, prm, res_m);
   const Vector<Real> reference = centralDifference(res_p, res_m);
 
   Vector<Real> applied;
-  eq.applyStateJac(state, prm, dir, applied);
+  problem.linearize(state, prm, linearization);
+  linearization.stateJacobian().apply(dir, applied);
   return compareVectors(applied, reference);
 }
 
-DerivativeCheckResult DerivativeCheck::resParamJac(
-    const ResidualEquation& eq,
-    const Vector<Real>&     state,
-    const Vector<Real>&     prm,
-    const Vector<Real>&     dir) const
+DerivativeCheckResult DerivativeCheck::residualParamJacobian(
+    const problem::Residual& problem,
+    problem::Linearization&  linearization,
+    const Vector<Real>&      state,
+    const Vector<Real>&      prm,
+    const Vector<Real>&      dir) const
 {
   const Vector<Real> param_p = shifted(prm, dir, step_);
   const Vector<Real> param_m = shifted(prm, dir, -step_);
 
   Vector<Real> res_p;
   Vector<Real> res_m;
-  eq.res(state, param_p, res_p);
-  eq.res(state, param_m, res_m);
+  problem.residual(state, param_p, res_p);
+  problem.residual(state, param_m, res_m);
   const Vector<Real> reference = centralDifference(res_p, res_m);
 
   Vector<Real> applied;
-  eq.applyParamJac(state, prm, dir, applied);
+  problem.linearize(state, prm, linearization);
+  linearization.paramJacobian().apply(dir, applied);
   return compareVectors(applied, reference);
 }
 
-DerivativeCheckResult DerivativeCheck::stateJacT(
-    const ResidualEquation& eq,
-    const Vector<Real>&     state,
-    const Vector<Real>&     prm,
-    const Vector<Real>&     dir,
-    const Vector<Real>&     lambda) const
+DerivativeCheckResult DerivativeCheck::stateJacobianTranspose(
+    const problem::Residual& problem,
+    problem::Linearization&  linearization,
+    const Vector<Real>&      state,
+    const Vector<Real>&      prm,
+    const Vector<Real>&      dir,
+    const Vector<Real>&      lambda) const
 {
+  problem.linearize(state, prm, linearization);
+
   Vector<Real> jac_dir;
   Vector<Real> jt_lam;
-  eq.applyStateJac(state, prm, dir, jac_dir);
-  eq.applyStateJacT(state, prm, lambda, jt_lam);
+  linearization.stateJacobian().apply(dir, jac_dir);
+  linearization.stateJacobian().applyT(lambda, jt_lam);
 
   return compareScalars(dot(jac_dir, lambda), dot(dir, jt_lam));
 }
 
-DerivativeCheckResult DerivativeCheck::paramJacT(
-    const ResidualEquation& eq,
-    const Vector<Real>&     state,
-    const Vector<Real>&     prm,
-    const Vector<Real>&     dir,
-    const Vector<Real>&     lambda) const
+DerivativeCheckResult DerivativeCheck::paramJacobianTranspose(
+    const problem::Residual& problem,
+    problem::Linearization&  linearization,
+    const Vector<Real>&      state,
+    const Vector<Real>&      prm,
+    const Vector<Real>&      dir,
+    const Vector<Real>&      lambda) const
 {
+  problem.linearize(state, prm, linearization);
+
   Vector<Real> jac_dir;
   Vector<Real> jt_lam;
-  eq.applyParamJac(state, prm, dir, jac_dir);
-  eq.applyParamJacT(state, prm, lambda, jt_lam);
+  linearization.paramJacobian().apply(dir, jac_dir);
+  linearization.paramJacobian().applyT(lambda, jt_lam);
 
   return compareScalars(dot(jac_dir, lambda), dot(dir, jt_lam));
 }

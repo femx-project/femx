@@ -7,6 +7,7 @@ target_sources(
           BoundaryElementValues.cpp
           Cell.cpp
           DirichletControl.cpp
+          DofLayout.cpp
           DofMap.cpp
           ElementValues.cpp
           FESpace.cpp
@@ -16,8 +17,8 @@ target_sources(
           ObservationGrid.cpp
           TimePointSampler.cpp
           VelocityProfile.cpp
-  PUBLIC BoundaryElementValues.hpp
-         BoundaryCondition.hpp
+  PUBLIC BoundaryCondition.hpp
+         BoundaryElementValues.hpp
          Cell.hpp
          DirichletControl.hpp
          DofLayout.hpp
@@ -38,4 +39,5 @@ target_sources(
          elements/LagrangeTetrahedronP1.hpp
          elements/LagrangeTriangleP1.hpp)
 
-target_link_libraries(femx_fem PUBLIC femx_config femx_core femx_algebra)
+target_link_libraries(femx_fem PUBLIC femx_config femx_core femx_algebra
+                                      femx_problem)

@@ -225,8 +225,7 @@ private:
   {
     if (u.size() != num_states_ || m.size() != num_prm_)
     {
-      throw std::runtime_error(
-          "EnzymeBoundaryKernel input size mismatch");
+      throw std::runtime_error("EnzymeBoundaryKernel input size mismatch");
     }
   }
 
