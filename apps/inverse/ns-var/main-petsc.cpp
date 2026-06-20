@@ -12,13 +12,13 @@
 
 #include "Assembly.hpp"
 #include "Config.hpp"
-#include "DirichletControl.hpp"
-#include "DirichletControlEquation.hpp"
 #include "NavierStokesEquation.hpp"
 #include "RunSupport.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
+#include <femx/bc/DirichletControl.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/eq/TimeDirichletControlEquation.hpp>
 #include <femx/eq/TimeMatrixLinearStateSolver.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/inverse/SumTimeObjectiveFunctional.hpp>
@@ -350,12 +350,12 @@ int run(const Params& prm)
 
   const FixedDofValues fixed = fixedDofValues(space, prm, ctr, steps, dt);
 
-  DirichletControlEquation eq(base_eq,
-                              ctr,
-                              fixed.dofs,
-                              param_layout.control_offset,
-                              param_layout.total_size,
-                              fixed.values);
+  TimeDirichletControlEquation eq(base_eq,
+                                  ctr,
+                                  fixed.dofs,
+                                  param_layout.control_offset,
+                                  param_layout.total_size,
+                                  fixed.values);
 
   const CsrPattern pattern = SparsityPatternBuilder::build(space);
 

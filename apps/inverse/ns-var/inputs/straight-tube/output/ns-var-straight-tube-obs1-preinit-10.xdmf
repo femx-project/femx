@@ -3,7 +3,7 @@
   <Domain>
     <Grid Name="time_series" GridType="Collection" CollectionType="Temporal">
       <Grid Name="Step00000" GridType="Uniform">
-        <Time Value="0"/>
+        <Time Value="-0.01"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -18,7 +18,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00001" GridType="Uniform">
-        <Time Value="0.01"/>
+        <Time Value="0"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -33,7 +33,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00002" GridType="Uniform">
-        <Time Value="0.02"/>
+        <Time Value="0.01"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -48,7 +48,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00003" GridType="Uniform">
-        <Time Value="0.03"/>
+        <Time Value="0.02"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -63,7 +63,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00004" GridType="Uniform">
-        <Time Value="0.04"/>
+        <Time Value="0.03"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -78,7 +78,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00005" GridType="Uniform">
-        <Time Value="0.05"/>
+        <Time Value="0.04"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -93,7 +93,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00006" GridType="Uniform">
-        <Time Value="0.06"/>
+        <Time Value="0.05"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -108,7 +108,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00007" GridType="Uniform">
-        <Time Value="0.07"/>
+        <Time Value="0.06"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -123,7 +123,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00008" GridType="Uniform">
-        <Time Value="0.08"/>
+        <Time Value="0.07"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -138,7 +138,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00009" GridType="Uniform">
-        <Time Value="0.09"/>
+        <Time Value="0.08"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -153,7 +153,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00010" GridType="Uniform">
-        <Time Value="0.1"/>
+        <Time Value="0.09"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -168,7 +168,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00011" GridType="Uniform">
-        <Time Value="0.11"/>
+        <Time Value="0.1"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -183,7 +183,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00012" GridType="Uniform">
-        <Time Value="0.12"/>
+        <Time Value="0.11"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -198,7 +198,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00013" GridType="Uniform">
-        <Time Value="0.13"/>
+        <Time Value="0.12"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -213,7 +213,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00014" GridType="Uniform">
-        <Time Value="0.14"/>
+        <Time Value="0.13"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -228,7 +228,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00015" GridType="Uniform">
-        <Time Value="0.15"/>
+        <Time Value="0.14"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -243,7 +243,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00016" GridType="Uniform">
-        <Time Value="0.16"/>
+        <Time Value="0.15"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -258,7 +258,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00017" GridType="Uniform">
-        <Time Value="0.17"/>
+        <Time Value="0.16"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -273,7 +273,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00018" GridType="Uniform">
-        <Time Value="0.18"/>
+        <Time Value="0.17"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -288,7 +288,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00019" GridType="Uniform">
-        <Time Value="0.19"/>
+        <Time Value="0.18"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -303,7 +303,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00020" GridType="Uniform">
-        <Time Value="0.2"/>
+        <Time Value="0.19"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -318,7 +318,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00021" GridType="Uniform">
-        <Time Value="0.21"/>
+        <Time Value="0.2"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -333,7 +333,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00022" GridType="Uniform">
-        <Time Value="0.22"/>
+        <Time Value="0.21"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -348,7 +348,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00023" GridType="Uniform">
-        <Time Value="0.23"/>
+        <Time Value="0.22"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -363,7 +363,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00024" GridType="Uniform">
-        <Time Value="0.24"/>
+        <Time Value="0.23"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -378,7 +378,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00025" GridType="Uniform">
-        <Time Value="0.25"/>
+        <Time Value="0.24"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -393,7 +393,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00026" GridType="Uniform">
-        <Time Value="0.26"/>
+        <Time Value="0.25"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -408,7 +408,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00027" GridType="Uniform">
-        <Time Value="0.27"/>
+        <Time Value="0.26"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -423,7 +423,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00028" GridType="Uniform">
-        <Time Value="0.28"/>
+        <Time Value="0.27"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -438,7 +438,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00029" GridType="Uniform">
-        <Time Value="0.29"/>
+        <Time Value="0.28"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -453,7 +453,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00030" GridType="Uniform">
-        <Time Value="0.3"/>
+        <Time Value="0.29"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -468,7 +468,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00031" GridType="Uniform">
-        <Time Value="0.31"/>
+        <Time Value="0.3"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -483,7 +483,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00032" GridType="Uniform">
-        <Time Value="0.32"/>
+        <Time Value="0.31"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -498,7 +498,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00033" GridType="Uniform">
-        <Time Value="0.33"/>
+        <Time Value="0.32"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -513,7 +513,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00034" GridType="Uniform">
-        <Time Value="0.34"/>
+        <Time Value="0.33"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -528,7 +528,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00035" GridType="Uniform">
-        <Time Value="0.35"/>
+        <Time Value="0.34"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -543,7 +543,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00036" GridType="Uniform">
-        <Time Value="0.36"/>
+        <Time Value="0.35"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -558,7 +558,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00037" GridType="Uniform">
-        <Time Value="0.37"/>
+        <Time Value="0.36"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -573,7 +573,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00038" GridType="Uniform">
-        <Time Value="0.38"/>
+        <Time Value="0.37"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -588,7 +588,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00039" GridType="Uniform">
-        <Time Value="0.39"/>
+        <Time Value="0.38"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -603,7 +603,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00040" GridType="Uniform">
-        <Time Value="0.4"/>
+        <Time Value="0.39"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -618,7 +618,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00041" GridType="Uniform">
-        <Time Value="0.41"/>
+        <Time Value="0.4"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -633,7 +633,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00042" GridType="Uniform">
-        <Time Value="0.42"/>
+        <Time Value="0.41"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -648,7 +648,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00043" GridType="Uniform">
-        <Time Value="0.43"/>
+        <Time Value="0.42"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -663,7 +663,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00044" GridType="Uniform">
-        <Time Value="0.44"/>
+        <Time Value="0.43"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -678,7 +678,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00045" GridType="Uniform">
-        <Time Value="0.45"/>
+        <Time Value="0.44"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -693,7 +693,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00046" GridType="Uniform">
-        <Time Value="0.46"/>
+        <Time Value="0.45"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -708,7 +708,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00047" GridType="Uniform">
-        <Time Value="0.47"/>
+        <Time Value="0.46"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -723,7 +723,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00048" GridType="Uniform">
-        <Time Value="0.48"/>
+        <Time Value="0.47"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -738,7 +738,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00049" GridType="Uniform">
-        <Time Value="0.49"/>
+        <Time Value="0.48"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -753,7 +753,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00050" GridType="Uniform">
-        <Time Value="0.5"/>
+        <Time Value="0.49"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -768,7 +768,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00051" GridType="Uniform">
-        <Time Value="0.51"/>
+        <Time Value="0.5"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -783,7 +783,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00052" GridType="Uniform">
-        <Time Value="0.52"/>
+        <Time Value="0.51"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -798,7 +798,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00053" GridType="Uniform">
-        <Time Value="0.53"/>
+        <Time Value="0.52"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -813,7 +813,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00054" GridType="Uniform">
-        <Time Value="0.54"/>
+        <Time Value="0.53"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -828,7 +828,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00055" GridType="Uniform">
-        <Time Value="0.55"/>
+        <Time Value="0.54"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -843,7 +843,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00056" GridType="Uniform">
-        <Time Value="0.56"/>
+        <Time Value="0.55"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -858,7 +858,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00057" GridType="Uniform">
-        <Time Value="0.57"/>
+        <Time Value="0.56"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -873,7 +873,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00058" GridType="Uniform">
-        <Time Value="0.58"/>
+        <Time Value="0.57"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -888,7 +888,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00059" GridType="Uniform">
-        <Time Value="0.59"/>
+        <Time Value="0.58"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -903,7 +903,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00060" GridType="Uniform">
-        <Time Value="0.6"/>
+        <Time Value="0.59"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -918,7 +918,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00061" GridType="Uniform">
-        <Time Value="0.61"/>
+        <Time Value="0.6"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -933,7 +933,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00062" GridType="Uniform">
-        <Time Value="0.62"/>
+        <Time Value="0.61"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -948,7 +948,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00063" GridType="Uniform">
-        <Time Value="0.63"/>
+        <Time Value="0.62"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -963,7 +963,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00064" GridType="Uniform">
-        <Time Value="0.64"/>
+        <Time Value="0.63"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -978,7 +978,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00065" GridType="Uniform">
-        <Time Value="0.65"/>
+        <Time Value="0.64"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -993,7 +993,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00066" GridType="Uniform">
-        <Time Value="0.66"/>
+        <Time Value="0.65"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1008,7 +1008,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00067" GridType="Uniform">
-        <Time Value="0.67"/>
+        <Time Value="0.66"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1023,7 +1023,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00068" GridType="Uniform">
-        <Time Value="0.68"/>
+        <Time Value="0.67"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1038,7 +1038,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00069" GridType="Uniform">
-        <Time Value="0.69"/>
+        <Time Value="0.68"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1053,7 +1053,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00070" GridType="Uniform">
-        <Time Value="0.7"/>
+        <Time Value="0.69"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1068,7 +1068,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00071" GridType="Uniform">
-        <Time Value="0.71"/>
+        <Time Value="0.7"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1083,7 +1083,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00072" GridType="Uniform">
-        <Time Value="0.72"/>
+        <Time Value="0.71"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1098,7 +1098,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00073" GridType="Uniform">
-        <Time Value="0.73"/>
+        <Time Value="0.72"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1113,7 +1113,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00074" GridType="Uniform">
-        <Time Value="0.74"/>
+        <Time Value="0.73"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1128,7 +1128,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00075" GridType="Uniform">
-        <Time Value="0.75"/>
+        <Time Value="0.74"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1143,7 +1143,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00076" GridType="Uniform">
-        <Time Value="0.76"/>
+        <Time Value="0.75"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1158,7 +1158,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00077" GridType="Uniform">
-        <Time Value="0.77"/>
+        <Time Value="0.76"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1173,7 +1173,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00078" GridType="Uniform">
-        <Time Value="0.78"/>
+        <Time Value="0.77"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1188,7 +1188,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00079" GridType="Uniform">
-        <Time Value="0.79"/>
+        <Time Value="0.78"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1203,7 +1203,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00080" GridType="Uniform">
-        <Time Value="0.8"/>
+        <Time Value="0.79"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1218,7 +1218,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00081" GridType="Uniform">
-        <Time Value="0.81"/>
+        <Time Value="0.8"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1233,7 +1233,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00082" GridType="Uniform">
-        <Time Value="0.82"/>
+        <Time Value="0.81"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1248,7 +1248,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00083" GridType="Uniform">
-        <Time Value="0.83"/>
+        <Time Value="0.82"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1263,7 +1263,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00084" GridType="Uniform">
-        <Time Value="0.84"/>
+        <Time Value="0.83"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1278,7 +1278,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00085" GridType="Uniform">
-        <Time Value="0.85"/>
+        <Time Value="0.84"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1293,7 +1293,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00086" GridType="Uniform">
-        <Time Value="0.86"/>
+        <Time Value="0.85"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1308,7 +1308,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00087" GridType="Uniform">
-        <Time Value="0.87"/>
+        <Time Value="0.86"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1323,7 +1323,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00088" GridType="Uniform">
-        <Time Value="0.88"/>
+        <Time Value="0.87"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1338,7 +1338,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00089" GridType="Uniform">
-        <Time Value="0.89"/>
+        <Time Value="0.88"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1353,7 +1353,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00090" GridType="Uniform">
-        <Time Value="0.9"/>
+        <Time Value="0.89"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1368,7 +1368,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00091" GridType="Uniform">
-        <Time Value="0.91"/>
+        <Time Value="0.9"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1383,7 +1383,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00092" GridType="Uniform">
-        <Time Value="0.92"/>
+        <Time Value="0.91"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1398,7 +1398,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00093" GridType="Uniform">
-        <Time Value="0.93"/>
+        <Time Value="0.92"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1413,7 +1413,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00094" GridType="Uniform">
-        <Time Value="0.94"/>
+        <Time Value="0.93"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1428,7 +1428,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00095" GridType="Uniform">
-        <Time Value="0.95"/>
+        <Time Value="0.94"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1443,7 +1443,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00096" GridType="Uniform">
-        <Time Value="0.96"/>
+        <Time Value="0.95"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1458,7 +1458,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00097" GridType="Uniform">
-        <Time Value="0.97"/>
+        <Time Value="0.96"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1473,7 +1473,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00098" GridType="Uniform">
-        <Time Value="0.98"/>
+        <Time Value="0.97"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1488,7 +1488,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00099" GridType="Uniform">
-        <Time Value="0.99"/>
+        <Time Value="0.98"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>
@@ -1503,7 +1503,7 @@
         </Attribute>
       </Grid>
       <Grid Name="Step00100" GridType="Uniform">
-        <Time Value="1"/>
+        <Time Value="0.99"/>
         <Topology TopologyType="Triangle" NumberOfElements="5372">
           <DataItem Dimensions="5372 3" NumberType="Int" Precision="4" Format="HDF">ns-var-straight-tube-obs1-preinit-10.h5:/Mesh/Topology</DataItem>
         </Topology>

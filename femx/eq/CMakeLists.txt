@@ -8,6 +8,7 @@ target_sources(
           MatrixResidualEquation.cpp
           OperatorNewtonStateSolver.cpp
           StateJacobianOperator.cpp
+          TimeDirichletControlEquation.cpp
           TimeMatrixLinearStateSolver.cpp
           TimeMatrixNewtonStateSolver.cpp
           TimeMatrixResidualEquation.cpp
@@ -21,6 +22,7 @@ target_sources(
          ResidualEquation.hpp
          StateJacobianOperator.hpp
          StateSolver.hpp
+         TimeDirichletControlEquation.hpp
          TimeMatrixLinearStateSolver.hpp
          TimeMatrixNewtonStateSolver.hpp
          TimeMatrixResidualEquation.hpp
@@ -30,5 +32,9 @@ target_sources(
          TimeStateSolver.hpp
          TimeStateTrajectory.hpp)
 
-target_link_libraries(femx_eq PUBLIC femx_common femx_config femx_linalg
-                                     femx_system)
+target_link_libraries(femx_eq PUBLIC femx_bc femx_common femx_config
+                                     femx_linalg femx_system)
+
+if(TARGET femx::system_petsc)
+  target_link_libraries(femx_eq PRIVATE femx::system_petsc)
+endif()

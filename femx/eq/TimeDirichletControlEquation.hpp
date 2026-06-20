@@ -1,19 +1,21 @@
 #pragma once
 
-#include "DirichletControl.hpp"
 #include <femx/common/Types.hpp>
+#include <femx/bc/DirichletControl.hpp>
 #include <femx/eq/TimeMatrixResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/system/SystemMatrix.hpp>
 
 namespace femx
 {
+namespace eq
+{
 
-class DirichletControlEquation final : public eq::TimeMatrixResidualEquation
+class TimeDirichletControlEquation final : public TimeMatrixResidualEquation
 {
 public:
-  DirichletControlEquation(
-      const eq::TimeMatrixResidualEquation& base_eq,
+  TimeDirichletControlEquation(
+      const TimeMatrixResidualEquation&     base_eq,
       DirichletControl                      control,
       Vector<Index>                         fixed_dofs           = {},
       Index                                 control_param_offset = 0,
@@ -81,7 +83,7 @@ private:
                   Index i) const;
 
 private:
-  const eq::TimeMatrixResidualEquation& base_eq_;
+  const TimeMatrixResidualEquation&     base_eq_;
   DirichletControl                      ctr_;
   Vector<Index>                         fixed_dofs_;
   Vector<Real>                          fixed_values_;
@@ -90,4 +92,5 @@ private:
   Index                                 num_params_{0};
 };
 
+} // namespace eq
 } // namespace femx

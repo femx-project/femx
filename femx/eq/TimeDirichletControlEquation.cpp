@@ -1,4 +1,4 @@
-#include "DirichletControlEquation.hpp"
+#include <femx/eq/TimeDirichletControlEquation.hpp>
 
 #include <stdexcept>
 #include <utility>
@@ -9,10 +9,11 @@
 #include <femx/system/petsc/PETScSystemMatrix.hpp>
 #endif
 
-using namespace femx::eq;
 using namespace femx::system;
 
 namespace femx
+{
+namespace eq
 {
 
 namespace
@@ -26,7 +27,7 @@ void replaceSparseRow(SparseSystemMatrix& mat,
   if (row < 0 || row >= sparse.rows())
   {
     throw std::runtime_error(
-        "DirichletControlEquation sparse row is out of range");
+        "TimeDirichletControlEquation sparse row is out of range");
   }
 
   const Index* row_ptr = sparse.rowPtrData();
@@ -47,13 +48,13 @@ void replaceSparseRow(SparseSystemMatrix& mat,
   if (diag != 0.0 && !has_diag)
   {
     throw std::runtime_error(
-        "DirichletControlEquation sparse pattern lacks diagonal");
+        "TimeDirichletControlEquation sparse pattern lacks diagonal");
   }
 }
 
 } // namespace
 
-DirichletControlEquation::DirichletControlEquation(
+TimeDirichletControlEquation::TimeDirichletControlEquation(
     const TimeMatrixResidualEquation& base_eq,
     DirichletControl                  control,
     Vector<Index>                     fixed_dofs,
@@ -74,22 +75,22 @@ DirichletControlEquation::DirichletControlEquation(
   if (base_eq_.numRes() != base_eq_.numStates())
   {
     throw std::runtime_error(
-        "DirichletControlEquation requires square state residuals");
+        "TimeDirichletControlEquation requires square state residuals");
   }
   if (base_eq_.numParams() != 0)
   {
     throw std::runtime_error(
-        "DirichletControlEquation requires a parameter-free base equation");
+        "TimeDirichletControlEquation requires a parameter-free base equation");
   }
   if (control_param_offset_ < 0)
   {
     throw std::runtime_error(
-        "DirichletControlEquation received negative control parameter offset");
+        "TimeDirichletControlEquation received negative control parameter offset");
   }
   if (num_params_ < control_param_offset_ + ctr_.numParams(numSteps()))
   {
     throw std::runtime_error(
-        "DirichletControlEquation parameter count is too small");
+        "TimeDirichletControlEquation parameter count is too small");
   }
   if (fixed_values_.empty())
   {
@@ -99,14 +100,14 @@ DirichletControlEquation::DirichletControlEquation(
            && fixed_values_.size() != numSteps() * fixed_dofs_.size())
   {
     throw std::runtime_error(
-        "DirichletControlEquation fixed value size mismatch");
+        "TimeDirichletControlEquation fixed value size mismatch");
   }
   for (Index dof : ctr_.stateDofs())
   {
     if (dof < 0 || dof >= base_eq_.numStates())
     {
       throw std::runtime_error(
-          "DirichletControlEquation state dof is out of range");
+          "TimeDirichletControlEquation state dof is out of range");
     }
   }
   for (Index dof : fixed_dofs_)
@@ -114,40 +115,40 @@ DirichletControlEquation::DirichletControlEquation(
     if (dof < 0 || dof >= base_eq_.numStates())
     {
       throw std::runtime_error(
-          "DirichletControlEquation fixed dof is out of range");
+        "TimeDirichletControlEquation fixed dof is out of range");
     }
     for (Index ctr_dof : ctr_.stateDofs())
     {
       if (dof == ctr_dof)
       {
         throw std::runtime_error(
-            "DirichletControlEquation received overlapping dofs");
+            "TimeDirichletControlEquation received overlapping dofs");
       }
     }
   }
 }
 
-Index DirichletControlEquation::numSteps() const
+Index TimeDirichletControlEquation::numSteps() const
 {
   return base_eq_.numSteps();
 }
 
-Index DirichletControlEquation::numStates() const
+Index TimeDirichletControlEquation::numStates() const
 {
   return base_eq_.numStates();
 }
 
-Index DirichletControlEquation::numParams() const
+Index TimeDirichletControlEquation::numParams() const
 {
   return num_params_;
 }
 
-Index DirichletControlEquation::numRes() const
+Index TimeDirichletControlEquation::numRes() const
 {
   return base_eq_.numRes();
 }
 
-void DirichletControlEquation::res(
+void TimeDirichletControlEquation::res(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -170,7 +171,7 @@ void DirichletControlEquation::res(
   }
 }
 
-void DirichletControlEquation::assembleNextStateJac(
+void TimeDirichletControlEquation::assembleNextStateJac(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -182,7 +183,7 @@ void DirichletControlEquation::assembleNextStateJac(
   replaceStateRows(out, 1.0);
 }
 
-void DirichletControlEquation::assemblePrevStateJac(
+void TimeDirichletControlEquation::assemblePrevStateJac(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -194,7 +195,7 @@ void DirichletControlEquation::assemblePrevStateJac(
   replaceStateRows(out, 0.0);
 }
 
-void DirichletControlEquation::assembleParamJac(
+void TimeDirichletControlEquation::assembleParamJac(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -213,7 +214,7 @@ void DirichletControlEquation::assembleParamJac(
   }
 }
 
-void DirichletControlEquation::applyParamJac(
+void TimeDirichletControlEquation::applyParamJac(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -225,7 +226,7 @@ void DirichletControlEquation::applyParamJac(
   if (dir.size() != numParams())
   {
     throw std::runtime_error(
-        "DirichletControlEquation parameter direction size mismatch");
+        "TimeDirichletControlEquation parameter direction size mismatch");
   }
 
   if (out.size() != numRes())
@@ -245,7 +246,7 @@ void DirichletControlEquation::applyParamJac(
   }
 }
 
-void DirichletControlEquation::applyParamJacT(
+void TimeDirichletControlEquation::applyParamJacT(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -257,7 +258,7 @@ void DirichletControlEquation::applyParamJacT(
   if (lambda.size() != numRes())
   {
     throw std::runtime_error(
-        "DirichletControlEquation adjoint vector size mismatch");
+        "TimeDirichletControlEquation adjoint vector size mismatch");
   }
 
   if (out.size() != numParams())
@@ -278,12 +279,12 @@ void DirichletControlEquation::applyParamJacT(
 }
 
 const DirichletControl&
-DirichletControlEquation::control() const
+TimeDirichletControlEquation::control() const
 {
   return ctr_;
 }
 
-void DirichletControlEquation::checkSizes(
+void TimeDirichletControlEquation::checkSizes(
     Index               step,
     const Vector<Real>& x_next,
     const Vector<Real>& x,
@@ -292,25 +293,25 @@ void DirichletControlEquation::checkSizes(
   if (step < 0 || step >= numSteps())
   {
     throw std::runtime_error(
-        "DirichletControlEquation step is out of range");
+        "TimeDirichletControlEquation step is out of range");
   }
   if (x_next.size() != numStates()
       || x.size() != numStates()
       || prm.size() != numParams())
   {
     throw std::runtime_error(
-        "DirichletControlEquation size mismatch");
+        "TimeDirichletControlEquation size mismatch");
   }
 }
 
-void DirichletControlEquation::replaceStateRows(
+void TimeDirichletControlEquation::replaceStateRows(
     SystemMatrix& out,
     Real          diag) const
 {
   if (out.numRows() != numRes() || out.numCols() != numStates())
   {
     throw std::runtime_error(
-        "DirichletControlEquation matrix size mismatch");
+        "TimeDirichletControlEquation matrix size mismatch");
   }
 
   if (auto* sparse = dynamic_cast<SparseSystemMatrix*>(&out))
@@ -370,14 +371,14 @@ void DirichletControlEquation::replaceStateRows(
   }
 }
 
-Index DirichletControlEquation::controlParamIndex(Index step,
-                                                  Index i) const
+Index TimeDirichletControlEquation::controlParamIndex(Index step,
+                                                      Index i) const
 {
   return control_param_offset_ + ctr_.paramIndex(step, i);
 }
 
-Real DirichletControlEquation::fixedValue(Index step,
-                                          Index i) const
+Real TimeDirichletControlEquation::fixedValue(Index step,
+                                              Index i) const
 {
   if (fixed_values_.size() == fixed_dofs_.size())
   {
@@ -386,4 +387,5 @@ Real DirichletControlEquation::fixedValue(Index step,
   return fixed_values_[step * fixed_dofs_.size() + i];
 }
 
+} // namespace eq
 } // namespace femx

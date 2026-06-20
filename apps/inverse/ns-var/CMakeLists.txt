@@ -4,8 +4,6 @@ add_library(
   Components.cpp
   Config.cpp
   RunSupport.cpp
-  DirichletControl.cpp
-  DirichletControlEquation.cpp
   NavierStokesEquation.cpp)
 
 if(FEMX_ENABLE_ENZYME)
@@ -18,8 +16,6 @@ target_sources(
          Config.hpp
          Components.hpp
          RunSupport.hpp
-         DirichletControl.hpp
-         DirichletControlEquation.hpp
          NavierStokesEquation.hpp)
 
 target_include_directories(

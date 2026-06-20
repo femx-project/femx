@@ -4,10 +4,10 @@ add_subdirectory(mesh)
 add_subdirectory(fem)
 add_subdirectory(linalg)
 add_subdirectory(system)
+add_subdirectory(bc)
 add_subdirectory(eq)
 add_subdirectory(assembly)
 add_subdirectory(inverse)
-add_subdirectory(bc)
 add_subdirectory(io)
 
 target_link_libraries(

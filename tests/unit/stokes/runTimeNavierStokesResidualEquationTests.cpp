@@ -4,10 +4,10 @@
 #include <utility>
 #include <vector>
 
-#include "DirichletControl.hpp"
-#include "DirichletControlEquation.hpp"
 #include "NavierStokesEquation.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
+#include <femx/bc/DirichletControl.hpp>
+#include <femx/eq/TimeDirichletControlEquation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
@@ -298,7 +298,7 @@ public:
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
     Vector<Index> fixed_dofs = {p_dof.globalDof(0, 0)};
     Vector<Real>  fixed_values = {0.75, -1.25};
-    DirichletControlEquation eq(
+    eq::TimeDirichletControlEquation eq(
         base_eq, control, fixed_dofs, 0, -1, fixed_values);
 
     Vector<Real> x_next(eq.numStates());
@@ -429,7 +429,7 @@ public:
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
     const Index              offset    = 3;
     const Index              total_prm = offset + control.numParams(ns_prm.steps) + 2;
-    DirichletControlEquation eq(
+    eq::TimeDirichletControlEquation eq(
         base_eq, control, {}, offset, total_prm);
 
     Vector<Real> x_next(eq.numStates());

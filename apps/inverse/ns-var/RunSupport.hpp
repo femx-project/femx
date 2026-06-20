@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Config.hpp"
-#include "DirichletControl.hpp"
+#include <femx/bc/DirichletControl.hpp>
 #include <femx/bc/VelocityProfile.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/eq/TimeMatrixLinearStateSolver.hpp>

@@ -3,11 +3,12 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
+
+class MixedFESpace;
 
 class DirichletControl
 {

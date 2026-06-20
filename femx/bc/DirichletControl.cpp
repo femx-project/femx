@@ -1,10 +1,11 @@
-#include "DirichletControl.hpp"
+#include <femx/bc/DirichletControl.hpp>
 
 #include <set>
 #include <stdexcept>
 #include <utility>
 
 #include <femx/mesh/Mesh.hpp>
+#include <femx/fem/MixedFESpace.hpp>
 
 namespace femx
 {
