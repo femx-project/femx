@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <femx/inverse/ObjectiveFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/problem/ObjectiveFunctional.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -9,7 +9,7 @@ namespace femx
 namespace tests
 {
 
-class QuadraticObjective final : public inverse::ObjectiveFunctional
+class QuadraticObjective final : public problem::ObjectiveFunctional
 {
 public:
   Index numStates() const override

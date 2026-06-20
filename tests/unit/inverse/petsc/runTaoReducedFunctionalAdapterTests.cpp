@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-#include <femx/inverse/ReducedFunctional.hpp>
-#include <femx/inverse/petsc/TaoReducedFunctionalAdapter.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/ReducedObjective.hpp>
+#include <femx/optimize/TaoReducedFunctionalAdapter.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -12,7 +12,7 @@ namespace femx
 namespace tests
 {
 
-class QuadraticReducedFunctional final : public inverse::ReducedFunctional
+class QuadraticReducedFunctional final : public solve::ReducedObjective
 {
 public:
   Index numParams() const override
@@ -51,7 +51,7 @@ public:
     status = true;
 
     QuadraticReducedFunctional           functional;
-    inverse::TaoReducedFunctionalAdapter adapter(functional);
+    optimize::TaoReducedFunctionalAdapter adapter(functional);
 
     Vec prm  = nullptr;
     Vec grad = nullptr;
@@ -74,7 +74,7 @@ public:
     status                       *= (ierr == 0);
 
     PetscReal value = 0.0;
-    ierr            = inverse::TaoReducedFunctionalAdapter::
+    ierr            = optimize::TaoReducedFunctionalAdapter::
         formValueGrad(tao, prm, &value, grad, &adapter);
     status *= (ierr == 0);
 

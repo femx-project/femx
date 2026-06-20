@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/io/Hdf5Writer.hpp>
 
 namespace femx

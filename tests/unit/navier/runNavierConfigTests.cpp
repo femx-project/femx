@@ -7,7 +7,7 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

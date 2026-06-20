@@ -1,7 +1,7 @@
 #include <stdexcept>
 
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {

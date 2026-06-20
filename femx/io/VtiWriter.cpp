@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <femx/io/VtiWriter.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/algebra/Vector.hpp>
 
 namespace femx
 {

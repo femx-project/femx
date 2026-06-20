@@ -3,7 +3,8 @@
 
 #include <femx/assembly/SystemAssembler.hpp>
 
-using namespace femx::system;
+using namespace femx::algebra;
+using namespace femx::algebra;
 
 namespace femx
 {
@@ -103,7 +104,7 @@ void SystemAssembler::initVec(SystemVector& out) const
   out.setZero();
 }
 
-void SystemAssembler::initMat(SystemMatrix& out) const
+void SystemAssembler::initMat(MatrixBuilder& out) const
 {
   out.resize(numRows(), numCols());
   out.setZero();
@@ -179,7 +180,7 @@ void SystemAssembler::addVec(Index               ic,
 
 void SystemAssembler::addMat(Index              ic,
                              const DenseMatrix& local,
-                             SystemMatrix&      out) const
+                             MatrixBuilder&     out) const
 {
   if (out.numRows() != numRows() || out.numCols() != numCols())
   {

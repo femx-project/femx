@@ -6,20 +6,20 @@
 #include <stdexcept>
 
 #include "Components.hpp"
-#include <femx/assembly/SystemAssembler.hpp>
+#include <femx/assembly/Assembler.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 
 namespace femx
 {
 
 using namespace femx::assembly;
-using namespace femx::system;
+using namespace femx::algebra;
 
 std::array<Real, 3> velAtNode(const Vector<Real>&   x,
                               const MixedFieldView& u_dof,

@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
-#include <femx/eq/TimeStateTrajectory.hpp>
-#include <femx/inverse/TimeLeastSquaresObjective.hpp>
-#include <femx/inverse/TimeObservationData.hpp>
-#include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/TimeStateTrajectory.hpp>
+#include <femx/problem/TimeLeastSquaresObjective.hpp>
+#include <femx/problem/TimeObservationData.hpp>
+#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -43,7 +43,7 @@ void resize(Vector<Real>& out,
 
 } // namespace
 
-class LinearTimeObservation final : public inverse::TimeObservationOperator
+class LinearTimeObservation final : public problem::TimeObservationOperator
 {
 public:
   Index numSteps() const override
@@ -131,9 +131,9 @@ public:
   }
 };
 
-inverse::TimeObservationData makeData()
+problem::TimeObservationData makeData()
 {
-  inverse::TimeObservationData data(3, 2);
+  problem::TimeObservationData data(3, 2);
   data.setLayout(
       "point",
       std::vector<Point3>{Point3{0.25, 0.5, 0.0}},
@@ -148,9 +148,9 @@ inverse::TimeObservationData makeData()
   return data;
 }
 
-inverse::TimeObservationData makeSparseData()
+problem::TimeObservationData makeSparseData()
 {
-  inverse::TimeObservationData data(2, 2);
+  problem::TimeObservationData data(2, 2);
   data.setLayout(
       "point",
       std::vector<Point3>{Point3{0.25, 0.5, 0.0}},
@@ -164,9 +164,9 @@ inverse::TimeObservationData makeSparseData()
   return data;
 }
 
-inverse::TimeObservationData makeInterpolatedData()
+problem::TimeObservationData makeInterpolatedData()
 {
-  inverse::TimeObservationData data(1, 2);
+  problem::TimeObservationData data(1, 2);
   data.setLayout(
       "point",
       std::vector<Point3>{Point3{0.25, 0.5, 0.0}},
@@ -178,9 +178,9 @@ inverse::TimeObservationData makeInterpolatedData()
   return data;
 }
 
-inverse::TimeObservationData makeOffsetData()
+problem::TimeObservationData makeOffsetData()
 {
-  inverse::TimeObservationData data(1, 2);
+  problem::TimeObservationData data(1, 2);
   data.setLayout(
       "point",
       std::vector<Point3>{Point3{0.25, 0.5, 0.0}},
@@ -201,9 +201,9 @@ Vector<Real> makeWeights()
   return weights;
 }
 
-eq::TimeStateTrajectory makeTrajectory()
+solve::TimeStateTrajectory makeTrajectory()
 {
-  eq::TimeStateTrajectory tr(2, 2);
+  solve::TimeStateTrajectory tr(2, 2);
   tr[0][0] = 0.0;
   tr[0][1] = 0.0;
   tr[1][0] = 1.0;
@@ -222,10 +222,10 @@ public:
     status = true;
 
     LinearTimeObservation                    obs;
-    const inverse::TimeLeastSquaresObjective obj(
+    const problem::TimeLeastSquaresObjective obj(
         obs, makeData(), makeWeights());
 
-    eq::TimeStateTrajectory tr = makeTrajectory();
+    solve::TimeStateTrajectory tr = makeTrajectory();
 
     Vector<Real> prm(2);
     prm[0] = 0.25;
@@ -263,12 +263,12 @@ public:
     status = true;
 
     LinearTimeObservation        obs;
-    inverse::TimeObservationData data(2, 2);
+    problem::TimeObservationData data(2, 2);
 
     bool threw = false;
     try
     {
-      const inverse::TimeLeastSquaresObjective obj(obs, data);
+      const problem::TimeLeastSquaresObjective obj(obs, data);
       (void) obj;
     }
     catch (const std::runtime_error&)
@@ -292,7 +292,7 @@ public:
     bool threw = false;
     try
     {
-      const inverse::TimeLeastSquaresObjective obj(
+      const problem::TimeLeastSquaresObjective obj(
           obs, makeData(), weights);
       (void) obj;
     }
@@ -311,10 +311,10 @@ public:
     status = true;
 
     LinearTimeObservation                    obs;
-    const inverse::TimeLeastSquaresObjective obj(
+    const problem::TimeLeastSquaresObjective obj(
         obs, makeSparseData(), makeWeights());
 
-    eq::TimeStateTrajectory tr = makeTrajectory();
+    solve::TimeStateTrajectory tr = makeTrajectory();
 
     Vector<Real> prm(2);
     prm[0] = 0.25;
@@ -352,10 +352,10 @@ public:
     weights[0] = 1.0;
     weights[1] = 1.0;
     weights[2] = 1.0;
-    const inverse::TimeLeastSquaresObjective obj(
+    const problem::TimeLeastSquaresObjective obj(
         obs, makeInterpolatedData(), weights, 1.0);
 
-    eq::TimeStateTrajectory tr = makeTrajectory();
+    solve::TimeStateTrajectory tr = makeTrajectory();
 
     Vector<Real> prm(2);
     prm[0] = 0.25;
@@ -389,10 +389,10 @@ public:
     status = true;
 
     LinearTimeObservation                    obs;
-    const inverse::TimeLeastSquaresObjective obj(
+    const problem::TimeLeastSquaresObjective obj(
         obs, makeOffsetData(), makeWeights(), 1.0, 1.0);
 
-    eq::TimeStateTrajectory tr = makeTrajectory();
+    solve::TimeStateTrajectory tr = makeTrajectory();
 
     Vector<Real> prm(2);
     prm[0] = 0.25;
@@ -427,12 +427,12 @@ public:
 
     const auto path = std::filesystem::temp_directory_path()
                       / "femx-time-observation-data-test.txt";
-    const inverse::TimeObservationData data = makeData();
+    const problem::TimeObservationData data = makeData();
 
-    inverse::writeTimeObsData(path.string(), data);
+    problem::writeTimeObsData(path.string(), data);
     const std::string                  text = readTextFile(path);
-    const inverse::TimeObservationData loaded =
-        inverse::readTimeObsData(path.string());
+    const problem::TimeObservationData loaded =
+        problem::readTimeObsData(path.string());
     std::filesystem::remove(path);
 
     status *= text.find("femx_time_obs_data ") == std::string::npos;
@@ -469,11 +469,11 @@ public:
 
     const auto path = std::filesystem::temp_directory_path()
                       / "femx-time-observation-data-levels-test.txt";
-    const inverse::TimeObservationData data = makeSparseData();
+    const problem::TimeObservationData data = makeSparseData();
 
-    inverse::writeTimeObsData(path.string(), data);
-    const inverse::TimeObservationData loaded =
-        inverse::readTimeObsData(path.string());
+    problem::writeTimeObsData(path.string(), data);
+    const problem::TimeObservationData loaded =
+        problem::readTimeObsData(path.string());
     std::filesystem::remove(path);
 
     status *= loaded.hasTimeLevels();
@@ -501,12 +501,12 @@ public:
 
     const auto path = std::filesystem::temp_directory_path()
                       / "femx-time-observation-data-values-test.txt";
-    const inverse::TimeObservationData data = makeInterpolatedData();
+    const problem::TimeObservationData data = makeInterpolatedData();
 
-    inverse::writeTimeObsData(path.string(), data);
+    problem::writeTimeObsData(path.string(), data);
     const std::string                  text = readTextFile(path);
-    const inverse::TimeObservationData loaded =
-        inverse::readTimeObsData(path.string());
+    const problem::TimeObservationData loaded =
+        problem::readTimeObsData(path.string());
     std::filesystem::remove(path);
 
     status *= text.find("time_values\n  1.5\n") != std::string::npos;

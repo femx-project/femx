@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "RunSupport.hpp"
-#include <femx/common/Math.hpp>
-#include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/core/Math.hpp>
+#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -482,7 +482,7 @@ public:
 
     const auto obs =
         navier_var::makeObs(space, obs_prm, 1, space.numDofs(), 0);
-    inverse::TimeObservationData obs_data(2, obs->numObservations());
+    problem::TimeObservationData obs_data(2, obs->numObservations());
     navier_var::setObsLayout(obs_data, space, obs_prm);
     const auto file_obs =
         navier_var::makeObsFromData(space, obs_data, 1, space.numDofs(), 0);
@@ -530,7 +530,7 @@ public:
 
     const auto obs =
         navier_var::makeObs(space, obs_prm, 1, space.numDofs(), 0);
-    inverse::TimeObservationData obs_data(2, obs->numObservations());
+    problem::TimeObservationData obs_data(2, obs->numObservations());
     navier_var::setObsLayout(obs_data, space, obs_prm);
     const auto file_obs =
         navier_var::makeObsFromData(space, obs_data, 1, space.numDofs(), 0);

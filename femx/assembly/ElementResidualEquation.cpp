@@ -3,7 +3,7 @@
 #include <femx/assembly/ElementResidualEquation.hpp>
 #include <femx/assembly/SystemAssembler.hpp>
 
-using namespace femx::system;
+using namespace femx::algebra;
 
 namespace femx
 {

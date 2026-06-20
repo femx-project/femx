@@ -4,17 +4,17 @@
 #include <iostream>
 
 #include <femx/assembly/SystemAssembler.hpp>
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
+#include <femx/solve/MatrixNewtonStateSolver.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/inverse/MatrixAdjointSolver.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/petsc/KspLinearSolver.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
-#include <femx/system/petsc/PETScSystemVector.hpp>
+#include <femx/solve/MatrixAdjointSolver.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -35,7 +35,7 @@ void resize(Vector<Real>& out, Index size)
 }
 
 class LinearMatrixResidualEquation final
-  : public eq::MatrixResidualEquation
+  : public problem::MatrixResidualEquation
 {
 public:
   Index numStates() const override
@@ -66,7 +66,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -80,7 +80,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -101,7 +101,7 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix mat;
+    algebra::PETScSystemMatrix mat;
     fillTestMatrix(mat);
 
     Vector<Real> dir(2);
@@ -125,10 +125,10 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix mat;
+    algebra::PETScSystemMatrix mat;
     fillTestMatrix(mat);
 
-    system::KspLinearSolver solver;
+    algebra::KspLinearSolver solver;
     solver.options().pc_type     = PCJACOBI;
     solver.options().rtol        = 1.0e-12;
     solver.options().atol        = 1.0e-14;
@@ -159,16 +159,16 @@ public:
     status = true;
 
     LinearMatrixResidualEquation res_eq;
-    system::PETScSystemMatrix    state_jac;
-    system::KspLinearSolver      lin_solver;
+    algebra::PETScSystemMatrix    state_jac;
+    algebra::KspLinearSolver      lin_solver;
     lin_solver.options().pc_type     = PCJACOBI;
     lin_solver.options().rtol        = 1.0e-12;
     lin_solver.options().atol        = 1.0e-14;
     lin_solver.options().use_opts_db = false;
 
-    eq::MatrixNewtonStateSolver state_solver(
+    solve::MatrixNewtonStateSolver state_solver(
         res_eq, state_jac, lin_solver);
-    inverse::MatrixAdjointSolver adj_solver(
+    solve::MatrixAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
     Vector<Real> prm(2);
@@ -205,7 +205,7 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::PETScSystemMatrix mat;
+    algebra::PETScSystemMatrix mat;
     assembler.initMat(mat);
 
     DenseMatrix local_mat(space.numDofsPerElem(), space.numDofsPerElem());
@@ -254,7 +254,7 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::PETScSystemVector vec;
+    algebra::PETScSystemVector vec;
     assembler.initVec(vec);
 
     Vector<Real> local_vec(space.numDofsPerElem());
@@ -285,7 +285,7 @@ public:
   }
 
 private:
-  static void fillTestMatrix(system::PETScSystemMatrix& mat)
+  static void fillTestMatrix(algebra::PETScSystemMatrix& mat)
   {
     mat.resize(2, 2);
     mat.setZero();

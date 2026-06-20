@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
-#include <femx/linalg/VectorView.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/VectorView.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {

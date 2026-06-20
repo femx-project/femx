@@ -1,9 +1,9 @@
 #include <iostream>
 
-#include <femx/eq/ResidualEquation.hpp>
-#include <femx/inverse/DerivativeCheck.hpp>
-#include <femx/inverse/ObjectiveFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/problem/ResidualEquation.hpp>
+#include <femx/solve/DerivativeCheck.hpp>
+#include <femx/problem/ObjectiveFunctional.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -11,7 +11,7 @@ namespace femx
 namespace tests
 {
 
-class LinearResidualEquation final : public eq::ResidualEquation
+class LinearResidualEquation final : public problem::ResidualEquation
 {
 public:
   Index numStates() const override
@@ -99,7 +99,7 @@ private:
   }
 };
 
-class QuadraticObjective final : public inverse::ObjectiveFunctional
+class QuadraticObjective final : public problem::ObjectiveFunctional
 {
 public:
   Index numStates() const override
@@ -163,7 +163,7 @@ public:
     TestStatus status;
     status = true;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
 
     Vector<Real> state(2);
     state[0] = 0.25;

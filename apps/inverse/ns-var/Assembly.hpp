@@ -1,9 +1,12 @@
 #pragma once
 
 #include "NavierStokesEquation.hpp"
-#include <femx/common/Types.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#if defined(FEMX_HAS_PETSC)
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#endif
 
 namespace femx
 {
@@ -11,10 +14,12 @@ class ElementValues;
 class GaussQuadrature;
 class MixedFESpace;
 
-namespace system
+namespace algebra
 {
+#if !defined(FEMX_HAS_PETSC)
 class PETScSystemMatrix;
-} // namespace system
+#endif
+} // namespace algebra
 } // namespace femx
 
 namespace femx
@@ -59,7 +64,7 @@ void assembleNextStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               system::PETScSystemMatrix&        out);
+                               algebra::PETScSystemMatrix&       out);
 
 void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const GaussQuadrature&            quad,
@@ -67,7 +72,7 @@ void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               system::PETScSystemMatrix&        out);
+                               algebra::PETScSystemMatrix&       out);
 #endif
 
 } // namespace femx

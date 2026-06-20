@@ -14,34 +14,36 @@
 #include <femx/assembly/BoundaryResidualEquation.hpp>
 #include <femx/assembly/EnzymeBoundaryKernel.hpp>
 #include <femx/assembly/EnzymeVolumeKernel.hpp>
-#include <femx/common/Math.hpp>
-#include <femx/common/Types.hpp>
-#include <femx/eq/MatrixLinearStateSolver.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
+#include <femx/core/Math.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/fem/BoundaryElementValues.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FESpace.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/inverse/AdjointReducedFunctional.hpp>
-#include <femx/inverse/MatrixAdjointSolver.hpp>
-#include <femx/inverse/ObjectiveFunctional.hpp>
-#include <femx/inverse/SumObjectiveFunctional.hpp>
-#include <femx/inverse/petsc/TaoOptimizer.hpp>
+#include <femx/optimize/TaoOptimizer.hpp>
+#include <femx/problem/MatrixResidual.hpp>
+#include <femx/problem/ObjectiveFunctional.hpp>
+#include <femx/problem/SumObjective.hpp>
+#include <femx/solve/AdjointReducedFunctional.hpp>
+#include <femx/solve/MatrixAdjointSolver.hpp>
+#include <femx/solve/MatrixLinearStateSolver.hpp>
+#include <femx/solve/StateSolver.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/DenseLinearSolver.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/DenseLinearSolver.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
 
 namespace
 {
 
 using namespace femx;
 using namespace femx::assembly;
-using namespace femx::eq;
-using namespace femx::inverse;
-using namespace femx::system;
+using namespace femx::algebra;
+using namespace femx::optimize;
+using namespace femx::problem;
+using namespace femx::solve;
 
 using Dofs = Vector<Index>;
 
@@ -271,7 +273,7 @@ void poissonVolumeResidual(Index       cell,
   }
 }
 
-class PoissonVolumeEquation final : public MatrixResidualEquation
+class PoissonVolumeEquation final : public MatrixResidual
 {
 public:
   PoissonVolumeEquation(const FESpace&         space,
@@ -378,12 +380,12 @@ private:
   EnzymeVolumeKernel<poissonVolumeResidual> kernel_;
 };
 
-class DirichletResidualEquation final : public MatrixResidualEquation
+class DirichletResidualEquation final : public MatrixResidual
 {
 public:
   DirichletResidualEquation(
-      const MatrixResidualEquation& base_eq,
-      Dofs                          dofs)
+      const MatrixResidual& base_eq,
+      Dofs                  dofs)
     : base_eq_(base_eq),
       dofs_(std::move(dofs))
   {
@@ -445,8 +447,8 @@ public:
   }
 
 private:
-  const MatrixResidualEquation& base_eq_;
-  Dofs                          dofs_;
+  const MatrixResidual& base_eq_;
+  Dofs                  dofs_;
 };
 
 void boundaryNeumannResidual(Index       facet,
@@ -877,7 +879,7 @@ private:
 };
 
 Real DirectionalDerivative(
-    ReducedFunctional&  functional,
+    AdjointReducedFunctional& functional,
     const Vector<Real>& prm,
     const Vector<Real>& dir,
     Real                eps)
@@ -948,7 +950,7 @@ int run()
       bd_quad,
       beta);
 
-  SumObjectiveFunctional obj(space.numDofs(), top_param_layout.numDofs());
+  SumObjective obj(space.numDofs(), top_param_layout.numDofs());
   obj.add(misfit).add(reg);
 
   DenseSystemMatrix   adj_jac;

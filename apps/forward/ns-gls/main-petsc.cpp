@@ -19,15 +19,15 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/mesh/GmshReader.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/petsc/KspLinearSolver.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
-#include <femx/system/petsc/PETScSystemVector.hpp>
+#include <femx/fem/GmshReader.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
-using namespace femx::system;
+using namespace femx::algebra;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/common/Math.hpp>
+#include <femx/core/Math.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

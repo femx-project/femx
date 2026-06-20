@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Components.hpp"
-#include <femx/common/Types.hpp>
-#include <femx/eq/TimeMatrixResidualEquation.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/problem/TimeMatrixResidual.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/SystemMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -25,7 +25,7 @@ struct TimeNavierStokesParameters
  * field 1. This app-local implementation supports equal velocity/pressure
  * scalar element shapes on the same mesh.
  */
-class NavierStokesEquation final : public eq::TimeMatrixResidualEquation
+class NavierStokesEquation final : public problem::TimeMatrixResidual
 {
 public:
   NavierStokesEquation(const MixedFESpace&        space,
@@ -48,19 +48,19 @@ public:
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override;
+                            algebra::SystemMatrix& out) const override;
 
   void assemblePrevStateJac(Index                 step,
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override;
+                            algebra::SystemMatrix& out) const override;
 
   void assembleParamJac(Index                 step,
                         const Vector<Real>&   x_next,
                         const Vector<Real>&   x,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override;
+                        algebra::SystemMatrix& out) const override;
 
 private:
   void checkSizes(Index               step,

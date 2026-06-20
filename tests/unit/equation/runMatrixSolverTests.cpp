@@ -1,15 +1,15 @@
 #include <iostream>
 
-#include <femx/eq/MatrixLinearStateSolver.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
-#include <femx/inverse/AdjointReducedFunctional.hpp>
-#include <femx/inverse/DerivativeCheck.hpp>
-#include <femx/inverse/MatrixAdjointSolver.hpp>
-#include <femx/inverse/ObjectiveFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/DenseLinearSolver.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/solve/MatrixLinearStateSolver.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
+#include <femx/solve/AdjointReducedFunctional.hpp>
+#include <femx/solve/DerivativeCheck.hpp>
+#include <femx/solve/MatrixAdjointSolver.hpp>
+#include <femx/problem/ObjectiveFunctional.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/DenseLinearSolver.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -30,7 +30,7 @@ void resize(Vector<Real>& out, Index size)
 }
 
 class LinearMatrixResidualEquation final
-  : public eq::MatrixResidualEquation
+  : public problem::MatrixResidualEquation
 {
 public:
   Index numStates() const override
@@ -61,7 +61,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -75,7 +75,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -88,7 +88,7 @@ public:
   }
 };
 
-class TrackingObjective final : public inverse::ObjectiveFunctional
+class TrackingObjective final : public problem::ObjectiveFunctional
 {
 public:
   Index numStates() const override
@@ -184,12 +184,12 @@ public:
     status = true;
 
     LinearMatrixResidualEquation res_eq;
-    system::DenseSystemMatrix    state_jac;
-    system::DenseLinearSolver    lin_solver;
+    algebra::DenseSystemMatrix    state_jac;
+    algebra::DenseLinearSolver    lin_solver;
 
-    eq::MatrixLinearStateSolver state_solver(
+    solve::MatrixLinearStateSolver state_solver(
         res_eq, state_jac, lin_solver);
-    inverse::MatrixAdjointSolver adj_solver(
+    solve::MatrixAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
     Vector<Real> prm(2);
@@ -233,15 +233,15 @@ public:
     status = true;
 
     LinearMatrixResidualEquation res_eq;
-    system::DenseSystemMatrix    state_jac;
-    system::DenseLinearSolver    lin_solver;
-    eq::MatrixLinearStateSolver  state_solver(
+    algebra::DenseSystemMatrix    state_jac;
+    algebra::DenseLinearSolver    lin_solver;
+    solve::MatrixLinearStateSolver  state_solver(
         res_eq, state_jac, lin_solver);
-    inverse::MatrixAdjointSolver adj_solver(
+    solve::MatrixAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
     TrackingObjective objective;
 
-    inverse::AdjointReducedFunctional functional(
+    solve::AdjointReducedFunctional functional(
         state_solver, adj_solver, res_eq, objective);
 
     Vector<Real> prm(2);
@@ -252,7 +252,7 @@ public:
     dir[0] = -0.7;
     dir[1] = 0.4;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 

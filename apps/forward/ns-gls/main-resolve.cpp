@@ -16,18 +16,18 @@
 #include "Config.hpp"
 #include "RunSupport.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/common/Workspace.hpp>
+#include <femx/core/Workspace.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/mesh/GmshReader.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
-#include <femx/system/resolve/ReSolveLinearSolver.hpp>
+#include <femx/fem/GmshReader.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/backends/resolve/ReSolveLinearSolver.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
-using namespace femx::system;
+using namespace femx::algebra;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"

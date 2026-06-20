@@ -2,11 +2,11 @@
 
 #include <femx/assembly/DofLayout.hpp>
 #include <femx/assembly/ElementKernel.hpp>
-#include <femx/common/Types.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/SystemMatrix.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -14,7 +14,7 @@ namespace assembly
 {
 
 /** @brief MatrixResidualEquation built from cell-local FEM kernels. */
-class ElementResidualEquation final : public eq::MatrixResidualEquation
+class ElementResidualEquation final : public problem::MatrixResidualEquation
 {
 public:
   ElementResidualEquation(DofLayout            res_layout,
@@ -38,11 +38,11 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override;
+                        algebra::SystemMatrix& out) const override;
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override;
+                        algebra::SystemMatrix& out) const override;
 
 private:
   Index numCells() const;

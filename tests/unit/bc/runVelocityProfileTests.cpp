@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/bc/VelocityProfile.hpp>
+#include <femx/fem/VelocityProfile.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -18,18 +18,18 @@ public:
     TestStatus status;
     status = true;
 
-    const bc::AxialVelocityProfile profile = bc::poiseuilleProfile(
+    const fem::AxialVelocityProfile profile = fem::poiseuilleProfile(
         Point3{0.0, 0.0, 0.0}, Point3{2.0, 0.0, 0.0}, 1.0);
 
-    status *= isEqual(bc::profileFactor(profile, Point3{0.0, 0.0, 0.0}), 1.0);
-    status *= isEqual(bc::profileFactor(profile, Point3{0.0, 0.5, 0.0}), 0.75);
-    status *= isEqual(bc::profileFactor(profile, Point3{0.0, 2.0, 0.0}), 0.0);
+    status *= isEqual(fem::profileFactor(profile, Point3{0.0, 0.0, 0.0}), 1.0);
+    status *= isEqual(fem::profileFactor(profile, Point3{0.0, 0.5, 0.0}), 0.75);
+    status *= isEqual(fem::profileFactor(profile, Point3{0.0, 2.0, 0.0}), 0.0);
 
     status *= isEqual(
-        bc::velocityComponent(profile, Point3{0.0, 0.5, 0.0}, 2.0, 0),
+        fem::velocityComponent(profile, Point3{0.0, 0.5, 0.0}, 2.0, 0),
         1.5);
     status *= isEqual(
-        bc::velocityComponent(profile, Point3{0.0, 0.5, 0.0}, 2.0, 1),
+        fem::velocityComponent(profile, Point3{0.0, 0.5, 0.0}, 2.0, 1),
         0.0);
 
     return status.report(__func__);
@@ -40,16 +40,16 @@ public:
     TestStatus status;
     status = true;
 
-    status *= isEqual(bc::peakSpeed("flowrate", "uniform", 6.0, 3.0), 2.0);
-    status *= isEqual(bc::peakSpeed("mean_velocity", "uniform", 2.0), 2.0);
+    status *= isEqual(fem::peakSpeed("flowrate", "uniform", 6.0, 3.0), 2.0);
+    status *= isEqual(fem::peakSpeed("mean_velocity", "uniform", 2.0), 2.0);
     status *= isEqual(
-        bc::peakSpeed("flowrate", "poiseuille", 6.0, 3.0, 2.0),
+        fem::peakSpeed("flowrate", "poiseuille", 6.0, 3.0, 2.0),
         4.0);
     status *= isEqual(
-        bc::peakSpeed("mean_velocity", "poiseuille", 2.0, 1.0, 1.5),
+        fem::peakSpeed("mean_velocity", "poiseuille", 2.0, 1.0, 1.5),
         3.0);
     status *= isEqual(
-        bc::peakSpeed("max_velocity", "poiseuille", 2.0, 1.0, 1.5),
+        fem::peakSpeed("max_velocity", "poiseuille", 2.0, 1.0, 1.5),
         2.0);
 
     return status.report(__func__);
@@ -82,12 +82,12 @@ public:
     line.node_ids      = {0, 3};
     mesh.addBoundaryFacet(line);
 
-    const Point3 tri_center  = bc::boundaryCenter(mesh, 7);
+    const Point3 tri_center  = fem::boundaryCenter(mesh, 7);
     status                  *= isEqual(tri_center[0], 0.0);
     status                  *= isEqual(tri_center[1], 2.0 / 3.0);
     status                  *= isEqual(tri_center[2], 2.0 / 3.0);
 
-    const Point3 line_center  = bc::boundaryCenter(mesh, "edge");
+    const Point3 line_center  = fem::boundaryCenter(mesh, "edge");
     status                   *= isEqual(line_center[0], 1.5);
     status                   *= isEqual(line_center[1], 0.0);
     status                   *= isEqual(line_center[2], 0.0);
@@ -100,12 +100,12 @@ public:
     TestStatus status;
     status = true;
 
-    status *= isEqual(bc::sinePulseFactor(0.25, 0.5, 1.0), 1.5);
+    status *= isEqual(fem::sinePulseFactor(0.25, 0.5, 1.0), 1.5);
 
     bool threw = false;
     try
     {
-      (void) bc::poiseuilleProfile(
+      (void) fem::poiseuilleProfile(
           Point3{0.0, 0.0, 0.0}, Point3{1.0, 0.0, 0.0}, 0.0);
     }
     catch (const std::runtime_error&)
@@ -117,7 +117,7 @@ public:
     threw = false;
     try
     {
-      (void) bc::sinePulseFactor(0.0, 0.5, 0.0);
+      (void) fem::sinePulseFactor(0.0, 0.5, 0.0);
     }
     catch (const std::runtime_error&)
     {

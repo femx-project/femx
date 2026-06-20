@@ -5,7 +5,7 @@
 #include <string>
 
 #include <femx/io/VtiWriter.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

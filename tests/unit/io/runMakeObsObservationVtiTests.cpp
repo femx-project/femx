@@ -5,8 +5,8 @@
 #include <string>
 
 #include "ObservationVti.hpp"
-#include <femx/inverse/ObservationGrid.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/fem/ObservationGrid.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -36,10 +36,10 @@ public:
     prm.obs.grid->upper     = {1.0, 1.0, 0.0};
     prm.obs.grid->counts    = {2, 2, 1};
 
-    const auto points = inverse::observationGridPoints(
+    const auto points = fem::observationGridPoints(
         Point3{0.0, 0.0, 0.0}, Point3{1.0, 1.0, 0.0}, prm.obs.grid->counts);
     Vector<Index>                components{0, 1};
-    inverse::TimeObservationData data(2, 8);
+    problem::TimeObservationData data(2, 8);
     data.setLayout("point", points, components);
     data.setTimeValues(Vector<Real>{1.0, 1.5});
     for (Index level = 0; level < data.numLevels(); ++level)
@@ -106,7 +106,7 @@ public:
         Point3{0.5, 0.0, 0.0},
         Point3{1.0, 0.0, 0.0}};
     Vector<Index>                components{0, 1};
-    inverse::TimeObservationData data(1, 6);
+    problem::TimeObservationData data(1, 6);
     data.setLayout("point", points, components);
 
     const std::string pvd = make_obs::writeObservationVtiOutputs(prm, data);

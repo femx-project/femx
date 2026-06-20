@@ -4,12 +4,12 @@
 
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/BoundaryElementKernel.hpp>
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/fem/BoundaryElementValues.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {

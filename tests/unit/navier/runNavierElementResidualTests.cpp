@@ -7,9 +7,9 @@
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

@@ -11,7 +11,7 @@
 #include "../ns-var/RunSupport.hpp"
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/inverse/TimeObservationData.hpp>
+#include <femx/problem/TimeObservationData.hpp>
 #include <femx/io/TimeSeriesDataIn.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 
@@ -20,7 +20,7 @@ namespace femx::make_obs
 namespace
 {
 
-using namespace femx::inverse;
+using namespace femx::problem;
 
 constexpr unsigned long long kNoiseSeed = 0x5EED1234ULL;
 

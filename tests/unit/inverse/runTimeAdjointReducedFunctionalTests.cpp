@@ -1,18 +1,18 @@
 #include <iostream>
 
-#include <femx/eq/TimeMatrixLinearStateSolver.hpp>
-#include <femx/eq/TimeMatrixNewtonStateSolver.hpp>
-#include <femx/eq/TimeMatrixResidualEquation.hpp>
-#include <femx/eq/TimeResidualEquation.hpp>
-#include <femx/inverse/DerivativeCheck.hpp>
-#include <femx/inverse/SumTimeObjectiveFunctional.hpp>
-#include <femx/inverse/TimeAdjointReducedFunctional.hpp>
-#include <femx/inverse/TimeObjectiveFunctional.hpp>
-#include <femx/inverse/TimeReducedFunctional.hpp>
-#include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/DenseLinearSolver.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
+#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
+#include <femx/solve/TimeMatrixNewtonStateSolver.hpp>
+#include <femx/problem/TimeMatrixResidualEquation.hpp>
+#include <femx/problem/TimeResidualEquation.hpp>
+#include <femx/solve/DerivativeCheck.hpp>
+#include <femx/problem/SumTimeObjectiveFunctional.hpp>
+#include <femx/solve/TimeAdjointReducedFunctional.hpp>
+#include <femx/problem/TimeObjectiveFunctional.hpp>
+#include <femx/solve/TimeReducedFunctional.hpp>
+#include <femx/problem/TimeRegularization.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/DenseLinearSolver.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -38,7 +38,7 @@ void resize(Vector<Real>& out,
 
 } // namespace
 
-class ScalarTimeEquation final : public eq::TimeMatrixResidualEquation
+class ScalarTimeEquation final : public problem::TimeMatrixResidualEquation
 {
 public:
   Index numSteps() const override
@@ -75,7 +75,7 @@ public:
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override
+                            algebra::SystemMatrix& out) const override
   {
     (void) step;
     (void) x_next;
@@ -90,7 +90,7 @@ public:
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override
+                            algebra::SystemMatrix& out) const override
   {
     (void) step;
     (void) x_next;
@@ -105,7 +105,7 @@ public:
                         const Vector<Real>&   x_next,
                         const Vector<Real>&   x,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) x_next;
     (void) x;
@@ -127,7 +127,7 @@ public:
 };
 
 class ScalarTrackingObjective final
-  : public inverse::TimeObjectiveFunctional
+  : public problem::TimeObjectiveFunctional
 {
 public:
   ScalarTrackingObjective()
@@ -155,7 +155,7 @@ public:
     return numSteps();
   }
 
-  Real value(const eq::TimeStateTrajectory& tr,
+  Real value(const solve::TimeStateTrajectory& tr,
              const Vector<Real>&            prm) const override
   {
     (void) prm;
@@ -169,7 +169,7 @@ public:
   }
 
   void stateGrad(Index                          level,
-                 const eq::TimeStateTrajectory& tr,
+                 const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override
   {
@@ -181,7 +181,7 @@ public:
     }
   }
 
-  void paramGrad(const eq::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override
   {
@@ -194,7 +194,7 @@ private:
   Vector<Real> target_;
 };
 
-class InitialScalarTimeEquation final : public eq::TimeMatrixResidualEquation
+class InitialScalarTimeEquation final : public problem::TimeMatrixResidualEquation
 {
 public:
   Index numSteps() const override
@@ -231,7 +231,7 @@ public:
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override
+                            algebra::SystemMatrix& out) const override
   {
     (void) step;
     (void) x_next;
@@ -246,7 +246,7 @@ public:
                             const Vector<Real>&   x_next,
                             const Vector<Real>&   x,
                             const Vector<Real>&   prm,
-                            system::SystemMatrix& out) const override
+                            algebra::SystemMatrix& out) const override
   {
     (void) step;
     (void) x_next;
@@ -261,7 +261,7 @@ public:
                         const Vector<Real>&   x_next,
                         const Vector<Real>&   x,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) x_next;
     (void) x;
@@ -282,11 +282,11 @@ public:
   }
 };
 
-class InitialParameterStateSolver final : public eq::TimeStateSolver
+class InitialParameterStateSolver final : public solve::TimeStateSolver
 {
 public:
   explicit InitialParameterStateSolver(
-      eq::TimeMatrixLinearStateSolver& solver)
+      solve::TimeMatrixLinearStateSolver& solver)
     : solver_(solver)
   {
   }
@@ -307,7 +307,7 @@ public:
   }
 
   void solve(const Vector<Real>&      prm,
-             eq::TimeStateTrajectory& tr) override
+             solve::TimeStateTrajectory& tr) override
   {
     Vector<Real> init(numStates());
     init[0] = prm[0];
@@ -316,11 +316,11 @@ public:
   }
 
 private:
-  eq::TimeMatrixLinearStateSolver& solver_;
+  solve::TimeMatrixLinearStateSolver& solver_;
 };
 
 class InitialScalarTrackingObjective final
-  : public inverse::TimeObjectiveFunctional
+  : public problem::TimeObjectiveFunctional
 {
 public:
   InitialScalarTrackingObjective()
@@ -348,7 +348,7 @@ public:
     return numSteps() + 1;
   }
 
-  Real value(const eq::TimeStateTrajectory& tr,
+  Real value(const solve::TimeStateTrajectory& tr,
              const Vector<Real>&            prm) const override
   {
     (void) prm;
@@ -362,7 +362,7 @@ public:
   }
 
   void stateGrad(Index                          level,
-                 const eq::TimeStateTrajectory& tr,
+                 const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override
   {
@@ -371,7 +371,7 @@ public:
     out[0] = tr[level][0] - target_[level];
   }
 
-  void paramGrad(const eq::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override
   {
@@ -393,9 +393,9 @@ public:
     status = true;
 
     ScalarTimeEquation              eq;
-    system::DenseLinearSolver       lin_solver;
-    system::DenseSystemMatrix       next_state_jac;
-    eq::TimeMatrixNewtonStateSolver state_solver(
+    algebra::DenseLinearSolver       lin_solver;
+    algebra::DenseSystemMatrix       next_state_jac;
+    solve::TimeMatrixNewtonStateSolver state_solver(
         eq, next_state_jac, lin_solver);
 
     Vector<Real> init(eq.numStates());
@@ -408,7 +408,7 @@ public:
     prm[2] = 0.05;
     prm[3] = 0.30;
 
-    eq::TimeStateTrajectory tr;
+    solve::TimeStateTrajectory tr;
     state_solver.solve(prm, tr);
 
     status *= (tr.numSteps() == eq.numSteps());
@@ -437,9 +437,9 @@ public:
     status = true;
 
     ScalarTimeEquation              eq;
-    system::DenseLinearSolver       lin_solver;
-    system::DenseSystemMatrix       next_state_jac;
-    eq::TimeMatrixLinearStateSolver state_solver(
+    algebra::DenseLinearSolver       lin_solver;
+    algebra::DenseSystemMatrix       next_state_jac;
+    solve::TimeMatrixLinearStateSolver state_solver(
         eq, next_state_jac, lin_solver);
 
     Vector<Real> init(eq.numStates());
@@ -452,7 +452,7 @@ public:
     prm[2] = 0.05;
     prm[3] = 0.30;
 
-    eq::TimeStateTrajectory tr;
+    solve::TimeStateTrajectory tr;
     state_solver.solve(prm, tr);
 
     status *= (tr.numSteps() == eq.numSteps());
@@ -481,23 +481,23 @@ public:
     status = true;
 
     ScalarTimeEquation              eq;
-    system::DenseLinearSolver       lin_solver;
-    system::DenseSystemMatrix       next_state_jac;
-    eq::TimeMatrixLinearStateSolver state_solver(
+    algebra::DenseLinearSolver       lin_solver;
+    algebra::DenseSystemMatrix       next_state_jac;
+    solve::TimeMatrixLinearStateSolver state_solver(
         eq, next_state_jac, lin_solver);
     ScalarTrackingObjective     tracking;
-    inverse::TimeRegularization reg(
+    problem::TimeRegularization reg(
         eq.numSteps(), eq.numStates(), eq.numSteps(), 1, 0.2, 0.05);
 
     Vector<Real> init(eq.numStates());
     init[0] = 0.2;
     state_solver.setInitialState(init);
 
-    inverse::SumTimeObjectiveFunctional obj(
+    problem::SumTimeObjectiveFunctional obj(
         eq.numSteps(), eq.numStates(), eq.numParams());
     obj.add(tracking).add(reg);
 
-    inverse::TimeAdjointReducedFunctional functional(
+    solve::TimeAdjointReducedFunctional functional(
         state_solver, eq, lin_solver, obj);
 
     status *= (functional.numParams() == eq.numParams());
@@ -508,7 +508,7 @@ public:
     prm[2] = 0.05;
     prm[3] = 0.30;
 
-    eq::TimeStateTrajectory tr;
+    solve::TimeStateTrajectory tr;
     state_solver.solve(prm, tr);
     status *= isEqual(functional.value(prm),
                       obj.value(tr, prm));
@@ -525,7 +525,7 @@ public:
     dir[2] = 0.20;
     dir[3] = -0.40;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 
@@ -538,25 +538,25 @@ public:
     status = true;
 
     ScalarTimeEquation              eq;
-    system::DenseLinearSolver       lin_solver;
-    system::DenseSystemMatrix       state_next_jac;
-    eq::TimeMatrixLinearStateSolver state_solver(
+    algebra::DenseLinearSolver       lin_solver;
+    algebra::DenseSystemMatrix       state_next_jac;
+    solve::TimeMatrixLinearStateSolver state_solver(
         eq, state_next_jac, lin_solver);
     ScalarTrackingObjective     tracking;
-    inverse::TimeRegularization reg(
+    problem::TimeRegularization reg(
         eq.numSteps(), eq.numStates(), eq.numSteps(), 1, 0.2, 0.05);
 
     Vector<Real> init(eq.numStates());
     init[0] = 0.2;
     state_solver.setInitialState(init);
 
-    inverse::SumTimeObjectiveFunctional obj(
+    problem::SumTimeObjectiveFunctional obj(
         eq.numSteps(), eq.numStates(), eq.numParams());
     obj.add(tracking).add(reg);
 
-    system::DenseSystemMatrix      adj_next_jac;
-    system::DenseSystemMatrix      adj_prev_jac;
-    inverse::TimeReducedFunctional functional(
+    algebra::DenseSystemMatrix      adj_next_jac;
+    algebra::DenseSystemMatrix      adj_prev_jac;
+    solve::TimeReducedFunctional functional(
         state_solver, eq, adj_next_jac, adj_prev_jac, lin_solver, obj);
 
     status *= (functional.numParams() == eq.numParams());
@@ -567,7 +567,7 @@ public:
     prm[2] = 0.05;
     prm[3] = 0.30;
 
-    eq::TimeStateTrajectory tr;
+    solve::TimeStateTrajectory tr;
     state_solver.solve(prm, tr);
     status *= isEqual(functional.value(prm),
                       obj.value(tr, prm));
@@ -584,7 +584,7 @@ public:
     dir[2] = 0.20;
     dir[3] = -0.40;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 
@@ -597,20 +597,20 @@ public:
     status = true;
 
     InitialScalarTimeEquation       eq;
-    system::DenseLinearSolver       lin_solver;
-    system::DenseSystemMatrix       state_next_jac;
-    eq::TimeMatrixLinearStateSolver inner_state_solver(
+    algebra::DenseLinearSolver       lin_solver;
+    algebra::DenseSystemMatrix       state_next_jac;
+    solve::TimeMatrixLinearStateSolver inner_state_solver(
         eq, state_next_jac, lin_solver);
     InitialParameterStateSolver    state_solver(inner_state_solver);
     InitialScalarTrackingObjective tracking;
 
-    inverse::SumTimeObjectiveFunctional obj(
+    problem::SumTimeObjectiveFunctional obj(
         eq.numSteps(), eq.numStates(), eq.numParams());
     obj.add(tracking);
 
-    system::DenseSystemMatrix      adj_next_jac;
-    system::DenseSystemMatrix      adj_prev_jac;
-    inverse::TimeReducedFunctional functional(
+    algebra::DenseSystemMatrix      adj_next_jac;
+    algebra::DenseSystemMatrix      adj_prev_jac;
+    solve::TimeReducedFunctional functional(
         state_solver, eq, adj_next_jac, adj_prev_jac, lin_solver, obj);
     functional.setInitialStateParamJacT(
         [](const Vector<Real>& prm,
@@ -628,7 +628,7 @@ public:
     prm[3] = 0.05;
     prm[4] = 0.30;
 
-    eq::TimeStateTrajectory tr;
+    solve::TimeStateTrajectory tr;
     state_solver.solve(prm, tr);
     status *= isEqual(tr[0][0], prm[0]);
     status *= isEqual(functional.value(prm),
@@ -646,7 +646,7 @@ public:
     dir[3] = 0.20;
     dir[4] = -0.10;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 

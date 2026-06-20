@@ -3,14 +3,14 @@
 #include <cmath>
 #include <iostream>
 
-#include <femx/eq/OperatorNewtonStateSolver.hpp>
-#include <femx/eq/ResidualEquation.hpp>
-#include <femx/inverse/OperatorAdjointSolver.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/LinearOperator.hpp>
-#include <femx/system/petsc/KspLinearSolver.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
-#include <femx/system/petsc/PETScSystemVector.hpp>
+#include <femx/solve/OperatorNewtonStateSolver.hpp>
+#include <femx/problem/ResidualEquation.hpp>
+#include <femx/solve/OperatorAdjointSolver.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/LinearOperator.hpp>
+#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -30,7 +30,7 @@ void resize(Vector<Real>& out, Index size)
   }
 }
 
-class TwoByTwoOperator final : public system::LinearOperator
+class TwoByTwoOperator final : public algebra::LinearOperator
 {
 public:
   Index numRows() const override
@@ -58,7 +58,7 @@ public:
   }
 };
 
-class LinearResidualEquation final : public eq::ResidualEquation
+class LinearResidualEquation final : public problem::ResidualEquation
 {
 public:
   Index numStates() const override
@@ -145,7 +145,7 @@ public:
     status = true;
 
     TwoByTwoOperator        op;
-    system::KspLinearSolver solver;
+    algebra::KspLinearSolver solver;
     solver.options().rtol        = 1.0e-12;
     solver.options().atol        = 1.0e-14;
     solver.options().use_opts_db = false;
@@ -172,13 +172,13 @@ public:
     status = true;
 
     LinearResidualEquation  res_eq;
-    system::KspLinearSolver lin_solver;
+    algebra::KspLinearSolver lin_solver;
     lin_solver.options().rtol        = 1.0e-12;
     lin_solver.options().atol        = 1.0e-14;
     lin_solver.options().use_opts_db = false;
 
-    eq::OperatorNewtonStateSolver  state_solver(res_eq, lin_solver);
-    inverse::OperatorAdjointSolver adj_solver(res_eq, lin_solver);
+    solve::OperatorNewtonStateSolver  state_solver(res_eq, lin_solver);
+    solve::OperatorAdjointSolver adj_solver(res_eq, lin_solver);
 
     Vector<Real> prm(2);
     prm[0] = 0.05;
@@ -208,7 +208,7 @@ public:
     TestStatus status;
     status = true;
 
-    system::PETScSystemMatrix mat;
+    algebra::PETScSystemMatrix mat;
     mat.resize(2, 2);
     mat.setZero();
     mat.set(0, 0, 4.0);
@@ -217,15 +217,15 @@ public:
     mat.set(1, 1, 3.0);
     mat.finalize();
 
-    system::PETScSystemVector rhs;
-    system::PETScSystemVector x;
+    algebra::PETScSystemVector rhs;
+    algebra::PETScSystemVector x;
     rhs.resize(2);
     x.resize(2);
     rhs.set(0, 1.0);
     rhs.set(1, 2.0);
     rhs.finalize();
 
-    system::KspLinearSolver solver;
+    algebra::KspLinearSolver solver;
     solver.options().pc_type     = PCJACOBI;
     solver.options().rtol        = 1.0e-12;
     solver.options().atol        = 1.0e-14;

@@ -5,19 +5,19 @@
 #include <vector>
 
 #include "Config.hpp"
-#include <femx/bc/DirichletControl.hpp>
-#include <femx/bc/VelocityProfile.hpp>
-#include <femx/common/Types.hpp>
-#include <femx/eq/TimeMatrixLinearStateSolver.hpp>
-#include <femx/eq/TimeStateSolver.hpp>
-#include <femx/eq/TimeStateTrajectory.hpp>
+#include <femx/fem/DirichletControl.hpp>
+#include <femx/fem/VelocityProfile.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
+#include <femx/solve/TimeStateSolver.hpp>
+#include <femx/solve/TimeStateTrajectory.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/inverse/TimeObjectiveFunctional.hpp>
-#include <femx/inverse/TimeObservationData.hpp>
-#include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/problem/TimeObjective.hpp>
+#include <femx/problem/TimeObservationData.hpp>
+#include <femx/problem/TimeObservation.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx::navier_var
 {
@@ -47,10 +47,10 @@ struct FixedDofValues
   Vector<Real>  values;
 };
 
-class InitialVelocityStateSolver final : public eq::TimeStateSolver
+class InitialVelocityStateSolver final : public solve::TimeStateSolver
 {
 public:
-  InitialVelocityStateSolver(eq::TimeMatrixLinearStateSolver& solver,
+  InitialVelocityStateSolver(solve::TimeMatrixLinearStateSolver& solver,
                              Vector<Index>                    velocity_dofs,
                              InverseParameterLayout           layout,
                              Vector<Real> base_initial_state = {});
@@ -60,10 +60,10 @@ public:
   Index numParams() const override;
 
   void solve(const Vector<Real>&      prm,
-             eq::TimeStateTrajectory& tr) override;
+             solve::TimeStateTrajectory& tr) override;
 
 private:
-  eq::TimeMatrixLinearStateSolver& solver_;
+  solve::TimeMatrixLinearStateSolver& solver_;
   Vector<Index>                    velocity_dofs_;
   InverseParameterLayout           layout_;
   Vector<Real>                     base_initial_state_;
@@ -71,11 +71,11 @@ private:
 };
 
 class ParameterSliceTimeObjective final
-  : public inverse::TimeObjectiveFunctional
+  : public problem::TimeObjectiveFunctional
 {
 public:
   ParameterSliceTimeObjective(
-      const inverse::TimeObjectiveFunctional& base,
+      const problem::TimeObjectiveFunctional& base,
       Index                                   total_params,
       Index                                   offset);
 
@@ -83,15 +83,15 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const eq::TimeStateTrajectory& tr,
+  Real value(const solve::TimeStateTrajectory& tr,
              const Vector<Real>&            prm) const override;
 
   void stateGrad(Index                          level,
-                 const eq::TimeStateTrajectory& tr,
+                 const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
-  void paramGrad(const eq::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
@@ -99,13 +99,13 @@ private:
   Vector<Real> slice(const Vector<Real>& prm) const;
 
 private:
-  const inverse::TimeObjectiveFunctional& base_;
+  const problem::TimeObjectiveFunctional& base_;
   Index                                   total_params_{0};
   Index                                   offset_{0};
 };
 
 class InitialVelocityRegularization final
-  : public inverse::TimeObjectiveFunctional
+  : public problem::TimeObjectiveFunctional
 {
 public:
   InitialVelocityRegularization(Index                  num_steps,
@@ -117,15 +117,15 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const eq::TimeStateTrajectory& tr,
+  Real value(const solve::TimeStateTrajectory& tr,
              const Vector<Real>&            prm) const override;
 
   void stateGrad(Index                          level,
-                 const eq::TimeStateTrajectory& tr,
+                 const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
-  void paramGrad(const eq::TimeStateTrajectory& tr,
+  void paramGrad(const solve::TimeStateTrajectory& tr,
                  const Vector<Real>&            prm,
                  Vector<Real>&                  out) const override;
 
@@ -183,20 +183,20 @@ FixedDofValues fixedDofValues(const MixedFESpace&     space,
                               Index                   steps,
                               Real                    dt);
 
-std::unique_ptr<inverse::TimeObservationOperator> makeObs(
+std::unique_ptr<problem::TimeObservationOperator> makeObs(
     const MixedFESpace&      space,
     const ObservationParams& prm,
     Index                    steps,
     Index                    num_states,
     Index                    num_prm);
 
-void setObsLayout(inverse::TimeObservationData& data,
+void setObsLayout(problem::TimeObservationData& data,
                   const MixedFESpace&           space,
                   const ObservationParams&      prm);
 
-std::unique_ptr<inverse::TimeObservationOperator> makeObsFromData(
+std::unique_ptr<problem::TimeObservationOperator> makeObsFromData(
     const MixedFESpace&                 space,
-    const inverse::TimeObservationData& data,
+    const problem::TimeObservationData& data,
     Index                               steps,
     Index                               num_states,
     Index                               num_prm);
@@ -205,7 +205,7 @@ Vector<Real> misfitW(Index num_steps,
                      Real  weight,
                      bool  include_initial = false);
 
-bc::AxialVelocityProfile targetProfile(const TargetParams& target);
+fem::AxialVelocityProfile targetProfile(const TargetParams& target);
 
 Real peakBaseSpeed(const TargetParams& target);
 
@@ -267,7 +267,7 @@ void seedInitialVelocityFromConstantPoiseuille(
     const Params&                    prm,
     const InverseParameterLayout&    layout,
     const Vector<Index>&             velocity_dofs,
-    eq::TimeMatrixLinearStateSolver& state_solver,
+    solve::TimeMatrixLinearStateSolver& state_solver,
     Vector<Real>&                    prm_init);
 
 void initialStateFromParams(const Vector<Index>&          velocity_dofs,
@@ -323,8 +323,8 @@ Index centerControlIndex(const MixedFESpace&     space,
 void writeViz(const Mesh&                    mesh,
               const MixedFESpace&            space,
               const DirichletControl&        control,
-              const eq::TimeStateTrajectory& target_tr,
-              const eq::TimeStateTrajectory& opt_tr,
+              const solve::TimeStateTrajectory& target_tr,
+              const solve::TimeStateTrajectory& opt_tr,
               const Vector<Real>&            true_prm,
               const Vector<Real>&            opt_prm,
               Real                           dt,
@@ -332,7 +332,7 @@ void writeViz(const Mesh&                    mesh,
 
 void writeForwardViz(const Mesh&                    mesh,
                      const MixedFESpace&            space,
-                     const eq::TimeStateTrajectory& tr,
+                     const solve::TimeStateTrajectory& tr,
                      Real                           dt,
                      const VizOptions&              opts,
                      Real                           time_offset = 0.0);

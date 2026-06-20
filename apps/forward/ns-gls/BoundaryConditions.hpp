@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Config.hpp"
-#include <femx/bc/DirichletCondition.hpp>
+#include <femx/fem/BoundaryCondition.hpp>
 
 namespace femx
 {

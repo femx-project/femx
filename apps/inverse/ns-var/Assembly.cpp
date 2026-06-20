@@ -5,7 +5,7 @@
 #include "Components.hpp"
 #include <femx/assembly/EnzymeVolumeKernel.hpp>
 #include <femx/fem/ElementValues.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
 using namespace femx::assembly;

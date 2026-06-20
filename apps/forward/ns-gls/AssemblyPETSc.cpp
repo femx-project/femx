@@ -7,16 +7,16 @@
 #include "Components.hpp"
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
-#include <femx/system/petsc/PETScSystemVector.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
 
 namespace femx
 {
 
-using namespace femx::system;
+using namespace femx::algebra;
 
 void assembleSystem(const MixedFESpace& space,
                     const Vector<Real>& x,

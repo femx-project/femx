@@ -5,30 +5,36 @@
 
 #include "Components.hpp"
 #include "Config.hpp"
-#include <femx/common/Types.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/IndexSetList.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/IndexSetList.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
+#if defined(FEMX_HAS_PETSC)
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
+#endif
 
 namespace femx
 {
 class ElementValues;
 class MixedFESpace;
 
-namespace system
+namespace algebra
 {
-class SparseSystemMatrix;
+#if !defined(FEMX_HAS_PETSC)
 class PETScSystemMatrix;
 class PETScSystemVector;
-} // namespace system
+#endif
+} // namespace algebra
 } // namespace femx
 
 namespace femx
 {
 
-using system::PETScSystemMatrix;
-using system::PETScSystemVector;
-using system::SparseSystemMatrix;
+using algebra::PETScSystemMatrix;
+using algebra::PETScSystemVector;
+using algebra::SparseSystemMatrix;
 
 struct AssemblyStats
 {

@@ -1,11 +1,11 @@
 #include <iostream>
 
-#include <femx/eq/OperatorNewtonStateSolver.hpp>
-#include <femx/eq/ResidualEquation.hpp>
-#include <femx/inverse/OperatorAdjointSolver.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/DenseLinearSolver.hpp>
-#include <femx/system/LinearOperator.hpp>
+#include <femx/solve/OperatorNewtonStateSolver.hpp>
+#include <femx/problem/ResidualEquation.hpp>
+#include <femx/solve/OperatorAdjointSolver.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/DenseLinearSolver.hpp>
+#include <femx/algebra/LinearOperator.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -25,7 +25,7 @@ void resize(Vector<Real>& out, Index size)
   }
 }
 
-class TwoByTwoOperator final : public system::LinearOperator
+class TwoByTwoOperator final : public algebra::LinearOperator
 {
 public:
   Index numRows() const override
@@ -53,7 +53,7 @@ public:
   }
 };
 
-class LinearResidualEquation final : public eq::ResidualEquation
+class LinearResidualEquation final : public problem::ResidualEquation
 {
 public:
   Index numStates() const override
@@ -140,7 +140,7 @@ public:
     status = true;
 
     TwoByTwoOperator          op;
-    system::DenseLinearSolver solver;
+    algebra::DenseLinearSolver solver;
 
     Vector<Real> rhs(2);
     rhs[0] = 1.0;
@@ -164,8 +164,8 @@ public:
     status = true;
 
     LinearResidualEquation        res_eq;
-    system::DenseLinearSolver     lin_solver;
-    eq::OperatorNewtonStateSolver state_solver(res_eq, lin_solver);
+    algebra::DenseLinearSolver     lin_solver;
+    solve::OperatorNewtonStateSolver state_solver(res_eq, lin_solver);
 
     Vector<Real> prm(2);
     prm[0] = 0.05;
@@ -191,8 +191,8 @@ public:
     status = true;
 
     LinearResidualEquation         eq;
-    system::DenseLinearSolver      lin_solver;
-    inverse::OperatorAdjointSolver adj_solver(eq, lin_solver);
+    algebra::DenseLinearSolver      lin_solver;
+    solve::OperatorAdjointSolver adj_solver(eq, lin_solver);
 
     Vector<Real> state(2);
     state[0] = -1.48;

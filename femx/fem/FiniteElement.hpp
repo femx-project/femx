@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/ReferenceElement.hpp>
-#include <femx/linalg/MatrixView.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/algebra/MatrixView.hpp>
+#include <femx/algebra/VectorView.hpp>
 
 namespace femx
 {

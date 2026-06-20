@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include <femx/inverse/DerivativeCheck.hpp>
-#include <femx/inverse/ReducedFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/DerivativeCheck.hpp>
+#include <femx/solve/ReducedObjective.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -10,7 +10,7 @@ namespace femx
 namespace tests
 {
 
-class QuadraticReducedFunctional final : public inverse::ReducedFunctional
+class QuadraticReducedFunctional final : public solve::ReducedObjective
 {
 public:
   Index numParams() const override
@@ -81,7 +81,7 @@ public:
     dir[0] = -0.75;
     dir[1] = 0.5;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-8, 1.0e-8);
 

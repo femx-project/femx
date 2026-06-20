@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <femx/inverse/AdjointSolver.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/AdjointSolver.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -9,7 +9,7 @@ namespace femx
 namespace tests
 {
 
-class LinearAdjointSolver final : public inverse::AdjointSolver
+class LinearAdjointSolver final : public solve::AdjointSolver
 {
 public:
   Index numStates() const override

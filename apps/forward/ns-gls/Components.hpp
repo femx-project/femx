@@ -5,8 +5,8 @@
 
 #include "Config.hpp"
 #include <femx/fem/ElementValues.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
 
 namespace femx
 {

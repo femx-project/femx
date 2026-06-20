@@ -9,19 +9,19 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/bc/VelocityProfile.hpp>
-#include <femx/common/Math.hpp>
+#include <femx/fem/VelocityProfile.hpp>
+#include <femx/core/Math.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-#include <femx/inverse/ObservationGrid.hpp>
-#include <femx/inverse/TimePointSampler.hpp>
+#include <femx/fem/ObservationGrid.hpp>
+#include <femx/fem/TimePointSampler.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 
-using namespace femx::bc;
-using namespace femx::eq;
-using namespace femx::inverse;
+using namespace femx::fem;
+using namespace femx::problem;
+using namespace femx::solve;
 
 namespace femx::navier_var
 {

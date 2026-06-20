@@ -4,8 +4,8 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/algebra/Vector.hpp>
 
 namespace femx
 {

@@ -15,24 +15,24 @@
 #include "NavierStokesEquation.hpp"
 #include "RunSupport.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/bc/DirichletControl.hpp>
-#include <femx/common/Math.hpp>
-#include <femx/common/Types.hpp>
-#include <femx/eq/TimeDirichletControlEquation.hpp>
-#include <femx/eq/TimeMatrixLinearStateSolver.hpp>
+#include <femx/fem/DirichletControl.hpp>
+#include <femx/core/Math.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/problem/TimeDirichletControlEquation.hpp>
+#include <femx/solve/TimeMatrixLinearStateSolver.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/inverse/SumTimeObjectiveFunctional.hpp>
-#include <femx/inverse/TimeLeastSquaresObjective.hpp>
-#include <femx/inverse/TimeObservationData.hpp>
-#include <femx/inverse/TimeReducedFunctional.hpp>
-#include <femx/inverse/TimeRegularization.hpp>
-#include <femx/inverse/petsc/TaoOptimizer.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/GmshReader.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/petsc/KspLinearSolver.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
-#include <femx/system/petsc/PETScSystemVector.hpp>
+#include <femx/problem/SumTimeObjective.hpp>
+#include <femx/problem/TimeLeastSquaresObjective.hpp>
+#include <femx/problem/TimeObservationData.hpp>
+#include <femx/solve/TimeReducedFunctional.hpp>
+#include <femx/problem/TimeRegularization.hpp>
+#include <femx/optimize/TaoOptimizer.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/GmshReader.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
 
 #ifndef FEMX_NAVIER_VAR_APP_NAME
 #define FEMX_NAVIER_VAR_APP_NAME "ns-var"
@@ -43,10 +43,11 @@ namespace
 
 using namespace femx;
 using namespace femx::assembly;
-using namespace femx::eq;
-using namespace femx::inverse;
+using namespace femx::problem;
 using namespace femx::navier_var;
-using namespace femx::system;
+using namespace femx::solve;
+using namespace femx::algebra;
+using namespace femx::optimize;
 
 constexpr Index kQuadOrder = 2;
 

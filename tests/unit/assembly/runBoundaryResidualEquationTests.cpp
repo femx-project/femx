@@ -4,13 +4,13 @@
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryElementKernel.hpp>
 #include <femx/assembly/BoundaryResidualEquation.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -18,7 +18,7 @@ namespace femx
 namespace tests
 {
 
-class ZeroMatrixResidualEquation final : public eq::MatrixResidualEquation
+class ZeroMatrixResidualEquation final : public problem::MatrixResidualEquation
 {
 public:
   explicit ZeroMatrixResidualEquation(Index size)
@@ -59,7 +59,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     checkSizes(state, prm);
     out.resize(size_, size_);
@@ -68,7 +68,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     checkSizes(state, prm);
     out.resize(size_, num_prm_);
@@ -202,7 +202,7 @@ public:
     status *= isEqual(res[2], 0.0);
     status *= isEqual(res[3], 0.0);
 
-    system::DenseSystemMatrix state_jac;
+    algebra::DenseSystemMatrix state_jac;
     eq.assembleStateJac(state, prm, state_jac);
     state_jac.finalize();
 
@@ -211,7 +211,7 @@ public:
     status *= isEqual(state_jac.matrix()(2, 2), 0.0);
     status *= isEqual(state_jac.matrix()(3, 3), 0.0);
 
-    system::DenseSystemMatrix param_jac;
+    algebra::DenseSystemMatrix param_jac;
     eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 
@@ -266,7 +266,7 @@ public:
                           + 4.0 * state[4] + 2.0 * prm[1]);
     status *= isEqual(res[5], 4.0 * state[5] + 2.0 * prm[2]);
 
-    system::DenseSystemMatrix param_jac;
+    algebra::DenseSystemMatrix param_jac;
     eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 

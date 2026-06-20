@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <femx/eq/ResidualEquation.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/problem/ResidualEquation.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -9,7 +9,7 @@ namespace femx
 namespace tests
 {
 
-class LinearResidualEquation final : public eq::ResidualEquation
+class LinearResidualEquation final : public problem::ResidualEquation
 {
 public:
   Index numStates() const override

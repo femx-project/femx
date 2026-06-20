@@ -9,11 +9,11 @@
 
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Quadrature.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
 
-using namespace femx::system;
+using namespace femx::algebra;
 
 namespace femx
 {

@@ -13,10 +13,10 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -169,7 +169,7 @@ int main(int argc, char** argv)
 
   femx::NavierStokesEquation       eq(space, ns_prm);
   const auto                       pattern = femx::assembly::SparsityPatternBuilder::build(space);
-  femx::system::SparseSystemMatrix prev_jac(pattern);
+  femx::algebra::SparseSystemMatrix prev_jac(pattern);
 
   volatile femx::Real global_checksum = 0.0;
   const auto          global_start    = Clock::now();

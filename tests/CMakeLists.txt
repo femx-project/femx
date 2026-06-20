@@ -4,6 +4,53 @@ target_link_libraries(runMathTests PRIVATE femx::femx)
 
 add_test(NAME MathTests COMMAND runMathTests)
 
+add_executable(runNewIncludeSmokeTests unit/algebra/runNewIncludeSmokeTests.cpp)
+
+target_link_libraries(runNewIncludeSmokeTests PRIVATE femx::algebra)
+
+add_test(NAME NewIncludeSmokeTests COMMAND runNewIncludeSmokeTests)
+
+add_executable(runResidualAdapterTests unit/problem/runResidualAdapterTests.cpp)
+
+target_link_libraries(runResidualAdapterTests PRIVATE femx::femx)
+
+add_test(NAME ResidualAdapterTests COMMAND runResidualAdapterTests)
+
+add_executable(runTimeResidualAdapterTests
+               unit/problem/runTimeResidualAdapterTests.cpp)
+
+target_link_libraries(runTimeResidualAdapterTests PRIVATE femx::femx)
+
+add_test(NAME TimeResidualAdapterTests COMMAND runTimeResidualAdapterTests)
+
+add_executable(runNewtonTests unit/solve/runNewtonTests.cpp)
+
+target_link_libraries(runNewtonTests PRIVATE femx::femx)
+
+add_test(NAME NewtonTests COMMAND runNewtonTests)
+
+add_executable(runTimeStepperTests unit/solve/runTimeStepperTests.cpp)
+
+target_link_libraries(runTimeStepperTests PRIVATE femx::femx)
+
+add_test(NAME TimeStepperTests COMMAND runTimeStepperTests)
+
+add_executable(runSolveReducedFunctionalTests
+               unit/solve/runReducedFunctionalTests.cpp)
+
+target_link_libraries(runSolveReducedFunctionalTests PRIVATE femx::femx)
+
+add_test(NAME SolveReducedFunctionalTests
+         COMMAND runSolveReducedFunctionalTests)
+
+add_executable(runNewApiLinearControlExampleTests
+               unit/solve/runNewApiLinearControlExampleTests.cpp)
+
+target_link_libraries(runNewApiLinearControlExampleTests PRIVATE femx::femx)
+
+add_test(NAME NewApiLinearControlExampleTests
+         COMMAND runNewApiLinearControlExampleTests)
+
 add_executable(runVelocityProfileTests unit/bc/runVelocityProfileTests.cpp)
 
 target_link_libraries(runVelocityProfileTests PRIVATE femx::femx)
@@ -22,6 +69,13 @@ add_executable(runBoundaryElementValuesTests
 target_link_libraries(runBoundaryElementValuesTests PRIVATE femx::femx)
 
 add_test(NAME BoundaryElementValuesTests COMMAND runBoundaryElementValuesTests)
+
+add_executable(runPublicIncludeSmokeTests
+               unit/fem/runPublicIncludeSmokeTests.cpp)
+
+target_link_libraries(runPublicIncludeSmokeTests PRIVATE femx::femx)
+
+add_test(NAME PublicIncludeSmokeTests COMMAND runPublicIncludeSmokeTests)
 
 add_executable(runResidualEquationTests
                unit/equation/runResidualEquationTests.cpp)
@@ -221,11 +275,11 @@ if(TARGET navier_var_kernels)
                         PRIVATE navier_var_kernels femx::femx)
 endif()
 
-if(TARGET femx::system_petsc)
+if(TARGET femx::algebra_petsc)
   add_executable(runKspLinearSolverTests
                  unit/system/petsc/runKspLinearSolverTests.cpp)
 
-  target_link_libraries(runKspLinearSolverTests PRIVATE femx::system_petsc
+  target_link_libraries(runKspLinearSolverTests PRIVATE femx::algebra_petsc
                                                         femx::femx)
 
   add_test(NAME KspLinearSolverTests COMMAND runKspLinearSolverTests)
@@ -233,18 +287,18 @@ if(TARGET femx::system_petsc)
   add_executable(runPETScSystemMatrixTests
                  unit/system/petsc/runPETScSystemMatrixTests.cpp)
 
-  target_link_libraries(runPETScSystemMatrixTests PRIVATE femx::system_petsc
+  target_link_libraries(runPETScSystemMatrixTests PRIVATE femx::algebra_petsc
                                                           femx::femx)
 
   add_test(NAME PETScSystemMatrixTests COMMAND runPETScSystemMatrixTests)
 endif()
 
-if(TARGET femx::inverse_petsc)
+if(TARGET femx::optimize)
   add_executable(runTaoReducedFunctionalAdapterTests
                  unit/inverse/petsc/runTaoReducedFunctionalAdapterTests.cpp)
 
   target_link_libraries(runTaoReducedFunctionalAdapterTests
-                        PRIVATE femx::inverse_petsc femx::femx)
+                        PRIVATE femx::optimize femx::femx)
 
   add_test(NAME TaoReducedFunctionalAdapterTests
            COMMAND runTaoReducedFunctionalAdapterTests)
@@ -252,7 +306,7 @@ if(TARGET femx::inverse_petsc)
   add_executable(runTaoOptimizerTests
                  unit/inverse/petsc/runTaoOptimizerTests.cpp)
 
-  target_link_libraries(runTaoOptimizerTests PRIVATE femx::inverse_petsc
+  target_link_libraries(runTaoOptimizerTests PRIVATE femx::optimize
                                                      femx::femx)
 
   add_test(NAME TaoOptimizerTests COMMAND runTaoOptimizerTests)

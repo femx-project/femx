@@ -1,10 +1,10 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/inverse/ObjectiveFunctional.hpp>
-#include <femx/inverse/QuadraticParameterRegularization.hpp>
-#include <femx/inverse/SumObjectiveFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/problem/ObjectiveFunctional.hpp>
+#include <femx/problem/QuadraticParameterRegularization.hpp>
+#include <femx/problem/SumObjectiveFunctional.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -12,7 +12,7 @@ namespace femx
 namespace tests
 {
 
-class LinearObjective final : public inverse::ObjectiveFunctional
+class LinearObjective final : public problem::ObjectiveFunctional
 {
 public:
   Index numStates() const override
@@ -79,7 +79,7 @@ public:
     reference[0] = 1.0;
     reference[1] = -2.0;
 
-    const inverse::QuadraticParameterRegularization reg(
+    const problem::QuadraticParameterRegularization reg(
         2, reference, 0.5);
 
     Vector<Real> state(2);
@@ -115,10 +115,10 @@ public:
     reference[0] = 1.0;
     reference[1] = -2.0;
 
-    const inverse::QuadraticParameterRegularization reg(
+    const problem::QuadraticParameterRegularization reg(
         2, reference, 0.5);
 
-    inverse::SumObjectiveFunctional sum(2, 2);
+    problem::SumObjectiveFunctional sum(2, 2);
     sum.add(linear).add(reg);
 
     Vector<Real> state(2);
@@ -152,10 +152,10 @@ public:
 
     Vector<Real> reference(1);
     reference[0] = 0.0;
-    const inverse::QuadraticParameterRegularization reg(
+    const problem::QuadraticParameterRegularization reg(
         2, reference, 1.0);
 
-    inverse::SumObjectiveFunctional sum(2, 2);
+    problem::SumObjectiveFunctional sum(2, 2);
 
     bool threw = false;
     try

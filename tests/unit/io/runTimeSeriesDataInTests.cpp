@@ -3,8 +3,8 @@
 
 #include <femx/io/TimeSeriesDataIn.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

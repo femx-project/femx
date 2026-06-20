@@ -6,15 +6,15 @@
 
 #include "NavierStokesEquation.hpp"
 #include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/bc/DirichletControl.hpp>
-#include <femx/eq/TimeDirichletControlEquation.hpp>
+#include <femx/fem/DirichletControl.hpp>
+#include <femx/problem/TimeDirichletControlEquation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -102,11 +102,11 @@ public:
     eq.res(0, x_next, x, prm, res);
 
 #if defined(FEMX_HAS_ENZYME)
-    system::DenseSystemMatrix next_jac;
+    algebra::DenseSystemMatrix next_jac;
     eq.assembleNextStateJac(
         0, x_next, x, prm, next_jac);
 
-    system::DenseSystemMatrix prev_jac;
+    algebra::DenseSystemMatrix prev_jac;
     eq.assemblePrevStateJac(
         0, x_next, x, prm, prev_jac);
 #endif
@@ -163,11 +163,11 @@ public:
 #endif
 
     Vector<Real>              prm;
-    system::DenseSystemMatrix next_jac;
+    algebra::DenseSystemMatrix next_jac;
     eq.assembleNextStateJac(
         0, x_next, x, prm, next_jac);
 #if defined(FEMX_HAS_ENZYME)
-    system::DenseSystemMatrix prev_jac;
+    algebra::DenseSystemMatrix prev_jac;
     eq.assemblePrevStateJac(
         0, x_next, x, prm, prev_jac);
 #endif
@@ -233,7 +233,7 @@ public:
     Vector<Real> x(eq.numStates());
     Vector<Real> prm;
 
-    system::DenseSystemMatrix param_jac;
+    algebra::DenseSystemMatrix param_jac;
     eq.assembleParamJac(0, x_next, x, prm, param_jac);
 
     status *= (eq.numParams() == 0);
@@ -298,7 +298,7 @@ public:
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
     Vector<Index> fixed_dofs = {p_dof.globalDof(0, 0)};
     Vector<Real>  fixed_values = {0.75, -1.25};
-    eq::TimeDirichletControlEquation eq(
+    problem::TimeDirichletControlEquation eq(
         base_eq, control, fixed_dofs, 0, -1, fixed_values);
 
     Vector<Real> x_next(eq.numStates());
@@ -324,11 +324,11 @@ public:
     status                *= isEqual(res[fixed_row],
                                      x_next[fixed_row] - fixed_values[1]);
 
-    system::DenseSystemMatrix param_jac;
+    algebra::DenseSystemMatrix param_jac;
 #if defined(FEMX_HAS_ENZYME)
-    system::DenseSystemMatrix next_jac;
+    algebra::DenseSystemMatrix next_jac;
     eq.assembleNextStateJac(1, x_next, x, prm, next_jac);
-    system::DenseSystemMatrix prev_jac;
+    algebra::DenseSystemMatrix prev_jac;
     eq.assemblePrevStateJac(1, x_next, x, prm, prev_jac);
 #endif
     eq.assembleParamJac(1, x_next, x, prm, param_jac);
@@ -385,8 +385,8 @@ public:
 
 #if defined(FEMX_HAS_ENZYME)
     const CsrPattern           pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix sparse_next(pattern);
-    system::SparseSystemMatrix sparse_prev(pattern);
+    algebra::SparseSystemMatrix sparse_next(pattern);
+    algebra::SparseSystemMatrix sparse_prev(pattern);
     eq.assembleNextStateJac(1, x_next, x, prm, sparse_next);
     eq.assemblePrevStateJac(1, x_next, x, prm, sparse_prev);
 
@@ -429,7 +429,7 @@ public:
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
     const Index              offset    = 3;
     const Index              total_prm = offset + control.numParams(ns_prm.steps) + 2;
-    eq::TimeDirichletControlEquation eq(
+    problem::TimeDirichletControlEquation eq(
         base_eq, control, {}, offset, total_prm);
 
     Vector<Real> x_next(eq.numStates());
@@ -451,7 +451,7 @@ public:
     status           *= isEqual(res[row0], x_next[row0] - full_prm[col0]);
     status           *= isEqual(res[row1], x_next[row1] - full_prm[col1]);
 
-    system::DenseSystemMatrix param_jac;
+    algebra::DenseSystemMatrix param_jac;
     eq.assembleParamJac(1, x_next, x, full_prm, param_jac);
     for (Index col = 0; col < eq.numParams(); ++col)
     {

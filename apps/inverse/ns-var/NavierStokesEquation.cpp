@@ -3,16 +3,16 @@
 #include <stdexcept>
 
 #include "Assembly.hpp"
-#include <femx/assembly/SystemAssembler.hpp>
+#include <femx/assembly/Assembler.hpp>
 #include <femx/fem/ElementValues.hpp>
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
 
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
 #endif
 
 using namespace femx::assembly;
-using namespace femx::system;
+using namespace femx::algebra;
 
 namespace femx
 {

@@ -5,10 +5,10 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/bc/VelocityProfile.hpp>
+#include <femx/fem/VelocityProfile.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
-using namespace femx::bc;
+using namespace femx::fem;
 
 namespace femx
 {

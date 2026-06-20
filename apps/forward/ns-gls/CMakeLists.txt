@@ -5,10 +5,10 @@ target_link_libraries(navier_gls_kernels PUBLIC femx::femx)
 target_include_directories(navier_gls_kernels
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(TARGET femx::system_petsc)
+if(TARGET femx::algebra_petsc)
   add_library(navier_gls_petsc_kernels AssemblyPETSc.cpp)
   target_link_libraries(navier_gls_petsc_kernels PUBLIC navier_gls_kernels
-                                                        femx::system_petsc)
+                                                        femx::algebra_petsc)
   target_include_directories(navier_gls_petsc_kernels
                              PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
@@ -52,7 +52,7 @@ if(FEMX_HAS_RESOLVE)
   configure_navier_gls_app(ns-gls)
 endif()
 
-if(TARGET femx::system_petsc)
+if(TARGET femx::algebra_petsc)
   add_executable(ns-gls-petsc main-petsc.cpp ${FEMX_NAVIER_GLS_COMMON_SOURCES})
   configure_navier_gls_app(ns-gls-petsc)
   target_link_libraries(ns-gls-petsc PRIVATE navier_gls_petsc_kernels)

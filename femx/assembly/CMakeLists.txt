@@ -9,20 +9,22 @@ target_sources(
   PUBLIC BoundaryDofLayout.hpp
          BoundaryElementKernel.hpp
          BoundaryResidualEquation.hpp
+         Assembler.hpp
          DofLayout.hpp
          ElementKernel.hpp
          ElementResidualEquation.hpp
          EnzymeBoundaryKernel.hpp
          EnzymeVolumeKernel.hpp
+         FEMResidual.hpp
+         Kernel.hpp
          SparsityPatternBuilder.hpp
          SystemAssembler.hpp)
 
 target_link_libraries(
   femx_assembly
   PUBLIC femx_ad
-         femx_common
          femx_config
-         femx_eq
-         femx_fem
-         femx_linalg
-         femx_system)
+         femx_algebra
+         femx_problem
+         femx_solve
+         femx_fem)

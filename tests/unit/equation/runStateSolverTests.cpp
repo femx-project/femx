@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <femx/eq/StateSolver.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/StateSolver.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -9,7 +9,7 @@ namespace femx
 namespace tests
 {
 
-class LinearStateSolver final : public eq::StateSolver
+class LinearStateSolver final : public solve::StateSolver
 {
 public:
   Index numStates() const override

@@ -5,11 +5,11 @@
 #include <string>
 
 #include "TrajectoryObservation.hpp"
-#include <femx/inverse/TimeObservationData.hpp>
+#include <femx/problem/TimeObservationData.hpp>
 #include <femx/io/TimeSeriesDataIn.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -76,8 +76,8 @@ public:
 
     make_obs::writeTrajectoryObservationOutputs(prm);
 
-    const inverse::TimeObservationData data =
-        inverse::readTimeObsData(prm.output.file);
+    const problem::TimeObservationData data =
+        problem::readTimeObsData(prm.output.file);
     status *= (data.numLevels() == 1);
     status *= (data.numObservations() == 8);
     status *= data.hasLayout();
@@ -200,10 +200,10 @@ public:
     status *= !std::filesystem::exists(dir / "obs/common-obs1-reference.xdmf");
     status *= !std::filesystem::exists(dir / "obs/y-reference.xdmf");
 
-    const inverse::TimeObservationData obs1 =
-        inverse::readTimeObsData(obs1_path.string());
-    const inverse::TimeObservationData obs2 =
-        inverse::readTimeObsData(obs2_path.string());
+    const problem::TimeObservationData obs1 =
+        problem::readTimeObsData(obs1_path.string());
+    const problem::TimeObservationData obs2 =
+        problem::readTimeObsData(obs2_path.string());
     status *= obs1.numLevels() == 3;
     status *= obs1.numObservations() == 4;
     status *= obs2.numLevels() == 3;

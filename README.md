@@ -98,7 +98,14 @@ $ cmake -S . -B build-enzyme \
 
 ## Examples and applications
 
-Run the inverse linear-control example when PETSc support is enabled:
+Run the reduced-functional linear-control example using the new `problem` and
+`solve` APIs:
+
+```shell
+$ ./build/examples/inverse/linear-control-new-api/example-inverse-linear-control-new-api
+```
+
+Run the PETSc/TAO inverse linear-control example when PETSc support is enabled:
 
 ```shell
 $ ./build/examples/inverse/linear-control/example-inverse-linear-control
@@ -135,13 +142,22 @@ target_link_libraries(my_solver PRIVATE femx::femx)
 Individual component targets are also available:
 
 - `femx::core`: shared types and workspace choices.
-- `femx::mesh`: mesh data structures and readers.
-- `femx::fem`: finite element spaces, quadrature, and elements.
-- `femx::linalg`: vectors, dense matrices, sparse matrices, and CSR patterns.
-- `femx::system`: linear operators, system matrices/vectors, native and ReSolve solvers.
-- `femx::system_petsc`: PETSc-backed system adapters, when PETSc is enabled.
-- `femx::assembly`: FEM dof layouts, element kernels, assemblers, and sparsity builders.
-- `femx::equation`: residual equations and state solvers.
-- `femx::inverse`: objective, reduced-functional, and adjoint utilities.
-- `femx::inverse_petsc`: PETSc TAO adapters, when PETSc is enabled.
-- `femx::bc`, `femx::io`, and `femx::ad`: boundary conditions, output, and AD helpers.
+- `femx::algebra`: vectors, matrices, linear operators, and solver interfaces.
+- `femx::fem`: mesh-facing FEM data structures, spaces, quadrature, and elements.
+- `femx::assembly`: FEM kernels, assemblers, sparsity builders, and residual adapters.
+- `femx::problem`: residual, objective, observation, and time-residual interfaces.
+- `femx::solve`: Newton, time-stepping, and reduced-functional utilities.
+- `femx::optimize`: PETSc/TAO optimization adapters, when PETSc is enabled.
+- `femx::io`: output and data readers.
+
+Preferred include paths use the new public component layout:
+
+```cpp
+#include <femx/core/Types.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/problem/Residual.hpp>
+#include <femx/solve/Newton.hpp>
+```
+
+The pre-refactor component targets and include paths have been removed. Update
+old code to the public component layout above before linking against femx.

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "Components.hpp"
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 
 namespace femx::navier_var
 {

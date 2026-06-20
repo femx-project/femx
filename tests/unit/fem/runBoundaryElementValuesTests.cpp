@@ -2,7 +2,7 @@
 
 #include <femx/fem/BoundaryElementValues.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx

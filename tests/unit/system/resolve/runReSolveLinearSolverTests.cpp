@@ -3,17 +3,17 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/common/Math.hpp>
-#include <femx/common/Workspace.hpp>
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
-#include <femx/inverse/MatrixAdjointSolver.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/IndexSetList.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/LinearOperator.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
-#include <femx/system/resolve/ReSolveLinearSolver.hpp>
+#include <femx/core/Math.hpp>
+#include <femx/core/Workspace.hpp>
+#include <femx/solve/MatrixNewtonStateSolver.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
+#include <femx/solve/MatrixAdjointSolver.hpp>
+#include <femx/algebra/CsrPattern.hpp>
+#include <femx/algebra/IndexSetList.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/LinearOperator.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/backends/resolve/ReSolveLinearSolver.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -33,7 +33,7 @@ void resize(Vector<Real>& out, Index size)
   }
 }
 
-class TwoByTwoOperator final : public system::LinearOperator
+class TwoByTwoOperator final : public algebra::LinearOperator
 {
 public:
   Index numRows() const override
@@ -62,7 +62,7 @@ public:
 };
 
 class LinearMatrixResidualEquation final
-  : public eq::MatrixResidualEquation
+  : public problem::MatrixResidualEquation
 {
 public:
   Index numStates() const override
@@ -93,7 +93,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -107,7 +107,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -129,10 +129,10 @@ public:
     status = true;
 
     auto                       pattern = makePattern();
-    system::SparseSystemMatrix mat(pattern);
+    algebra::SparseSystemMatrix mat(pattern);
     fillMatrix(mat);
 
-    system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
+    algebra::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
 
     Vector<Real> rhs(2);
     rhs[0] = 1.0;
@@ -156,10 +156,10 @@ public:
     status = true;
 
     auto                       pattern = makePattern();
-    system::SparseSystemMatrix mat(pattern);
+    algebra::SparseSystemMatrix mat(pattern);
     fillMatrix(mat);
 
-    system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
+    algebra::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
     Vector<Real>                rhs(2);
     rhs[0] = 1.0;
     rhs[1] = 3.0;
@@ -179,7 +179,7 @@ public:
     status = true;
 
     TwoByTwoOperator            op;
-    system::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
+    algebra::ReSolveLinearSolver solver(WorkspaceType::Cpu, options());
 
     Vector<Real> rhs(2);
     rhs[0] = 1.0;
@@ -207,12 +207,12 @@ public:
 
     LinearMatrixResidualEquation res_eq;
     auto                         pattern = makePattern();
-    system::SparseSystemMatrix   state_jac(pattern);
-    system::ReSolveLinearSolver  lin_solver(WorkspaceType::Cpu, options());
+    algebra::SparseSystemMatrix   state_jac(pattern);
+    algebra::ReSolveLinearSolver  lin_solver(WorkspaceType::Cpu, options());
 
-    eq::MatrixNewtonStateSolver state_solver(
+    solve::MatrixNewtonStateSolver state_solver(
         res_eq, state_jac, lin_solver);
-    inverse::MatrixAdjointSolver adj_solver(
+    solve::MatrixAdjointSolver adj_solver(
         res_eq, state_jac, lin_solver);
 
     Vector<Real> prm(2);
@@ -249,9 +249,9 @@ public:
 #endif
 
 private:
-  static system::ReSolveOptions options()
+  static algebra::ReSolveOptions options()
   {
-    system::ReSolveOptions opts;
+    algebra::ReSolveOptions opts;
     opts.factor   = "klu";
     opts.refactor = "none";
     opts.solve    = "klu";
@@ -260,9 +260,9 @@ private:
     return opts;
   }
 
-  static system::ReSolveOptions iterativeOptions()
+  static algebra::ReSolveOptions iterativeOptions()
   {
-    system::ReSolveOptions opts;
+    algebra::ReSolveOptions opts;
     opts.factor   = "none";
     opts.refactor = "none";
     opts.solve    = "fgmres";
@@ -294,7 +294,7 @@ private:
     return CsrPattern(n, n, elem_dofs);
   }
 
-  static void fillMatrix(system::SparseSystemMatrix& mat)
+  static void fillMatrix(algebra::SparseSystemMatrix& mat)
   {
     mat.set(0, 0, 2.0);
     mat.set(0, 1, 3.0);
@@ -303,7 +303,7 @@ private:
     mat.finalize();
   }
 
-  static void fillDenseMatrix(system::SparseSystemMatrix& mat, Real shift)
+  static void fillDenseMatrix(algebra::SparseSystemMatrix& mat, Real shift)
   {
     for (Index row = 0; row < mat.numRows(); ++row)
     {
@@ -329,7 +329,7 @@ private:
     mat.finalize();
   }
 
-  static Real transposeRelativeResidual(const system::SparseSystemMatrix& mat,
+  static Real transposeRelativeResidual(const algebra::SparseSystemMatrix& mat,
                                         const Vector<Real>&               x,
                                         const Vector<Real>&               rhs)
   {
@@ -350,8 +350,8 @@ private:
 
     constexpr Index             n       = 128;
     auto                        pattern = makeDensePattern(n);
-    system::SparseSystemMatrix  mat(pattern);
-    system::ReSolveLinearSolver solver(work, iterativeOptions());
+    algebra::SparseSystemMatrix  mat(pattern);
+    algebra::ReSolveLinearSolver solver(work, iterativeOptions());
 
     for (Index rep = 0; rep < 4; ++rep)
     {

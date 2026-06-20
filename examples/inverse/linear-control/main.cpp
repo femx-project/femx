@@ -4,13 +4,13 @@
 #include <iostream>
 
 #include "Problem.hpp"
-#include <femx/eq/MatrixNewtonStateSolver.hpp>
-#include <femx/inverse/AdjointReducedFunctional.hpp>
-#include <femx/inverse/MatrixAdjointSolver.hpp>
-#include <femx/inverse/petsc/TaoOptimizer.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/petsc/KspLinearSolver.hpp>
-#include <femx/system/petsc/PETScSystemMatrix.hpp>
+#include <femx/optimize/TaoOptimizer.hpp>
+#include <femx/solve/AdjointReducedFunctional.hpp>
+#include <femx/solve/MatrixAdjointSolver.hpp>
+#include <femx/solve/MatrixNewtonStateSolver.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
+#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
 
 using namespace femx;
 using namespace femx::examples_inverse_linear_control;
@@ -20,35 +20,35 @@ namespace
 
 PetscErrorCode runOptimization()
 {
-  LinearResidualEquation    res_eq;
-  system::PETScSystemMatrix state_jac;
-  system::PETScSystemMatrix adj_state_jac;
-  system::KspLinearSolver   lin_solver;
+  LinearResidualEquation     res_eq;
+  algebra::PETScSystemMatrix state_jac;
+  algebra::PETScSystemMatrix adj_state_jac;
+  algebra::KspLinearSolver   lin_solver;
   lin_solver.options().pc_type     = PCJACOBI;
   lin_solver.options().rtol        = 1.0e-12;
   lin_solver.options().atol        = 1.0e-14;
   lin_solver.options().use_opts_db = true;
 
-  eq::MatrixNewtonStateSolver state_solver(
+  solve::MatrixNewtonStateSolver state_solver(
       res_eq, state_jac, lin_solver);
-  inverse::MatrixAdjointSolver adj_solver(
+  solve::MatrixAdjointSolver adj_solver(
       res_eq, adj_state_jac, lin_solver);
   LinearControlObjectiveParts objective_parts;
 
-  inverse::AdjointReducedFunctional functional(
+  solve::AdjointReducedFunctional functional(
       state_solver, adj_solver, res_eq, objective_parts.objective);
 
   Vector<Real> initial(2);
   initial[0] = 0.05;
   initial[1] = -0.02;
 
-  inverse::TaoOptimizer optimizer(functional);
+  optimize::TaoOptimizer optimizer(functional);
   optimizer.options().grad_abs_tolerance  = 1.0e-10;
   optimizer.options().grad_rel_tolerance  = 1.0e-10;
   optimizer.options().grad_step_tolerance = 0.0;
   optimizer.options().max_its             = 100;
 
-  inverse::TaoResult result;
+  optimize::TaoResult result;
   PetscCall(optimizer.solve(initial, result));
 
   Vector<Real> state;

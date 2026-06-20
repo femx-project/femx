@@ -7,12 +7,12 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
-#include <femx/system/native/DenseSystemVector.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/DenseSystemVector.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -114,7 +114,7 @@ public:
     status *= isEqual(global_vec[4], 11.0);
     status *= isEqual(global_vec[5], 10.0);
 
-    system::DenseSystemMatrix mat;
+    algebra::DenseSystemMatrix mat;
     DenseMatrix               expected(space.numDofs(), space.numDofs());
     DenseMatrix               local_mat(4, 4);
     assembler.initMat(mat);
@@ -160,7 +160,7 @@ public:
     col_space.setup();
 
     assembly::SystemAssembler assembler(row_space, col_space);
-    system::DenseSystemMatrix mat;
+    algebra::DenseSystemMatrix mat;
     assembler.initMat(mat);
 
     DenseMatrix local_mat(row_space.numDofsPerElem(),
@@ -205,7 +205,7 @@ public:
     space.setup();
 
     assembly::SystemAssembler assembler(space);
-    system::DenseSystemVector global_vec;
+    algebra::DenseSystemVector global_vec;
     assembler.initVec(global_vec);
 
     Vector<Real> local_vec(space.numDofsPerElem());
@@ -245,7 +245,7 @@ public:
     space.setup();
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix mat(pattern);
+    algebra::SparseSystemMatrix mat(pattern);
     assembly::SystemAssembler  assembler(space);
     assembler.initMat(mat);
 
@@ -295,7 +295,7 @@ public:
     space.setup();
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix mat(pattern);
+    algebra::SparseSystemMatrix mat(pattern);
     assembly::SystemAssembler  assembler(space);
     assembler.initMat(mat);
 
@@ -350,7 +350,7 @@ public:
     space.setup();
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix mat(pattern);
+    algebra::SparseSystemMatrix mat(pattern);
     assembly::SystemAssembler  assembler(
         space, assembly::AssemblyMode::Atomic);
 

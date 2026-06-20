@@ -1,6 +1,6 @@
 #pragma once
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 
 namespace femx
 {

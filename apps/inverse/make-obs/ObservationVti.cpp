@@ -12,16 +12,16 @@
 #include <string>
 #include <vector>
 
-#include <femx/inverse/ObservationGrid.hpp>
+#include <femx/fem/ObservationGrid.hpp>
 #include <femx/io/VtiWriter.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/algebra/Vector.hpp>
 
 namespace femx::make_obs
 {
 namespace
 {
 
-using femx::inverse::TimeObservationData;
+using femx::problem::TimeObservationData;
 
 constexpr Real point_tol = 1.0e-10;
 
@@ -115,10 +115,10 @@ std::vector<Point3> gridObsPoints(
 {
   if (grid.use_spacing)
   {
-    return inverse::observationGridPoints(
+    return fem::observationGridPoints(
         toPoint(grid.origin), grid.counts, toPoint(grid.spacing));
   }
-  return inverse::observationGridPoints(
+  return fem::observationGridPoints(
       toPoint(grid.lower), toPoint(grid.upper), grid.counts);
 }
 

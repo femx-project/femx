@@ -2,13 +2,13 @@
 
 #include <iostream>
 
-#include <femx/eq/MatrixResidualEquation.hpp>
-#include <femx/inverse/LeastSquaresObjective.hpp>
-#include <femx/inverse/ObservationOperator.hpp>
-#include <femx/inverse/QuadraticParameterRegularization.hpp>
-#include <femx/inverse/SumObjectiveFunctional.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/SystemMatrix.hpp>
+#include <femx/problem/LeastSquaresObjective.hpp>
+#include <femx/problem/MatrixResidual.hpp>
+#include <femx/problem/ObservationOperator.hpp>
+#include <femx/problem/QuadraticParameterRegularization.hpp>
+#include <femx/problem/SumObjective.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -27,7 +27,7 @@ inline void resize(Vector<Real>& out, Index size)
   }
 }
 
-class LinearResidualEquation final : public eq::MatrixResidualEquation
+class LinearResidualEquation final : public problem::MatrixResidual
 {
 public:
   Index numStates() const override
@@ -58,7 +58,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -72,7 +72,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override
+                        algebra::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -85,7 +85,7 @@ public:
   }
 };
 
-class StateTrackingObservation final : public inverse::ObservationOperator
+class StateTrackingObservation final : public problem::ObservationOperator
 {
 public:
   Index numStates() const override
@@ -180,10 +180,10 @@ struct LinearControlObjectiveParts
 {
   StateTrackingObservation                  observation;
   Vector<Real>                              target;
-  inverse::LeastSquaresObjective            tracking;
+  problem::LeastSquaresObjective            tracking;
   Vector<Real>                              reference;
-  inverse::QuadraticParameterRegularization regularization;
-  inverse::SumObjectiveFunctional           objective;
+  problem::QuadraticParameterRegularization regularization;
+  problem::SumObjective                     objective;
 
   LinearControlObjectiveParts()
     : target(makeStateTarget()),

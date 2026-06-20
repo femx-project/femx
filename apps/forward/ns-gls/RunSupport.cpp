@@ -13,7 +13,7 @@
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {

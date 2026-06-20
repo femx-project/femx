@@ -1,9 +1,9 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/inverse/LeastSquaresObjective.hpp>
-#include <femx/inverse/ObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/problem/LeastSquaresObjective.hpp>
+#include <femx/problem/ObservationOperator.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -11,7 +11,7 @@ namespace femx
 namespace tests
 {
 
-class LinearObservation final : public inverse::ObservationOperator
+class LinearObservation final : public problem::ObservationOperator
 {
 public:
   Index numStates() const override
@@ -114,7 +114,7 @@ public:
     data[0] = 0.5;
     data[1] = -1.0;
 
-    const inverse::LeastSquaresObjective obj(obs, data, 2.0);
+    const problem::LeastSquaresObjective obj(obs, data, 2.0);
 
     Vector<Real> state(2);
     state[0] = 0.25;
@@ -153,7 +153,7 @@ public:
     bool threw = false;
     try
     {
-      const inverse::LeastSquaresObjective obj(obs, data);
+      const problem::LeastSquaresObjective obj(obs, data);
       (void) obj;
     }
     catch (const std::runtime_error&)

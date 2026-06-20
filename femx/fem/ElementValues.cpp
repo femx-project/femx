@@ -5,7 +5,7 @@
 
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/mesh/Cell.hpp>
+#include <femx/fem/Cell.hpp>
 
 namespace femx
 {

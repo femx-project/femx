@@ -1,11 +1,11 @@
 #include <stdexcept>
 #include <vector>
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 #include <femx/io/Hdf5Writer.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Cell.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Cell.hpp>
+#include <femx/fem/Mesh.hpp>
 
 #ifdef FEMX_HAS_HDF5
 #include <hdf5.h>

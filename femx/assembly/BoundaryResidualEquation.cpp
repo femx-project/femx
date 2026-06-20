@@ -3,8 +3,8 @@
 
 #include <femx/assembly/BoundaryResidualEquation.hpp>
 
-using namespace femx::eq;
-using namespace femx::system;
+using namespace femx::algebra;
+using namespace femx::problem;
 
 namespace femx
 {
@@ -202,7 +202,7 @@ void BoundaryResidualEquation::addMat(const BoundaryDofLayout& row_layout,
                                       const BoundaryDofLayout& col_layout,
                                       Index                    ib,
                                       const DenseMatrix&       local,
-                                      SystemMatrix&            out)
+                                      MatrixBuilder&           out)
 {
   Vector<Index> row_dofs;
   Vector<Index> col_dofs;

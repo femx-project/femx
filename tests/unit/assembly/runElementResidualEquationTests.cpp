@@ -6,11 +6,11 @@
 #include <femx/assembly/SparsityPatternBuilder.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/mesh/Mesh.hpp>
-#include <femx/system/native/DenseSystemMatrix.hpp>
-#include <femx/system/native/SparseSystemMatrix.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
+#include <femx/algebra/backends/native/SparseSystemMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -152,7 +152,7 @@ public:
                      expected_state_jac,
                      expected_param_jac);
 
-    system::DenseSystemMatrix state_jac;
+    algebra::DenseSystemMatrix state_jac;
     eq.assembleStateJac(state, prm, state_jac);
     state_jac.finalize();
 
@@ -212,7 +212,7 @@ public:
                      expected_param_jac);
 
     auto                       pattern = assembly::SparsityPatternBuilder::build(space);
-    system::SparseSystemMatrix param_jac(pattern);
+    algebra::SparseSystemMatrix param_jac(pattern);
     eq.assembleParamJac(state, prm, param_jac);
     param_jac.finalize();
 

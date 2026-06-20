@@ -3,8 +3,8 @@
 #include <string>
 
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/mesh/Cell.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Cell.hpp>
+#include <femx/fem/Mesh.hpp>
 
 #ifdef FEMX_HAS_HDF5
 #include <hdf5.h>

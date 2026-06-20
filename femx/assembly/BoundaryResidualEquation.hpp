@@ -1,12 +1,13 @@
 #pragma once
 
+#include <femx/algebra/MatrixBuilder.hpp>
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryElementKernel.hpp>
-#include <femx/common/Types.hpp>
-#include <femx/eq/MatrixResidualEquation.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/system/SystemMatrix.hpp>
+#include <femx/core/Types.hpp>
+#include <femx/problem/MatrixResidualEquation.hpp>
+#include <femx/algebra/DenseMatrix.hpp>
+#include <femx/algebra/Vector.hpp>
+#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -14,10 +15,10 @@ namespace assembly
 {
 
 /** @brief Adds boundary-facet residual terms to a volume residual equation. */
-class BoundaryResidualEquation final : public eq::MatrixResidualEquation
+class BoundaryResidualEquation final : public problem::MatrixResidualEquation
 {
 public:
-  BoundaryResidualEquation(const eq::MatrixResidualEquation& volume_eq,
+  BoundaryResidualEquation(const problem::MatrixResidualEquation& volume_eq,
                            BoundaryDofLayout                 res_layout,
                            BoundaryDofLayout                 state_layout,
                            BoundaryDofLayout                 param_layout,
@@ -35,11 +36,11 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override;
+                        algebra::SystemMatrix& out) const override;
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        system::SystemMatrix& out) const override;
+                        algebra::SystemMatrix& out) const override;
 
 private:
   void checkDimensions() const;
@@ -64,12 +65,12 @@ private:
                      const BoundaryDofLayout& col_layout,
                      Index                    ib,
                      const DenseMatrix&       local,
-                     system::SystemMatrix&    out);
+                     algebra::MatrixBuilder&  out);
 
   static void checkDof(Index dof, Index size);
 
 private:
-  const eq::MatrixResidualEquation& volume_eq_;
+  const problem::MatrixResidualEquation& volume_eq_;
   BoundaryDofLayout                 res_layout_;
   BoundaryDofLayout                 state_layout_;
   BoundaryDofLayout                 param_layout_;

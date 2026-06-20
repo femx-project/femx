@@ -3,7 +3,7 @@
 #include <string>
 
 #include <femx/io/XdmfWriter.hpp>
-#include <femx/mesh/Mesh.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {

@@ -25,33 +25,33 @@ target_include_directories(
 
 target_link_libraries(navier_var_kernels PUBLIC femx::femx)
 
-if(TARGET femx::system_petsc)
+if(TARGET femx::algebra_petsc)
   target_sources(navier_var_kernels PRIVATE AssemblyPETSc.cpp)
-  target_link_libraries(navier_var_kernels PUBLIC femx::system_petsc)
+  target_link_libraries(navier_var_kernels PUBLIC femx::algebra_petsc)
 endif()
 
 function(configure_navier_var_app target)
-  target_link_libraries(${target} PRIVATE navier_var_kernels
-                                          femx::inverse_petsc femx::femx)
+  target_link_libraries(${target} PRIVATE navier_var_kernels femx::optimize
+                                          femx::femx)
   target_compile_definitions(${target}
                              PRIVATE FEMX_NAVIER_VAR_APP_NAME="${target}")
 endfunction()
 
-if(TARGET femx::inverse_petsc)
+if(TARGET femx::optimize)
   if(FEMX_HAS_RESOLVE)
     add_executable(ns-var main-resolve.cpp)
     configure_navier_var_app(ns-var)
   endif()
 
-  if(TARGET femx::system_petsc)
+  if(TARGET femx::algebra_petsc)
     add_executable(ns-var-petsc main-petsc.cpp)
     configure_navier_var_app(ns-var-petsc)
-    target_link_libraries(ns-var-petsc PRIVATE femx::system_petsc)
+    target_link_libraries(ns-var-petsc PRIVATE femx::algebra_petsc)
 
     if(NOT TARGET ns-var)
       add_executable(ns-var main-petsc.cpp)
       configure_navier_var_app(ns-var)
-      target_link_libraries(ns-var PRIVATE femx::system_petsc)
+      target_link_libraries(ns-var PRIVATE femx::algebra_petsc)
     endif()
   endif()
 endif()

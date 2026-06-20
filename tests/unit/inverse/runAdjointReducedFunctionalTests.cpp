@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include <femx/inverse/AdjointReducedFunctional.hpp>
-#include <femx/inverse/DerivativeCheck.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/solve/AdjointReducedFunctional.hpp>
+#include <femx/solve/DerivativeCheck.hpp>
+#include <femx/algebra/Vector.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -10,7 +10,7 @@ namespace femx
 namespace tests
 {
 
-class LinearResidualEquation final : public eq::ResidualEquation
+class LinearResidualEquation final : public problem::ResidualEquation
 {
 public:
   Index numStates() const override
@@ -101,7 +101,7 @@ private:
   }
 };
 
-class LinearStateSolver final : public eq::StateSolver
+class LinearStateSolver final : public solve::StateSolver
 {
 public:
   Index numStates() const override
@@ -139,7 +139,7 @@ private:
   }
 };
 
-class LinearAdjointSolver final : public inverse::AdjointSolver
+class LinearAdjointSolver final : public solve::AdjointSolver
 {
 public:
   Index numStates() const override
@@ -185,7 +185,7 @@ private:
   }
 };
 
-class TrackingObjective final : public inverse::ObjectiveFunctional
+class TrackingObjective final : public problem::ObjectiveFunctional
 {
 public:
   Index numStates() const override
@@ -258,7 +258,7 @@ public:
     LinearResidualEquation eq;
     TrackingObjective      obj;
 
-    inverse::AdjointReducedFunctional functional(
+    solve::AdjointReducedFunctional functional(
         state_solver, adj_solver, eq, obj);
 
     status *= (functional.numParams() == 2);
@@ -282,7 +282,7 @@ public:
     dir[0] = -0.7;
     dir[1] = 0.4;
 
-    const inverse::DerivativeCheck check(1.0e-6);
+    const solve::DerivativeCheck check(1.0e-6);
     status *= check.reducedGrad(functional, prm, dir)
                   .passed(1.0e-7, 1.0e-7);
 

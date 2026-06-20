@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <femx/common/Types.hpp>
+#include <femx/core/Types.hpp>
 
 namespace femx
 {
