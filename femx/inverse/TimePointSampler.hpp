@@ -64,6 +64,15 @@ public:
 
   const Vector<Index>& components() const;
 
+  static bool containsPoint(const MixedFESpace& space,
+                            Index               field_id,
+                            const Point3&       point);
+
+  static std::vector<Point3> filterPointsInside(
+      const MixedFESpace&      space,
+      Index                    field_id,
+      const std::vector<Point3>& points);
+
 private:
   struct Stencil
   {

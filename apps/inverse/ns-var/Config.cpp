@@ -73,24 +73,6 @@ std::vector<Index> parseIndexList(const nlohmann::json& node,
   return values;
 }
 
-std::vector<std::array<Real, 3>> parsePoints(const nlohmann::json& node,
-                                             const std::string&    name)
-{
-  if (!node.is_array())
-  {
-    throw std::runtime_error(name + " must be an array");
-  }
-
-  std::vector<std::array<Real, 3>> points;
-  points.reserve(node.size());
-  for (std::size_t i = 0; i < node.size(); ++i)
-  {
-    points.push_back(
-        parseVector3(node.at(i), name + "[" + std::to_string(i) + "]"));
-  }
-  return points;
-}
-
 std::filesystem::path resolveConfigPath(const std::filesystem::path& config_dir,
                                         const std::string&           path)
 {
@@ -182,7 +164,7 @@ void parseOutput(const nlohmann::json& node,
 void parseSolver(const nlohmann::json& node,
                  SolverParams&         solver);
 
-void parseObsGrid(const nlohmann::json& node,
+void parseObsGrid(const nlohmann::json&    node,
                   ObservationParams::Grid& grid)
 {
   if (!node.is_object())
@@ -229,12 +211,12 @@ void parseObsGrid(const nlohmann::json& node,
 
   if (node.contains("origin"))
   {
-    grid.origin = parseVector3(node.at("origin"), "inverse.obs.grid.origin");
+    grid.origin      = parseVector3(node.at("origin"), "inverse.obs.grid.origin");
     grid.use_spacing = true;
   }
   if (node.contains("spacing"))
   {
-    grid.spacing = parseVector3(node.at("spacing"), "inverse.obs.grid.spacing");
+    grid.spacing     = parseVector3(node.at("spacing"), "inverse.obs.grid.spacing");
     grid.use_spacing = true;
   }
 }
@@ -248,8 +230,15 @@ void parseObs(const nlohmann::json&        node,
     throw std::runtime_error("Config inverse.obs must be an object");
   }
 
-  const bool has_type = node.contains("type");
-  assign(node, "type", obs.type);
+  if (node.contains("type"))
+  {
+    const std::string type = node.at("type").get<std::string>();
+    if (type != "grid")
+    {
+      throw std::runtime_error("Config inverse.obs.type must be 'grid'");
+    }
+    obs.type = "grid";
+  }
 
   const bool has_file = node.contains("file") || node.contains("path")
                         || node.contains("data_file")
@@ -275,14 +264,6 @@ void parseObs(const nlohmann::json&        node,
     obs.file = resolveConfigPath(config_dir, obs.file).string();
   }
 
-  if (node.contains("points"))
-  {
-    obs.points = parsePoints(node.at("points"), "inverse.obs.points");
-    if (!has_type)
-    {
-      obs.type = "point";
-    }
-  }
   if (node.contains("components"))
   {
     obs.components = parseIndexList(node.at("components"),
@@ -300,10 +281,7 @@ void parseObs(const nlohmann::json&        node,
     {
       parseObsGrid(node, *obs.grid);
     }
-    if (!has_type)
-    {
-      obs.type = "grid";
-    }
+    obs.type = "grid";
   }
 }
 
@@ -686,7 +664,7 @@ void parseOpt(const nlohmann::json& node,
   assign(node, "use_options_database", opt.use_options_database);
 }
 
-void parseInitialVelocity(const nlohmann::json& node,
+void parseInitialVelocity(const nlohmann::json&  node,
                           InitialVelocityParams& initial_velocity)
 {
   if (node.is_boolean())
@@ -1125,7 +1103,7 @@ FluidParams fluidParams(const Params& prm)
   }
 
   const TargetParams& target = controlTarget(prm);
-  fluid.mu = config.rho * target.bulk_speed * reLength(target)
+  fluid.mu                   = config.rho * target.bulk_speed * reLength(target)
              / *config.reynolds;
   return fluid;
 }

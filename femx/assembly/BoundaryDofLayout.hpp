@@ -188,10 +188,10 @@ private:
   const Mesh& mesh() const;
 
 private:
-  const Mesh*                mesh_{nullptr};
-  Index                      num_dofs_{0};
-  Vector<Index>              facet_indices_;
-  IndexSetList               facet_dofs_;
+  const Mesh*   mesh_{nullptr};
+  Index         num_dofs_{0};
+  Vector<Index> facet_indices_;
+  IndexSetList  facet_dofs_;
 };
 
 } // namespace assembly

@@ -5,11 +5,11 @@
 #include <vector>
 
 #include <femx/fem/FiniteElement.hpp>
+#include <femx/inverse/TimePointSampler.hpp>
 #include <femx/linalg/MatrixView.hpp>
 #include <femx/linalg/VectorView.hpp>
 #include <femx/mesh/Cell.hpp>
 #include <femx/mesh/Mesh.hpp>
-#include <femx/inverse/TimePointSampler.hpp>
 
 namespace femx
 {
@@ -63,7 +63,7 @@ bool insideSimplex(const Vector<Real>& weights)
   return std::abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
-Vector<Real> shapeWeights(const FiniteElement& fe,
+Vector<Real> shapeWeights(const FiniteElement&   fe,
                           const QuadraturePoint& qp)
 {
   Vector<Real> weights(fe.numDofsPerElement());
@@ -159,12 +159,12 @@ bool quadSolveStep(const Cell&          cell,
   Real j11 = 0.0;
   for (Index in = 0; in < cell.numNodes(); ++in)
   {
-    const Real x = cell.node(in)[0];
-    const Real y = cell.node(in)[1];
-    j00 += x * grad[static_cast<std::size_t>(in * fe.dim())];
-    j01 += x * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
-    j10 += y * grad[static_cast<std::size_t>(in * fe.dim())];
-    j11 += y * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
+    const Real x  = cell.node(in)[0];
+    const Real y  = cell.node(in)[1];
+    j00          += x * grad[static_cast<std::size_t>(in * fe.dim())];
+    j01          += x * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
+    j10          += y * grad[static_cast<std::size_t>(in * fe.dim())];
+    j11          += y * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
   }
 
   const Point3 phys = mappedPoint(cell, weights, fe.dim());
@@ -207,7 +207,7 @@ bool quadWeights(const FiniteElement& fe,
     }
   }
 
-  weights = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
+  weights           = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
   const Point3 phys = mappedPoint(cell, weights, fe.dim());
   const Real   err0 = phys[0] - point[0];
   const Real   err1 = phys[1] - point[1];
@@ -242,8 +242,9 @@ bool cellWeights(const FiniteElement& fe,
       "TimePointSampler does not support this reference element");
 }
 
-ScalarStencil findScalarStencil(const FESpace& space,
-                                const Point3&  point)
+bool tryFindScalarStencil(const FESpace& space,
+                          const Point3&  point,
+                          ScalarStencil& out)
 {
   const Mesh&          mesh = space.mesh();
   const FiniteElement& fe   = space.finiteElement();
@@ -269,10 +270,22 @@ ScalarStencil findScalarStencil(const FESpace& space,
     Vector<Real> weights;
     if (cellWeights(fe, cell, point, weights))
     {
-      return ScalarStencil{cell.nodeIds(), weights};
+      out = ScalarStencil{cell.nodeIds(), weights};
+      return true;
     }
   }
 
+  return false;
+}
+
+ScalarStencil findScalarStencil(const FESpace& space,
+                                const Point3&  point)
+{
+  ScalarStencil stencil;
+  if (tryFindScalarStencil(space, point, stencil))
+  {
+    return stencil;
+  }
   throw std::runtime_error("TimePointSampler point is outside the mesh");
 }
 
@@ -447,6 +460,32 @@ const std::vector<Point3>& TimePointSampler::points() const
 const Vector<Index>& TimePointSampler::components() const
 {
   return components_;
+}
+
+bool TimePointSampler::containsPoint(const MixedFESpace& space,
+                                     Index               field_id,
+                                     const Point3&       point)
+{
+  const MixedFieldView field = space.field(field_id);
+  ScalarStencil        stencil;
+  return tryFindScalarStencil(field.space(), point, stencil);
+}
+
+std::vector<Point3> TimePointSampler::filterPointsInside(
+    const MixedFESpace&       space,
+    Index                     field_id,
+    const std::vector<Point3>& points)
+{
+  std::vector<Point3> filtered;
+  filtered.reserve(points.size());
+  for (const Point3& point : points)
+  {
+    if (containsPoint(space, field_id, point))
+    {
+      filtered.push_back(point);
+    }
+  }
+  return filtered;
 }
 
 void TimePointSampler::checkLevel(Index level) const

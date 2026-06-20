@@ -56,6 +56,21 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
   checkInputs();
 }
 
+TimeLeastSquaresObjective::TimeLeastSquaresObjective(
+    const TimeObservationOperator& obs,
+    TimeObservationData            data,
+    Vector<Real>                   weights,
+    Real                           dt,
+    Real                           time_offset)
+  : obs_(obs),
+    data_(std::move(data)),
+    weights_(std::move(weights)),
+    dt_(dt),
+    time_offset_(time_offset)
+{
+  checkInputs();
+}
+
 Index TimeLeastSquaresObjective::numSteps() const
 {
   return obs_.numSteps();
@@ -205,6 +220,11 @@ void TimeLeastSquaresObjective::checkInputs() const
     throw std::runtime_error(
         "TimeLeastSquaresObjective received inconsistent time levels");
   }
+  if (!std::isfinite(time_offset_))
+  {
+    throw std::runtime_error(
+        "TimeLeastSquaresObjective received invalid time offset");
+  }
   if (!data_.hasTimeLevels() && !data_.hasTimeValues()
       && data_.numLevels() != numLevels())
   {
@@ -251,7 +271,7 @@ TimeLeastSquaresObjective::interpolation(Index row) const
           "TimeLeastSquaresObjective requires positive dt for time interpolation");
     }
 
-    const Real scaled = data_.timeValue(row) / dt_;
+    const Real scaled = (data_.timeValue(row) + time_offset_) / dt_;
     const Real tol =
         std::max<Real>(1.0e-10,
                        1.0e-8 * std::max<Real>(1.0, std::abs(scaled)));
@@ -280,7 +300,26 @@ TimeLeastSquaresObjective::interpolation(Index row) const
     return {lower, upper, clamped - static_cast<Real>(lower)};
   }
 
-  const Index level = data_.timeLevel(row);
+  Index level = data_.timeLevel(row);
+  if (time_offset_ != 0.0)
+  {
+    if (dt_ <= 0.0 || !std::isfinite(dt_))
+    {
+      throw std::runtime_error(
+          "TimeLeastSquaresObjective requires positive dt for time offset");
+    }
+    const Real offset = time_offset_ / dt_;
+    const Real tol =
+        std::max<Real>(1.0e-10,
+                       1.0e-8 * std::max<Real>(1.0, std::abs(offset)));
+    const Index level_offset = static_cast<Index>(std::llround(offset));
+    if (std::abs(offset - static_cast<Real>(level_offset)) > tol)
+    {
+      throw std::runtime_error(
+          "TimeLeastSquaresObjective time level offset must be an integer number of steps");
+    }
+    level += level_offset;
+  }
   if (level < 0 || level >= numLevels())
   {
     throw std::runtime_error(

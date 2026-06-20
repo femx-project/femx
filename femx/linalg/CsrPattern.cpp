@@ -57,8 +57,8 @@ void CsrPattern::setupCooArrays(
 
   for (Index ic = 0; ic < num_elems_; ++ic)
   {
-    const Vector<Index> dofs = cdofs.set(ic);
-    const Index num_dofs = elem_num_dofs_[ic];
+    const Vector<Index> dofs     = cdofs.set(ic);
+    const Index         num_dofs = elem_num_dofs_[ic];
 
     elem_coo_offsets_[ic] = counter;
 

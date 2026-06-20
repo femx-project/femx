@@ -36,7 +36,7 @@ struct QuadFixture
     space.setup();
   }
 
-  Real value(Index comp,
+  Real value(Index         comp,
              const Point3& point,
              Real          bias = 0.0) const
   {
@@ -66,12 +66,12 @@ struct QuadFixture
 class TimePointSamplerTests : public TestBase
 {
 public:
-  TestOutcome cartesianObsPointsBuildSparseGrid()
+  TestOutcome observationGridPointsBuildSparseGrid()
   {
     TestStatus status;
     status = true;
 
-    const auto points = inverse::cartesianObsPoints(
+    const auto points = inverse::observationGridPoints(
         Point3{0.0, 0.0, 0.0},
         Point3{1.0, 2.0, 0.0},
         std::array<Index, 3>{3, 2, 1});
@@ -84,7 +84,7 @@ public:
     status *= isEqual(points[3][0], 0.0);
     status *= isEqual(points[3][1], 2.0);
 
-    const auto spaced = inverse::cartesianObsPoints(
+    const auto spaced = inverse::observationGridPoints(
         Point3{1.0, 2.0, 3.0},
         std::array<Index, 3>{2, 2, 2},
         Point3{0.5, 1.0, 2.0});
@@ -102,7 +102,7 @@ public:
     TestStatus status;
     status = true;
 
-    QuadFixture fixture;
+    QuadFixture               fixture;
     const std::vector<Point3> points{
         Point3{0.25, 0.50, 0.0},
         Point3{0.75, 0.25, 0.0}};
@@ -135,7 +135,7 @@ public:
     status = true;
 
     QuadFixture fixture;
-    const auto points = inverse::cartesianObsPoints(
+    const auto  points = inverse::observationGridPoints(
         Point3{0.25, 0.25, 0.0},
         Point3{0.75, 0.75, 0.0},
         std::array<Index, 3>{2, 2, 1});
@@ -179,8 +179,8 @@ public:
     TestStatus status;
     status = true;
 
-    QuadFixture fixture;
-    const std::vector<Point3> points{Point3{0.25, 0.50, 0.0}};
+    QuadFixture                     fixture;
+    const std::vector<Point3>       points{Point3{0.25, 0.50, 0.0}};
     const inverse::TimePointSampler obs(
         2,
         fixture.space,
@@ -190,15 +190,15 @@ public:
         1);
 
     eq::TimeStateTrajectory tr(2, fixture.space.numDofs());
-    Vector<Real> level0 = tr[0];
-    Vector<Real> level1 = tr[1];
-    Vector<Real> level2 = tr[2];
+    Vector<Real>            level0 = tr[0];
+    Vector<Real>            level1 = tr[1];
+    Vector<Real>            level2 = tr[2];
     fixture.fillState(level0, 0.0);
     fixture.fillState(level1, 10.0);
     fixture.fillState(level2, 20.0);
 
     Vector<Real> prm(1);
-    const auto data = inverse::sampleTimeObs(obs, tr, prm);
+    const auto   data = inverse::sampleTimeObs(obs, tr, prm);
 
     status *= (data.size() == 3);
     status *= isEqual(data[1][0], fixture.value(0, points[0], 10.0));
@@ -225,17 +225,17 @@ public:
     space.addField(vel);
     space.setup();
 
-    const auto field = space.field(0);
+    const auto   field = space.field(0);
     Vector<Real> state(space.numDofs());
     for (Index node = 0; node < mesh.numNodes(); ++node)
     {
-      const Point3 point = mesh.node(node);
+      const Point3 point              = mesh.node(node);
       state[field.globalDof(node, 0)] = point[0] + point[1] + point[2];
       state[field.globalDof(node, 1)] = 2.0 * point[0] - point[1];
       state[field.globalDof(node, 2)] = 1.0 + point[2];
     }
 
-    const std::vector<Point3> points{Point3{0.2, 0.3, 0.1}};
+    const std::vector<Point3>       points{Point3{0.2, 0.3, 0.1}};
     const inverse::TimePointSampler sampler(
         1,
         space,
@@ -263,7 +263,7 @@ public:
     bool threw = false;
     try
     {
-      QuadFixture fixture;
+      QuadFixture                     fixture;
       const inverse::TimePointSampler sampler(
           1,
           fixture.space,
@@ -281,6 +281,35 @@ public:
     status *= threw;
     return status.report(__func__);
   }
+
+  TestOutcome filtersPointsInsideMesh()
+  {
+    TestStatus status;
+    status = true;
+
+    QuadFixture fixture;
+    const std::vector<Point3> points{
+        Point3{0.25, 0.25, 0.0},
+        Point3{2.00, 0.50, 0.0},
+        Point3{1.00, 1.00, 0.0},
+        Point3{0.50, -0.5, 0.0}};
+
+    const auto filtered =
+        inverse::TimePointSampler::filterPointsInside(
+            fixture.space, 0, points);
+
+    status *= inverse::TimePointSampler::containsPoint(
+        fixture.space, 0, Point3{0.50, 0.50, 0.0});
+    status *= !inverse::TimePointSampler::containsPoint(
+        fixture.space, 0, Point3{1.50, 0.50, 0.0});
+    status *= (filtered.size() == 2);
+    status *= isEqual(filtered[0][0], 0.25);
+    status *= isEqual(filtered[0][1], 0.25);
+    status *= isEqual(filtered[1][0], 1.0);
+    status *= isEqual(filtered[1][1], 1.0);
+
+    return status.report(__func__);
+  }
 };
 
 } // namespace tests
@@ -293,12 +322,13 @@ int main(int, char**)
   femx::tests::TimePointSamplerTests test;
 
   femx::tests::TestingResults result;
-  result += test.cartesianObsPointsBuildSparseGrid();
+  result += test.observationGridPointsBuildSparseGrid();
   result += test.samplesQuadFieldAtPhysicalPoints();
   result += test.stateJacobianTransposeIsAdjoint();
   result += test.samplesReferenceTrajectoryThroughObs();
   result += test.samplesTetraFieldAtPhysicalPoint();
   result += test.rejectsPointOutsideMesh();
+  result += test.filtersPointsInsideMesh();
 
   return result.summary();
 }

@@ -27,10 +27,10 @@ Real elapsedSeconds(const Clock::time_point& begin)
 TimeReducedFunctional::TimeReducedFunctional(
     TimeStateSolver&                  state_solver,
     const TimeMatrixResidualEquation& eq,
-    SystemMatrix&                 next_state_jac,
-    SystemMatrix&                 prev_state_jac,
-    LinearSolver&                 adjoint_solver,
-    const TimeObjectiveFunctional&        obj)
+    SystemMatrix&                     next_state_jac,
+    SystemMatrix&                     prev_state_jac,
+    LinearSolver&                     adjoint_solver,
+    const TimeObjectiveFunctional&    obj)
   : state_solver_(state_solver),
     eq_(eq),
     next_state_jac_(next_state_jac),
@@ -136,7 +136,7 @@ void TimeReducedFunctional::checkDims() const
 }
 
 void TimeReducedFunctional::solveFwd(
-    const Vector<Real>&      prm,
+    const Vector<Real>&  prm,
     TimeStateTrajectory& tr)
 {
   if (prm.size() != numParams())
@@ -158,8 +158,8 @@ void TimeReducedFunctional::solveFwd(
 
 void TimeReducedFunctional::gradAt(
     const TimeStateTrajectory& tr,
-    const Vector<Real>&            prm,
-    Vector<Real>&                  out)
+    const Vector<Real>&        prm,
+    Vector<Real>&              out)
 {
   obj_.paramGrad(tr, prm, out);
   checkSize(out,

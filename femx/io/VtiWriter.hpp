@@ -31,9 +31,9 @@ public:
     const Vector<Real>* values{nullptr};
   };
 
-  void writeCellData(const std::string&             filename,
-                     const Image&                   image,
-                     const std::vector<CellField>&  fields) const;
+  void writeCellData(const std::string&            filename,
+                     const Image&                  image,
+                     const std::vector<CellField>& fields) const;
 };
 
 } // namespace femx

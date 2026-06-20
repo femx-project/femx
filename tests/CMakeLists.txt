@@ -65,15 +65,30 @@ target_link_libraries(runVtiWriterTests PRIVATE femx::femx)
 
 add_test(NAME VtiWriterTests COMMAND runVtiWriterTests)
 
+add_executable(runTimeSeriesDataInTests unit/io/runTimeSeriesDataInTests.cpp)
+
+target_link_libraries(runTimeSeriesDataInTests PRIVATE femx::femx)
+
+add_test(NAME TimeSeriesDataInTests COMMAND runTimeSeriesDataInTests)
+
 if(TARGET make_obs_config)
   add_executable(runMakeObsObservationVtiTests
                  unit/io/runMakeObsObservationVtiTests.cpp)
 
-  target_link_libraries(runMakeObsObservationVtiTests
-                        PRIVATE make_obs_config femx::femx)
+  target_link_libraries(runMakeObsObservationVtiTests PRIVATE make_obs_config
+                                                              femx::femx)
 
   add_test(NAME MakeObsObservationVtiTests
            COMMAND runMakeObsObservationVtiTests)
+
+  add_executable(runMakeObsTrajectoryObservationTests
+                 unit/io/runMakeObsTrajectoryObservationTests.cpp)
+
+  target_link_libraries(runMakeObsTrajectoryObservationTests
+                        PRIVATE make_obs_config femx::femx)
+
+  add_test(NAME MakeObsTrajectoryObservationTests
+           COMMAND runMakeObsTrajectoryObservationTests)
 endif()
 
 add_executable(runObjectiveCompositionTests
@@ -169,8 +184,7 @@ add_test(NAME AdjointReducedFunctionalTests
 add_executable(runTimeAdjointReducedFunctionalTests
                unit/inverse/runTimeAdjointReducedFunctionalTests.cpp)
 
-target_link_libraries(runTimeAdjointReducedFunctionalTests
-                      PRIVATE femx::femx)
+target_link_libraries(runTimeAdjointReducedFunctionalTests PRIVATE femx::femx)
 
 add_test(NAME TimeAdjointReducedFunctionalTests
          COMMAND runTimeAdjointReducedFunctionalTests)
@@ -179,28 +193,26 @@ if(TARGET navier_var_kernels)
   add_executable(runNavierVarConfigTests
                  unit/stokes/runNavierVarConfigTests.cpp)
 
-  target_link_libraries(runNavierVarConfigTests
-                        PRIVATE navier_var_kernels femx::femx)
+  target_link_libraries(runNavierVarConfigTests PRIVATE navier_var_kernels
+                                                        femx::femx)
 
   add_test(NAME NavierVarConfigTests COMMAND runNavierVarConfigTests)
 
   add_executable(runNavierStokesEquationTests
                  unit/stokes/runTimeNavierStokesResidualEquationTests.cpp)
 
-  target_link_libraries(runNavierStokesEquationTests
-                        PRIVATE navier_var_kernels femx::femx)
+  target_link_libraries(runNavierStokesEquationTests PRIVATE navier_var_kernels
+                                                             femx::femx)
 
-  add_test(NAME NavierStokesEquationTests
-           COMMAND runNavierStokesEquationTests)
+  add_test(NAME NavierStokesEquationTests COMMAND runNavierStokesEquationTests)
 
   add_executable(runNavierVarRunSupportTests
                  unit/stokes/runNavierVarRunSupportTests.cpp)
 
-  target_link_libraries(runNavierVarRunSupportTests
-                        PRIVATE navier_var_kernels femx::femx)
+  target_link_libraries(runNavierVarRunSupportTests PRIVATE navier_var_kernels
+                                                            femx::femx)
 
-  add_test(NAME NavierVarRunSupportTests
-           COMMAND runNavierVarRunSupportTests)
+  add_test(NAME NavierVarRunSupportTests COMMAND runNavierVarRunSupportTests)
 
   add_executable(runTimeNavierStokesAssemblyBenchmark
                  unit/stokes/runTimeNavierStokesAssemblyBenchmark.cpp)

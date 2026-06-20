@@ -161,7 +161,7 @@ private:
     checkLocalMatrix(ic, local);
 
     const CsrPattern& pattern    = mat_.pattern();
-    const Index       num_dofs      = pattern.elemNumDofs(ic);
+    const Index       num_dofs   = pattern.elemNumDofs(ic);
     const Index       coo_offset = pattern.elemCooOffset(ic);
     const Index*      coo_to_csr = pattern.cooToCsrData();
     const Real*       local_vals = local.data();
@@ -185,7 +185,7 @@ private:
     checkLocalMatrix(ic, local);
 
     const CsrPattern& pattern    = mat_.pattern();
-    const Index       num_dofs      = pattern.elemNumDofs(ic);
+    const Index       num_dofs   = pattern.elemNumDofs(ic);
     const Index       coo_offset = pattern.elemCooOffset(ic);
     const Index*      coo_to_csr = pattern.cooToCsrData();
     const Real*       local_vals = local.data();

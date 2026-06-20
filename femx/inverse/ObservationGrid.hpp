@@ -11,17 +11,17 @@ namespace femx
 namespace inverse
 {
 
-/** @brief Cartesian background-grid points for sparse observation data. */
-std::vector<Point3> cartesianObsPoints(
-    const Point3&              lower,
-    const Point3&              upper,
+/** @brief Background-grid points for sparse observation data. */
+std::vector<Point3> observationGridPoints(
+    const Point3&               lower,
+    const Point3&               upper,
     const std::array<Index, 3>& counts);
 
-/** @brief Cartesian background-grid points from origin and spacing. */
-std::vector<Point3> cartesianObsPoints(
-    const Point3&              origin,
+/** @brief Background-grid points from origin and spacing. */
+std::vector<Point3> observationGridPoints(
+    const Point3&               origin,
     const std::array<Index, 3>& counts,
-    const Point3&              spacing);
+    const Point3&               spacing);
 
 } // namespace inverse
 } // namespace femx

@@ -1,0 +1,50 @@
+{
+  "mesh": {
+    "file": "../../../../meshdata/2D/straighttube.msh"
+  },
+  "time": {
+    "steps": 200,
+    "dt": 0.01
+  },
+  "fluid": {
+    "rho": 1.0,
+    "mu": 4.0e-7
+  },
+  "bcs": [
+    {
+      "physical": 4,
+      "type": "dirichlet",
+      "velocity": {
+        "time": [0.0, 0.25, 0.5, 0.75, 1.0],
+        "value": [0.01, 0.0135, 0.01, 0.0065, 0.01],
+        "period": 1.0,
+        "quantity": "mean_velocity",
+        "normal": [1.0, 0.0, 0.0],
+        "interpolate": "cubic",
+        "profile": {
+          "type": "poiseuille",
+          "radius": 0.002,
+          "center": [0.0, 0.0, 0.0]
+        }
+      }
+    },
+    {
+      "physical": 5,
+      "type": "dirichlet",
+      "p": 0.0
+    },
+    {
+      "physical": 6,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    }
+  ],
+  "output": {
+    "interval": 1,
+    "directory": "output"
+  },
+  "solver": {
+    "backend": "cuda"
+  }
+}

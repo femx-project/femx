@@ -57,8 +57,8 @@ void evalQp(Index       num_shape,
   {
     for (Index c = 0; c < dim; ++c)
     {
-      const Real x_c = x[vel(i, c, dim)];
-      qp.u[c] += N[i] * x_c;
+      const Real x_c  = x[vel(i, c, dim)];
+      qp.u[c]        += N[i] * x_c;
       for (Index d = 0; d < dim; ++d)
       {
         qp.grad[c][d] += dNdx[i * dim + d] * x_c;
@@ -272,8 +272,8 @@ void assembleStabilizationLHS(Index       num_shape,
 
       for (Index d = 0; d < dim; ++d)
       {
-        const Index iu = vel(i, d, dim);
-        const Index ju = vel(j, d, dim);
+        const Index iu   = vel(i, d, dim);
+        const Index ju   = vel(j, d, dim);
         Ke[iu * n + ju] += qp.tau * rho / dt * dvidx * N[j] * Jw;
         Ke[iu * n + ju] += 0.5 * qp.tau * rho * dvidx * dvjdx * Jw;
         Ke[iu * n + jp] += qp.tau * dvidx * dNdx[j * dim + d] * Jw;
@@ -361,10 +361,10 @@ void assembleStabilizationRHS(Index       num_shape,
 
     for (Index d = 0; d < dim; ++d)
     {
-      const Index iu = vel(i, d, dim);
-      Fe[iu] += qp.tau * rho / dt * dvidx * qp.u[d] * Jw;
-      Fe[iu] -= 0.5 * qp.tau * rho * dvidx * qp.adv_grad[d] * Jw;
-      div_u += dNdx[i * dim + d] * qp.u[d];
+      const Index iu  = vel(i, d, dim);
+      Fe[iu]         += qp.tau * rho / dt * dvidx * qp.u[d] * Jw;
+      Fe[iu]         -= 0.5 * qp.tau * rho * dvidx * qp.adv_grad[d] * Jw;
+      div_u          += dNdx[i * dim + d] * qp.u[d];
       div_adv_grad_u += dNdx[i * dim + d] * qp.adv_grad[d];
     }
 

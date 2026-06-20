@@ -41,9 +41,8 @@ target_sources(
          TimeReducedFunctional.hpp
          TimeRegularization.hpp)
 
-target_link_libraries(
-  femx_inverse
-  PUBLIC femx_common femx_config femx_eq femx_fem femx_linalg femx_system)
+target_link_libraries(femx_inverse PUBLIC femx_common femx_config femx_eq
+                                          femx_fem femx_linalg femx_system)
 
 if(FEMX_HAS_PETSC)
   add_subdirectory(petsc)

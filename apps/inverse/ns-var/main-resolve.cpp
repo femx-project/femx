@@ -270,9 +270,9 @@ WorkspaceType workspaceType(const SolverParams& solver)
 
 int run(const Params& prm)
 {
-  const BCsParams&    control_bc = controlBoundary(prm);
-  const Index         steps  = prm.forward.time.steps;
-  const Real          dt     = prm.forward.time.dt;
+  const BCsParams& control_bc = controlBoundary(prm);
+  const Index      steps      = prm.forward.time.steps;
+  const Real       dt         = prm.forward.time.dt;
 
   const Index max_opt_its = taoMaxIts(prm.inverse.opt.max_iterations);
   requireReSolve(prm.forward.solver);
@@ -293,19 +293,26 @@ int run(const Params& prm)
 
   NavierStokesEquation ns(space, ns_prm);
 
-  const auto       selector = bcSelector(control_bc);
-  DirichletControl ctr      = makeVelocityControl(space, selector);
-  const Vector<Index> initial_velocity_dofs = initialVelocityDofs(space);
-  const InverseParameterLayout param_layout =
-      inverseParameterLayout(
-          space, ctr, prm.inverse.initial_velocity, steps);
+  const auto          selector              = bcSelector(control_bc);
+  DirichletControl    ctr                   = makeVelocityControl(space, selector);
+  const Vector<Index> initial_velocity_dofs = initialVelocityDofs(space, prm, ctr);
+  const Vector<Real>  x_init                = initialVelocityBoundaryState(space, prm, ctr);
 
-  const Vector<Index>      fixed_dofs = fixedDofs(space, prm, ctr);
+  const InverseParameterLayout param_layout =
+      inverseParameterLayout(space,
+                             ctr,
+                             prm.inverse.initial_velocity,
+                             steps,
+                             initial_velocity_dofs.size());
+
+  const FixedDofValues fixed = fixedDofValues(space, prm, ctr, steps, dt);
+
   DirichletControlEquation eq(ns,
                               ctr,
-                              fixed_dofs,
+                              fixed.dofs,
                               param_layout.control_offset,
-                              param_layout.total_size);
+                              param_layout.total_size,
+                              fixed.values);
 
   const CsrPattern pattern = SparsityPatternBuilder::build(space);
 
@@ -314,15 +321,13 @@ int run(const Params& prm)
 
   TimeMatrixLinearStateSolver state_solver(eq, next_jac, lin_solver);
 
-  Vector<Real> x_init(eq.numStates());
-  x_init.setZero();
   state_solver.setInitialState(x_init);
   std::optional<InitialVelocityStateSolver> initial_state_solver;
-  TimeStateSolver* reduced_state_solver = &state_solver;
+  TimeStateSolver*                          reduced_state_solver = &state_solver;
   if (param_layout.hasInitialVelocity())
   {
     initial_state_solver.emplace(
-        state_solver, initial_velocity_dofs, param_layout);
+        state_solver, initial_velocity_dofs, param_layout, x_init);
     reduced_state_solver = &*initial_state_solver;
   }
 
@@ -343,13 +348,14 @@ int run(const Params& prm)
                              eq.numStates(),
                              eq.numParams());
 
+  const Real observation_time_offset =
+      param_layout.hasInitialVelocity() ? dt : 0.0;
   TimeLeastSquaresObjective misfit(
       *obs,
       obs_data,
-      misfitW(steps,
-              prm.inverse.alpha,
-              param_layout.hasInitialVelocity()),
-      dt);
+      misfitW(steps, prm.inverse.alpha, false),
+      dt,
+      observation_time_offset);
 
   TimeRegularization reg(
       steps,
@@ -406,6 +412,18 @@ int run(const Params& prm)
 
   Vector<Real> prm_init =
       initialInverseParams(space, ctr, prm, param_layout, steps, dt);
+  if (param_layout.hasInitialVelocity())
+  {
+    prog.beginPhase("initial velocity warm start");
+    seedInitialVelocityFromConstantPoiseuille(space,
+                                              ctr,
+                                              prm,
+                                              param_layout,
+                                              initial_velocity_dofs,
+                                              state_solver,
+                                              prm_init);
+    state_solver.resetTiming();
+  }
 
   TaoOptimizer opt(reduced);
   opt.options().type                = TAOLMVM;
@@ -435,8 +453,8 @@ int run(const Params& prm)
         "TAO solve failed with PETSc error code " + std::to_string(ierr));
   }
 
-  const Real  fwd_assembly = state_solver.assemblySeconds();
-  const Real  fwd_solve    = state_solver.solveSeconds();
+  const Real  fwd_assembly       = state_solver.assemblySeconds();
+  const Real  fwd_solve          = state_solver.solveSeconds();
   const Index fwd_assembly_calls = state_solver.assemblyCalls();
   const Index fwd_solve_calls    = state_solver.solveCalls();
   const Real  adj_assembly       = reduced.assemblySeconds();
@@ -447,7 +465,9 @@ int run(const Params& prm)
   prog.beginPhase("write output");
   TimeStateTrajectory opt_tr;
   reduced_state_solver->solve(result.prm, opt_tr);
-  writeForwardViz(mesh, space, opt_tr, dt, viz_opts);
+  const Real viz_time_offset =
+      prm.inverse.initial_velocity.enabled ? -dt : 0.0;
+  writeForwardViz(mesh, space, opt_tr, dt, viz_opts, viz_time_offset);
 
   std::cout << "\nFinal summary\n";
   std::cout << "  observation file: " << prm.inverse.obs.file << '\n';

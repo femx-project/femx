@@ -196,7 +196,7 @@ inline Forward operator*(Real lhs, Forward rhs)
 
 inline Forward operator/(const Forward& lhs, const Forward& rhs)
 {
-  Forward out(lhs.value() / rhs.value(),
+  Forward    out(lhs.value() / rhs.value(),
               std::max(lhs.numDerivatives(), rhs.numDerivatives()));
   const Real denom = rhs.value() * rhs.value();
   for (Index i = 0; i < out.numDerivatives(); ++i)

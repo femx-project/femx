@@ -178,6 +178,20 @@ inverse::TimeObservationData makeInterpolatedData()
   return data;
 }
 
+inverse::TimeObservationData makeOffsetData()
+{
+  inverse::TimeObservationData data(1, 2);
+  data.setLayout(
+      "point",
+      std::vector<Point3>{Point3{0.25, 0.5, 0.0}},
+      Vector<Index>{0, 1});
+  data.setTimeValues(Vector<Real>{0.0});
+
+  data[0][0] = 1.0;
+  data[0][1] = -2.0;
+  return data;
+}
+
 Vector<Real> makeWeights()
 {
   Vector<Real> weights(3);
@@ -369,6 +383,43 @@ public:
     return status.report(__func__);
   }
 
+  TestOutcome timeOffsetMapsFirstObservationToSolvedState()
+  {
+    TestStatus status;
+    status = true;
+
+    LinearTimeObservation                    obs;
+    const inverse::TimeLeastSquaresObjective obj(
+        obs, makeOffsetData(), makeWeights(), 1.0, 1.0);
+
+    eq::TimeStateTrajectory tr = makeTrajectory();
+
+    Vector<Real> prm(2);
+    prm[0] = 0.25;
+    prm[1] = -0.5;
+
+    status *= isEqual(obj.value(tr, prm), 0.5);
+
+    Vector<Real> grad;
+    obj.stateGrad(0, tr, prm, grad);
+    status *= isEqual(grad[0], 0.0);
+    status *= isEqual(grad[1], 0.0);
+
+    obj.stateGrad(1, tr, prm, grad);
+    status *= isEqual(grad[0], 1.0);
+    status *= isEqual(grad[1], 2.0);
+
+    obj.stateGrad(2, tr, prm, grad);
+    status *= isEqual(grad[0], 0.0);
+    status *= isEqual(grad[1], 0.0);
+
+    obj.paramGrad(tr, prm, grad);
+    status *= isEqual(grad[0], 2.0);
+    status *= isEqual(grad[1], -1.0);
+
+    return status.report(__func__);
+  }
+
   TestOutcome timeObservationDataRoundTrips()
   {
     TestStatus status;
@@ -379,7 +430,7 @@ public:
     const inverse::TimeObservationData data = makeData();
 
     inverse::writeTimeObsData(path.string(), data);
-    const std::string text = readTextFile(path);
+    const std::string                  text = readTextFile(path);
     const inverse::TimeObservationData loaded =
         inverse::readTimeObsData(path.string());
     std::filesystem::remove(path);
@@ -453,7 +504,7 @@ public:
     const inverse::TimeObservationData data = makeInterpolatedData();
 
     inverse::writeTimeObsData(path.string(), data);
-    const std::string text = readTextFile(path);
+    const std::string                  text = readTextFile(path);
     const inverse::TimeObservationData loaded =
         inverse::readTimeObsData(path.string());
     std::filesystem::remove(path);
@@ -486,6 +537,7 @@ int main(int, char**)
   result += test.constructorRejectsNegativeWeights();
   result += test.explicitTimeLevelsSelectTrajectoryRows();
   result += test.timeValuesInterpolateTrajectoryRows();
+  result += test.timeOffsetMapsFirstObservationToSolvedState();
   result += test.timeObservationDataRoundTrips();
   result += test.timeObservationDataRoundTripsExplicitTimeLevels();
   result += test.timeObservationDataRoundTripsTimeValues();

@@ -346,8 +346,8 @@ private:
     return shell.get();
   }
 
-  static void createVec(MPI_Comm comm,
-                        PetscInt size,
+  static void createVec(MPI_Comm   comm,
+                        PetscInt   size,
                         ScopedVec& vec)
   {
     PetscMPIInt comm_size = 1;

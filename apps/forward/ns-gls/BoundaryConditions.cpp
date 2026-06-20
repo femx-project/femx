@@ -174,7 +174,7 @@ Real sampleVelocityValue(const VelocityParams& velocity,
 struct VelocityEvalContext
 {
   AxialVelocityProfile profile;
-  Real                     peak_speed = 0.0;
+  Real                 peak_speed = 0.0;
 };
 
 VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
@@ -184,10 +184,10 @@ VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
 {
   VelocityEvalContext ctx;
   ctx.peak_speed = peakSpeed(velocity.quantity,
-                                 velocity.profile.type,
-                                 sampleVelocityValue(velocity, time),
-                                 velocity.area,
-                                 2.0);
+                             velocity.profile.type,
+                             sampleVelocityValue(velocity, time),
+                             velocity.area,
+                             2.0);
   if (velocity.profile.type == "poiseuille")
   {
     ctx.profile = poiseuilleProfile(

@@ -13,7 +13,7 @@ namespace eq
 
 OperatorNewtonStateSolver::OperatorNewtonStateSolver(
     const ResidualEquation& eq,
-    LinearSolver&   lin_solver)
+    LinearSolver&           lin_solver)
   : eq_(eq),
     lin_solver_(lin_solver)
 {

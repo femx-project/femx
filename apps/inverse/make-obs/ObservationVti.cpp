@@ -1,5 +1,6 @@
 #include "ObservationVti.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -11,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <femx/inverse/ObservationGrid.hpp>
 #include <femx/io/VtiWriter.hpp>
 #include <femx/linalg/Vector.hpp>
 
@@ -20,6 +22,19 @@ namespace
 {
 
 using femx::inverse::TimeObservationData;
+
+constexpr Real point_tol = 1.0e-10;
+
+struct VtiFields
+{
+  Vector<Real> velocity;
+  Vector<Real> mask;
+};
+
+Point3 toPoint(const std::array<Real, 3>& values)
+{
+  return {values[0], values[1], values[2]};
+}
 
 std::string stripKnownExtension(std::string path)
 {
@@ -95,24 +110,42 @@ Index checkedGridPointCount(const std::array<Index, 3>& counts)
   return product;
 }
 
-VtiWriter::Image makeImage(const TimeObservationData&    data,
-                           const std::array<Index, 3>& counts,
-                           Real                         time)
+std::vector<Point3> gridObsPoints(
+    const navier_var::ObservationParams::Grid& grid)
 {
-  if (!data.hasLayout())
+  if (grid.use_spacing)
   {
-    throw std::runtime_error(
-        "make_obs.output.vti requires observation point layout");
+    return inverse::observationGridPoints(
+        toPoint(grid.origin), grid.counts, toPoint(grid.spacing));
   }
+  return inverse::observationGridPoints(
+      toPoint(grid.lower), toPoint(grid.upper), grid.counts);
+}
 
+bool samePoint(const Point3& a,
+               const Point3& b)
+{
+  for (Index d = 0; d < 3; ++d)
+  {
+    const Real scale =
+        std::max<Real>({1.0, std::abs(a[d]), std::abs(b[d])});
+    if (std::abs(a[d] - b[d]) > point_tol * scale)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+VtiWriter::Image makeImage(const std::vector<Point3>& points,
+                           const std::array<Index, 3>& counts)
+{
   const Index expected_points = checkedGridPointCount(counts);
-  if (static_cast<Index>(data.points().size()) != expected_points)
+  if (static_cast<Index>(points.size()) != expected_points)
   {
     throw std::runtime_error(
         "make_obs.output.vti grid counts do not match observation points");
   }
-
-  const auto& points = data.points();
   if (points.empty())
   {
     throw std::runtime_error("make_obs.output.vti received no points");
@@ -120,17 +153,16 @@ VtiWriter::Image makeImage(const TimeObservationData&    data,
 
   VtiWriter::Image image;
   image.cell_counts = counts;
-  image.time        = time;
 
-  const Point3& first = points.front();
+  const Point3&              first  = points.front();
   const std::array<Index, 3> stride = {1, counts[0], counts[0] * counts[1]};
   for (Index d = 0; d < 3; ++d)
   {
     if (counts[static_cast<std::size_t>(d)] > 1)
     {
-      const Point3& next = points[static_cast<std::size_t>(
+      const Point3& next    = points[static_cast<std::size_t>(
           stride[static_cast<std::size_t>(d)])];
-      const Real spacing = next[static_cast<std::size_t>(d)]
+      const Real    spacing = next[static_cast<std::size_t>(d)]
                            - first[static_cast<std::size_t>(d)];
       if (!std::isfinite(spacing)
           || std::abs(spacing)
@@ -164,22 +196,44 @@ Real observationTime(const TimeObservationData& data,
   return static_cast<Real>(data.timeLevel(level));
 }
 
-Vector<Real> velocityCellField(const TimeObservationData& data,
-                               Index                      level)
+VtiFields observationCellFields(const TimeObservationData& data,
+                                Index                      level,
+                                const std::vector<Point3>& grid_points)
 {
-  const Index num_points =
+  const Index num_data_points =
       static_cast<Index>(data.points().size());
   const Index num_components = data.components().size();
-  if (num_points <= 0 || num_components <= 0)
+  if (num_data_points <= 0 || num_components <= 0)
   {
     throw std::runtime_error(
         "make_obs.output.vti requires observation layout components");
   }
 
-  Vector<Real> velocity(num_points * 3);
+  const Index num_grid_points =
+      static_cast<Index>(grid_points.size());
+  VtiFields   fields{Vector<Real>(num_grid_points * 3),
+                   Vector<Real>(num_grid_points)};
+  fields.velocity.setZero();
+  fields.mask.setZero();
+
   const Vector<Real> values = data[level];
-  for (Index point = 0; point < num_points; ++point)
+  if (values.size() != num_data_points * num_components)
   {
+    throw std::runtime_error(
+        "make_obs.output.vti data size does not match observation layout");
+  }
+
+  Index data_point = 0;
+  for (Index grid_point = 0; grid_point < num_grid_points; ++grid_point)
+  {
+    if (data_point >= num_data_points
+        || !samePoint(grid_points[static_cast<std::size_t>(grid_point)],
+                      data.points()[static_cast<std::size_t>(data_point)]))
+    {
+      continue;
+    }
+
+    fields.mask[grid_point] = 1.0;
     for (Index local_component = 0; local_component < num_components;
          ++local_component)
     {
@@ -189,15 +243,21 @@ Vector<Real> velocityCellField(const TimeObservationData& data,
         throw std::runtime_error(
             "make_obs.output.vti supports velocity components 0, 1, and 2");
       }
-      velocity[3 * point + component] =
-          values[point * num_components + local_component];
+      fields.velocity[3 * grid_point + component] =
+          values[data_point * num_components + local_component];
     }
+    ++data_point;
   }
-  return velocity;
+  if (data_point != num_data_points)
+  {
+    throw std::runtime_error(
+        "make_obs.output.vti observation points are not an ordered grid subset");
+  }
+  return fields;
 }
 
-void writePvd(const std::string&        path,
-              const std::string&        root,
+void writePvd(const std::string&         path,
+              const std::string&         root,
               const TimeObservationData& data)
 {
   ensureParentDir(path);
@@ -236,6 +296,11 @@ std::string writeObservationVtiOutputs(const Params&              prm,
     throw std::runtime_error(
         "make_obs.output.vti requires make_obs.obs.grid");
   }
+  if (!data.hasLayout())
+  {
+    throw std::runtime_error(
+        "make_obs.output.vti requires observation point layout");
+  }
 
   const std::string root = stripKnownExtension(prm.output.vti_basename);
   if (root.empty())
@@ -243,17 +308,21 @@ std::string writeObservationVtiOutputs(const Params&              prm,
     throw std::runtime_error("make_obs.output.vti_basename must not be empty");
   }
 
+  const std::vector<Point3> grid_points = gridObsPoints(*prm.obs.grid);
+
   VtiWriter writer;
   for (Index level = 0; level < data.numLevels(); ++level)
   {
-    const Real time = observationTime(data, level);
-    VtiWriter::Image image = makeImage(data, prm.obs.grid->counts, time);
-    Vector<Real> velocity = velocityCellField(data, level);
+    VtiWriter::Image image =
+        makeImage(grid_points, prm.obs.grid->counts);
+    VtiFields fields = observationCellFields(data, level, grid_points);
 
     const std::string file = vtiPath(root, level);
     ensureParentDir(file);
-    writer.writeCellData(
-        file, image, {{"velocity", 3, &velocity}});
+    writer.writeCellData(file,
+                         image,
+                         {{"mask", 1, &fields.mask},
+                          {"velocity", 3, &fields.velocity}});
   }
 
   const std::string pvd = pvdPath(root);

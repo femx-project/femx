@@ -144,9 +144,9 @@ void SystemAssembler::addVec(Index               ic,
   }
 }
 
-void SystemAssembler::addVec(Index                 ic,
-                             const Vector<Real>&   local,
-                             SystemVector& out) const
+void SystemAssembler::addVec(Index               ic,
+                             const Vector<Real>& local,
+                             SystemVector&       out) const
 {
   if (out.size() != numRows())
   {
@@ -177,9 +177,9 @@ void SystemAssembler::addVec(Index                 ic,
   }
 }
 
-void SystemAssembler::addMat(Index                 ic,
-                             const DenseMatrix&    local,
-                             SystemMatrix& out) const
+void SystemAssembler::addMat(Index              ic,
+                             const DenseMatrix& local,
+                             SystemMatrix&      out) const
 {
   if (out.numRows() != numRows() || out.numCols() != numCols())
   {

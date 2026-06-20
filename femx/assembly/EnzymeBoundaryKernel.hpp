@@ -57,9 +57,9 @@ public:
 
   void res(Index                      ib,
            const Mesh::BoundaryFacet& facet,
-           const Vector<Real>&              u,
-           const Vector<Real>&              m,
-           Vector<Real>&                    out) const override
+           const Vector<Real>&        u,
+           const Vector<Real>&        m,
+           Vector<Real>&              out) const override
   {
     checkInputSizes(u, m);
     resize(out, num_res_);
@@ -84,8 +84,8 @@ public:
 
   void stateJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
-                const Vector<Real>&              u,
-                const Vector<Real>&              m,
+                const Vector<Real>&        u,
+                const Vector<Real>&        m,
                 DenseMatrix&               out) const override
   {
     checkInputSizes(u, m);
@@ -153,8 +153,8 @@ public:
 
   void paramJac(Index                      ib,
                 const Mesh::BoundaryFacet& facet,
-                const Vector<Real>&              u,
-                const Vector<Real>&              m,
+                const Vector<Real>&        u,
+                const Vector<Real>&        m,
                 DenseMatrix&               out) const override
   {
     checkInputSizes(u, m);

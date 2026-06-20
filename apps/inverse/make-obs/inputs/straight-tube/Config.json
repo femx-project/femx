@@ -1,76 +1,32 @@
 {
-  "forward": {
-    "mesh": {
-      "file": "../../../../meshdata/2D/straighttube.msh"
-    },
-    "time": {
-      "dt": 0.01,
-      "end_time": 2.0
-    },
-    "fluid": {
-      "rho": 1.0,
-      "mu": 4.0e-7
-    },
-    "bcs": [
-      {
-        "name": "inlet",
-        "physical": 4,
-        "type": "dirichlet",
-        "time": {
-          "profile": "sin",
-          "value": 0.01,
-          "amplitude": 0.35,
-          "period": 1.0
-        },
-        "space": {
-          "profile": "poiseuille",
-          "quantity": "mean_velocity",
-          "radius": 0.002,
-          "center": [0.0, 0.0, 0.0],
-          "normal": [1.0, 0.0, 0.0]
-        }
-      },
-      {
-        "name": "outlet",
-        "physical": 5,
-        "type": "dirichlet",
-        "p": 0.0
-      },
-      {
-        "name": "wall",
-        "physical": 6,
-        "type": "dirichlet",
-        "ux": 0.0,
-        "uy": 0.0
-      }
-    ],
-    "output": {
-      "basename": "output/straight-tube-forward"
-    },
-    "solver": {
-      "backend": "cuda"
-    }
+  "input": {
+    "trajectory": "../../../../forward/ns-gls/inputs/straighttube/output/velocity.xdmf",
+    "velocity_field": "velocity"
   },
-  "make_obs": {
-    "obs": {
-      "type": "grid",
-      "grid": {
-        "bounds": [
-          [-0.012, -0.0015, 0.0],
-          [0.012, 0.0015, 0.0]
-        ],
-        "counts": [9, 5, 1]
-      },
-      "components": [0, 1]
+  "obs1": {
+    "grid": {
+      "bounds": [
+        [-0.0205, -0.0036, 0.0],
+        [0.0205, 0.0036, 0.0]
+      ],
+      "counts": [40, 6, 1]
     },
-    "output": {
-      "file": "output/straight-tube-grid-obs.txt",
-      "vti_basename": "output/straight-tube-grid-obs"
+    "components": [0, 1],
+    "file": "output/straight-tube-obs1.txt",
+    "vti_basename": "output/straight-tube-obs1",
+    "reference_basename": "output/straight-tube-obs1-reference"
+  },
+  "obs2": {
+    "grid": {
+      "bounds": [
+        [-0.018, -0.0024, 0.0],
+        [0.018, 0.0024, 0.0]
+      ],
+      "counts": [80, 12, 1]
     },
-    "time": {
-      "start_time": 1.0,
-      "end_time": 2.0,
-      "num_points": 10
-    }
+    "components": [0, 1],
+    "file": "output/straight-tube-obs2.txt",
+    "vti_basename": "output/straight-tube-obs2",
+    "reference_basename": "output/straight-tube-obs2-reference"
   }
 }

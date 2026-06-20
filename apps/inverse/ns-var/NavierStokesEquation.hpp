@@ -13,8 +13,8 @@ namespace femx
 
 struct TimeNavierStokesParameters
 {
-  Index       steps      = 1;
-  Real        dt         = 1.0;
+  Index       steps = 1;
+  Real        dt    = 1.0;
   FluidParams fluid;
   Index       quad_order = 2;
 };
@@ -28,8 +28,8 @@ struct TimeNavierStokesParameters
 class NavierStokesEquation final : public eq::TimeMatrixResidualEquation
 {
 public:
-  NavierStokesEquation(const MixedFESpace& space,
-                                   TimeNavierStokesParameters parameters);
+  NavierStokesEquation(const MixedFESpace&        space,
+                       TimeNavierStokesParameters parameters);
 
   void setCellRange(Index begin, Index end);
 
@@ -72,11 +72,11 @@ private:
   void checkParameters() const;
 
 private:
-  const MixedFESpace& space_;
+  const MixedFESpace&        space_;
   TimeNavierStokesParameters prm_;
-  GaussQuadrature             quad_;
-  Index                       cell_begin_{0};
-  Index                       cell_end_{0};
+  GaussQuadrature            quad_;
+  Index                      cell_begin_{0};
+  Index                      cell_end_{0};
 };
 
 } // namespace femx

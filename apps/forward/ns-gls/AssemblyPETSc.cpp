@@ -42,10 +42,10 @@ void assembleSystem(const MixedFESpace& space,
   A.setZero();
   b.setZero();
 
-  ElementValues        ev(elem, quad);
-  std::vector<QPState> qps;
-  DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
-  Vector<Real>         Fe(space.numDofsPerElem());
+  ElementValues         ev(elem, quad);
+  std::vector<QPState>  qps;
+  DenseMatrix           Ke(space.numDofsPerElem(), space.numDofsPerElem());
+  Vector<Real>          Fe(space.numDofsPerElem());
   std::vector<PetscInt> dofs(static_cast<std::size_t>(space.numDofsPerElem()));
 
   Real cfl_local = 0.0;

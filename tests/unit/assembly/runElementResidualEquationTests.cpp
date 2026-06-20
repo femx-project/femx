@@ -237,8 +237,8 @@ private:
   {
     for (Index i = 0; i < state.size(); ++i)
     {
-      state[i]  = 1.0 + static_cast<Real>(i);
-      prm[i] = 0.1 * static_cast<Real>(i + 1);
+      state[i] = 1.0 + static_cast<Real>(i);
+      prm[i]   = 0.1 * static_cast<Real>(i + 1);
     }
   }
 

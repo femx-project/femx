@@ -358,8 +358,8 @@ bool parseIndexToken(const std::string& token,
 {
   try
   {
-    std::size_t parsed = 0;
-    const long long raw = std::stoll(token, &parsed);
+    std::size_t     parsed = 0;
+    const long long raw    = std::stoll(token, &parsed);
     if (parsed != token.size()
         || raw < static_cast<long long>(std::numeric_limits<Index>::min())
         || raw > static_cast<long long>(std::numeric_limits<Index>::max()))
@@ -653,7 +653,7 @@ TimeObservationData readCurrentTimeObsData(std::istream&      in,
     throw std::runtime_error("Time observation data missing values block");
   }
 
-  const Index num_obs = num_points * num_components;
+  const Index         num_obs = num_points * num_components;
   TimeObservationData data(num_levels, num_obs);
   data.setLayout("point", std::move(points), std::move(components));
   if (!time_values.empty())

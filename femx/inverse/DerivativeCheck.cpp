@@ -79,9 +79,9 @@ DerivativeCheckResult DerivativeCheck::reducedGrad(
 
 DerivativeCheckResult DerivativeCheck::resStateJac(
     const ResidualEquation& eq,
-    const Vector<Real>&         state,
-    const Vector<Real>&         prm,
-    const Vector<Real>&         dir) const
+    const Vector<Real>&     state,
+    const Vector<Real>&     prm,
+    const Vector<Real>&     dir) const
 {
   const Vector<Real> state_plus  = shifted(state, dir, step_);
   const Vector<Real> state_minus = shifted(state, dir, -step_);
@@ -99,9 +99,9 @@ DerivativeCheckResult DerivativeCheck::resStateJac(
 
 DerivativeCheckResult DerivativeCheck::resParamJac(
     const ResidualEquation& eq,
-    const Vector<Real>&         state,
-    const Vector<Real>&         prm,
-    const Vector<Real>&         dir) const
+    const Vector<Real>&     state,
+    const Vector<Real>&     prm,
+    const Vector<Real>&     dir) const
 {
   const Vector<Real> param_p = shifted(prm, dir, step_);
   const Vector<Real> param_m = shifted(prm, dir, -step_);
@@ -119,10 +119,10 @@ DerivativeCheckResult DerivativeCheck::resParamJac(
 
 DerivativeCheckResult DerivativeCheck::stateJacT(
     const ResidualEquation& eq,
-    const Vector<Real>&         state,
-    const Vector<Real>&         prm,
-    const Vector<Real>&         dir,
-    const Vector<Real>&         lambda) const
+    const Vector<Real>&     state,
+    const Vector<Real>&     prm,
+    const Vector<Real>&     dir,
+    const Vector<Real>&     lambda) const
 {
   Vector<Real> jac_dir;
   Vector<Real> jt_lam;
@@ -134,10 +134,10 @@ DerivativeCheckResult DerivativeCheck::stateJacT(
 
 DerivativeCheckResult DerivativeCheck::paramJacT(
     const ResidualEquation& eq,
-    const Vector<Real>&         state,
-    const Vector<Real>&         prm,
-    const Vector<Real>&         dir,
-    const Vector<Real>&         lambda) const
+    const Vector<Real>&     state,
+    const Vector<Real>&     prm,
+    const Vector<Real>&     dir,
+    const Vector<Real>&     lambda) const
 {
   Vector<Real> jac_dir;
   Vector<Real> jt_lam;

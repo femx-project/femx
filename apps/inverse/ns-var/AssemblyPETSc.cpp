@@ -36,7 +36,7 @@ void assemblePETScJac(const MixedFESpace&               space,
                       const Vector<Real>&               x,
                       const TimeNavierStokesParameters& prm,
                       const NavierVarCellRange&         cells,
-                      PETScSystemMatrix&        out,
+                      PETScSystemMatrix&                out,
                       ElemMatrixFn                      elem_matrix)
 {
   const Index num_dofs = space.numDofsPerElem();
@@ -47,10 +47,10 @@ void assemblePETScJac(const MixedFESpace&               space,
   }
   out.setZero();
 
-  const auto& elem = space.field(0).space().finiteElement();
-  ElementValues ev(elem, quad);
-  DenseMatrix   Ke(num_dofs, num_dofs);
-  Vector<Index> elem_dofs;
+  const auto&           elem = space.field(0).space().finiteElement();
+  ElementValues         ev(elem, quad);
+  DenseMatrix           Ke(num_dofs, num_dofs);
+  Vector<Index>         elem_dofs;
   std::vector<PetscInt> dofs(static_cast<std::size_t>(num_dofs));
 
   for (Index cell = cells.begin; cell < cells.end; ++cell)
@@ -81,7 +81,7 @@ void assembleNextStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               PETScSystemMatrix&        out)
+                               PETScSystemMatrix&                out)
 {
   assemblePETScJac(space,
                    quad,
@@ -99,7 +99,7 @@ void assemblePrevStateJacPETSc(const MixedFESpace&               space,
                                const Vector<Real>&               x,
                                const TimeNavierStokesParameters& prm,
                                const NavierVarCellRange&         cells,
-                               PETScSystemMatrix&        out)
+                               PETScSystemMatrix&                out)
 {
   assemblePETScJac(space,
                    quad,

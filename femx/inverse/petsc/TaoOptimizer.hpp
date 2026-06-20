@@ -339,8 +339,8 @@ private:
     return PETSC_SUCCESS;
   }
 
-  static PetscErrorCode createVec(MPI_Comm comm,
-                                  PetscInt size,
+  static PetscErrorCode createVec(MPI_Comm   comm,
+                                  PetscInt   size,
                                   ScopedVec& vec)
   {
     PetscMPIInt comm_size = 1;

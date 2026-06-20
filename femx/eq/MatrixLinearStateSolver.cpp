@@ -11,8 +11,8 @@ namespace eq
 
 MatrixLinearStateSolver::MatrixLinearStateSolver(
     const MatrixResidualEquation& eq,
-    SystemMatrix&         state_jac,
-    LinearSolver&         lin_solver)
+    SystemMatrix&                 state_jac,
+    LinearSolver&                 lin_solver)
   : eq_(eq),
     state_jac_(state_jac),
     lin_solver_(lin_solver)

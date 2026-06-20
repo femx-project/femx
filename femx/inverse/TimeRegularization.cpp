@@ -59,7 +59,7 @@ Index TimeRegularization::numParams() const
 }
 
 Real TimeRegularization::value(const TimeStateTrajectory& tr,
-                               const Vector<Real>&            prm) const
+                               const Vector<Real>&        prm) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -84,10 +84,10 @@ Real TimeRegularization::value(const TimeStateTrajectory& tr,
   return value_out;
 }
 
-void TimeRegularization::stateGrad(Index                          level,
+void TimeRegularization::stateGrad(Index                      level,
                                    const TimeStateTrajectory& tr,
-                                   const Vector<Real>&            prm,
-                                   Vector<Real>&                  out) const
+                                   const Vector<Real>&        prm,
+                                   Vector<Real>&              out) const
 {
   (void) level;
   (void) tr;
@@ -96,8 +96,8 @@ void TimeRegularization::stateGrad(Index                          level,
 }
 
 void TimeRegularization::paramGrad(const TimeStateTrajectory& tr,
-                                   const Vector<Real>&            prm,
-                                   Vector<Real>&                  out) const
+                                   const Vector<Real>&        prm,
+                                   Vector<Real>&              out) const
 {
   (void) tr;
   checkParamSize(prm);

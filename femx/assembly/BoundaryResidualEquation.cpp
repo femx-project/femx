@@ -13,10 +13,10 @@ namespace assembly
 
 BoundaryResidualEquation::BoundaryResidualEquation(
     const MatrixResidualEquation& volume_eq,
-    BoundaryDofLayout                 res_layout,
-    BoundaryDofLayout                 state_layout,
-    BoundaryDofLayout                 param_layout,
-    const BoundaryElementKernel&      kernel)
+    BoundaryDofLayout             res_layout,
+    BoundaryDofLayout             state_layout,
+    BoundaryDofLayout             param_layout,
+    const BoundaryElementKernel&  kernel)
   : volume_eq_(volume_eq),
     res_layout_(std::move(res_layout)),
     state_layout_(std::move(state_layout)),
@@ -62,9 +62,9 @@ void BoundaryResidualEquation::res(const Vector<Real>& state,
 }
 
 void BoundaryResidualEquation::assembleStateJac(
-    const Vector<Real>&   state,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    const Vector<Real>& state,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   volume_eq_.assembleStateJac(state, prm, out);
   if (out.numRows() != numRes() || out.numCols() != numStates())
@@ -86,9 +86,9 @@ void BoundaryResidualEquation::assembleStateJac(
 }
 
 void BoundaryResidualEquation::assembleParamJac(
-    const Vector<Real>&   state,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    const Vector<Real>& state,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   volume_eq_.assembleParamJac(state, prm, out);
   if (out.numRows() != numRes() || out.numCols() != numParams())
@@ -202,7 +202,7 @@ void BoundaryResidualEquation::addMat(const BoundaryDofLayout& row_layout,
                                       const BoundaryDofLayout& col_layout,
                                       Index                    ib,
                                       const DenseMatrix&       local,
-                                      SystemMatrix&    out)
+                                      SystemMatrix&            out)
 {
   Vector<Index> row_dofs;
   Vector<Index> col_dofs;

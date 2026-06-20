@@ -48,20 +48,17 @@ set(FEMX_NAVIER_GLS_COMMON_SOURCES Config.cpp BoundaryConditions.cpp
                                    RunSupport.cpp)
 
 if(FEMX_HAS_RESOLVE)
-  add_executable(ns-gls main-resolve.cpp
-                            ${FEMX_NAVIER_GLS_COMMON_SOURCES})
+  add_executable(ns-gls main-resolve.cpp ${FEMX_NAVIER_GLS_COMMON_SOURCES})
   configure_navier_gls_app(ns-gls)
 endif()
 
 if(TARGET femx::system_petsc)
-  add_executable(ns-gls-petsc main-petsc.cpp
-                                  ${FEMX_NAVIER_GLS_COMMON_SOURCES})
+  add_executable(ns-gls-petsc main-petsc.cpp ${FEMX_NAVIER_GLS_COMMON_SOURCES})
   configure_navier_gls_app(ns-gls-petsc)
   target_link_libraries(ns-gls-petsc PRIVATE navier_gls_petsc_kernels)
 
   if(NOT TARGET ns-gls)
-    add_executable(ns-gls main-petsc.cpp
-                              ${FEMX_NAVIER_GLS_COMMON_SOURCES})
+    add_executable(ns-gls main-petsc.cpp ${FEMX_NAVIER_GLS_COMMON_SOURCES})
     configure_navier_gls_app(ns-gls)
     target_link_libraries(ns-gls PRIVATE navier_gls_petsc_kernels)
   endif()

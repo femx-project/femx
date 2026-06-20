@@ -17,13 +17,13 @@ void checkCounts(const std::array<Index, 3>& counts)
     if (count <= 0)
     {
       throw std::runtime_error(
-          "cartesianObsPoints received non-positive grid count");
+          "observationGridPoints received non-positive grid count");
     }
   }
 }
 
-Real coordFromBounds(Real lower,
-                     Real upper,
+Real coordFromBounds(Real  lower,
+                     Real  upper,
                      Index count,
                      Index i)
 {
@@ -31,15 +31,14 @@ Real coordFromBounds(Real lower,
   {
     return 0.5 * (lower + upper);
   }
-  return lower + (upper - lower) * static_cast<Real>(i)
-                     / static_cast<Real>(count - 1);
+  return lower + (upper - lower) * static_cast<Real>(i) / static_cast<Real>(count - 1);
 }
 
 } // namespace
 
-std::vector<Point3> cartesianObsPoints(
-    const Point3&              lower,
-    const Point3&              upper,
+std::vector<Point3> observationGridPoints(
+    const Point3&               lower,
+    const Point3&               upper,
     const std::array<Index, 3>& counts)
 {
   checkCounts(counts);
@@ -63,10 +62,10 @@ std::vector<Point3> cartesianObsPoints(
   return points;
 }
 
-std::vector<Point3> cartesianObsPoints(
-    const Point3&              origin,
+std::vector<Point3> observationGridPoints(
+    const Point3&               origin,
     const std::array<Index, 3>& counts,
-    const Point3&              spacing)
+    const Point3&               spacing)
 {
   checkCounts(counts);
 

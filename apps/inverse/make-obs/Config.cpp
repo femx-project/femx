@@ -179,24 +179,6 @@ std::vector<Index> parseIndexList(const nlohmann::json& node,
   return values;
 }
 
-std::vector<std::array<Real, 3>> parsePoints(const nlohmann::json& node,
-                                             const std::string&    name)
-{
-  if (!node.is_array())
-  {
-    throw std::runtime_error(name + " must be an array");
-  }
-
-  std::vector<std::array<Real, 3>> points;
-  points.reserve(node.size());
-  for (std::size_t i = 0; i < node.size(); ++i)
-  {
-    points.push_back(
-        parseVector3(node.at(i), name + "[" + std::to_string(i) + "]"));
-  }
-  return points;
-}
-
 void parseObsGrid(const nlohmann::json&    node,
                   ObservationParams::Grid& grid)
 {
@@ -262,16 +244,14 @@ void parseObs(const nlohmann::json& node,
     throw std::runtime_error("Config obs must be an object");
   }
 
-  const bool has_type = node.contains("type");
-  assign(node, "type", obs.type);
-
-  if (node.contains("points"))
+  if (node.contains("type"))
   {
-    obs.points = parsePoints(node.at("points"), "obs.points");
-    if (!has_type)
+    const std::string type = node.at("type").get<std::string>();
+    if (type != "grid")
     {
-      obs.type = "point";
+      throw std::runtime_error("Config obs.type must be 'grid'");
     }
+    obs.type = "grid";
   }
   if (node.contains("components"))
   {
@@ -290,10 +270,7 @@ void parseObs(const nlohmann::json& node,
     {
       parseObsGrid(node, *obs.grid);
     }
-    if (!has_type)
-    {
-      obs.type = "grid";
-    }
+    obs.type = "grid";
   }
 }
 
@@ -566,7 +543,7 @@ void parseFluid(const nlohmann::json& node,
 
 void parseOutputViz(const nlohmann::json&        node,
                     const std::filesystem::path& config_dir,
-                    navier_var::OutputParams& output)
+                    navier_var::OutputParams&    output)
 {
   if (!node.is_object())
   {
@@ -644,6 +621,17 @@ void resolveOutputPaths(const std::filesystem::path& config_dir,
         resolveConfigPath(config_dir, output.vti_basename).string();
     output.write_vti = true;
   }
+  const bool has_explicit_reference = !output.reference_basename.empty();
+  if (output.write_reference && output.reference_basename.empty())
+  {
+    output.reference_basename =
+        stripKnownOutputExtension(output.file) + "-reference";
+  }
+  if (has_explicit_reference)
+  {
+    output.reference_basename =
+        resolveConfigPath(config_dir, output.reference_basename).string();
+  }
 }
 
 void parseOutput(const nlohmann::json& node,
@@ -661,6 +649,47 @@ void parseOutput(const nlohmann::json& node,
   assign(node, "vti_file", output.vti_basename);
   assign(node, "vti_path", output.vti_basename);
   assign(node, "vti_basename", output.vti_basename);
+  assign(node, "write_reference", output.write_reference);
+  assign(node, "reference", output.reference_basename);
+  assign(node, "reference_file", output.reference_basename);
+  assign(node, "reference_path", output.reference_basename);
+  assign(node, "reference_basename", output.reference_basename);
+}
+
+bool hasOutputKeys(const nlohmann::json& node)
+{
+  return node.contains("file") || node.contains("path")
+         || node.contains("write_vti") || node.contains("vti")
+         || node.contains("vti_file") || node.contains("vti_path")
+         || node.contains("vti_basename")
+         || node.contains("write_reference") || node.contains("reference")
+         || node.contains("reference_file") || node.contains("reference_path")
+         || node.contains("reference_basename");
+}
+
+void resolveInputPaths(const std::filesystem::path& config_dir,
+                       InputParams&                 input)
+{
+  if (!input.trajectory.empty())
+  {
+    input.trajectory =
+        resolveConfigPath(config_dir, input.trajectory).string();
+  }
+}
+
+void parseInput(const nlohmann::json&        node,
+                const std::filesystem::path& config_dir,
+                InputParams&                 input)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Config make_obs.input must be an object");
+  }
+  assign(node, "trajectory", input.trajectory);
+  assign(node, "trajectory_file", input.trajectory);
+  assign(node, "trajectory_path", input.trajectory);
+  assign(node, "velocity_field", input.velocity_field);
+  (void) config_dir;
 }
 
 void parseNoise(const nlohmann::json& node,
@@ -758,8 +787,158 @@ void parseTimeSample(const nlohmann::json& node,
   assignOptionalIndex(node, "count", time.num_points);
 }
 
-void parseMakeObs(const nlohmann::json& node,
-                  Params&               prm)
+bool hasObsKeys(const nlohmann::json& node)
+{
+  return node.contains("type") || node.contains("components")
+         || node.contains("grid") || node.contains("counts");
+}
+
+bool isObservationCaseKey(const std::string& key)
+{
+  if (key.size() <= 3 || key.rfind("obs", 0) != 0)
+  {
+    return false;
+  }
+  for (std::size_t i = 3; i < key.size(); ++i)
+  {
+    if (key[i] < '0' || key[i] > '9')
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+void makeCaseOutputUnique(ObservationCase& item)
+{
+  const std::string root = stripKnownOutputExtension(item.output.file);
+  if (root.empty())
+  {
+    return;
+  }
+
+  item.output.file = root + "-" + item.name + ".txt";
+  if (item.output.write_vti || !item.output.vti_basename.empty())
+  {
+    item.output.write_vti    = true;
+    item.output.vti_basename = {};
+  }
+  if (item.output.write_reference
+      || !item.output.reference_basename.empty())
+  {
+    item.output.write_reference     = true;
+    item.output.reference_basename  = {};
+  }
+}
+
+ObservationCase parseObservationCase(
+    const nlohmann::json&        node,
+    const std::filesystem::path& config_dir,
+    const Params&                defaults,
+    std::string                  name)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error(
+        "Config make_obs.observations." + name + " must be an object");
+  }
+
+  ObservationCase item;
+  item.name   = std::move(name);
+  item.obs    = defaults.obs;
+  item.output = defaults.output;
+  item.noise  = defaults.noise;
+  item.time   = defaults.time;
+
+  assign(node, "name", item.name);
+
+  if (node.contains("obs"))
+  {
+    parseObs(node.at("obs"), item.obs);
+  }
+  if (hasObsKeys(node))
+  {
+    parseObs(node, item.obs);
+  }
+
+  bool has_explicit_output = false;
+  if (node.contains("output"))
+  {
+    parseOutput(node.at("output"), item.output);
+    has_explicit_output = true;
+  }
+  if (hasOutputKeys(node))
+  {
+    parseOutput(node, item.output);
+    has_explicit_output = true;
+  }
+  if (!has_explicit_output)
+  {
+    makeCaseOutputUnique(item);
+  }
+
+  if (node.contains("noise"))
+  {
+    parseNoise(node.at("noise"), item.noise);
+  }
+  if (node.contains("snr") || node.contains("snr_db")
+      || node.contains("snr_dB") || node.contains("ratio")
+      || node.contains("snr_ratio"))
+  {
+    parseNoise(node, item.noise);
+  }
+  if (node.contains("time"))
+  {
+    parseTimeSample(node.at("time"), item.time);
+  }
+
+  (void) config_dir;
+  return item;
+}
+
+void parseObservationCases(const nlohmann::json&        node,
+                           const std::filesystem::path& config_dir,
+                           Params&                       prm)
+{
+  if (node.is_object())
+  {
+    for (auto it = node.begin(); it != node.end(); ++it)
+    {
+      prm.observations.push_back(
+          parseObservationCase(it.value(), config_dir, prm, it.key()));
+    }
+    return;
+  }
+
+  if (!node.is_array())
+  {
+    throw std::runtime_error(
+        "Config make_obs.observations must be an object or array");
+  }
+  for (std::size_t i = 0; i < node.size(); ++i)
+  {
+    prm.observations.push_back(parseObservationCase(
+        node.at(i), config_dir, prm, "obs" + std::to_string(i + 1)));
+  }
+}
+
+void parseTopLevelObservationCases(const nlohmann::json&        root,
+                                   const std::filesystem::path& config_dir,
+                                   Params&                       prm)
+{
+  for (auto it = root.begin(); it != root.end(); ++it)
+  {
+    if (isObservationCaseKey(it.key()))
+    {
+      prm.observations.push_back(
+          parseObservationCase(it.value(), config_dir, prm, it.key()));
+    }
+  }
+}
+
+void parseMakeObs(const nlohmann::json&        node,
+                  const std::filesystem::path& config_dir,
+                  Params&                       prm)
 {
   if (!node.is_object())
   {
@@ -770,14 +949,20 @@ void parseMakeObs(const nlohmann::json& node,
   {
     parseObs(node.at("obs"), prm.obs);
   }
+  if (node.contains("input"))
+  {
+    parseInput(node.at("input"), config_dir, prm.input);
+  }
+  if (node.contains("trajectory") || node.contains("trajectory_file")
+      || node.contains("trajectory_path") || node.contains("velocity_field"))
+  {
+    parseInput(node, config_dir, prm.input);
+  }
   if (node.contains("output"))
   {
     parseOutput(node.at("output"), prm.output);
   }
-  if (node.contains("file") || node.contains("path")
-      || node.contains("write_vti") || node.contains("vti")
-      || node.contains("vti_file") || node.contains("vti_path")
-      || node.contains("vti_basename"))
+  if (hasOutputKeys(node))
   {
     parseOutput(node, prm.output);
   }
@@ -794,6 +979,18 @@ void parseMakeObs(const nlohmann::json& node,
   if (node.contains("time"))
   {
     parseTimeSample(node.at("time"), prm.time);
+  }
+  if (node.contains("observations"))
+  {
+    parseObservationCases(node.at("observations"), config_dir, prm);
+  }
+  else if (node.contains("obs_cases"))
+  {
+    parseObservationCases(node.at("obs_cases"), config_dir, prm);
+  }
+  else if (node.contains("cases"))
+  {
+    parseObservationCases(node.at("cases"), config_dir, prm);
   }
 }
 
@@ -911,68 +1108,105 @@ void validateForward(const ForwardParams& forward)
 
 void validate(const Params& prm)
 {
-  validateForward(prm.forward);
-  if (prm.output.file.empty())
+  if (prm.input.velocity_field.empty())
   {
-    throw std::runtime_error("make_obs.output.file is required");
+    throw std::runtime_error("make_obs.input.velocity_field must not be empty");
   }
-  if (prm.noise.snr && prm.noise.snr_db)
+
+  const auto validate_output = [](const OutputParams& output,
+                                  const std::string&  prefix)
   {
-    throw std::runtime_error(
-        "make_obs.noise accepts either snr or snr_db, not both");
-  }
-  if (prm.noise.enabled)
+    if (output.file.empty())
+    {
+      throw std::runtime_error(prefix + ".output.file is required");
+    }
+  };
+  const auto validate_noise = [](const NoiseParams& noise,
+                                 const std::string& prefix)
   {
-    if (!prm.noise.snr && !prm.noise.snr_db)
+    if (noise.snr && noise.snr_db)
     {
       throw std::runtime_error(
-          "make_obs.noise.enabled requires snr or snr_db");
+          prefix + ".noise accepts either snr or snr_db, not both");
     }
-    if (prm.noise.snr
-        && (!std::isfinite(*prm.noise.snr) || *prm.noise.snr <= 0.0))
+    if (noise.enabled)
     {
-      throw std::runtime_error("make_obs.noise.snr must be positive");
+      if (!noise.snr && !noise.snr_db)
+      {
+        throw std::runtime_error(
+            prefix + ".noise.enabled requires snr or snr_db");
+      }
+      if (noise.snr
+          && (!std::isfinite(*noise.snr) || *noise.snr <= 0.0))
+      {
+        throw std::runtime_error(prefix + ".noise.snr must be positive");
+      }
+      if (noise.snr_db && !std::isfinite(*noise.snr_db))
+      {
+        throw std::runtime_error(prefix + ".noise.snr_db must be finite");
+      }
     }
-    if (prm.noise.snr_db && !std::isfinite(*prm.noise.snr_db))
-    {
-      throw std::runtime_error("make_obs.noise.snr_db must be finite");
-    }
-  }
-  if (!hasTimeSample(prm.time))
+  };
+  const auto validate_time = [](const TimeSampleParams& time,
+                                const std::string&      prefix)
   {
+    if (!hasTimeSample(time))
+    {
+      return;
+    }
+    if (time.start_time && time.start_level)
+    {
+      throw std::runtime_error(
+          prefix + ".time accepts either start_time or start_level, not both");
+    }
+    if (time.end_time && time.end_level)
+    {
+      throw std::runtime_error(
+          prefix + ".time accepts either end_time or end_level, not both");
+    }
+    if (time.start_time && !std::isfinite(*time.start_time))
+    {
+      throw std::runtime_error(prefix + ".time.start_time must be finite");
+    }
+    if (time.end_time && !std::isfinite(*time.end_time))
+    {
+      throw std::runtime_error(prefix + ".time.end_time must be finite");
+    }
+    if (time.start_level && *time.start_level < 0)
+    {
+      throw std::runtime_error(
+          prefix + ".time.start_level must be non-negative");
+    }
+    if (time.end_level && *time.end_level < 0)
+    {
+      throw std::runtime_error(prefix + ".time.end_level must be non-negative");
+    }
+    if (time.num_points && *time.num_points <= 0)
+    {
+      throw std::runtime_error(prefix + ".time.num_points must be positive");
+    }
+  };
+
+  if (!prm.observations.empty())
+  {
+    for (const ObservationCase& item : prm.observations)
+    {
+      if (item.name.empty())
+      {
+        throw std::runtime_error(
+            "make_obs.observations entries must have non-empty names");
+      }
+      const std::string prefix = "make_obs.observations." + item.name;
+      validate_output(item.output, prefix);
+      validate_noise(item.noise, prefix);
+      validate_time(item.time, prefix);
+    }
     return;
   }
-  if (prm.time.start_time && prm.time.start_level)
-  {
-    throw std::runtime_error(
-        "make_obs.time accepts either start_time or start_level, not both");
-  }
-  if (prm.time.end_time && prm.time.end_level)
-  {
-    throw std::runtime_error(
-        "make_obs.time accepts either end_time or end_level, not both");
-  }
-  if (prm.time.start_time && !std::isfinite(*prm.time.start_time))
-  {
-    throw std::runtime_error("make_obs.time.start_time must be finite");
-  }
-  if (prm.time.end_time && !std::isfinite(*prm.time.end_time))
-  {
-    throw std::runtime_error("make_obs.time.end_time must be finite");
-  }
-  if (prm.time.start_level && *prm.time.start_level < 0)
-  {
-    throw std::runtime_error(
-        "make_obs.time.start_level must be non-negative");
-  }
-  if (prm.time.end_level && *prm.time.end_level < 0)
-  {
-    throw std::runtime_error("make_obs.time.end_level must be non-negative");
-  }
-  if (prm.time.num_points && *prm.time.num_points <= 0)
-  {
-    throw std::runtime_error("make_obs.time.num_points must be positive");
-  }
+
+  validate_output(prm.output, "make_obs");
+  validate_noise(prm.noise, "make_obs");
+  validate_time(prm.time, "make_obs");
 }
 
 } // namespace
@@ -993,10 +1227,6 @@ Params loadConfig(const std::string& path)
     throw std::runtime_error("Config root must be an object");
   }
 
-  if (root.contains("forward"))
-  {
-    parseForward(root.at("forward"), config_dir, prm.forward);
-  }
   if (root.contains("obs"))
   {
     parseObs(root.at("obs"), prm.obs);
@@ -1007,10 +1237,47 @@ Params loadConfig(const std::string& path)
   }
   if (root.contains("make_obs"))
   {
-    parseMakeObs(root.at("make_obs"), prm);
+    parseMakeObs(root.at("make_obs"), config_dir, prm);
   }
+  if (root.contains("input"))
+  {
+    parseInput(root.at("input"), config_dir, prm.input);
+  }
+  if (root.contains("trajectory") || root.contains("trajectory_file")
+      || root.contains("trajectory_path"))
+  {
+    parseInput(root, config_dir, prm.input);
+  }
+  if (root.contains("output"))
+  {
+    parseOutput(root.at("output"), prm.output);
+  }
+  if (hasOutputKeys(root))
+  {
+    parseOutput(root, prm.output);
+  }
+  if (root.contains("noise"))
+  {
+    parseNoise(root.at("noise"), prm.noise);
+  }
+  if (root.contains("snr") || root.contains("snr_db")
+      || root.contains("snr_dB") || root.contains("ratio")
+      || root.contains("snr_ratio"))
+  {
+    parseNoise(root, prm.noise);
+  }
+  if (root.contains("time"))
+  {
+    parseTimeSample(root.at("time"), prm.time);
+  }
+  parseTopLevelObservationCases(root, config_dir, prm);
 
+  resolveInputPaths(config_dir, prm.input);
   resolveOutputPaths(config_dir, prm.output);
+  for (ObservationCase& item : prm.observations)
+  {
+    resolveOutputPaths(config_dir, item.output);
+  }
   validate(prm);
   return prm;
 }

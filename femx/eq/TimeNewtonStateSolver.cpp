@@ -13,7 +13,7 @@ namespace eq
 
 TimeNewtonStateSolver::TimeNewtonStateSolver(
     const TimeResidualEquation& eq,
-    LinearSolver&       lin_solver)
+    LinearSolver&               lin_solver)
   : eq_(eq),
     lin_solver_(lin_solver)
 {
@@ -80,7 +80,7 @@ void TimeNewtonStateSolver::solve(const Vector<Real>&  prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    tr[step + 1] = tr[step];
+    tr[step + 1]              = tr[step];
     const Vector<Real> x      = tr[step];
     Vector<Real>       x_next = tr[step + 1];
     solveStep(step, prm, x, x_next);

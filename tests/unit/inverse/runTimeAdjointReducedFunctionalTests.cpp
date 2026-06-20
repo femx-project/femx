@@ -87,10 +87,10 @@ public:
   }
 
   void assemblePrevStateJac(Index                 step,
-                                const Vector<Real>&   x_next,
-                                const Vector<Real>&   x,
-                                const Vector<Real>&   prm,
-                                system::SystemMatrix& out) const override
+                            const Vector<Real>&   x_next,
+                            const Vector<Real>&   x,
+                            const Vector<Real>&   prm,
+                            system::SystemMatrix& out) const override
   {
     (void) step;
     (void) x_next;
@@ -306,7 +306,7 @@ public:
     return solver_.numParams();
   }
 
-  void solve(const Vector<Real>&  prm,
+  void solve(const Vector<Real>&      prm,
              eq::TimeStateTrajectory& tr) override
   {
     Vector<Real> init(numStates());
@@ -485,7 +485,7 @@ public:
     system::DenseSystemMatrix       next_state_jac;
     eq::TimeMatrixLinearStateSolver state_solver(
         eq, next_state_jac, lin_solver);
-    ScalarTrackingObjective              tracking;
+    ScalarTrackingObjective     tracking;
     inverse::TimeRegularization reg(
         eq.numSteps(), eq.numStates(), eq.numSteps(), 1, 0.2, 0.05);
 
@@ -516,7 +516,7 @@ public:
     Vector<Real> grad;
     const Real   value_from_value_grad  = functional.valueGrad(prm, grad);
     status                             *= isEqual(value_from_value_grad,
-                                                  functional.value(prm));
+                      functional.value(prm));
     status                             *= (grad.size() == functional.numParams());
 
     Vector<Real> dir(eq.numParams());
@@ -542,7 +542,7 @@ public:
     system::DenseSystemMatrix       state_next_jac;
     eq::TimeMatrixLinearStateSolver state_solver(
         eq, state_next_jac, lin_solver);
-    ScalarTrackingObjective tracking;
+    ScalarTrackingObjective     tracking;
     inverse::TimeRegularization reg(
         eq.numSteps(), eq.numStates(), eq.numSteps(), 1, 0.2, 0.05);
 
@@ -554,8 +554,8 @@ public:
         eq.numSteps(), eq.numStates(), eq.numParams());
     obj.add(tracking).add(reg);
 
-    system::DenseSystemMatrix adj_next_jac;
-    system::DenseSystemMatrix adj_prev_jac;
+    system::DenseSystemMatrix      adj_next_jac;
+    system::DenseSystemMatrix      adj_prev_jac;
     inverse::TimeReducedFunctional functional(
         state_solver, eq, adj_next_jac, adj_prev_jac, lin_solver, obj);
 
@@ -575,7 +575,7 @@ public:
     Vector<Real> grad;
     const Real   value_from_value_grad  = functional.valueGrad(prm, grad);
     status                             *= isEqual(value_from_value_grad,
-                                                  functional.value(prm));
+                      functional.value(prm));
     status                             *= (grad.size() == functional.numParams());
 
     Vector<Real> dir(eq.numParams());
@@ -596,20 +596,20 @@ public:
     TestStatus status;
     status = true;
 
-    InitialScalarTimeEquation      eq;
-    system::DenseLinearSolver      lin_solver;
-    system::DenseSystemMatrix      state_next_jac;
+    InitialScalarTimeEquation       eq;
+    system::DenseLinearSolver       lin_solver;
+    system::DenseSystemMatrix       state_next_jac;
     eq::TimeMatrixLinearStateSolver inner_state_solver(
         eq, state_next_jac, lin_solver);
-    InitialParameterStateSolver state_solver(inner_state_solver);
+    InitialParameterStateSolver    state_solver(inner_state_solver);
     InitialScalarTrackingObjective tracking;
 
     inverse::SumTimeObjectiveFunctional obj(
         eq.numSteps(), eq.numStates(), eq.numParams());
     obj.add(tracking);
 
-    system::DenseSystemMatrix adj_next_jac;
-    system::DenseSystemMatrix adj_prev_jac;
+    system::DenseSystemMatrix      adj_next_jac;
+    system::DenseSystemMatrix      adj_prev_jac;
     inverse::TimeReducedFunctional functional(
         state_solver, eq, adj_next_jac, adj_prev_jac, lin_solver, obj);
     functional.setInitialStateParamJacT(
@@ -635,9 +635,9 @@ public:
                       obj.value(tr, prm));
 
     Vector<Real> grad;
-    const Real   value_from_value_grad = functional.valueGrad(prm, grad);
-    status *= isEqual(value_from_value_grad, functional.value(prm));
-    status *= (grad.size() == functional.numParams());
+    const Real   value_from_value_grad  = functional.valueGrad(prm, grad);
+    status                             *= isEqual(value_from_value_grad, functional.value(prm));
+    status                             *= (grad.size() == functional.numParams());
 
     Vector<Real> dir(eq.numParams());
     dir[0] = -0.40;

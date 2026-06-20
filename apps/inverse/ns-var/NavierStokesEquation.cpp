@@ -54,7 +54,7 @@ NavierStokesEquation::NavierStokesEquation(
 }
 
 void NavierStokesEquation::setCellRange(Index begin,
-                                                    Index end)
+                                        Index end)
 {
   if (begin < 0 || end < begin || end > space_.numElems())
   {
@@ -93,21 +93,21 @@ Index NavierStokesEquation::numRes() const
 }
 
 void NavierStokesEquation::res(Index               step,
-                                           const Vector<Real>& x_next,
-                                           const Vector<Real>& x,
-                                           const Vector<Real>& prm,
-                                           Vector<Real>&       out) const
+                               const Vector<Real>& x_next,
+                               const Vector<Real>& x,
+                               const Vector<Real>& prm,
+                               Vector<Real>&       out) const
 {
   checkSizes(step, x_next, x, prm);
 
-  const auto&               elem = space_.field(0).space().finiteElement();
+  const auto&     elem = space_.field(0).space().finiteElement();
   SystemAssembler initializer(space_);
   initializer.initVec(out);
 
 #pragma omp parallel
   {
-    ElementValues             ev(elem, quad_);
-    Vector<Real>              Re(space_.numDofsPerElem());
+    ElementValues   ev(elem, quad_);
+    Vector<Real>    Re(space_.numDofsPerElem());
     SystemAssembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
@@ -127,11 +127,11 @@ void NavierStokesEquation::res(Index               step,
 }
 
 void NavierStokesEquation::assembleNextStateJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
 
@@ -156,8 +156,8 @@ void NavierStokesEquation::assembleNextStateJac(
 
 #pragma omp parallel
   {
-    ElementValues             ev(elem, quad_);
-    DenseMatrix               Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
+    ElementValues   ev(elem, quad_);
+    DenseMatrix     Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
     SystemAssembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
@@ -170,11 +170,11 @@ void NavierStokesEquation::assembleNextStateJac(
 }
 
 void NavierStokesEquation::assemblePrevStateJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
 
@@ -199,8 +199,8 @@ void NavierStokesEquation::assemblePrevStateJac(
 
 #pragma omp parallel
   {
-    ElementValues             ev(elem, quad_);
-    DenseMatrix               Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
+    ElementValues   ev(elem, quad_);
+    DenseMatrix     Ke(space_.numDofsPerElem(), space_.numDofsPerElem());
     SystemAssembler assembler(space_, AssemblyMode::Atomic);
 
 #pragma omp for
@@ -213,11 +213,11 @@ void NavierStokesEquation::assemblePrevStateJac(
 }
 
 void NavierStokesEquation::assembleParamJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
   out.resize(numRes(), numParams());

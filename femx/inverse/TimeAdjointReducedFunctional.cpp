@@ -12,10 +12,10 @@ namespace inverse
 {
 
 TimeAdjointReducedFunctional::TimeAdjointReducedFunctional(
-    TimeStateSolver&            state_solver,
-    const TimeResidualEquation& eq,
-    LinearSolver&           adjoint_solver,
-    const TimeObjectiveFunctional&  obj)
+    TimeStateSolver&               state_solver,
+    const TimeResidualEquation&    eq,
+    LinearSolver&                  adjoint_solver,
+    const TimeObjectiveFunctional& obj)
   : state_solver_(state_solver),
     eq_(eq),
     adj_solver_(adjoint_solver),
@@ -70,7 +70,7 @@ void TimeAdjointReducedFunctional::checkDims() const
 }
 
 void TimeAdjointReducedFunctional::solveFwd(
-    const Vector<Real>&      prm,
+    const Vector<Real>&  prm,
     TimeStateTrajectory& tr)
 {
   if (prm.size() != numParams())
@@ -90,8 +90,8 @@ void TimeAdjointReducedFunctional::solveFwd(
 
 void TimeAdjointReducedFunctional::gradAt(
     const TimeStateTrajectory& tr,
-    const Vector<Real>&            prm,
-    Vector<Real>&                  out)
+    const Vector<Real>&        prm,
+    Vector<Real>&              out)
 {
   obj_.paramGrad(tr, prm, out);
   if (out.size() != numParams())

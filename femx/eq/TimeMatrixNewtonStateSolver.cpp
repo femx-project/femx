@@ -12,8 +12,8 @@ namespace eq
 
 TimeMatrixNewtonStateSolver::TimeMatrixNewtonStateSolver(
     const TimeMatrixResidualEquation& eq,
-    SystemMatrix&             next_state_jac,
-    LinearSolver&             lin_solver)
+    SystemMatrix&                     next_state_jac,
+    LinearSolver&                     lin_solver)
   : eq_(eq),
     next_state_jac_(next_state_jac),
     lin_solver_(lin_solver)
@@ -83,7 +83,7 @@ void TimeMatrixNewtonStateSolver::solve(const Vector<Real>&  prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    tr[step + 1] = tr[step];
+    tr[step + 1]              = tr[step];
     const Vector<Real> x      = tr[step];
     Vector<Real>       x_next = tr[step + 1];
     solveStep(step, prm, x, x_next);

@@ -416,8 +416,15 @@ Params loadConfig(const std::string& path)
   }
   if (root.contains("output"))
   {
-    assign(root.at("output"), "interval", prm.output.interval);
-    assign(root.at("output"), "directory", prm.output.directory);
+    const auto& output = root.at("output");
+    assign(output, "interval", prm.output.interval);
+    const bool has_directory = output.contains("directory");
+    assign(output, "directory", prm.output.directory);
+    if (has_directory && !prm.output.directory.empty())
+    {
+      prm.output.directory =
+          resolveConfigPath(config_dir, prm.output.directory).string();
+    }
   }
   prm.output.interval = std::max<Index>(1, prm.output.interval);
 

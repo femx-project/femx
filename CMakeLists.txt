@@ -95,29 +95,30 @@ if(FEMX_ENABLE_OPENMP)
            "$ENV{HOME}/opt/libomp-${FEMX_CLANG_MAJOR}")
     endif()
     if(FEMX_CLANG_MAJOR)
-      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS
-           "/usr/lib/llvm-${FEMX_CLANG_MAJOR}"
-           "/usr/local/opt/llvm@${FEMX_CLANG_MAJOR}"
-           "/opt/homebrew/opt/llvm@${FEMX_CLANG_MAJOR}")
+      list(
+        APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "/usr/lib/llvm-${FEMX_CLANG_MAJOR}"
+        "/usr/local/opt/llvm@${FEMX_CLANG_MAJOR}"
+        "/opt/homebrew/opt/llvm@${FEMX_CLANG_MAJOR}")
     endif()
 
     find_path(
       FEMX_CLANG_OPENMP_INCLUDE_DIR
       NAMES omp.h
       HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
-      PATH_SUFFIXES include lib/clang/${FEMX_CLANG_MAJOR}/include
-                    lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include
-                    usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include)
+      PATH_SUFFIXES
+        include lib/clang/${FEMX_CLANG_MAJOR}/include
+        lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include
+        usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include)
 
     find_library(
       FEMX_CLANG_OPENMP_LIBRARY
       NAMES omp libomp
       HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
-      PATH_SUFFIXES lib lib64 usr/lib
-                    usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib
+      PATH_SUFFIXES lib lib64 usr/lib usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib
                     usr/lib/x86_64-linux-gnu)
 
-    if(FEMX_CLANG_OPENMP_INCLUDE_DIR AND FEMX_CLANG_OPENMP_LIBRARY
+    if(FEMX_CLANG_OPENMP_INCLUDE_DIR
+       AND FEMX_CLANG_OPENMP_LIBRARY
        AND NOT TARGET OpenMP::OpenMP_CXX)
       get_filename_component(FEMX_CLANG_OPENMP_LIBRARY_DIR
                              "${FEMX_CLANG_OPENMP_LIBRARY}" DIRECTORY)
@@ -132,7 +133,8 @@ if(FEMX_ENABLE_OPENMP)
           "$<$<PLATFORM_ID:Linux>:-Wl,-rpath,${FEMX_CLANG_OPENMP_LIBRARY_DIR}>")
       set(OpenMP_CXX_FOUND TRUE)
       set(OpenMP_FOUND TRUE)
-      message(STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
+      message(
+        STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
     endif()
   endif()
 endif()

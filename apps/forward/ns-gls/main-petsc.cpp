@@ -219,7 +219,7 @@ int run(const Params& prm, bool enable_output)
   space.setup();
 
   const auto   elem_dofs = makeElementDofCache(space);
-  auto         pattern = SparsityPatternBuilder::build(space);
+  auto         pattern   = SparsityPatternBuilder::build(space);
   Vector<Real> x(space.numDofs());
   Vector<Real> xp(space.numDofs());
   x.setZero();

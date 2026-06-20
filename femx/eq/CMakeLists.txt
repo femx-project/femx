@@ -31,4 +31,4 @@ target_sources(
          TimeStateTrajectory.hpp)
 
 target_link_libraries(femx_eq PUBLIC femx_common femx_config femx_linalg
-                                      femx_system)
+                                     femx_system)

@@ -29,6 +29,12 @@ public:
                             Vector<Real>                   weights,
                             Real                           dt);
 
+  TimeLeastSquaresObjective(const TimeObservationOperator& obs,
+                            TimeObservationData            data,
+                            Vector<Real>                   weights,
+                            Real                           dt,
+                            Real                           time_offset);
+
   Index numSteps() const override;
 
   Index numStates() const override;
@@ -88,6 +94,7 @@ private:
   TimeObservationData            data_;
   Vector<Real>                   weights_;
   Real                           dt_{1.0};
+  Real                           time_offset_{0.0};
 };
 
 } // namespace inverse

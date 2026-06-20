@@ -64,7 +64,7 @@ void NavierVolumeResidual(Index       cell,
   (void) num_prm;
 
   const Index num_shape = num_nodes;
-  const Index num_dofs     = dim * num_shape + num_shape;
+  const Index num_dofs  = dim * num_shape + num_shape;
   const Real* x_next    = prm;
   const Real  rho       = prm[num_states];
   const Real  mu        = prm[num_states + 1];

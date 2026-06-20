@@ -1,7 +1,6 @@
-#include <femx/io/VtiWriter.hpp>
-
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -10,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <femx/io/VtiWriter.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -109,6 +109,40 @@ std::uint64_t fieldBytes(const VtiWriter::CellField& field)
   return size * static_cast<std::uint64_t>(sizeof(Real));
 }
 
+std::string base64Encode(const unsigned char* data,
+                         std::size_t          size)
+{
+  static constexpr char table[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  std::string out;
+  out.reserve(((size + 2) / 3) * 4);
+  for (std::size_t i = 0; i < size; i += 3)
+  {
+    const unsigned int b0 = data[i];
+    const unsigned int b1 = (i + 1 < size) ? data[i + 1] : 0;
+    const unsigned int b2 = (i + 2 < size) ? data[i + 2] : 0;
+    const unsigned int value = (b0 << 16) | (b1 << 8) | b2;
+
+    out.push_back(table[(value >> 18) & 0x3f]);
+    out.push_back(table[(value >> 12) & 0x3f]);
+    out.push_back(i + 1 < size ? table[(value >> 6) & 0x3f] : '=');
+    out.push_back(i + 2 < size ? table[value & 0x3f] : '=');
+  }
+  return out;
+}
+
+std::string fieldBinaryBase64(const VtiWriter::CellField& field)
+{
+  const std::uint64_t bytes = fieldBytes(field);
+  std::vector<unsigned char> buffer(sizeof(bytes) + bytes);
+  std::memcpy(buffer.data(), &bytes, sizeof(bytes));
+  std::memcpy(buffer.data() + sizeof(bytes),
+              field.values->data(),
+              static_cast<std::size_t>(bytes));
+  return base64Encode(buffer.data(), buffer.size());
+}
+
 void checkFields(const std::vector<VtiWriter::CellField>& fields,
                  Index                                    cells)
 {
@@ -172,14 +206,6 @@ void VtiWriter::writeCellData(const std::string&            filename,
   const Index cells = numCells(image);
   checkFields(fields, cells);
 
-  std::vector<std::uint64_t> offsets(fields.size(), 0);
-  std::uint64_t              offset = 0;
-  for (std::size_t i = 0; i < fields.size(); ++i)
-  {
-    offsets[i] = offset;
-    offset += sizeof(std::uint64_t) + fieldBytes(fields[i]);
-  }
-
   std::ofstream out(filename, std::ios::binary);
   if (!out)
   {
@@ -215,22 +241,13 @@ void VtiWriter::writeCellData(const std::string&            filename,
     {
       out << " NumberOfComponents=\"" << field.num_components << "\"";
     }
-    out << " format=\"appended\" offset=\"" << offsets[i] << "\"/>\n";
+    out << " format=\"binary\">"
+        << fieldBinaryBase64(field)
+        << "</DataArray>\n";
   }
   out << "      </CellData>\n";
   out << "    </Piece>\n";
   out << "  </ImageData>\n";
-  out << "  <AppendedData encoding=\"raw\">\n_";
-
-  for (const auto& field : fields)
-  {
-    const std::uint64_t bytes = fieldBytes(field);
-    out.write(reinterpret_cast<const char*>(&bytes), sizeof(bytes));
-    out.write(reinterpret_cast<const char*>(field.values->data()),
-              static_cast<std::streamsize>(bytes));
-  }
-
-  out << "\n  </AppendedData>\n";
   out << "</VTKFile>\n";
 }
 

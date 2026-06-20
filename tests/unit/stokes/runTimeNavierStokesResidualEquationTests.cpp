@@ -294,10 +294,12 @@ public:
     ns_prm.fluid.mu  = 0.03;
 
     NavierStokesEquation base_eq(space, ns_prm);
-    DirichletControl             control(
+    DirichletControl     control(
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
-    Vector<Index>                        fixed_dofs = {p_dof.globalDof(0, 0)};
-    DirichletControlEquation eq(base_eq, control, fixed_dofs);
+    Vector<Index> fixed_dofs = {p_dof.globalDof(0, 0)};
+    Vector<Real>  fixed_values = {0.75, -1.25};
+    DirichletControlEquation eq(
+        base_eq, control, fixed_dofs, 0, -1, fixed_values);
 
     Vector<Real> x_next(eq.numStates());
     Vector<Real> x(eq.numStates());
@@ -319,7 +321,8 @@ public:
     status                *= (eq.numParams() == 4);
     status                *= isEqual(res[row0], x_next[row0] - prm[2]);
     status                *= isEqual(res[row1], x_next[row1] - prm[3]);
-    status                *= isEqual(res[fixed_row], x_next[fixed_row]);
+    status                *= isEqual(res[fixed_row],
+                                     x_next[fixed_row] - fixed_values[1]);
 
     system::DenseSystemMatrix param_jac;
 #if defined(FEMX_HAS_ENZYME)
@@ -424,8 +427,8 @@ public:
     NavierStokesEquation base_eq(space, ns_prm);
     DirichletControl     control(
         {u_dof.globalDof(1, 0), u_dof.globalDof(3, 1)});
-    const Index offset      = 3;
-    const Index total_prm   = offset + control.numParams(ns_prm.steps) + 2;
+    const Index              offset    = 3;
+    const Index              total_prm = offset + control.numParams(ns_prm.steps) + 2;
     DirichletControlEquation eq(
         base_eq, control, {}, offset, total_prm);
 
@@ -440,13 +443,13 @@ public:
     Vector<Real> res;
     eq.res(1, x_next, x, full_prm, res);
 
-    const Index row0 = control.stateDof(0);
-    const Index row1 = control.stateDof(1);
-    const Index col0 = offset + control.paramIndex(1, 0);
-    const Index col1 = offset + control.paramIndex(1, 1);
-    status *= (eq.numParams() == total_prm);
-    status *= isEqual(res[row0], x_next[row0] - full_prm[col0]);
-    status *= isEqual(res[row1], x_next[row1] - full_prm[col1]);
+    const Index row0  = control.stateDof(0);
+    const Index row1  = control.stateDof(1);
+    const Index col0  = offset + control.paramIndex(1, 0);
+    const Index col1  = offset + control.paramIndex(1, 1);
+    status           *= (eq.numParams() == total_prm);
+    status           *= isEqual(res[row0], x_next[row0] - full_prm[col0]);
+    status           *= isEqual(res[row1], x_next[row1] - full_prm[col1]);
 
     system::DenseSystemMatrix param_jac;
     eq.assembleParamJac(1, x_next, x, full_prm, param_jac);

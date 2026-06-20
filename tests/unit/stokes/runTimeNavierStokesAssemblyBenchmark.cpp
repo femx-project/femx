@@ -128,21 +128,22 @@ int main(int argc, char** argv)
   femx::LagrangeQuadQ1 elem;
   femx::MixedFESpace   space = makeSpace(mesh, elem);
 
-  femx::TimeNavierStokesParameters prm;
-  prm.steps      = 40;
-  prm.dt         = 0.025;
-  prm.fluid.rho  = 1.0;
-  prm.fluid.mu   = 0.015;
-  prm.quad_order = 2;
+  femx::TimeNavierStokesParameters ns_prm;
+  ns_prm.steps      = 40;
+  ns_prm.dt         = 0.025;
+  ns_prm.fluid.rho  = 1.0;
+  ns_prm.fluid.mu   = 0.015;
+  ns_prm.quad_order = 2;
 
   femx::Vector<femx::Real> x;
   femx::Vector<femx::Real> x_next;
-  femx::Vector<femx::Real> prm;
+  femx::Vector<femx::Real> eq_prm;
   fillState(space, x);
   fillState(space, x_next);
 
   const auto quad = femx::GaussQuadrature::make(
-      space.field(0).space().finiteElement().referenceElement(), prm.quad_order);
+      space.field(0).space().finiteElement().referenceElement(),
+      ns_prm.quad_order);
 
   volatile femx::Real local_checksum = 0.0;
   const auto          local_start    = Clock::now();
@@ -151,14 +152,14 @@ int main(int argc, char** argv)
     femx::Real repeat_checksum = 0.0;
 #pragma omp parallel reduction(+ : repeat_checksum)
     {
-      femx::ElementValues        ev(elem, quad);
-      femx::DenseMatrix          Ke(space.numDofsPerElem(), space.numDofsPerElem());
+      femx::ElementValues ev(elem, quad);
+      femx::DenseMatrix   Ke(space.numDofsPerElem(), space.numDofsPerElem());
 
 #pragma omp for
       for (femx::Index ic = 0; ic < space.numElems(); ++ic)
       {
         femx::assemblePrevElemMatrix(
-            space, ic, ev, quad, x_next, x, prm, Ke);
+            space, ic, ev, quad, x_next, x, ns_prm, Ke);
         repeat_checksum += Ke(0, 0) + Ke(Ke.rows() - 1, Ke.cols() - 1);
       }
     }
@@ -166,15 +167,15 @@ int main(int argc, char** argv)
   }
   const auto local_end = Clock::now();
 
-  femx::NavierStokesEquation eq(space, prm);
-  const auto                             pattern = femx::assembly::SparsityPatternBuilder::build(space);
-  femx::system::SparseSystemMatrix       prev_jac(pattern);
+  femx::NavierStokesEquation       eq(space, ns_prm);
+  const auto                       pattern = femx::assembly::SparsityPatternBuilder::build(space);
+  femx::system::SparseSystemMatrix prev_jac(pattern);
 
   volatile femx::Real global_checksum = 0.0;
   const auto          global_start    = Clock::now();
   for (femx::Index repeat = 0; repeat < options.global_repeats; ++repeat)
   {
-    eq.assemblePrevStateJac(0, x_next, x, prm, prev_jac);
+    eq.assemblePrevStateJac(0, x_next, x, eq_prm, prev_jac);
     global_checksum += prev_jac.matrix().valuesData()[0];
   }
   const auto global_end = Clock::now();

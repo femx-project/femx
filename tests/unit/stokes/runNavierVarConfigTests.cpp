@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 
 #include "Config.hpp"
 #include <tests/TestBase.hpp>
@@ -126,26 +128,70 @@ public:
     status           *= isEqual(*prm.forward.bcs[0].uy, 0.0);
     status           *= prm.inverse.opt.max_iterations == 12;
     status           *= prm.inverse.obs.file
-                        == (dir / "obs/straighttube-obs.txt")
-                               .lexically_normal()
-                               .string();
-    status           *= !prm.inverse.obs.grid.has_value();
-    status           *= prm.inverse.obs.components.empty();
-    status           *= prm.forward.output.basename == "ns-var-test";
-    status           *= prm.forward.solver.backend == "cpu";
-    status           *= prm.inverse.bounds.axial_max.has_value();
-    status           *= isEqual(*prm.inverse.bounds.axial_max, 0.0162);
-    status           *= isEqual(prm.inverse.bounds.normal[0], 1.0);
-    status           *= prm.inverse.initial_velocity.enabled;
-    status           *= prm.inverse.initial_velocity.lower.has_value();
-    status           *= prm.inverse.initial_velocity.upper.has_value();
-    status           *= isEqual(*prm.inverse.initial_velocity.lower, -0.1);
-    status           *= isEqual(*prm.inverse.initial_velocity.upper, 0.2);
-    status           *= isEqual(prm.inverse.initial_velocity.l2, 3.0e-8);
+              == (dir / "obs/straighttube-obs.txt")
+                     .lexically_normal()
+                     .string();
+    status *= !prm.inverse.obs.grid.has_value();
+    status *= prm.inverse.obs.components.empty();
+    status *= prm.forward.output.basename == "ns-var-test";
+    status *= prm.forward.solver.backend == "cpu";
+    status *= prm.inverse.bounds.axial_max.has_value();
+    status *= isEqual(*prm.inverse.bounds.axial_max, 0.0162);
+    status *= isEqual(prm.inverse.bounds.normal[0], 1.0);
+    status *= prm.inverse.initial_velocity.enabled;
+    status *= prm.inverse.initial_velocity.lower.has_value();
+    status *= prm.inverse.initial_velocity.upper.has_value();
+    status *= isEqual(*prm.inverse.initial_velocity.lower, -0.1);
+    status *= isEqual(*prm.inverse.initial_velocity.upper, 0.2);
+    status *= isEqual(prm.inverse.initial_velocity.l2, 3.0e-8);
 
     const FluidParams fluid  = navier_var::fluidParams(prm);
     status                  *= isEqual(fluid.rho, 1.0);
     status                  *= isEqual(fluid.mu, 4.0e-7);
+
+    return status.report(__func__);
+  }
+
+  TestOutcome rejectsNonGridObservationTypes()
+  {
+    TestStatus status;
+    status = true;
+
+    const auto dir =
+        std::filesystem::temp_directory_path()
+        / "femx_navier_var_config_reject_obs_type";
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+
+    const auto rejects = [&](const std::string& type) {
+      const auto config_path = dir / ("Config-" + type + ".json");
+      {
+        std::ofstream config(config_path);
+        config << R"({
+  "inverse": {
+    "obs": {
+      "type": ")" << type << R"(",
+      "file": "obs.txt"
+    }
+  }
+})";
+      }
+
+      try
+      {
+        (void) navier_var::loadConfig(config_path.string());
+      }
+      catch (const std::runtime_error& err)
+      {
+        return std::string(err.what()).find("inverse.obs.type")
+               != std::string::npos;
+      }
+      return false;
+    };
+
+    status *= rejects("point");
+    status *= rejects("cartesian");
+    status *= rejects("cartesian_grid");
 
     return status.report(__func__);
   }
@@ -162,6 +208,7 @@ int main(int, char**)
 
   femx::tests::TestingResults result;
   result += test.loadStraightTubeStyleConfig();
+  result += test.rejectsNonGridObservationTypes();
 
   return result.summary();
 }

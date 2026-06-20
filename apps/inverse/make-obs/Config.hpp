@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "../ns-var/Config.hpp"
 
@@ -12,7 +13,15 @@ struct OutputParams
 {
   std::string file = "obs.txt";
   std::string vti_basename;
+  std::string reference_basename;
   bool        write_vti = false;
+  bool        write_reference = true;
+};
+
+struct InputParams
+{
+  std::string trajectory;
+  std::string velocity_field = "velocity";
 };
 
 struct NoiseParams
@@ -31,13 +40,23 @@ struct TimeSampleParams
   std::optional<Index> num_points;
 };
 
-struct Params
+struct ObservationCase
 {
-  navier_var::ForwardParams     forward;
+  std::string                   name;
   navier_var::ObservationParams obs;
   OutputParams                  output;
   NoiseParams                   noise;
   TimeSampleParams              time;
+};
+
+struct Params
+{
+  InputParams                   input;
+  navier_var::ObservationParams obs;
+  OutputParams                  output;
+  NoiseParams                   noise;
+  TimeSampleParams              time;
+  std::vector<ObservationCase>  observations;
 };
 
 Params loadConfig(const std::string& path);

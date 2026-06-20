@@ -25,8 +25,8 @@ Real elapsedSeconds(const Clock::time_point& begin)
 
 TimeMatrixLinearStateSolver::TimeMatrixLinearStateSolver(
     const TimeMatrixResidualEquation& eq,
-    SystemMatrix&             next_state_jac,
-    LinearSolver&             lin_solver)
+    SystemMatrix&                     next_state_jac,
+    LinearSolver&                     lin_solver)
   : eq_(eq),
     next_state_jac_(next_state_jac),
     lin_solver_(lin_solver)
@@ -123,7 +123,7 @@ void TimeMatrixLinearStateSolver::solve(const Vector<Real>&  prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    tr[step + 1] = tr[step];
+    tr[step + 1]              = tr[step];
     const Vector<Real> x      = tr[step];
     Vector<Real>       x_next = tr[step + 1];
     solveStep(step, prm, x, x_next);
@@ -161,7 +161,7 @@ void TimeMatrixLinearStateSolver::solveStep(Index               step,
   ++assembly_calls_;
 
   Vector<Real> dx;
-  const auto solve_begin = Clock::now();
+  const auto   solve_begin = Clock::now();
   lin_solver_.solve(next_state_jac_, rhs, dx);
   solve_seconds_ += elapsedSeconds(solve_begin);
   ++solve_calls_;

@@ -127,7 +127,7 @@ VisualizationOptions readVisualizationOptions()
 void addBoundaryFacet(Mesh&              mesh,
                       Index              tag,
                       const std::string& name,
-                      Dofs               node_ids)
+                      std::vector<Index> node_ids)
 {
   Mesh::BoundaryFacet facet;
   facet.dim           = 1;
@@ -740,9 +740,9 @@ Vector<Real> boundaryCoordinates(const Mesh&              mesh,
       const Index dof = dofs[a];
       if (seen[dof] == 0.0)
       {
-        const Index in = facet.node_ids[a];
-        x[dof]           = mesh.node(node)[0];
-        seen[dof]        = 1.0;
+        const Index node = facet.node_ids[a];
+        x[dof]         = mesh.node(node)[0];
+        seen[dof]      = 1.0;
       }
     }
   }
@@ -777,7 +777,7 @@ Vector<Real> boundaryFieldOnMesh(const Mesh&              mesh,
     Index       a     = 0;
     for (Index node : facet.node_ids)
     {
-      field[in] = values[dofs[a]];
+      field[node] = values[dofs[a]];
       ++a;
     }
   }
@@ -966,7 +966,7 @@ int run()
       top_param_layout,
       state_solver,
       u_obs,
-      m_true,
+      neumann_true,
       viz_options);
   history.record(0, initial, true);
 

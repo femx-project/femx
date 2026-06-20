@@ -73,7 +73,7 @@ public:
     return *this;
   }
 
-  static Vector view(T* data,
+  static Vector view(T*    data,
                      Index size)
   {
     if (size < 0)
@@ -213,8 +213,8 @@ private:
   }
 
   template <typename It>
-  void assign(It begin_it,
-              It end_it,
+  void assign(It    begin_it,
+              It    end_it,
               Index input_size)
   {
     if (isView())

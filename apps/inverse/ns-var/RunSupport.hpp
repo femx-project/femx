@@ -13,9 +13,9 @@
 #include <femx/eq/TimeStateTrajectory.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/inverse/TimeObjectiveFunctional.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/inverse/TimeObjectiveFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/mesh/Mesh.hpp>
 
@@ -41,24 +41,32 @@ struct InverseParameterLayout
   }
 };
 
+struct FixedDofValues
+{
+  Vector<Index> dofs;
+  Vector<Real>  values;
+};
+
 class InitialVelocityStateSolver final : public eq::TimeStateSolver
 {
 public:
   InitialVelocityStateSolver(eq::TimeMatrixLinearStateSolver& solver,
                              Vector<Index>                    velocity_dofs,
-                             InverseParameterLayout           layout);
+                             InverseParameterLayout           layout,
+                             Vector<Real> base_initial_state = {});
 
   Index numSteps() const override;
   Index numStates() const override;
   Index numParams() const override;
 
-  void solve(const Vector<Real>&  prm,
+  void solve(const Vector<Real>&      prm,
              eq::TimeStateTrajectory& tr) override;
 
 private:
   eq::TimeMatrixLinearStateSolver& solver_;
   Vector<Index>                    velocity_dofs_;
   InverseParameterLayout           layout_;
+  Vector<Real>                     base_initial_state_;
   Vector<Real>                     initial_state_;
 };
 
@@ -100,10 +108,10 @@ class InitialVelocityRegularization final
   : public inverse::TimeObjectiveFunctional
 {
 public:
-  InitialVelocityRegularization(Index                         num_steps,
-                                Index                         num_states,
-                                InverseParameterLayout        layout,
-                                Real                          beta);
+  InitialVelocityRegularization(Index                  num_steps,
+                                Index                  num_states,
+                                InverseParameterLayout layout,
+                                Real                   beta);
 
   Index numSteps() const override;
   Index numStates() const override;
@@ -143,22 +151,44 @@ DirichletControl makeVelocityControl(
 
 Vector<Index> initialVelocityDofs(const MixedFESpace& space);
 
-InverseParameterLayout inverseParameterLayout(
-    const MixedFESpace&           space,
-    const DirichletControl&       control,
-    const InitialVelocityParams&  initial_velocity,
-    Index                         steps);
+Vector<Index> initialVelocityDofs(const MixedFESpace&     space,
+                                  const Params&           prm,
+                                  const DirichletControl& control);
 
-Vector<Index> fixedDofs(const MixedFESpace&         space,
-                        const Params&               prm,
+Vector<Real> initialVelocityBoundaryState(
+    const MixedFESpace&     space,
+    const Params&           prm,
+    const DirichletControl& control);
+
+InverseParameterLayout inverseParameterLayout(
+    const MixedFESpace&          space,
+    const DirichletControl&      control,
+    const InitialVelocityParams& initial_velocity,
+    Index                        steps);
+
+InverseParameterLayout inverseParameterLayout(
+    const MixedFESpace&          space,
+    const DirichletControl&      control,
+    const InitialVelocityParams& initial_velocity,
+    Index                        steps,
+    Index                        initial_velocity_size);
+
+Vector<Index> fixedDofs(const MixedFESpace&     space,
+                        const Params&           prm,
                         const DirichletControl& control);
 
+FixedDofValues fixedDofValues(const MixedFESpace&     space,
+                              const Params&           prm,
+                              const DirichletControl& control,
+                              Index                   steps,
+                              Real                    dt);
+
 std::unique_ptr<inverse::TimeObservationOperator> makeObs(
-    const MixedFESpace&     space,
+    const MixedFESpace&      space,
     const ObservationParams& prm,
-    Index                   steps,
-    Index                   num_states,
-    Index                   num_prm);
+    Index                    steps,
+    Index                    num_states,
+    Index                    num_prm);
 
 void setObsLayout(inverse::TimeObservationData& data,
                   const MixedFESpace&           space,
@@ -181,24 +211,27 @@ Real peakBaseSpeed(const TargetParams& target);
 
 Real maxPulseSpeed(const TargetParams& target);
 
-Real trueValue(const MixedFESpace&         space,
+Real trueValue(const MixedFESpace&     space,
                const DirichletControl& control,
-               const TargetParams&         target,
-               Index                       step,
-               Index                       i,
-               Real                        dt);
+               const TargetParams&     target,
+               Index                   step,
+               Index                   i,
+               Real                    dt,
+               bool                    pre_observation_initial = false);
 
-Vector<Real> makeTrueParams(const MixedFESpace&         space,
+Vector<Real> makeTrueParams(const MixedFESpace&     space,
                             const DirichletControl& control,
-                            const TargetParams&         target,
-                            Index                       steps,
-                            Real                        dt);
+                            const TargetParams&     target,
+                            Index                   steps,
+                            Real                    dt,
+                            bool pre_observation_initial = false);
 
 Vector<Real> initialControlParams(const MixedFESpace&     space,
                                   const DirichletControl& control,
                                   const BCsParams&        bc,
                                   Index                   steps,
-                                  Real                    dt);
+                                  Real                    dt,
+                                  bool pre_observation_initial = false);
 
 Vector<Real> initialInverseParams(const MixedFESpace&           space,
                                   const DirichletControl&       control,
@@ -207,25 +240,61 @@ Vector<Real> initialInverseParams(const MixedFESpace&           space,
                                   Index                         steps,
                                   Real                          dt);
 
-void initialStateFromParams(const Vector<Index>&              velocity_dofs,
-                            const InverseParameterLayout&     layout,
-                            Index                             num_states,
-                            const Vector<Real>&               prm,
-                            Vector<Real>&                     out);
+TargetParams constantPoiseuilleSeedTarget(const MixedFESpace&     space,
+                                          const DirichletControl& control,
+                                          const Params&           prm);
+
+Vector<Real> constantPoiseuilleSeedParams(const MixedFESpace&     space,
+                                          const DirichletControl& control,
+                                          const Params&           prm,
+                                          Index                   steps,
+                                          Real                    dt);
+
+void seedControlParams(const InverseParameterLayout& layout,
+                       const Vector<Real>&           control_prm,
+                       Vector<Real>&                 prm);
+
+void seedInitialVelocityParamsFromState(
+    const Vector<Index>&          velocity_dofs,
+    const InverseParameterLayout& layout,
+    const InitialVelocityParams&  initial_velocity,
+    const Vector<Real>&           state,
+    Vector<Real>&                 prm);
+
+void seedInitialVelocityFromConstantPoiseuille(
+    const MixedFESpace&              space,
+    const DirichletControl&          control,
+    const Params&                    prm,
+    const InverseParameterLayout&    layout,
+    const Vector<Index>&             velocity_dofs,
+    eq::TimeMatrixLinearStateSolver& state_solver,
+    Vector<Real>&                    prm_init);
+
+void initialStateFromParams(const Vector<Index>&          velocity_dofs,
+                            const InverseParameterLayout& layout,
+                            Index                         num_states,
+                            const Vector<Real>&           prm,
+                            Vector<Real>&                 out);
+
+void initialStateFromParams(const Vector<Index>&          velocity_dofs,
+                            const InverseParameterLayout& layout,
+                            const Vector<Real>&           base_state,
+                            const Vector<Real>&           prm,
+                            Vector<Real>&                 out);
 
 void applyInitialVelocityParamJacT(
-    const Vector<Index>&              velocity_dofs,
-    const InverseParameterLayout&     layout,
-    const Vector<Real>&               state_grad,
-    Vector<Real>&                     out);
+    const Vector<Index>&          velocity_dofs,
+    const InverseParameterLayout& layout,
+    const Vector<Real>&           state_grad,
+    Vector<Real>&                 out);
 
-void controlBounds(const MixedFESpace&         space,
+void controlBounds(const MixedFESpace&     space,
                    const DirichletControl& control,
-                   const TargetParams&         target,
-                   const BoundsParams&         bounds,
-                   Index                       steps,
-                   Vector<Real>&               lower,
-                   Vector<Real>&               upper);
+                   const TargetParams&     target,
+                   const BoundsParams&     bounds,
+                   Index                   steps,
+                   Vector<Real>&           lower,
+                   Vector<Real>&           upper);
 
 void controlBounds(const MixedFESpace&     space,
                    const DirichletControl& control,
@@ -243,17 +312,17 @@ void inverseBounds(const MixedFESpace&           space,
                    Vector<Real>&                 upper);
 
 Real blockRmse(const DirichletControl& control,
-               const Vector<Real>&         prm,
-               const Vector<Real>&         target,
-               Index                       step);
+               const Vector<Real>&     prm,
+               const Vector<Real>&     target,
+               Index                   step);
 
-Index centerControlIndex(const MixedFESpace&         space,
+Index centerControlIndex(const MixedFESpace&     space,
                          const DirichletControl& control,
-                         const TargetParams&         target);
+                         const TargetParams&     target);
 
 void writeViz(const Mesh&                    mesh,
               const MixedFESpace&            space,
-              const DirichletControl&    control,
+              const DirichletControl&        control,
               const eq::TimeStateTrajectory& target_tr,
               const eq::TimeStateTrajectory& opt_tr,
               const Vector<Real>&            true_prm,
@@ -265,6 +334,7 @@ void writeForwardViz(const Mesh&                    mesh,
                      const MixedFESpace&            space,
                      const eq::TimeStateTrajectory& tr,
                      Real                           dt,
-                     const VizOptions&              opts);
+                     const VizOptions&              opts,
+                     Real                           time_offset = 0.0);
 
 } // namespace femx::navier_var

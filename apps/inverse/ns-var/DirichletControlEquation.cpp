@@ -19,8 +19,8 @@ namespace
 {
 
 void replaceSparseRow(SparseSystemMatrix& mat,
-                      Index                       row,
-                      Real                        diag)
+                      Index               row,
+                      Real                diag)
 {
   SparseMatrix& sparse = mat.matrix();
   if (row < 0 || row >= sparse.rows())
@@ -55,13 +55,15 @@ void replaceSparseRow(SparseSystemMatrix& mat,
 
 DirichletControlEquation::DirichletControlEquation(
     const TimeMatrixResidualEquation& base_eq,
-    DirichletControl                      control,
-    Vector<Index>                         fixed_dofs,
-    Index                                 control_param_offset,
-    Index                                 num_params)
+    DirichletControl                  control,
+    Vector<Index>                     fixed_dofs,
+    Index                             control_param_offset,
+    Index                             num_params,
+    Vector<Real>                      fixed_values)
   : base_eq_(base_eq),
     ctr_(std::move(control)),
     fixed_dofs_(std::move(fixed_dofs)),
+    fixed_values_(std::move(fixed_values)),
     base_prm_(base_eq.numParams()),
     control_param_offset_(control_param_offset),
     num_params_(num_params < 0
@@ -88,6 +90,16 @@ DirichletControlEquation::DirichletControlEquation(
   {
     throw std::runtime_error(
         "DirichletControlEquation parameter count is too small");
+  }
+  if (fixed_values_.empty())
+  {
+    fixed_values_.resize(fixed_dofs_.size());
+  }
+  else if (fixed_values_.size() != fixed_dofs_.size()
+           && fixed_values_.size() != numSteps() * fixed_dofs_.size())
+  {
+    throw std::runtime_error(
+        "DirichletControlEquation fixed value size mismatch");
   }
   for (Index dof : ctr_.stateDofs())
   {
@@ -151,18 +163,19 @@ void DirichletControlEquation::res(
     const Index col = controlParamIndex(step, i);
     out[row]        = x_next[row] - prm[col];
   }
-  for (Index row : fixed_dofs_)
+  for (Index i = 0; i < fixed_dofs_.size(); ++i)
   {
-    out[row] = x_next[row];
+    const Index row = fixed_dofs_[i];
+    out[row]        = x_next[row] - fixedValue(step, i);
   }
 }
 
 void DirichletControlEquation::assembleNextStateJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
   base_eq_.assembleNextStateJac(step, x_next, x, base_prm_, out);
@@ -170,11 +183,11 @@ void DirichletControlEquation::assembleNextStateJac(
 }
 
 void DirichletControlEquation::assemblePrevStateJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
   base_eq_.assemblePrevStateJac(step, x_next, x, base_prm_, out);
@@ -182,11 +195,11 @@ void DirichletControlEquation::assemblePrevStateJac(
 }
 
 void DirichletControlEquation::assembleParamJac(
-    Index                 step,
-    const Vector<Real>&   x_next,
-    const Vector<Real>&   x,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    Index               step,
+    const Vector<Real>& x_next,
+    const Vector<Real>& x,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkSizes(step, x_next, x, prm);
   out.resize(numRes(), numParams());
@@ -292,7 +305,7 @@ void DirichletControlEquation::checkSizes(
 
 void DirichletControlEquation::replaceStateRows(
     SystemMatrix& out,
-    Real                  diag) const
+    Real          diag) const
 {
   if (out.numRows() != numRes() || out.numCols() != numStates())
   {
@@ -361,6 +374,16 @@ Index DirichletControlEquation::controlParamIndex(Index step,
                                                   Index i) const
 {
   return control_param_offset_ + ctr_.paramIndex(step, i);
+}
+
+Real DirichletControlEquation::fixedValue(Index step,
+                                          Index i) const
+{
+  if (fixed_values_.size() == fixed_dofs_.size())
+  {
+    return fixed_values_[i];
+  }
+  return fixed_values_[step * fixed_dofs_.size() + i];
 }
 
 } // namespace femx

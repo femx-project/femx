@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DirichletControl.hpp"
-
 #include <femx/common/Types.hpp>
 #include <femx/eq/TimeMatrixResidualEquation.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -16,9 +15,10 @@ public:
   DirichletControlEquation(
       const eq::TimeMatrixResidualEquation& base_eq,
       DirichletControl                      control,
-      Vector<Index>                         fixed_dofs = {},
+      Vector<Index>                         fixed_dofs           = {},
       Index                                 control_param_offset = 0,
-      Index                                 num_params = -1);
+      Index                                 num_params           = -1,
+      Vector<Real>                          fixed_values         = {});
 
   Index numSteps() const override;
   Index numStates() const override;
@@ -38,10 +38,10 @@ public:
                             system::SystemMatrix& out) const override;
 
   void assemblePrevStateJac(Index                 step,
-                                const Vector<Real>&   x_next,
-                                const Vector<Real>&   x,
-                                const Vector<Real>&   prm,
-                                system::SystemMatrix& out) const override;
+                            const Vector<Real>&   x_next,
+                            const Vector<Real>&   x,
+                            const Vector<Real>&   prm,
+                            system::SystemMatrix& out) const override;
 
   void assembleParamJac(Index                 step,
                         const Vector<Real>&   x_next,
@@ -77,10 +77,14 @@ private:
   Index controlParamIndex(Index step,
                           Index i) const;
 
+  Real fixedValue(Index step,
+                  Index i) const;
+
 private:
   const eq::TimeMatrixResidualEquation& base_eq_;
   DirichletControl                      ctr_;
   Vector<Index>                         fixed_dofs_;
+  Vector<Real>                          fixed_values_;
   Vector<Real>                          base_prm_;
   Index                                 control_param_offset_{0};
   Index                                 num_params_{0};

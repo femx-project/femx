@@ -53,9 +53,9 @@ public:
     QuadraticReducedFunctional           functional;
     inverse::TaoReducedFunctionalAdapter adapter(functional);
 
-    Vec prm = nullptr;
-    Vec grad   = nullptr;
-    Tao tao    = nullptr;
+    Vec prm  = nullptr;
+    Vec grad = nullptr;
+    Tao tao  = nullptr;
 
     PetscErrorCode ierr  = VecCreateSeq(PETSC_COMM_SELF, 2, &prm);
     status              *= (ierr == 0);

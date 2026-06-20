@@ -42,6 +42,10 @@ public:
   "mesh": {
     "file": "mesh.msh"
   },
+  "output": {
+    "interval": 3,
+    "directory": "output"
+  },
   "bcs": [
     {
       "physical": 4,
@@ -70,6 +74,9 @@ public:
       std::cout << "mesh path was not resolved relative to config\n";
       status = false;
     }
+    status *= prm.output.interval == 3;
+    status *= prm.output.directory
+              == (dir / "output").lexically_normal().string();
     if (prm.bcs.size() != 1 || !prm.bcs[0].velocity)
     {
       std::cout << "velocity boundary was not loaded\n";

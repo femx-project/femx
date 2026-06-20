@@ -70,7 +70,7 @@ under `$HOME/opt/enzyme-llvm18`:
 
 ```shell
 $ cmake --preset petsc-enzyme
-$ cmake --build --preset petsc-enzyme --target make-obs-petsc ns-var-petsc
+$ cmake --build --preset petsc-enzyme --target make-obs ns-var-petsc
 ```
 
 If Enzyme is installed elsewhere, pass either the Enzyme CMake package

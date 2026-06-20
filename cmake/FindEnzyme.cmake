@@ -23,19 +23,23 @@ endif()
 execute_process(
   COMMAND llvm-config --bindir
   OUTPUT_VARIABLE _Enzyme_LLVM_BINDIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET)
+  OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 
 execute_process(
   COMMAND llvm-config --libdir
   OUTPUT_VARIABLE _Enzyme_LLVM_LIBDIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET)
+  OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 
 find_program(
   Enzyme_CLANGXX
-  NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17
-        clang++-16 clang++-15
+  NAMES clang++
+        clang++-21
+        clang++-20
+        clang++-19
+        clang++-18
+        clang++-17
+        clang++-16
+        clang++-15
   HINTS ${_Enzyme_HINTS}
   PATH_SUFFIXES bin)
 
@@ -52,17 +56,11 @@ if(_Enzyme_LLVM_LIBDIR)
   list(APPEND _Enzyme_HINTS "${_Enzyme_LLVM_LIBDIR}")
 endif()
 
-file(GLOB _Enzyme_COMMON_LLVM_DIRS
-     "/usr/lib/llvm-*"
-     "/usr/local/opt/llvm*"
+file(GLOB _Enzyme_COMMON_LLVM_DIRS "/usr/lib/llvm-*" "/usr/local/opt/llvm*"
      "/opt/homebrew/opt/llvm*")
 
 foreach(_dir ${_Enzyme_COMMON_LLVM_DIRS})
-  list(APPEND
-       _Enzyme_HINTS
-       "${_dir}"
-       "${_dir}/bin"
-       "${_dir}/lib")
+  list(APPEND _Enzyme_HINTS "${_dir}" "${_dir}/bin" "${_dir}/lib")
 endforeach()
 
 find_package(
@@ -87,12 +85,8 @@ endif()
 set(_Enzyme_CLANG_PLUGIN_NAMES ClangEnzyme)
 set(_Enzyme_LLVM_PLUGIN_NAMES LLVMEnzyme)
 foreach(_version RANGE 21 10 -1)
-  list(APPEND
-       _Enzyme_CLANG_PLUGIN_NAMES
-       ClangEnzyme-${_version})
-  list(APPEND
-       _Enzyme_LLVM_PLUGIN_NAMES
-       LLVMEnzyme-${_version})
+  list(APPEND _Enzyme_CLANG_PLUGIN_NAMES ClangEnzyme-${_version})
+  list(APPEND _Enzyme_LLVM_PLUGIN_NAMES LLVMEnzyme-${_version})
 endforeach()
 
 find_library(
@@ -100,30 +94,30 @@ find_library(
   NAMES ${_Enzyme_CLANG_PLUGIN_NAMES}
   HINTS ${_Enzyme_HINTS}
   PATH_SUFFIXES
-  lib
-  lib64
-  build
-  build/Enzyme
-  build/enzyme
-  enzyme/build
-  Enzyme/enzyme/build
-  LLVMEnzyme
-  ClangEnzyme)
+    lib
+    lib64
+    build
+    build/Enzyme
+    build/enzyme
+    enzyme/build
+    Enzyme/enzyme/build
+    LLVMEnzyme
+    ClangEnzyme)
 
 find_library(
   Enzyme_LLVM_PLUGIN
   NAMES ${_Enzyme_LLVM_PLUGIN_NAMES}
   HINTS ${_Enzyme_HINTS}
   PATH_SUFFIXES
-  lib
-  lib64
-  build
-  build/Enzyme
-  build/enzyme
-  enzyme/build
-  Enzyme/enzyme/build
-  LLVMEnzyme
-  ClangEnzyme)
+    lib
+    lib64
+    build
+    build/Enzyme
+    build/enzyme
+    enzyme/build
+    Enzyme/enzyme/build
+    LLVMEnzyme
+    ClangEnzyme)
 
 set(_Enzyme_INVALID_PLUGIN_MESSAGE "")
 foreach(_plugin_var Enzyme_CLANG_PLUGIN Enzyme_LLVM_PLUGIN)
@@ -131,8 +125,7 @@ foreach(_plugin_var Enzyme_CLANG_PLUGIN Enzyme_LLVM_PLUGIN)
      AND ${_plugin_var}
      AND NOT ${_plugin_var} MATCHES "-NOTFOUND$"
      AND NOT EXISTS "${${_plugin_var}}")
-    string(APPEND
-           _Enzyme_INVALID_PLUGIN_MESSAGE
+    string(APPEND _Enzyme_INVALID_PLUGIN_MESSAGE
            "${_plugin_var}='${${_plugin_var}}' does not exist.\n")
     set(${_plugin_var}
         "${_plugin_var}-NOTFOUND"
@@ -151,16 +144,16 @@ endif()
 if(Enzyme_LLVM_PLUGIN AND NOT TARGET LLDEnzymeFlags)
   add_library(LLDEnzymeFlags INTERFACE IMPORTED)
   set_property(
-    TARGET LLDEnzymeFlags
-    PROPERTY INTERFACE_COMPILE_OPTIONS
-             "-fpass-plugin=${Enzyme_LLVM_PLUGIN}")
+    TARGET LLDEnzymeFlags PROPERTY INTERFACE_COMPILE_OPTIONS
+                                   "-fpass-plugin=${Enzyme_LLVM_PLUGIN}")
 endif()
 
 if(_Enzyme_LLVM_BINDIR)
   get_filename_component(_Enzyme_LLVM_ROOT "${_Enzyme_LLVM_BINDIR}" DIRECTORY)
   set(Enzyme_LLVM_BINARY_DIR "${_Enzyme_LLVM_ROOT}")
 elseif(Enzyme_CLANGXX)
-  get_filename_component(_Enzyme_CLANGXX_ROOT "${_Enzyme_CLANGXX_BINDIR}" DIRECTORY)
+  get_filename_component(_Enzyme_CLANGXX_ROOT "${_Enzyme_CLANGXX_BINDIR}"
+                         DIRECTORY)
   set(Enzyme_LLVM_BINARY_DIR "${_Enzyme_CLANGXX_ROOT}")
 endif()
 
@@ -171,7 +164,8 @@ elseif(Enzyme_LLVM_PLUGIN)
 endif()
 
 include(FindPackageHandleStandardArgs)
-set(_Enzyme_FAILURE_MESSAGE [=[
+set(_Enzyme_FAILURE_MESSAGE
+    [=[
 Set Enzyme_DIR to a directory containing EnzymeConfig.cmake, set
 Enzyme_ROOT/ENZYME_ROOT to an Enzyme install or build prefix, or set
 Enzyme_CLANG_PLUGIN/Enzyme_LLVM_PLUGIN to the plugin shared library.
@@ -182,8 +176,7 @@ endif()
 find_package_handle_standard_args(
   Enzyme
   REQUIRED_VARS Enzyme_PLUGIN
-  HANDLE_COMPONENTS
-  REASON_FAILURE_MESSAGE "${_Enzyme_FAILURE_MESSAGE}")
+  HANDLE_COMPONENTS REASON_FAILURE_MESSAGE "${_Enzyme_FAILURE_MESSAGE}")
 
 mark_as_advanced(Enzyme_CLANGXX Enzyme_CLANG_PLUGIN Enzyme_LLVM_PLUGIN
                  Enzyme_PLUGIN Enzyme_DIR)

@@ -67,9 +67,9 @@ void ElementResidualEquation::res(const Vector<Real>& state,
 }
 
 void ElementResidualEquation::assembleStateJac(
-    const Vector<Real>&   state,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    const Vector<Real>& state,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkGlobalSizes(state, prm);
 
@@ -89,9 +89,9 @@ void ElementResidualEquation::assembleStateJac(
 }
 
 void ElementResidualEquation::assembleParamJac(
-    const Vector<Real>&   state,
-    const Vector<Real>&   prm,
-    SystemMatrix& out) const
+    const Vector<Real>& state,
+    const Vector<Real>& prm,
+    SystemMatrix&       out) const
 {
   checkGlobalSizes(state, prm);
 

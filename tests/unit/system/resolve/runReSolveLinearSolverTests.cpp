@@ -348,9 +348,9 @@ private:
     TestStatus status;
     status = true;
 
-    constexpr Index n = 128;
-    auto            pattern = makeDensePattern(n);
-    system::SparseSystemMatrix mat(pattern);
+    constexpr Index             n       = 128;
+    auto                        pattern = makeDensePattern(n);
+    system::SparseSystemMatrix  mat(pattern);
     system::ReSolveLinearSolver solver(work, iterativeOptions());
 
     for (Index rep = 0; rep < 4; ++rep)

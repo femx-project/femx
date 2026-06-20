@@ -3,11 +3,8 @@ add_library(femx::assembly ALIAS femx_assembly)
 
 target_sources(
   femx_assembly
-  PRIVATE BoundaryDofLayout.cpp
-          BoundaryResidualEquation.cpp
-          DofLayout.cpp
-          ElementResidualEquation.cpp
-          SparsityPatternBuilder.cpp
+  PRIVATE BoundaryDofLayout.cpp BoundaryResidualEquation.cpp DofLayout.cpp
+          ElementResidualEquation.cpp SparsityPatternBuilder.cpp
           SystemAssembler.cpp
   PUBLIC BoundaryDofLayout.hpp
          BoundaryElementKernel.hpp

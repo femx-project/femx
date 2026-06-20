@@ -125,22 +125,21 @@ struct ObservationParams
     bool                 use_spacing = false;
   };
 
-  std::string                       type = "grid";
-  std::string                       file;
-  std::vector<std::array<Real, 3>>  points;
-  std::optional<Grid>               grid;
-  std::vector<Index>                components;
+  std::string         type = "grid";
+  std::string         file;
+  std::optional<Grid> grid;
+  std::vector<Index>  components;
 };
 
 struct InverseParams
 {
-  BoundarySelector     control{0, "inlet"};
-  Real                 alpha = 1.0;
-  RegularizationParams reg;
-  OptimizerParams      opt;
-  BoundsParams         bounds;
+  BoundarySelector      control{0, "inlet"};
+  Real                  alpha = 1.0;
+  RegularizationParams  reg;
+  OptimizerParams       opt;
+  BoundsParams          bounds;
   InitialVelocityParams initial_velocity;
-  ObservationParams    obs;
+  ObservationParams     obs;
 };
 
 struct Params

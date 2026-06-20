@@ -52,7 +52,7 @@ Index SumTimeObjectiveFunctional::numParams() const
 }
 
 Real SumTimeObjectiveFunctional::value(const TimeStateTrajectory& tr,
-                                       const Vector<Real>&            prm) const
+                                       const Vector<Real>&        prm) const
 {
   Real value_out = 0.0;
   for (const TimeObjectiveFunctional* term : terms_)
@@ -63,10 +63,10 @@ Real SumTimeObjectiveFunctional::value(const TimeStateTrajectory& tr,
 }
 
 void SumTimeObjectiveFunctional::stateGrad(
-    Index                          level,
+    Index                      level,
     const TimeStateTrajectory& tr,
-    const Vector<Real>&            prm,
-    Vector<Real>&                  out) const
+    const Vector<Real>&        prm,
+    Vector<Real>&              out) const
 {
   resize(out, numStates());
   Vector<Real> term_grad;
@@ -78,8 +78,8 @@ void SumTimeObjectiveFunctional::stateGrad(
 }
 
 void SumTimeObjectiveFunctional::paramGrad(const TimeStateTrajectory& tr,
-                                           const Vector<Real>&            prm,
-                                           Vector<Real>&                  out) const
+                                           const Vector<Real>&        prm,
+                                           Vector<Real>&              out) const
 {
   resize(out, numParams());
   Vector<Real> term_grad;

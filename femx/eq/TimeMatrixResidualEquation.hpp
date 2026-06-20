@@ -22,10 +22,10 @@ public:
                                     system::SystemMatrix& out) const = 0;
 
   virtual void assemblePrevStateJac(Index                 step,
-                                        const Vector<Real>&   x_next,
-                                        const Vector<Real>&   x,
-                                        const Vector<Real>&   prm,
-                                        system::SystemMatrix& out) const = 0;
+                                    const Vector<Real>&   x_next,
+                                    const Vector<Real>&   x,
+                                    const Vector<Real>&   prm,
+                                    system::SystemMatrix& out) const = 0;
 
   virtual void assembleParamJac(Index                 step,
                                 const Vector<Real>&   x_next,

@@ -10,10 +10,10 @@ namespace inverse
 {
 
 AdjointReducedFunctional::AdjointReducedFunctional(
-    StateSolver&            state_solver,
-    AdjointSolver&              adj_solver,
-    const ResidualEquation& eq,
-    const ObjectiveFunctional&  obj)
+    StateSolver&               state_solver,
+    AdjointSolver&             adj_solver,
+    const ResidualEquation&    eq,
+    const ObjectiveFunctional& obj)
   : state_solver_(state_solver),
     adj_solver_(adj_solver),
     eq_(eq),

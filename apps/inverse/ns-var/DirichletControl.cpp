@@ -14,7 +14,7 @@ namespace
 
 template <typename Match>
 DirichletControl buildVelocityControl(const MixedFESpace& space,
-                                          Match               match)
+                                      Match               match)
 {
   const auto      u_dof = space.field(0);
   std::set<Index> dof_set;

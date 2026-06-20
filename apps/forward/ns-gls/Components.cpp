@@ -29,9 +29,9 @@ void assembleMassLHS(const ElementValues& ev,
                      DenseMatrix&         Ke)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
-  const Real  coeff  = fluid.rho / dt;
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
+  const Real  coeff     = fluid.rho / dt;
 
   for (Index iq = 0; iq < nq; ++iq)
   {
@@ -60,8 +60,8 @@ void assembleMassRHS(const ElementValues&        ev,
                      Vector<Real>&               Fe)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < nq; ++iq, ++qp_it)
@@ -86,8 +86,8 @@ void assembleAdvectionLHS(const ElementValues&        ev,
                           DenseMatrix&                Ke)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < nq; ++iq, ++qp_it)
@@ -124,8 +124,8 @@ void assembleAdvectionRHS(const ElementValues&        ev,
                           Vector<Real>&               Fe)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < nq; ++iq, ++qp_it)
@@ -149,8 +149,8 @@ void assembleDiffusionLHS(const ElementValues& ev,
                           DenseMatrix&         Ke)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
 
   for (Index iq = 0; iq < nq; ++iq)
   {
@@ -183,8 +183,8 @@ void assembleDiffusionRHS(const ElementValues&        ev,
                           Vector<Real>&               Fe)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
-  const Index nq     = ev.numQuadraturePoints();
+  const Index nd        = ev.dim();
+  const Index nq        = ev.numQuadraturePoints();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < nq; ++iq, ++qp_it)
@@ -212,7 +212,7 @@ void assemblePreVelCouplingLHS(const ElementValues& ev,
                                DenseMatrix&         Ke)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
+  const Index nd        = ev.dim();
 
   for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
   {
@@ -244,7 +244,7 @@ void assembleStabilizationLHS(const ElementValues&        ev,
                               DenseMatrix&                Ke)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
+  const Index nd        = ev.dim();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq, ++qp_it)
@@ -293,7 +293,7 @@ void assembleStabilizationRHS(const ElementValues&        ev,
                               Vector<Real>&               Fe)
 {
   const Index num_shape = ev.numDofs();
-  const Index nd     = ev.dim();
+  const Index nd        = ev.dim();
 
   auto qp_it = qps.begin();
   for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq, ++qp_it)
