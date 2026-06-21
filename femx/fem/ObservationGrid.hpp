@@ -3,8 +3,8 @@
 #include <array>
 #include <vector>
 
-#include <femx/core/Math.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Types.hpp>
 
 namespace femx
 {

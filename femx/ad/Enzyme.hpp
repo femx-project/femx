@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 
 #if defined(FEMX_HAS_ENZYME)
 

@@ -4,7 +4,7 @@ add_library(make_obs_config Config.cpp ObservationVti.cpp
 target_sources(make_obs_config PUBLIC Config.hpp ObservationVti.hpp
                                       TrajectoryObservation.hpp)
 
-target_link_libraries(make_obs_config PUBLIC navier_var_kernels femx::femx)
+target_link_libraries(make_obs_config PUBLIC ns_var_new_kernels femx::femx)
 
 target_include_directories(
   make_obs_config
@@ -12,7 +12,7 @@ target_include_directories(
   PRIVATE ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
 
 function(configure_make_obs_app target)
-  target_link_libraries(${target} PRIVATE make_obs_config navier_var_kernels
+  target_link_libraries(${target} PRIVATE make_obs_config ns_var_new_kernels
                                           femx::femx)
   target_compile_definitions(${target}
                              PRIVATE FEMX_MAKE_OBS_APP_NAME="${target}")

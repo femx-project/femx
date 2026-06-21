@@ -1,0 +1,118 @@
+{
+  "mesh":
+  {
+    "file": "../../../../meshdata/2D/straighttube.msh"
+  },
+  "time":
+  {
+    "dt": 0.01,
+    "end_time": 1.0
+  },
+  "fluid":
+  {
+    "rho": 1.0,
+    "mu": 4.0e-7
+  },
+  "solver":
+  {
+    "backend": "cpu"
+  },
+  "controls":
+  {
+    "boundary":
+    {
+      "name": "inlet",
+      "bounds":
+      {
+        "min": 0.0,
+        "max": 1.0,
+        "normal": [1.0, 0.0, 0.0]
+      }
+    },
+    "initial_velocity":
+    {
+      "enabled": true,
+      "bounds":
+      {
+        "min": 0.0,
+        "max": 1.0
+      }
+    }
+  },
+  "initial_guess":
+  {
+    "time":
+    {
+      "dt": 0.01,
+      "end_time": 1.0
+    },
+    "bcs":
+    [
+      {
+        "name": "inlet",
+        "tag": 4,
+        "type": "dirichlet",
+        "velocity":
+        {
+          "time":
+          {
+            "type": "uniform",
+            "value": 0.0162
+          },
+          "space":
+          {
+            "type": "poiseuille",
+            "radius": 0.002,
+            "center": [0.0, 0.0, 0.0],
+            "normal": [1.0, 0.0, 0.0]
+          }
+        }
+      },
+      {
+        "name": "outlet",
+        "tag": 5,
+        "type": "dirichlet",
+        "p": 0.0
+      },
+      {
+        "name": "wall",
+        "tag": 6,
+        "type": "dirichlet",
+        "ux": 0.0,
+        "uy": 0.0
+      }
+    ]
+  },
+  "objective":
+  {
+    "alpha": 1.0,
+    "reg":
+    {
+      "beta1": 1.0e-9,
+      "beta2": 1.0e-11,
+      "beta3": 1.0e-3,
+      "beta4": 1.0e-11
+    }
+  },
+  "optimizer":
+  {
+    "type": "lmvm",
+    "max_iterations": 20,
+    "abs_tol": 5.0e-6,
+    "rel_tol": 1.0e-8,
+    "step_tol": 0.0,
+    "scale":
+    {
+      "initial_velocity": 10.0,
+      "boundary": 1.0
+    }
+  },
+  "output":
+  {
+    "basename": "apps/inverse/ns-var/inputs/straight-tube/output/ns-var-mpi4-scale10-opt20"
+  },
+  "obs":
+  {
+    "file": "../../../make-obs/inputs/straight-tube/output/straight-tube-obs.txt"
+  }
+}

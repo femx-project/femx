@@ -14,7 +14,7 @@
 
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/io/VtiWriter.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx::make_obs
 {
@@ -111,7 +111,7 @@ Index checkedGridPointCount(const std::array<Index, 3>& counts)
 }
 
 std::vector<Point3> gridObsPoints(
-    const navier_var::ObservationParams::Grid& grid)
+    const navier_var_new::ObservationParams::Grid& grid)
 {
   if (grid.use_spacing)
   {
@@ -137,7 +137,7 @@ bool samePoint(const Point3& a,
   return true;
 }
 
-VtiWriter::Image makeImage(const std::vector<Point3>& points,
+VtiWriter::Image makeImage(const std::vector<Point3>&  points,
                            const std::array<Index, 3>& counts)
 {
   const Index expected_points = checkedGridPointCount(counts);
@@ -211,7 +211,7 @@ VtiFields observationCellFields(const TimeObservationData& data,
 
   const Index num_grid_points =
       static_cast<Index>(grid_points.size());
-  VtiFields   fields{Vector<Real>(num_grid_points * 3),
+  VtiFields fields{Vector<Real>(num_grid_points * 3),
                    Vector<Real>(num_grid_points)};
   fields.velocity.setZero();
   fields.mask.setZero();

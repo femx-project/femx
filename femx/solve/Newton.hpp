@@ -1,8 +1,8 @@
 #pragma once
 
-#include <femx/algebra/LinearSolver.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/Residual.hpp>
 
 namespace femx
@@ -23,7 +23,7 @@ class Newton final
 public:
   Newton(const problem::Residual& problem,
          problem::Linearization&  linearization,
-         algebra::LinearSolver&   linear_solver);
+         linalg::LinearSolver&    linear_solver);
 
   NewtonOptions& options();
 
@@ -55,7 +55,7 @@ private:
 private:
   const problem::Residual& problem_;
   problem::Linearization&  linearization_;
-  algebra::LinearSolver&   linear_solver_;
+  linalg::LinearSolver&    linear_solver_;
   problem::Dimensions      dims_;
   NewtonOptions            options_;
   Vector<Real>             init_state_;

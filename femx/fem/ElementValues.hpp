@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include <femx/core/Types.hpp>
-#include <femx/algebra/MatrixView.hpp>
-#include <femx/algebra/VectorView.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/MatrixView.hpp>
+#include <femx/linalg/VectorView.hpp>
 
 namespace femx
 {

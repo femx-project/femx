@@ -2,13 +2,13 @@
 
 #include <iostream>
 
+#include <femx/linalg/SystemMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/LeastSquaresObjective.hpp>
 #include <femx/problem/MatrixResidual.hpp>
 #include <femx/problem/ObservationOperator.hpp>
 #include <femx/problem/QuadraticParameterRegularization.hpp>
 #include <femx/problem/SumObjective.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/algebra/SystemMatrix.hpp>
 
 namespace femx
 {
@@ -58,7 +58,7 @@ public:
 
   void assembleStateJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        algebra::SystemMatrix& out) const override
+                        linalg::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;
@@ -72,7 +72,7 @@ public:
 
   void assembleParamJac(const Vector<Real>&   state,
                         const Vector<Real>&   prm,
-                        algebra::SystemMatrix& out) const override
+                        linalg::SystemMatrix& out) const override
   {
     (void) state;
     (void) prm;

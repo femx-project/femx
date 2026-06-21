@@ -15,7 +15,7 @@ target_sources(
           Mesh.cpp
           MixedFESpace.cpp
           ObservationGrid.cpp
-          TimePointSampler.cpp
+          TimePointInterpolator.cpp
           VelocityProfile.cpp
   PUBLIC BoundaryCondition.hpp
          BoundaryElementValues.hpp
@@ -33,11 +33,11 @@ target_sources(
          ObservationGrid.hpp
          Quadrature.hpp
          ReferenceElement.hpp
-         TimePointSampler.hpp
+         TimePointInterpolator.hpp
          VelocityProfile.hpp
          elements/LagrangeQuadQ1.hpp
          elements/LagrangeTetrahedronP1.hpp
          elements/LagrangeTriangleP1.hpp)
 
-target_link_libraries(femx_fem PUBLIC femx_config femx_core femx_algebra
+target_link_libraries(femx_fem PUBLIC femx_config femx_common femx_linalg
                                       femx_problem)

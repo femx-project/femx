@@ -1,50 +1,64 @@
 {
-  "mesh": {
+  "mesh":
+  {
     "file": "../../../../meshdata/2D/straighttube.msh"
   },
-  "time": {
-    "steps": 200,
-    "dt": 0.01
+  "time":
+  {
+    "dt": 0.01,
+    "end_time": 2.0
   },
-  "fluid": {
+  "fluid":
+  {
     "rho": 1.0,
     "mu": 4.0e-7
   },
-  "bcs": [
+  "solver":
+  {
+    "backend": "cuda"
+  },
+  "bcs":
+  [
     {
-      "physical": 4,
+      "name": "inlet",
+      "tag": 4,
       "type": "dirichlet",
-      "velocity": {
-        "time": [0.0, 0.25, 0.5, 0.75, 1.0],
-        "value": [0.01, 0.0135, 0.01, 0.0065, 0.01],
-        "period": 1.0,
-        "quantity": "mean_velocity",
-        "normal": [1.0, 0.0, 0.0],
-        "interpolate": "cubic",
-        "profile": {
+      "velocity":
+      {
+        "time":
+        {
+          "type": "sine",
+          "value": 0.0162,
+          "amplitude": 0.35,
+          "period": 1.0,
+          "quantity": "mean_velocity"
+        },
+        "space":
+        {
           "type": "poiseuille",
           "radius": 0.002,
-          "center": [0.0, 0.0, 0.0]
+          "center": [0.0, 0.0, 0.0],
+          "normal": [1.0, 0.0, 0.0]
         }
       }
     },
     {
-      "physical": 5,
+      "name": "outlet",
+      "tag": 5,
       "type": "dirichlet",
       "p": 0.0
     },
     {
-      "physical": 6,
+      "name": "wall",
+      "tag": 6,
       "type": "dirichlet",
       "ux": 0.0,
       "uy": 0.0
     }
   ],
-  "output": {
+  "output":
+  {
     "interval": 1,
     "directory": "output"
-  },
-  "solver": {
-    "backend": "cuda"
   }
 }

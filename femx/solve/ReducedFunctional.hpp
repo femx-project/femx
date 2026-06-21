@@ -1,8 +1,8 @@
 #pragma once
 
-#include <femx/algebra/LinearSolver.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/Objective.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/solve/Newton.hpp>
@@ -19,7 +19,7 @@ public:
   ReducedFunctional(const problem::Residual&  problem,
                     const problem::Objective& objective,
                     Newton&                   state_solver,
-                    algebra::LinearSolver&    adjoint_linear_solver);
+                    linalg::LinearSolver&     adjoint_linear_solver);
 
   Index numParams() const;
 
@@ -42,7 +42,7 @@ private:
   const problem::Residual&  problem_;
   const problem::Objective& objective_;
   Newton&                   state_solver_;
-  algebra::LinearSolver&    adjoint_linear_solver_;
+  linalg::LinearSolver&     adjoint_linear_solver_;
   problem::Dimensions       dims_;
 };
 

@@ -11,8 +11,9 @@
 #include <string>
 #include <vector>
 
-#include <femx/core/Types.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <NavierConfig.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 #ifndef FEMX_NAVIERSTOKES_OUTPUT_DIR
 #define FEMX_NAVIERSTOKES_OUTPUT_DIR "."
@@ -21,16 +22,12 @@
 namespace femx
 {
 
+using navier::FluidParams;
+
 struct TimeParams
 {
   Index steps = 100;
   Real  dt    = 0.01;
-};
-
-struct FluidParams
-{
-  Real rho = 1.0;
-  Real mu  = 0.01;
 };
 
 struct SolverParams

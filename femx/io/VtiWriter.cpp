@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <femx/io/VtiWriter.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -119,9 +119,9 @@ std::string base64Encode(const unsigned char* data,
   out.reserve(((size + 2) / 3) * 4);
   for (std::size_t i = 0; i < size; i += 3)
   {
-    const unsigned int b0 = data[i];
-    const unsigned int b1 = (i + 1 < size) ? data[i + 1] : 0;
-    const unsigned int b2 = (i + 2 < size) ? data[i + 2] : 0;
+    const unsigned int b0    = data[i];
+    const unsigned int b1    = (i + 1 < size) ? data[i + 1] : 0;
+    const unsigned int b2    = (i + 2 < size) ? data[i + 2] : 0;
     const unsigned int value = (b0 << 16) | (b1 << 8) | b2;
 
     out.push_back(table[(value >> 18) & 0x3f]);
@@ -134,7 +134,7 @@ std::string base64Encode(const unsigned char* data,
 
 std::string fieldBinaryBase64(const VtiWriter::CellField& field)
 {
-  const std::uint64_t bytes = fieldBytes(field);
+  const std::uint64_t        bytes = fieldBytes(field);
   std::vector<unsigned char> buffer(sizeof(bytes) + bytes);
   std::memcpy(buffer.data(), &bytes, sizeof(bytes));
   std::memcpy(buffer.data() + sizeof(bytes),

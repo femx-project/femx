@@ -13,7 +13,7 @@ namespace femx::make_obs
 namespace
 {
 
-using namespace femx::navier_var;
+using namespace femx::navier_var_new;
 
 template <typename T>
 void assign(const nlohmann::json& node,
@@ -492,10 +492,10 @@ BCsParams parseBc(const nlohmann::json& node)
   if (node.contains("velocity") || node.contains("time")
       || node.contains("space"))
   {
-    cond.velocity = parseVelocity(node);
+    cond.vel = parseVelocity(node);
   }
 
-  if (!cond.ux && !cond.uy && !cond.uz && !cond.p && !cond.velocity)
+  if (!cond.ux && !cond.uy && !cond.uz && !cond.p && !cond.vel)
   {
     throw std::runtime_error(
         "Forward boundary condition needs at least one of ux, uy, uz, p, or velocity");
@@ -533,17 +533,17 @@ void parseFluid(const nlohmann::json& node,
   }
   if (node.contains("reynolds"))
   {
-    fluid.reynolds = node.at("reynolds").get<Real>();
+    fluid.Re = node.at("reynolds").get<Real>();
   }
   else if (node.contains("reynolds_number"))
   {
-    fluid.reynolds = node.at("reynolds_number").get<Real>();
+    fluid.Re = node.at("reynolds_number").get<Real>();
   }
 }
 
-void parseOutputViz(const nlohmann::json&        node,
-                    const std::filesystem::path& config_dir,
-                    navier_var::OutputParams&    output)
+void parseOutputViz(const nlohmann::json&         node,
+                    const std::filesystem::path&  config_dir,
+                    navier_var_new::OutputParams& output)
 {
   if (!node.is_object())
   {
@@ -826,8 +826,8 @@ void makeCaseOutputUnique(ObservationCase& item)
   if (item.output.write_reference
       || !item.output.reference_basename.empty())
   {
-    item.output.write_reference     = true;
-    item.output.reference_basename  = {};
+    item.output.write_reference    = true;
+    item.output.reference_basename = {};
   }
 }
 
@@ -898,7 +898,7 @@ ObservationCase parseObservationCase(
 
 void parseObservationCases(const nlohmann::json&        node,
                            const std::filesystem::path& config_dir,
-                           Params&                       prm)
+                           Params&                      prm)
 {
   if (node.is_object())
   {
@@ -924,7 +924,7 @@ void parseObservationCases(const nlohmann::json&        node,
 
 void parseTopLevelObservationCases(const nlohmann::json&        root,
                                    const std::filesystem::path& config_dir,
-                                   Params&                       prm)
+                                   Params&                      prm)
 {
   for (auto it = root.begin(); it != root.end(); ++it)
   {
@@ -938,7 +938,7 @@ void parseTopLevelObservationCases(const nlohmann::json&        root,
 
 void parseMakeObs(const nlohmann::json&        node,
                   const std::filesystem::path& config_dir,
-                  Params&                       prm)
+                  Params&                      prm)
 {
   if (!node.is_object())
   {
@@ -1062,11 +1062,11 @@ void validateForward(const ForwardParams& forward)
   {
     throw std::runtime_error("Fluid mu must be positive");
   }
-  if (forward.fluid.reynolds && *forward.fluid.reynolds <= 0.0)
+  if (forward.fluid.Re && *forward.fluid.Re <= 0.0)
   {
     throw std::runtime_error("Fluid reynolds must be positive");
   }
-  if (!forward.fluid.mu && !forward.fluid.reynolds)
+  if (!forward.fluid.mu && !forward.fluid.Re)
   {
     throw std::runtime_error("Fluid requires either mu or reynolds");
   }
@@ -1088,9 +1088,9 @@ void validateForward(const ForwardParams& forward)
     {
       throw std::runtime_error("Only dirichlet forward.bcs are supported");
     }
-    if (bc.velocity)
+    if (bc.vel)
     {
-      validateTarget(*bc.velocity);
+      validateTarget(*bc.vel);
     }
   }
   if (forward.solver.type != "auto" && forward.solver.type != "resolve"

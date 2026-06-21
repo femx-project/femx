@@ -1,5 +1,0 @@
-target_sources(
-  femx_algebra
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/DenseMatrixOperator.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/DenseVectorBuilder.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/SparseMatrixOperator.hpp)

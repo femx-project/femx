@@ -22,11 +22,11 @@ Real elapsedSeconds(const Clock::time_point& begin)
 } // namespace
 
 TimeReducedFunctional::TimeReducedFunctional(
-    TimeStateSolver& state_solver,
-    const problem::TimeResidual& eq,
-    algebra::MatrixOperator& next_state_jac,
-    algebra::MatrixOperator& prev_state_jac,
-    algebra::LinearSolver& adjoint_solver,
+    TimeStateSolver&              state_solver,
+    const problem::TimeResidual&  eq,
+    linalg::MatrixOperator&       next_state_jac,
+    linalg::MatrixOperator&       prev_state_jac,
+    linalg::LinearSolver&         adjoint_solver,
     const problem::TimeObjective& obj)
   : state_solver_(state_solver),
     eq_(eq),
@@ -101,7 +101,7 @@ Real TimeReducedFunctional::value(const Vector<Real>& prm)
 }
 
 void TimeReducedFunctional::grad(const Vector<Real>& prm,
-                                 Vector<Real>& out)
+                                 Vector<Real>&       out)
 {
   TimeTrajectory tr;
   solveFwd(prm, tr);
@@ -109,7 +109,7 @@ void TimeReducedFunctional::grad(const Vector<Real>& prm,
 }
 
 Real TimeReducedFunctional::valueGrad(const Vector<Real>& prm,
-                                      Vector<Real>& grad_out)
+                                      Vector<Real>&       grad_out)
 {
   TimeTrajectory tr;
   solveFwd(prm, tr);
@@ -134,7 +134,7 @@ void TimeReducedFunctional::checkDims() const
 }
 
 void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
-                                     TimeTrajectory& tr)
+                                     TimeTrajectory&     tr)
 {
   if (prm.size() != numParams())
   {
@@ -154,15 +154,15 @@ void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
 }
 
 void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
-                                   const Vector<Real>& prm,
-                                   Vector<Real>& out)
+                                   const Vector<Real>&   prm,
+                                   Vector<Real>&         out)
 {
   obj_.paramGrad(tr, prm, out);
   checkSize(out,
             numParams(),
             "TimeReducedFunctional parameter gradient size mismatch");
 
-  const Index steps = state_solver_.numSteps();
+  const Index  steps = state_solver_.numSteps();
   Vector<Real> next_adjoint;
   Vector<Real> rhs;
   Vector<Real> carry;
@@ -181,14 +181,14 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
     if (step + 1 < steps)
     {
-      const Vector<Real> carry_prev = tr[step + 1];
-      const Vector<Real> carry_next = tr[step + 2];
+      const Vector<Real>   carry_prev = tr[step + 1];
+      const Vector<Real>   carry_next = tr[step + 2];
       problem::TimeContext carry_ctx;
       carry_ctx.step           = step + 1;
-      carry_ctx.previous_state = &carry_prev;
+      carry_ctx.prev_state = &carry_prev;
       carry_ctx.next_state     = &carry_next;
       carry_ctx.prm            = &prm;
-      assemble(carry_ctx, problem::VariableBlock::PreviousState, prev_state_jac_);
+      assemble(carry_ctx, problem::VariableBlock::PrevState, prev_state_jac_);
       prev_state_jac_.applyT(next_adjoint, carry);
       checkSize(carry,
                 dims_.num_states,
@@ -199,11 +199,11 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
       }
     }
 
-    const Vector<Real> prev_state = tr[step];
-    const Vector<Real> next_state = tr[step + 1];
+    const Vector<Real>   prev_state = tr[step];
+    const Vector<Real>   next_state = tr[step + 1];
     problem::TimeContext ctx;
     ctx.step           = step;
-    ctx.previous_state = &prev_state;
+    ctx.prev_state = &prev_state;
     ctx.next_state     = &next_state;
     ctx.prm            = &prm;
     assemble(ctx, problem::VariableBlock::NextState, next_state_jac_);
@@ -216,8 +216,8 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
               dims_.num_residuals,
               "TimeReducedFunctional adjoint size mismatch");
 
-    eq_.applyJacobianT(
-        ctx, problem::VariableBlock::Parameter, adjoint, param_adj);
+    eq_.applyJacT(
+        ctx, problem::VariableBlock::Param, adjoint, param_adj);
     checkSize(param_adj,
               numParams(),
               "TimeReducedFunctional residual parameter gradient size mismatch");
@@ -237,14 +237,14 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
     if (steps > 0)
     {
-      const Vector<Real> prev_state = tr[0];
-      const Vector<Real> next_state = tr[1];
+      const Vector<Real>   prev_state = tr[0];
+      const Vector<Real>   next_state = tr[1];
       problem::TimeContext ctx;
       ctx.step           = 0;
-      ctx.previous_state = &prev_state;
+      ctx.prev_state = &prev_state;
       ctx.next_state     = &next_state;
       ctx.prm            = &prm;
-      assemble(ctx, problem::VariableBlock::PreviousState, prev_state_jac_);
+      assemble(ctx, problem::VariableBlock::PrevState, prev_state_jac_);
       prev_state_jac_.applyT(next_adjoint, carry);
       checkSize(carry,
                 dims_.num_states,
@@ -267,9 +267,9 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
   notify("adjoint-end", steps, steps);
 }
 
-void TimeReducedFunctional::assemble(problem::TimeContext ctx,
-                                     problem::VariableBlock wrt,
-                                     algebra::MatrixOperator& out)
+void TimeReducedFunctional::assemble(problem::TimeContext    ctx,
+                                     problem::VariableBlock  wrt,
+                                     linalg::MatrixOperator& out)
 {
   const auto assembly_begin = Clock::now();
   if (!eq_.assembleJacobian(ctx, wrt, out))
@@ -283,8 +283,8 @@ void TimeReducedFunctional::assemble(problem::TimeContext ctx,
 }
 
 void TimeReducedFunctional::notify(const char* phase,
-                                   Index step,
-                                   Index total_steps)
+                                   Index       step,
+                                   Index       total_steps)
 {
   if (callback_)
   {
@@ -293,8 +293,8 @@ void TimeReducedFunctional::notify(const char* phase,
 }
 
 void TimeReducedFunctional::checkSize(const Vector<Real>& value,
-                                      Index expected,
-                                      const char* message)
+                                      Index               expected,
+                                      const char*         message)
 {
   if (value.size() != expected)
   {

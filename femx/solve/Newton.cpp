@@ -9,7 +9,7 @@ namespace solve
 
 Newton::Newton(const problem::Residual& problem,
                problem::Linearization&  linearization,
-               algebra::LinearSolver&   linear_solver)
+               linalg::LinearSolver&    linear_solver)
   : problem_(problem),
     linearization_(linearization),
     linear_solver_(linear_solver),

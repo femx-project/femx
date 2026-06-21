@@ -10,9 +10,9 @@ namespace femx
 namespace assembly
 {
 
-FEMResidual::FEMResidual(DofLayout res_layout,
-                         DofLayout state_layout,
-                         DofLayout param_layout,
+FEMResidual::FEMResidual(DofLayout            res_layout,
+                         DofLayout            state_layout,
+                         DofLayout            param_layout,
                          const ElementKernel& kernel)
   : res_layout_(res_layout),
     state_layout_(state_layout),
@@ -22,8 +22,8 @@ FEMResidual::FEMResidual(DofLayout res_layout,
   checkCellCounts();
 }
 
-FEMResidual::FEMResidual(DofLayout state_layout,
-                         DofLayout param_layout,
+FEMResidual::FEMResidual(DofLayout            state_layout,
+                         DofLayout            param_layout,
                          const ElementKernel& kernel)
   : FEMResidual(state_layout, state_layout, param_layout, kernel)
 {
@@ -31,13 +31,12 @@ FEMResidual::FEMResidual(DofLayout state_layout,
 
 problem::Dimensions FEMResidual::dimensions() const
 {
-  return {state_layout_.numDofs(), param_layout_.numDofs(),
-          res_layout_.numDofs()};
+  return {state_layout_.numDofs(), param_layout_.numDofs(), res_layout_.numDofs()};
 }
 
 void FEMResidual::residual(const Vector<Real>& state,
                            const Vector<Real>& prm,
-                           Vector<Real>& out) const
+                           Vector<Real>&       out) const
 {
   checkGlobalSizes(state, prm);
 
@@ -56,8 +55,8 @@ void FEMResidual::residual(const Vector<Real>& state,
   }
 }
 
-void FEMResidual::linearize(const Vector<Real>& state,
-                            const Vector<Real>& prm,
+void FEMResidual::linearize(const Vector<Real>&     state,
+                            const Vector<Real>&     prm,
                             problem::Linearization& out) const
 {
   auto* matrix_out = dynamic_cast<problem::MatrixLinearization*>(&out);
@@ -79,9 +78,9 @@ Index FEMResidual::numCells() const
   return res_layout_.numElems();
 }
 
-void FEMResidual::assembleStateJac(const Vector<Real>& state,
-                                   const Vector<Real>& prm,
-                                   algebra::MatrixBuilder& out) const
+void FEMResidual::assembleStateJac(const Vector<Real>&    state,
+                                   const Vector<Real>&    prm,
+                                   linalg::MatrixBuilder& out) const
 {
   checkGlobalSizes(state, prm);
 
@@ -100,9 +99,9 @@ void FEMResidual::assembleStateJac(const Vector<Real>& state,
   }
 }
 
-void FEMResidual::assembleParamJac(const Vector<Real>& state,
-                                   const Vector<Real>& prm,
-                                   algebra::MatrixBuilder& out) const
+void FEMResidual::assembleParamJac(const Vector<Real>&    state,
+                                   const Vector<Real>&    prm,
+                                   linalg::MatrixBuilder& out) const
 {
   checkGlobalSizes(state, prm);
 
@@ -145,10 +144,10 @@ void FEMResidual::checkGlobalSizes(const Vector<Real>& state,
   }
 }
 
-void FEMResidual::gather(const DofLayout& layout,
+void FEMResidual::gather(const DofLayout&    layout,
                          const Vector<Real>& global,
-                         Index ic,
-                         Vector<Real>& local)
+                         Index               ic,
+                         Vector<Real>&       local)
 {
   Vector<Index> dofs;
   layout.elemDofs(ic, dofs);
@@ -173,10 +172,10 @@ void FEMResidual::gather(const DofLayout& layout,
 }
 
 BoundaryFEMResidual::BoundaryFEMResidual(
-    const problem::Residual& volume,
-    BoundaryDofLayout res_layout,
-    BoundaryDofLayout state_layout,
-    BoundaryDofLayout param_layout,
+    const problem::Residual&     volume,
+    BoundaryDofLayout            res_layout,
+    BoundaryDofLayout            state_layout,
+    BoundaryDofLayout            param_layout,
     const BoundaryElementKernel& kernel)
   : volume_(volume),
     res_layout_(std::move(res_layout)),
@@ -195,7 +194,7 @@ problem::Dimensions BoundaryFEMResidual::dimensions() const
 
 void BoundaryFEMResidual::residual(const Vector<Real>& state,
                                    const Vector<Real>& prm,
-                                   Vector<Real>& out) const
+                                   Vector<Real>&       out) const
 {
   volume_.residual(state, prm, out);
   checkGlobalSizes(state, prm, out);
@@ -212,8 +211,8 @@ void BoundaryFEMResidual::residual(const Vector<Real>& state,
   }
 }
 
-void BoundaryFEMResidual::linearize(const Vector<Real>& state,
-                                    const Vector<Real>& prm,
+void BoundaryFEMResidual::linearize(const Vector<Real>&     state,
+                                    const Vector<Real>&     prm,
                                     problem::Linearization& out) const
 {
   volume_.linearize(state, prm, out);
@@ -232,9 +231,9 @@ void BoundaryFEMResidual::linearize(const Vector<Real>& state,
   matrix_out->paramMatrix().finalize();
 }
 
-void BoundaryFEMResidual::addStateJac(const Vector<Real>& state,
-                                      const Vector<Real>& prm,
-                                      algebra::MatrixBuilder& out) const
+void BoundaryFEMResidual::addStateJac(const Vector<Real>&    state,
+                                      const Vector<Real>&    prm,
+                                      linalg::MatrixBuilder& out) const
 {
   const problem::Dimensions dims = dimensions();
   if (out.numRows() != dims.num_residuals || out.numCols() != dims.num_states)
@@ -255,9 +254,9 @@ void BoundaryFEMResidual::addStateJac(const Vector<Real>& state,
   }
 }
 
-void BoundaryFEMResidual::addParamJac(const Vector<Real>& state,
-                                      const Vector<Real>& prm,
-                                      algebra::MatrixBuilder& out) const
+void BoundaryFEMResidual::addParamJac(const Vector<Real>&    state,
+                                      const Vector<Real>&    prm,
+                                      linalg::MatrixBuilder& out) const
 {
   const problem::Dimensions dims = dimensions();
   if (out.numRows() != dims.num_residuals || out.numCols() != dims.num_params)
@@ -324,9 +323,9 @@ void BoundaryFEMResidual::checkGlobalSizes(const Vector<Real>& state,
 }
 
 void BoundaryFEMResidual::gather(const BoundaryDofLayout& layout,
-                                 const Vector<Real>& global,
-                                 Index ib,
-                                 Vector<Real>& local)
+                                 const Vector<Real>&      global,
+                                 Index                    ib,
+                                 Vector<Real>&            local)
 {
   Vector<Index> dofs;
   layout.facetDofs(ib, dofs);
@@ -348,9 +347,9 @@ void BoundaryFEMResidual::gather(const BoundaryDofLayout& layout,
 }
 
 void BoundaryFEMResidual::addVector(const BoundaryDofLayout& layout,
-                                    Index ib,
-                                    const Vector<Real>& local,
-                                    Vector<Real>& out)
+                                    Index                    ib,
+                                    const Vector<Real>&      local,
+                                    Vector<Real>&            out)
 {
   Vector<Index> dofs;
   layout.facetDofs(ib, dofs);
@@ -370,9 +369,9 @@ void BoundaryFEMResidual::addVector(const BoundaryDofLayout& layout,
 
 void BoundaryFEMResidual::addMatrix(const BoundaryDofLayout& row_layout,
                                     const BoundaryDofLayout& col_layout,
-                                    Index ib,
-                                    const DenseMatrix& local,
-                                    algebra::MatrixBuilder& out)
+                                    Index                    ib,
+                                    const DenseMatrix&       local,
+                                    linalg::MatrixBuilder&   out)
 {
   Vector<Index> row_dofs;
   Vector<Index> col_dofs;

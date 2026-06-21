@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/Cell.hpp>
 
 namespace femx

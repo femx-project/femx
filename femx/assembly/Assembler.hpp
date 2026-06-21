@@ -1,10 +1,10 @@
 #pragma once
 
-#include <femx/algebra/DenseMatrix.hpp>
-#include <femx/algebra/MatrixBuilder.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -61,13 +61,13 @@ public:
 
   void initVector(Vector<Real>& out) const;
 
-  void initMatrix(algebra::MatrixBuilder& out) const;
+  void initMatrix(linalg::MatrixBuilder& out) const;
 
   void addVector(Index ic, const Vector<Real>& local, Vector<Real>& out) const;
 
-  void addMatrix(Index ic,
-                 const DenseMatrix& local,
-                 algebra::MatrixBuilder& out) const;
+  void addMatrix(Index                  ic,
+                 const DenseMatrix&     local,
+                 linalg::MatrixBuilder& out) const;
 
 private:
   void checkCellCounts() const;

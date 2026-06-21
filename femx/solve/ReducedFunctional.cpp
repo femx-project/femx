@@ -11,7 +11,7 @@ ReducedFunctional::ReducedFunctional(
     const problem::Residual&  problem,
     const problem::Objective& objective,
     Newton&                   state_solver,
-    algebra::LinearSolver&    adjoint_linear_solver)
+    linalg::LinearSolver&     adjoint_linear_solver)
   : problem_(problem),
     objective_(objective),
     state_solver_(state_solver),

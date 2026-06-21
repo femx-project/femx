@@ -3,17 +3,17 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/algebra/Vector.hpp>
+#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/backends/native/DenseSystemMatrix.hpp>
 #include <femx/problem/Objective.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/solve/Newton.hpp>
 #include <femx/solve/ReducedFunctional.hpp>
-#include <femx/algebra/DenseLinearSolver.hpp>
-#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
 
 namespace femx
 {
-namespace examples_inverse_linear_control_new_api
+namespace examples_inverse_linear_ctr_new_api
 {
 
 inline void resize(Vector<Real>& out, Index size)
@@ -47,8 +47,8 @@ public:
              + 13.0 * prm[0] + 4.0 * prm[1];
   }
 
-  void linearize(const Vector<Real>& state,
-                 const Vector<Real>& prm,
+  void linearize(const Vector<Real>&     state,
+                 const Vector<Real>&     prm,
                  problem::Linearization& out) const override
   {
     (void) state;
@@ -61,7 +61,7 @@ public:
           "LinearControlProblem requires MatrixLinearization");
     }
 
-    algebra::MatrixOperator& state_jac = matrix_out->stateMatrix();
+    linalg::MatrixOperator& state_jac = matrix_out->stateMatrix();
     state_jac.resize(2, 2);
     state_jac.setZero();
     state_jac.set(0, 0, 2.0);
@@ -70,7 +70,7 @@ public:
     state_jac.set(1, 1, 11.0);
     state_jac.finalize();
 
-    algebra::MatrixOperator& param_jac = matrix_out->paramMatrix();
+    linalg::MatrixOperator& param_jac = matrix_out->paramMatrix();
     param_jac.resize(2, 2);
     param_jac.setZero();
     param_jac.set(0, 0, 5.0);
@@ -141,12 +141,12 @@ public:
 
 struct LinearControlSetup
 {
-  LinearControlProblem        problem;
-  LinearControlObjective      objective;
-  algebra::DenseSystemMatrix  state_jac;
-  algebra::DenseSystemMatrix  param_jac;
+  LinearControlProblem         problem;
+  LinearControlObjective       objective;
+  linalg::DenseSystemMatrix    state_jac;
+  linalg::DenseSystemMatrix    param_jac;
   problem::MatrixLinearization linearization;
-  algebra::DenseLinearSolver   linear_solver;
+  linalg::DenseLinearSolver    linear_solver;
   solve::Newton                state_solver;
   solve::ReducedFunctional     functional;
 
@@ -183,5 +183,5 @@ inline void printVector(const char*         name,
   out << "]\n";
 }
 
-} // namespace examples_inverse_linear_control_new_api
+} // namespace examples_inverse_linear_ctr_new_api
 } // namespace femx

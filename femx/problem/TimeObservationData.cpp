@@ -113,9 +113,9 @@ Real TimeObservationData::timeValue(Index row) const
   return time_values_[row];
 }
 
-void TimeObservationData::setLayout(std::string sampler,
+void TimeObservationData::setLayout(std::string         sampler,
                                     std::vector<Point3> points,
-                                    Vector<Index> components)
+                                    Vector<Index>       components)
 {
   sampler_    = std::move(sampler);
   points_     = std::move(points);
@@ -227,9 +227,9 @@ void TimeObservationData::checkTimeValues() const
   }
 }
 
-TimeObservationData sampleTimeObs(const TimeObservation& obs,
-                                  const solve::TimeTrajectory& tr,
-                                  const Vector<Real>& prm)
+TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
+                                  const solve::TimeTrajectory&   tr,
+                                  const Vector<Real>&            prm)
 {
   if (tr.numSteps() != obs.numSteps() || tr.numStates() != obs.numStates()
       || prm.size() != obs.numParams())

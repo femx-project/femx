@@ -2,10 +2,10 @@
 
 #include <functional>
 
-#include <femx/algebra/LinearSolver.hpp>
-#include <femx/algebra/MatrixOperator.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/solve/TimeStateSolver.hpp>
 #include <femx/solve/TimeTrajectory.hpp>
@@ -22,8 +22,8 @@ public:
   using StepMonitor = std::function<void(Index step, Index total_steps)>;
 
   TimeLinearStateSolver(const problem::TimeResidual& eq,
-                        algebra::MatrixOperator& next_state_jac,
-                        algebra::LinearSolver& lin_solver);
+                        linalg::MatrixOperator&      next_state_jac,
+                        linalg::LinearSolver&        lin_solver);
 
   void setInitialState(const Vector<Real>& state);
   void clearInitialState();
@@ -31,9 +31,9 @@ public:
   void setStepMonitor(StepMonitor monitor);
   void clearStepMonitor();
 
-  void resetTiming();
-  Real assemblySeconds() const;
-  Real solveSeconds() const;
+  void  resetTiming();
+  Real  assemblySeconds() const;
+  Real  solveSeconds() const;
   Index assemblyCalls() const;
   Index solveCalls() const;
 
@@ -42,22 +42,22 @@ public:
   Index numParams() const override;
 
   void solve(const Vector<Real>& prm,
-             TimeTrajectory& tr) override;
+             TimeTrajectory&     tr) override;
 
 private:
-  void solveStep(Index step,
+  void solveStep(Index               step,
                  const Vector<Real>& prm,
                  const Vector<Real>& x,
-                 Vector<Real>& x_next);
+                 Vector<Real>&       x_next);
 
-  void initializeInitialState(Vector<Real>& state) const;
+  void        initializeInitialState(Vector<Real>& state) const;
   static void resize(Vector<Real>& out, Index size);
 
 private:
   const problem::TimeResidual& eq_;
-  algebra::MatrixOperator&     next_state_jac_;
-  algebra::LinearSolver&       lin_solver_;
-  problem::TimeDimensions      dims_;
+  linalg::MatrixOperator&      next_state_jac_;
+  linalg::LinearSolver&        lin_solver_;
+  problem::TimeDims      dims_;
   Vector<Real>                 init_state_;
   StepMonitor                  step_monitor_;
   Real                         assembly_seconds_{0.0};

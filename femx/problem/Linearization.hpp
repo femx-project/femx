@@ -1,7 +1,7 @@
 #pragma once
 
-#include <femx/algebra/LinearOperator.hpp>
-#include <femx/algebra/MatrixOperator.hpp>
+#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
 
 namespace femx
 {
@@ -13,43 +13,43 @@ class Linearization
 public:
   virtual ~Linearization() = default;
 
-  virtual const algebra::LinearOperator& stateJacobian() const = 0;
-  virtual const algebra::LinearOperator& paramJacobian() const = 0;
+  virtual const linalg::LinearOperator& stateJacobian() const = 0;
+  virtual const linalg::LinearOperator& paramJacobian() const = 0;
 };
 
 class MatrixLinearization final : public Linearization
 {
 public:
-  MatrixLinearization(algebra::MatrixOperator& state_jac,
-                      algebra::MatrixOperator& param_jac)
+  MatrixLinearization(linalg::MatrixOperator& state_jac,
+                      linalg::MatrixOperator& param_jac)
     : state_jac_(state_jac),
       param_jac_(param_jac)
   {
   }
 
-  algebra::MatrixOperator& stateMatrix()
+  linalg::MatrixOperator& stateMatrix()
   {
     return state_jac_;
   }
 
-  algebra::MatrixOperator& paramMatrix()
+  linalg::MatrixOperator& paramMatrix()
   {
     return param_jac_;
   }
 
-  const algebra::LinearOperator& stateJacobian() const override
+  const linalg::LinearOperator& stateJacobian() const override
   {
     return state_jac_;
   }
 
-  const algebra::LinearOperator& paramJacobian() const override
+  const linalg::LinearOperator& paramJacobian() const override
   {
     return param_jac_;
   }
 
 private:
-  algebra::MatrixOperator& state_jac_;
-  algebra::MatrixOperator& param_jac_;
+  linalg::MatrixOperator& state_jac_;
+  linalg::MatrixOperator& param_jac_;
 };
 
 } // namespace problem

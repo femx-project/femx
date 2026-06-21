@@ -6,52 +6,48 @@
 #include <exception>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 
-#include "Assembly.hpp"
-#include "Config.hpp"
-#include "NavierStokesEquation.hpp"
-#include "RunSupport.hpp"
-#include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/fem/DirichletControl.hpp>
-#include <femx/core/Math.hpp>
-#include <femx/core/Types.hpp>
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include "Helper.hpp"
+#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScMatrixOperator.hpp>
+#include <femx/linalg/petsc/PETScVectorBuilder.hpp>
+#include <femx/opt/TaoOptimizer.hpp>
 #include <femx/solve/TimeLinearStateSolver.hpp>
-#include <femx/fem/MixedFESpace.hpp>
-#include <femx/problem/SumTimeObjective.hpp>
-#include <femx/problem/TimeLeastSquaresObjective.hpp>
-#include <femx/problem/TimeObservationData.hpp>
 #include <femx/solve/TimeReducedFunctional.hpp>
-#include <femx/problem/TimeRegularization.hpp>
-#include <femx/optimize/TaoOptimizer.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/fem/GmshReader.hpp>
-#include <femx/fem/Mesh.hpp>
-#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
-#include <femx/algebra/backends/petsc/PETScMatrixOperator.hpp>
-#include <femx/algebra/backends/petsc/PETScVectorBuilder.hpp>
+#include <femx/solve/TimeTrajectory.hpp>
 
-#ifndef FEMX_NAVIER_VAR_APP_NAME
-#define FEMX_NAVIER_VAR_APP_NAME "ns-var"
+#ifndef FEMX_NAVIER_VAR_NEW_APP_NAME
+#define FEMX_NAVIER_VAR_NEW_APP_NAME "ns-var"
 #endif
 
 namespace
 {
 
 using namespace femx;
-using namespace femx::assembly;
-using namespace femx::problem;
-using namespace femx::navier_var;
+using namespace femx::linalg;
+using namespace femx::navier_var_new;
+using namespace femx::opt;
 using namespace femx::solve;
-using namespace femx::algebra;
-using namespace femx::optimize;
 
-constexpr Index kQuadOrder = 2;
+struct AppOptions
+{
+  std::string          config_file;
+  std::optional<Index> steps;
+  bool                 help = false;
+};
 
-void checkPetsc(PetscErrorCode ierr, const std::string& action)
+struct CellRange
+{
+  Index begin = 0;
+  Index end   = 0;
+};
+
+void checkPetsc(PetscErrorCode     ierr,
+                const std::string& action)
 {
   if (ierr != PETSC_SUCCESS)
   {
@@ -60,160 +56,199 @@ void checkPetsc(PetscErrorCode ierr, const std::string& action)
   }
 }
 
-VizOptions readVizOptions(const OutputParams& output)
+std::string requireValue(int                argc,
+                         char**             argv,
+                         int&               i,
+                         const std::string& key)
 {
-  VizOptions opts;
-  opts.basename = output.basename;
-  return opts;
+  if (i + 1 >= argc)
+  {
+    throw std::runtime_error("Missing value for " + key);
+  }
+  return std::string(argv[++i]);
 }
 
-Index taoMaxIts(Index default_value)
+AppOptions parseAppOptions(int argc, char** argv)
 {
-  PetscInt value = static_cast<PetscInt>(default_value);
-  checkPetsc(PetscOptionsGetInt(
-                 nullptr, nullptr, "-tao_max_it", &value, nullptr),
-             "PetscOptionsGetInt(-tao_max_it)");
-  if (value < 0)
+  AppOptions options;
+  for (int i = 1; i < argc; ++i)
   {
-    throw std::runtime_error("-tao_max_it must be non-negative");
+    const std::string key(argv[i]);
+    if (key == "-h" || key == "--help")
+    {
+      options.help = true;
+      return options;
+    }
+    if (key == "--config" || key == "-config")
+    {
+      options.config_file = requireValue(argc, argv, i, key);
+      continue;
+    }
+    if (key == "--steps")
+    {
+      options.steps = static_cast<Index>(
+          std::stoi(requireValue(argc, argv, i, key)));
+      if (*options.steps <= 0)
+      {
+        throw std::runtime_error("--steps must be positive");
+      }
+      continue;
+    }
   }
-  return static_cast<Index>(value);
+  return options;
+}
+
+void printUsage(std::ostream& out)
+{
+  out << "Usage: " << FEMX_NAVIER_VAR_NEW_APP_NAME
+      << " --config FILE [--steps N] [PETSc options]\n";
 }
 
 class ProgressPrinter
 {
 public:
-  ProgressPrinter(Index max_opt_its, bool enabled = true)
-    : max_opt_its_(max_opt_its),
-      enabled_(enabled)
+  explicit ProgressPrinter(Index max_opt_its)
+    : max_opt_its_(max_opt_its)
   {
   }
 
-  void beginPhase(const std::string& name)
+  void phase(const std::string& name)
   {
-    if (!enabled_)
-    {
-      return;
-    }
-    finishLine();
-    current_phase_ = name;
-    std::cout << "  " << current_phase_ << '\n';
+    std::cout << "  " << name << '\n';
   }
 
   void timeStep(Index step, Index total)
   {
-    showStep("time step", step, total);
+    std::cout << "\r    time step " << std::setw(4) << step << " / "
+              << std::setw(4) << total << std::flush;
+    if (step >= total)
+    {
+      std::cout << '\n';
+    }
   }
 
-  void reducedStep(const char* phase, Index step, Index total)
+  void reducedStep(const char* phase_name, Index step, Index total)
   {
-    if (!enabled_)
-    {
-      return;
-    }
-
-    const std::string event(phase);
+    const std::string event(phase_name);
     if (event == "forward-begin")
     {
-      ++forward_solves_;
-      beginPhase("forward solve " + std::to_string(forward_solves_));
-    }
-    else if (event == "forward-end")
-    {
-      finishLine();
+      phase("forward solve");
     }
     else if (event == "adjoint-begin")
     {
-      ++adj_solves_;
-      beginPhase("adjoint solve " + std::to_string(adj_solves_));
+      phase("adjoint solve");
     }
     else if (event == "adjoint-step")
     {
-      showStep("adjoint step", step, total);
-    }
-    else if (event == "adjoint-end")
-    {
-      finishLine();
+      std::cout << "\r    adjoint step " << std::setw(4) << step
+                << " / " << std::setw(4) << total << std::flush;
+      if (step >= total)
+      {
+        std::cout << '\n';
+      }
     }
   }
 
-  void optStep(const TaoIterationInfo& info)
+  void optStep(const TaoIterationInfo&        info,
+               const Vector<Real>&            prm,
+               const InverseParameterLayout&  layout)
   {
-    if (!enabled_)
-    {
-      return;
-    }
-    finishLine();
     std::cout << "  optimization step " << info.its << " / "
               << max_opt_its_ << ", objective = " << info.value
-              << ", |grad| = " << info.grad_norm << '\n';
-  }
-
-  void finishLine()
-  {
-    if (line_active_)
+              << ", |grad| = " << info.grad_norm;
+    if (info.grad.size() == layout.total_size)
     {
-      std::cout << '\n';
-      line_active_ = false;
+      const Real ctr_norm =
+          blockNorm(info.grad, layout.ctr_offset, layout.ctr_size);
+      if (layout.hasInitialVelocity())
+      {
+        const Real init_norm =
+            blockNorm(info.grad, layout.init_vel_offset, layout.init_vel_size);
+        std::cout << ", |grad_u0| = " << init_norm
+                  << ", |grad_bc| = " << ctr_norm
+                  << ", u0/bc = " << ratio(init_norm, ctr_norm);
+      }
+      else
+      {
+        std::cout << ", |grad_bc| = " << ctr_norm;
+      }
     }
+    if (prm.size() == layout.total_size
+        && has_prev_prm_
+        && prev_prm_.size() == layout.total_size)
+    {
+      const Real ctr_step =
+          blockDiffNorm(prm, prev_prm_, layout.ctr_offset, layout.ctr_size);
+      if (layout.hasInitialVelocity())
+      {
+        const Real init_step =
+            blockDiffNorm(
+                prm, prev_prm_, layout.init_vel_offset, layout.init_vel_size);
+        std::cout << ", |step_u0| = " << init_step
+                  << ", |step_bc| = " << ctr_step
+                  << ", step_u0/bc = " << ratio(init_step, ctr_step);
+      }
+      else
+      {
+        std::cout << ", |step_bc| = " << ctr_step;
+      }
+    }
+    if (prm.size() == layout.total_size)
+    {
+      prev_prm_     = prm;
+      has_prev_prm_ = true;
+    }
+    std::cout << '\n';
   }
 
 private:
-  void showStep(const char* label, Index step, Index total)
+  static Real blockNorm(const Vector<Real>& x, Index offset, Index size)
   {
-    if (!enabled_)
+    Real norm2 = 0.0;
+    for (Index i = 0; i < size; ++i)
     {
-      return;
+      const Real value = x[offset + i];
+      norm2 += value * value;
     }
-    std::cout << "\r    " << label << " " << std::setw(4) << step
-              << " / " << std::setw(4) << total << std::flush;
-    line_active_ = true;
-    if (step >= total)
-    {
-      finishLine();
-    }
+    return std::sqrt(norm2);
   }
 
-private:
-  Index       max_opt_its_{0};
-  bool        enabled_{true};
-  bool        line_active_{false};
-  Index       forward_solves_{0};
-  Index       adj_solves_{0};
-  std::string current_phase_;
+  static Real blockDiffNorm(const Vector<Real>& x,
+                            const Vector<Real>& y,
+                            Index               offset,
+                            Index               size)
+  {
+    Real norm2 = 0.0;
+    for (Index i = 0; i < size; ++i)
+    {
+      const Real value = x[offset + i] - y[offset + i];
+      norm2 += value * value;
+    }
+    return std::sqrt(norm2);
+  }
+
+  static Real ratio(Real numerator, Real denominator)
+  {
+    return denominator > 0.0 ? numerator / denominator : PETSC_INFINITY;
+  }
+
+  Index        max_opt_its_{0};
+  Vector<Real> prev_prm_;
+  bool         has_prev_prm_{false};
 };
 
-void requirePetsc(const SolverParams& solver)
-{
-  if (solver.type == "resolve")
-  {
-    throw std::runtime_error(
-        std::string(FEMX_NAVIER_VAR_APP_NAME)
-        + " requires simulation.solver.type='auto' or 'petsc'");
-  }
-}
-
-void setPetscOpt(const char* name, const char* value)
+void setPetscOpt(const char* name,
+                 const char* value)
 {
   PetscBool      exists = PETSC_FALSE;
   PetscErrorCode ierr   = PetscOptionsHasName(nullptr, nullptr, name, &exists);
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(std::string("PetscOptionsHasName failed for ")
-                             + name);
-  }
-
+  checkPetsc(ierr, std::string("PetscOptionsHasName(") + name + ")");
   if (exists == PETSC_TRUE)
   {
     return;
   }
-
   ierr = PetscOptionsSetValue(nullptr, name, value);
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(std::string("PetscOptionsSetValue failed for ")
-                             + name);
-  }
+  checkPetsc(ierr, std::string("PetscOptionsSetValue(") + name + ")");
 }
 
 void setKspDefaults(KspLinearSolver& solver)
@@ -231,61 +266,51 @@ void setKspDefaults(KspLinearSolver& solver)
   setPetscOpt("-sub_pc_factor_mat_ordering_type", "rcm");
 }
 
-struct AppOptions
+Vector<Real> unboundedLower(Index size)
 {
-  std::string          config_file;
-  std::optional<Index> steps;
-  bool                 help = false;
-};
-
-AppOptions parseAppOptions(int argc, char** argv)
-{
-  AppOptions options;
-
-  const auto requireValue = [argc, argv](int& i, const std::string& key)
+  Vector<Real> out(size);
+  for (Index i = 0; i < size; ++i)
   {
-    if (i + 1 >= argc)
-    {
-      throw std::runtime_error("Missing value for " + key);
-    }
-    return std::string(argv[++i]);
-  };
-
-  for (int i = 1; i < argc; ++i)
-  {
-    const std::string key(argv[i]);
-    if (key == "-h" || key == "--help")
-    {
-      options.help = true;
-      return options;
-    }
-    if (key == "--config" || key == "-config")
-    {
-      options.config_file = requireValue(i, key);
-      continue;
-    }
-    if (key == "--steps")
-    {
-      options.steps = static_cast<Index>(
-          std::stoi(requireValue(i, key)));
-      if (*options.steps <= 0)
-      {
-        throw std::runtime_error("--steps must be positive");
-      }
-      continue;
-    }
+    out[i] = -PETSC_INFINITY;
   }
-
-  return options;
+  return out;
 }
 
-void printUsage(std::ostream& out)
+Vector<Real> unboundedUpper(Index size)
 {
-  out << "Usage: " << FEMX_NAVIER_VAR_APP_NAME
-      << " --config FILE [--steps N] [PETSc options]\n";
+  Vector<Real> out(size);
+  for (Index i = 0; i < size; ++i)
+  {
+    out[i] = PETSC_INFINITY;
+  }
+  return out;
 }
 
-NavierVarCellRange localCellRange(Index num_cells)
+void configureOptimizer(
+    TaoOptimizer&          optimizer,
+    const OptimizerParams& options)
+{
+  optimizer.options().type     = TAOLMVM;
+  optimizer.options().abs_tol  = options.abs_tol;
+  optimizer.options().rel_tol  = options.rel_tol;
+  optimizer.options().step_tol = options.step_tol;
+  optimizer.options().max_its  = options.max_iterations;
+}
+
+void printFinalSummary(const TaoResult&      result,
+                       const TimeTrajectory& trajectory)
+{
+  std::cout << "\nFinal summary\n";
+  std::cout << "  parameters: " << result.prm.size() << '\n';
+  std::cout << "  TAO converged: " << (result.converged() ? "yes" : "no")
+            << ", reason = " << result.reason
+            << ", iterations = " << result.its << '\n';
+  std::cout << "  final objective: " << result.value
+            << ", |grad| = " << std::sqrt(result.grad_norm_squared) << '\n';
+  std::cout << "  trajectory levels: " << trajectory.numLevels() << '\n';
+}
+
+CellRange cellRange(Index num_cells)
 {
   PetscMPIInt rank = 0;
   PetscMPIInt size = 1;
@@ -300,257 +325,182 @@ NavierVarCellRange localCellRange(Index num_cells)
   return {begin, begin + count};
 }
 
-int run(const Params& prm)
+int run(Params& prm)
 {
   PetscMPIInt rank = 0;
   PetscMPIInt size = 1;
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
   MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-  const BCsParams& control_bc = controlBoundary(prm);
-  const Index      steps      = prm.forward.time.steps;
-  const Real       dt         = prm.forward.time.dt;
-  const Index      max_opt_its =
-      taoMaxIts(prm.inverse.opt.max_iterations);
-  requirePetsc(prm.forward.solver);
+  checkInverseRunParams(prm);
 
-  const VizOptions viz_opts = readVizOptions(prm.forward.output);
+  ProgressPrinter prog(prm.inv.opt.max_iterations);
 
-  Mesh mesh = GmshReader::read(prm.forward.mesh.file);
-
-  auto         elem  = makeElement(mesh);
-  MixedFESpace space = makeSpace(mesh, *elem);
   if (rank == 0)
   {
-    std::cout << FEMX_NAVIER_VAR_APP_NAME << ": ranks = " << size
-              << ", dofs = " << space.numDofs()
-              << ", cells = " << space.mesh().numElems() << '\n';
+    prog.phase("mesh and space");
   }
 
-  TimeNavierStokesParameters ns_prm;
-  ns_prm.steps      = steps;
-  ns_prm.dt         = dt;
-  ns_prm.fluid      = fluidParams(prm);
-  ns_prm.quad_order = kQuadOrder;
+  AppNsVar        app(prm);
+  const CellRange cells = cellRange(app.space.mesh().numElems());
+  app.fem.setCellRange(cells.begin, cells.end);
 
-  NavierStokesEquation     base_eq(space, ns_prm);
-  const NavierVarCellRange cells = localCellRange(space.numElems());
-  base_eq.setCellRange(cells.begin, cells.end);
-
-  const auto          selector              = bcSelector(control_bc);
-  DirichletControl    ctr                   = makeVelocityControl(space, selector);
-  const Vector<Index> initial_velocity_dofs = initialVelocityDofs(space, prm, ctr);
-  const Vector<Real>  x_init                = initialVelocityBoundaryState(space, prm, ctr);
-
-  const InverseParameterLayout param_layout =
-      inverseParameterLayout(space,
-                             ctr,
-                             prm.inverse.initial_velocity,
-                             steps,
-                             initial_velocity_dofs.size());
-
-  const FixedDofValues fixed = fixedDofValues(space, prm, ctr, steps, dt);
-
-  TimeDirichletControlResidual eq(base_eq,
-                                  ctr,
-                                  fixed.dofs,
-                                  param_layout.control_offset,
-                                  param_layout.total_size,
-                                  fixed.values);
-
-  const CsrPattern pattern = SparsityPatternBuilder::build(space);
-
-  PETScVectorBuilder matrix_layout(PETSC_COMM_WORLD);
-  matrix_layout.resize(space.numDofs());
-
-  PETScMatrixOperator next_jac(PETSC_COMM_WORLD);
-  next_jac.resize(pattern, matrix_layout);
-
-  KspLinearSolver state_lin_solver(PETSC_COMM_WORLD);
-  setKspDefaults(state_lin_solver);
-
-  TimeLinearStateSolver state_solver(
-      eq, next_jac, state_lin_solver);
-
-  state_solver.setInitialState(x_init);
-  std::optional<InitialVelocityStateSolver> initial_state_solver;
-  TimeStateSolver*                          reduced_state_solver = &state_solver;
-  if (param_layout.hasInitialVelocity())
+  if (rank == 0)
   {
-    initial_state_solver.emplace(
-        state_solver, initial_velocity_dofs, param_layout, x_init);
-    reduced_state_solver = &*initial_state_solver;
+    prog.phase("linear solvers");
   }
 
-  ProgressPrinter prog(max_opt_its, rank == 0);
+  PETScVectorBuilder mat_row(PETSC_COMM_WORLD);
+  mat_row.resize(app.space.numDofs());
+
+  PETScMatrixOperator fwd_next_jac(PETSC_COMM_WORLD);
+  fwd_next_jac.resize(app.pattern, mat_row);
+
+  KspLinearSolver fwd_solver(PETSC_COMM_WORLD);
+  setKspDefaults(fwd_solver);
+
+  TimeLinearStateSolver state_solver(app.eq, fwd_next_jac, fwd_solver);
+  state_solver.setInitialState(app.x0);
+  Vector<Real> x0 = app.x0;
+  if (app.layout.hasInitialVelocity())
+  {
+    if (rank == 0)
+    {
+      prog.phase("initial guess");
+    }
+
+    initializeOptimizationGuess(app.space,
+                                app.ctr,
+                                prm,
+                                app.layout,
+                                app.init_vdofs,
+                                state_solver,
+                                app.ctr_times,
+                                app.prm0,
+                                &x0);
+    state_solver.resetTiming();
+  }
   state_solver.setStepMonitor(
-      [&prog](Index step, Index total)
+      [&prog, rank](Index step, Index total)
       {
+        if (rank != 0)
+        {
+          return;
+        }
         prog.timeStep(step, total);
       });
+  std::unique_ptr<InitialVelocityStateSolver> initial_state_solver;
 
-  prog.beginPhase("read observation data");
-  const TimeObservationData obs_data =
-      readTimeObsData(prm.inverse.obs.file);
-
-  auto obs = makeObsFromData(space,
-                             obs_data,
-                             steps,
-                             eq.numStates(),
-                             eq.numParams());
-
-  const Real observation_time_offset =
-      param_layout.hasInitialVelocity() ? dt : 0.0;
-  TimeLeastSquaresObjective misfit(
-      *obs,
-      obs_data,
-      misfitW(steps, prm.inverse.alpha, false),
-      dt,
-      observation_time_offset);
-
-  TimeRegularization reg(
-      steps,
-      eq.numStates(),
-      steps,
-      ctr.numDofs(),
-      prm.inverse.reg.time,
-      prm.inverse.reg.l2);
-  ParameterSliceTimeObjective control_reg(
-      reg, eq.numParams(), param_layout.control_offset);
-  InitialVelocityRegularization initial_velocity_reg(
-      steps,
-      eq.numStates(),
-      param_layout,
-      prm.inverse.initial_velocity.l2);
-
-  SumTimeObjective obj(steps, eq.numStates(), eq.numParams());
-  obj.add(misfit).add(control_reg);
-  
-  if (param_layout.hasInitialVelocity()
-      && prm.inverse.initial_velocity.l2 > 0.0)
+  TimeStateSolver* reduced_state_solver = &state_solver;
+  if (app.layout.hasInitialVelocity())
   {
-    obj.add(initial_velocity_reg);
+    initial_state_solver =
+        std::make_unique<InitialVelocityStateSolver>(
+            state_solver,
+            app.init_vdofs,
+            app.layout,
+            x0);
+    reduced_state_solver = initial_state_solver.get();
   }
+
+  if (rank == 0)
+  {
+    prog.phase("observation and objective");
+  }
+
+  Objective objective(prm, app);
 
   PETScMatrixOperator adj_next_jac(PETSC_COMM_WORLD);
   PETScMatrixOperator adj_prev_jac(PETSC_COMM_WORLD);
-  adj_next_jac.resize(pattern, matrix_layout);
-  adj_prev_jac.resize(pattern, matrix_layout);
+  adj_next_jac.resize(app.pattern, mat_row);
+  adj_prev_jac.resize(app.pattern, mat_row);
 
   KspLinearSolver adj_solver(PETSC_COMM_WORLD);
   setKspDefaults(adj_solver);
 
-  TimeReducedFunctional reduced(
-      *reduced_state_solver,
-      eq,
-      adj_next_jac,
-      adj_prev_jac,
-      adj_solver,
-      obj);
-
+  TimeReducedFunctional reduced(*reduced_state_solver,
+                                app.eq,
+                                adj_next_jac,
+                                adj_prev_jac,
+                                adj_solver,
+                                objective.obj);
   reduced.setProgress(
-      [&prog](const char* phase, Index step, Index total)
+      [&prog, rank](const char* phase, Index step, Index total)
       {
+        if (rank != 0)
+        {
+          return;
+        }
         prog.reducedStep(phase, step, total);
       });
-  if (param_layout.hasInitialVelocity())
+  if (app.layout.hasInitialVelocity())
   {
     reduced.setInitialStateParamJacT(
-        [&initial_velocity_dofs, param_layout](
+        [layout        = app.layout,
+         velocity_dofs = app.init_vdofs](
             const Vector<Real>&,
             const Vector<Real>& state_grad,
             Vector<Real>&       out)
         {
           applyInitialVelocityParamJacT(
-              initial_velocity_dofs, param_layout, state_grad, out);
+              velocity_dofs, layout, state_grad, out);
         });
   }
 
-  Vector<Real> prm_init =
-      initialInverseParams(space, ctr, prm, param_layout, steps, dt);
-  if (param_layout.hasInitialVelocity())
+  if (rank == 0)
   {
-    prog.beginPhase("initial velocity warm start");
-    seedInitialVelocityFromConstantPoiseuille(space,
-                                              ctr,
-                                              prm,
-                                              param_layout,
-                                              initial_velocity_dofs,
-                                              state_solver,
-                                              prm_init);
-    state_solver.resetTiming();
+    prog.phase("optimization");
   }
 
-  TaoOptimizer opt(reduced, PETSC_COMM_WORLD);
-  opt.options().type                = TAOLMVM;
-  opt.options().grad_abs_tolerance  = prm.inverse.opt.grad_abs_tolerance;
-  opt.options().grad_rel_tolerance  = prm.inverse.opt.grad_rel_tolerance;
-  opt.options().grad_step_tolerance = prm.inverse.opt.grad_step_tolerance;
-  opt.options().max_its             = max_opt_its;
-  opt.options().use_opts_db         = prm.inverse.opt.use_options_database;
-  opt.setMonitor(
-      [&prog](const TaoIterationInfo& info, const Vector<Real>&)
+  TaoOptimizer optimizer(reduced, PETSC_COMM_WORLD);
+  configureOptimizer(optimizer, prm.inv.opt);
+  optimizer.setVariableScale(optimizerScale(app.layout, prm.inv.opt.scale));
+
+  optimizer.setMonitor(
+      [&prog, &app, rank](
+          const TaoIterationInfo& info,
+          const Vector<Real>&     current_prm)
       {
-        prog.optStep(info);
+        if (rank != 0)
+        {
+          return;
+        }
+        prog.optStep(info, current_prm, app.layout);
       });
 
   Vector<Real> lower;
   Vector<Real> upper;
-  inverseBounds(space, ctr, prm, param_layout, steps, lower, upper);
-  opt.setBounds(lower, upper);
+  inverseBounds(app.space, app.ctr, prm, app.layout, app.steps, lower, upper);
+  optimizer.setBounds(lower, upper);
 
-  TaoResult result;
-  prog.beginPhase("optimization");
-  const PetscErrorCode ierr = opt.solve(prm_init, result);
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(
-        "TAO solve failed with PETSc error code " + std::to_string(ierr));
-  }
-
-  const Real  fwd_assembly       = state_solver.assemblySeconds();
-  const Real  fwd_solve          = state_solver.solveSeconds();
-  const Index fwd_assembly_calls = state_solver.assemblyCalls();
-  const Index fwd_solve_calls    = state_solver.solveCalls();
-  const Real  adj_assembly       = reduced.assemblySeconds();
-  const Real  adj_solve          = reduced.solveSeconds();
-  const Index adj_assembly_calls = reduced.assemblyCalls();
-  const Index adj_solve_calls    = reduced.solveCalls();
-
-  prog.beginPhase("write output");
-  TimeTrajectory opt_tr;
-  reduced_state_solver->solve(result.prm, opt_tr);
-  if (rank == 0)
-  {
-    const Real viz_time_offset =
-        prm.inverse.initial_velocity.enabled ? -dt : 0.0;
-    writeForwardViz(mesh, space, opt_tr, dt, viz_opts, viz_time_offset);
-  }
+  TaoResult            result;
+  const PetscErrorCode ierr = optimizer.solve(app.prm0, result);
+  checkPetsc(ierr, "TAO solve");
 
   if (rank == 0)
   {
-    std::cout << "\nFinal summary\n";
-    std::cout << "  observation file: " << prm.inverse.obs.file << '\n';
-    std::cout << "  reg.time: " << prm.inverse.reg.time
-              << ", reg.l2: " << prm.inverse.reg.l2 << '\n';
-    std::cout << "  TAO converged: " << (result.converged() ? "yes" : "no")
-              << ", reason = " << result.reason
-              << ", iterations = " << result.its << '\n';
-    std::cout << "  final objective: " << result.value
-              << ", |grad| = " << std::sqrt(result.grad_norm_squared)
-              << '\n';
-    std::cout << "  TIMING assembly_s=" << (fwd_assembly + adj_assembly)
-              << " solve_s=" << (fwd_solve + adj_solve)
-              << " forward_assembly_s=" << fwd_assembly
-              << " forward_solve_s=" << fwd_solve
-              << " forward_assembly_calls=" << fwd_assembly_calls
-              << " forward_solve_calls=" << fwd_solve_calls
-              << " adjoint_assembly_s=" << adj_assembly
-              << " adjoint_solve_s=" << adj_solve
-              << " adjoint_assembly_calls=" << adj_assembly_calls
-              << " adjoint_solve_calls=" << adj_solve_calls
-              << '\n';
-    std::cout << "  output: " << viz_opts.basename << '\n';
+    prog.phase("final forward solve");
+  }
+
+  TimeTrajectory tr;
+  reduced_state_solver->solve(result.prm, tr);
+  if (rank == 0)
+  {
+    prog.phase("write visualization");
+
+    const Vector<Real> ctr_prm = controlParams(app.layout, result.prm);
+    writeResultViz(app.mesh,
+                   app.space,
+                   app.ctr,
+                   tr,
+                   ctr_prm,
+                   app.ctr_time_stencils,
+                   app.dt,
+                   {prm.fwd.output.basename},
+                   0.0);
+
+    printFinalSummary(result, tr);
+    std::cout << "  visualization: " << prm.fwd.output.basename << ".xdmf\n";
   }
 
   return result.converged() ? 0 : 2;
@@ -573,7 +523,6 @@ int main(int argc, char** argv)
     if (options.help)
     {
       printUsage(std::cout);
-      exit_code = 0;
     }
     else
     {
@@ -584,14 +533,15 @@ int main(int argc, char** argv)
       Params prm = loadConfig(options.config_file);
       if (options.steps)
       {
-        prm.forward.time.steps = *options.steps;
+        prm.fwd.time.steps = *options.steps;
       }
       exit_code = run(prm);
     }
   }
   catch (const std::exception& e)
   {
-    std::cerr << FEMX_NAVIER_VAR_APP_NAME << " failed: " << e.what() << '\n';
+    std::cerr << FEMX_NAVIER_VAR_NEW_APP_NAME << " failed: " << e.what()
+              << '\n';
     exit_code = 1;
   }
 

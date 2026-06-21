@@ -1,32 +1,29 @@
 {
-  "input": {
+  "input": 
+  {
     "trajectory": "../../../../forward/ns-gls/inputs/straighttube/output/velocity.xdmf",
     "velocity_field": "velocity"
   },
-  "obs1": {
-    "grid": {
-      "bounds": [
-        [-0.0205, -0.0036, 0.0],
-        [0.0205, 0.0036, 0.0]
+  "time": 
+  {
+    "start_time": 1.0,
+    "end_time": 2.0,
+    "num_points": 10
+  },
+  "obs1": 
+  {
+    "grid": 
+    {
+      "bounds": 
+      [
+        [-0.018, -0.0024, 0.0],
+        [0.018, 0.0024, 0.0]
       ],
       "counts": [40, 6, 1]
     },
     "components": [0, 1],
-    "file": "output/straight-tube-obs1.txt",
-    "vti_basename": "output/straight-tube-obs1",
-    "reference_basename": "output/straight-tube-obs1-reference"
-  },
-  "obs2": {
-    "grid": {
-      "bounds": [
-        [-0.018, -0.0024, 0.0],
-        [0.018, 0.0024, 0.0]
-      ],
-      "counts": [80, 12, 1]
-    },
-    "components": [0, 1],
-    "file": "output/straight-tube-obs2.txt",
-    "vti_basename": "output/straight-tube-obs2",
-    "reference_basename": "output/straight-tube-obs2-reference"
+    "file": "output/straight-tube-obs.txt",
+    "vti_basename": "output/straight-tube-obs",
+    "reference_basename": "output/straight-tube-obs-reference"
   }
 }

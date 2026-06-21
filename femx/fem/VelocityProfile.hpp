@@ -3,8 +3,8 @@
 #include <functional>
 #include <string>
 
-#include <femx/core/Math.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/Mesh.hpp>
 
 namespace femx::fem

@@ -14,14 +14,19 @@
 #include <femx/assembly/BoundaryResidualEquation.hpp>
 #include <femx/assembly/EnzymeBoundaryKernel.hpp>
 #include <femx/assembly/EnzymeVolumeKernel.hpp>
-#include <femx/core/Math.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/BoundaryElementValues.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FESpace.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <femx/fem/Quadrature.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/optimize/TaoOptimizer.hpp>
+#include <femx/io/TimeSeriesDataOut.hpp>
+#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/backends/native/DenseSystemMatrix.hpp>
+#include <femx/opt/TaoOptimizer.hpp>
 #include <femx/problem/MatrixResidual.hpp>
 #include <femx/problem/ObjectiveFunctional.hpp>
 #include <femx/problem/SumObjective.hpp>
@@ -29,19 +34,14 @@
 #include <femx/solve/MatrixAdjointSolver.hpp>
 #include <femx/solve/MatrixLinearStateSolver.hpp>
 #include <femx/solve/StateSolver.hpp>
-#include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/fem/Mesh.hpp>
-#include <femx/algebra/DenseLinearSolver.hpp>
-#include <femx/algebra/backends/native/DenseSystemMatrix.hpp>
 
 namespace
 {
 
 using namespace femx;
 using namespace femx::assembly;
-using namespace femx::algebra;
-using namespace femx::optimize;
+using namespace femx::linalg;
+using namespace femx::opt;
 using namespace femx::problem;
 using namespace femx::solve;
 
@@ -743,8 +743,8 @@ Vector<Real> boundaryCoordinates(const Mesh&              mesh,
       if (seen[dof] == 0.0)
       {
         const Index node = facet.node_ids[a];
-        x[dof]         = mesh.node(node)[0];
-        seen[dof]      = 1.0;
+        x[dof]           = mesh.node(node)[0];
+        seen[dof]        = 1.0;
       }
     }
   }
@@ -880,9 +880,9 @@ private:
 
 Real DirectionalDerivative(
     AdjointReducedFunctional& functional,
-    const Vector<Real>& prm,
-    const Vector<Real>& dir,
-    Real                eps)
+    const Vector<Real>&       prm,
+    const Vector<Real>&       dir,
+    Real                      eps)
 {
   Vector<Real> plus(prm.size());
   Vector<Real> minus(prm.size());
@@ -990,12 +990,11 @@ int run()
   const Real fd_dir      = DirectionalDerivative(reduced, initial, dir, 1.0e-6);
 
   TaoOptimizer optimizer(reduced);
-  optimizer.options().type                = TAOLMVM;
-  optimizer.options().grad_abs_tolerance  = 1.0e-10;
-  optimizer.options().grad_rel_tolerance  = 1.0e-10;
-  optimizer.options().grad_step_tolerance = 0.0;
-  optimizer.options().max_its             = 160;
-  optimizer.options().use_opts_db         = true;
+  optimizer.options().type     = TAOLMVM;
+  optimizer.options().abs_tol  = 1.0e-10;
+  optimizer.options().rel_tol  = 1.0e-10;
+  optimizer.options().step_tol = 0.0;
+  optimizer.options().max_its  = 160;
 
   optimizer.setMonitor(
       [&history](const TaoIterationInfo& info, const Vector<Real>& prm)

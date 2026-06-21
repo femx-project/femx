@@ -5,8 +5,8 @@
 #include <femx/fem/BoundaryCondition.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/algebra/SparseMatrix.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <femx/linalg/SparseMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

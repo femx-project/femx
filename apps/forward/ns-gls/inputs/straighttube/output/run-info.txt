@@ -1,100 +1,11 @@
-step       1, t =        0.01, max CFL =           0, KSP its = 60, residual = 4.42011e-10, assembly = 0.0137821, solve = 0.0225455, gather = 0.000379386, total = 0.0427502
-step       2, t =        0.02, max CFL =     1.27349, KSP its = 56, residual = 4.16156e-10, assembly = 0.0141146, solve = 0.0140073, gather = 0.000190541, total = 0.030879
-step       3, t =        0.03, max CFL =     1.37202, KSP its = 51, residual = 4.39327e-10, assembly = 0.0137389, solve = 0.0122682, gather = 0.00020063, total = 0.0291352
-step       4, t =        0.04, max CFL =     1.38559, KSP its = 31, residual = 6.20769e-10, assembly = 0.0138188, solve = 0.00697539, gather = 0.000202527, total = 0.0239045
-step       5, t =        0.05, max CFL =     1.40394, KSP its = 23, residual = 6.35475e-10, assembly = 0.0132956, solve = 0.00511642, gather = 0.00018245, total = 0.0219003
-step       6, t =        0.06, max CFL =     1.42486, KSP its = 19, residual = 6.08244e-10, assembly = 0.0137503, solve = 0.00452539, gather = 0.000192067, total = 0.0218372
-step       7, t =        0.07, max CFL =     1.44727, KSP its = 44, residual = 5.53641e-10, assembly = 0.0137097, solve = 0.0103304, gather = 0.000192358, total = 0.0280833
-step       8, t =        0.08, max CFL =     1.47087, KSP its = 34, residual = 6.50511e-10, assembly = 0.0136834, solve = 0.00750513, gather = 0.0002344, total = 0.025298
-step       9, t =        0.09, max CFL =     1.49549, KSP its = 37, residual = 5.69047e-10, assembly = 0.013467, solve = 0.00871081, gather = 0.000198542, total = 0.0263336
-step      10, t =         0.1, max CFL =     1.52091, KSP its = 10, residual = 6.33283e-10, assembly = 0.0140008, solve = 0.00273488, gather = 0.000176276, total = 0.0210283
-step      11, t =        0.11, max CFL =     1.54688, KSP its = 20, residual = 6.74677e-10, assembly = 0.0136756, solve = 0.00466904, gather = 0.00018757, total = 0.0231415
-step      12, t =        0.12, max CFL =     1.57312, KSP its = 16, residual = 6.83864e-10, assembly = 0.0133461, solve = 0.00396365, gather = 0.000298054, total = 0.0219491
-step      13, t =        0.13, max CFL =     1.59939, KSP its = 15, residual = 6.85204e-10, assembly = 0.0136206, solve = 0.00366059, gather = 0.000177973, total = 0.0226547
-step      14, t =        0.14, max CFL =     1.62542, KSP its = 46, residual = 6.68241e-10, assembly = 0.0135675, solve = 0.0108948, gather = 0.000194085, total = 0.0298555
-step      15, t =        0.15, max CFL =     1.65093, KSP its = 42, residual = 7.36139e-10, assembly = 0.0134007, solve = 0.00972385, gather = 0.000191133, total = 0.028575
-step      16, t =        0.16, max CFL =     1.67565, KSP its = 42, residual = 7.50991e-10, assembly = 0.0134729, solve = 0.0096248, gather = 0.000319928, total = 0.0290788
-step      17, t =        0.17, max CFL =     1.69933, KSP its = 47, residual = 5.54883e-10, assembly = 0.014126, solve = 0.0111214, gather = 0.000198201, total = 0.0309613
-step      18, t =        0.18, max CFL =     1.72168, KSP its = 47, residual = 5.76337e-10, assembly = 0.0139583, solve = 0.0112396, gather = 0.000194909, total = 0.0314191
-step      19, t =        0.19, max CFL =     1.74243, KSP its = 47, residual = 5.36589e-10, assembly = 0.0133541, solve = 0.011142, gather = 0.000196353, total = 0.0310392
-step      20, t =         0.2, max CFL =     1.76132, KSP its = 47, residual = 5.07912e-10, assembly = 0.0133648, solve = 0.011052, gather = 0.000198301, total = 0.0307062
-step      21, t =        0.21, max CFL =     1.77807, KSP its = 46, residual = 7.94974e-10, assembly = 0.0135391, solve = 0.0108985, gather = 0.000192699, total = 0.0311259
-step      22, t =        0.22, max CFL =     1.79241, KSP its = 46, residual = 7.7987e-10, assembly = 0.0140528, solve = 0.010916, gather = 0.000191304, total = 0.0317433
-step      23, t =        0.23, max CFL =     1.80407, KSP its = 46, residual = 6.58052e-10, assembly = 0.0135125, solve = 0.0106941, gather = 0.000192479, total = 0.0322554
-step      24, t =        0.24, max CFL =     1.81278, KSP its = 46, residual = 5.73478e-10, assembly = 0.0142771, solve = 0.0107591, gather = 0.000191153, total = 0.0328142
-step      25, t =        0.25, max CFL =     1.81826, KSP its = 46, residual = 5.01285e-10, assembly = 0.0135173, solve = 0.0109663, gather = 0.0001927, total = 0.0324116
-step      26, t =        0.26, max CFL =     1.82025, KSP its = 45, residual = 5.91286e-10, assembly = 0.0140977, solve = 0.0105253, gather = 0.000197077, total = 0.0328893
-step      27, t =        0.27, max CFL =      1.8189, KSP its = 45, residual = 5.57635e-10, assembly = 0.013693, solve = 0.0108198, gather = 0.000202006, total = 0.0327166
-step      28, t =        0.28, max CFL =      1.8147, KSP its = 45, residual = 6.21271e-10, assembly = 0.0138712, solve = 0.0105747, gather = 0.000210288, total = 0.0329278
-step      29, t =        0.29, max CFL =     1.80784, KSP its = 45, residual = 5.38013e-10, assembly = 0.0136791, solve = 0.0107235, gather = 0.000209092, total = 0.0328824
-step      30, t =         0.3, max CFL =     1.79849, KSP its = 44, residual = 6.82656e-10, assembly = 0.0137712, solve = 0.0106729, gather = 0.000194944, total = 0.0332489
-step      31, t =        0.31, max CFL =     1.78685, KSP its = 45, residual = 6.63623e-10, assembly = 0.0138023, solve = 0.0103177, gather = 0.000258566, total = 0.0333229
-step      32, t =        0.32, max CFL =     1.77307, KSP its = 45, residual = 6.30899e-10, assembly = 0.0137752, solve = 0.0105588, gather = 0.000193789, total = 0.0328409
-step      33, t =        0.33, max CFL =     1.75736, KSP its = 46, residual = 5.19538e-10, assembly = 0.0137862, solve = 0.0105962, gather = 0.000221588, total = 0.0347709
-step      34, t =        0.34, max CFL =     1.73989, KSP its = 45, residual = 7.31928e-10, assembly = 0.0136289, solve = 0.0107288, gather = 0.000191791, total = 0.0345247
-step      35, t =        0.35, max CFL =     1.72085, KSP its = 44, residual = 7.28782e-10, assembly = 0.0134682, solve = 0.0108113, gather = 0.000211836, total = 0.0330884
-step      36, t =        0.36, max CFL =     1.70041, KSP its = 43, residual = 6.33549e-10, assembly = 0.0136218, solve = 0.0101297, gather = 0.000196692, total = 0.0343802
-step      37, t =        0.37, max CFL =     1.67876, KSP its = 44, residual = 6.31943e-10, assembly = 0.0148675, solve = 0.0112541, gather = 0.000195105, total = 0.0367836
-step      38, t =        0.38, max CFL =     1.65607, KSP its = 43, residual = 6.60203e-10, assembly = 0.0141095, solve = 0.0101515, gather = 0.000197555, total = 0.0348838
-step      39, t =        0.39, max CFL =     1.63252, KSP its = 44, residual = 6.75766e-10, assembly = 0.0138995, solve = 0.0105736, gather = 0.000231079, total = 0.0351128
-step      40, t =         0.4, max CFL =     1.60831, KSP its = 43, residual = 7.02143e-10, assembly = 0.0141789, solve = 0.0101494, gather = 0.00028739, total = 0.0348919
-step      41, t =        0.41, max CFL =     1.58361, KSP its = 36, residual = 6.78663e-10, assembly = 0.014175, solve = 0.00831362, gather = 0.000262925, total = 0.0340903
-step      42, t =        0.42, max CFL =      1.5586, KSP its = 28, residual = 6.76774e-10, assembly = 0.0141399, solve = 0.0064931, gather = 0.000196129, total = 0.031544
-step      43, t =        0.43, max CFL =     1.53346, KSP its = 25, residual = 6.70129e-10, assembly = 0.0152268, solve = 0.00590078, gather = 0.000192574, total = 0.0316521
-step      44, t =        0.44, max CFL =     1.50837, KSP its = 18, residual = 6.56348e-10, assembly = 0.0143308, solve = 0.00421957, gather = 0.000180984, total = 0.0301171
-step      45, t =        0.45, max CFL =     1.48352, KSP its = 15, residual = 6.02008e-10, assembly = 0.0150543, solve = 0.00411079, gather = 0.000299572, total = 0.0302137
-step      46, t =        0.46, max CFL =     1.45908, KSP its = 21, residual = 6.36545e-10, assembly = 0.0151424, solve = 0.00527135, gather = 0.000208342, total = 0.0327993
-step      47, t =        0.47, max CFL =     1.43523, KSP its = 48, residual = 4.67765e-10, assembly = 0.0141975, solve = 0.0120092, gather = 0.000197113, total = 0.039891
-step      48, t =        0.48, max CFL =     1.41216, KSP its = 27, residual = 6.10959e-10, assembly = 0.013649, solve = 0.00643842, gather = 0.000237034, total = 0.0328257
-step      49, t =        0.49, max CFL =     1.39005, KSP its = 48, residual = 4.79651e-10, assembly = 0.0139342, solve = 0.0117379, gather = 0.000247379, total = 0.0394064
-step      50, t =         0.5, max CFL =     1.36908, KSP its = 47, residual = 5.12148e-10, assembly = 0.0139525, solve = 0.0113819, gather = 0.000196571, total = 0.0383335
-step      51, t =        0.51, max CFL =     1.34942, KSP its = 13, residual = 5.50994e-10, assembly = 0.0145164, solve = 0.0032674, gather = 0.000185504, total = 0.0309518
-step      52, t =        0.52, max CFL =     1.32982, KSP its = 47, residual = 5.15733e-10, assembly = 0.0144036, solve = 0.0113581, gather = 0.000195095, total = 0.0392169
-step      53, t =        0.53, max CFL =     1.30895, KSP its = 48, residual = 4.91023e-10, assembly = 0.0141457, solve = 0.0116243, gather = 0.000192343, total = 0.0396022
-step      54, t =        0.54, max CFL =     1.28692, KSP its = 44, residual = 4.90934e-10, assembly = 0.0141578, solve = 0.0104244, gather = 0.000260294, total = 0.0396207
-step      55, t =        0.55, max CFL =     1.26394, KSP its = 43, residual = 4.57505e-10, assembly = 0.0142303, solve = 0.0107623, gather = 0.000189883, total = 0.0401133
-step      56, t =        0.56, max CFL =     1.24016, KSP its = 45, residual = 5.16917e-10, assembly = 0.0145797, solve = 0.0119596, gather = 0.000191579, total = 0.0422881
-step      57, t =        0.57, max CFL =     1.21578, KSP its = 45, residual = 5.22179e-10, assembly = 0.0152284, solve = 0.0115691, gather = 0.000195948, total = 0.0427954
-step      58, t =        0.58, max CFL =     1.19097, KSP its = 26, residual = 5.10724e-10, assembly = 0.0145401, solve = 0.00605785, gather = 0.000194386, total = 0.0359177
-step      59, t =        0.59, max CFL =     1.16591, KSP its = 44, residual = 5.04485e-10, assembly = 0.013989, solve = 0.010501, gather = 0.000209859, total = 0.0392156
-step      60, t =         0.6, max CFL =     1.14078, KSP its = 14, residual = 4.56774e-10, assembly = 0.013927, solve = 0.00365853, gather = 0.000188379, total = 0.0325487
-step      61, t =        0.61, max CFL =     1.11577, KSP its = 16, residual = 4.32319e-10, assembly = 0.0142592, solve = 0.00380038, gather = 0.000185867, total = 0.0323873
-step      62, t =        0.62, max CFL =     1.09105, KSP its = 46, residual = 4.66967e-10, assembly = 0.0142164, solve = 0.0110301, gather = 0.000198868, total = 0.04196
-step      63, t =        0.63, max CFL =      1.0668, KSP its = 36, residual = 4.65148e-10, assembly = 0.0142676, solve = 0.00843989, gather = 0.000231972, total = 0.0393208
-step      64, t =        0.64, max CFL =     1.04321, KSP its = 46, residual = 4.29304e-10, assembly = 0.0148907, solve = 0.0116016, gather = 0.000247344, total = 0.0432731
-step      65, t =        0.65, max CFL =     1.02045, KSP its = 49, residual = 2.97009e-10, assembly = 0.0144863, solve = 0.0124872, gather = 0.000201841, total = 0.0448798
-step      66, t =        0.66, max CFL =    0.998704, KSP its = 47, residual = 3.98462e-10, assembly = 0.0141287, solve = 0.0110834, gather = 0.000222799, total = 0.0416687
-step      67, t =        0.67, max CFL =    0.978155, KSP its = 47, residual = 3.79293e-10, assembly = 0.0144025, solve = 0.011371, gather = 0.000224748, total = 0.0416803
-step      68, t =        0.68, max CFL =    0.958977, KSP its = 49, residual = 3.43331e-10, assembly = 0.0141496, solve = 0.0117693, gather = 0.000205268, total = 0.0417298
-step      69, t =        0.69, max CFL =    0.941353, KSP its = 49, residual = 3.30618e-10, assembly = 0.0142394, solve = 0.0117723, gather = 0.000205408, total = 0.0434162
-step      70, t =         0.7, max CFL =    0.925464, KSP its = 49, residual = 3.93694e-10, assembly = 0.0143898, solve = 0.0119221, gather = 0.000205749, total = 0.0427424
-step      71, t =        0.71, max CFL =     0.91149, KSP its = 50, residual = 2.21891e-10, assembly = 0.0140752, solve = 0.0119611, gather = 0.000196436, total = 0.0423917
-step      72, t =        0.72, max CFL =    0.899613, KSP its = 50, residual = 2.29504e-10, assembly = 0.0144319, solve = 0.0123839, gather = 0.000193824, total = 0.0522332
-step      73, t =        0.73, max CFL =    0.890012, KSP its = 50, residual = 2.32888e-10, assembly = 0.0149643, solve = 0.0127945, gather = 0.000211114, total = 0.0458132
-step      74, t =        0.74, max CFL =    0.882869, KSP its = 50, residual = 2.3485e-10, assembly = 0.0142948, solve = 0.0123687, gather = 0.000198475, total = 0.0456164
-step      75, t =        0.75, max CFL =    0.878364, KSP its = 50, residual = 2.47801e-10, assembly = 0.0144997, solve = 0.0125251, gather = 0.000215304, total = 0.0453877
-step      76, t =        0.76, max CFL =     0.87668, KSP its = 50, residual = 2.3699e-10, assembly = 0.0146188, solve = 0.0125136, gather = 0.000208593, total = 0.0471244
-step      77, t =        0.77, max CFL =    0.877941, KSP its = 49, residual = 3.79334e-10, assembly = 0.015354, solve = 0.0120535, gather = 0.000205448, total = 0.0466792
-step      78, t =        0.78, max CFL =    0.882039, KSP its = 49, residual = 3.54543e-10, assembly = 0.0144334, solve = 0.0121386, gather = 0.000198445, total = 0.0460932
-step      79, t =        0.79, max CFL =    0.888803, KSP its = 49, residual = 3.7031e-10, assembly = 0.0146787, solve = 0.0124247, gather = 0.000193824, total = 0.0471094
-step      80, t =         0.8, max CFL =    0.898055, KSP its = 49, residual = 3.79463e-10, assembly = 0.0149427, solve = 0.0121309, gather = 0.000204946, total = 0.046322
-step      81, t =        0.81, max CFL =    0.909615, KSP its = 49, residual = 3.71309e-10, assembly = 0.0145739, solve = 0.0119815, gather = 0.000205427, total = 0.0474047
-step      82, t =        0.82, max CFL =    0.923306, KSP its = 49, residual = 3.57898e-10, assembly = 0.014382, solve = 0.0119965, gather = 0.000193849, total = 0.0472722
-step      83, t =        0.83, max CFL =    0.938946, KSP its = 49, residual = 3.54016e-10, assembly = 0.0142325, solve = 0.011925, gather = 0.000204532, total = 0.0472777
-step      84, t =        0.84, max CFL =    0.956355, KSP its = 49, residual = 3.78949e-10, assembly = 0.0139585, solve = 0.0124114, gather = 0.000211979, total = 0.0479548
-step      85, t =        0.85, max CFL =    0.975354, KSP its = 49, residual = 3.92505e-10, assembly = 0.0141146, solve = 0.0117075, gather = 0.00032393, total = 0.0467291
-step      86, t =        0.86, max CFL =     0.99576, KSP its = 49, residual = 3.69107e-10, assembly = 0.0139984, solve = 0.0124962, gather = 0.00020597, total = 0.0476734
-step      87, t =        0.87, max CFL =     1.01739, KSP its = 48, residual = 3.96392e-10, assembly = 0.0136527, solve = 0.0116307, gather = 0.000195739, total = 0.0471122
-step      88, t =        0.88, max CFL =     1.04007, KSP its = 47, residual = 4.06094e-10, assembly = 0.0144192, solve = 0.0119074, gather = 0.000194322, total = 0.0471575
-step      89, t =        0.89, max CFL =      1.0636, KSP its = 47, residual = 4.23129e-10, assembly = 0.014083, solve = 0.0111075, gather = 0.00032001, total = 0.0482994
-step      90, t =         0.9, max CFL =     1.08783, KSP its = 47, residual = 4.75942e-10, assembly = 0.0140569, solve = 0.011159, gather = 0.000278613, total = 0.0477573
-step      91, t =        0.91, max CFL =     1.11255, KSP its = 45, residual = 4.91085e-10, assembly = 0.0143362, solve = 0.0106602, gather = 0.00019404, total = 0.0483557
-step      92, t =        0.92, max CFL =     1.13758, KSP its = 35, residual = 5.13276e-10, assembly = 0.0138538, solve = 0.00834659, gather = 0.000200804, total = 0.0445286
-step      93, t =        0.93, max CFL =     1.16275, KSP its = 33, residual = 5.19889e-10, assembly = 0.0145061, solve = 0.00767447, gather = 0.000193557, total = 0.0455388
-step      94, t =        0.94, max CFL =     1.18787, KSP its = 11, residual = 4.82422e-10, assembly = 0.0142663, solve = 0.0032737, gather = 0.000187417, total = 0.0389906
-step      95, t =        0.95, max CFL =     1.21277, KSP its = 13, residual = 5.19989e-10, assembly = 0.0146998, solve = 0.00345441, gather = 0.000178231, total = 0.0432862
-step      96, t =        0.96, max CFL =     1.23725, KSP its = 37, residual = 5.37667e-10, assembly = 0.0152946, solve = 0.00864259, gather = 0.000313236, total = 0.0494432
-step      97, t =        0.97, max CFL =     1.26114, KSP its = 38, residual = 5.1497e-10, assembly = 0.0145748, solve = 0.0091973, gather = 0.000316312, total = 0.0496143
-step      98, t =        0.98, max CFL =     1.28425, KSP its = 47, residual = 5.3231e-10, assembly = 0.0146514, solve = 0.0115569, gather = 0.000197126, total = 0.0521344
-step      99, t =        0.99, max CFL =      1.3064, KSP its = 47, residual = 5.61359e-10, assembly = 0.0148471, solve = 0.0118632, gather = 0.000200492, total = 0.0506882
-step     100, t =           1, max CFL =     1.32741, KSP its = 48, residual = 3.75101e-10, assembly = 0.0136512, solve = 0.0115072, gather = 0.00019398, total = 0.051293
+steps = 200
+dt = 0.01
+dofs = 8514
+cells = 5372
+assembly calls = 200
+solve calls = 200
+assembly seconds = 15.4257
+solve seconds = 8.59045
+total seconds = 24.4589
+last KSP its = 189
+last KSP residual = 7.70796e-12

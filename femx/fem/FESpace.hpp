@@ -1,10 +1,10 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/DofMap.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/algebra/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

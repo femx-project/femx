@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/ReferenceElement.hpp>
 
 namespace femx

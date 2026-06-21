@@ -23,8 +23,8 @@ Real elapsedSeconds(const Clock::time_point& begin)
 
 TimeLinearStateSolver::TimeLinearStateSolver(
     const problem::TimeResidual& eq,
-    algebra::MatrixOperator& next_state_jac,
-    algebra::LinearSolver& lin_solver)
+    linalg::MatrixOperator&      next_state_jac,
+    linalg::LinearSolver&        lin_solver)
   : eq_(eq),
     next_state_jac_(next_state_jac),
     lin_solver_(lin_solver),
@@ -108,7 +108,7 @@ Index TimeLinearStateSolver::numParams() const
 }
 
 void TimeLinearStateSolver::solve(const Vector<Real>& prm,
-                                  TimeTrajectory& tr)
+                                  TimeTrajectory&     tr)
 {
   if (prm.size() != numParams())
   {
@@ -123,7 +123,7 @@ void TimeLinearStateSolver::solve(const Vector<Real>& prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    tr[step + 1] = tr[step];
+    tr[step + 1]              = tr[step];
     const Vector<Real> x      = tr[step];
     Vector<Real>       x_next = tr[step + 1];
     solveStep(step, prm, x, x_next);
@@ -135,14 +135,14 @@ void TimeLinearStateSolver::solve(const Vector<Real>& prm,
   }
 }
 
-void TimeLinearStateSolver::solveStep(Index step,
+void TimeLinearStateSolver::solveStep(Index               step,
                                       const Vector<Real>& prm,
                                       const Vector<Real>& x,
-                                      Vector<Real>& x_next)
+                                      Vector<Real>&       x_next)
 {
   problem::TimeContext ctx;
   ctx.step           = step;
-  ctx.previous_state = &x;
+  ctx.prev_state = &x;
   ctx.next_state     = &x_next;
   ctx.prm            = &prm;
 
@@ -172,7 +172,7 @@ void TimeLinearStateSolver::solveStep(Index step,
   ++assembly_calls_;
 
   Vector<Real> dx;
-  const auto solve_begin = Clock::now();
+  const auto   solve_begin = Clock::now();
   lin_solver_.solve(next_state_jac_, rhs, dx);
   solve_seconds_ += elapsedSeconds(solve_begin);
   ++solve_calls_;

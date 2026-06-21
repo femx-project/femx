@@ -1,9 +1,9 @@
 #pragma once
 
-#include <femx/core/Types.hpp>
-#include <femx/algebra/DenseMatrix.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

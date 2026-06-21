@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/solve/TimeTrajectory.hpp>
 
@@ -25,25 +25,25 @@ public:
   Index numParams() const override;
 
   Real value(const solve::TimeTrajectory& tr,
-             const Vector<Real>& prm) const override;
+             const Vector<Real>&          prm) const override;
 
-  void stateGrad(Index level,
+  void stateGrad(Index                        level,
                  const solve::TimeTrajectory& tr,
-                 const Vector<Real>& prm,
-                 Vector<Real>& out) const override;
+                 const Vector<Real>&          prm,
+                 Vector<Real>&                out) const override;
 
   void paramGrad(const solve::TimeTrajectory& tr,
-                 const Vector<Real>& prm,
-                 Vector<Real>& out) const override;
+                 const Vector<Real>&          prm,
+                 Vector<Real>&                out) const override;
 
 private:
   static void resize(Vector<Real>& out, Index size);
   static void addInto(const Vector<Real>& input, Vector<Real>& out, Index size);
 
 private:
-  Index num_steps_{0};
-  Index num_states_{0};
-  Index num_prm_{0};
+  Index                             num_steps_{0};
+  Index                             num_states_{0};
+  Index                             num_prm_{0};
   std::vector<const TimeObjective*> terms_;
 };
 

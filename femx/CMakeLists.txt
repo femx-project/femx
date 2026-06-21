@@ -1,22 +1,22 @@
-add_subdirectory(core)
-add_subdirectory(algebra)
+add_subdirectory(common)
+add_subdirectory(linalg)
 add_subdirectory(ad)
 add_subdirectory(problem)
 add_subdirectory(fem)
 if(FEMX_HAS_PETSC)
-  add_subdirectory(algebra/backends/petsc)
+  add_subdirectory(linalg/petsc)
 endif()
 add_subdirectory(solve)
 add_subdirectory(assembly)
 if(FEMX_HAS_PETSC)
-  add_subdirectory(optimize)
+  add_subdirectory(opt)
 endif()
 add_subdirectory(io)
 
 target_link_libraries(
   femx
-  INTERFACE femx_core
-            femx_algebra
+  INTERFACE femx_common
+            femx_linalg
             femx_ad
             femx_assembly
             femx_fem
@@ -25,9 +25,9 @@ target_link_libraries(
             femx_solve)
 
 if(FEMX_HAS_PETSC)
-  target_link_libraries(femx INTERFACE femx_optimize)
+  target_link_libraries(femx INTERFACE femx_opt)
 endif()
 
-if(TARGET femx_algebra_resolve)
-  target_link_libraries(femx INTERFACE femx_algebra_resolve)
+if(TARGET femx_linalg_resolve)
+  target_link_libraries(femx INTERFACE femx_linalg_resolve)
 endif()

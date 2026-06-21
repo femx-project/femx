@@ -1,8 +1,10 @@
 #include "Config.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
@@ -79,6 +81,53 @@ std::filesystem::path resolveConfigPath(const std::filesystem::path& config_dir,
   return (config_dir / candidate).lexically_normal();
 }
 
+Index stepsForEndTime(Real end_time,
+                      Real dt)
+{
+  if (!std::isfinite(end_time) || end_time <= 0.0)
+  {
+    throw std::runtime_error("Config time.end_time must be positive");
+  }
+  if (!std::isfinite(dt) || dt <= 0.0)
+  {
+    throw std::runtime_error("Config time.dt must be positive");
+  }
+
+  const Real scaled = end_time / dt;
+  if (!std::isfinite(scaled) || scaled <= 0.0
+      || scaled > static_cast<Real>(std::numeric_limits<Index>::max()))
+  {
+    throw std::runtime_error("Config time.end_time / dt is out of range");
+  }
+
+  const Real eps = 64.0 * std::numeric_limits<Real>::epsilon()
+                   * (std::abs(scaled) + 1.0);
+  return static_cast<Index>(std::ceil(scaled - eps));
+}
+
+void parseTimeConfig(const nlohmann::json& node,
+                     TimeParams&           time)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Config time must be an object");
+  }
+
+  assign(node, "dt", time.dt);
+  assign(node, "steps", time.steps);
+  if (node.contains("end_time"))
+  {
+    const Index derived_steps =
+        stepsForEndTime(node.at("end_time").get<Real>(), time.dt);
+    if (node.contains("steps") && time.steps != derived_steps)
+    {
+      throw std::runtime_error(
+          "Config time.steps and time.end_time disagree for the configured dt");
+    }
+    time.steps = derived_steps;
+  }
+}
+
 void parseVelocityTable(const std::filesystem::path& path,
                         VelocityParams&              velocity)
 {
@@ -153,54 +202,9 @@ VelocityProfileParams parseVelocityProfile(const nlohmann::json& node)
   return profile;
 }
 
-VelocityParams parseVelocity(const nlohmann::json&        node,
-                             const std::filesystem::path& config_dir,
-                             const std::string&           name)
+void assignVelocityInterpolation(const nlohmann::json& node,
+                                 VelocityParams&       velocity)
 {
-  if (!node.is_object())
-  {
-    throw std::runtime_error("Boundary " + name + " must be an object");
-  }
-
-  VelocityParams velocity;
-  if (node.contains("table"))
-  {
-    const auto table_path =
-        resolveConfigPath(config_dir, node.at("table").get<std::string>());
-    parseVelocityTable(table_path, velocity);
-  }
-
-  if (node.contains("time"))
-  {
-    velocity.time = parseRealVector(node.at("time"), "Boundary velocity time");
-  }
-  else if (!node.contains("table"))
-  {
-    throw std::runtime_error("Boundary " + name + " requires time");
-  }
-  if (node.contains("value"))
-  {
-    velocity.value =
-        parseRealVector(node.at("value"), "Boundary velocity value");
-  }
-  else if (!node.contains("table"))
-  {
-    throw std::runtime_error("Boundary " + name + " requires value");
-  }
-
-  assign(node, "area", velocity.area);
-  assign(node, "period", velocity.period);
-  assign(node, "quantity", velocity.quantity);
-  if (node.contains("normal"))
-  {
-    velocity.normal =
-        parseVector3(node.at("normal"), "Boundary velocity normal");
-  }
-  if (node.contains("profile"))
-  {
-    velocity.profile = parseVelocityProfile(node.at("profile"));
-  }
-
   if (node.contains("interpolate"))
   {
     velocity.interp = node.at("interpolate").get<std::string>();
@@ -217,6 +221,189 @@ VelocityParams parseVelocity(const nlohmann::json&        node,
   {
     velocity.interp = node.at("method").get<std::string>();
   }
+}
+
+Real parseVelocityScalar(const nlohmann::json& node,
+                         VelocityParams&       velocity)
+{
+  if (node.contains("value"))
+  {
+    return node.at("value").get<Real>();
+  }
+  if (node.contains("baseline"))
+  {
+    return node.at("baseline").get<Real>();
+  }
+  if (node.contains("bulk_speed"))
+  {
+    return node.at("bulk_speed").get<Real>();
+  }
+  if (node.contains("mean_velocity"))
+  {
+    velocity.quantity = "mean_velocity";
+    return node.at("mean_velocity").get<Real>();
+  }
+  if (node.contains("max_velocity"))
+  {
+    velocity.quantity = "max_velocity";
+    return node.at("max_velocity").get<Real>();
+  }
+  if (node.contains("flowrate"))
+  {
+    velocity.quantity = "flowrate";
+    return node.at("flowrate").get<Real>();
+  }
+
+  throw std::runtime_error(
+      "Boundary velocity time profile requires value, baseline, bulk_speed, mean_velocity, max_velocity, or flowrate");
+}
+
+void parseVelocityTimeProfile(const nlohmann::json&        node,
+                              const std::filesystem::path& config_dir,
+                              VelocityParams&              velocity)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Boundary velocity time profile must be an object");
+  }
+
+  assign(node, "quantity", velocity.quantity);
+
+  std::string type = node.contains("table") ? "table" : "uniform";
+  assign(node, "type", type);
+  if (type == "table" || type == "csv")
+  {
+    if (!node.contains("table"))
+    {
+      throw std::runtime_error(
+          "Boundary velocity table time profile requires table");
+    }
+    const auto table_path =
+        resolveConfigPath(config_dir, node.at("table").get<std::string>());
+    parseVelocityTable(table_path, velocity);
+    assign(node, "period", velocity.period);
+  }
+  else if (type == "uniform" || type == "constant" || type == "steady")
+  {
+    velocity.time  = {0.0};
+    velocity.value = {parseVelocityScalar(node, velocity)};
+    assign(node, "period", velocity.period);
+  }
+  else if (type == "sin" || type == "sine")
+  {
+    Real period = velocity.period > 0.0 ? velocity.period : 1.0;
+    assign(node, "period", period);
+    if (!std::isfinite(period) || period <= 0.0)
+    {
+      throw std::runtime_error(
+          "Boundary velocity sine time profile period must be positive");
+    }
+
+    Real amplitude = 0.35;
+    assign(node, "amplitude", amplitude);
+    assign(node, "pulse_amplitude", amplitude);
+
+    const Real base = parseVelocityScalar(node, velocity);
+    velocity.period = period;
+    velocity.time =
+        {0.0, 0.25 * period, 0.5 * period, 0.75 * period, period};
+    velocity.value =
+        {base,
+         base * (1.0 + amplitude),
+         base,
+         base * (1.0 - amplitude),
+         base};
+    velocity.interp = "cubic";
+  }
+  else
+  {
+    throw std::runtime_error(
+        "Boundary velocity time.type must be 'sine', 'uniform', or 'table'");
+  }
+
+  assignVelocityInterpolation(node, velocity);
+}
+
+void parseVelocitySpaceProfile(const nlohmann::json& node,
+                               VelocityParams&       velocity)
+{
+  velocity.profile = parseVelocityProfile(node);
+  if (!node.is_object())
+  {
+    return;
+  }
+
+  assign(node, "area", velocity.area);
+  assign(node, "quantity", velocity.quantity);
+  if (node.contains("normal"))
+  {
+    velocity.normal =
+        parseVector3(node.at("normal"), "Boundary velocity space normal");
+  }
+}
+
+VelocityParams parseVelocity(const nlohmann::json&        node,
+                             const std::filesystem::path& config_dir,
+                             const std::string&           name)
+{
+  if (!node.is_object())
+  {
+    throw std::runtime_error("Boundary " + name + " must be an object");
+  }
+
+  VelocityParams velocity;
+  assign(node, "area", velocity.area);
+  assign(node, "period", velocity.period);
+  assign(node, "quantity", velocity.quantity);
+  if (node.contains("normal"))
+  {
+    velocity.normal =
+        parseVector3(node.at("normal"), "Boundary velocity normal");
+  }
+  if (node.contains("profile"))
+  {
+    velocity.profile = parseVelocityProfile(node.at("profile"));
+  }
+
+  if (node.contains("table"))
+  {
+    const auto table_path =
+        resolveConfigPath(config_dir, node.at("table").get<std::string>());
+    parseVelocityTable(table_path, velocity);
+  }
+
+  if (node.contains("time"))
+  {
+    const auto& time = node.at("time");
+    if (time.is_object())
+    {
+      parseVelocityTimeProfile(time, config_dir, velocity);
+    }
+    else
+    {
+      velocity.time = parseRealVector(time, "Boundary velocity time");
+    }
+  }
+  else if (!node.contains("table"))
+  {
+    throw std::runtime_error("Boundary " + name + " requires time");
+  }
+  if (node.contains("value"))
+  {
+    velocity.value =
+        parseRealVector(node.at("value"), "Boundary velocity value");
+  }
+  else if (!node.contains("table")
+           && !(node.contains("time") && node.at("time").is_object()))
+  {
+    throw std::runtime_error("Boundary " + name + " requires value");
+  }
+
+  if (node.contains("space"))
+  {
+    parseVelocitySpaceProfile(node.at("space"), velocity);
+  }
+  assignVelocityInterpolation(node, velocity);
 
   return velocity;
 }
@@ -400,9 +587,7 @@ Params loadConfig(const std::string& path)
   }
   if (root.contains("time"))
   {
-    const auto& time = root.at("time");
-    assign(time, "steps", prm.time.steps);
-    assign(time, "dt", prm.time.dt);
+    parseTimeConfig(root.at("time"), prm.time);
   }
   if (root.contains("fluid"))
   {

@@ -8,7 +8,7 @@ namespace solve
 {
 
 TimeStepper::TimeStepper(const problem::TimeResidual& problem,
-                         algebra::LinearSolver&       linear_solver)
+                         linalg::LinearSolver&        linear_solver)
   : problem_(problem),
     linear_solver_(linear_solver),
     dims_(problem.dimensions())
@@ -80,10 +80,10 @@ void TimeStepper::solve(const Vector<Real>& prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    trajectory[step + 1] = trajectory[step];
-    const Vector<Real> previous_state = trajectory[step];
+    trajectory[step + 1]              = trajectory[step];
+    const Vector<Real> prev_state = trajectory[step];
     Vector<Real>       next_state     = trajectory[step + 1];
-    solveStep(step, prm, previous_state, next_state);
+    solveStep(step, prm, prev_state, next_state);
   }
 }
 
@@ -111,20 +111,20 @@ Index TimeStepper::NextStateJacobian::numCols() const
 void TimeStepper::NextStateJacobian::apply(const Vector<Real>& dir,
                                            Vector<Real>&       out) const
 {
-  owner_.problem_.applyJacobian(
+  owner_.problem_.applyJac(
       ctx_, problem::VariableBlock::NextState, dir, out);
 }
 
 void TimeStepper::NextStateJacobian::applyT(const Vector<Real>& dir,
                                             Vector<Real>&       out) const
 {
-  owner_.problem_.applyJacobianT(
+  owner_.problem_.applyJacT(
       ctx_, problem::VariableBlock::NextState, dir, out);
 }
 
 void TimeStepper::solveStep(Index               step,
                             const Vector<Real>& prm,
-                            const Vector<Real>& previous_state,
+                            const Vector<Real>& prev_state,
                             Vector<Real>&       next_state)
 {
   Vector<Real>      res;
@@ -134,7 +134,7 @@ void TimeStepper::solveStep(Index               step,
 
   problem::TimeContext ctx;
   ctx.step           = step;
-  ctx.previous_state = &previous_state;
+  ctx.prev_state = &prev_state;
   ctx.next_state     = &next_state;
   ctx.prm            = &prm;
 

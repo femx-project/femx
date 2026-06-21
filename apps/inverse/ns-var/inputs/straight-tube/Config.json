@@ -1,76 +1,118 @@
 {
-  "simulation": {
-    "mesh": {
-      "file": "../../../../meshdata/2D/straighttube.msh"
+  "mesh":
+  {
+    "file": "../../../../meshdata/2D/straighttube.msh"
+  },
+  "time":
+  {
+    "dt": 0.01,
+    "end_time": 1.0
+  },
+  "fluid":
+  {
+    "rho": 1.0,
+    "mu": 4.0e-7
+  },
+  "solver":
+  {
+    "backend": "cuda"
+  },
+  "controls":
+  {
+    "boundary":
+    {
+      "name": "inlet",
+      "bounds":
+      {
+        "min": 0.0,
+        "max": 1.0,
+        "normal": [1.0, 0.0, 0.0]
+      }
     },
-    "time": {
+    "initial_velocity":
+    {
+      "enabled": true,
+      "bounds":
+      {
+        "min": 0.0,
+        "max": 1.0
+      }
+    }
+  },
+  "initial_guess":
+  {
+    "time":
+    {
       "dt": 0.01,
       "end_time": 1.0
     },
-    "fluid": {
-      "rho": 1.0,
-      "mu": 4.0e-7
-    },
-    "bcs": [
+    "bcs":
+    [
       {
         "name": "inlet",
-        "physical": 4,
+        "tag": 4,
         "type": "dirichlet",
-        "ux": 0.0,
-        "uy": 0.0
+        "velocity":
+        {
+          "time":
+          {
+            "type": "uniform",
+            "value": 0.0162
+          },
+          "space":
+          {
+            "type": "poiseuille",
+            "radius": 0.002,
+            "center": [0.0, 0.0, 0.0],
+            "normal": [1.0, 0.0, 0.0]
+          }
+        }
       },
       {
         "name": "outlet",
-        "physical": 5,
+        "tag": 5,
         "type": "dirichlet",
         "p": 0.0
       },
       {
         "name": "wall",
-        "physical": 6,
+        "tag": 6,
         "type": "dirichlet",
         "ux": 0.0,
         "uy": 0.0
       }
-    ],
-    "output": {
-      "basename": "ns-var-straight-tube-inlet-control"
-    },
-    "solver": {
-      "backend": "cuda"
+    ]
+  },
+  "objective":
+  {
+    "alpha": 1.0,
+    "reg":
+    {
+      "beta1": 1.0e-9,
+      "beta2": 1.0e-11,
+      "beta3": 0.0,
+      "beta4": 1.0e-11
     }
   },
-  "inverse": {
-    "control": {
-      "name": "inlet"
-    },
-    "alpha": 1.0,
-    "reg": {
-      "time": 1.0e-9,
-      "l2": 1.0e-11
-    },
-    "opt": {
-      "type": "lmvm",
-      "max_iterations": 20,
-      "grad_abs_tolerance": 5.0e-6,
-      "grad_rel_tolerance": 1.0e-8,
-      "grad_step_tolerance": 0.0,
-      "use_options_database": true
-    },
-    "bounds": {
-      "axial_min": 0.0,
-      "axial_max": 0.0162,
-      "normal": [1.0, 0.0, 0.0],
-      "fix_non_axial": true
-    },
-    "initial_velocity": {
-      "enabled": true,
-      "lower": -0.0162,
-      "upper": 0.0162,
-      "l2": 1.0e-11
-    },
-    "obs": {
-      "file": "../../../make-obs/inputs/straight-tube/output/straight-tube-grid-obs.txt"
+  "optimizer":
+  {
+    "type": "lmvm",
+    "max_iterations": 20,
+    "abs_tol": 5.0e-6,
+    "rel_tol": 1.0e-8,
+    "step_tol": 0.0,
+    "scale":
+    {
+      "initial_velocity": 10.0,
+      "boundary": 1.0
     }
+  },
+  "output":
+  {
+    "basename": "ns-var-straight-tube-inlet-control"
+  },
+  "obs":
+  {
+    "file": "../../../make-obs/inputs/straight-tube/output/straight-tube-obs.txt"
   }
 }

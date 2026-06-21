@@ -1,9 +1,9 @@
 #pragma once
 
-#include <femx/algebra/LinearOperator.hpp>
-#include <femx/algebra/LinearSolver.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/solve/TimeTrajectory.hpp>
 
@@ -24,7 +24,7 @@ class TimeStepper final
 {
 public:
   TimeStepper(const problem::TimeResidual& problem,
-              algebra::LinearSolver&       linear_solver);
+              linalg::LinearSolver&        linear_solver);
 
   TimeStepperOptions& options();
 
@@ -46,7 +46,7 @@ public:
              TimeTrajectory&     trajectory);
 
 private:
-  class NextStateJacobian final : public algebra::LinearOperator
+  class NextStateJacobian final : public linalg::LinearOperator
   {
   public:
     explicit NextStateJacobian(const TimeStepper& owner);
@@ -70,7 +70,7 @@ private:
 
   void solveStep(Index               step,
                  const Vector<Real>& prm,
-                 const Vector<Real>& previous_state,
+                 const Vector<Real>& prev_state,
                  Vector<Real>&       next_state);
 
   void initializeInitialState(Vector<Real>& state) const;
@@ -82,8 +82,8 @@ private:
 
 private:
   const problem::TimeResidual& problem_;
-  algebra::LinearSolver&       linear_solver_;
-  problem::TimeDimensions      dims_;
+  linalg::LinearSolver&        linear_solver_;
+  problem::TimeDims      dims_;
   TimeStepperOptions           options_;
   Vector<Real>                 init_state_;
   bool                         has_init_state_{false};

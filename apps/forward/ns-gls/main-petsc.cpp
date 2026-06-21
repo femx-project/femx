@@ -1,33 +1,22 @@
 #include <petscksp.h>
 
 #include <algorithm>
-#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <map>
-#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
-#include "Assembly.hpp"
-#include "BoundaryConditions.hpp"
-#include "Config.hpp"
 #include "RunSupport.hpp"
-#include <femx/assembly/SparsityPatternBuilder.hpp>
-#include <femx/fem/FESpace.hpp>
-#include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/MixedFESpace.hpp>
-#include <femx/fem/GmshReader.hpp>
-#include <femx/fem/Mesh.hpp>
-#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemVector.hpp>
+#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScMatrixOperator.hpp>
+#include <femx/linalg/petsc/PETScVectorBuilder.hpp>
+#include <femx/solve/TimeLinearStateSolver.hpp>
+#include <femx/solve/TimeTrajectory.hpp>
 
 using namespace femx;
-using namespace femx::assembly;
-using namespace femx::algebra;
+using namespace femx::linalg;
+using namespace femx::solve;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -53,12 +42,22 @@ using namespace femx::algebra;
 #define FEMX_ENABLE_PETSC_OPTION "unknown"
 #endif
 
+#ifndef FEMX_ENABLE_ENZYME_OPTION
+#define FEMX_ENABLE_ENZYME_OPTION "unknown"
+#endif
+
 #ifndef FEMX_NAVIER_GLS_APP_NAME
 #define FEMX_NAVIER_GLS_APP_NAME "ns-gls-petsc"
 #endif
 
 namespace
 {
+
+struct CellRange
+{
+  Index begin = 0;
+  Index end   = 0;
+};
 
 BuildInfo makeBuildInfo()
 {
@@ -69,10 +68,20 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_HDF5", FEMX_ENABLE_HDF5_OPTION},
        {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
        {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
+       {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
        {"PETSc version",
         std::to_string(PETSC_VERSION_MAJOR) + "."
             + std::to_string(PETSC_VERSION_MINOR) + "."
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
+}
+
+void checkPetsc(PetscErrorCode ierr, const std::string& action)
+{
+  if (ierr != PETSC_SUCCESS)
+  {
+    throw std::runtime_error(
+        action + " failed with PETSc error code " + std::to_string(ierr));
+  }
 }
 
 template <typename Fn>
@@ -92,7 +101,7 @@ bool isRoot()
   return rank == 0;
 }
 
-CellRange localCellRange(Index num_cells)
+CellRange cellRange(Index num_cells)
 {
   PetscMPIInt rank = 0;
   PetscMPIInt size = 1;
@@ -107,39 +116,17 @@ CellRange localCellRange(Index num_cells)
   return {begin, begin + count};
 }
 
-IndexSetList makeElementDofCache(const MixedFESpace& space)
-{
-  IndexSetList elem_dofs;
-  elem_dofs.reserveSets(space.numElems());
-  elem_dofs.reserveValues(space.numElems() * space.numDofsPerElem());
-  for (Index ic = 0; ic < space.numElems(); ++ic)
-  {
-    elem_dofs.pushBack(space.elemDofs(ic));
-  }
-  return elem_dofs;
-}
-
 void setPetscDefaultOption(const char* name, const char* value)
 {
   PetscBool      exists = PETSC_FALSE;
   PetscErrorCode ierr   = PetscOptionsHasName(nullptr, nullptr, name, &exists);
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(std::string("PetscOptionsHasName failed for ")
-                             + name);
-  }
-
+  checkPetsc(ierr, std::string("PetscOptionsHasName(") + name + ")");
   if (exists == PETSC_TRUE)
   {
     return;
   }
-
   ierr = PetscOptionsSetValue(nullptr, name, value);
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(std::string("PetscOptionsSetValue failed for ")
-                             + name);
-  }
+  checkPetsc(ierr, std::string("PetscOptionsSetValue(") + name + ")");
 }
 
 void setKspDefaults(KspLinearSolver& solver)
@@ -157,42 +144,23 @@ void setKspDefaults(KspLinearSolver& solver)
   setPetscDefaultOption("-sub_pc_factor_mat_ordering_type", "rcm");
 }
 
-void applyDirichletCondition(const DirichletCondition& bc,
-                             Index                     num_dofs,
-                             PETScSystemMatrix&        A,
-                             PETScSystemVector&        b,
-                             PETScSystemVector&        bc_vals)
+void writeRunSummary(std::ofstream&               run_log,
+                     const ForwardProblem&        problem,
+                     const TimeLinearStateSolver& state_solver,
+                     const KspLinearSolver&       solver,
+                     Real                         total_seconds)
 {
-  if (bc.dofs().size() != bc.values().size())
-  {
-    throw std::runtime_error("DirichletCondition has inconsistent data");
-  }
-
-  std::map<Index, Real> constrained;
-  auto                  value_it = bc.values().begin();
-  for (Index dof : bc.dofs())
-  {
-    if (dof < 0 || dof >= num_dofs)
-    {
-      throw std::runtime_error("Dirichlet dof is out of range");
-    }
-
-    constrained[dof] = *value_it;
-    ++value_it;
-  }
-
-  bc_vals.setZero();
-
-  Vector<Index> rows;
-  rows.reserve(static_cast<Index>(constrained.size()));
-  for (const auto& [row, value] : constrained)
-  {
-    rows.push_back(row);
-    bc_vals.set(row, value);
-  }
-  bc_vals.finalize();
-
-  A.zeroRowsColumns(rows, 1.0, bc_vals, b);
+  run_log << "steps = " << problem.steps << '\n'
+          << "dt = " << problem.dt << '\n'
+          << "dofs = " << problem.space.numDofs() << '\n'
+          << "cells = " << problem.space.mesh().numElems() << '\n'
+          << "assembly calls = " << state_solver.assemblyCalls() << '\n'
+          << "solve calls = " << state_solver.solveCalls() << '\n'
+          << "assembly seconds = " << state_solver.assemblySeconds() << '\n'
+          << "solve seconds = " << state_solver.solveSeconds() << '\n'
+          << "total seconds = " << total_seconds << '\n'
+          << "last KSP its = " << solver.its() << '\n'
+          << "last KSP residual = " << solver.rnorm() << '\n';
 }
 
 int run(const Params& prm, bool enable_output)
@@ -207,142 +175,70 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output, makeBuildInfo());
   }
 
-  Mesh mesh = GmshReader::read(prm.mesh_file);
-  auto elem = makeElem(mesh, FEMX_NAVIER_GLS_APP_NAME);
+  ForwardProblem  problem(prm);
+  const CellRange cells = cellRange(problem.space.mesh().numElems());
+  problem.fem.setCellRange(cells.begin, cells.end);
 
-  FESpace u_space(&mesh, elem.get(), mesh.dim());
-  FESpace p_space(&mesh, elem.get());
+  PETScVectorBuilder row_layout(PETSC_COMM_WORLD);
+  row_layout.resize(problem.space.numDofs());
 
-  MixedFESpace space;
-  space.addField(u_space);
-  space.addField(p_space);
-  space.setup();
-
-  const auto   elem_dofs = makeElementDofCache(space);
-  auto         pattern   = SparsityPatternBuilder::build(space);
-  Vector<Real> x(space.numDofs());
-  Vector<Real> xp(space.numDofs());
-  x.setZero();
-  xp.setZero();
-
-  PETScSystemVector b(PETSC_COMM_WORLD);
-  PETScSystemVector x_petsc(PETSC_COMM_WORLD);
-  PETScSystemVector bc_vals(PETSC_COMM_WORLD);
-  b.resize(space.numDofs());
-  x_petsc.resize(space.numDofs());
-  bc_vals.resize(space.numDofs());
-
-  PETScSystemMatrix A(PETSC_COMM_WORLD);
-  A.resize(pattern, x_petsc);
+  PETScMatrixOperator next_jac(PETSC_COMM_WORLD);
+  next_jac.resize(problem.pattern, row_layout);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspDefaults(solver);
 
-  const auto cells = localCellRange(space.mesh().numElems());
+  TimeLinearStateSolver state_solver(problem.eq, next_jac, solver);
+  state_solver.setInitialState(problem.x0);
+  state_solver.setStepMonitor(
+      [rank](Index step, Index total)
+      {
+        if (rank != 0)
+        {
+          return;
+        }
+        std::cout << "\r  time step " << std::setw(7) << step << " / "
+                  << std::setw(7) << total << std::flush;
+        if (step >= total)
+        {
+          std::cout << '\n';
+        }
+      });
 
-  std::vector<Snapshot> snapshots;
-  std::ofstream         run_log;
-  if (rank == 0 && enable_output)
-  {
-    run_log = openRunLog(prm.output);
-  }
   if (rank == 0)
   {
     std::cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = " << size
-              << ", dofs = " << space.numDofs()
-              << ", cells = " << space.mesh().numElems() << '\n';
+              << ", dofs = " << problem.space.numDofs()
+              << ", cells = " << problem.space.mesh().numElems() << '\n';
   }
 
-  for (Index step = 1; step <= prm.time.steps; ++step)
-  {
-    const Real time = step * prm.time.dt;
-
-    const auto    step_start = Clock::now();
-    AssemblyStats stats;
-    const double  asm_time = timeCollective(
-        [&]
-        {
-          assembleSystem(space,
-                         x,
-                         xp,
-                         step == 1,
-                         prm.fluid,
-                         prm.time.dt,
-                         elem_dofs,
-                         cells,
-                         A,
-                         b,
-                         stats);
-        });
-
-    if (!std::isfinite(stats.max_cfl))
-    {
-      throw std::runtime_error("Stopping as CFL became invalid");
-    }
-
-    const auto bc = makeBoundaryCondition(space, prm.bcs, time);
-    applyDirichletCondition(bc, space.numDofs(), A, b, bc_vals);
-
-    Vector<Real> x_old = x;
-    x_petsc.copyOwnedFrom(x);
-
-    const double solve_time = timeCollective(
-        [&]
-        {
-          solver.solve(A, b, x_petsc);
-        });
-
-    const PetscInt  its   = solver.its();
-    const PetscReal rnorm = solver.rnorm();
-
-    const double gather_time = timeCollective(
-        [&]
-        {
-          x_petsc.copyToAll(x);
-        });
-    if (!isFinite(x))
-    {
-      throw std::runtime_error("Linear solve produced non-finite values in x");
-    }
-    xp = x_old;
-
-    if (enable_output && rank == 0
-        && shouldWriteOutput(step, prm.time.steps, prm.output))
-    {
-      snapshots.push_back(makeSnapshot(space, x, time));
-      writeOutput(mesh, prm.output, snapshots);
-    }
-
-    const double total_time = elapsedSeconds(step_start, Clock::now());
-    if (rank == 0)
-    {
-      std::ostringstream line;
-      line << "step " << std::setw(7) << step << " / " << std::setw(7)
-           << prm.time.steps << ", t = " << std::setw(11) << time
-           << ", max CFL = " << std::setw(11) << stats.max_cfl
-           << ", KSP its = " << std::setw(6) << its
-           << ", |r| = " << std::setw(11) << rnorm
-           << ", assembly = " << std::setw(11) << asm_time << " s"
-           << ", solve = " << std::setw(11) << solve_time << " s"
-           << ", gather = " << std::setw(11) << gather_time << " s"
-           << ", total = " << std::setw(11) << total_time << " s";
-      std::cout << line.str() << '\n';
-
-      if (enable_output)
+  TimeTrajectory trajectory;
+  state_solver.resetTiming();
+  const double total_time = timeCollective(
+      [&]
       {
-        run_log << "step " << std::setw(7) << step << ", t = "
-                << std::setw(11) << time << ", max CFL = "
-                << std::setw(11) << stats.max_cfl << ", KSP its = " << its
-                << ", residual = " << rnorm << ", assembly = " << asm_time
-                << ", solve = " << solve_time
-                << ", gather = " << gather_time
-                << ", total = " << total_time << '\n';
-        if (shouldWriteOutput(step, prm.time.steps, prm.output))
-        {
-          run_log.flush();
-        }
-      }
+        state_solver.solve(problem.prm0, trajectory);
+      });
+
+  if (!isFinite(trajectory[problem.steps]))
+  {
+    throw std::runtime_error("Linear solve produced non-finite values in x");
+  }
+
+  if (rank == 0)
+  {
+    if (enable_output)
+    {
+      writeTrajectoryOutput(problem, trajectory, prm.output);
+      std::ofstream run_log = openRunLog(prm.output);
+      writeRunSummary(run_log, problem, state_solver, solver, total_time);
     }
+
+    std::cout << "  assembly = " << state_solver.assemblySeconds() << " s"
+              << ", solve = " << state_solver.solveSeconds() << " s"
+              << ", total = " << total_time << " s"
+              << ", last KSP its = " << solver.its()
+              << ", |r| = " << solver.rnorm() << '\n';
   }
 
   return 0;
@@ -384,15 +280,17 @@ int main(int argc, char* argv[])
   }
   catch (const std::exception& e)
   {
-    PetscMPIInt rank = 0;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    if (rank == 0)
+    if (isRoot())
     {
       std::cerr << FEMX_NAVIER_GLS_APP_NAME << ": " << e.what() << '\n';
     }
     status = 1;
   }
 
-  PetscFinalize();
+  ierr = PetscFinalize();
+  if (ierr != PETSC_SUCCESS && status == 0)
+  {
+    return 1;
+  }
   return status;
 }

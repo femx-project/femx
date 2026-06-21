@@ -29,8 +29,8 @@ Assembler::Assembler(const MixedFESpace& space, AssemblyMode mode)
 {
 }
 
-Assembler::Assembler(DofLayout row_layout,
-                     DofLayout col_layout,
+Assembler::Assembler(DofLayout    row_layout,
+                     DofLayout    col_layout,
                      AssemblyMode mode)
   : row_layout_(row_layout),
     col_layout_(col_layout),
@@ -42,28 +42,28 @@ Assembler::Assembler(DofLayout row_layout,
 
 Assembler::Assembler(const FESpace& row_space,
                      const FESpace& col_space,
-                     AssemblyMode mode)
+                     AssemblyMode   mode)
   : Assembler(DofLayout(row_space), DofLayout(col_space), mode)
 {
 }
 
-Assembler::Assembler(const FESpace& row_space,
+Assembler::Assembler(const FESpace&      row_space,
                      const MixedFESpace& col_space,
-                     AssemblyMode mode)
+                     AssemblyMode        mode)
   : Assembler(DofLayout(row_space), DofLayout(col_space), mode)
 {
 }
 
 Assembler::Assembler(const MixedFESpace& row_space,
-                     const FESpace& col_space,
-                     AssemblyMode mode)
+                     const FESpace&      col_space,
+                     AssemblyMode        mode)
   : Assembler(DofLayout(row_space), DofLayout(col_space), mode)
 {
 }
 
 Assembler::Assembler(const MixedFESpace& row_space,
                      const MixedFESpace& col_space,
-                     AssemblyMode mode)
+                     AssemblyMode        mode)
   : Assembler(DofLayout(row_space), DofLayout(col_space), mode)
 {
 }
@@ -95,15 +95,15 @@ void Assembler::initVector(Vector<Real>& out) const
   }
 }
 
-void Assembler::initMatrix(algebra::MatrixBuilder& out) const
+void Assembler::initMatrix(linalg::MatrixBuilder& out) const
 {
   out.resize(numRows(), numCols());
   out.setZero();
 }
 
-void Assembler::addVector(Index ic,
+void Assembler::addVector(Index               ic,
                           const Vector<Real>& local,
-                          Vector<Real>& out) const
+                          Vector<Real>&       out) const
 {
   if (out.size() != numRows())
   {
@@ -135,9 +135,9 @@ void Assembler::addVector(Index ic,
   }
 }
 
-void Assembler::addMatrix(Index ic,
-                          const DenseMatrix& local,
-                          algebra::MatrixBuilder& out) const
+void Assembler::addMatrix(Index                  ic,
+                          const DenseMatrix&     local,
+                          linalg::MatrixBuilder& out) const
 {
   if (out.numRows() != numRows() || out.numCols() != numCols())
   {

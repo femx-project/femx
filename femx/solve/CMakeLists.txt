@@ -18,4 +18,4 @@ target_sources(
          TimeStepper.hpp
          TimeTrajectory.hpp)
 
-target_link_libraries(femx_solve PUBLIC femx_problem femx_algebra)
+target_link_libraries(femx_solve PUBLIC femx_problem femx_linalg)

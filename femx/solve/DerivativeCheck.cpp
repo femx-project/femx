@@ -1,7 +1,7 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/core/Math.hpp>
+#include <femx/common/Math.hpp>
 #include <femx/solve/DerivativeCheck.hpp>
 
 using namespace femx::solve;
@@ -29,9 +29,9 @@ DerivativeCheck::DerivativeCheck(Real step)
 
 DerivativeCheckResult DerivativeCheck::objectiveStateGrad(
     const problem::Objective& obj,
-    const Vector<Real>&        state,
-    const Vector<Real>&        prm,
-    const Vector<Real>&        dir) const
+    const Vector<Real>&       state,
+    const Vector<Real>&       prm,
+    const Vector<Real>&       dir) const
 {
   const Vector<Real> state_plus  = shifted(state, dir, step_);
   const Vector<Real> state_minus = shifted(state, dir, -step_);
@@ -47,9 +47,9 @@ DerivativeCheckResult DerivativeCheck::objectiveStateGrad(
 
 DerivativeCheckResult DerivativeCheck::objectiveParamGrad(
     const problem::Objective& obj,
-    const Vector<Real>&        state,
-    const Vector<Real>&        prm,
-    const Vector<Real>&        dir) const
+    const Vector<Real>&       state,
+    const Vector<Real>&       prm,
+    const Vector<Real>&       dir) const
 {
   const Vector<Real> param_p = shifted(prm, dir, step_);
   const Vector<Real> param_m = shifted(prm, dir, -step_);
@@ -62,9 +62,9 @@ DerivativeCheckResult DerivativeCheck::objectiveParamGrad(
   return compareScalars(dot(grad, dir), reference);
 }
 
-DerivativeCheckResult DerivativeCheck::reducedGrad(ReducedFunctional& functional,
-    const Vector<Real>& prm,
-    const Vector<Real>& dir) const
+DerivativeCheckResult DerivativeCheck::reducedGrad(ReducedFunctional&  functional,
+                                                   const Vector<Real>& prm,
+                                                   const Vector<Real>& dir) const
 {
   const Vector<Real> param_p = shifted(prm, dir, step_);
   const Vector<Real> param_m = shifted(prm, dir, -step_);

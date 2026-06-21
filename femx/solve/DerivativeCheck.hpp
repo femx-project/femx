@@ -1,7 +1,7 @@
 #pragma once
 
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/Linearization.hpp>
 #include <femx/problem/Objective.hpp>
 #include <femx/problem/Residual.hpp>
@@ -29,14 +29,14 @@ public:
   explicit DerivativeCheck(Real step = 1.0e-6);
 
   DerivativeCheckResult objectiveStateGrad(const problem::Objective& obj,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir) const;
+                                           const Vector<Real>&       state,
+                                           const Vector<Real>&       prm,
+                                           const Vector<Real>&       dir) const;
 
   DerivativeCheckResult objectiveParamGrad(const problem::Objective& obj,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir) const;
+                                           const Vector<Real>&       state,
+                                           const Vector<Real>&       prm,
+                                           const Vector<Real>&       dir) const;
 
   DerivativeCheckResult reducedGrad(ReducedFunctional&  functional,
                                     const Vector<Real>& prm,

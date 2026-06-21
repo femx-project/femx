@@ -14,9 +14,9 @@ target_sources(
          SumTimeObjective.hpp
          TimeLeastSquaresObjective.hpp
          TimeObjective.hpp
-         TimeObservation.hpp
+         TimeObservationOperator.hpp
          TimeObservationData.hpp
          TimeRegularization.hpp
          TimeResidual.hpp)
 
-target_link_libraries(femx_problem PUBLIC femx_config femx_core femx_algebra)
+target_link_libraries(femx_problem PUBLIC femx_config femx_common femx_linalg)

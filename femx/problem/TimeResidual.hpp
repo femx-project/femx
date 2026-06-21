@@ -1,15 +1,15 @@
 #pragma once
 
-#include <femx/algebra/MatrixBuilder.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 namespace problem
 {
 
-struct TimeDimensions
+struct TimeDims
 {
   Index num_steps     = 0;
   Index num_states    = 0;
@@ -19,17 +19,17 @@ struct TimeDimensions
 
 struct TimeContext
 {
-  Index               step           = 0;
-  const Vector<Real>* previous_state = nullptr;
-  const Vector<Real>* next_state     = nullptr;
-  const Vector<Real>* prm            = nullptr;
+  Index               step       = 0;
+  const Vector<Real>* prev_state = nullptr;
+  const Vector<Real>* next_state = nullptr;
+  const Vector<Real>* prm        = nullptr;
 };
 
 enum class VariableBlock
 {
-  PreviousState,
+  PrevState,
   NextState,
-  Parameter
+  Param
 };
 
 class TimeResidual
@@ -37,24 +37,24 @@ class TimeResidual
 public:
   virtual ~TimeResidual() = default;
 
-  virtual TimeDimensions dimensions() const = 0;
+  virtual TimeDims dimensions() const = 0;
 
   virtual void residual(const TimeContext& ctx,
                         Vector<Real>&      out) const = 0;
 
-  virtual void applyJacobian(const TimeContext&  ctx,
-                             VariableBlock      wrt,
-                             const Vector<Real>& dir,
-                             Vector<Real>&       out) const = 0;
+  virtual void applyJac(const TimeContext&  ctx,
+                        VariableBlock       wrt,
+                        const Vector<Real>& dir,
+                        Vector<Real>&       out) const = 0;
 
-  virtual void applyJacobianT(const TimeContext&  ctx,
-                              VariableBlock      wrt,
-                              const Vector<Real>& adjoint,
-                              Vector<Real>&       out) const = 0;
+  virtual void applyJacT(const TimeContext&  ctx,
+                         VariableBlock       wrt,
+                         const Vector<Real>& adjoint,
+                         Vector<Real>&       out) const = 0;
 
-  virtual bool assembleJacobian(const TimeContext& ctx,
-                                VariableBlock     wrt,
-                                algebra::MatrixBuilder& out) const
+  virtual bool assembleJacobian(const TimeContext&     ctx,
+                                VariableBlock          wrt,
+                                linalg::MatrixBuilder& out) const
   {
     (void) ctx;
     (void) wrt;

@@ -2,10 +2,10 @@
 
 #include <functional>
 
-#include <femx/algebra/LinearSolver.hpp>
-#include <femx/algebra/MatrixOperator.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/solve/TimeStateSolver.hpp>
@@ -20,7 +20,7 @@ class TimeReducedFunctional final
 {
 public:
   using ProgressCallback = std::function<void(const char* phase, Index step, Index total_steps)>;
-  
+
   using InitialStateParamJacT =
       std::function<void(const Vector<Real>& prm,
                          const Vector<Real>& state_grad,
@@ -28,9 +28,9 @@ public:
 
   TimeReducedFunctional(TimeStateSolver&              state_solver,
                         const problem::TimeResidual&  eq,
-                        algebra::MatrixOperator&      next_state_jac,
-                        algebra::MatrixOperator&      prev_state_jac,
-                        algebra::LinearSolver&        adjoint_solver,
+                        linalg::MatrixOperator&       next_state_jac,
+                        linalg::MatrixOperator&       prev_state_jac,
+                        linalg::LinearSolver&         adjoint_solver,
                         const problem::TimeObjective& obj);
 
   void setProgress(ProgressCallback callback);
@@ -57,9 +57,9 @@ private:
               const Vector<Real>&   prm,
               Vector<Real>&         out);
 
-  void assemble(problem::TimeContext     ctx,
-                problem::VariableBlock   wrt,
-                algebra::MatrixOperator& out);
+  void assemble(problem::TimeContext    ctx,
+                problem::VariableBlock  wrt,
+                linalg::MatrixOperator& out);
 
   void        notify(const char* phase, Index step, Index total_steps);
   static void checkSize(const Vector<Real>& value,
@@ -69,11 +69,11 @@ private:
 private:
   TimeStateSolver&              state_solver_;
   const problem::TimeResidual&  eq_;
-  algebra::MatrixOperator&      next_state_jac_;
-  algebra::MatrixOperator&      prev_state_jac_;
-  algebra::LinearSolver&        adj_solver_;
+  linalg::MatrixOperator&       next_state_jac_;
+  linalg::MatrixOperator&       prev_state_jac_;
+  linalg::LinearSolver&         adj_solver_;
   const problem::TimeObjective& obj_;
-  problem::TimeDimensions       dims_;
+  problem::TimeDims       dims_;
   ProgressCallback              callback_;
   InitialStateParamJacT         init_param_jac_t_;
   Real                          assembly_seconds_{0.0};

@@ -3,10 +3,10 @@
 #include <string>
 #include <vector>
 
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Math.hpp>
-#include <femx/core/Types.hpp>
-#include <femx/problem/TimeObservation.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/problem/TimeObservationOperator.hpp>
 #include <femx/solve/TimeTrajectory.hpp>
 
 namespace femx
@@ -23,7 +23,7 @@ public:
 
   void resize(Index num_levels, Index num_observations);
 
-  bool empty() const;
+  bool  empty() const;
   Index numLevels() const;
   Index numObservations() const;
   Index size() const;
@@ -32,18 +32,18 @@ public:
   bool hasTimeLevels() const;
   bool hasTimeValues() const;
 
-  const std::string& sampler() const;
+  const std::string&         sampler() const;
   const std::vector<Point3>& points() const;
-  const Vector<Index>& components() const;
-  const Vector<Index>& timeLevels() const;
-  const Vector<Real>& timeValues() const;
+  const Vector<Index>&       components() const;
+  const Vector<Index>&       timeLevels() const;
+  const Vector<Real>&        timeValues() const;
 
   Index timeLevel(Index row) const;
-  Real timeValue(Index row) const;
+  Real  timeValue(Index row) const;
 
-  void setLayout(std::string sampler,
+  void setLayout(std::string         sampler,
                  std::vector<Point3> points,
-                 Vector<Index> components);
+                 Vector<Index>       components);
 
   void setTimeLevels(Vector<Index> levels);
   void setTimeValues(Vector<Real> values);
@@ -70,9 +70,9 @@ private:
   Vector<Real>        time_values_;
 };
 
-TimeObservationData sampleTimeObs(const TimeObservation& obs,
-                                  const solve::TimeTrajectory& tr,
-                                  const Vector<Real>& prm);
+TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
+                                  const solve::TimeTrajectory&   tr,
+                                  const Vector<Real>&            prm);
 
 void writeTimeObsData(const std::string& path, const TimeObservationData& data);
 

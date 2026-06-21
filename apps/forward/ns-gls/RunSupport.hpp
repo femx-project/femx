@@ -9,15 +9,23 @@
 #include <vector>
 
 #include "Config.hpp"
-#include <femx/core/Types.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <NavierKernel.hpp>
+#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/TimeFEMResidual.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/fem/FiniteElement.hpp>
+#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Mesh.hpp>
+#include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
-
-class FiniteElement;
-class Mesh;
-class MixedFESpace;
+namespace solve
+{
+class TimeTrajectory;
+}
 
 struct AppOptions
 {
@@ -39,6 +47,37 @@ struct Snapshot
   Vector<Real> uy;
   Vector<Real> uz;
   Vector<Real> p;
+};
+
+struct FixedBoundaryValues
+{
+  Vector<Index> dofs;
+  Vector<Real>  values;
+};
+
+struct ForwardProblem
+{
+  explicit ForwardProblem(const Params& prm);
+
+  ForwardProblem(const ForwardProblem&)            = delete;
+  ForwardProblem& operator=(const ForwardProblem&) = delete;
+  ForwardProblem(ForwardProblem&&)                 = delete;
+  ForwardProblem& operator=(ForwardProblem&&)      = delete;
+
+  Index steps = 0;
+  Real  dt    = 0.0;
+
+  Mesh                                   mesh;
+  std::unique_ptr<FiniteElement>         elem;
+  MixedFESpace                           space;
+  GaussQuadrature                        quad;
+  navier::NavierKernel                   ns;
+  assembly::TimeFEMResidual              fem;
+  FixedBoundaryValues                    fixed;
+  assembly::TimeDirichletControlResidual eq;
+  Vector<Real>                           x0;
+  CsrPattern                             pattern;
+  Vector<Real>                           prm0;
 };
 
 using Clock = std::chrono::high_resolution_clock;
@@ -78,6 +117,10 @@ Snapshot makeSnapshot(const MixedFESpace& space,
 void writeOutput(const Mesh&                  mesh,
                  const OutputParams&          prm,
                  const std::vector<Snapshot>& snapshots);
+
+void writeTrajectoryOutput(const ForwardProblem&        problem,
+                           const solve::TimeTrajectory& tr,
+                           const OutputParams&          prm);
 
 void writeBuildInfo(const OutputParams& prm, const BuildInfo& info);
 

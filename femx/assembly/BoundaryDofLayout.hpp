@@ -6,12 +6,12 @@
 #include <utility>
 #include <vector>
 
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
-#include <femx/fem/MixedFESpace.hpp>
-#include <femx/algebra/IndexSetList.hpp>
-#include <femx/algebra/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/IndexSetList.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

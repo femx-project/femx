@@ -4,13 +4,13 @@
 #include <iostream>
 
 #include "Problem.hpp"
-#include <femx/optimize/TaoOptimizer.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/backends/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/backends/petsc/PETScSystemMatrix.hpp>
+#include <femx/opt/TaoOptimizer.hpp>
 #include <femx/solve/AdjointReducedFunctional.hpp>
 #include <femx/solve/MatrixAdjointSolver.hpp>
 #include <femx/solve/MatrixNewtonStateSolver.hpp>
-#include <femx/algebra/Vector.hpp>
-#include <femx/algebra/backends/petsc/KspLinearSolver.hpp>
-#include <femx/algebra/backends/petsc/PETScSystemMatrix.hpp>
 
 using namespace femx;
 using namespace femx::examples_inverse_linear_control;
@@ -20,10 +20,10 @@ namespace
 
 PetscErrorCode runOptimization()
 {
-  LinearResidualEquation     res_eq;
-  algebra::PETScSystemMatrix state_jac;
-  algebra::PETScSystemMatrix adj_state_jac;
-  algebra::KspLinearSolver   lin_solver;
+  LinearResidualEquation    res_eq;
+  linalg::PETScSystemMatrix state_jac;
+  linalg::PETScSystemMatrix adj_state_jac;
+  linalg::KspLinearSolver   lin_solver;
   lin_solver.options().pc_type     = PCJACOBI;
   lin_solver.options().rtol        = 1.0e-12;
   lin_solver.options().atol        = 1.0e-14;
@@ -42,13 +42,13 @@ PetscErrorCode runOptimization()
   initial[0] = 0.05;
   initial[1] = -0.02;
 
-  optimize::TaoOptimizer optimizer(functional);
-  optimizer.options().grad_abs_tolerance  = 1.0e-10;
-  optimizer.options().grad_rel_tolerance  = 1.0e-10;
-  optimizer.options().grad_step_tolerance = 0.0;
-  optimizer.options().max_its             = 100;
+  opt::TaoOptimizer optimizer(functional);
+  optimizer.options().abs_tol  = 1.0e-10;
+  optimizer.options().rel_tol  = 1.0e-10;
+  optimizer.options().step_tol = 0.0;
+  optimizer.options().max_its  = 100;
 
-  optimize::TaoResult result;
+  opt::TaoResult result;
   PetscCall(optimizer.solve(initial, result));
 
   Vector<Real> state;

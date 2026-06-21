@@ -7,13 +7,14 @@
 #include <random>
 #include <stdexcept>
 
+#include "../ns-var/Helper.hpp"
 #include "ObservationVti.hpp"
-#include "../ns-var/RunSupport.hpp"
+#include <femx/common/LinearInterpolation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/problem/TimeObservationData.hpp>
 #include <femx/io/TimeSeriesDataIn.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
+#include <femx/problem/TimeObservationData.hpp>
 
 namespace femx::make_obs
 {
@@ -30,13 +31,6 @@ struct NoiseReport
   Real  signal_rms = 0.0;
   Real  sigma      = 0.0;
   Index count      = 0;
-};
-
-struct TimeBracket
-{
-  Index lower  = 0;
-  Index upper  = 0;
-  Real  weight = 0.0;
 };
 
 void ensureParentDir(const std::string& path)
@@ -155,7 +149,7 @@ Vector<Real> selectedTimes(const TimeSampleParams& time,
     return times;
   }
 
-  const Index count = *time.num_points;
+  const Index  count = *time.num_points;
   Vector<Real> times(count);
   if (count == 1)
   {
@@ -188,8 +182,8 @@ Vector<Real> relativeTimes(const Vector<Real>& absolute_times)
   return times;
 }
 
-TimeBracket bracketTime(const Vector<Real>& trajectory_times,
-                        Real                time)
+LinearInterpolation bracketTime(const Vector<Real>& trajectory_times,
+                                Real                time)
 {
   const Real tol =
       std::max<Real>(1.0e-10, 1.0e-8 * std::max<Real>(1.0, trajectory_times.back()));
@@ -209,16 +203,10 @@ TimeBracket bracketTime(const Vector<Real>& trajectory_times,
     return {last, last, 0.0};
   }
 
-  for (Index step = 0; step < last; ++step)
-  {
-    const Real lo = trajectory_times[step];
-    const Real hi = trajectory_times[step + 1];
-    if (time >= lo - tol && time <= hi + tol)
-    {
-      return {step, step + 1, (time - lo) / (hi - lo)};
-    }
-  }
-  throw std::runtime_error("failed to bracket observation time");
+  const Real clamped =
+      std::min<Real>(std::max<Real>(time, trajectory_times.front()),
+                     trajectory_times.back());
+  return linearInterpolation(trajectory_times, clamped);
 }
 
 std::array<Vector<Real>, 3> interpolateVelocity(
@@ -227,16 +215,16 @@ std::array<Vector<Real>, 3> interpolateVelocity(
     const Vector<Real>&     trajectory_times,
     Real                    time)
 {
-  const TimeBracket bracket = bracketTime(trajectory_times, time);
-  const auto&       lower =
-      trajectory.vectorField(bracket.lower, field_name);
+  const LinearInterpolation interp = bracketTime(trajectory_times, time);
+  const auto&               lower =
+      trajectory.vectorField(interp.lower, field_name);
 
   std::array<Vector<Real>, 3> out{
       Vector<Real>(trajectory.mesh().numNodes()),
       Vector<Real>(trajectory.mesh().numNodes()),
       Vector<Real>(trajectory.mesh().numNodes())};
 
-  if (bracket.lower == bracket.upper)
+  if (!interp.hasUpper())
   {
     for (Index d = 0; d < 3; ++d)
     {
@@ -247,14 +235,14 @@ std::array<Vector<Real>, 3> interpolateVelocity(
   }
 
   const auto& upper =
-      trajectory.vectorField(bracket.upper, field_name);
+      trajectory.vectorField(interp.upper, field_name);
   for (Index d = 0; d < 3; ++d)
   {
     for (Index node = 0; node < trajectory.mesh().numNodes(); ++node)
     {
       out[static_cast<std::size_t>(d)][node] =
-          (1.0 - bracket.weight) * lower[static_cast<std::size_t>(d)][node]
-          + bracket.weight * upper[static_cast<std::size_t>(d)][node];
+          interp.lowerWeight() * lower[static_cast<std::size_t>(d)][node]
+          + interp.upperWeight() * upper[static_cast<std::size_t>(d)][node];
     }
   }
   return out;
@@ -270,7 +258,7 @@ MixedFESpace makeVelocitySpace(Mesh& mesh, FiniteElement& elem)
 }
 
 Vector<Real> velocityState(
-    const MixedFESpace&              space,
+    const MixedFESpace&                space,
     const std::array<Vector<Real>, 3>& velocity)
 {
   Vector<Real> state(space.numDofs());
@@ -345,11 +333,11 @@ NoiseReport addGaussianNoise(TimeObservationData& data,
   return report;
 }
 
-void writeSummary(const Params&       prm,
-                  const std::string&  observation_name,
+void writeSummary(const Params&              prm,
+                  const std::string&         observation_name,
                   const TimeObservationData& data,
-                  const NoiseReport&  noise,
-                  const std::string&  vti_output)
+                  const NoiseReport&         noise,
+                  const std::string&         vti_output)
 {
   std::cout << "\nFinal summary\n";
   std::cout << "  trajectory: " << prm.input.trajectory << '\n';
@@ -393,14 +381,14 @@ void writeTrajectoryObservationOutput(
   const Vector<Real> sample_times =
       selectedTimes(prm.time, trajectory_times);
 
-  auto obs = navier_var::makeObs(space,
-                                 prm.obs,
-                                 std::max<Index>(sample_times.size() - 1, 0),
-                                 space.numDofs(),
-                                 0);
+  auto obs = navier_var_new::makeObs(space,
+                                     prm.obs,
+                                     std::max<Index>(sample_times.size() - 1, 0),
+                                     space.numDofs(),
+                                     0);
 
   TimeObservationData sampled(sample_times.size(), obs->numObservations());
-  navier_var::setObsLayout(sampled, space, prm.obs);
+  navier_var_new::setObsLayout(sampled, space, prm.obs);
   sampled.setTimeValues(relativeTimes(sample_times));
 
   TimeSeriesDataOut reference_out;
@@ -413,11 +401,11 @@ void writeTrajectoryObservationOutput(
   Vector<Real> empty_prm;
   for (Index row = 0; row < sample_times.size(); ++row)
   {
-    const auto velocity = interpolateVelocity(trajectory,
+    const auto         velocity = interpolateVelocity(trajectory,
                                               prm.input.velocity_field,
                                               trajectory_times,
                                               sample_times[row]);
-    const Vector<Real> state = velocityState(space, velocity);
+    const Vector<Real> state    = velocityState(space, velocity);
 
     Vector<Real> values;
     obs->observe(row, state, empty_prm, values);
@@ -482,8 +470,8 @@ void writeTrajectoryObservationOutputs(const Params& prm)
     throw std::runtime_error("trajectory has no time steps");
   }
 
-  Mesh mesh = trajectory.mesh();
-  auto elem = navier_var::makeElement(mesh);
+  Mesh         mesh  = trajectory.mesh();
+  auto         elem  = navier_var_new::makeElement(mesh);
   MixedFESpace space = makeVelocitySpace(mesh, *elem);
 
   const Vector<Real> trajectory_times = trajectoryTimes(trajectory);

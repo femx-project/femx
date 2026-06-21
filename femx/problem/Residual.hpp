@@ -1,7 +1,7 @@
 #pragma once
 
-#include <femx/algebra/Vector.hpp>
-#include <femx/core/Types.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/Linearization.hpp>
 
 namespace femx

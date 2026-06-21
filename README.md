@@ -59,21 +59,21 @@ target_link_libraries(my_solver PRIVATE femx::femx)
 
 Individual component targets are also available:
 
-- `femx::core`: shared types and workspace choices.
-- `femx::algebra`: vectors, matrices, linear operators, and solver interfaces.
+- `femx::common`: shared types and workspace choices.
+- `femx::linalg`: vectors, matrices, linear operators, and solver interfaces.
 - `femx::ad`: Enzyme declarations and small AD helpers.
 - `femx::fem`: mesh-facing FEM data structures, spaces, quadrature, and elements.
 - `femx::assembly`: FEM kernels, assemblers, sparsity builders, and residual adapters.
 - `femx::problem`: residual, objective, observation, and time-residual interfaces.
 - `femx::solve`: Newton, time-stepping, and reduced-functional utilities.
-- `femx::optimize`: PETSc/TAO optimization adapters, when PETSc is enabled.
+- `femx::opt`: PETSc/TAO optimization adapters, when PETSc is enabled.
 - `femx::io`: output and data readers.
 
 Preferred include paths use the new public component layout:
 
 ```cpp
-#include <femx/core/Types.hpp>
-#include <femx/algebra/Vector.hpp>
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/solve/Newton.hpp>
 ```

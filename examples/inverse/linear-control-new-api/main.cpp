@@ -6,7 +6,7 @@
 int main()
 {
   using namespace femx;
-  using namespace femx::examples_inverse_linear_control_new_api;
+  using namespace femx::examples_inverse_linear_ctr_new_api;
 
   LinearControlSetup setup;
 

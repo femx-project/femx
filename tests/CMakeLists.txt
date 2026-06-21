@@ -6,7 +6,7 @@ add_test(NAME MathTests COMMAND runMathTests)
 
 add_executable(runNewIncludeSmokeTests unit/algebra/runNewIncludeSmokeTests.cpp)
 
-target_link_libraries(runNewIncludeSmokeTests PRIVATE femx::algebra)
+target_link_libraries(runNewIncludeSmokeTests PRIVATE femx::linalg)
 
 add_test(NAME NewIncludeSmokeTests COMMAND runNewIncludeSmokeTests)
 
@@ -106,12 +106,12 @@ target_link_libraries(runTimeLeastSquaresObjectiveTests PRIVATE femx::femx)
 add_test(NAME TimeLeastSquaresObjectiveTests
          COMMAND runTimeLeastSquaresObjectiveTests)
 
-add_executable(runTimePointSamplerTests
-               unit/inverse/runTimePointSamplerTests.cpp)
+add_executable(runTimePointInterpolatorTests
+               unit/inverse/runTimePointInterpolatorTests.cpp)
 
-target_link_libraries(runTimePointSamplerTests PRIVATE femx::femx)
+target_link_libraries(runTimePointInterpolatorTests PRIVATE femx::femx)
 
-add_test(NAME TimePointSamplerTests COMMAND runTimePointSamplerTests)
+add_test(NAME TimePointInterpolatorTests COMMAND runTimePointInterpolatorTests)
 
 add_executable(runVtiWriterTests unit/io/runVtiWriterTests.cpp)
 
@@ -243,43 +243,11 @@ target_link_libraries(runTimeAdjointReducedFunctionalTests PRIVATE femx::femx)
 add_test(NAME TimeAdjointReducedFunctionalTests
          COMMAND runTimeAdjointReducedFunctionalTests)
 
-if(TARGET navier_var_kernels)
-  add_executable(runNavierVarConfigTests
-                 unit/stokes/runNavierVarConfigTests.cpp)
-
-  target_link_libraries(runNavierVarConfigTests PRIVATE navier_var_kernels
-                                                        femx::femx)
-
-  add_test(NAME NavierVarConfigTests COMMAND runNavierVarConfigTests)
-
-  add_executable(runNavierStokesEquationTests
-                 unit/stokes/runTimeNavierStokesResidualEquationTests.cpp)
-
-  target_link_libraries(runNavierStokesEquationTests PRIVATE navier_var_kernels
-                                                             femx::femx)
-
-  add_test(NAME NavierStokesEquationTests COMMAND runNavierStokesEquationTests)
-
-  add_executable(runNavierVarRunSupportTests
-                 unit/stokes/runNavierVarRunSupportTests.cpp)
-
-  target_link_libraries(runNavierVarRunSupportTests PRIVATE navier_var_kernels
-                                                            femx::femx)
-
-  add_test(NAME NavierVarRunSupportTests COMMAND runNavierVarRunSupportTests)
-
-  add_executable(runTimeNavierStokesAssemblyBenchmark
-                 unit/stokes/runTimeNavierStokesAssemblyBenchmark.cpp)
-
-  target_link_libraries(runTimeNavierStokesAssemblyBenchmark
-                        PRIVATE navier_var_kernels femx::femx)
-endif()
-
-if(TARGET femx::algebra_petsc)
+if(TARGET femx::linalg_petsc)
   add_executable(runKspLinearSolverTests
                  unit/system/petsc/runKspLinearSolverTests.cpp)
 
-  target_link_libraries(runKspLinearSolverTests PRIVATE femx::algebra_petsc
+  target_link_libraries(runKspLinearSolverTests PRIVATE femx::linalg_petsc
                                                         femx::femx)
 
   add_test(NAME KspLinearSolverTests COMMAND runKspLinearSolverTests)
@@ -287,18 +255,18 @@ if(TARGET femx::algebra_petsc)
   add_executable(runPETScSystemMatrixTests
                  unit/system/petsc/runPETScSystemMatrixTests.cpp)
 
-  target_link_libraries(runPETScSystemMatrixTests PRIVATE femx::algebra_petsc
+  target_link_libraries(runPETScSystemMatrixTests PRIVATE femx::linalg_petsc
                                                           femx::femx)
 
   add_test(NAME PETScSystemMatrixTests COMMAND runPETScSystemMatrixTests)
 endif()
 
-if(TARGET femx::optimize)
+if(TARGET femx::opt)
   add_executable(runTaoReducedFunctionalAdapterTests
                  unit/inverse/petsc/runTaoReducedFunctionalAdapterTests.cpp)
 
   target_link_libraries(runTaoReducedFunctionalAdapterTests
-                        PRIVATE femx::optimize femx::femx)
+                        PRIVATE femx::opt femx::femx)
 
   add_test(NAME TaoReducedFunctionalAdapterTests
            COMMAND runTaoReducedFunctionalAdapterTests)
@@ -306,13 +274,13 @@ if(TARGET femx::optimize)
   add_executable(runTaoOptimizerTests
                  unit/inverse/petsc/runTaoOptimizerTests.cpp)
 
-  target_link_libraries(runTaoOptimizerTests PRIVATE femx::optimize
+  target_link_libraries(runTaoOptimizerTests PRIVATE femx::opt
                                                      femx::femx)
 
   add_test(NAME TaoOptimizerTests COMMAND runTaoOptimizerTests)
 endif()
 
-if(TARGET navier_gls_kernels)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierConfigTests.cpp")
   add_executable(
     runNavierConfigTests
     unit/navier/runNavierConfigTests.cpp ../apps/forward/ns-gls/Config.cpp
@@ -326,12 +294,16 @@ if(TARGET navier_gls_kernels)
   target_link_libraries(runNavierConfigTests PRIVATE femx::femx)
 
   add_test(NAME NavierConfigTests COMMAND runNavierConfigTests)
+endif()
 
+if(TARGET navier_common
+   AND EXISTS
+       "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierElementResidualTests.cpp")
   add_executable(runNavierElementResidualTests
                  unit/navier/runNavierElementResidualTests.cpp)
 
   target_link_libraries(runNavierElementResidualTests
-                        PRIVATE navier_gls_kernels)
+                        PRIVATE navier_common)
 
   add_test(NAME NavierElementResidualTests
            COMMAND runNavierElementResidualTests)
@@ -343,4 +315,13 @@ if(FEMX_HAS_ENZYME)
   target_link_libraries(runEnzymeSmokeTests PRIVATE femx::femx)
 
   add_test(NAME EnzymeSmokeTests COMMAND runEnzymeSmokeTests)
+
+  add_executable(runEnzymeTimeVolumeKernelTests
+                 unit/ad/runEnzymeTimeVolumeKernelTests.cpp)
+
+  target_link_libraries(runEnzymeTimeVolumeKernelTests
+                        PRIVATE femx::femx)
+
+  add_test(NAME EnzymeTimeVolumeKernelTests
+           COMMAND runEnzymeTimeVolumeKernelTests)
 endif()
