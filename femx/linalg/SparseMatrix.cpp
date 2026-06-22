@@ -3,18 +3,20 @@
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
-SparseMatrix::SparseMatrix(const CsrPattern& pattern)
-  : pattern_(&pattern),
-    values_(static_cast<std::size_t>(pattern.nnz()), Real{})
+SparseMatrix::SparseMatrix(const CsrPattern& pat)
+  : pattern_(&pat),
+    vals_(pat.nnz(), Real{})
 {
 }
 
 void SparseMatrix::setZero()
 {
-  std::fill(values_.begin(), values_.end(), Real{});
+  fill(vals_.begin(), vals_.end(), Real{});
 }
 
 Index SparseMatrix::rows() const
@@ -32,7 +34,7 @@ Index SparseMatrix::nnz() const
   return pattern_->nnz();
 }
 
-const CsrPattern& SparseMatrix::pattern() const
+const CsrPattern& SparseMatrix::pat() const
 {
   return *pattern_;
 }
@@ -49,12 +51,12 @@ const Index* SparseMatrix::colIndData() const
 
 Real* SparseMatrix::valuesData()
 {
-  return values_.data();
+  return vals_.data();
 }
 
 const Real* SparseMatrix::valuesData() const
 {
-  return values_.data();
+  return vals_.data();
 }
 
 } // namespace femx

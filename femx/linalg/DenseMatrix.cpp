@@ -2,6 +2,8 @@
 
 #include <femx/linalg/DenseMatrix.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
@@ -14,8 +16,7 @@ DenseMatrix::DenseMatrix()
 DenseMatrix::DenseMatrix(Index rows, Index cols)
   : rows_(rows),
     cols_(cols),
-    values_(static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols),
-            Real{})
+    vals_(rows * cols, Real{})
 {
 }
 
@@ -24,14 +25,12 @@ void DenseMatrix::resize(Index rows, Index cols)
   rows_ = rows;
   cols_ = cols;
 
-  values_.assign(
-      static_cast<std::size_t>(rows_) * static_cast<std::size_t>(cols_),
-      Real{});
+  vals_.assign(rows_ * cols_, Real{});
 }
 
 void DenseMatrix::setZero()
 {
-  std::fill(values_.begin(), values_.end(), Real{});
+  fill(vals_.begin(), vals_.end(), Real{});
 }
 
 Index DenseMatrix::rows() const
@@ -46,27 +45,27 @@ Index DenseMatrix::cols() const
 
 Index DenseMatrix::size() const
 {
-  return static_cast<Index>(values_.size());
+  return vals_.size();
 }
 
 Real& DenseMatrix::operator()(Index i, Index j)
 {
-  return values_[static_cast<std::size_t>(i) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(j)];
+  return vals_[i * cols_ + j];
 }
 
 Real DenseMatrix::operator()(Index i, Index j) const
 {
-  return values_[static_cast<std::size_t>(i) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(j)];
+  return vals_[i * cols_ + j];
 }
 
 Real* DenseMatrix::data()
 {
-  return values_.data();
+  return vals_.data();
 }
 
 const Real* DenseMatrix::data() const
 {
-  return values_.data();
+  return vals_.data();
 }
 
 } // namespace femx

@@ -8,17 +8,21 @@
 
 #include <nlohmann/json.hpp>
 
+using namespace std;
+using nlohmann::json;
+using namespace femx;
+
 namespace femx::make_obs
 {
 namespace
 {
 
-using namespace femx::navier_var_new;
+using namespace navier_var_new;
 
 template <typename T>
-void assign(const nlohmann::json& node,
-            const char*           key,
-            T&                    value)
+void assign(const json& node,
+            const char* key,
+            T&          value)
 {
   if (node.contains(key))
   {
@@ -26,21 +30,21 @@ void assign(const nlohmann::json& node,
   }
 }
 
-std::filesystem::path resolveConfigPath(
-    const std::filesystem::path& config_dir,
-    const std::string&           path)
+filesystem::path resolveConfigPath(
+    const filesystem::path& cfg_dir,
+    const string&           path)
 {
-  const std::filesystem::path candidate(path);
-  if (candidate.is_absolute() || config_dir.empty())
+  const filesystem::path candidate(path);
+  if (candidate.is_absolute() || cfg_dir.empty())
   {
     return candidate;
   }
-  return (config_dir / candidate).lexically_normal();
+  return (cfg_dir / candidate).lexically_normal();
 }
 
-std::string stripKnownOutputExtension(std::string path)
+string stripKnownOutputExtension(string path)
 {
-  const auto strip = [&path](const std::string& ext)
+  const auto strip = [&path](const string& ext)
   {
     if (path.size() >= ext.size()
         && path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
@@ -59,33 +63,33 @@ std::string stripKnownOutputExtension(std::string path)
 Index stepsForEndTime(Real end_time,
                       Real dt)
 {
-  if (!std::isfinite(end_time) || end_time <= 0.0)
+  if (!isfinite(end_time) || end_time <= 0.0)
   {
-    throw std::runtime_error("forward.time.end_time must be positive");
+    throw runtime_error("forward.time.end_time must be positive");
   }
-  if (!std::isfinite(dt) || dt <= 0.0)
+  if (!isfinite(dt) || dt <= 0.0)
   {
-    throw std::runtime_error("forward.time.dt must be positive");
+    throw runtime_error("forward.time.dt must be positive");
   }
 
   const Real scaled = end_time / dt;
-  if (!std::isfinite(scaled) || scaled <= 0.0
-      || scaled > static_cast<Real>(std::numeric_limits<Index>::max()))
+  if (!isfinite(scaled) || scaled <= 0.0
+      || scaled > static_cast<Real>(numeric_limits<Index>::max()))
   {
-    throw std::runtime_error("forward.time.end_time / dt is out of range");
+    throw runtime_error("forward.time.end_time / dt is out of range");
   }
 
-  const Real eps = 64.0 * std::numeric_limits<Real>::epsilon()
-                   * (std::abs(scaled) + 1.0);
-  return static_cast<Index>(std::ceil(scaled - eps));
+  const Real eps = 64.0 * numeric_limits<Real>::epsilon()
+                   * (abs(scaled) + 1.0);
+  return static_cast<Index>(ceil(scaled - eps));
 }
 
-void parseForwardTime(const nlohmann::json& node,
-                      TimeParams&           time)
+void parseForwardTime(const json& node,
+                      TimeParams& time)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward.time must be an object");
+    throw runtime_error("Config forward.time must be an object");
   }
 
   const bool has_steps = node.contains("steps")
@@ -100,7 +104,7 @@ void parseForwardTime(const nlohmann::json& node,
   }
   assign(node, "dt", time.dt);
 
-  std::optional<Real> end_time;
+  optional<Real> end_time;
   if (node.contains("end_time"))
   {
     end_time = node.at("end_time").get<Real>();
@@ -123,68 +127,67 @@ void parseForwardTime(const nlohmann::json& node,
     const Index derived_steps = stepsForEndTime(*end_time, time.dt);
     if (has_steps && time.steps != derived_steps)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "forward.time steps and end_time disagree for the configured dt");
     }
     time.steps = derived_steps;
   }
 }
 
-std::array<Real, 3> parseVector3(const nlohmann::json& node,
-                                 const std::string&    name)
+array<Real, 3> parseVector3(const json&   node,
+                            const string& name)
 {
   if (!node.is_array() || node.size() != 3)
   {
-    throw std::runtime_error(name + " must be an array with 3 values");
+    throw runtime_error(name + " must be an array with 3 values");
   }
 
-  std::array<Real, 3> values{};
+  array<Real, 3> vals{};
   for (Index i = 0; i < 3; ++i)
   {
-    values[static_cast<std::size_t>(i)] = node.at(i).get<Real>();
+    vals[i] = node.at(i).get<Real>();
   }
-  return values;
+  return vals;
 }
 
-std::array<Index, 3> parseIndex3(const nlohmann::json& node,
-                                 const std::string&    name)
+array<Index, 3> parseIndex3(const json&   node,
+                            const string& name)
 {
   if (!node.is_array() || node.size() != 3)
   {
-    throw std::runtime_error(name + " must be an array with 3 values");
+    throw runtime_error(name + " must be an array with 3 values");
   }
 
-  std::array<Index, 3> values{};
+  array<Index, 3> vals{};
   for (Index i = 0; i < 3; ++i)
   {
-    values[static_cast<std::size_t>(i)] = node.at(i).get<Index>();
+    vals[i] = node.at(i).get<Index>();
   }
-  return values;
+  return vals;
 }
 
-std::vector<Index> parseIndexList(const nlohmann::json& node,
-                                  const std::string&    name)
+Vector<Index> parseIndexList(const json&   node,
+                             const string& name)
 {
   if (!node.is_array())
   {
-    throw std::runtime_error(name + " must be an array");
+    throw runtime_error(name + " must be an array");
   }
 
-  std::vector<Index> values;
-  values.reserve(node.size());
+  Vector<Index> vals;
   for (const auto& item : node)
   {
-    values.push_back(item.get<Index>());
+    vals.push_back(item.get<Index>());
   }
-  return values;
+  return vals;
 }
 
-void parseObsGrid(const nlohmann::json&    node,
+void parseObsGrid(const json&              node,
                   ObservationParams::Grid& grid)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config obs.grid must be an object");
+    throw runtime_error("Config obs.grid must be an object");
   }
 
   if (node.contains("counts"))
@@ -198,14 +201,14 @@ void parseObsGrid(const nlohmann::json&    node,
 
   if (node.contains("bounds"))
   {
-    const auto& bounds = node.at("bounds");
-    if (!bounds.is_array() || bounds.size() != 2)
+    const auto& bnds = node.at("bounds");
+    if (!bnds.is_array() || bnds.size() != 2)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "Config obs.grid.bounds must contain lower and upper points");
     }
-    grid.lower = parseVector3(bounds.at(0), "obs.grid.bounds[0]");
-    grid.upper = parseVector3(bounds.at(1), "obs.grid.bounds[1]");
+    grid.lower = parseVector3(bnds.at(0), "obs.grid.bounds[0]");
+    grid.upper = parseVector3(bnds.at(1), "obs.grid.bounds[1]");
   }
   if (node.contains("lower"))
   {
@@ -236,27 +239,27 @@ void parseObsGrid(const nlohmann::json&    node,
   }
 }
 
-void parseObs(const nlohmann::json& node,
-              ObservationParams&    obs)
+void parseObs(const json&        node,
+              ObservationParams& obs)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config obs must be an object");
+    throw runtime_error("Config obs must be an object");
   }
 
   if (node.contains("type"))
   {
-    const std::string type = node.at("type").get<std::string>();
+    const string type = node.at("type").get<string>();
     if (type != "grid")
     {
-      throw std::runtime_error("Config obs.type must be 'grid'");
+      throw runtime_error("Config obs.type must be 'grid'");
     }
     obs.type = "grid";
   }
   if (node.contains("components"))
   {
-    obs.components = parseIndexList(node.at("components"),
-                                    "obs.components");
+    obs.comps = parseIndexList(node.at("components"),
+                               "obs.components");
   }
 
   if (node.contains("grid") || node.contains("counts"))
@@ -274,42 +277,42 @@ void parseObs(const nlohmann::json& node,
   }
 }
 
-void parseMesh(const nlohmann::json&        node,
-               const std::filesystem::path& config_dir,
-               MeshParams&                  mesh)
+void parseMesh(const json&             node,
+               const filesystem::path& cfg_dir,
+               MeshParams&             mesh)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward.mesh must be an object");
+    throw runtime_error("Config forward.mesh must be an object");
   }
 
   assign(node, "file", mesh.file);
   if (!mesh.file.empty())
   {
-    mesh.file = resolveConfigPath(config_dir, mesh.file).string();
+    mesh.file = resolveConfigPath(cfg_dir, mesh.file).string();
   }
 }
 
-void parseTarget(const nlohmann::json& node,
-                 TargetParams&         target)
+void parseTarget(const json&   node,
+                 TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary velocity must be an object");
+    throw runtime_error("Boundary velocity must be an object");
   }
 
   assign(node, "type", target.type);
-  assign(node, "quantity", target.quantity);
+  assign(node, "quantity", target.qty);
   assign(node, "bulk_speed", target.bulk_speed);
   if (node.contains("mean_velocity"))
   {
     target.bulk_speed = node.at("mean_velocity").get<Real>();
-    target.quantity   = "mean_velocity";
+    target.qty        = "mean_velocity";
   }
   else if (node.contains("max_velocity"))
   {
     target.bulk_speed = node.at("max_velocity").get<Real>();
-    target.quantity   = "max_velocity";
+    target.qty        = "max_velocity";
   }
   else if (node.contains("value"))
   {
@@ -324,35 +327,35 @@ void parseTarget(const nlohmann::json& node,
   {
     target.pulse_amplitude = node.at("amplitude").get<Real>();
   }
-  assign(node, "period", target.period);
-  assign(node, "radius", target.radius);
+  assign(node, "period", target.per);
+  assign(node, "radius", target.rad);
   if (node.contains("center"))
   {
-    target.center = parseVector3(node.at("center"), "forward.bcs.center");
+    target.cen = parseVector3(node.at("center"), "forward.bcs.center");
   }
   if (node.contains("normal"))
   {
-    target.normal = parseVector3(node.at("normal"), "forward.bcs.normal");
+    target.nrm = parseVector3(node.at("normal"), "forward.bcs.normal");
   }
 }
 
-void parseTimeProfile(const nlohmann::json& node,
-                      TargetParams&         target)
+void parseTimeProfile(const json&   node,
+                      TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary time profile must be an object");
+    throw runtime_error("Boundary time profile must be an object");
   }
 
-  std::string profile = "sin";
-  assign(node, "profile", profile);
-  if (profile == "sin" || profile == "sine")
+  string prof = "sin";
+  assign(node, "profile", prof);
+  if (prof == "sin" || prof == "sine")
   {
     target.type = "poiseuille_pulse";
   }
   else
   {
-    throw std::runtime_error("Boundary time.profile must be 'sin'");
+    throw runtime_error("Boundary time.profile must be 'sin'");
   }
 
   if (node.contains("value"))
@@ -370,12 +373,12 @@ void parseTimeProfile(const nlohmann::json& node,
   else if (node.contains("mean_velocity"))
   {
     target.bulk_speed = node.at("mean_velocity").get<Real>();
-    target.quantity   = "mean_velocity";
+    target.qty        = "mean_velocity";
   }
   else if (node.contains("max_velocity"))
   {
     target.bulk_speed = node.at("max_velocity").get<Real>();
-    target.quantity   = "max_velocity";
+    target.qty        = "max_velocity";
   }
 
   if (node.contains("amplitude"))
@@ -386,45 +389,45 @@ void parseTimeProfile(const nlohmann::json& node,
   {
     target.pulse_amplitude = node.at("pulse_amplitude").get<Real>();
   }
-  assign(node, "period", target.period);
+  assign(node, "period", target.per);
 }
 
-void parseSpaceProfile(const nlohmann::json& node,
-                       TargetParams&         target)
+void parseSpaceProfile(const json&   node,
+                       TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary space profile must be an object");
+    throw runtime_error("Boundary space profile must be an object");
   }
 
-  std::string profile = "poiseuille";
+  string prof = "poiseuille";
   if (node.contains("profile"))
   {
-    profile = node.at("profile").get<std::string>();
+    prof = node.at("profile").get<string>();
   }
   else if (node.contains("type"))
   {
-    profile = node.at("type").get<std::string>();
+    prof = node.at("type").get<string>();
   }
-  if (profile != "poiseuille")
+  if (prof != "poiseuille")
   {
-    throw std::runtime_error("Boundary space.profile must be 'poiseuille'");
+    throw runtime_error("Boundary space.profile must be 'poiseuille'");
   }
 
   target.type = "poiseuille_pulse";
-  assign(node, "quantity", target.quantity);
-  assign(node, "radius", target.radius);
+  assign(node, "quantity", target.qty);
+  assign(node, "radius", target.rad);
   if (node.contains("center"))
   {
-    target.center = parseVector3(node.at("center"), "forward.bcs.space.center");
+    target.cen = parseVector3(node.at("center"), "forward.bcs.space.center");
   }
   if (node.contains("normal"))
   {
-    target.normal = parseVector3(node.at("normal"), "forward.bcs.space.normal");
+    target.nrm = parseVector3(node.at("normal"), "forward.bcs.space.normal");
   }
 }
 
-TargetParams parseVelocity(const nlohmann::json& node)
+TargetParams parseVelocity(const json& node)
 {
   TargetParams velocity;
   if (node.contains("velocity"))
@@ -442,26 +445,26 @@ TargetParams parseVelocity(const nlohmann::json& node)
   return velocity;
 }
 
-std::optional<Real> optionalReal(const nlohmann::json& node,
-                                 const char*           key)
+optional<Real> optionalReal(const json& node,
+                            const char* key)
 {
   if (!node.contains(key))
   {
-    return std::nullopt;
+    return nullopt;
   }
   if (!node.at(key).is_number())
   {
-    throw std::runtime_error(std::string("Boundary value ") + key
-                             + " must be a number");
+    throw runtime_error(string("Boundary value ") + key
+                        + " must be a number");
   }
   return node.at(key).get<Real>();
 }
 
-BCsParams parseBc(const nlohmann::json& node)
+BCsParams parseBc(const json& node)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Forward boundary condition must be an object");
+    throw runtime_error("Forward boundary condition must be an object");
   }
 
   BCsParams cond;
@@ -480,7 +483,7 @@ BCsParams parseBc(const nlohmann::json& node)
   }
   else
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Each forward boundary condition needs physical, physical_tag, or tag");
   }
 
@@ -497,18 +500,18 @@ BCsParams parseBc(const nlohmann::json& node)
 
   if (!cond.ux && !cond.uy && !cond.uz && !cond.p && !cond.vel)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Forward boundary condition needs at least one of ux, uy, uz, p, or velocity");
   }
   return cond;
 }
 
-void parseBcs(const nlohmann::json& node,
-              ForwardParams&        forward)
+void parseBcs(const json&    node,
+              ForwardParams& forward)
 {
   if (!node.is_array())
   {
-    throw std::runtime_error("Config forward.bcs must be an array");
+    throw runtime_error("Config forward.bcs must be an array");
   }
 
   forward.bcs.clear();
@@ -518,12 +521,12 @@ void parseBcs(const nlohmann::json& node,
   }
 }
 
-void parseFluid(const nlohmann::json& node,
-                FluidConfig&          fluid)
+void parseFluid(const json&  node,
+                FluidConfig& fluid)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward.fluid must be an object");
+    throw runtime_error("Config forward.fluid must be an object");
   }
 
   assign(node, "rho", fluid.rho);
@@ -541,46 +544,46 @@ void parseFluid(const nlohmann::json& node,
   }
 }
 
-void parseOutputViz(const nlohmann::json&         node,
-                    const std::filesystem::path&  config_dir,
+void parseOutputViz(const json&                   node,
+                    const filesystem::path&       cfg_dir,
                     navier_var_new::OutputParams& output)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward.output must be an object");
+    throw runtime_error("Config forward.output must be an object");
   }
 
   const bool has_basename = node.contains("basename");
-  assign(node, "basename", output.basename);
-  if (has_basename && !output.basename.empty())
+  assign(node, "basename", output.base);
+  if (has_basename && !output.base.empty())
   {
-    output.basename = resolveConfigPath(config_dir, output.basename).string();
+    output.base = resolveConfigPath(cfg_dir, output.base).string();
   }
 }
 
-void parseSolver(const nlohmann::json& node,
-                 SolverParams&         solver)
+void parseSolver(const json&   node,
+                 SolverParams& solver)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward.solver must be an object");
+    throw runtime_error("Config forward.solver must be an object");
   }
   assign(node, "type", solver.type);
   assign(node, "backend", solver.backend);
 }
 
-void parseForward(const nlohmann::json&        node,
-                  const std::filesystem::path& config_dir,
-                  ForwardParams&               forward)
+void parseForward(const json&             node,
+                  const filesystem::path& cfg_dir,
+                  ForwardParams&          forward)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config forward must be an object");
+    throw runtime_error("Config forward must be an object");
   }
 
   if (node.contains("mesh"))
   {
-    parseMesh(node.at("mesh"), config_dir, forward.mesh);
+    parseMesh(node.at("mesh"), cfg_dir, forward.mesh);
   }
   if (node.contains("time"))
   {
@@ -596,7 +599,7 @@ void parseForward(const nlohmann::json&        node,
   }
   if (node.contains("output"))
   {
-    parseOutputViz(node.at("output"), config_dir, forward.output);
+    parseOutputViz(node.at("output"), cfg_dir, forward.output);
   }
   if (node.contains("solver"))
   {
@@ -604,12 +607,12 @@ void parseForward(const nlohmann::json&        node,
   }
 }
 
-void resolveOutputPaths(const std::filesystem::path& config_dir,
-                        OutputParams&                output)
+void resolveOutputPaths(const filesystem::path& cfg_dir,
+                        OutputParams&           output)
 {
   if (!output.file.empty())
   {
-    output.file = resolveConfigPath(config_dir, output.file).string();
+    output.file = resolveConfigPath(cfg_dir, output.file).string();
   }
   if (output.write_vti && output.vti_basename.empty())
   {
@@ -618,7 +621,7 @@ void resolveOutputPaths(const std::filesystem::path& config_dir,
   if (!output.vti_basename.empty())
   {
     output.vti_basename =
-        resolveConfigPath(config_dir, output.vti_basename).string();
+        resolveConfigPath(cfg_dir, output.vti_basename).string();
     output.write_vti = true;
   }
   const bool has_explicit_reference = !output.reference_basename.empty();
@@ -630,16 +633,16 @@ void resolveOutputPaths(const std::filesystem::path& config_dir,
   if (has_explicit_reference)
   {
     output.reference_basename =
-        resolveConfigPath(config_dir, output.reference_basename).string();
+        resolveConfigPath(cfg_dir, output.reference_basename).string();
   }
 }
 
-void parseOutput(const nlohmann::json& node,
-                 OutputParams&         output)
+void parseOutput(const json&   node,
+                 OutputParams& output)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config make_obs.output must be an object");
+    throw runtime_error("Config make_obs.output must be an object");
   }
 
   assign(node, "file", output.file);
@@ -656,7 +659,7 @@ void parseOutput(const nlohmann::json& node,
   assign(node, "reference_basename", output.reference_basename);
 }
 
-bool hasOutputKeys(const nlohmann::json& node)
+bool hasOutputKeys(const json& node)
 {
   return node.contains("file") || node.contains("path")
          || node.contains("write_vti") || node.contains("vti")
@@ -667,37 +670,37 @@ bool hasOutputKeys(const nlohmann::json& node)
          || node.contains("reference_basename");
 }
 
-void resolveInputPaths(const std::filesystem::path& config_dir,
-                       InputParams&                 input)
+void resolveInputPaths(const filesystem::path& cfg_dir,
+                       InputParams&            input)
 {
-  if (!input.trajectory.empty())
+  if (!input.tr.empty())
   {
-    input.trajectory =
-        resolveConfigPath(config_dir, input.trajectory).string();
+    input.tr =
+        resolveConfigPath(cfg_dir, input.tr).string();
   }
 }
 
-void parseInput(const nlohmann::json&        node,
-                const std::filesystem::path& config_dir,
-                InputParams&                 input)
+void parseInput(const json&             node,
+                const filesystem::path& cfg_dir,
+                InputParams&            input)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config make_obs.input must be an object");
+    throw runtime_error("Config make_obs.input must be an object");
   }
-  assign(node, "trajectory", input.trajectory);
-  assign(node, "trajectory_file", input.trajectory);
-  assign(node, "trajectory_path", input.trajectory);
+  assign(node, "trajectory", input.tr);
+  assign(node, "trajectory_file", input.tr);
+  assign(node, "trajectory_path", input.tr);
   assign(node, "velocity_field", input.velocity_field);
-  (void) config_dir;
+  (void) cfg_dir;
 }
 
-void parseNoise(const nlohmann::json& node,
-                NoiseParams&          noise)
+void parseNoise(const json&  node,
+                NoiseParams& noise)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config make_obs.noise must be an object");
+    throw runtime_error("Config make_obs.noise must be an object");
   }
 
   const bool has_enabled = node.contains("enabled");
@@ -745,9 +748,9 @@ void parseNoise(const nlohmann::json& node,
   }
 }
 
-void assignOptionalReal(const nlohmann::json& node,
-                        const char*           key,
-                        std::optional<Real>&  value)
+void assignOptionalReal(const json&     node,
+                        const char*     key,
+                        optional<Real>& value)
 {
   if (node.contains(key))
   {
@@ -755,9 +758,9 @@ void assignOptionalReal(const nlohmann::json& node,
   }
 }
 
-void assignOptionalIndex(const nlohmann::json& node,
-                         const char*           key,
-                         std::optional<Index>& value)
+void assignOptionalIndex(const json&      node,
+                         const char*      key,
+                         optional<Index>& value)
 {
   if (node.contains(key))
   {
@@ -765,12 +768,12 @@ void assignOptionalIndex(const nlohmann::json& node,
   }
 }
 
-void parseTimeSample(const nlohmann::json& node,
-                     TimeSampleParams&     time)
+void parseTimeSample(const json&       node,
+                     TimeSampleParams& time)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config make_obs.time must be an object");
+    throw runtime_error("Config make_obs.time must be an object");
   }
 
   assignOptionalReal(node, "start_time", time.start_time);
@@ -787,19 +790,19 @@ void parseTimeSample(const nlohmann::json& node,
   assignOptionalIndex(node, "count", time.num_points);
 }
 
-bool hasObsKeys(const nlohmann::json& node)
+bool hasObsKeys(const json& node)
 {
   return node.contains("type") || node.contains("components")
          || node.contains("grid") || node.contains("counts");
 }
 
-bool isObservationCaseKey(const std::string& key)
+bool isObservationCaseKey(const string& key)
 {
   if (key.size() <= 3 || key.rfind("obs", 0) != 0)
   {
     return false;
   }
-  for (std::size_t i = 3; i < key.size(); ++i)
+  for (size_t i = 3; i < key.size(); ++i)
   {
     if (key[i] < '0' || key[i] > '9')
     {
@@ -811,7 +814,7 @@ bool isObservationCaseKey(const std::string& key)
 
 void makeCaseOutputUnique(ObservationCase& item)
 {
-  const std::string root = stripKnownOutputExtension(item.output.file);
+  const string root = stripKnownOutputExtension(item.output.file);
   if (root.empty())
   {
     return;
@@ -832,14 +835,14 @@ void makeCaseOutputUnique(ObservationCase& item)
 }
 
 ObservationCase parseObservationCase(
-    const nlohmann::json&        node,
-    const std::filesystem::path& config_dir,
-    const Params&                defaults,
-    std::string                  name)
+    const json&             node,
+    const filesystem::path& cfg_dir,
+    const Params&           defaults,
+    string                  name)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Config make_obs.observations." + name + " must be an object");
   }
 
@@ -892,57 +895,57 @@ ObservationCase parseObservationCase(
     parseTimeSample(node.at("time"), item.time);
   }
 
-  (void) config_dir;
+  (void) cfg_dir;
   return item;
 }
 
-void parseObservationCases(const nlohmann::json&        node,
-                           const std::filesystem::path& config_dir,
-                           Params&                      prm)
+void parseObservationCases(const json&             node,
+                           const filesystem::path& cfg_dir,
+                           Params&                 prm)
 {
   if (node.is_object())
   {
     for (auto it = node.begin(); it != node.end(); ++it)
     {
       prm.observations.push_back(
-          parseObservationCase(it.value(), config_dir, prm, it.key()));
+          parseObservationCase(it.value(), cfg_dir, prm, it.key()));
     }
     return;
   }
 
   if (!node.is_array())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Config make_obs.observations must be an object or array");
   }
-  for (std::size_t i = 0; i < node.size(); ++i)
+  for (size_t i = 0; i < node.size(); ++i)
   {
     prm.observations.push_back(parseObservationCase(
-        node.at(i), config_dir, prm, "obs" + std::to_string(i + 1)));
+        node.at(i), cfg_dir, prm, "obs" + to_string(i + 1)));
   }
 }
 
-void parseTopLevelObservationCases(const nlohmann::json&        root,
-                                   const std::filesystem::path& config_dir,
-                                   Params&                      prm)
+void parseTopLevelObservationCases(const json&             root,
+                                   const filesystem::path& cfg_dir,
+                                   Params&                 prm)
 {
   for (auto it = root.begin(); it != root.end(); ++it)
   {
     if (isObservationCaseKey(it.key()))
     {
       prm.observations.push_back(
-          parseObservationCase(it.value(), config_dir, prm, it.key()));
+          parseObservationCase(it.value(), cfg_dir, prm, it.key()));
     }
   }
 }
 
-void parseMakeObs(const nlohmann::json&        node,
-                  const std::filesystem::path& config_dir,
-                  Params&                      prm)
+void parseMakeObs(const json&             node,
+                  const filesystem::path& cfg_dir,
+                  Params&                 prm)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config make_obs must be an object");
+    throw runtime_error("Config make_obs must be an object");
   }
 
   if (node.contains("obs"))
@@ -951,12 +954,12 @@ void parseMakeObs(const nlohmann::json&        node,
   }
   if (node.contains("input"))
   {
-    parseInput(node.at("input"), config_dir, prm.input);
+    parseInput(node.at("input"), cfg_dir, prm.input);
   }
   if (node.contains("trajectory") || node.contains("trajectory_file")
       || node.contains("trajectory_path") || node.contains("velocity_field"))
   {
-    parseInput(node, config_dir, prm.input);
+    parseInput(node, cfg_dir, prm.input);
   }
   if (node.contains("output"))
   {
@@ -982,15 +985,15 @@ void parseMakeObs(const nlohmann::json&        node,
   }
   if (node.contains("observations"))
   {
-    parseObservationCases(node.at("observations"), config_dir, prm);
+    parseObservationCases(node.at("observations"), cfg_dir, prm);
   }
   else if (node.contains("obs_cases"))
   {
-    parseObservationCases(node.at("obs_cases"), config_dir, prm);
+    parseObservationCases(node.at("obs_cases"), cfg_dir, prm);
   }
   else if (node.contains("cases"))
   {
-    parseObservationCases(node.at("cases"), config_dir, prm);
+    parseObservationCases(node.at("cases"), cfg_dir, prm);
   }
 }
 
@@ -1016,30 +1019,30 @@ void validateTarget(const TargetParams& target)
 {
   if (target.type != "poiseuille_pulse")
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "forward.bcs velocity.type must be 'poiseuille_pulse'");
   }
-  if (target.bulk_speed <= 0.0 || target.period <= 0.0
-      || target.radius <= 0.0)
+  if (target.bulk_speed <= 0.0 || target.per <= 0.0
+      || target.rad <= 0.0)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "forward.bcs velocity bulk_speed, period, and radius must be positive");
   }
-  if (target.quantity != "mean_velocity"
-      && target.quantity != "bulk_speed"
-      && target.quantity != "max_velocity")
+  if (target.qty != "mean_velocity"
+      && target.qty != "bulk_speed"
+      && target.qty != "max_velocity")
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "forward.bcs velocity quantity must be 'mean_velocity', 'bulk_speed', or 'max_velocity'");
   }
   Real normal_norm2 = 0.0;
-  for (Real value : target.normal)
+  for (Real value : target.nrm)
   {
     normal_norm2 += value * value;
   }
   if (normal_norm2 <= 1.0e-28)
   {
-    throw std::runtime_error("forward.bcs velocity.normal must be nonzero");
+    throw runtime_error("forward.bcs velocity.normal must be nonzero");
   }
 }
 
@@ -1047,46 +1050,46 @@ void validateForward(const ForwardParams& forward)
 {
   if (forward.mesh.file.empty())
   {
-    throw std::runtime_error("forward.mesh.file is required");
+    throw runtime_error("forward.mesh.file is required");
   }
-  if (forward.time.steps <= 0 || !std::isfinite(forward.time.dt)
+  if (forward.time.steps <= 0 || !isfinite(forward.time.dt)
       || forward.time.dt <= 0.0)
   {
-    throw std::runtime_error("Time steps and dt must be positive");
+    throw runtime_error("Time steps and dt must be positive");
   }
   if (forward.fluid.rho <= 0.0)
   {
-    throw std::runtime_error("Fluid rho must be positive");
+    throw runtime_error("Fluid rho must be positive");
   }
   if (forward.fluid.mu && *forward.fluid.mu <= 0.0)
   {
-    throw std::runtime_error("Fluid mu must be positive");
+    throw runtime_error("Fluid mu must be positive");
   }
   if (forward.fluid.Re && *forward.fluid.Re <= 0.0)
   {
-    throw std::runtime_error("Fluid reynolds must be positive");
+    throw runtime_error("Fluid reynolds must be positive");
   }
   if (!forward.fluid.mu && !forward.fluid.Re)
   {
-    throw std::runtime_error("Fluid requires either mu or reynolds");
+    throw runtime_error("Fluid requires either mu or reynolds");
   }
   if (forward.bcs.empty())
   {
-    throw std::runtime_error("forward.bcs must contain at least one boundary");
+    throw runtime_error("forward.bcs must contain at least one boundary");
   }
   if (!hasPressureBoundary(forward))
   {
-    throw std::runtime_error("forward.bcs must contain a pressure boundary");
+    throw runtime_error("forward.bcs must contain a pressure boundary");
   }
   for (const auto& bc : forward.bcs)
   {
     if (bc.physical <= 0)
     {
-      throw std::runtime_error("forward.bcs physical tag must be positive");
+      throw runtime_error("forward.bcs physical tag must be positive");
     }
     if (bc.type != "dirichlet")
     {
-      throw std::runtime_error("Only dirichlet forward.bcs are supported");
+      throw runtime_error("Only dirichlet forward.bcs are supported");
     }
     if (bc.vel)
     {
@@ -1096,13 +1099,13 @@ void validateForward(const ForwardParams& forward)
   if (forward.solver.type != "auto" && forward.solver.type != "resolve"
       && forward.solver.type != "petsc")
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "forward.solver.type must be 'auto', 'resolve', or 'petsc'");
   }
   if (forward.solver.backend != "cpu"
       && forward.solver.backend != "cuda")
   {
-    throw std::runtime_error("forward.solver.backend must be 'cpu' or 'cuda'");
+    throw runtime_error("forward.solver.backend must be 'cpu' or 'cuda'");
   }
 }
 
@@ -1110,45 +1113,45 @@ void validate(const Params& prm)
 {
   if (prm.input.velocity_field.empty())
   {
-    throw std::runtime_error("make_obs.input.velocity_field must not be empty");
+    throw runtime_error("make_obs.input.velocity_field must not be empty");
   }
 
   const auto validate_output = [](const OutputParams& output,
-                                  const std::string&  prefix)
+                                  const string&       prefix)
   {
     if (output.file.empty())
     {
-      throw std::runtime_error(prefix + ".output.file is required");
+      throw runtime_error(prefix + ".output.file is required");
     }
   };
   const auto validate_noise = [](const NoiseParams& noise,
-                                 const std::string& prefix)
+                                 const string&      prefix)
   {
     if (noise.snr && noise.snr_db)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           prefix + ".noise accepts either snr or snr_db, not both");
     }
     if (noise.enabled)
     {
       if (!noise.snr && !noise.snr_db)
       {
-        throw std::runtime_error(
+        throw runtime_error(
             prefix + ".noise.enabled requires snr or snr_db");
       }
       if (noise.snr
-          && (!std::isfinite(*noise.snr) || *noise.snr <= 0.0))
+          && (!isfinite(*noise.snr) || *noise.snr <= 0.0))
       {
-        throw std::runtime_error(prefix + ".noise.snr must be positive");
+        throw runtime_error(prefix + ".noise.snr must be positive");
       }
-      if (noise.snr_db && !std::isfinite(*noise.snr_db))
+      if (noise.snr_db && !isfinite(*noise.snr_db))
       {
-        throw std::runtime_error(prefix + ".noise.snr_db must be finite");
+        throw runtime_error(prefix + ".noise.snr_db must be finite");
       }
     }
   };
   const auto validate_time = [](const TimeSampleParams& time,
-                                const std::string&      prefix)
+                                const string&           prefix)
   {
     if (!hasTimeSample(time))
     {
@@ -1156,34 +1159,34 @@ void validate(const Params& prm)
     }
     if (time.start_time && time.start_level)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           prefix + ".time accepts either start_time or start_level, not both");
     }
     if (time.end_time && time.end_level)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           prefix + ".time accepts either end_time or end_level, not both");
     }
-    if (time.start_time && !std::isfinite(*time.start_time))
+    if (time.start_time && !isfinite(*time.start_time))
     {
-      throw std::runtime_error(prefix + ".time.start_time must be finite");
+      throw runtime_error(prefix + ".time.start_time must be finite");
     }
-    if (time.end_time && !std::isfinite(*time.end_time))
+    if (time.end_time && !isfinite(*time.end_time))
     {
-      throw std::runtime_error(prefix + ".time.end_time must be finite");
+      throw runtime_error(prefix + ".time.end_time must be finite");
     }
     if (time.start_level && *time.start_level < 0)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           prefix + ".time.start_level must be non-negative");
     }
     if (time.end_level && *time.end_level < 0)
     {
-      throw std::runtime_error(prefix + ".time.end_level must be non-negative");
+      throw runtime_error(prefix + ".time.end_level must be non-negative");
     }
     if (time.num_points && *time.num_points <= 0)
     {
-      throw std::runtime_error(prefix + ".time.num_points must be positive");
+      throw runtime_error(prefix + ".time.num_points must be positive");
     }
   };
 
@@ -1193,10 +1196,10 @@ void validate(const Params& prm)
     {
       if (item.name.empty())
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "make_obs.observations entries must have non-empty names");
       }
-      const std::string prefix = "make_obs.observations." + item.name;
+      const string prefix = "make_obs.observations." + item.name;
       validate_output(item.output, prefix);
       validate_noise(item.noise, prefix);
       validate_time(item.time, prefix);
@@ -1211,20 +1214,20 @@ void validate(const Params& prm)
 
 } // namespace
 
-Params loadConfig(const std::string& path)
+Params loadConfig(const string& path)
 {
-  std::ifstream input(path);
+  ifstream input(path);
   if (!input)
   {
-    throw std::runtime_error("Failed to open config file: " + path);
+    throw runtime_error("Failed to open config file: " + path);
   }
 
   Params     prm;
-  const auto root       = nlohmann::json::parse(input, nullptr, true, true);
-  const auto config_dir = std::filesystem::path(path).parent_path();
+  const auto root    = json::parse(input, nullptr, true, true);
+  const auto cfg_dir = filesystem::path(path).parent_path();
   if (!root.is_object())
   {
-    throw std::runtime_error("Config root must be an object");
+    throw runtime_error("Config root must be an object");
   }
 
   if (root.contains("obs"))
@@ -1237,16 +1240,16 @@ Params loadConfig(const std::string& path)
   }
   if (root.contains("make_obs"))
   {
-    parseMakeObs(root.at("make_obs"), config_dir, prm);
+    parseMakeObs(root.at("make_obs"), cfg_dir, prm);
   }
   if (root.contains("input"))
   {
-    parseInput(root.at("input"), config_dir, prm.input);
+    parseInput(root.at("input"), cfg_dir, prm.input);
   }
   if (root.contains("trajectory") || root.contains("trajectory_file")
       || root.contains("trajectory_path"))
   {
-    parseInput(root, config_dir, prm.input);
+    parseInput(root, cfg_dir, prm.input);
   }
   if (root.contains("output"))
   {
@@ -1270,13 +1273,13 @@ Params loadConfig(const std::string& path)
   {
     parseTimeSample(root.at("time"), prm.time);
   }
-  parseTopLevelObservationCases(root, config_dir, prm);
+  parseTopLevelObservationCases(root, cfg_dir, prm);
 
-  resolveInputPaths(config_dir, prm.input);
-  resolveOutputPaths(config_dir, prm.output);
+  resolveInputPaths(cfg_dir, prm.input);
+  resolveOutputPaths(cfg_dir, prm.output);
   for (ObservationCase& item : prm.observations)
   {
-    resolveOutputPaths(config_dir, item.output);
+    resolveOutputPaths(cfg_dir, item.output);
   }
   validate(prm);
   return prm;

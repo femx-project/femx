@@ -2,75 +2,77 @@
 
 #include <femx/assembly/BoundaryDofLayout.hpp>
 
+using namespace std;
+
 namespace femx
 {
 namespace assembly
 {
 
 BoundaryDofLayout::BoundaryDofLayout(const FESpace& space,
-                                     Index          physical_tag)
+                                     Index          ptag)
   : mesh_(&space.mesh()),
-    num_dofs_(space.numDofs())
+    nd_(space.numDofs())
 {
-  buildByTag(physical_tag,
+  buildByTag(ptag,
              [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
              { appendFacetDofs(space, facet, dofs); });
 }
 
-BoundaryDofLayout::BoundaryDofLayout(const FESpace&     space,
-                                     const std::string& physical_name)
+BoundaryDofLayout::BoundaryDofLayout(const FESpace& space,
+                                     const string&  pname)
   : mesh_(&space.mesh()),
-    num_dofs_(space.numDofs())
+    nd_(space.numDofs())
 {
-  buildByName(physical_name,
+  buildByName(pname,
               [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
               { appendFacetDofs(space, facet, dofs); });
 }
 
 BoundaryDofLayout::BoundaryDofLayout(const MixedFESpace& space,
-                                     Index               physical_tag)
+                                     Index               ptag)
   : mesh_(&space.mesh()),
-    num_dofs_(space.numDofs())
+    nd_(space.numDofs())
 {
-  buildByTag(physical_tag,
+  buildByTag(ptag,
              [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
              { appendFacetDofs(space, facet, dofs); });
 }
 
 BoundaryDofLayout::BoundaryDofLayout(const MixedFESpace& space,
-                                     const std::string&  physical_name)
+                                     const string&       pname)
   : mesh_(&space.mesh()),
-    num_dofs_(space.numDofs())
+    nd_(space.numDofs())
 {
-  buildByName(physical_name,
+  buildByName(pname,
               [&space](const Mesh::BoundaryFacet& facet, Vector<Index>& dofs)
               { appendFacetDofs(space, facet, dofs); });
 }
 
 BoundaryDofLayout BoundaryDofLayout::compact(const FESpace& space,
-                                             Index          physical_tag)
+                                             Index          ptag)
 {
-  return compactByTag(space, physical_tag);
+  return compactByTag(space, ptag);
 }
 
 BoundaryDofLayout BoundaryDofLayout::compact(
-    const FESpace&     space,
-    const std::string& physical_name)
+    const FESpace& space,
+    const string&  pname)
 {
-  return compactByName(space, physical_name);
+  return compactByName(space, pname);
 }
 
 BoundaryDofLayout BoundaryDofLayout::compact(const MixedFESpace& space,
-                                             Index               physical_tag)
+                                             Index               ptag)
 {
-  return compactByTag(space, physical_tag);
+  return compactByTag(space, ptag);
 }
 
 BoundaryDofLayout BoundaryDofLayout::compact(
     const MixedFESpace& space,
-    const std::string&  physical_name)
+    const string&       pname)
 {
-  return compactByName(space, physical_name);
+  return compactByName(space, pname);
 }
 
 Index BoundaryDofLayout::numFacets() const
@@ -80,14 +82,14 @@ Index BoundaryDofLayout::numFacets() const
 
 Index BoundaryDofLayout::numDofs() const
 {
-  return num_dofs_;
+  return nd_;
 }
 
 const Mesh::BoundaryFacet& BoundaryDofLayout::facet(Index ib) const
 {
   checkFacetIndex(ib);
   const Index mesh_index = facet_indices_[ib];
-  return mesh().boundaryFacets()[static_cast<std::size_t>(mesh_index)];
+  return mesh().boundaryFacets()[mesh_index];
 }
 
 Index BoundaryDofLayout::meshFacetIndex(Index ib) const
@@ -107,7 +109,7 @@ void BoundaryDofLayout::appendFacetDofs(const FESpace&             space,
                                         const Mesh::BoundaryFacet& facet,
                                         Vector<Index>&             dofs)
 {
-  for (Index node : facet.node_ids)
+  for (Index node : facet.nids)
   {
     for (Index c = 0; c < space.numComponents(); ++c)
     {
@@ -120,10 +122,10 @@ void BoundaryDofLayout::appendFacetDofs(const MixedFESpace&        space,
                                         const Mesh::BoundaryFacet& facet,
                                         Vector<Index>&             dofs)
 {
-  for (Index field_id = 0; field_id < space.numFields(); ++field_id)
+  for (Index fid = 0; fid < space.numFields(); ++fid)
   {
-    const MixedFieldView field = space.field(field_id);
-    for (Index node : facet.node_ids)
+    const MixedFieldView field = space.field(fid);
+    for (Index node : facet.nids)
     {
       for (Index c = 0; c < field.numComponents(); ++c)
       {
@@ -137,7 +139,7 @@ void BoundaryDofLayout::checkFacetIndex(Index ib) const
 {
   if (ib < 0 || ib >= numFacets())
   {
-    throw std::runtime_error("BoundaryDofLayout facet index is out of range");
+    throw runtime_error("BoundaryDofLayout facet index is out of range");
   }
 }
 
@@ -145,7 +147,7 @@ const Mesh& BoundaryDofLayout::mesh() const
 {
   if (mesh_ == nullptr)
   {
-    throw std::runtime_error("BoundaryDofLayout is not initialized");
+    throw runtime_error("BoundaryDofLayout is not initialized");
   }
   return *mesh_;
 }

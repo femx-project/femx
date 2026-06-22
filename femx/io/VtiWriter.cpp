@@ -7,10 +7,11 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include <femx/io/VtiWriter.hpp>
 #include <femx/linalg/Vector.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -19,13 +20,13 @@ namespace
 
 bool isLittleEndian()
 {
-  const std::uint16_t value = 1;
+  const uint16_t value = 1;
   return *reinterpret_cast<const unsigned char*>(&value) == 1;
 }
 
-std::string escapeXml(const std::string& text)
+string escapeXml(const string& text)
 {
-  std::string out;
+  string out;
   out.reserve(text.size());
   for (char ch : text)
   {
@@ -54,7 +55,7 @@ std::string escapeXml(const std::string& text)
   return out;
 }
 
-std::array<Index, 3> wholeExtentMax(const VtiWriter::Image& image)
+array<Index, 3> wholeExtentMax(const VtiWriter::Image& image)
 {
   return {image.cell_counts[0] > 1 ? image.cell_counts[0] : 0,
           image.cell_counts[1] > 1 ? image.cell_counts[1] : 0,
@@ -68,11 +69,11 @@ Index numCells(const VtiWriter::Image& image)
   {
     if (cells <= 0)
     {
-      throw std::runtime_error("VtiWriter cell counts must be positive");
+      throw runtime_error("VtiWriter cell counts must be positive");
     }
-    if (count > std::numeric_limits<Index>::max() / cells)
+    if (count > numeric_limits<Index>::max() / cells)
     {
-      throw std::runtime_error("VtiWriter cell count overflow");
+      throw runtime_error("VtiWriter cell count overflow");
     }
     count *= cells;
   }
@@ -83,41 +84,40 @@ void checkFinite(const VtiWriter::Image& image)
 {
   for (Index d = 0; d < 3; ++d)
   {
-    if (!std::isfinite(image.origin[static_cast<std::size_t>(d)])
-        || !std::isfinite(image.spacing[static_cast<std::size_t>(d)]))
+    if (!isfinite(image.origin[d]) || !isfinite(image.spacing[d]))
     {
-      throw std::runtime_error("VtiWriter origin and spacing must be finite");
+      throw runtime_error("VtiWriter origin and spacing must be finite");
     }
   }
-  if (image.time && !std::isfinite(*image.time))
+  if (image.time && !isfinite(*image.time))
   {
-    throw std::runtime_error("VtiWriter time must be finite");
+    throw runtime_error("VtiWriter time must be finite");
   }
 }
 
-std::uint64_t fieldBytes(const VtiWriter::CellField& field)
+uint64_t fieldBytes(const VtiWriter::CellField& field)
 {
-  if (field.values == nullptr)
+  if (field.vals == nullptr)
   {
-    throw std::runtime_error("VtiWriter cell field has null values");
+    throw runtime_error("VtiWriter cell field has null values");
   }
-  const auto size = static_cast<std::uint64_t>(field.values->size());
-  if (size > std::numeric_limits<std::uint64_t>::max() / sizeof(Real))
+  const auto size = static_cast<uint64_t>(field.vals->size());
+  if (size > numeric_limits<uint64_t>::max() / sizeof(Real))
   {
-    throw std::runtime_error("VtiWriter cell field is too large");
+    throw runtime_error("VtiWriter cell field is too large");
   }
-  return size * static_cast<std::uint64_t>(sizeof(Real));
+  return size * static_cast<uint64_t>(sizeof(Real));
 }
 
-std::string base64Encode(const unsigned char* data,
-                         std::size_t          size)
+string base64Encode(const unsigned char* data,
+                    size_t               size)
 {
   static constexpr char table[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-  std::string out;
+  string out;
   out.reserve(((size + 2) / 3) * 4);
-  for (std::size_t i = 0; i < size; i += 3)
+  for (size_t i = 0; i < size; i += 3)
   {
     const unsigned int b0    = data[i];
     const unsigned int b1    = (i + 1 < size) ? data[i + 1] : 0;
@@ -132,73 +132,73 @@ std::string base64Encode(const unsigned char* data,
   return out;
 }
 
-std::string fieldBinaryBase64(const VtiWriter::CellField& field)
+string fieldBinaryBase64(const VtiWriter::CellField& field)
 {
-  const std::uint64_t        bytes = fieldBytes(field);
-  std::vector<unsigned char> buffer(sizeof(bytes) + bytes);
-  std::memcpy(buffer.data(), &bytes, sizeof(bytes));
-  std::memcpy(buffer.data() + sizeof(bytes),
-              field.values->data(),
-              static_cast<std::size_t>(bytes));
+  const uint64_t        bytes = fieldBytes(field);
+  Vector<unsigned char> buffer(static_cast<Index>(sizeof(bytes) + bytes));
+  memcpy(buffer.data(), &bytes, sizeof(bytes));
+  memcpy(buffer.data() + sizeof(bytes),
+         field.vals->data(),
+         static_cast<size_t>(bytes));
   return base64Encode(buffer.data(), buffer.size());
 }
 
-void checkFields(const std::vector<VtiWriter::CellField>& fields,
-                 Index                                    cells)
+void checkFields(const Vector<VtiWriter::CellField>& fields,
+                 Index                               cells)
 {
   if (fields.empty())
   {
-    throw std::runtime_error("VtiWriter needs at least one cell field");
+    throw runtime_error("VtiWriter needs at least one cell field");
   }
 
   for (const auto& field : fields)
   {
     if (field.name.empty())
     {
-      throw std::runtime_error("VtiWriter cell field name must not be empty");
+      throw runtime_error("VtiWriter cell field name must not be empty");
     }
-    if (field.num_components <= 0)
+    if (field.nc <= 0)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "VtiWriter cell field component count must be positive");
     }
-    if (field.values == nullptr)
+    if (field.vals == nullptr)
     {
-      throw std::runtime_error("VtiWriter cell field has null values");
+      throw runtime_error("VtiWriter cell field has null values");
     }
-    if (field.values->size() != cells * field.num_components)
+    if (field.vals->size() != cells * field.nc)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "VtiWriter cell field size does not match image cell count");
     }
   }
 }
 
-std::string extentString(const std::array<Index, 3>& max_extent)
+string extentString(const array<Index, 3>& max_extent)
 {
-  std::ostringstream out;
+  ostringstream out;
   out << "0 " << max_extent[0] << " 0 " << max_extent[1] << " 0 "
       << max_extent[2];
   return out.str();
 }
 
-std::string point3String(const std::array<Real, 3>& values)
+string point3String(const array<Real, 3>& vals)
 {
-  std::ostringstream out;
-  out << std::setprecision(std::numeric_limits<Real>::max_digits10)
-      << values[0] << ' ' << values[1] << ' ' << values[2];
+  ostringstream out;
+  out << setprecision(numeric_limits<Real>::max_digits10)
+      << vals[0] << ' ' << vals[1] << ' ' << vals[2];
   return out.str();
 }
 
 } // namespace
 
-void VtiWriter::writeCellData(const std::string&            filename,
-                              const Image&                  image,
-                              const std::vector<CellField>& fields) const
+void VtiWriter::writeCellData(const string&            fname,
+                              const Image&             image,
+                              const Vector<CellField>& fields) const
 {
   if (!isLittleEndian())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "VtiWriter currently writes little-endian VTI files only");
   }
 
@@ -206,10 +206,10 @@ void VtiWriter::writeCellData(const std::string&            filename,
   const Index cells = numCells(image);
   checkFields(fields, cells);
 
-  std::ofstream out(filename, std::ios::binary);
+  ofstream out(fname, ios::binary);
   if (!out)
   {
-    throw std::runtime_error("Failed to open VTI file: " + filename);
+    throw runtime_error("Failed to open VTI file: " + fname);
   }
 
   const auto max_extent = wholeExtentMax(image);
@@ -226,20 +226,20 @@ void VtiWriter::writeCellData(const std::string&            filename,
     out << "    <FieldData>\n";
     out << "      <DataArray type=\"Float64\" Name=\"TimeValue\" "
            "NumberOfTuples=\"1\" format=\"ascii\">"
-        << std::setprecision(std::numeric_limits<Real>::max_digits10)
+        << setprecision(numeric_limits<Real>::max_digits10)
         << *image.time << "</DataArray>\n";
     out << "    </FieldData>\n";
   }
   out << "    <Piece Extent=\"" << extent << "\">\n";
   out << "      <CellData>\n";
-  for (std::size_t i = 0; i < fields.size(); ++i)
+  for (size_t i = 0; i < fields.size(); ++i)
   {
     const auto& field = fields[i];
     out << "        <DataArray type=\"Float64\" Name=\""
         << escapeXml(field.name) << "\"";
-    if (field.num_components > 1)
+    if (field.nc > 1)
     {
-      out << " NumberOfComponents=\"" << field.num_components << "\"";
+      out << " NumberOfComponents=\"" << field.nc << "\"";
     }
     out << " format=\"binary\">"
         << fieldBinaryBase64(field)

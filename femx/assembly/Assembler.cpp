@@ -6,6 +6,9 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
+using namespace std;
+using namespace femx::linalg;
+
 namespace femx
 {
 namespace assembly
@@ -83,7 +86,7 @@ Index Assembler::numCols() const
   return col_layout_.numDofs();
 }
 
-void Assembler::initVector(Vector<Real>& out) const
+void Assembler::initVec(Vector<Real>& out) const
 {
   if (out.size() != numRows())
   {
@@ -95,26 +98,26 @@ void Assembler::initVector(Vector<Real>& out) const
   }
 }
 
-void Assembler::initMatrix(linalg::MatrixBuilder& out) const
+void Assembler::initMat(MatrixBuilder& out) const
 {
   out.resize(numRows(), numCols());
   out.setZero();
 }
 
-void Assembler::addVector(Index               ic,
-                          const Vector<Real>& local,
-                          Vector<Real>&       out) const
+void Assembler::addVec(Index               ic,
+                       const Vector<Real>& local,
+                       Vector<Real>&       out) const
 {
   if (out.size() != numRows())
   {
-    throw std::runtime_error("Assembler global vector has incompatible size");
+    throw runtime_error("Assembler global vector has incompatible size");
   }
 
   Vector<Index> row_dofs;
   row_layout_.elemDofs(ic, row_dofs);
   if (local.size() != row_dofs.size())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Assembler local vector size does not match row dofs");
   }
 
@@ -124,9 +127,9 @@ void Assembler::addVector(Index               ic,
     checkDof(row, numRows(), "row");
     if (mode_ == AssemblyMode::Atomic)
     {
-      Real* values = out.data();
+      Real* vals = out.data();
 #pragma omp atomic update
-      values[static_cast<std::size_t>(row)] += local[i];
+      vals[row] += local[i];
     }
     else
     {
@@ -135,13 +138,13 @@ void Assembler::addVector(Index               ic,
   }
 }
 
-void Assembler::addMatrix(Index                  ic,
-                          const DenseMatrix&     local,
-                          linalg::MatrixBuilder& out) const
+void Assembler::addMat(Index              ic,
+                       const DenseMatrix& local,
+                       MatrixBuilder&     out) const
 {
   if (out.numRows() != numRows() || out.numCols() != numCols())
   {
-    throw std::runtime_error("Assembler global matrix has incompatible size");
+    throw runtime_error("Assembler global matrix has incompatible size");
   }
 
   if (same_layout_ && out.addLocalMatrix(ic, local, mode_ == AssemblyMode::Atomic))
@@ -156,7 +159,7 @@ void Assembler::addMatrix(Index                  ic,
 
   if (local.rows() != row_dofs.size() || local.cols() != col_dofs.size())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Assembler local matrix size does not match elem dofs");
   }
 
@@ -184,7 +187,7 @@ void Assembler::checkCellCounts() const
 {
   if (row_layout_.numElems() != col_layout_.numElems())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Assembler row and column layouts have different cell counts");
   }
 }
@@ -193,8 +196,8 @@ void Assembler::checkDof(Index dof, Index size, const char* name)
 {
   if (dof < 0 || dof >= size)
   {
-    throw std::runtime_error(
-        std::string("Assembler ") + name + " dof is out of range");
+    throw runtime_error(
+        string("Assembler ") + name + " dof is out of range");
   }
 }
 

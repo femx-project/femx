@@ -11,12 +11,16 @@
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrixOperator.hpp>
 #include <femx/linalg/petsc/PETScVectorBuilder.hpp>
-#include <femx/solve/TimeLinearStateSolver.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeLinearStateSolver.hpp>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
+using namespace std;
 using namespace femx;
+using namespace femx::state;
 using namespace femx::linalg;
-using namespace femx::solve;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -70,18 +74,26 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
        {"PETSc version",
-        std::to_string(PETSC_VERSION_MAJOR) + "."
-            + std::to_string(PETSC_VERSION_MINOR) + "."
-            + std::to_string(PETSC_VERSION_SUBMINOR)}}};
+        to_string(PETSC_VERSION_MAJOR) + "."
+            + to_string(PETSC_VERSION_MINOR) + "."
+            + to_string(PETSC_VERSION_SUBMINOR)}}};
 }
 
-void checkPetsc(PetscErrorCode ierr, const std::string& action)
+void checkPetsc(PetscErrorCode ierr, const string& action)
 {
   if (ierr != PETSC_SUCCESS)
   {
-    throw std::runtime_error(
-        action + " failed with PETSc error code " + std::to_string(ierr));
+    throw runtime_error(
+        action + " failed with PETSc error code " + to_string(ierr));
   }
+}
+
+void forceSerialOpenMp()
+{
+#if defined(_OPENMP)
+  omp_set_dynamic(0);
+  omp_set_num_threads(1);
+#endif
 }
 
 template <typename Fn>
@@ -111,7 +123,7 @@ CellRange cellRange(Index num_cells)
   const Index base  = num_cells / static_cast<Index>(size);
   const Index extra = num_cells % static_cast<Index>(size);
   const Index begin = static_cast<Index>(rank) * base
-                      + std::min<Index>(rank, extra);
+                      + min<Index>(rank, extra);
   const Index count = base + (rank < extra ? 1 : 0);
   return {begin, begin + count};
 }
@@ -120,31 +132,42 @@ void setPetscDefaultOption(const char* name, const char* value)
 {
   PetscBool      exists = PETSC_FALSE;
   PetscErrorCode ierr   = PetscOptionsHasName(nullptr, nullptr, name, &exists);
-  checkPetsc(ierr, std::string("PetscOptionsHasName(") + name + ")");
+  checkPetsc(ierr, string("PetscOptionsHasName(") + name + ")");
   if (exists == PETSC_TRUE)
   {
     return;
   }
   ierr = PetscOptionsSetValue(nullptr, name, value);
-  checkPetsc(ierr, std::string("PetscOptionsSetValue(") + name + ")");
+  checkPetsc(ierr, string("PetscOptionsSetValue(") + name + ")");
 }
 
-void setKspDefaults(KspLinearSolver& solver)
+void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
 {
-  auto& options         = solver.options();
-  options.type          = KSPFGMRES;
-  options.pc_type       = PCBJACOBI;
-  options.restart       = 200;
-  options.rtol          = 1.0e-8;
-  options.max_its       = 5000;
-  options.nonzero_guess = true;
-  options.use_opts_db   = true;
+  auto& opts       = solver.opts();
+  opts.restart     = 200;
+  opts.rtol        = 1.0e-8;
+  opts.max_its     = 5000;
+  opts.use_opts_db = true;
 
+  if (prm.method == "direct")
+  {
+    opts.type          = KSPPREONLY;
+    opts.pc_type       = PCLU;
+    opts.nonzero_guess = false;
+  }
+  else
+  {
+    opts.type          = KSPFGMRES;
+    opts.pc_type       = PCLU;
+    opts.nonzero_guess = true;
+  }
+
+  setPetscDefaultOption("-pc_factor_mat_solver_type", "mumps");
   setPetscDefaultOption("-pc_factor_mat_ordering_type", "rcm");
   setPetscDefaultOption("-sub_pc_factor_mat_ordering_type", "rcm");
 }
 
-void writeRunSummary(std::ofstream&               run_log,
+void writeRunSummary(ofstream&                    run_log,
                      const ForwardProblem&        problem,
                      const TimeLinearStateSolver& state_solver,
                      const KspLinearSolver&       solver,
@@ -175,21 +198,21 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output, makeBuildInfo());
   }
 
-  ForwardProblem  problem(prm);
-  const CellRange cells = cellRange(problem.space.mesh().numElems());
-  problem.fem.setCellRange(cells.begin, cells.end);
+  ForwardProblem  forward(prm);
+  const CellRange cells = cellRange(forward.space.mesh().numElems());
+  forward.fem.setCellRange(cells.begin, cells.end);
 
   PETScVectorBuilder row_layout(PETSC_COMM_WORLD);
-  row_layout.resize(problem.space.numDofs());
+  row_layout.resize(forward.space.numDofs());
 
   PETScMatrixOperator next_jac(PETSC_COMM_WORLD);
-  next_jac.resize(problem.pattern, row_layout);
+  next_jac.resize(forward.pat, row_layout);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
-  setKspDefaults(solver);
+  setKspOptions(solver, prm.solver);
 
-  TimeLinearStateSolver state_solver(problem.eq, next_jac, solver);
-  state_solver.setInitialState(problem.x0);
+  TimeLinearStateSolver state_solver(forward.problem, next_jac, solver);
+  state_solver.setInitialState(forward.x0);
   state_solver.setStepMonitor(
       [rank](Index step, Index total)
       {
@@ -197,48 +220,51 @@ int run(const Params& prm, bool enable_output)
         {
           return;
         }
-        std::cout << "\r  time step " << std::setw(7) << step << " / "
-                  << std::setw(7) << total << std::flush;
+        cout << "\r  time step " << setw(7) << step << " / "
+             << setw(7) << total << flush;
         if (step >= total)
         {
-          std::cout << '\n';
+          cout << '\n';
         }
       });
 
   if (rank == 0)
   {
-    std::cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = " << size
-              << ", dofs = " << problem.space.numDofs()
-              << ", cells = " << problem.space.mesh().numElems() << '\n';
+    cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = " << size
+         << ", dofs = " << forward.space.numDofs()
+         << ", cells = " << forward.space.mesh().numElems() << '\n';
   }
 
-  TimeTrajectory trajectory;
+  ForwardSolveResult result;
   state_solver.resetTiming();
   const double total_time = timeCollective(
       [&]
       {
-        state_solver.solve(problem.prm0, trajectory);
+        result = solve(state_solver, forward, prm.output, rank == 0 && enable_output);
       });
 
-  if (!isFinite(trajectory[problem.steps]))
+  if (!isFinite(result.final_state))
   {
-    throw std::runtime_error("Linear solve produced non-finite values in x");
+    throw runtime_error("Linear solve produced non-finite values in x");
   }
 
   if (rank == 0)
   {
     if (enable_output)
     {
-      writeTrajectoryOutput(problem, trajectory, prm.output);
-      std::ofstream run_log = openRunLog(prm.output);
-      writeRunSummary(run_log, problem, state_solver, solver, total_time);
+      if (!result.snapshots.empty())
+      {
+        writeOutput(forward.mesh, prm.output, result.snapshots);
+      }
+      ofstream run_log = openRunLog(prm.output);
+      writeRunSummary(run_log, forward, state_solver, solver, total_time);
     }
 
-    std::cout << "  assembly = " << state_solver.assemblySeconds() << " s"
-              << ", solve = " << state_solver.solveSeconds() << " s"
-              << ", total = " << total_time << " s"
-              << ", last KSP its = " << solver.its()
-              << ", |r| = " << solver.rnorm() << '\n';
+    cout << "  assembly = " << state_solver.assemblySeconds() << " s"
+         << ", solve = " << state_solver.solveSeconds() << " s"
+         << ", total = " << total_time << " s"
+         << ", last KSP its = " << solver.its()
+         << ", |r| = " << solver.rnorm() << '\n';
   }
 
   return 0;
@@ -253,36 +279,37 @@ int main(int argc, char* argv[])
   {
     return 1;
   }
+  forceSerialOpenMp();
 
   int status = 0;
   try
   {
-    const AppOptions options = parseAppOptions(argc, argv, true);
-    if (options.help)
+    const AppOptions opts = parseAppOptions(argc, argv, true);
+    if (opts.help)
     {
       if (isRoot())
       {
-        printUsage(std::cout,
+        printUsage(cout,
                    FEMX_NAVIER_GLS_APP_NAME,
                    " [PETSc options]",
-                   {"Example PETSc options: -ksp_monitor -ksp_rtol 1e-8 -pc_type bjacobi"});
+                   {"Example PETSc options: -ksp_monitor -ksp_rtol 1e-8 -pc_type lu"});
       }
     }
     else
     {
-      Params prm = loadConfig(options.config_file);
-      if (options.steps)
+      Params prm = loadConfig(opts.config_file);
+      if (opts.steps)
       {
-        prm.time.steps = *options.steps;
+        prm.time.steps = *opts.steps;
       }
-      status = run(prm, !options.no_output);
+      status = run(prm, !opts.no_output);
     }
   }
-  catch (const std::exception& e)
+  catch (const exception& e)
   {
     if (isRoot())
     {
-      std::cerr << FEMX_NAVIER_GLS_APP_NAME << ": " << e.what() << '\n';
+      cerr << FEMX_NAVIER_GLS_APP_NAME << ": " << e.what() << '\n';
     }
     status = 1;
   }

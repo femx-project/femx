@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -32,7 +31,7 @@ private:
   Index rows_;
   Index cols_;
 
-  std::vector<Real> values_;
+  Vector<Real> vals_;
 };
 
 } // namespace femx

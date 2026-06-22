@@ -1,9 +1,8 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
 #include <femx/linalg/MatrixView.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
 
 namespace femx
@@ -31,7 +30,7 @@ public:
   MatrixView<const Real> dNdx(Index iq) const;
 
   Real detJ(Index iq) const;
-  Real weight(Index iq) const;
+  Real wt(Index iq) const;
   Real JxW(Index iq) const;
 
   const Real* NData() const;
@@ -42,29 +41,29 @@ private:
   void calcReferenceValues();
   void calcPhysicalValues(const Cell& cell);
 
-  static Real invJacobian(const std::vector<Real>& J,
-                          std::vector<Real>&       invJ,
-                          Index                    dim);
+  static Real invJacobian(const Vector<Real>& J,
+                          Vector<Real>&       invJ,
+                          Index               dim);
 
 private:
   const FiniteElement*   fe_{nullptr};
   const GaussQuadrature* quad_{nullptr};
 
-  Index num_nodes_{0};
-  Index num_dofs_{0};
+  Index nn_{0};
+  Index nd_{0};
   Index dim_{0};
-  Index num_qp_{0};
+  Index nq_{0};
 
-  std::vector<Real> N_;
-  std::vector<Real> dNdr_;
-  std::vector<Real> dNdx_;
+  Vector<Real> N_;
+  Vector<Real> dNdr_;
+  Vector<Real> dNdx_;
 
-  std::vector<Real> detJ_;
-  std::vector<Real> weights_;
-  std::vector<Real> JxW_;
+  Vector<Real> detJ_;
+  Vector<Real> wts_;
+  Vector<Real> JxW_;
 
-  std::vector<Real> J_;
-  std::vector<Real> invJ_;
+  Vector<Real> J_;
+  Vector<Real> invJ_;
 };
 
 } // namespace femx

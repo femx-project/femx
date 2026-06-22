@@ -6,15 +6,14 @@
 #include <cstddef>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
+#include <femx/common/Types.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScVectorBuilder.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
-#include <femx/common/Types.hpp>
 
 namespace femx
 {
@@ -123,18 +122,18 @@ public:
           "MatSetOption");
   }
 
-  void resize(const CsrPattern&         pattern,
-              const PETScVectorBuilder& layout)
+  void resize(const CsrPattern&         pat,
+              const PETScVectorBuilder& lyt)
   {
     checkInitialized();
 
-    if (layout.size() != pattern.rows())
+    if (lyt.size() != pat.rows())
     {
       throw std::runtime_error(
           "PETScMatrixOperator row layout does not match sparsity pattern");
     }
 
-    if (mat_ != nullptr && rows_ == pattern.rows() && cols_ == pattern.cols())
+    if (mat_ != nullptr && rows_ == pat.rows() && cols_ == pat.cols())
     {
       setZero();
       return;
@@ -145,18 +144,18 @@ public:
       check(MatDestroy(&mat_), "MatDestroy");
     }
 
-    comm_ = layout.comm();
-    rows_ = pattern.rows();
-    cols_ = pattern.cols();
+    comm_ = lyt.comm();
+    rows_ = pat.rows();
+    cols_ = pat.cols();
 
     PetscInt begin = 0;
     PetscInt end   = 0;
-    check(VecGetOwnershipRange(layout.vec(), &begin, &end),
+    check(VecGetOwnershipRange(lyt.vec(), &begin, &end),
           "VecGetOwnershipRange");
 
-    std::vector<PetscInt> d_nnz;
-    std::vector<PetscInt> o_nnz;
-    computePreallocation(pattern, begin, end, d_nnz, o_nnz);
+    Vector<PetscInt> d_nnz;
+    Vector<PetscInt> o_nnz;
+    computePreallocation(pat, begin, end, d_nnz, o_nnz);
 
     check(MatCreateAIJ(comm_,
                        end - begin,
@@ -202,17 +201,17 @@ public:
   }
 
   void addBlock(const PetscInt*    dofs,
-                Index              num_dofs,
+                Index              nd,
                 const DenseMatrix& local)
   {
-    addBlock(dofs, num_dofs, dofs, num_dofs, local);
+    addBlock(dofs, nd, dofs, nd, local);
   }
 
   void addBlock(const PetscInt* dofs,
-                Index           num_dofs,
-                const Real*     values)
+                Index           nd,
+                const Real*     vals)
   {
-    addBlock(dofs, num_dofs, dofs, num_dofs, values);
+    addBlock(dofs, nd, dofs, nd, vals);
   }
 
   void addBlock(const PetscInt*    rows,
@@ -233,7 +232,7 @@ public:
                 Index           num_rows,
                 const PetscInt* cols,
                 Index           num_cols,
-                const Real*     values)
+                const Real*     vals)
   {
     if (mat_ == nullptr)
     {
@@ -244,7 +243,7 @@ public:
                        rows,
                        static_cast<PetscInt>(num_cols),
                        cols,
-                       values,
+                       vals,
                        ADD_VALUES),
           "MatSetValues");
   }
@@ -261,10 +260,10 @@ public:
 
   void zeroRowsColumns(const Vector<Index>&      rows,
                        Real                      diagonal,
-                       const PETScVectorBuilder& values,
+                       const PETScVectorBuilder& vals,
                        PETScVectorBuilder&       rhs)
   {
-    if (values.size() != rows_ || rhs.size() != rows_)
+    if (vals.size() != rows_ || rhs.size() != rows_)
     {
       throw std::runtime_error(
           "PETScMatrixOperator zeroRowsColumns received incompatible vectors");
@@ -274,8 +273,8 @@ public:
       return;
     }
 
-    std::vector<PetscInt> petsc_rows;
-    petsc_rows.reserve(static_cast<std::size_t>(rows.size()));
+    Vector<PetscInt> petsc_rows;
+    petsc_rows.reserve(rows.size());
     for (Index row : rows)
     {
       if (row < 0 || row >= rows_)
@@ -290,7 +289,7 @@ public:
                              static_cast<PetscInt>(petsc_rows.size()),
                              petsc_rows.data(),
                              static_cast<PetscScalar>(diagonal),
-                             values.vec(),
+                             vals.vec(),
                              rhs.vec()),
           "MatZeroRowsColumns");
   }
@@ -302,8 +301,8 @@ public:
       return;
     }
 
-    std::vector<PetscInt> petsc_rows;
-    petsc_rows.reserve(static_cast<std::size_t>(rows.size()));
+    Vector<PetscInt> petsc_rows;
+    petsc_rows.reserve(rows.size());
     for (Index row : rows)
     {
       if (row < 0 || row >= rows_)
@@ -389,10 +388,10 @@ private:
     checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
 
     const PetscInt global_size = static_cast<PetscInt>(size);
-    const PetscInt local_size  = comm_size == 1 ? global_size : PETSC_DECIDE;
+    const PetscInt nloc        = comm_size == 1 ? global_size : PETSC_DECIDE;
 
     check(VecCreate(comm_, out.put()), "VecCreate");
-    check(VecSetSizes(out.get(), local_size, global_size), "VecSetSizes");
+    check(VecSetSizes(out.get(), nloc, global_size), "VecSetSizes");
     check(VecSetFromOptions(out.get()), "VecSetFromOptions");
   }
 
@@ -439,25 +438,25 @@ private:
     }
   }
 
-  static void computePreallocation(const CsrPattern&      pattern,
-                                   PetscInt               begin,
-                                   PetscInt               end,
-                                   std::vector<PetscInt>& d_nnz,
-                                   std::vector<PetscInt>& o_nnz)
+  static void computePreallocation(const CsrPattern& pat,
+                                   PetscInt          begin,
+                                   PetscInt          end,
+                                   Vector<PetscInt>& d_nnz,
+                                   Vector<PetscInt>& o_nnz)
   {
     const PetscInt local_rows = end - begin;
-    d_nnz.assign(static_cast<std::size_t>(local_rows), 0);
-    o_nnz.assign(static_cast<std::size_t>(local_rows), 0);
+    d_nnz.assign(local_rows, 0);
+    o_nnz.assign(local_rows, 0);
 
-    const Index* row_ptr = pattern.rowPtrData();
-    const Index* col_ind = pattern.colIndData();
+    const Index* rp = pat.rowPtrData();
+    const Index* ci = pat.colIndData();
     for (PetscInt row = begin; row < end; ++row)
     {
       PetscInt diagonal = 0;
       PetscInt offdiag  = 0;
-      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = rp[row]; k < rp[row + 1]; ++k)
       {
-        const PetscInt col = static_cast<PetscInt>(col_ind[k]);
+        const PetscInt col = static_cast<PetscInt>(ci[k]);
         if (col >= begin && col < end)
         {
           ++diagonal;
@@ -467,8 +466,8 @@ private:
           ++offdiag;
         }
       }
-      d_nnz[static_cast<std::size_t>(row - begin)] = diagonal;
-      o_nnz[static_cast<std::size_t>(row - begin)] = offdiag;
+      d_nnz[row - begin] = diagonal;
+      o_nnz[row - begin] = offdiag;
     }
   }
 

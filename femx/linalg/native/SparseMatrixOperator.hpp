@@ -19,8 +19,8 @@ namespace linalg
 class SparseMatrixOperator final : public MatrixOperator
 {
 public:
-  explicit SparseMatrixOperator(const CsrPattern& pattern)
-    : mat_(pattern)
+  explicit SparseMatrixOperator(const CsrPattern& pat)
+    : mat_(pat)
   {
   }
 
@@ -60,10 +60,10 @@ public:
 
   void addAtomic(Index row, Index col, Real value) override
   {
-    Real*       values = mat_.valuesData();
-    const Index entry  = findEntry(row, col);
+    Real*       vals  = mat_.valuesData();
+    const Index entry = findEntry(row, col);
 #pragma omp atomic update
-    values[static_cast<std::size_t>(entry)] += value;
+    vals[entry] += value;
   }
 
   bool addLocalMatrix(Index ic, const DenseMatrix& local, bool atomic) override
@@ -91,17 +91,17 @@ public:
           "SparseMatrixOperator apply received incompatible vector");
     }
 
-    resizeVector(out, numRows());
-    const Index* row_ptr = mat_.rowPtrData();
-    const Index* col_ind = mat_.colIndData();
-    const Real*  values  = mat_.valuesData();
+    resizeOrZero(out, numRows());
+    const Index* rp   = mat_.rowPtrData();
+    const Index* ci   = mat_.colIndData();
+    const Real*  vals = mat_.valuesData();
 
     for (Index row = 0; row < numRows(); ++row)
     {
       Real sum = 0.0;
-      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = rp[row]; k < rp[row + 1]; ++k)
       {
-        sum += values[k] * dir[col_ind[k]];
+        sum += vals[k] * dir[ci[k]];
       }
       out[row] = sum;
     }
@@ -115,26 +115,26 @@ public:
           "SparseMatrixOperator transpose apply received incompatible vector");
     }
 
-    resizeVector(out, numCols());
-    const Index* row_ptr = mat_.rowPtrData();
-    const Index* col_ind = mat_.colIndData();
-    const Real*  values  = mat_.valuesData();
+    resizeOrZero(out, numCols());
+    const Index* rp   = mat_.rowPtrData();
+    const Index* ci   = mat_.colIndData();
+    const Real*  vals = mat_.valuesData();
 
     for (Index row = 0; row < numRows(); ++row)
     {
-      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = rp[row]; k < rp[row + 1]; ++k)
       {
-        out[col_ind[k]] += values[k] * dir[row];
+        out[ci[k]] += vals[k] * dir[row];
       }
     }
   }
 
-  SparseMatrix& matrix()
+  SparseMatrix& mat()
   {
     return mat_;
   }
 
-  const SparseMatrix& matrix() const
+  const SparseMatrix& mat() const
   {
     return mat_;
   }
@@ -142,14 +142,14 @@ public:
 private:
   void checkLocalMatrix(Index ic, const DenseMatrix& local) const
   {
-    const CsrPattern& pattern = mat_.pattern();
-    if (ic < 0 || ic >= pattern.numElems())
+    const CsrPattern& pat = mat_.pat();
+    if (ic < 0 || ic >= pat.numElems())
     {
       throw std::runtime_error("SparseMatrixOperator cell index is out of range");
     }
 
-    const Index num_dofs = pattern.elemNumDofs(ic);
-    if (local.rows() != num_dofs || local.cols() != num_dofs)
+    const Index nd = pat.elemNumDofs(ic);
+    if (local.rows() != nd || local.cols() != nd)
     {
       throw std::runtime_error(
           "SparseMatrixOperator local matrix size does not match cell dofs");
@@ -160,22 +160,21 @@ private:
   {
     checkLocalMatrix(ic, local);
 
-    const CsrPattern& pattern    = mat_.pattern();
-    const Index       num_dofs   = pattern.elemNumDofs(ic);
-    const Index       coo_offset = pattern.elemCooOffset(ic);
-    const Index*      coo_to_csr = pattern.cooToCsrData();
+    const CsrPattern& pat        = mat_.pat();
+    const Index       nd         = pat.elemNumDofs(ic);
+    const Index       coo_offset = pat.elemCooOffset(ic);
+    const Index*      coo_to_csr = pat.cooToCsrData();
     const Real*       local_vals = local.data();
-    Real*             values     = mat_.valuesData();
+    Real*             vals       = mat_.valuesData();
 
-    for (Index i = 0; i < num_dofs; ++i)
+    for (Index i = 0; i < nd; ++i)
     {
-      for (Index j = 0; j < num_dofs; ++j)
+      for (Index j = 0; j < nd; ++j)
       {
-        const Index local_entry = i * num_dofs + j;
-        const Index coo_entry   = coo_offset + local_entry;
-        const Index csr_entry   = coo_to_csr[coo_entry];
-        values[static_cast<std::size_t>(csr_entry)] +=
-            local_vals[static_cast<std::size_t>(local_entry)];
+        const Index local_entry  = i * nd + j;
+        const Index coo_entry    = coo_offset + local_entry;
+        const Index csr_entry    = coo_to_csr[coo_entry];
+        vals[csr_entry]         += local_vals[local_entry];
       }
     }
   }
@@ -184,23 +183,22 @@ private:
   {
     checkLocalMatrix(ic, local);
 
-    const CsrPattern& pattern    = mat_.pattern();
-    const Index       num_dofs   = pattern.elemNumDofs(ic);
-    const Index       coo_offset = pattern.elemCooOffset(ic);
-    const Index*      coo_to_csr = pattern.cooToCsrData();
+    const CsrPattern& pat        = mat_.pat();
+    const Index       nd         = pat.elemNumDofs(ic);
+    const Index       coo_offset = pat.elemCooOffset(ic);
+    const Index*      coo_to_csr = pat.cooToCsrData();
     const Real*       local_vals = local.data();
-    Real*             values     = mat_.valuesData();
+    Real*             vals       = mat_.valuesData();
 
-    for (Index i = 0; i < num_dofs; ++i)
+    for (Index i = 0; i < nd; ++i)
     {
-      for (Index j = 0; j < num_dofs; ++j)
+      for (Index j = 0; j < nd; ++j)
       {
-        const Index local_entry = i * num_dofs + j;
+        const Index local_entry = i * nd + j;
         const Index coo_entry   = coo_offset + local_entry;
         const Index csr_entry   = coo_to_csr[coo_entry];
 #pragma omp atomic update
-        values[static_cast<std::size_t>(csr_entry)] +=
-            local_vals[static_cast<std::size_t>(local_entry)];
+        vals[csr_entry] += local_vals[local_entry];
       }
     }
   }
@@ -212,11 +210,11 @@ private:
       throw std::runtime_error("SparseMatrixOperator index is out of range");
     }
 
-    const Index* row_ptr = mat_.rowPtrData();
-    const Index* col_ind = mat_.colIndData();
-    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+    const Index* rp = mat_.rowPtrData();
+    const Index* ci = mat_.colIndData();
+    for (Index k = rp[row]; k < rp[row + 1]; ++k)
     {
-      if (col_ind[k] == col)
+      if (ci[k] == col)
       {
         return k;
       }
@@ -226,19 +224,6 @@ private:
         "SparseMatrixOperator entry is outside the sparsity pattern");
   }
 
-  static void resizeVector(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
-    }
-  }
-
-private:
   SparseMatrix mat_;
 };
 

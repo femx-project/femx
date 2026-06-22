@@ -23,28 +23,38 @@ target_link_libraries(runTimeResidualAdapterTests PRIVATE femx::femx)
 
 add_test(NAME TimeResidualAdapterTests COMMAND runTimeResidualAdapterTests)
 
-add_executable(runNewtonTests unit/solve/runNewtonTests.cpp)
+add_executable(runNewtonStateSolverTests
+               unit/state/runNewtonStateSolverTests.cpp)
 
-target_link_libraries(runNewtonTests PRIVATE femx::femx)
+target_link_libraries(runNewtonStateSolverTests PRIVATE femx::femx)
 
-add_test(NAME NewtonTests COMMAND runNewtonTests)
+add_test(NAME NewtonStateSolverTests COMMAND runNewtonStateSolverTests)
 
-add_executable(runTimeStepperTests unit/solve/runTimeStepperTests.cpp)
+add_executable(runTimeNewtonStateSolverTests
+               unit/state/runTimeNewtonStateSolverTests.cpp)
 
-target_link_libraries(runTimeStepperTests PRIVATE femx::femx)
+target_link_libraries(runTimeNewtonStateSolverTests PRIVATE femx::femx)
 
-add_test(NAME TimeStepperTests COMMAND runTimeStepperTests)
+add_test(NAME TimeNewtonStateSolverTests COMMAND runTimeNewtonStateSolverTests)
 
-add_executable(runSolveReducedFunctionalTests
-               unit/solve/runReducedFunctionalTests.cpp)
+add_executable(runAB2TimeReducedFunctionalTests
+               unit/state/runAB2TimeReducedFunctionalTests.cpp)
 
-target_link_libraries(runSolveReducedFunctionalTests PRIVATE femx::femx)
+target_link_libraries(runAB2TimeReducedFunctionalTests PRIVATE femx::femx)
 
-add_test(NAME SolveReducedFunctionalTests
-         COMMAND runSolveReducedFunctionalTests)
+add_test(NAME AB2TimeReducedFunctionalTests
+         COMMAND runAB2TimeReducedFunctionalTests)
+
+add_executable(runStateReducedFunctionalTests
+               unit/state/runReducedFunctionalTests.cpp)
+
+target_link_libraries(runStateReducedFunctionalTests PRIVATE femx::femx)
+
+add_test(NAME StateReducedFunctionalTests
+         COMMAND runStateReducedFunctionalTests)
 
 add_executable(runNewApiLinearControlExampleTests
-               unit/solve/runNewApiLinearControlExampleTests.cpp)
+               unit/state/runNewApiLinearControlExampleTests.cpp)
 
 target_link_libraries(runNewApiLinearControlExampleTests PRIVATE femx::femx)
 
@@ -265,8 +275,8 @@ if(TARGET femx::opt)
   add_executable(runTaoReducedFunctionalAdapterTests
                  unit/inverse/petsc/runTaoReducedFunctionalAdapterTests.cpp)
 
-  target_link_libraries(runTaoReducedFunctionalAdapterTests
-                        PRIVATE femx::opt femx::femx)
+  target_link_libraries(runTaoReducedFunctionalAdapterTests PRIVATE femx::opt
+                                                                    femx::femx)
 
   add_test(NAME TaoReducedFunctionalAdapterTests
            COMMAND runTaoReducedFunctionalAdapterTests)
@@ -274,8 +284,7 @@ if(TARGET femx::opt)
   add_executable(runTaoOptimizerTests
                  unit/inverse/petsc/runTaoOptimizerTests.cpp)
 
-  target_link_libraries(runTaoOptimizerTests PRIVATE femx::opt
-                                                     femx::femx)
+  target_link_libraries(runTaoOptimizerTests PRIVATE femx::opt femx::femx)
 
   add_test(NAME TaoOptimizerTests COMMAND runTaoOptimizerTests)
 endif()
@@ -284,7 +293,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierConfigTests.cpp")
   add_executable(
     runNavierConfigTests
     unit/navier/runNavierConfigTests.cpp ../apps/forward/ns-gls/Config.cpp
-    ../apps/forward/ns-gls/BoundaryConditions.cpp)
+    ../apps/forward/ns-gls/BCs.cpp)
 
   target_include_directories(
     runNavierConfigTests
@@ -298,12 +307,12 @@ endif()
 
 if(TARGET navier_common
    AND EXISTS
-       "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierElementResidualTests.cpp")
+       "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierElementResidualTests.cpp"
+)
   add_executable(runNavierElementResidualTests
                  unit/navier/runNavierElementResidualTests.cpp)
 
-  target_link_libraries(runNavierElementResidualTests
-                        PRIVATE navier_common)
+  target_link_libraries(runNavierElementResidualTests PRIVATE navier_common)
 
   add_test(NAME NavierElementResidualTests
            COMMAND runNavierElementResidualTests)
@@ -319,8 +328,7 @@ if(FEMX_HAS_ENZYME)
   add_executable(runEnzymeTimeVolumeKernelTests
                  unit/ad/runEnzymeTimeVolumeKernelTests.cpp)
 
-  target_link_libraries(runEnzymeTimeVolumeKernelTests
-                        PRIVATE femx::femx)
+  target_link_libraries(runEnzymeTimeVolumeKernelTests PRIVATE femx::femx)
 
   add_test(NAME EnzymeTimeVolumeKernelTests
            COMMAND runEnzymeTimeVolumeKernelTests)

@@ -65,7 +65,7 @@ public:
           "DenseMatrixOperator apply received incompatible vector");
     }
 
-    resizeVector(out, numRows());
+    resizeOrZero(out, numRows());
     for (Index i = 0; i < numRows(); ++i)
     {
       for (Index j = 0; j < numCols(); ++j)
@@ -83,7 +83,7 @@ public:
           "DenseMatrixOperator transpose apply received incompatible vector");
     }
 
-    resizeVector(out, numCols());
+    resizeOrZero(out, numCols());
     for (Index i = 0; i < numRows(); ++i)
     {
       for (Index j = 0; j < numCols(); ++j)
@@ -93,27 +93,14 @@ public:
     }
   }
 
-  DenseMatrix& matrix()
+  DenseMatrix& mat()
   {
     return mat_;
   }
 
-  const DenseMatrix& matrix() const
+  const DenseMatrix& mat() const
   {
     return mat_;
-  }
-
-private:
-  static void resizeVector(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
-    }
   }
 
 private:

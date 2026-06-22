@@ -1,11 +1,10 @@
-add_library(navier_gls_support Config.cpp BoundaryConditions.cpp RunSupport.cpp)
+add_library(navier_gls_support Config.cpp BCs.cpp RunSupport.cpp)
 
 if(FEMX_ENABLE_ENZYME)
   set_target_properties(navier_gls_support PROPERTIES UNITY_BUILD ON)
 endif()
 
-target_sources(navier_gls_support PUBLIC Config.hpp BoundaryConditions.hpp
-                                         RunSupport.hpp)
+target_sources(navier_gls_support PUBLIC Config.hpp BCs.hpp RunSupport.hpp)
 
 target_link_libraries(navier_gls_support PUBLIC navier_common femx::femx)
 
@@ -46,13 +45,13 @@ function(configure_navier_gls_app target)
             FEMX_NAVIER_GLS_APP_NAME="${target}")
 endfunction()
 
-if(FEMX_HAS_RESOLVE AND FEMX_HAS_ENZYME)
+if(FEMX_HAS_RESOLVE)
   add_executable(ns-gls main-resolve.cpp)
   configure_navier_gls_app(ns-gls)
   target_link_libraries(ns-gls PRIVATE femx::linalg_resolve)
 endif()
 
-if(TARGET femx::linalg_petsc AND FEMX_HAS_ENZYME)
+if(TARGET femx::linalg_petsc)
   add_executable(ns-gls-petsc main-petsc.cpp)
   configure_navier_gls_app(ns-gls-petsc)
   target_link_libraries(ns-gls-petsc PRIVATE femx::linalg_petsc)

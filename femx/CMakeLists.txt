@@ -6,7 +6,7 @@ add_subdirectory(fem)
 if(FEMX_HAS_PETSC)
   add_subdirectory(linalg/petsc)
 endif()
-add_subdirectory(solve)
+add_subdirectory(state)
 add_subdirectory(assembly)
 if(FEMX_HAS_PETSC)
   add_subdirectory(opt)
@@ -22,7 +22,7 @@ target_link_libraries(
             femx_fem
             femx_io
             femx_problem
-            femx_solve)
+            femx_state)
 
 if(FEMX_HAS_PETSC)
   target_link_libraries(femx INTERFACE femx_opt)

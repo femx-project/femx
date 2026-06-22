@@ -6,7 +6,7 @@
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeObservationData.hpp>
 #include <femx/problem/TimeObservationOperator.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
@@ -19,20 +19,20 @@ class TimeLeastSquaresObjective final : public TimeObjective
 public:
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            Real                           weight = 1.0);
+                            Real                           wt = 1.0);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            Vector<Real>                   weights);
+                            Vector<Real>                   wts);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            Vector<Real>                   weights,
+                            Vector<Real>                   wts,
                             Real                           dt);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            Vector<Real>                   weights,
+                            Vector<Real>                   wts,
                             Real                           dt,
                             Real                           time_offset);
 
@@ -40,44 +40,44 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const solve::TimeTrajectory& tr,
+  Real value(const state::TimeTrajectory& tr,
              const Vector<Real>&          prm) const override;
 
   void stateGrad(Index                        level,
-                 const solve::TimeTrajectory& tr,
+                 const state::TimeTrajectory& tr,
                  const Vector<Real>&          prm,
                  Vector<Real>&                out) const override;
 
-  void paramGrad(const solve::TimeTrajectory& tr,
+  void paramGrad(const state::TimeTrajectory& tr,
                  const Vector<Real>&          prm,
                  Vector<Real>&                out) const override;
 
 private:
-  Index             numLevels() const;
-  void              checkInputs() const;
-  void              checkLevel(Index level) const;
+  Index               numLevels() const;
+  void                checkInputs() const;
+  void                checkLevel(Index level) const;
   LinearInterpolation interpolation(Index row) const;
-  Real observationWeight(const LinearInterpolation& interp) const;
+  Real                observationWeight(const LinearInterpolation& interp) const;
 
   void observeInterpolated(Index                        data_row,
                            const LinearInterpolation&   interp,
-                           const solve::TimeTrajectory& tr,
+                           const state::TimeTrajectory& tr,
                            const Vector<Real>&          prm,
                            Vector<Real>&                out) const;
 
   void obsResidual(Index                        data_row,
                    const LinearInterpolation&   interp,
-                   const solve::TimeTrajectory& tr,
+                   const state::TimeTrajectory& tr,
                    const Vector<Real>&          prm,
                    Vector<Real>&                out) const;
 
-  static void resize(Vector<Real>& out, Index size);
+  static void checkSize(const Vector<Real>& value, Index exp);
   static void scale(Vector<Real>& out, Real factor);
 
 private:
   const TimeObservationOperator& obs_;
   TimeObservationData            data_;
-  Vector<Real>                   weights_;
+  Vector<Real>                   wts_;
   Real                           dt_{1.0};
   Real                           time_offset_{0.0};
 };

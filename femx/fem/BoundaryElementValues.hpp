@@ -1,10 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
 
 namespace femx
@@ -25,11 +24,11 @@ public:
   VectorView<const Real> N(Index iq) const;
 
   VectorView<const Real> point(Index iq) const;
-  VectorView<const Real> normal(Index iq) const;
+  VectorView<const Real> nrm(Index iq) const;
 
-  Real point(Index iq, Index component) const;
-  Real normal(Index iq, Index component) const;
-  Real weight(Index iq) const;
+  Real point(Index iq, Index comp) const;
+  Real nrm(Index iq, Index comp) const;
+  Real wt(Index iq) const;
   Real JxW(Index iq) const;
 
   const Real* NData() const;
@@ -49,15 +48,15 @@ private:
 private:
   const GaussQuadrature* quad_{nullptr};
 
-  Index num_nodes_{0};
+  Index nn_{0};
   Index dim_{0};
-  Index num_qp_{0};
+  Index nq_{0};
 
-  std::vector<Real> N_;
-  std::vector<Real> points_;
-  std::vector<Real> normals_;
-  std::vector<Real> weights_;
-  std::vector<Real> JxW_;
+  Vector<Real> N_;
+  Vector<Real> pts_;
+  Vector<Real> normals_;
+  Vector<Real> wts_;
+  Vector<Real> JxW_;
 };
 
 } // namespace femx

@@ -13,8 +13,8 @@ class Linearization
 public:
   virtual ~Linearization() = default;
 
-  virtual const linalg::LinearOperator& stateJacobian() const = 0;
-  virtual const linalg::LinearOperator& paramJacobian() const = 0;
+  virtual const linalg::LinearOperator& stateJac() const = 0;
+  virtual const linalg::LinearOperator& paramJac() const = 0;
 };
 
 class MatrixLinearization final : public Linearization
@@ -37,12 +37,12 @@ public:
     return param_jac_;
   }
 
-  const linalg::LinearOperator& stateJacobian() const override
+  const linalg::LinearOperator& stateJac() const override
   {
     return state_jac_;
   }
 
-  const linalg::LinearOperator& paramJacobian() const override
+  const linalg::LinearOperator& paramJac() const override
   {
     return param_jac_;
   }

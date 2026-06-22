@@ -6,9 +6,10 @@
 #include <string>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include <femx/fem/GmshReader.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -22,42 +23,42 @@ struct EntityKey
 
   bool operator<(const EntityKey& other) const noexcept
   {
-    return std::tie(dim, tag) < std::tie(other.dim, other.tag);
+    return tie(dim, tag) < tie(other.dim, other.tag);
   }
 };
 
 struct EntityData
 {
-  std::vector<Index> physical_tags;
+  Vector<Index> physical_tags;
 };
 
 struct ElementRecord
 {
-  Index              entity_dim   = 0;
-  Index              entity_tag   = 0;
-  Index              physical_tag = 0;
-  Cell::Shape        shape        = Cell::Shape::Unknown;
-  std::vector<Index> node_ids;
+  Index         edim       = 0;
+  Index         entity_tag = 0;
+  Index         ptag       = 0;
+  Cell::Shape   shape      = Cell::Shape::Unknown;
+  Vector<Index> nids;
 };
 
-std::string stripQuotes(std::string value)
+string stripQuotes(string value)
 {
   const auto first = value.find('"');
   const auto last  = value.rfind('"');
-  if (first != std::string::npos && last != std::string::npos && first < last)
+  if (first != string::npos && last != string::npos && first < last)
   {
     return value.substr(first + 1, last - first - 1);
   }
   return value;
 }
 
-void expectMarker(std::istream& in, const std::string& expected)
+void expectMarker(istream& in, const string& exp)
 {
-  std::string marker;
-  in >> marker;
-  if (marker != expected)
+  string mark;
+  in >> mark;
+  if (mark != exp)
   {
-    throw std::runtime_error("GmshReader: expected " + expected + ", got " + marker);
+    throw runtime_error("GmshReader: expected " + exp + ", got " + mark);
   }
 }
 
@@ -97,7 +98,7 @@ Index gmshNumNodes(Index elem_type)
   case 15:
     return 1;
   default:
-    throw std::runtime_error("GmshReader: unsupported elem type " + std::to_string(elem_type));
+    throw runtime_error("GmshReader: unsupported elem type " + to_string(elem_type));
   }
 }
 
@@ -116,13 +117,13 @@ Index gmshElementDimension(Index elem_type)
   case 5:
     return 3;
   default:
-    throw std::runtime_error("GmshReader: unsupported elem type " + std::to_string(elem_type));
+    throw runtime_error("GmshReader: unsupported elem type " + to_string(elem_type));
   }
 }
 
-Index firstPhysicalTag(const std::map<EntityKey, EntityData>& entities,
-                       Index                                  dim,
-                       Index                                  tag)
+Index firstPhysicalTag(const map<EntityKey, EntityData>& entities,
+                       Index                             dim,
+                       Index                             tag)
 {
   const auto it = entities.find({dim, tag});
   if (it == entities.end() || it->second.physical_tags.empty())
@@ -132,10 +133,10 @@ Index firstPhysicalTag(const std::map<EntityKey, EntityData>& entities,
   return it->second.physical_tags.front();
 }
 
-void skipUnknownSection(std::istream& in, const std::string& marker)
+void skipUnknownSection(istream& in, const string& mark)
 {
-  const std::string end_marker = "$End" + marker.substr(1);
-  std::string       token;
+  const string end_marker = "$End" + mark.substr(1);
+  string       token;
   while (in >> token)
   {
     if (token == end_marker)
@@ -143,10 +144,10 @@ void skipUnknownSection(std::istream& in, const std::string& marker)
       return;
     }
   }
-  throw std::runtime_error("GmshReader: missing " + end_marker);
+  throw runtime_error("GmshReader: missing " + end_marker);
 }
 
-void readPhysicalNames(std::istream& in, Mesh& mesh)
+void readPhysicalNames(istream& in, Mesh& mesh)
 {
   Index count = 0;
   in >> count;
@@ -156,17 +157,17 @@ void readPhysicalNames(std::istream& in, Mesh& mesh)
     Index tag = 0;
     in >> dim >> tag;
 
-    std::string rest;
-    std::getline(in, rest);
+    string rest;
+    getline(in, rest);
     mesh.addPhysicalName(dim, tag, stripQuotes(rest));
   }
   expectMarker(in, "$EndPhysicalNames");
 }
 
-void readEntityBlock(std::istream&                    in,
-                     std::map<EntityKey, EntityData>& entities,
-                     Index                            dim,
-                     Index                            count)
+void readEntityBlock(istream&                    in,
+                     map<EntityKey, EntityData>& entities,
+                     Index                       dim,
+                     Index                       count)
 {
   for (Index i = 0; i < count; ++i)
   {
@@ -183,10 +184,10 @@ void readEntityBlock(std::istream&                    in,
     Index num_physical_tags = 0;
     in >> num_physical_tags;
     EntityData entity;
-    entity.physical_tags.resize(static_cast<std::size_t>(num_physical_tags));
+    entity.physical_tags.resize(num_physical_tags);
     for (Index j = 0; j < num_physical_tags; ++j)
     {
-      in >> entity.physical_tags[static_cast<std::size_t>(j)];
+      in >> entity.physical_tags[j];
     }
 
     Index num_bounding_entities = 0;
@@ -204,7 +205,7 @@ void readEntityBlock(std::istream&                    in,
   }
 }
 
-void readEntities(std::istream& in, std::map<EntityKey, EntityData>& entities)
+void readEntities(istream& in, map<EntityKey, EntityData>& entities)
 {
   Index num_points   = 0;
   Index num_curves   = 0;
@@ -220,14 +221,14 @@ void readEntities(std::istream& in, std::map<EntityKey, EntityData>& entities)
   expectMarker(in, "$EndEntities");
 }
 
-void readNodesV2(std::istream&           in,
-                 Mesh&                   mesh,
-                 std::map<Index, Index>& node_index_by_tag)
+void readNodesV2(istream&           in,
+                 Mesh&              mesh,
+                 map<Index, Index>& node_index_by_tag)
 {
-  Index num_nodes = 0;
-  in >> num_nodes;
+  Index nn = 0;
+  in >> nn;
 
-  for (Index i = 0; i < num_nodes; ++i)
+  for (Index i = 0; i < nn; ++i)
   {
     Index      node_tag = 0;
     Mesh::Node node{};
@@ -241,28 +242,28 @@ void readNodesV2(std::istream&           in,
   expectMarker(in, "$EndNodes");
 }
 
-void readNodesV4(std::istream&           in,
-                 Mesh&                   mesh,
-                 std::map<Index, Index>& node_index_by_tag)
+void readNodesV4(istream&           in,
+                 Mesh&              mesh,
+                 map<Index, Index>& node_index_by_tag)
 {
   Index num_entity_blocks = 0;
-  Index num_nodes         = 0;
+  Index nn                = 0;
   Index min_node_tag      = 0;
   Index max_node_tag      = 0;
-  in >> num_entity_blocks >> num_nodes >> min_node_tag >> max_node_tag;
+  in >> num_entity_blocks >> nn >> min_node_tag >> max_node_tag;
 
   for (Index block = 0; block < num_entity_blocks; ++block)
   {
-    Index entity_dim         = 0;
+    Index edim               = 0;
     Index entity_tag         = 0;
     Index parametric         = 0;
     Index num_nodes_in_block = 0;
-    in >> entity_dim >> entity_tag >> parametric >> num_nodes_in_block;
+    in >> edim >> entity_tag >> parametric >> num_nodes_in_block;
 
-    std::vector<Index> node_tags(static_cast<std::size_t>(num_nodes_in_block));
+    Vector<Index> node_tags(num_nodes_in_block);
     for (Index i = 0; i < num_nodes_in_block; ++i)
     {
-      in >> node_tags[static_cast<std::size_t>(i)];
+      in >> node_tags[i];
     }
 
     for (Index i = 0; i < num_nodes_in_block; ++i)
@@ -271,15 +272,15 @@ void readNodesV4(std::istream&           in,
       in >> node[0] >> node[1] >> node[2];
       if (parametric)
       {
-        for (Index j = 0; j < entity_dim; ++j)
+        for (Index j = 0; j < edim; ++j)
         {
           Real ignored = 0.0;
           in >> ignored;
         }
       }
 
-      const Index local_id                                      = mesh.numNodes();
-      node_index_by_tag[node_tags[static_cast<std::size_t>(i)]] = local_id;
+      const Index local_id            = mesh.numNodes();
+      node_index_by_tag[node_tags[i]] = local_id;
       mesh.addNode(node);
     }
   }
@@ -287,107 +288,107 @@ void readNodesV4(std::istream&           in,
   expectMarker(in, "$EndNodes");
 }
 
-void readElementsV2(std::istream&                 in,
-                    const std::map<Index, Index>& node_index_by_tag,
-                    std::vector<ElementRecord>&   elements)
+void readElementsV2(istream&                 in,
+                    const map<Index, Index>& node_index_by_tag,
+                    Vector<ElementRecord>&   elements)
 {
-  Index num_elems = 0;
-  in >> num_elems;
-  elements.reserve(elements.size() + static_cast<std::size_t>(num_elems));
+  Index ne = 0;
+  in >> ne;
+  elements.reserve(elements.size() + ne);
 
-  for (Index i = 0; i < num_elems; ++i)
+  for (Index i = 0; i < ne; ++i)
   {
     Index elem_tag  = 0;
     Index elem_type = 0;
     Index num_tags  = 0;
     in >> elem_tag >> elem_type >> num_tags;
 
-    std::vector<Index> tags(static_cast<std::size_t>(num_tags));
+    Vector<Index> tags(num_tags);
     for (Index j = 0; j < num_tags; ++j)
     {
-      in >> tags[static_cast<std::size_t>(j)];
+      in >> tags[j];
     }
 
-    const Index       num_nodes = gmshNumNodes(elem_type);
-    const Cell::Shape shape     = gmshShape(elem_type);
+    const Index       nn    = gmshNumNodes(elem_type);
+    const Cell::Shape shape = gmshShape(elem_type);
 
-    ElementRecord record;
-    record.entity_dim   = gmshElementDimension(elem_type);
-    record.physical_tag = num_tags > 0 ? tags[0] : 0;
-    record.entity_tag   = num_tags > 1 ? tags[1] : 0;
-    record.shape        = shape;
-    record.node_ids.reserve(static_cast<std::size_t>(num_nodes));
+    ElementRecord rec;
+    rec.edim       = gmshElementDimension(elem_type);
+    rec.ptag       = num_tags > 0 ? tags[0] : 0;
+    rec.entity_tag = num_tags > 1 ? tags[1] : 0;
+    rec.shape      = shape;
+    rec.nids.reserve(nn);
 
-    for (Index j = 0; j < num_nodes; ++j)
+    for (Index j = 0; j < nn; ++j)
     {
       Index node_tag = 0;
       in >> node_tag;
       const auto node_it = node_index_by_tag.find(node_tag);
       if (node_it == node_index_by_tag.end())
       {
-        throw std::runtime_error("GmshReader: elem references unknown node " + std::to_string(node_tag));
+        throw runtime_error("GmshReader: elem references unknown node " + to_string(node_tag));
       }
-      record.node_ids.push_back(node_it->second);
+      rec.nids.push_back(node_it->second);
     }
 
-    if (shape != Cell::Shape::Unknown && record.entity_dim > 0)
+    if (shape != Cell::Shape::Unknown && rec.edim > 0)
     {
-      elements.push_back(std::move(record));
+      elements.push_back(std::move(rec));
     }
   }
 
   expectMarker(in, "$EndElements");
 }
 
-void readElementsV4(std::istream&                 in,
-                    const std::map<Index, Index>& node_index_by_tag,
-                    std::vector<ElementRecord>&   elements)
+void readElementsV4(istream&                 in,
+                    const map<Index, Index>& node_index_by_tag,
+                    Vector<ElementRecord>&   elements)
 {
   Index num_entity_blocks = 0;
-  Index num_elems         = 0;
+  Index ne                = 0;
   Index min_elem_tag      = 0;
   Index max_elem_tag      = 0;
-  in >> num_entity_blocks >> num_elems >> min_elem_tag >> max_elem_tag;
+  in >> num_entity_blocks >> ne >> min_elem_tag >> max_elem_tag;
 
-  elements.reserve(static_cast<std::size_t>(num_elems));
+  elements.reserve(ne);
   for (Index block = 0; block < num_entity_blocks; ++block)
   {
-    Index entity_dim         = 0;
+    Index edim               = 0;
     Index entity_tag         = 0;
     Index elem_type          = 0;
     Index num_elems_in_block = 0;
-    in >> entity_dim >> entity_tag >> elem_type >> num_elems_in_block;
+    in >> edim >> entity_tag >> elem_type >> num_elems_in_block;
 
-    const Index       num_nodes = gmshNumNodes(elem_type);
-    const Cell::Shape shape     = gmshShape(elem_type);
+    const Index       nn    = gmshNumNodes(elem_type);
+    const Cell::Shape shape = gmshShape(elem_type);
 
     for (Index i = 0; i < num_elems_in_block; ++i)
     {
       Index elem_tag = 0;
       in >> elem_tag;
 
-      ElementRecord record;
-      record.entity_dim   = entity_dim;
-      record.entity_tag   = entity_tag;
-      record.physical_tag = 0;
-      record.shape        = shape;
-      record.node_ids.reserve(static_cast<std::size_t>(num_nodes));
+      ElementRecord rec;
+      rec.edim       = edim;
+      rec.entity_tag = entity_tag;
+      rec.ptag       = 0;
+      rec.shape      = shape;
+      rec.nids.reserve(nn);
 
-      for (Index j = 0; j < num_nodes; ++j)
+      for (Index j = 0; j < nn; ++j)
       {
         Index node_tag = 0;
         in >> node_tag;
         const auto node_it = node_index_by_tag.find(node_tag);
         if (node_it == node_index_by_tag.end())
         {
-          throw std::runtime_error("GmshReader: elem references unknown node " + std::to_string(node_tag));
+          throw runtime_error("GmshReader: elem references unknown node " + to_string(node_tag));
         }
-        record.node_ids.push_back(node_it->second);
+        rec.nids.push_back(node_it->second);
       }
 
       if (shape != Cell::Shape::Unknown)
       {
-        elements.push_back(std::move(record));
+        elements.push_back(std::move(rec));
       }
     }
   }
@@ -395,7 +396,7 @@ void readElementsV4(std::istream&                 in,
   expectMarker(in, "$EndElements");
 }
 
-Index meshDimension(const std::vector<ElementRecord>& elements)
+Index meshDimension(const Vector<ElementRecord>& elements)
 {
   Index dim = 0;
   for (const auto& elem : elements)
@@ -404,11 +405,11 @@ Index meshDimension(const std::vector<ElementRecord>& elements)
     {
     case Cell::Shape::Triangle:
     case Cell::Shape::Quadrilateral:
-      dim = std::max<Index>(dim, 2);
+      dim = max<Index>(dim, 2);
       break;
     case Cell::Shape::Tetrahedron:
     case Cell::Shape::Hexahedron:
-      dim = std::max<Index>(dim, 3);
+      dim = max<Index>(dim, 3);
       break;
     default:
       break;
@@ -416,43 +417,43 @@ Index meshDimension(const std::vector<ElementRecord>& elements)
   }
   if (dim == 0)
   {
-    throw std::runtime_error("GmshReader: no supported volume or surface cells found");
+    throw runtime_error("GmshReader: no supported volume or surface cells found");
   }
   return dim;
 }
 
-void addElementsToMesh(Mesh&                                  mesh,
-                       const std::vector<ElementRecord>&      elements,
-                       const std::map<EntityKey, EntityData>& entities)
+void addElementsToMesh(Mesh&                             mesh,
+                       const Vector<ElementRecord>&      elements,
+                       const map<EntityKey, EntityData>& entities)
 {
   for (const auto& elem : elements)
   {
-    const Index       physical_tag = elem.physical_tag > 0
-                                         ? elem.physical_tag
-                                         : firstPhysicalTag(entities,
-                                                      elem.entity_dim,
-                                                      elem.entity_tag);
-    const std::string physical_name =
-        mesh.physicalName(elem.entity_dim, physical_tag);
+    const Index  ptag = elem.ptag > 0
+                            ? elem.ptag
+                            : firstPhysicalTag(entities,
+                                              elem.edim,
+                                              elem.entity_tag);
+    const string pname =
+        mesh.physicalName(elem.edim, ptag);
 
-    if (elem.entity_dim == mesh.dim())
+    if (elem.edim == mesh.dim())
     {
-      mesh.addCell(elem.node_ids,
+      mesh.addCell(elem.nids,
                    elem.shape,
-                   elem.entity_dim,
+                   elem.edim,
                    elem.entity_tag,
-                   physical_tag,
-                   physical_name);
+                   ptag,
+                   pname);
     }
-    else if (elem.entity_dim == mesh.dim() - 1)
+    else if (elem.edim == mesh.dim() - 1)
     {
       Mesh::BoundaryFacet facet;
-      facet.dim           = elem.entity_dim;
-      facet.entity_tag    = elem.entity_tag;
-      facet.physical_tag  = physical_tag;
-      facet.physical_name = physical_name;
-      facet.shape         = elem.shape;
-      facet.node_ids      = elem.node_ids;
+      facet.dim        = elem.edim;
+      facet.entity_tag = elem.entity_tag;
+      facet.ptag       = ptag;
+      facet.pname      = pname;
+      facet.shape      = elem.shape;
+      facet.nids       = elem.nids;
       mesh.addBoundaryFacet(std::move(facet));
     }
   }
@@ -460,47 +461,47 @@ void addElementsToMesh(Mesh&                                  mesh,
 
 } // namespace
 
-Mesh GmshReader::read(const std::string& path)
+Mesh GmshReader::read(const string& path)
 {
-  std::ifstream in(path);
+  ifstream in(path);
   if (!in)
   {
-    throw std::runtime_error("GmshReader: failed to open " + path);
+    throw runtime_error("GmshReader: failed to open " + path);
   }
 
-  Mesh                            mesh;
-  std::map<EntityKey, EntityData> entities;
-  std::map<Index, Index>          node_index_by_tag;
-  std::vector<ElementRecord>      elements;
-  Real                            version = 0.0;
+  Mesh                       mesh;
+  map<EntityKey, EntityData> entities;
+  map<Index, Index>          node_index_by_tag;
+  Vector<ElementRecord>      elements;
+  Real                       version = 0.0;
 
-  std::string marker;
-  while (in >> marker)
+  string mark;
+  while (in >> mark)
   {
-    if (marker == "$MeshFormat")
+    if (mark == "$MeshFormat")
     {
       Index file_type = 0;
       Index data_size = 0;
       in >> version >> file_type >> data_size;
       if (file_type != 0)
       {
-        throw std::runtime_error("GmshReader: only ASCII .msh files are supported");
+        throw runtime_error("GmshReader: only ASCII .msh files are supported");
       }
       if (!((version >= 2.0 && version < 3.0) || (version >= 4.0 && version < 5.0)))
       {
-        throw std::runtime_error("GmshReader: only Gmsh 2.x and 4.x .msh files are supported");
+        throw runtime_error("GmshReader: only Gmsh 2.x and 4.x .msh files are supported");
       }
       expectMarker(in, "$EndMeshFormat");
     }
-    else if (marker == "$PhysicalNames")
+    else if (mark == "$PhysicalNames")
     {
       readPhysicalNames(in, mesh);
     }
-    else if (marker == "$Entities")
+    else if (mark == "$Entities")
     {
       readEntities(in, entities);
     }
-    else if (marker == "$Nodes")
+    else if (mark == "$Nodes")
     {
       if (version >= 4.0)
       {
@@ -511,7 +512,7 @@ Mesh GmshReader::read(const std::string& path)
         readNodesV2(in, mesh, node_index_by_tag);
       }
     }
-    else if (marker == "$Elements")
+    else if (mark == "$Elements")
     {
       if (version >= 4.0)
       {
@@ -524,16 +525,16 @@ Mesh GmshReader::read(const std::string& path)
     }
     else
     {
-      skipUnknownSection(in, marker);
+      skipUnknownSection(in, mark);
     }
   }
 
   Mesh result(meshDimension(elements));
-  for (const auto& physical_name : mesh.physicalNames())
+  for (const auto& pname : mesh.physicalNames())
   {
-    result.addPhysicalName(physical_name.first.first,
-                           physical_name.first.second,
-                           physical_name.second);
+    result.addPhysicalName(pname.first.first,
+                           pname.first.second,
+                           pname.second);
   }
   for (Index i = 0; i < mesh.numNodes(); ++i)
   {

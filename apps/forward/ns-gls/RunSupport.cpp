@@ -8,7 +8,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include "BoundaryConditions.hpp"
+#include "BCs.hpp"
 #include <NavierHelper.hpp>
 #include <femx/assembly/SparsityPatternBuilder.hpp>
 #include <femx/fem/DofLayout.hpp>
@@ -18,7 +18,14 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/linalg/BlockVectorView.hpp>
+#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeTrajectory.hpp>
+
+using namespace std;
+using namespace femx::state;
+using namespace femx::assembly;
+using namespace femx::navier;
 
 namespace femx
 {
@@ -33,28 +40,28 @@ GaussQuadrature makeVelocityQuadrature(const MixedFESpace& space)
       space.field(0).space().finiteElement().referenceElement(), kQuadOrder);
 }
 
-navier::NavierKernel makeKernel(const MixedFESpace&    space,
-                                const GaussQuadrature& quad,
-                                const FluidParams&     fluid,
-                                Real                   dt)
+NavierKernel makeKernel(const MixedFESpace&    space,
+                        const GaussQuadrature& quad,
+                        const FluidParams&     fluid,
+                        Real                   dt)
 {
-  return navier::makeNavierKernel(space.field(0).space(),
-                                  quad,
-                                  space.numDofsPerElem(),
-                                  fluid.rho,
-                                  fluid.mu,
-                                  dt);
+  return makeNavierKernel(space.field(0).space(),
+                          quad,
+                          space.numDofsPerElem(),
+                          fluid.rho,
+                          fluid.mu,
+                          dt);
 }
 
 void requireForwardParams(const Params& prm)
 {
   if (prm.mesh_file.empty())
   {
-    throw std::runtime_error("mesh file is required");
+    throw runtime_error("mesh file is required");
   }
   if (prm.time.steps <= 0 || prm.time.dt <= 0.0)
   {
-    throw std::runtime_error("time steps and dt must be positive");
+    throw runtime_error("time steps and dt must be positive");
   }
 }
 
@@ -67,9 +74,9 @@ Mesh readProblemMesh(const Params& prm)
 void assignBoundaryValues(Vector<Real>&             state,
                           const DirichletCondition& bc)
 {
-  if (bc.dofs().size() != bc.values().size())
+  if (bc.dofs().size() != bc.vals().size())
   {
-    throw std::runtime_error("DirichletCondition has inconsistent data");
+    throw runtime_error("DirichletCondition has inconsistent data");
   }
 
   for (Index i = 0; i < bc.dofs().size(); ++i)
@@ -77,14 +84,14 @@ void assignBoundaryValues(Vector<Real>&             state,
     const Index dof = bc.dofs()[i];
     if (dof < 0 || dof >= state.size())
     {
-      throw std::runtime_error("Dirichlet dof is out of range");
+      throw runtime_error("Dirichlet dof is out of range");
     }
-    state[dof] = bc.values()[i];
+    state[dof] = bc.vals()[i];
   }
 }
 
-Vector<Real> makeInitialState(const MixedFESpace&           space,
-                              const std::vector<BCsParams>& bcs)
+Vector<Real> makeInitialState(const MixedFESpace&      space,
+                              const Vector<BCsParams>& bcs)
 {
   Vector<Real> state(space.numDofs());
   state.setZero();
@@ -93,28 +100,28 @@ Vector<Real> makeInitialState(const MixedFESpace&           space,
 }
 
 FixedBoundaryValues toFixedBoundaryValues(
-    const std::map<Index, Vector<Real>>& values,
-    Index                                steps)
+    const map<Index, Vector<Real>>& vals,
+    Index                           steps)
 {
   FixedBoundaryValues out;
-  out.dofs.reserve(static_cast<Index>(values.size()));
-  for (const auto& entry : values)
+  for (const auto& entry : vals)
   {
     out.dofs.push_back(entry.first);
   }
 
-  out.values.resize(steps * out.dofs.size());
-  Index i = 0;
-  for (const auto& entry : values)
+  out.vals.resize(steps * out.dofs.size());
+  BlockVectorView<Real> values(out.vals.data(), steps, out.dofs.size());
+  Index                 i = 0;
+  for (const auto& entry : vals)
   {
     for (Index step = 0; step < steps; ++step)
     {
-      if (std::isnan(entry.second[step]))
+      if (isnan(entry.second[step]))
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "fixed boundary value was not assigned for every time step");
       }
-      out.values[step * out.dofs.size() + i] = entry.second[step];
+      values(step, i) = entry.second[step];
     }
     ++i;
   }
@@ -122,31 +129,31 @@ FixedBoundaryValues toFixedBoundaryValues(
 }
 
 FixedBoundaryValues makeFixedBoundaryValues(
-    const MixedFESpace&           space,
-    const std::vector<BCsParams>& bcs,
-    Index                         steps,
-    Real                          dt)
+    const MixedFESpace&      space,
+    const Vector<BCsParams>& bcs,
+    Index                    steps,
+    Real                     dt)
 {
   if (steps <= 0)
   {
-    throw std::runtime_error("fixed boundary values require positive steps");
+    throw runtime_error("fixed boundary values require positive steps");
   }
 
-  const Real                    unset = std::numeric_limits<Real>::quiet_NaN();
-  std::map<Index, Vector<Real>> values;
+  const Real               unset = numeric_limits<Real>::quiet_NaN();
+  map<Index, Vector<Real>> vals;
 
   for (Index step = 0; step < steps; ++step)
   {
     const Real time = static_cast<Real>(step + 1) * dt;
     const auto bc   = makeBoundaryCondition(space, bcs, time);
-    if (bc.dofs().size() != bc.values().size())
+    if (bc.dofs().size() != bc.vals().size())
     {
-      throw std::runtime_error("DirichletCondition has inconsistent data");
+      throw runtime_error("DirichletCondition has inconsistent data");
     }
 
     for (Index i = 0; i < bc.dofs().size(); ++i)
     {
-      Vector<Real>& series = values[bc.dofs()[i]];
+      Vector<Real>& series = vals[bc.dofs()[i]];
       if (series.empty())
       {
         series.resize(steps);
@@ -155,18 +162,18 @@ FixedBoundaryValues makeFixedBoundaryValues(
           series[k] = unset;
         }
       }
-      series[step] = bc.values()[i];
+      series[step] = bc.vals()[i];
     }
   }
 
-  return toFixedBoundaryValues(values, steps);
+  return toFixedBoundaryValues(vals, steps);
 }
 
 } // namespace
 
 double elapsedSeconds(Clock::time_point begin, Clock::time_point end)
 {
-  return std::chrono::duration<double>(end - begin).count();
+  return chrono::duration<double>(end - begin).count();
 }
 
 ForwardProblem::ForwardProblem(const Params& prm)
@@ -174,14 +181,18 @@ ForwardProblem::ForwardProblem(const Params& prm)
     dt(prm.time.dt),
     mesh(readProblemMesh(prm)),
     elem(makeElem(mesh, "ns-gls")),
-    space(navier::makeSpace(mesh, *elem)),
+    space(makeSpace(mesh, *elem)),
     quad(makeVelocityQuadrature(space)),
     ns(makeKernel(space, quad, prm.fluid, dt)),
-    fem(steps, DofLayout(space), DofLayout(space), DofLayout(space), ns),
+    fem(steps,
+        DofLayout(space),
+        Vector<DofLayout>{DofLayout(space), DofLayout(space)},
+        DofLayout(space),
+        ns),
     fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
-    eq(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.values),
+    problem(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
     x0(makeInitialState(space, prm.bcs)),
-    pattern(assembly::SparsityPatternBuilder::build(space)),
+    pat(SparsityPatternBuilder::build(space)),
     prm0(0)
 {
 }
@@ -190,84 +201,84 @@ AppOptions parseAppOptions(int   argc,
                            char* argv[],
                            bool  allow_unknown_options)
 {
-  AppOptions options;
+  AppOptions opts;
 
-  const auto requireValue = [argc, argv](int& i, const std::string& key)
+  const auto requireValue = [argc, argv](int& i, const string& key)
   {
     if (i + 1 >= argc)
     {
-      throw std::runtime_error("Missing value for " + key);
+      throw runtime_error("Missing value for " + key);
     }
-    return std::string(argv[++i]);
+    return string(argv[++i]);
   };
 
   for (int i = 1; i < argc; ++i)
   {
-    const std::string key(argv[i]);
+    const string key(argv[i]);
     if (key == "-h" || key == "--help")
     {
-      options.help = true;
-      return options;
+      opts.help = true;
+      return opts;
     }
     if (key == "--config" || key == "-config")
     {
-      options.config_file = requireValue(i, key);
+      opts.config_file = requireValue(i, key);
       continue;
     }
     if (key == "--steps")
     {
-      options.steps = static_cast<Index>(
-          std::stoi(requireValue(i, key)));
-      if (*options.steps <= 0)
+      opts.steps = static_cast<Index>(
+          stoi(requireValue(i, key)));
+      if (*opts.steps <= 0)
       {
-        throw std::runtime_error("--steps must be positive");
+        throw runtime_error("--steps must be positive");
       }
       continue;
     }
     if (key == "--no-output")
     {
-      options.no_output = true;
+      opts.no_output = true;
       continue;
     }
     if (!allow_unknown_options)
     {
-      throw std::runtime_error("Unknown option: " + key);
+      throw runtime_error("Unknown option: " + key);
     }
   }
 
-  if (options.config_file.empty())
+  if (opts.config_file.empty())
   {
-    throw std::runtime_error("Missing required option: --config FILE");
+    throw runtime_error("Missing required option: --config FILE");
   }
 
-  return options;
+  return opts;
 }
 
-void printUsage(std::ostream&                   out,
-                const std::string&              executable,
-                const std::string&              option_suffix,
-                const std::vector<std::string>& extra_lines)
+void printUsage(ostream&              out,
+                const string&         executable,
+                const string&         option_suffix,
+                const Vector<string>& extra_lines)
 {
   out << "Usage: " << executable << " --config FILE" << option_suffix << '\n'
       << "       " << executable
       << " --config FILE --steps N --no-output" << option_suffix << '\n';
-  for (const std::string& line : extra_lines)
+  for (const string& line : extra_lines)
   {
     out << line << '\n';
   }
 }
 
-std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
-                                        const std::string& executable)
+unique_ptr<FiniteElement> makeElem(const Mesh&   mesh,
+                                   const string& executable)
 {
   (void) executable;
   try
   {
-    return navier::makeElement(mesh);
+    return makeElement(mesh);
   }
-  catch (const std::runtime_error& e)
+  catch (const runtime_error& e)
   {
-    throw std::runtime_error(std::string(e.what()) + " (" + executable + ")");
+    throw runtime_error(string(e.what()) + " (" + executable + ")");
   }
 }
 
@@ -275,7 +286,7 @@ bool isFinite(const Vector<Real>& x)
 {
   for (Index i = 0; i < x.size(); ++i)
   {
-    if (!std::isfinite(x[i]))
+    if (!isfinite(x[i]))
     {
       return false;
     }
@@ -284,10 +295,10 @@ bool isFinite(const Vector<Real>& x)
 }
 
 bool shouldWriteOutput(Index               step,
-                       Index               num_steps,
+                       Index               nt,
                        const OutputParams& prm)
 {
-  return step % prm.interval == 0 || step == num_steps;
+  return step % prm.interval == 0 || step == nt;
 }
 
 namespace
@@ -335,11 +346,11 @@ Snapshot makeSnapshot(const MixedFESpace& space,
   return snapshot;
 }
 
-void writeOutput(const Mesh&                  mesh,
-                 const OutputParams&          prm,
-                 const std::vector<Snapshot>& snapshots)
+void writeOutput(const Mesh&             mesh,
+                 const OutputParams&     prm,
+                 const Vector<Snapshot>& snapshots)
 {
-  std::filesystem::create_directories(prm.directory);
+  filesystem::create_directories(prm.directory);
 
   TimeSeriesDataOut vel_out;
   vel_out.attachMesh(mesh);
@@ -363,11 +374,11 @@ void writeOutput(const Mesh&                  mesh,
   pre_out.write(prm.directory + "/pressure");
 }
 
-void writeTrajectoryOutput(const ForwardProblem&        problem,
-                           const solve::TimeTrajectory& tr,
-                           const OutputParams&          prm)
+void writeTrajectoryOutput(const ForwardProblem& problem,
+                           const TimeTrajectory& tr,
+                           const OutputParams&   prm)
 {
-  std::vector<Snapshot> snapshots;
+  Vector<Snapshot> snapshots;
   for (Index step = 1; step <= problem.steps; ++step)
   {
     if (shouldWriteOutput(step, problem.steps, prm))
@@ -383,14 +394,38 @@ void writeTrajectoryOutput(const ForwardProblem&        problem,
   }
 }
 
+ForwardSolveResult solve(TimeLinearStateSolver& state_solver,
+                         const ForwardProblem&  problem,
+                         const OutputParams&    prm,
+                         bool                   collect_output)
+{
+  ForwardSolveResult result;
+  state_solver.solve(
+      problem.prm0,
+      [&](Index level, const Vector<Real>& state)
+      {
+        if (level == problem.steps)
+        {
+          result.final_state = state;
+        }
+        if (collect_output && level > 0
+            && shouldWriteOutput(level, problem.steps, prm))
+        {
+          result.snapshots.push_back(makeSnapshot(
+              problem.space, state, static_cast<Real>(level) * problem.dt));
+        }
+      });
+  return result;
+}
+
 void writeBuildInfo(const OutputParams& prm, const BuildInfo& info)
 {
-  std::filesystem::create_directories(prm.directory);
+  filesystem::create_directories(prm.directory);
 
-  std::ofstream out(prm.directory + "/build-info.txt");
+  ofstream out(prm.directory + "/build-info.txt");
   if (!out)
   {
-    throw std::runtime_error("Failed to open build-info.txt for writing");
+    throw runtime_error("Failed to open build-info.txt for writing");
   }
 
   for (const auto& [key, value] : info.entries)
@@ -399,14 +434,14 @@ void writeBuildInfo(const OutputParams& prm, const BuildInfo& info)
   }
 }
 
-std::ofstream openRunLog(const OutputParams& prm)
+ofstream openRunLog(const OutputParams& prm)
 {
-  std::filesystem::create_directories(prm.directory);
+  filesystem::create_directories(prm.directory);
 
-  std::ofstream out(prm.directory + "/run-info.txt");
+  ofstream out(prm.directory + "/run-info.txt");
   if (!out)
   {
-    throw std::runtime_error("Failed to open run-info.txt for writing");
+    throw runtime_error("Failed to open run-info.txt for writing");
   }
 
   return out;

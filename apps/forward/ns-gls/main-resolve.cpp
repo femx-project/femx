@@ -13,12 +13,12 @@
 #include <femx/common/Workspace.hpp>
 #include <femx/linalg/native/SparseMatrixOperator.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/solve/TimeLinearStateSolver.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeLinearStateSolver.hpp>
 
+using namespace std;
 using namespace femx;
+using namespace femx::state;
 using namespace femx::linalg;
-using namespace femx::solve;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -72,17 +72,23 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION}}};
 }
 
-void setSolverOptions(ReSolveOptions& options)
+void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
 {
-  options.factor   = "none";
-  options.refactor = "none";
-  options.ir       = "none";
-  options.max_its  = 5000;
-  options.restart  = 200;
-  options.rtol     = 1.0e-8;
-  options.solve    = "fgmres";
-  options.precond  = "ilu0";
-  options.flexible = true;
+  if (solver.method == "direct")
+  {
+    opts = ReSolveOptions{};
+    return;
+  }
+
+  opts.factor   = "none";
+  opts.refactor = "none";
+  opts.ir       = "none";
+  opts.max_its  = 5000;
+  opts.restart  = 200;
+  opts.rtol     = 1.0e-8;
+  opts.solve    = "fgmres";
+  opts.precond  = "ilu0";
+  opts.flexible = true;
 }
 
 WorkspaceType workspaceType(const SolverParams& solver)
@@ -94,7 +100,7 @@ WorkspaceType workspaceType(const SolverParams& solver)
   return WorkspaceType::Cpu;
 }
 
-void writeRunSummary(std::ofstream&               run_log,
+void writeRunSummary(ofstream&                    run_log,
                      const ForwardProblem&        problem,
                      const TimeLinearStateSolver& state_solver,
                      Real                         total_seconds)
@@ -117,54 +123,57 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output, makeBuildInfo());
   }
 
-  ForwardProblem problem(prm);
+  ForwardProblem forward(prm);
 
   ReSolveOptions opts;
-  setSolverOptions(opts);
+  setSolverOptions(opts, prm.solver);
 
-  SparseMatrixOperator next_jac(problem.pattern);
+  SparseMatrixOperator next_jac(forward.pat);
   ReSolveLinearSolver  solver(workspaceType(prm.solver), opts);
 
-  TimeLinearStateSolver state_solver(problem.eq, next_jac, solver);
-  state_solver.setInitialState(problem.x0);
+  TimeLinearStateSolver state_solver(forward.problem, next_jac, solver);
+  state_solver.setInitialState(forward.x0);
   state_solver.setStepMonitor(
       [](Index step, Index total)
       {
-        std::cout << "\r  time step " << std::setw(7) << step << " / "
-                  << std::setw(7) << total << std::flush;
+        cout << "\r  time step " << setw(7) << step << " / "
+             << setw(7) << total << flush;
         if (step >= total)
         {
-          std::cout << '\n';
+          cout << '\n';
         }
       });
 
-  std::cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = 1"
-            << ", dofs = " << problem.space.numDofs()
-            << ", cells = " << problem.space.mesh().numElems() << '\n';
+  cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = 1"
+       << ", dofs = " << forward.space.numDofs()
+       << ", cells = " << forward.space.mesh().numElems() << '\n';
 
-  TimeTrajectory trajectory;
+  ForwardSolveResult result;
   state_solver.resetTiming();
   const double total_time = timeBlock(
       [&]
       {
-        state_solver.solve(problem.prm0, trajectory);
+        result = solve(state_solver, forward, prm.output, enable_output);
       });
 
-  if (!isFinite(trajectory[problem.steps]))
+  if (!isFinite(result.final_state))
   {
-    throw std::runtime_error("Linear solve produced non-finite values in x");
+    throw runtime_error("Linear solve produced non-finite values in x");
   }
 
   if (enable_output)
   {
-    writeTrajectoryOutput(problem, trajectory, prm.output);
-    std::ofstream run_log = openRunLog(prm.output);
-    writeRunSummary(run_log, problem, state_solver, total_time);
+    if (!result.snapshots.empty())
+    {
+      writeOutput(forward.mesh, prm.output, result.snapshots);
+    }
+    ofstream run_log = openRunLog(prm.output);
+    writeRunSummary(run_log, forward, state_solver, total_time);
   }
 
-  std::cout << "  assembly = " << state_solver.assemblySeconds() << " s"
-            << ", solve = " << state_solver.solveSeconds() << " s"
-            << ", total = " << total_time << " s" << '\n';
+  cout << "  assembly = " << state_solver.assemblySeconds() << " s"
+       << ", solve = " << state_solver.solveSeconds() << " s"
+       << ", total = " << total_time << " s" << '\n';
 
   return 0;
 }
@@ -175,23 +184,23 @@ int main(int argc, char* argv[])
 {
   try
   {
-    const AppOptions options = parseAppOptions(argc, argv, false);
-    if (options.help)
+    const AppOptions opts = parseAppOptions(argc, argv, false);
+    if (opts.help)
     {
-      printUsage(std::cout, FEMX_NAVIER_GLS_APP_NAME);
+      printUsage(cout, FEMX_NAVIER_GLS_APP_NAME);
       return 0;
     }
 
-    Params prm = loadConfig(options.config_file);
-    if (options.steps)
+    Params prm = loadConfig(opts.config_file);
+    if (opts.steps)
     {
-      prm.time.steps = *options.steps;
+      prm.time.steps = *opts.steps;
     }
-    return run(prm, !options.no_output);
+    return run(prm, !opts.no_output);
   }
-  catch (const std::exception& e)
+  catch (const exception& e)
   {
-    std::cerr << FEMX_NAVIER_GLS_APP_NAME << ": " << e.what() << '\n';
+    cerr << FEMX_NAVIER_GLS_APP_NAME << ": " << e.what() << '\n';
     return 1;
   }
 }

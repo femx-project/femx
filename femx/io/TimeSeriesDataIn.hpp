@@ -2,7 +2,6 @@
 
 #include <array>
 #include <string>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -17,13 +16,13 @@ public:
   struct VectorField
   {
     std::string                 name;
-    std::array<Vector<Real>, 3> values;
+    std::array<Vector<Real>, 3> vals;
   };
 
   struct Step
   {
-    Real                     time{0.0};
-    std::vector<VectorField> vecs;
+    Real                time{0.0};
+    Vector<VectorField> vecs;
   };
 
   static TimeSeriesDataIn read(const std::string& path);
@@ -39,8 +38,8 @@ public:
       const std::string& name) const;
 
 private:
-  Mesh              mesh_;
-  std::vector<Step> steps_;
+  Mesh         mesh_;
+  Vector<Step> steps_;
 };
 
 } // namespace femx

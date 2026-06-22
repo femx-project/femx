@@ -6,9 +6,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
-#include <femx/common/Types.hpp>
 
 namespace femx
 {
@@ -23,9 +23,9 @@ using TaoValueGradCallback =
 class TaoReducedFunctionalAdapter
 {
 public:
-  TaoReducedFunctionalAdapter(TaoNumParamsCallback num_params,
+  TaoReducedFunctionalAdapter(TaoNumParamsCallback nprm,
                               TaoValueGradCallback value_grad)
-    : num_params_(std::move(num_params)),
+    : nprm_(std::move(nprm)),
       value_grad_(std::move(value_grad))
   {
   }
@@ -35,12 +35,12 @@ public:
             typename = decltype(std::declval<Functional&>().valueGrad(
                 std::declval<const Vector<Real>&>(),
                 std::declval<Vector<Real>&>()))>
-  explicit TaoReducedFunctionalAdapter(Functional& functional)
+  explicit TaoReducedFunctionalAdapter(Functional& fn)
     : TaoReducedFunctionalAdapter(
-          [&functional]()
-          { return functional.numParams(); },
-          [&functional](const Vector<Real>& prm, Vector<Real>& grad)
-          { return functional.valueGrad(prm, grad); })
+          [&fn]()
+          { return fn.numParams(); },
+          [&fn](const Vector<Real>& prm, Vector<Real>& grad)
+          { return fn.valueGrad(prm, grad); })
   {
   }
 
@@ -54,11 +54,11 @@ public:
                                       Vec        prm,
                                       PetscReal* value,
                                       Vec        grad,
-                                      void*      context)
+                                      void*      ctx)
   {
     (void) tao;
 
-    auto* adapter = static_cast<TaoReducedFunctionalAdapter*>(context);
+    auto* adapter = static_cast<TaoReducedFunctionalAdapter*>(ctx);
     if (adapter == nullptr || value == nullptr)
     {
       return PETSC_ERR_ARG_NULL;
@@ -94,16 +94,16 @@ public:
 private:
   Index numParams() const
   {
-    if (!num_params_)
+    if (!nprm_)
     {
       throw std::runtime_error(
           "TAO reduced functional adapter has no size callback");
     }
-    return num_params_();
+    return nprm_();
   }
 
 private:
-  TaoNumParamsCallback num_params_;
+  TaoNumParamsCallback nprm_;
   TaoValueGradCallback value_grad_;
   Vector<Real>         prm_;
   Vector<Real>         grad_;

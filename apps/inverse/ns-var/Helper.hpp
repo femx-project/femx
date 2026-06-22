@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 #include <utility>
-#include <vector>
 
 #include "IO.hpp"
 #include <NavierHelper.hpp>
@@ -18,15 +18,16 @@
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/VectorView.hpp>
 #include <femx/problem/SumTimeObjective.hpp>
 #include <femx/problem/TimeLeastSquaresObjective.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeObservationData.hpp>
 #include <femx/problem/TimeObservationOperator.hpp>
 #include <femx/problem/TimeRegularization.hpp>
-#include <femx/solve/TimeLinearStateSolver.hpp>
-#include <femx/solve/TimeStateSolver.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeStateSolver.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx::navier_var_new
 {
@@ -41,31 +42,63 @@ using navier::NavierKernel;
 struct InverseParameterLayout
 {
   Index init_vel_offset = 0;
-  Index init_vel_size   = 0;
-  Index ctr_offset      = 0;
-  Index ctr_levels      = 0;
-  Index ctr_size        = 0;
-  Index total_size      = 0;
+  Index niv             = 0;
+  Index coff            = 0;
+  Index nctr            = 0;
+  Index csz             = 0;
+  Index ntot            = 0;
 
   bool hasInitialVelocity() const
   {
-    return init_vel_size > 0;
+    return niv > 0;
+  }
+
+  void checkPrm(const Vector<Real>& prm) const
+  {
+    if (prm.size() != ntot)
+    {
+      throw std::runtime_error("InverseParameterLayout parameter size mismatch");
+    }
+  }
+
+  VectorView<Real> initVel(Vector<Real>& prm) const
+  {
+    checkPrm(prm);
+    return VectorView<Real>(prm.data() + init_vel_offset, niv);
+  }
+
+  VectorView<const Real> initVel(const Vector<Real>& prm) const
+  {
+    checkPrm(prm);
+    return VectorView<const Real>(prm.data() + init_vel_offset, niv);
+  }
+
+  VectorView<Real> ctr(Vector<Real>& prm) const
+  {
+    checkPrm(prm);
+    return VectorView<Real>(prm.data() + coff, csz);
+  }
+
+  VectorView<const Real> ctr(const Vector<Real>& prm) const
+  {
+    checkPrm(prm);
+    return VectorView<const Real>(prm.data() + coff, csz);
   }
 };
 
 struct FixedDofValues
 {
   Vector<Index> dofs;
-  Vector<Real>  values;
+  Vector<Real>  vals;
 };
 
-class InitialVelocityStateSolver final : public solve::TimeStateSolver
+class InitialVelocityStateSolver final : public state::TimeStateSolver
 {
 public:
   InitialVelocityStateSolver(
-      solve::TimeLinearStateSolver& solver,
-      Vector<Index>                 velocity_dofs,
-      InverseParameterLayout        layout,
+      state::TimeLinearStateSolver& solver,
+      Vector<Index>                 vdofs,
+      InverseParameterLayout        lyt,
       Vector<Real>                  x0 = {});
 
   Index numSteps() const override;
@@ -74,11 +107,11 @@ public:
 
   void solve(
       const Vector<Real>&    prm,
-      solve::TimeTrajectory& tr) override;
+      state::TimeTrajectory& tr) override;
 
 private:
-  solve::TimeLinearStateSolver& solver_;
-  Vector<Index>                 velocity_dofs_;
+  state::TimeLinearStateSolver& solver_;
+  Vector<Index>                 vdofs_;
   InverseParameterLayout        layout_;
   Vector<Real>                  x0_;
   Vector<Real>                  initial_state_;
@@ -97,17 +130,17 @@ public:
   Index numParams() const override;
 
   Real value(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm) const override;
 
   void stateGrad(
       Index                        level,
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
   void paramGrad(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
@@ -124,9 +157,9 @@ class InitialVelocityRegularization final : public problem::TimeObjective
 {
 public:
   InitialVelocityRegularization(
-      Index                  num_steps,
-      Index                  num_states,
-      InverseParameterLayout layout,
+      Index                  nt,
+      Index                  nst,
+      InverseParameterLayout lyt,
       Real                   beta);
 
   Index numSteps() const override;
@@ -134,23 +167,23 @@ public:
   Index numParams() const override;
 
   Real value(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm) const override;
 
   void stateGrad(
       Index                        level,
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
   void paramGrad(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
 private:
-  Index                  num_steps_{0};
-  Index                  num_states_{0};
+  Index                  nt_{0};
+  Index                  nst_{0};
   InverseParameterLayout layout_;
   Real                   beta_{0.0};
 };
@@ -161,31 +194,31 @@ public:
   using Edge = std::pair<Index, Index>;
 
   ControlSpatialRegularization(
-      Index             num_steps,
-      Index             num_states,
-      Index             num_params,
-      Index             ctr_offset,
-      Index             ctr_levels,
-      Index             ctr_dofs,
-      std::vector<Edge> edges,
-      Real              beta);
+      Index        nt,
+      Index        nst,
+      Index        nprm,
+      Index        coff,
+      Index        nctr,
+      Index        ncdof,
+      Vector<Edge> edges,
+      Real         beta);
 
   Index numSteps() const override;
   Index numStates() const override;
   Index numParams() const override;
 
   Real value(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm) const override;
 
   void stateGrad(
       Index                        level,
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
   void paramGrad(
-      const solve::TimeTrajectory& tr,
+      const state::TimeTrajectory& tr,
       const Vector<Real>&          prm,
       Vector<Real>&                out) const override;
 
@@ -193,22 +226,22 @@ private:
   Index paramIndex(Index step, Index ctr_index) const;
 
 private:
-  Index             num_steps_{0};
-  Index             num_states_{0};
-  Index             num_params_{0};
-  Index             ctr_offset_{0};
-  Index             ctr_levels_{0};
-  Index             ctr_dofs_{0};
-  std::vector<Edge> edges_;
-  Real              beta_{0.0};
+  Index        nt_{0};
+  Index        nst_{0};
+  Index        nprm_{0};
+  Index        ctr_offset_{0};
+  Index        ctr_levels_{0};
+  Index        ctr_dofs_{0};
+  Vector<Edge> edges_;
+  Real         beta_{0.0};
 };
 
 std::unique_ptr<problem::TimeObservationOperator> makeObs(
     const MixedFESpace&      space,
     const ObservationParams& prm,
     Index                    steps,
-    Index                    num_states,
-    Index                    num_prm);
+    Index                    nst,
+    Index                    nprm);
 
 void setObsLayout(
     problem::TimeObservationData& data,
@@ -216,35 +249,35 @@ void setObsLayout(
     const ObservationParams&      prm);
 
 Vector<Real> controlParams(
-    const InverseParameterLayout& layout,
+    const InverseParameterLayout& lyt,
     const Vector<Real>&           prm);
 
 Vector<Real> optimizerScale(
-    const InverseParameterLayout& layout,
+    const InverseParameterLayout& lyt,
     const OptimizerParams::Scale& scale);
 
-void initializeOptimizationGuess(
+void initializeOptGuess(
     const MixedFESpace&           space,
-    const DirichletControl&       control,
+    const DirichletControl&       ctr,
     const Params&                 prm,
-    const InverseParameterLayout& layout,
-    const Vector<Index>&          velocity_dofs,
-    solve::TimeLinearStateSolver& state_solver,
+    const InverseParameterLayout& lyt,
+    const Vector<Index>&          vdofs,
+    state::TimeLinearStateSolver& state_solver,
     const Vector<Real>&           ctr_times,
     Vector<Real>&                 prm_init,
     Vector<Real>*                 x0 = nullptr);
 
 void applyInitialVelocityParamJacT(
-    const Vector<Index>&          velocity_dofs,
-    const InverseParameterLayout& layout,
+    const Vector<Index>&          vdofs,
+    const InverseParameterLayout& lyt,
     const Vector<Real>&           state_grad,
     Vector<Real>&                 out);
 
 void inverseBounds(
     const MixedFESpace&           space,
-    const DirichletControl&       control,
+    const DirichletControl&       ctr,
     const Params&                 prm,
-    const InverseParameterLayout& layout,
+    const InverseParameterLayout& lyt,
     Index                         steps,
     Vector<Real>&                 lower,
     Vector<Real>&                 upper);
@@ -276,17 +309,17 @@ struct AppNsVar
   problem::TimeObservationData           obs_data;
   Vector<Real>                           ctr_times;
   Vector<LinearInterpolation>            ctr_time_stencils;
-  InverseParameterLayout                 layout;
+  InverseParameterLayout                 lyt;
   FixedDofValues                         fixed;
-  assembly::TimeDirichletControlResidual eq;
+  assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pattern;
+  CsrPattern                             pat;
   Vector<Real>                           prm0;
 };
 
 struct Objective
 {
-  Objective(const Params& prm, const AppNsVar& problem);
+  Objective(const Params& prm, const AppNsVar& app);
 
   Objective(const Objective&)            = delete;
   Objective& operator=(const Objective&) = delete;

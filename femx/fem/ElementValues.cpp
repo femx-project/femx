@@ -3,9 +3,11 @@
 #include <cmath>
 #include <stdexcept>
 
+#include <femx/fem/Cell.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/Cell.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -14,18 +16,18 @@ ElementValues::ElementValues(const FiniteElement&   fe,
                              const GaussQuadrature& quad)
   : fe_(&fe),
     quad_(&quad),
-    num_nodes_(fe.numNodes()),
-    num_dofs_(fe.numDofsPerElement()),
+    nn_(fe.numNodes()),
+    nd_(fe.numDofsPerElement()),
     dim_(fe.dim()),
-    num_qp_(quad.size())
+    nq_(quad.size())
 {
-  N_.resize(num_qp_ * num_dofs_);
-  dNdr_.resize(num_qp_ * num_dofs_ * dim_);
-  dNdx_.resize(num_qp_ * num_dofs_ * dim_);
+  N_.resize(nq_ * nd_);
+  dNdr_.resize(nq_ * nd_ * dim_);
+  dNdx_.resize(nq_ * nd_ * dim_);
 
-  detJ_.resize(num_qp_);
-  weights_.resize(num_qp_);
-  JxW_.resize(num_qp_);
+  detJ_.resize(nq_);
+  wts_.resize(nq_);
+  JxW_.resize(nq_);
 
   J_.resize(dim_ * dim_);
   invJ_.resize(dim_ * dim_);
@@ -40,12 +42,12 @@ void ElementValues::reinit(const Cell& cell)
 
 Index ElementValues::numNodes() const
 {
-  return num_nodes_;
+  return nn_;
 }
 
 Index ElementValues::numDofs() const
 {
-  return num_dofs_;
+  return nd_;
 }
 
 Index ElementValues::dim() const
@@ -55,29 +57,29 @@ Index ElementValues::dim() const
 
 Index ElementValues::numQuadraturePoints() const
 {
-  return num_qp_;
+  return nq_;
 }
 
 VectorView<const Real> ElementValues::N(Index iq) const
 {
   return VectorView<const Real>(
-      N_.data() + iq * num_dofs_,
-      num_dofs_);
+      N_.data() + iq * nd_,
+      nd_);
 }
 
 MatrixView<const Real> ElementValues::dNdr(Index iq) const
 {
   return MatrixView<const Real>(
-      dNdr_.data() + iq * num_dofs_ * dim_,
-      num_dofs_,
+      dNdr_.data() + iq * nd_ * dim_,
+      nd_,
       dim_);
 }
 
 MatrixView<const Real> ElementValues::dNdx(Index iq) const
 {
   return MatrixView<const Real>(
-      dNdx_.data() + iq * num_dofs_ * dim_,
-      num_dofs_,
+      dNdx_.data() + iq * nd_ * dim_,
+      nd_,
       dim_);
 }
 
@@ -86,9 +88,9 @@ Real ElementValues::detJ(Index iq) const
   return detJ_[iq];
 }
 
-Real ElementValues::weight(Index iq) const
+Real ElementValues::wt(Index iq) const
 {
-  return weights_[iq];
+  return wts_[iq];
 }
 
 Real ElementValues::JxW(Index iq) const
@@ -113,35 +115,35 @@ const Real* ElementValues::JxWData() const
 
 void ElementValues::calcReferenceValues()
 {
-  for (Index iq = 0; iq < num_qp_; ++iq)
+  for (Index iq = 0; iq < nq_; ++iq)
   {
     const QuadraturePoint& qp = (*quad_)[iq];
 
     VectorView<Real> N(
-        N_.data() + iq * num_dofs_,
-        num_dofs_);
+        N_.data() + iq * nd_,
+        nd_);
 
     MatrixView<Real> dNdr(
-        dNdr_.data() + iq * num_dofs_ * dim_,
-        num_dofs_,
+        dNdr_.data() + iq * nd_ * dim_,
+        nd_,
         dim_);
 
     fe_->calcShape(qp, N);
     fe_->calcShapeGrad(qp, dNdr);
 
-    weights_[iq] = qp.weight;
+    wts_[iq] = qp.wt;
   }
 }
 
 void ElementValues::calcPhysicalValues(const Cell& cell)
 {
-  for (Index iq = 0; iq < num_qp_; ++iq)
+  for (Index iq = 0; iq < nq_; ++iq)
   {
     const auto dNdr_iq = dNdr(iq);
 
-    std::fill(J_.begin(), J_.end(), 0.0);
+    fill(J_.begin(), J_.end(), 0.0);
 
-    for (Index in = 0; in < num_nodes_; ++in)
+    for (Index in = 0; in < nn_; ++in)
     {
       for (Index a = 0; a < dim_; ++a)
       {
@@ -155,15 +157,15 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
     }
 
     const Real detJ = invJacobian(J_, invJ_, dim_);
-    detJ_[iq]       = std::abs(detJ);
-    JxW_[iq]        = detJ_[iq] * weights_[iq];
+    detJ_[iq]       = abs(detJ);
+    JxW_[iq]        = detJ_[iq] * wts_[iq];
 
     MatrixView<Real> dNdx(
-        dNdx_.data() + iq * num_dofs_ * dim_,
-        num_dofs_,
+        dNdx_.data() + iq * nd_ * dim_,
+        nd_,
         dim_);
 
-    for (Index i = 0; i < num_dofs_; ++i)
+    for (Index i = 0; i < nd_; ++i)
     {
       for (Index a = 0; a < dim_; ++a)
       {
@@ -178,9 +180,9 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
   }
 }
 
-Real ElementValues::invJacobian(const std::vector<Real>& J,
-                                std::vector<Real>&       invJ,
-                                Index                    dim)
+Real ElementValues::invJacobian(const Vector<Real>& J,
+                                Vector<Real>&       invJ,
+                                Index               dim)
 {
   constexpr Real eps = 1.0e-30;
 
@@ -188,9 +190,9 @@ Real ElementValues::invJacobian(const std::vector<Real>& J,
   {
     const Real det = J[0];
 
-    if (std::abs(det) < eps)
+    if (abs(det) < eps)
     {
-      throw std::runtime_error("Singular 1D Jacobian.");
+      throw runtime_error("Singular 1D Jacobian.");
     }
 
     invJ[0] = 1.0 / det;
@@ -202,9 +204,9 @@ Real ElementValues::invJacobian(const std::vector<Real>& J,
   {
     const Real det = J[0] * J[3] - J[1] * J[2];
 
-    if (std::abs(det) < eps)
+    if (abs(det) < eps)
     {
-      throw std::runtime_error("Singular 2D Jacobian.");
+      throw runtime_error("Singular 2D Jacobian.");
     }
 
     const Real inv_det = 1.0 / det;
@@ -224,9 +226,9 @@ Real ElementValues::invJacobian(const std::vector<Real>& J,
         - J[1] * (J[3] * J[8] - J[5] * J[6])
         + J[2] * (J[3] * J[7] - J[4] * J[6]);
 
-    if (std::abs(det) < eps)
+    if (abs(det) < eps)
     {
-      throw std::runtime_error("Singular 3D Jacobian.");
+      throw runtime_error("Singular 3D Jacobian.");
     }
 
     const Real inv_det = 1.0 / det;
@@ -246,7 +248,7 @@ Real ElementValues::invJacobian(const std::vector<Real>& J,
     return det;
   }
 
-  throw std::runtime_error("Unsupported Jacobian dimension.");
+  throw runtime_error("Unsupported Jacobian dimension.");
 }
 
 } // namespace femx

@@ -5,6 +5,8 @@
 
 #include <femx/fem/VelocityProfile.hpp>
 
+using namespace std;
+
 namespace femx::fem
 {
 
@@ -13,54 +15,52 @@ namespace
 
 constexpr Real kPi = 3.141592653589793238462643383279502884;
 
-void requireValidComponent(Index component)
+void requireValidComponent(Index comp)
 {
-  if (component < 0 || component >= 3)
+  if (comp < 0 || comp >= 3)
   {
-    throw std::runtime_error("Velocity profile component is out of range");
+    throw runtime_error("Velocity profile component is out of range");
   }
 }
 
-void requirePositiveRadius(Real radius)
+void requirePositiveRadius(Real rad)
 {
-  if (radius <= 0.0)
+  if (rad <= 0.0)
   {
-    throw std::runtime_error("Poiseuille velocity profile radius must be positive");
+    throw runtime_error("Poiseuille velocity profile radius must be positive");
   }
 }
 
 Point3 facetCenter(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 {
-  Point3 center = {0.0, 0.0, 0.0};
-  for (Index node_id : facet.node_ids)
+  Point3 cen = {0.0, 0.0, 0.0};
+  for (Index node_id : facet.nids)
   {
     const Point3& point = mesh.node(node_id);
     for (Index d = 0; d < 3; ++d)
     {
-      center[static_cast<std::size_t>(d)] +=
-          point[static_cast<std::size_t>(d)];
+      cen[d] += point[d];
     }
   }
   for (Index d = 0; d < 3; ++d)
   {
-    center[static_cast<std::size_t>(d)] /=
-        static_cast<Real>(facet.node_ids.size());
+    cen[d] /= static_cast<Real>(facet.nids.size());
   }
-  return center;
+  return cen;
 }
 
 Real facetWeight(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 {
-  if (facet.node_ids.size() == 2)
+  if (facet.nids.size() == 2)
   {
-    return distance(mesh.node(facet.node_ids[0]),
-                    mesh.node(facet.node_ids[1]));
+    return distance(mesh.node(facet.nids[0]),
+                    mesh.node(facet.nids[1]));
   }
-  if (facet.node_ids.size() == 3)
+  if (facet.nids.size() == 3)
   {
-    return triArea(mesh.node(facet.node_ids[0]),
-                   mesh.node(facet.node_ids[1]),
-                   mesh.node(facet.node_ids[2]));
+    return triArea(mesh.node(facet.nids[0]),
+                   mesh.node(facet.nids[1]),
+                   mesh.node(facet.nids[2]));
   }
   return 1.0;
 }
@@ -68,173 +68,171 @@ Real facetWeight(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 } // namespace
 
 Point3 boundaryCenter(const Mesh&                  mesh,
-                      const BoundaryFacetSelector& selector,
-                      const std::string&           label)
+                      const BoundaryFacetSelector& sel,
+                      const string&                label)
 {
-  Point3 center       = {0.0, 0.0, 0.0};
+  Point3 cen          = {0.0, 0.0, 0.0};
   Real   total_weight = 0.0;
 
   for (const auto& facet : mesh.boundaryFacets())
   {
-    if (!selector(facet) || facet.node_ids.empty())
+    if (!sel(facet) || facet.nids.empty())
     {
       continue;
     }
 
     const Point3 center_i = facetCenter(mesh, facet);
-    const Real   weight   = facetWeight(mesh, facet);
+    const Real   wt       = facetWeight(mesh, facet);
     for (Index d = 0; d < 3; ++d)
     {
-      center[static_cast<std::size_t>(d)] +=
-          weight * center_i[static_cast<std::size_t>(d)];
+      cen[d] += wt * center_i[d];
     }
-    total_weight += weight;
+    total_weight += wt;
   }
 
   if (total_weight <= 0.0)
   {
-    throw std::runtime_error("No boundary facets found for " + label);
+    throw runtime_error("No boundary facets found for " + label);
   }
 
   for (Index d = 0; d < 3; ++d)
   {
-    center[static_cast<std::size_t>(d)] /= total_weight;
+    cen[d] /= total_weight;
   }
-  return center;
+  return cen;
 }
 
-Point3 boundaryCenter(const Mesh& mesh, Index physical_tag)
+Point3 boundaryCenter(const Mesh& mesh, Index ptag)
 {
   return boundaryCenter(
       mesh,
-      [physical_tag](const Mesh::BoundaryFacet& facet)
+      [ptag](const Mesh::BoundaryFacet& facet)
       {
-        return facet.physical_tag == physical_tag;
+        return facet.ptag == ptag;
       },
-      "physical tag " + std::to_string(physical_tag));
+      "physical tag " + to_string(ptag));
 }
 
-Point3 boundaryCenter(const Mesh& mesh, const std::string& physical_name)
+Point3 boundaryCenter(const Mesh& mesh, const string& pname)
 {
   return boundaryCenter(
       mesh,
-      [&physical_name](const Mesh::BoundaryFacet& facet)
+      [&pname](const Mesh::BoundaryFacet& facet)
       {
-        return facet.physical_name == physical_name;
+        return facet.pname == pname;
       },
-      "physical name " + physical_name);
+      "physical name " + pname);
 }
 
-AxialVelocityProfile uniformProfile(const Point3& normal)
+AxialVelocityProfile uniformProfile(const Point3& nrm)
 {
-  AxialVelocityProfile profile;
-  profile.type   = "uniform";
-  profile.normal = unit(normal);
-  return profile;
+  AxialVelocityProfile prof;
+  prof.type = "uniform";
+  prof.nrm  = unit(nrm);
+  return prof;
 }
 
-AxialVelocityProfile poiseuilleProfile(const Point3& center,
-                                       const Point3& normal,
-                                       Real          radius)
+AxialVelocityProfile poiseuilleProfile(const Point3& cen,
+                                       const Point3& nrm,
+                                       Real          rad)
 {
-  requirePositiveRadius(radius);
+  requirePositiveRadius(rad);
 
-  AxialVelocityProfile profile;
-  profile.type   = "poiseuille";
-  profile.center = center;
-  profile.normal = unit(normal);
-  profile.radius = radius;
-  return profile;
+  AxialVelocityProfile prof;
+  prof.type = "poiseuille";
+  prof.cen  = cen;
+  prof.nrm  = unit(nrm);
+  prof.rad  = rad;
+  return prof;
 }
 
-Real profileFactor(const AxialVelocityProfile& profile,
+Real profileFactor(const AxialVelocityProfile& prof,
                    const Point3&               point)
 {
-  if (profile.type == "uniform")
+  if (prof.type == "uniform")
   {
     return 1.0;
   }
-  if (profile.type != "poiseuille")
+  if (prof.type != "poiseuille")
   {
-    throw std::runtime_error("Unsupported velocity profile type: "
-                             + profile.type);
+    throw runtime_error("Unsupported velocity profile type: "
+                        + prof.type);
   }
 
-  requirePositiveRadius(profile.radius);
+  requirePositiveRadius(prof.rad);
 
-  const Real radius2 = profile.radius * profile.radius;
-  return std::max<Real>(
-      0.0, 1.0 - radialSq(point, profile.center, profile.normal) / radius2);
+  const Real radius2 = prof.rad * prof.rad;
+  return max<Real>(
+      0.0, 1.0 - radialSq(point, prof.cen, prof.nrm) / radius2);
 }
 
-Real velocityComponent(const AxialVelocityProfile& profile,
+Real velocityComponent(const AxialVelocityProfile& prof,
                        const Point3&               point,
                        Real                        peak_speed,
-                       Index                       component)
+                       Index                       comp)
 {
-  requireValidComponent(component);
-  const Point3 normal = unit(profile.normal);
-  return peak_speed * profileFactor(profile, point)
-         * normal[static_cast<std::size_t>(component)];
+  requireValidComponent(comp);
+  const Point3 nrm = unit(prof.nrm);
+  return peak_speed * profileFactor(prof, point) * nrm[comp];
 }
 
-Real peakSpeed(const std::string& quantity,
-               const std::string& profile_type,
-               Real               value,
-               Real               area,
-               Real               mean_to_peak)
+Real peakSpeed(const string& qty,
+               const string& profile_type,
+               Real          value,
+               Real          area,
+               Real          mean_to_peak)
 {
   if (profile_type == "uniform")
   {
-    if (quantity == "flowrate")
+    if (qty == "flowrate")
     {
       if (area <= 0.0)
       {
-        throw std::runtime_error("Flowrate velocity area must be positive");
+        throw runtime_error("Flowrate velocity area must be positive");
       }
       return value / area;
     }
-    if (quantity == "mean_velocity" || quantity == "bulk_speed"
-        || quantity == "max_velocity")
+    if (qty == "mean_velocity" || qty == "bulk_speed"
+        || qty == "max_velocity")
     {
       return value;
     }
   }
   else if (profile_type == "poiseuille")
   {
-    if (quantity == "flowrate")
+    if (qty == "flowrate")
     {
       if (area <= 0.0)
       {
-        throw std::runtime_error("Flowrate velocity area must be positive");
+        throw runtime_error("Flowrate velocity area must be positive");
       }
       return mean_to_peak * value / area;
     }
-    if (quantity == "mean_velocity" || quantity == "bulk_speed")
+    if (qty == "mean_velocity" || qty == "bulk_speed")
     {
       return mean_to_peak * value;
     }
-    if (quantity == "max_velocity")
+    if (qty == "max_velocity")
     {
       return value;
     }
   }
   else
   {
-    throw std::runtime_error("Unsupported velocity profile type: "
-                             + profile_type);
+    throw runtime_error("Unsupported velocity profile type: "
+                        + profile_type);
   }
 
-  throw std::runtime_error("Unsupported velocity quantity: " + quantity);
+  throw runtime_error("Unsupported velocity quantity: " + qty);
 }
 
-Real sinePulseFactor(Real time, Real amplitude, Real period)
+Real sinePulseFactor(Real time, Real amplitude, Real per)
 {
-  if (period <= 0.0)
+  if (per <= 0.0)
   {
-    throw std::runtime_error("Sine pulse period must be positive");
+    throw runtime_error("Sine pulse period must be positive");
   }
-  return 1.0 + amplitude * std::sin(2.0 * kPi * time / period);
+  return 1.0 + amplitude * sin(2.0 * kPi * time / per);
 }
 
 } // namespace femx::fem

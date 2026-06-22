@@ -4,13 +4,13 @@
 #include <utility>
 
 #include <femx/ad/Enzyme.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/assembly/TimeElementKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -20,18 +20,18 @@ namespace assembly
 using LocalTimeVolumeResidualFunction =
     void (*)(Index       step,
              Index       cell,
-             Index       num_qp,
-             Index       num_nodes,
+             Index       nq,
+             Index       nn,
              Index       dim,
-             Index       num_res,
+             Index       nres,
              Index       num_prev_states,
              Index       num_next_states,
-             Index       num_prm,
+             Index       nprm,
              const Real* N,
              const Real* dNdx,
              const Real* JxW,
-             const Real* prev_state,
-             const Real* next_state,
+             const Real* prev,
+             const Real* nxt,
              const Real* prm,
              Real*       out);
 
@@ -42,35 +42,35 @@ class EnzymeTimeVolumeKernel final : public TimeElementKernel
 public:
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  num_res,
+                         Index                  nres,
                          Index                  num_prev_states,
                          Index                  num_next_states,
-                         Index                  num_prm)
+                         Index                  nprm)
     : space_(space),
       quad_(quadrature),
-      num_res_(num_res),
+      nres_(nres),
       num_prev_states_(num_prev_states),
       num_next_states_(num_next_states),
-      num_variable_prm_(num_prm),
-      num_prm_(num_prm)
+      num_variable_prm_(nprm),
+      nprm_(nprm)
   {
     checkDimensions();
   }
 
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  num_res,
+                         Index                  nres,
                          Index                  num_prev_states,
                          Index                  num_next_states,
                          Index                  num_variable_prm,
                          Vector<Real>           fixed_prm)
     : space_(space),
       quad_(quadrature),
-      num_res_(num_res),
+      nres_(nres),
       num_prev_states_(num_prev_states),
       num_next_states_(num_next_states),
       num_variable_prm_(num_variable_prm),
-      num_prm_(num_variable_prm + fixed_prm.size()),
+      nprm_(num_variable_prm + fixed_prm.size()),
       fixed_prm_(std::move(fixed_prm))
   {
     checkDimensions();
@@ -78,13 +78,13 @@ public:
 
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  num_res,
+                         Index                  nres,
                          Index                  num_prev_states,
                          Index                  num_next_states,
                          Vector<Real>           fixed_prm)
     : EnzymeTimeVolumeKernel(space,
                              quadrature,
-                             num_res,
+                             nres,
                              num_prev_states,
                              num_next_states,
                              0,
@@ -92,94 +92,109 @@ public:
   {
   }
 
-  void checkDimensions() const
+  void checkDimensions()
   {
-    if (num_res_ < 0 || num_prev_states_ < 0
-        || num_next_states_ < 0 || num_variable_prm_ < 0 || num_prm_ < 0)
+    if (nres_ < 0 || num_prev_states_ < 0
+        || num_next_states_ < 0 || num_variable_prm_ < 0 || nprm_ < 0)
     {
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel received invalid dimensions");
     }
+    if (num_next_states_ <= 0 || num_prev_states_ % num_next_states_ != 0)
+    {
+      throw std::runtime_error(
+          "EnzymeTimeVolumeKernel history size must be a multiple of next-state size");
+    }
+    num_history_states_     = num_prev_states_ / num_next_states_;
+    num_history_state_dofs_ = num_next_states_;
   }
 
-  void res(Index               step,
-           Index               ic,
-           const Vector<Real>& prev_state,
-           const Vector<Real>& next_state,
-           const Vector<Real>& prm,
-           Vector<Real>&       out) const override
+  void res(Index                    step,
+           Index                    ic,
+           problem::TimeHistoryView hist,
+           const Vector<Real>&      nxt,
+           const Vector<Real>&      prm,
+           Vector<Real>&            out) const override
   {
-    checkInputSizes(prev_state, next_state, prm);
-    resize(out, num_res_);
+    checkInputSizes(hist, nxt, prm);
+    resizeOrZero(out, nres_);
     const Vector<Real> residual_prm = makeResidualPrm(prm);
 
-    ElementValues values(space_.finiteElement(), quad_);
-    values.reinit(space_.mesh().cell(ic));
+    ElementValues vals(space_.finiteElement(), quad_);
+    vals.reinit(space_.mesh().cell(ic));
     Residual(step,
              ic,
-             values.numQuadraturePoints(),
-             values.numNodes(),
-             values.dim(),
-             num_res_,
+             vals.numQuadraturePoints(),
+             vals.numNodes(),
+             vals.dim(),
+             nres_,
              num_prev_states_,
              num_next_states_,
-             num_prm_,
-             values.NData(),
-             values.dNdxData(),
-             values.JxWData(),
-             prev_state.data(),
-             next_state.data(),
+             nprm_,
+             vals.NData(),
+             vals.dNdxData(),
+             vals.JxWData(),
+             hist.data(),
+             nxt.data(),
              residual_prm.data(),
              out.data());
   }
 
-  void jacobian(Index                  step,
-                Index                  ic,
-                problem::VariableBlock wrt,
-                const Vector<Real>&    prev_state,
-                const Vector<Real>&    next_state,
-                const Vector<Real>&    prm,
-                DenseMatrix&           out) const override
+  void jacobian(Index                    step,
+                Index                    ic,
+                problem::VariableBlock   wrt,
+                problem::TimeHistoryView hist,
+                const Vector<Real>&      nxt,
+                const Vector<Real>&      prm,
+                DenseMatrix&             out) const override
   {
-    checkInputSizes(prev_state, next_state, prm);
+    checkInputSizes(hist, nxt, prm);
 
-    if (wrt == problem::VariableBlock::PrevState)
+    if (wrt.isHistoryState())
     {
-      PrevStateJac(step, ic, prev_state, next_state, prm, out);
+      historyStateJac(
+          step, ic, wrt.historyLag(), hist, nxt, prm, out);
       return;
     }
-    if (wrt == problem::VariableBlock::NextState)
+    if (wrt.isNextState())
     {
-      nextStateJac(step, ic, prev_state, next_state, prm, out);
+      nextStateJac(step, ic, hist, nxt, prm, out);
       return;
     }
-    paramJac(step, ic, prev_state, next_state, prm, out);
+    paramJac(step, ic, hist, nxt, prm, out);
   }
 
 private:
-  void PrevStateJac(Index               step,
-                        Index               ic,
-                        const Vector<Real>& prev_state,
-                        const Vector<Real>& next_state,
-                        const Vector<Real>& prm,
-                        DenseMatrix&        out) const
+  void historyStateJac(Index                    step,
+                       Index                    ic,
+                       Index                    lag,
+                       problem::TimeHistoryView hist,
+                       const Vector<Real>&      nxt,
+                       const Vector<Real>&      prm,
+                       DenseMatrix&             out) const
   {
-    out.resize(num_res_, num_prev_states_);
-    if (num_prev_states_ == 0)
+    if (lag < 0 || lag >= num_history_states_)
+    {
+      throw std::runtime_error(
+          "EnzymeTimeVolumeKernel history lag is out of range");
+    }
+
+    out.resize(nres_, num_history_state_dofs_);
+    if (num_history_state_dofs_ == 0)
     {
       return;
     }
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      values(space_.finiteElement(), quad_);
-    values.reinit(space_.mesh().cell(ic));
+    ElementValues      vals(space_.finiteElement(), quad_);
+    vals.reinit(space_.mesh().cell(ic));
 
-    Vector<Real> primal_out(num_res_);
-    Vector<Real> out_adj(num_res_);
+    Vector<Real> primal_out(nres_);
+    Vector<Real> out_adj(nres_);
     Vector<Real> previous_adj(num_prev_states_);
 
-    for (Index row = 0; row < num_res_; ++row)
+    for (Index row = 0; row < nres_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -192,59 +207,60 @@ private:
                               enzyme_const,
                               ic,
                               enzyme_const,
-                              values.numQuadraturePoints(),
+                              vals.numQuadraturePoints(),
                               enzyme_const,
-                              values.numNodes(),
+                              vals.numNodes(),
                               enzyme_const,
-                              values.dim(),
+                              vals.dim(),
                               enzyme_const,
-                              num_res_,
+                              nres_,
                               enzyme_const,
                               num_prev_states_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_prm_,
+                              nprm_,
                               enzyme_const,
-                              values.NData(),
+                              vals.NData(),
                               enzyme_const,
-                              values.dNdxData(),
+                              vals.dNdxData(),
                               enzyme_const,
-                              values.JxWData(),
+                              vals.JxWData(),
                               enzyme_dup,
-                              prev_state.data(),
+                              hist.data(),
                               previous_adj.data(),
                               enzyme_const,
-                              next_state.data(),
+                              nxt.data(),
                               enzyme_const,
                               residual_prm.data(),
                               enzyme_dup,
                               primal_out.data(),
                               out_adj.data());
 
-      for (Index col = 0; col < num_prev_states_; ++col)
+      const Index offset = lag * num_history_state_dofs_;
+      for (Index col = 0; col < num_history_state_dofs_; ++col)
       {
-        out(row, col) = previous_adj[col];
+        out(row, col) = previous_adj[offset + col];
       }
     }
 #else
     (void) step;
     (void) ic;
-    (void) prev_state;
-    (void) next_state;
+    (void) hist;
+    (void) nxt;
     (void) prm;
     throwUnavailable();
 #endif
   }
 
-  void nextStateJac(Index               step,
-                    Index               ic,
-                    const Vector<Real>& prev_state,
-                    const Vector<Real>& next_state,
-                    const Vector<Real>& prm,
-                    DenseMatrix&        out) const
+  void nextStateJac(Index                    step,
+                    Index                    ic,
+                    problem::TimeHistoryView hist,
+                    const Vector<Real>&      nxt,
+                    const Vector<Real>&      prm,
+                    DenseMatrix&             out) const
   {
-    out.resize(num_res_, num_next_states_);
+    out.resize(nres_, num_next_states_);
     if (num_next_states_ == 0)
     {
       return;
@@ -252,14 +268,14 @@ private:
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      values(space_.finiteElement(), quad_);
-    values.reinit(space_.mesh().cell(ic));
+    ElementValues      vals(space_.finiteElement(), quad_);
+    vals.reinit(space_.mesh().cell(ic));
 
-    Vector<Real> primal_out(num_res_);
-    Vector<Real> out_adj(num_res_);
+    Vector<Real> primal_out(nres_);
+    Vector<Real> out_adj(nres_);
     Vector<Real> next_adj(num_next_states_);
 
-    for (Index row = 0; row < num_res_; ++row)
+    for (Index row = 0; row < nres_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -272,29 +288,29 @@ private:
                               enzyme_const,
                               ic,
                               enzyme_const,
-                              values.numQuadraturePoints(),
+                              vals.numQuadraturePoints(),
                               enzyme_const,
-                              values.numNodes(),
+                              vals.numNodes(),
                               enzyme_const,
-                              values.dim(),
+                              vals.dim(),
                               enzyme_const,
-                              num_res_,
+                              nres_,
                               enzyme_const,
                               num_prev_states_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_prm_,
+                              nprm_,
                               enzyme_const,
-                              values.NData(),
+                              vals.NData(),
                               enzyme_const,
-                              values.dNdxData(),
+                              vals.dNdxData(),
                               enzyme_const,
-                              values.JxWData(),
+                              vals.JxWData(),
                               enzyme_const,
-                              prev_state.data(),
+                              hist.data(),
                               enzyme_dup,
-                              next_state.data(),
+                              nxt.data(),
                               next_adj.data(),
                               enzyme_const,
                               residual_prm.data(),
@@ -310,21 +326,21 @@ private:
 #else
     (void) step;
     (void) ic;
-    (void) prev_state;
-    (void) next_state;
+    (void) hist;
+    (void) nxt;
     (void) prm;
     throwUnavailable();
 #endif
   }
 
-  void paramJac(Index               step,
-                Index               ic,
-                const Vector<Real>& prev_state,
-                const Vector<Real>& next_state,
-                const Vector<Real>& prm,
-                DenseMatrix&        out) const
+  void paramJac(Index                    step,
+                Index                    ic,
+                problem::TimeHistoryView hist,
+                const Vector<Real>&      nxt,
+                const Vector<Real>&      prm,
+                DenseMatrix&             out) const
   {
-    out.resize(num_res_, num_variable_prm_);
+    out.resize(nres_, num_variable_prm_);
     if (num_variable_prm_ == 0)
     {
       return;
@@ -332,14 +348,14 @@ private:
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      values(space_.finiteElement(), quad_);
-    values.reinit(space_.mesh().cell(ic));
+    ElementValues      vals(space_.finiteElement(), quad_);
+    vals.reinit(space_.mesh().cell(ic));
 
-    Vector<Real> primal_out(num_res_);
-    Vector<Real> out_adj(num_res_);
-    Vector<Real> param_adj(num_prm_);
+    Vector<Real> primal_out(nres_);
+    Vector<Real> out_adj(nres_);
+    Vector<Real> param_adj(nprm_);
 
-    for (Index row = 0; row < num_res_; ++row)
+    for (Index row = 0; row < nres_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -352,29 +368,29 @@ private:
                               enzyme_const,
                               ic,
                               enzyme_const,
-                              values.numQuadraturePoints(),
+                              vals.numQuadraturePoints(),
                               enzyme_const,
-                              values.numNodes(),
+                              vals.numNodes(),
                               enzyme_const,
-                              values.dim(),
+                              vals.dim(),
                               enzyme_const,
-                              num_res_,
+                              nres_,
                               enzyme_const,
                               num_prev_states_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_prm_,
+                              nprm_,
                               enzyme_const,
-                              values.NData(),
+                              vals.NData(),
                               enzyme_const,
-                              values.dNdxData(),
+                              vals.dNdxData(),
                               enzyme_const,
-                              values.JxWData(),
+                              vals.JxWData(),
                               enzyme_const,
-                              prev_state.data(),
+                              hist.data(),
                               enzyme_const,
-                              next_state.data(),
+                              nxt.data(),
                               enzyme_dup,
                               residual_prm.data(),
                               param_adj.data(),
@@ -390,19 +406,20 @@ private:
 #else
     (void) step;
     (void) ic;
-    (void) prev_state;
-    (void) next_state;
+    (void) hist;
+    (void) nxt;
     (void) prm;
     throwUnavailable();
 #endif
   }
 
-  void checkInputSizes(const Vector<Real>& prev_state,
-                       const Vector<Real>& next_state,
-                       const Vector<Real>& prm) const
+  void checkInputSizes(problem::TimeHistoryView hist,
+                       const Vector<Real>&      nxt,
+                       const Vector<Real>&      prm) const
   {
-    if (prev_state.size() != num_prev_states_
-        || next_state.size() != num_next_states_
+    if (hist.count() != num_history_states_
+        || hist.stateSize() != num_history_state_dofs_
+        || nxt.size() != num_next_states_
         || prm.size() != num_variable_prm_)
     {
       throw std::runtime_error("EnzymeTimeVolumeKernel input size mismatch");
@@ -416,7 +433,7 @@ private:
       return variable_prm;
     }
 
-    Vector<Real> out(num_prm_);
+    Vector<Real> out(nprm_);
     for (Index i = 0; i < num_variable_prm_; ++i)
     {
       out[i] = variable_prm[i];
@@ -428,18 +445,6 @@ private:
     return out;
   }
 
-  static void resize(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
-    }
-  }
-
   [[noreturn]] static void throwUnavailable()
   {
     throw std::runtime_error(
@@ -449,11 +454,13 @@ private:
 private:
   const FESpace&         space_;
   const GaussQuadrature& quad_;
-  Index                  num_res_{0};
+  Index                  nres_{0};
   Index                  num_prev_states_{0};
   Index                  num_next_states_{0};
+  Index                  num_history_states_{1};
+  Index                  num_history_state_dofs_{0};
   Index                  num_variable_prm_{0};
-  Index                  num_prm_{0};
+  Index                  nprm_{0};
   Vector<Real>           fixed_prm_;
 };
 

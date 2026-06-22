@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
@@ -23,28 +22,28 @@ class BoundaryDofLayout
 {
 public:
   BoundaryDofLayout(const FESpace& space,
-                    Index          physical_tag);
+                    Index          ptag);
 
   BoundaryDofLayout(const FESpace&     space,
-                    const std::string& physical_name);
+                    const std::string& pname);
 
   BoundaryDofLayout(const MixedFESpace& space,
-                    Index               physical_tag);
+                    Index               ptag);
 
   BoundaryDofLayout(const MixedFESpace& space,
-                    const std::string&  physical_name);
+                    const std::string&  pname);
 
   static BoundaryDofLayout compact(const FESpace& space,
-                                   Index          physical_tag);
+                                   Index          ptag);
 
   static BoundaryDofLayout compact(const FESpace&     space,
-                                   const std::string& physical_name);
+                                   const std::string& pname);
 
   static BoundaryDofLayout compact(const MixedFESpace& space,
-                                   Index               physical_tag);
+                                   Index               ptag);
 
   static BoundaryDofLayout compact(const MixedFESpace& space,
-                                   const std::string&  physical_name);
+                                   const std::string&  pname);
 
   Index numFacets() const;
 
@@ -61,78 +60,78 @@ private:
 
   template <typename Space>
   static BoundaryDofLayout compactByTag(const Space& space,
-                                        Index        physical_tag)
+                                        Index        ptag)
   {
-    BoundaryDofLayout layout;
-    layout.mesh_ = &space.mesh();
+    BoundaryDofLayout lyt;
+    lyt.mesh_ = &space.mesh();
 
     std::map<Index, Index> compact_dofs;
-    layout.buildByTag(physical_tag,
-                      [&space, &compact_dofs](
-                          const Mesh::BoundaryFacet& facet,
-                          Vector<Index>&             dofs)
-                      {
-                        appendCompactFacetDofs(
-                            space, facet, compact_dofs, dofs);
-                      });
-    layout.num_dofs_ = static_cast<Index>(compact_dofs.size());
-    return layout;
+    lyt.buildByTag(ptag,
+                   [&space, &compact_dofs](
+                       const Mesh::BoundaryFacet& facet,
+                       Vector<Index>&             dofs)
+                   {
+                     appendCompactFacetDofs(
+                         space, facet, compact_dofs, dofs);
+                   });
+    lyt.nd_ = static_cast<Index>(compact_dofs.size());
+    return lyt;
   }
 
   template <typename Space>
   static BoundaryDofLayout compactByName(const Space&       space,
-                                         const std::string& physical_name)
+                                         const std::string& pname)
   {
-    BoundaryDofLayout layout;
-    layout.mesh_ = &space.mesh();
+    BoundaryDofLayout lyt;
+    lyt.mesh_ = &space.mesh();
 
     std::map<Index, Index> compact_dofs;
-    layout.buildByName(physical_name,
-                       [&space, &compact_dofs](
-                           const Mesh::BoundaryFacet& facet,
-                           Vector<Index>&             dofs)
-                       {
-                         appendCompactFacetDofs(
-                             space, facet, compact_dofs, dofs);
-                       });
-    layout.num_dofs_ = static_cast<Index>(compact_dofs.size());
-    return layout;
+    lyt.buildByName(pname,
+                    [&space, &compact_dofs](
+                        const Mesh::BoundaryFacet& facet,
+                        Vector<Index>&             dofs)
+                    {
+                      appendCompactFacetDofs(
+                          space, facet, compact_dofs, dofs);
+                    });
+    lyt.nd_ = static_cast<Index>(compact_dofs.size());
+    return lyt;
   }
 
   template <typename DofAppender>
-  void buildByTag(Index physical_tag, DofAppender append_dofs)
+  void buildByTag(Index ptag, DofAppender append_dofs)
   {
     const auto& facets = mesh().boundaryFacets();
-    for (Index i = 0; i < static_cast<Index>(facets.size()); ++i)
+    for (Index i = 0; i < facets.size(); ++i)
     {
-      if (facets[static_cast<std::size_t>(i)].physical_tag == physical_tag)
+      if (facets[i].ptag == ptag)
       {
-        addFacet(i, facets[static_cast<std::size_t>(i)], append_dofs);
+        addFacet(i, facets[i], append_dofs);
       }
     }
     if (facet_dofs_.empty())
     {
       throw std::runtime_error(
           "No boundary facets found for physical tag "
-          + std::to_string(physical_tag));
+          + std::to_string(ptag));
     }
   }
 
   template <typename DofAppender>
-  void buildByName(const std::string& physical_name, DofAppender append_dofs)
+  void buildByName(const std::string& pname, DofAppender append_dofs)
   {
     const auto& facets = mesh().boundaryFacets();
-    for (Index i = 0; i < static_cast<Index>(facets.size()); ++i)
+    for (Index i = 0; i < facets.size(); ++i)
     {
-      if (facets[static_cast<std::size_t>(i)].physical_name == physical_name)
+      if (facets[i].pname == pname)
       {
-        addFacet(i, facets[static_cast<std::size_t>(i)], append_dofs);
+        addFacet(i, facets[i], append_dofs);
       }
     }
     if (facet_dofs_.empty())
     {
       throw std::runtime_error(
-          "No boundary facets found for physical name " + physical_name);
+          "No boundary facets found for physical name " + pname);
     }
   }
 
@@ -189,7 +188,7 @@ private:
 
 private:
   const Mesh*   mesh_{nullptr};
-  Index         num_dofs_{0};
+  Index         nd_{0};
   Vector<Index> facet_indices_;
   IndexSetList  facet_dofs_;
 };

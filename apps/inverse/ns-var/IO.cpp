@@ -10,31 +10,24 @@
 #include <nlohmann/json.hpp>
 
 #include <femx/io/TimeSeriesDataOut.hpp>
+#include <femx/linalg/BlockVectorView.hpp>
+
+using namespace std;
+using nlohmann::json;
+using namespace femx::state;
 
 namespace femx::navier_var_new
 {
 namespace
 {
 
-BoundarySelector              pressureGauge(const Params& prm);
-std::vector<BoundarySelector> fixedVelocityBcs(const Params& prm);
-
-void resizeField(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
+BoundarySelector         pressureGauge(const Params& prm);
+Vector<BoundarySelector> fixedVelocityBcs(const Params& prm);
 
 template <typename T>
-void assign(const nlohmann::json& node,
-            const char*           key,
-            T&                    value)
+void assign(const json& node,
+            const char* key,
+            T&          value)
 {
   if (node.contains(key))
   {
@@ -42,117 +35,133 @@ void assign(const nlohmann::json& node,
   }
 }
 
-std::array<Real, 3> parseVector3(const nlohmann::json& node,
-                                 const std::string&    name)
+array<Real, 3> parseVector3(const json&   node,
+                            const string& name)
 {
   if (!node.is_array() || node.size() != 3)
   {
-    throw std::runtime_error(name + " must be an array with 3 values");
+    throw runtime_error(name + " must be an array with 3 values");
   }
 
-  std::array<Real, 3> values{};
+  array<Real, 3> vals{};
   for (Index i = 0; i < 3; ++i)
   {
-    values[static_cast<std::size_t>(i)] = node.at(i).get<Real>();
+    vals[i] = node.at(i).get<Real>();
   }
-  return values;
+  return vals;
 }
 
-std::array<Index, 3> parseIndex3(const nlohmann::json& node,
-                                 const std::string&    name)
+array<Index, 3> parseIndex3(const json&   node,
+                            const string& name)
 {
   if (!node.is_array() || node.size() != 3)
   {
-    throw std::runtime_error(name + " must be an array with 3 values");
+    throw runtime_error(name + " must be an array with 3 values");
   }
 
-  std::array<Index, 3> values{};
+  array<Index, 3> vals{};
   for (Index i = 0; i < 3; ++i)
   {
-    values[static_cast<std::size_t>(i)] = node.at(i).get<Index>();
+    vals[i] = node.at(i).get<Index>();
   }
-  return values;
+  return vals;
 }
 
-std::vector<Index> parseIndexList(const nlohmann::json& node,
-                                  const std::string&    name)
+Vector<Index> parseIndexList(const json&   node,
+                             const string& name)
 {
   if (!node.is_array())
   {
-    throw std::runtime_error(name + " must be an array");
+    throw runtime_error(name + " must be an array");
   }
 
-  std::vector<Index> values;
-  values.reserve(node.size());
+  Vector<Index> vals;
   for (const auto& item : node)
   {
-    values.push_back(item.get<Index>());
+    vals.push_back(item.get<Index>());
   }
-  return values;
+  return vals;
 }
 
-std::filesystem::path resolveConfigPath(const std::filesystem::path& config_dir,
-                                        const std::string&           path)
+filesystem::path resolveConfigPath(const filesystem::path& cfg_dir,
+                                   const string&           path)
 {
-  const std::filesystem::path candidate(path);
-  if (candidate.is_absolute() || config_dir.empty())
+  const filesystem::path candidate(path);
+  if (candidate.is_absolute() || cfg_dir.empty())
   {
     return candidate;
   }
-  return (config_dir / candidate).lexically_normal();
+  return (cfg_dir / candidate).lexically_normal();
 }
 
 Index stepsForEndTime(Real end_time,
                       Real dt)
 {
-  if (!std::isfinite(end_time) || end_time <= 0.0)
+  if (!isfinite(end_time) || end_time <= 0.0)
   {
-    throw std::runtime_error("simulation.time.end_time must be positive");
+    throw runtime_error("simulation.time.end_time must be positive");
   }
-  if (!std::isfinite(dt) || dt <= 0.0)
+  if (!isfinite(dt) || dt <= 0.0)
   {
-    throw std::runtime_error("simulation.time.dt must be positive");
+    throw runtime_error("simulation.time.dt must be positive");
   }
 
   const Real scaled = end_time / dt;
-  if (!std::isfinite(scaled) || scaled <= 0.0
-      || scaled > static_cast<Real>(std::numeric_limits<Index>::max()))
+  if (!isfinite(scaled) || scaled <= 0.0
+      || scaled > static_cast<Real>(numeric_limits<Index>::max()))
   {
-    throw std::runtime_error("simulation.time.end_time / dt is out of range");
+    throw runtime_error("simulation.time.end_time / dt is out of range");
   }
 
-  const Real eps = 64.0 * std::numeric_limits<Real>::epsilon()
-                   * (std::abs(scaled) + 1.0);
-  return static_cast<Index>(std::ceil(scaled - eps));
+  const Real eps = 64.0 * numeric_limits<Real>::epsilon()
+                   * (abs(scaled) + 1.0);
+  return static_cast<Index>(ceil(scaled - eps));
 }
 
-void parseForwardTime(const nlohmann::json& node,
-                      TimeParams&           time)
+void parseForwardTime(const json& node,
+                      TimeParams& time)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config time must be an object");
+    throw runtime_error("Config time must be an object");
   }
+  const bool has_steps = node.contains("steps")
+                         || node.contains("num_steps");
   assign(node, "dt", time.dt);
+  if (node.contains("steps"))
+  {
+    time.steps = node.at("steps").get<Index>();
+  }
+  else if (node.contains("num_steps"))
+  {
+    time.steps = node.at("num_steps").get<Index>();
+  }
 
   if (node.contains("end_time"))
   {
-    time.steps = stepsForEndTime(node.at("end_time").get<Real>(), time.dt);
+    const Index derived_steps =
+        stepsForEndTime(node.at("end_time").get<Real>(), time.dt);
+    if (has_steps && time.steps != derived_steps)
+    {
+      throw runtime_error(
+          "Config time.steps and time.end_time disagree for the configured dt");
+    }
+    time.steps = derived_steps;
   }
 }
 
-void parseOutput(const nlohmann::json& node,
-                 OutputParams&         output);
+void parseOutput(const json&   node,
+                 OutputParams& output);
 
-void parseSolver(const nlohmann::json& node,
-                 SolverParams&         solver);
+void parseSolver(const json&   node,
+                 SolverParams& solver);
 
-void parseObsGrid(const nlohmann::json&    node,
+void parseObsGrid(const json&              node,
                   ObservationParams::Grid& grid)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config inverse.obs.grid must be an object");
+    throw runtime_error("Config inverse.obs.grid must be an object");
   }
 
   if (node.contains("counts"))
@@ -166,14 +175,14 @@ void parseObsGrid(const nlohmann::json&    node,
 
   if (node.contains("bounds"))
   {
-    const auto& bounds = node.at("bounds");
-    if (!bounds.is_array() || bounds.size() != 2)
+    const auto& bnds = node.at("bounds");
+    if (!bnds.is_array() || bnds.size() != 2)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "Config inverse.obs.grid.bounds must contain lower and upper points");
     }
-    grid.lower = parseVector3(bounds.at(0), "inverse.obs.grid.bounds[0]");
-    grid.upper = parseVector3(bounds.at(1), "inverse.obs.grid.bounds[1]");
+    grid.lower = parseVector3(bnds.at(0), "inverse.obs.grid.bounds[0]");
+    grid.upper = parseVector3(bnds.at(1), "inverse.obs.grid.bounds[1]");
   }
   if (node.contains("lower"))
   {
@@ -204,21 +213,21 @@ void parseObsGrid(const nlohmann::json&    node,
   }
 }
 
-void parseObs(const nlohmann::json&        node,
-              const std::filesystem::path& config_dir,
-              ObservationParams&           obs)
+void parseObs(const json&             node,
+              const filesystem::path& cfg_dir,
+              ObservationParams&      obs)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config inverse.obs must be an object");
+    throw runtime_error("Config inverse.obs must be an object");
   }
 
   if (node.contains("type"))
   {
-    const std::string type = node.at("type").get<std::string>();
+    const string type = node.at("type").get<string>();
     if (type != "grid")
     {
-      throw std::runtime_error("Config inverse.obs.type must be 'grid'");
+      throw runtime_error("Config inverse.obs.type must be 'grid'");
     }
     obs.type = "grid";
   }
@@ -228,29 +237,29 @@ void parseObs(const nlohmann::json&        node,
                         || node.contains("data");
   if (node.contains("file"))
   {
-    obs.file = node.at("file").get<std::string>();
+    obs.file = node.at("file").get<string>();
   }
   else if (node.contains("path"))
   {
-    obs.file = node.at("path").get<std::string>();
+    obs.file = node.at("path").get<string>();
   }
   else if (node.contains("data_file"))
   {
-    obs.file = node.at("data_file").get<std::string>();
+    obs.file = node.at("data_file").get<string>();
   }
   else if (node.contains("data"))
   {
-    obs.file = node.at("data").get<std::string>();
+    obs.file = node.at("data").get<string>();
   }
   if (has_file)
   {
-    obs.file = resolveConfigPath(config_dir, obs.file).string();
+    obs.file = resolveConfigPath(cfg_dir, obs.file).string();
   }
 
   if (node.contains("components"))
   {
-    obs.components = parseIndexList(node.at("components"),
-                                    "inverse.obs.components");
+    obs.comps = parseIndexList(node.at("components"),
+                               "inverse.obs.components");
   }
 
   if (node.contains("grid") || node.contains("counts"))
@@ -268,56 +277,56 @@ void parseObs(const nlohmann::json&        node,
   }
 }
 
-BoundarySelector parseSelector(const nlohmann::json& node,
-                               const std::string&    name)
+BoundarySelector parseSelector(const json&   node,
+                               const string& name)
 {
-  BoundarySelector selector;
+  BoundarySelector sel;
   if (node.is_number_integer())
   {
-    selector.physical = node.get<Index>();
-    return selector;
+    sel.physical = node.get<Index>();
+    return sel;
   }
   if (node.is_string())
   {
-    selector.name = node.get<std::string>();
-    return selector;
+    sel.name = node.get<string>();
+    return sel;
   }
   if (!node.is_object())
   {
-    throw std::runtime_error(name + " must be a tag, name, or object");
+    throw runtime_error(name + " must be a tag, name, or object");
   }
 
   if (node.contains("tag"))
   {
-    selector.physical = node.at("tag").get<Index>();
+    sel.physical = node.at("tag").get<Index>();
   }
-  assign(node, "name", selector.name);
-  return selector;
+  assign(node, "name", sel.name);
+  return sel;
 }
 
-void parseMesh(const nlohmann::json&        node,
-               const std::filesystem::path& config_dir,
-               MeshParams&                  mesh)
+void parseMesh(const json&             node,
+               const filesystem::path& cfg_dir,
+               MeshParams&             mesh)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config mesh must be an object");
+    throw runtime_error("Config mesh must be an object");
   }
 
   assign(node, "file", mesh.file);
 
   if (!mesh.file.empty())
   {
-    mesh.file = resolveConfigPath(config_dir, mesh.file).string();
+    mesh.file = resolveConfigPath(cfg_dir, mesh.file).string();
   }
 }
 
-void parseFluid(const nlohmann::json& node,
-                FluidConfig&          fluid)
+void parseFluid(const json&  node,
+                FluidConfig& fluid)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config fluid must be an object");
+    throw runtime_error("Config fluid must be an object");
   }
 
   assign(node, "rho", fluid.rho);
@@ -335,26 +344,26 @@ void parseFluid(const nlohmann::json& node,
   }
 }
 
-void parseTarget(const nlohmann::json& node,
-                 TargetParams&         target)
+void parseTarget(const json&   node,
+                 TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary velocity must be an object");
+    throw runtime_error("Boundary velocity must be an object");
   }
 
   assign(node, "type", target.type);
-  assign(node, "quantity", target.quantity);
+  assign(node, "quantity", target.qty);
   assign(node, "bulk_speed", target.bulk_speed);
   if (node.contains("mean_velocity"))
   {
     target.bulk_speed = node.at("mean_velocity").get<Real>();
-    target.quantity   = "mean_velocity";
+    target.qty        = "mean_velocity";
   }
   else if (node.contains("max_velocity"))
   {
     target.bulk_speed = node.at("max_velocity").get<Real>();
-    target.quantity   = "max_velocity";
+    target.qty        = "max_velocity";
   }
   else if (node.contains("value"))
   {
@@ -369,27 +378,27 @@ void parseTarget(const nlohmann::json& node,
   {
     target.pulse_amplitude = node.at("amplitude").get<Real>();
   }
-  assign(node, "period", target.period);
-  assign(node, "radius", target.radius);
+  assign(node, "period", target.per);
+  assign(node, "radius", target.rad);
   if (node.contains("center"))
   {
-    target.center = parseVector3(node.at("center"), "simulation.center");
+    target.cen = parseVector3(node.at("center"), "simulation.center");
   }
   if (node.contains("normal"))
   {
-    target.normal = parseVector3(node.at("normal"), "simulation.normal");
+    target.nrm = parseVector3(node.at("normal"), "simulation.normal");
   }
 }
 
-void parseTime(const nlohmann::json& node,
-               TargetParams&         target)
+void parseTime(const json&   node,
+               TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary time profile must be an object");
+    throw runtime_error("Boundary time profile must be an object");
   }
 
-  std::string type = "uniform";
+  string type = "uniform";
   assign(node, "type", type);
   if (type == "sin" || type == "sine")
   {
@@ -402,7 +411,7 @@ void parseTime(const nlohmann::json& node,
   }
   else
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Boundary time.type must be 'sin' or 'uniform'");
   }
 
@@ -421,12 +430,12 @@ void parseTime(const nlohmann::json& node,
   else if (node.contains("mean_velocity"))
   {
     target.bulk_speed = node.at("mean_velocity").get<Real>();
-    target.quantity   = "mean_velocity";
+    target.qty        = "mean_velocity";
   }
   else if (node.contains("max_velocity"))
   {
     target.bulk_speed = node.at("max_velocity").get<Real>();
-    target.quantity   = "max_velocity";
+    target.qty        = "max_velocity";
   }
 
   if (node.contains("amplitude"))
@@ -437,45 +446,45 @@ void parseTime(const nlohmann::json& node,
   {
     target.pulse_amplitude = node.at("pulse_amplitude").get<Real>();
   }
-  assign(node, "period", target.period);
+  assign(node, "period", target.per);
 }
 
-void parseSpace(const nlohmann::json& node,
-                TargetParams&         target)
+void parseSpace(const json&   node,
+                TargetParams& target)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary space profile must be an object");
+    throw runtime_error("Boundary space profile must be an object");
   }
 
-  std::string type = "poiseuille";
+  string type = "poiseuille";
   assign(node, "type", type);
   if (type != "poiseuille")
   {
-    throw std::runtime_error("Boundary space.type must be 'poiseuille'");
+    throw runtime_error("Boundary space.type must be 'poiseuille'");
   }
 
   target.type = "poiseuille_pulse";
-  assign(node, "quantity", target.quantity);
-  assign(node, "radius", target.radius);
+  assign(node, "quantity", target.qty);
+  assign(node, "radius", target.rad);
   if (node.contains("center"))
   {
-    target.center =
+    target.cen =
         parseVector3(node.at("center"), "simulation.bcs.space.center");
   }
   if (node.contains("normal"))
   {
-    target.normal =
+    target.nrm =
         parseVector3(node.at("normal"), "simulation.bcs.space.normal");
   }
 }
 
-TargetParams parseVelocity(const nlohmann::json& node)
+TargetParams parseVelocity(const json& node)
 {
   TargetParams velocity;
   if (!node.contains("velocity") || !node.at("velocity").is_object())
   {
-    throw std::runtime_error("Boundary velocity must be an object");
+    throw runtime_error("Boundary velocity must be an object");
   }
 
   const auto& velocity_node = node.at("velocity");
@@ -491,26 +500,26 @@ TargetParams parseVelocity(const nlohmann::json& node)
   return velocity;
 }
 
-std::optional<Real> optionalReal(const nlohmann::json& node,
-                                 const char*           key)
+optional<Real> optionalReal(const json& node,
+                            const char* key)
 {
   if (!node.contains(key))
   {
-    return std::nullopt;
+    return nullopt;
   }
   if (!node.at(key).is_number())
   {
-    throw std::runtime_error(std::string("Boundary value ") + key
-                             + " must be a number");
+    throw runtime_error(string("Boundary value ") + key
+                        + " must be a number");
   }
   return node.at(key).get<Real>();
 }
 
-BCsParams parseBc(const nlohmann::json& node)
+BCsParams parseBc(const json& node)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Forward boundary condition must be an object");
+    throw runtime_error("Forward boundary condition must be an object");
   }
 
   BCsParams cond;
@@ -521,7 +530,7 @@ BCsParams parseBc(const nlohmann::json& node)
   }
   else
   {
-    throw std::runtime_error("Each boundary condition needs tag");
+    throw runtime_error("Each boundary condition needs tag");
   }
 
   assign(node, "type", cond.type);
@@ -536,22 +545,21 @@ BCsParams parseBc(const nlohmann::json& node)
 
   if (!cond.ux && !cond.uy && !cond.uz && !cond.p && !cond.vel)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Forward boundary condition needs at least one of ux, uy, uz, p, or velocity");
   }
   return cond;
 }
 
-std::vector<BCsParams> parseBcList(const nlohmann::json& node,
-                                   const std::string&    name)
+Vector<BCsParams> parseBcList(const json&   node,
+                              const string& name)
 {
   if (!node.is_array())
   {
-    throw std::runtime_error("Config " + name + " must be an array");
+    throw runtime_error("Config " + name + " must be an array");
   }
 
-  std::vector<BCsParams> out;
-  out.reserve(node.size());
+  Vector<BCsParams> out;
   for (const auto& item : node)
   {
     out.push_back(parseBc(item));
@@ -559,18 +567,18 @@ std::vector<BCsParams> parseBcList(const nlohmann::json& node,
   return out;
 }
 
-void parseForward(const nlohmann::json&        node,
-                  const std::filesystem::path& config_dir,
-                  ForwardParams&               forward)
+void parseForward(const json&             node,
+                  const filesystem::path& cfg_dir,
+                  ForwardParams&          forward)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config simulation must be an object");
+    throw runtime_error("Config simulation must be an object");
   }
 
   if (node.contains("mesh"))
   {
-    parseMesh(node.at("mesh"), config_dir, forward.mesh);
+    parseMesh(node.at("mesh"), cfg_dir, forward.mesh);
   }
   if (node.contains("time"))
   {
@@ -590,12 +598,12 @@ void parseForward(const nlohmann::json&        node,
   }
 }
 
-void parseOpt(const nlohmann::json& node,
-              OptimizerParams&      opt)
+void parseOpt(const json&      node,
+              OptimizerParams& opt)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config optimizer must be an object");
+    throw runtime_error("Config optimizer must be an object");
   }
 
   assign(node, "type", opt.type);
@@ -611,19 +619,19 @@ void parseOpt(const nlohmann::json& node,
     const auto& scale = node.at("scale");
     if (!scale.is_object())
     {
-      throw std::runtime_error("Config optimizer.scale must be an object");
+      throw runtime_error("Config optimizer.scale must be an object");
     }
-    assign(scale, "initial_velocity", opt.scale.initial_velocity);
-    assign(scale, "boundary", opt.scale.boundary);
+    assign(scale, "init_vel", opt.scale.init_vel);
+    assign(scale, "boundary", opt.scale.bdry);
   }
 }
 
-void parseReg(const nlohmann::json& node,
+void parseReg(const json&           node,
               RegularizationParams& reg)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config inverse.reg must be an object");
+    throw runtime_error("Config inverse.reg must be an object");
   }
   if (node.contains("beta1"))
   {
@@ -643,12 +651,12 @@ void parseReg(const nlohmann::json& node,
   }
 }
 
-void parseObjective(const nlohmann::json& node,
-                    InverseParams&        inverse)
+void parseObjective(const json&    node,
+                    InverseParams& inverse)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config objective must be an object");
+    throw runtime_error("Config objective must be an object");
   }
   assign(node, "alpha", inverse.alpha);
   if (node.contains("reg"))
@@ -657,88 +665,88 @@ void parseObjective(const nlohmann::json& node,
   }
 }
 
-void parseInitialVelocity(const nlohmann::json&  node,
-                          InitialVelocityParams& initial_velocity)
+void parseInitialVelocity(const json&            node,
+                          InitialVelocityParams& init_vel)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error(
-        "Config controls.initial_velocity must be an object");
+    throw runtime_error(
+        "Config controls.init_vel must be an object");
   }
 
-  assign(node, "enabled", initial_velocity.enabled);
+  assign(node, "enabled", init_vel.enabled);
   if (!node.contains("bounds"))
   {
     return;
   }
 
-  const auto& bounds = node.at("bounds");
-  if (!bounds.is_object())
+  const auto& bnds = node.at("bounds");
+  if (!bnds.is_object())
   {
-    throw std::runtime_error(
-        "Config controls.initial_velocity.bounds must be an object");
+    throw runtime_error(
+        "Config controls.init_vel.bounds must be an object");
   }
-  if (bounds.contains("min"))
+  if (bnds.contains("min"))
   {
-    initial_velocity.lower = bounds.at("min").get<Real>();
+    init_vel.lower = bnds.at("min").get<Real>();
   }
-  if (bounds.contains("max"))
+  if (bnds.contains("max"))
   {
-    initial_velocity.upper = bounds.at("max").get<Real>();
+    init_vel.upper = bnds.at("max").get<Real>();
   }
 }
 
-void parseControlBounds(const nlohmann::json& node,
-                        BoundsParams&         bounds,
-                        const std::string&    name)
+void parseControlBounds(const json&   node,
+                        BoundsParams& bnds,
+                        const string& name)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config " + name + " must be an object");
+    throw runtime_error("Config " + name + " must be an object");
   }
-  assign(node, "min", bounds.min);
+  assign(node, "min", bnds.min);
   if (node.contains("max"))
   {
-    bounds.max = node.at("max").get<Real>();
+    bnds.max = node.at("max").get<Real>();
   }
   if (node.contains("normal"))
   {
-    bounds.normal = parseVector3(node.at("normal"), name + ".normal");
+    bnds.nrm = parseVector3(node.at("normal"), name + ".normal");
   }
 }
 
-void parseControls(const nlohmann::json& node,
-                   InverseParams&        inverse)
+void parseControls(const json&    node,
+                   InverseParams& inverse)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config controls must be an object");
+    throw runtime_error("Config controls must be an object");
   }
 
   if (node.contains("boundary"))
   {
-    const auto& boundary = node.at("boundary");
-    inverse.ctr          = parseSelector(boundary, "controls.boundary");
-    if (boundary.is_object() && boundary.contains("bounds"))
+    const auto& bdry = node.at("boundary");
+    inverse.ctr      = parseSelector(bdry, "controls.boundary");
+    if (bdry.is_object() && bdry.contains("bounds"))
     {
-      parseControlBounds(boundary.at("bounds"),
-                         inverse.bounds,
+      parseControlBounds(bdry.at("bounds"),
+                         inverse.bnds,
                          "controls.boundary.bounds");
     }
   }
-  if (node.contains("initial_velocity"))
+  if (node.contains("init_vel"))
   {
     inverse.init_vel.enabled = true;
-    parseInitialVelocity(node.at("initial_velocity"), inverse.init_vel);
+    parseInitialVelocity(node.at("init_vel"), inverse.init_vel);
   }
 }
 
-void parseInitialGuess(const nlohmann::json& node,
-                       InitialGuessParams&   initial_guess)
+void parseInitialGuess(const json&         node,
+                       InitialGuessParams& initial_guess)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config initial_guess must be an object");
+    throw runtime_error("Config initial_guess must be an object");
   }
   if (node.contains("time"))
   {
@@ -751,13 +759,13 @@ void parseInitialGuess(const nlohmann::json& node,
   }
 }
 
-void parseInv(const nlohmann::json&        node,
-              const std::filesystem::path& config_dir,
-              InverseParams&               inverse)
+void parseInv(const json&             node,
+              const filesystem::path& cfg_dir,
+              InverseParams&          inverse)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config inverse must be an object");
+    throw runtime_error("Config inverse must be an object");
   }
 
   if (node.contains("controls"))
@@ -778,51 +786,52 @@ void parseInv(const nlohmann::json&        node,
   }
   if (node.contains("obs"))
   {
-    parseObs(node.at("obs"), config_dir, inverse.obs);
+    parseObs(node.at("obs"), cfg_dir, inverse.obs);
   }
 }
 
-void parseOutput(const nlohmann::json& node,
-                 OutputParams&         output)
+void parseOutput(const json&   node,
+                 OutputParams& output)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config output must be an object");
+    throw runtime_error("Config output must be an object");
   }
 
-  assign(node, "basename", output.basename);
+  assign(node, "basename", output.base);
 }
 
-void parseSolver(const nlohmann::json& node,
-                 SolverParams&         solver)
+void parseSolver(const json&   node,
+                 SolverParams& solver)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Config solver must be an object");
+    throw runtime_error("Config solver must be an object");
   }
   assign(node, "type", solver.type);
   assign(node, "backend", solver.backend);
+  assign(node, "method", solver.method);
 }
 
-bool hasSelector(const BoundarySelector& selector)
+bool hasSelector(const BoundarySelector& sel)
 {
-  return selector.physical > 0 || !selector.name.empty();
+  return sel.physical > 0 || !sel.name.empty();
 }
 
 bool sameTimeGrid(const TimeParams& lhs,
                   const TimeParams& rhs)
 {
-  const Real scale = std::max({Real(1.0), std::abs(lhs.dt), std::abs(rhs.dt)});
-  const Real tol   = 64.0 * std::numeric_limits<Real>::epsilon() * scale;
-  return lhs.steps == rhs.steps && std::abs(lhs.dt - rhs.dt) <= tol;
+  const Real scale = max({Real(1.0), abs(lhs.dt), abs(rhs.dt)});
+  const Real tol   = 64.0 * numeric_limits<Real>::epsilon() * scale;
+  return lhs.steps == rhs.steps && abs(lhs.dt - rhs.dt) <= tol;
 }
 
-void validateSelector(const BoundarySelector& selector,
-                      const std::string&      name)
+void validateSelector(const BoundarySelector& sel,
+                      const string&           name)
 {
-  if (!hasSelector(selector))
+  if (!hasSelector(sel))
   {
-    throw std::runtime_error(name + " requires a physical tag or name");
+    throw runtime_error(name + " requires a physical tag or name");
   }
 }
 
@@ -830,72 +839,72 @@ void validate(const Params& prm)
 {
   if (prm.fwd.mesh.file.empty())
   {
-    throw std::runtime_error("simulation.mesh.file is required");
+    throw runtime_error("simulation.mesh.file is required");
   }
-  if (prm.fwd.time.steps <= 0 || !std::isfinite(prm.fwd.time.dt)
+  if (prm.fwd.time.steps <= 0 || !isfinite(prm.fwd.time.dt)
       || prm.fwd.time.dt <= 0.0)
   {
-    throw std::runtime_error("Time steps and dt must be positive");
+    throw runtime_error("Time steps and dt must be positive");
   }
   if (prm.fwd.fluid.rho <= 0.0)
   {
-    throw std::runtime_error("Fluid rho must be positive");
+    throw runtime_error("Fluid rho must be positive");
   }
   if (prm.fwd.fluid.mu && *prm.fwd.fluid.mu <= 0.0)
   {
-    throw std::runtime_error("Fluid mu must be positive");
+    throw runtime_error("Fluid mu must be positive");
   }
   if (prm.fwd.fluid.Re && *prm.fwd.fluid.Re <= 0.0)
   {
-    throw std::runtime_error("Fluid reynolds must be positive");
+    throw runtime_error("Fluid reynolds must be positive");
   }
   if (!prm.fwd.fluid.mu && !prm.fwd.fluid.Re)
   {
-    throw std::runtime_error("Fluid requires either mu or reynolds");
+    throw runtime_error("Fluid requires either mu or reynolds");
   }
   if (prm.fwd.bcs.empty())
   {
-    throw std::runtime_error("simulation.bcs must contain at least one boundary");
+    throw runtime_error("simulation.bcs must contain at least one boundary");
   }
   for (const auto& bc : prm.fwd.bcs)
   {
     if (bc.physical <= 0)
     {
-      throw std::runtime_error("simulation.bcs physical tag must be positive");
+      throw runtime_error("simulation.bcs physical tag must be positive");
     }
     if (bc.type != "dirichlet")
     {
-      throw std::runtime_error("Only dirichlet simulation.bcs are supported");
+      throw runtime_error("Only dirichlet simulation.bcs are supported");
     }
     if (bc.vel)
     {
       const auto& velocity = *bc.vel;
       if (velocity.type != "poiseuille_pulse")
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "simulation.bcs velocity.type must be 'poiseuille_pulse'");
       }
-      if (velocity.bulk_speed <= 0.0 || velocity.period <= 0.0
-          || velocity.radius <= 0.0)
+      if (velocity.bulk_speed <= 0.0 || velocity.per <= 0.0
+          || velocity.rad <= 0.0)
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "simulation.bcs velocity bulk_speed, period, and radius must be positive");
       }
-      if (velocity.quantity != "mean_velocity"
-          && velocity.quantity != "bulk_speed"
-          && velocity.quantity != "max_velocity")
+      if (velocity.qty != "mean_velocity"
+          && velocity.qty != "bulk_speed"
+          && velocity.qty != "max_velocity")
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "simulation.bcs velocity quantity must be 'mean_velocity', 'bulk_speed', or 'max_velocity'");
       }
       Real normal_norm2 = 0.0;
-      for (Real value : velocity.normal)
+      for (Real value : velocity.nrm)
       {
         normal_norm2 += value * value;
       }
       if (normal_norm2 <= 1.0e-28)
       {
-        throw std::runtime_error("simulation.bcs velocity.normal must be nonzero");
+        throw runtime_error("simulation.bcs velocity.normal must be nonzero");
       }
     }
   }
@@ -904,26 +913,32 @@ void validate(const Params& prm)
   pressureGauge(prm);
   if (fixedVelocityBcs(prm).empty())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "simulation.bcs must contain at least one fixed velocity boundary");
   }
   if (prm.fwd.fluid.Re && !ctr_bc.vel)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "simulation.bcs control velocity profile is required when fluid.Re is used");
   }
   if (prm.fwd.solver.type != "auto"
       && prm.fwd.solver.type != "resolve"
       && prm.fwd.solver.type != "petsc")
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "simulation.solver.type must be 'auto', 'resolve', or 'petsc'");
   }
   if (prm.fwd.solver.backend != "cpu"
       && prm.fwd.solver.backend != "cuda")
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "simulation.solver.backend must be 'cpu' or 'cuda'");
+  }
+  if (prm.fwd.solver.method != "direct"
+      && prm.fwd.solver.method != "iterative")
+  {
+    throw runtime_error(
+        "simulation.solver.method must be 'direct' or 'iterative'");
   }
   if (prm.inv.alpha < 0.0
       || prm.inv.reg.beta1 < 0.0
@@ -931,7 +946,7 @@ void validate(const Params& prm)
       || prm.inv.reg.beta3 < 0.0
       || prm.inv.reg.beta4 < 0.0)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse alpha and reg values must be nonnegative");
   }
   if (prm.inv.init_vel.lower
@@ -939,7 +954,7 @@ void validate(const Params& prm)
       && *prm.inv.init_vel.lower
              > *prm.inv.init_vel.upper)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse.init_vel lower must not exceed upper");
   }
   if (prm.inv.opt.max_iterations < 0
@@ -947,50 +962,50 @@ void validate(const Params& prm)
       || prm.inv.opt.rel_tol < 0.0
       || prm.inv.opt.step_tol < 0.0)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse opt tolerances and max_iterations must be nonnegative");
   }
-  if (!std::isfinite(prm.inv.opt.scale.initial_velocity)
-      || prm.inv.opt.scale.initial_velocity <= 0.0
-      || !std::isfinite(prm.inv.opt.scale.boundary)
-      || prm.inv.opt.scale.boundary <= 0.0)
+  if (!isfinite(prm.inv.opt.scale.init_vel)
+      || prm.inv.opt.scale.init_vel <= 0.0
+      || !isfinite(prm.inv.opt.scale.bdry)
+      || prm.inv.opt.scale.bdry <= 0.0)
   {
-    throw std::runtime_error("optimizer.scale values must be positive");
+    throw runtime_error("optimizer.scale values must be positive");
   }
   if (prm.inv.opt.type != "lmvm")
   {
-    throw std::runtime_error("inverse.opt.type must be 'lmvm'");
+    throw runtime_error("inverse.opt.type must be 'lmvm'");
   }
-  if (prm.inv.bounds.max && *prm.inv.bounds.max < prm.inv.bounds.min)
+  if (prm.inv.bnds.max && *prm.inv.bnds.max < prm.inv.bnds.min)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse.bounds.max must be greater than min");
   }
-  if (!prm.inv.bounds.max && !ctr_bc.vel)
+  if (!prm.inv.bnds.max && !ctr_bc.vel)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse.bounds.max is required when the control bcs has no velocity profile");
   }
-  if (prm.inv.bounds.max_scale <= 0.0)
+  if (prm.inv.bnds.max_scale <= 0.0)
   {
-    throw std::runtime_error("inverse.bounds.max_scale must be positive");
+    throw runtime_error("inverse.bounds.max_scale must be positive");
   }
   Real bounds_normal_norm2 = 0.0;
-  for (Real value : prm.inv.bounds.normal)
+  for (Real value : prm.inv.bnds.nrm)
   {
     bounds_normal_norm2 += value * value;
   }
   if (bounds_normal_norm2 <= 1.0e-28)
   {
-    throw std::runtime_error("inverse.bounds.normal must be nonzero");
+    throw runtime_error("inverse.bounds.normal must be nonzero");
   }
   if (prm.inv.obs.file.empty())
   {
-    throw std::runtime_error("inverse.obs.file is required");
+    throw runtime_error("inverse.obs.file is required");
   }
 }
 
-Real interpolatedControlParam(const DirichletControl&            control,
+Real interpolatedControlParam(const DirichletControl&            ctr,
                               const Vector<Real>&                prm,
                               const Vector<LinearInterpolation>& stencils,
                               Index                              step,
@@ -1002,15 +1017,26 @@ Real interpolatedControlParam(const DirichletControl&            control,
   }
   if (step >= stencils.size())
   {
-    throw std::runtime_error("control interpolation step is out of range");
+    throw runtime_error("control interpolation step is out of range");
+  }
+  if (ctr.numDofs() <= 0
+      || prm.size() % ctr.numDofs() != 0)
+  {
+    throw runtime_error("control parameter layout is invalid");
   }
 
-  const LinearInterpolation& interp = stencils[step];
-  Real                       value  = 0.0;
+  const LinearInterpolation&  interp = stencils[step];
+  Real                        value  = 0.0;
+  BlockVectorView<const Real> levels(
+      prm.data(), prm.size() / ctr.numDofs(), ctr.numDofs());
   interp.forEachWeight(
-      [&](Index level, Real weight)
+      [&](Index level, Real wt)
       {
-        value += weight * prm[level * control.numDofs() + i];
+        if (level < 0 || level >= levels.blocks())
+        {
+          throw runtime_error("control interpolation level is out of range");
+        }
+        value += wt * levels(level, i);
       });
   return value;
 }
@@ -1023,10 +1049,10 @@ void splitState(const MixedFESpace& space,
                 Vector<Real>&       p)
 {
   const Index nodes = space.mesh().numNodes();
-  resizeField(ux, nodes);
-  resizeField(uy, nodes);
-  resizeField(uz, nodes);
-  resizeField(p, nodes);
+  resizeOrZero(ux, nodes);
+  resizeOrZero(uy, nodes);
+  resizeOrZero(uz, nodes);
+  resizeOrZero(p, nodes);
 
   const auto  u_dof = space.field(0);
   const auto  p_dof = space.field(1);
@@ -1074,7 +1100,7 @@ void assignControlDof(const MixedFESpace& space,
 }
 
 void controlField(const MixedFESpace&                space,
-                  const DirichletControl&            control,
+                  const DirichletControl&            ctr,
                   const Vector<Real>&                prm,
                   const Vector<LinearInterpolation>& stencils,
                   Index                              step,
@@ -1083,55 +1109,55 @@ void controlField(const MixedFESpace&                space,
                   Vector<Real>&                      uz)
 {
   const Index nodes = space.mesh().numNodes();
-  resizeField(ux, nodes);
-  resizeField(uy, nodes);
-  resizeField(uz, nodes);
+  resizeOrZero(ux, nodes);
+  resizeOrZero(uy, nodes);
+  resizeOrZero(uz, nodes);
   if (step < 0)
   {
     return;
   }
 
-  for (Index i = 0; i < control.numDofs(); ++i)
+  for (Index i = 0; i < ctr.numDofs(); ++i)
   {
     assignControlDof(space,
-                     control.stateDof(i),
-                     interpolatedControlParam(control, prm, stencils, step, i),
+                     ctr.stateDof(i),
+                     interpolatedControlParam(ctr, prm, stencils, step, i),
                      ux,
                      uy,
                      uz);
   }
 }
 
-void ensureDir(const std::string& basename)
+void ensureDir(const string& base)
 {
-  const std::filesystem::path path(basename);
-  const std::filesystem::path dir = path.parent_path();
+  const filesystem::path path(base);
+  const filesystem::path dir = path.parent_path();
   if (!dir.empty())
   {
-    std::filesystem::create_directories(dir);
+    filesystem::create_directories(dir);
   }
 }
 
 } // namespace
 
-Params loadConfig(const std::string& path)
+Params loadConfig(const string& path)
 {
-  std::ifstream input(path);
+  ifstream input(path);
   if (!input)
   {
-    throw std::runtime_error("Failed to open config file: " + path);
+    throw runtime_error("Failed to open config file: " + path);
   }
 
   Params     prm;
-  const auto root       = nlohmann::json::parse(input, nullptr, true, true);
-  const auto config_dir = std::filesystem::path(path).parent_path();
+  const auto root    = json::parse(input, nullptr, true, true);
+  const auto cfg_dir = filesystem::path(path).parent_path();
   if (!root.is_object())
   {
-    throw std::runtime_error("Config root must be an object");
+    throw runtime_error("Config root must be an object");
   }
 
-  parseForward(root, config_dir, prm.fwd);
-  parseInv(root, config_dir, prm.inv);
+  parseForward(root, cfg_dir, prm.fwd);
+  parseInv(root, cfg_dir, prm.inv);
 
   if (prm.fwd.bcs.empty() && !prm.inv.initial_guess.bcs.empty())
   {
@@ -1140,7 +1166,7 @@ Params loadConfig(const std::string& path)
   if (prm.inv.initial_guess.has_time
       && !sameTimeGrid(prm.fwd.time, prm.inv.initial_guess.time))
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initial_guess.time currently must match the simulation time grid");
   }
 
@@ -1150,8 +1176,8 @@ Params loadConfig(const std::string& path)
 
 void writeResultViz(const Mesh&                        mesh,
                     const MixedFESpace&                space,
-                    const DirichletControl&            control,
-                    const solve::TimeTrajectory&       tr,
+                    const DirichletControl&            ctr,
+                    const TimeTrajectory&              tr,
                     const Vector<Real>&                prm,
                     const Vector<LinearInterpolation>& stencils,
                     Real                               dt,
@@ -1160,26 +1186,26 @@ void writeResultViz(const Mesh&                        mesh,
 {
   if (stencils.size() != tr.numSteps())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "writeResultViz control time stencil size mismatch");
   }
-  if (control.numDofs() > 0
-      && (prm.empty() || prm.size() % control.numDofs() != 0))
+  if (ctr.numDofs() > 0
+      && (prm.empty() || prm.size() % ctr.numDofs() != 0))
   {
-    throw std::runtime_error("writeResultViz control parameter size mismatch");
+    throw runtime_error("writeResultViz control parameter size mismatch");
   }
-  const Index ctr_levels =
-      control.numDofs() == 0 ? 0 : prm.size() / control.numDofs();
+  const Index nctr =
+      ctr.numDofs() == 0 ? 0 : prm.size() / ctr.numDofs();
   for (const LinearInterpolation& stencil : stencils)
   {
-    if (!stencil.isValid() || stencil.upper >= ctr_levels)
+    if (!stencil.isValid() || stencil.upper >= nctr)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "writeResultViz control stencil is outside parameter levels");
     }
   }
 
-  ensureDir(opts.basename);
+  ensureDir(opts.base);
 
   TimeSeriesDataOut out;
   out.attachMesh(mesh);
@@ -1201,11 +1227,11 @@ void writeResultViz(const Mesh&                        mesh,
     out.addNodalScalarField("pressure", p);
 
     const Index step = level == 0 ? -1 : level - 1;
-    controlField(space, control, prm, stencils, step, ctr_x, ctr_y, ctr_z);
+    controlField(space, ctr, prm, stencils, step, ctr_x, ctr_y, ctr_z);
     out.addNodalVectorField("control", ctr_x, ctr_y, ctr_z);
   }
 
-  out.write(opts.basename);
+  out.write(opts.base);
 }
 
 BoundarySelector bcSelector(const BCsParams& bc)
@@ -1216,14 +1242,14 @@ BoundarySelector bcSelector(const BCsParams& bc)
 namespace
 {
 
-bool matches(const BoundarySelector& selector,
+bool matches(const BoundarySelector& sel,
              const BCsParams&        bc)
 {
-  if (!selector.name.empty())
+  if (!sel.name.empty())
   {
-    return bc.name == selector.name;
+    return bc.name == sel.name;
   }
-  return bc.physical == selector.physical;
+  return bc.physical == sel.physical;
 }
 
 bool hasFixedVel(const BCsParams& bc)
@@ -1233,7 +1259,7 @@ bool hasFixedVel(const BCsParams& bc)
 
 Real reLength(const TargetParams& target)
 {
-  return 2.0 * target.radius;
+  return 2.0 * target.rad;
 }
 
 BoundarySelector pressureGauge(const Params& prm)
@@ -1245,12 +1271,12 @@ BoundarySelector pressureGauge(const Params& prm)
       return bcSelector(bc);
     }
   }
-  throw std::runtime_error("simulation.bcs must contain a pressure boundary");
+  throw runtime_error("simulation.bcs must contain a pressure boundary");
 }
 
-std::vector<BoundarySelector> fixedVelocityBcs(const Params& prm)
+Vector<BoundarySelector> fixedVelocityBcs(const Params& prm)
 {
-  std::vector<BoundarySelector> selectors;
+  Vector<BoundarySelector> selectors;
   for (const auto& bc : prm.fwd.bcs)
   {
     if (matches(prm.inv.ctr, bc) || !hasFixedVel(bc))
@@ -1273,7 +1299,7 @@ const BCsParams& controlBoundary(const Params& prm)
       return bc;
     }
   }
-  throw std::runtime_error("inverse.ctr did not match any simulation.bcs");
+  throw runtime_error("inverse.ctr did not match any simulation.bcs");
 }
 
 const TargetParams& controlTarget(const Params& prm)
@@ -1281,7 +1307,7 @@ const TargetParams& controlTarget(const Params& prm)
   const BCsParams& bc = controlBoundary(prm);
   if (!bc.vel)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverse.ctr must refer to a simulation.bcs entry with velocity");
   }
   return *bc.vel;
@@ -1301,7 +1327,7 @@ FluidParams fluidParams(const Params& prm)
 
   const TargetParams& target = controlTarget(prm);
   fluid.mu                   = config.rho * target.bulk_speed * reLength(target)
-                               / *config.Re;
+             / *config.Re;
   return fluid;
 }
 

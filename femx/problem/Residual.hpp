@@ -11,9 +11,9 @@ namespace problem
 
 struct Dimensions
 {
-  Index num_states    = 0;
-  Index num_params    = 0;
-  Index num_residuals = 0;
+  Index nst  = 0;
+  Index nprm = 0;
+  Index nres = 0;
 };
 
 class Residual
@@ -21,11 +21,11 @@ class Residual
 public:
   virtual ~Residual() = default;
 
-  virtual Dimensions dimensions() const = 0;
+  virtual Dimensions dims() const = 0;
 
-  virtual void residual(const Vector<Real>& state,
-                        const Vector<Real>& prm,
-                        Vector<Real>&       out) const = 0;
+  virtual void res(const Vector<Real>& state,
+                   const Vector<Real>& prm,
+                   Vector<Real>&       out) const = 0;
 
   virtual void linearize(const Vector<Real>& state,
                          const Vector<Real>& prm,

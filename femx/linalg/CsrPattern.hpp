@@ -46,15 +46,15 @@ private:
   Index num_cols_{0};
   Index nnz_{0};
 
-  Index num_elems_{0};
+  Index ne_{0};
   Index num_coo_entries_{0};
 
-  std::vector<Index> row_ptr_;
-  std::vector<Index> col_ind_;
-  std::vector<Index> map_to_csr_;
+  Vector<Index> row_ptr_;
+  Vector<Index> col_ind_;
+  Vector<Index> map_to_csr_;
 
-  std::vector<Index> elem_coo_offsets_;
-  std::vector<Index> elem_num_dofs_;
+  Vector<Index> elem_coo_offsets_;
+  Vector<Index> elem_num_dofs_;
 };
 
 } // namespace femx

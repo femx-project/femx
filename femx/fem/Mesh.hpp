@@ -4,10 +4,10 @@
 #include <map>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/Cell.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -26,12 +26,12 @@ public:
 
   struct BoundaryFacet
   {
-    Index              dim          = 0;
-    Index              entity_tag   = 0;
-    Index              physical_tag = 0;
-    std::string        physical_name;
-    Cell::Shape        shape = Cell::Shape::Unknown;
-    std::vector<Index> node_ids;
+    Index         dim        = 0;
+    Index         entity_tag = 0;
+    Index         ptag       = 0;
+    std::string   pname;
+    Cell::Shape   shape = Cell::Shape::Unknown;
+    Vector<Index> nids;
   };
 
   Mesh() = default;
@@ -55,35 +55,35 @@ public:
 
   Index numNodes() const noexcept
   {
-    return static_cast<Index>(nodes_.size());
+    return nodes_.size();
   }
 
   Index numElems() const noexcept
   {
-    return static_cast<Index>(cells_.size());
+    return cells_.size();
   }
 
-  const std::vector<Cell>& cells() const noexcept
+  const Vector<Cell>& cells() const noexcept
   {
     return cells_;
   }
 
   const Cell& cell(Index ic) const
   {
-    return cells_[static_cast<std::size_t>(ic)];
+    return cells_[ic];
   }
 
-  const std::vector<BoundaryFacet>& boundaryFacets() const noexcept
+  const Vector<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;
   }
 
-  std::vector<BoundaryFacet> boundaryFacets(const std::string& physical_name) const
+  Vector<BoundaryFacet> boundaryFacets(const std::string& pname) const
   {
-    std::vector<BoundaryFacet> facets;
+    Vector<BoundaryFacet> facets;
     for (const auto& facet : boundary_facets_)
     {
-      if (facet.physical_name == physical_name)
+      if (facet.pname == pname)
       {
         facets.push_back(facet);
       }
@@ -109,12 +109,12 @@ public:
 
   const Node& node(Index in) const
   {
-    return nodes_[static_cast<std::size_t>(in)];
+    return nodes_[in];
   }
 
   const Index* cellNodeIds(Index ic) const
   {
-    return cells_[static_cast<std::size_t>(ic)].nodeIdsData();
+    return cells_[ic].nodeIdsData();
   }
 
   void addNode(const Node& node)
@@ -122,31 +122,31 @@ public:
     nodes_.push_back(node);
   }
 
-  void addCell(const std::vector<Index>& node_ids)
+  void addCell(const Vector<Index>& nids)
   {
-    addCell(node_ids, Cell::Shape::Unknown, dim_, 0, 0, {});
+    addCell(nids, Cell::Shape::Unknown, dim_, 0, 0, {});
   }
 
-  void addCell(const std::vector<Index>& node_ids,
-               Cell::Shape               shape,
-               Index                     entity_dim,
-               Index                     entity_tag,
-               Index                     physical_tag,
-               std::string               physical_name)
+  void addCell(const Vector<Index>& nids,
+               Cell::Shape          shape,
+               Index                edim,
+               Index                entity_tag,
+               Index                ptag,
+               std::string          pname)
   {
-    std::vector<Node> cell_nodes;
-    cell_nodes.reserve(node_ids.size());
-    for (Index in : node_ids)
+    Vector<Node> cn;
+    cn.reserve(nids.size());
+    for (Index in : nids)
     {
-      cell_nodes.push_back(node(in));
+      cn.push_back(node(in));
     }
-    cells_.emplace_back(node_ids,
-                        std::move(cell_nodes),
+    cells_.emplace_back(nids,
+                        std::move(cn),
                         shape,
-                        entity_dim,
+                        edim,
                         entity_tag,
-                        physical_tag,
-                        std::move(physical_name));
+                        ptag,
+                        std::move(pname));
   }
 
   void addBoundaryFacet(BoundaryFacet facet)
@@ -162,10 +162,10 @@ public:
   }
 
 private:
-  Index                      dim_{0};
-  std::vector<Node>          nodes_;
-  std::vector<Cell>          cells_;
-  std::vector<BoundaryFacet> boundary_facets_;
+  Index                 dim_{0};
+  Vector<Node>          nodes_;
+  Vector<Cell>          cells_;
+  Vector<BoundaryFacet> boundary_facets_;
   std::map<std::pair<Index, Index>, std::string>
       physical_names_;
 };

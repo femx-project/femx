@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -12,7 +11,7 @@ class CsrPattern;
 class SparseMatrix
 {
 public:
-  explicit SparseMatrix(const CsrPattern& pattern);
+  explicit SparseMatrix(const CsrPattern& pat);
 
   void setZero();
 
@@ -20,7 +19,7 @@ public:
   Index cols() const;
   Index nnz() const;
 
-  const CsrPattern& pattern() const;
+  const CsrPattern& pat() const;
 
   const Index* rowPtrData() const;
   const Index* colIndData() const;
@@ -29,7 +28,7 @@ public:
 
 private:
   const CsrPattern* pattern_{nullptr};
-  std::vector<Real> values_;
+  Vector<Real>      vals_;
 };
 
 } // namespace femx

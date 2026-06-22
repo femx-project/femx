@@ -47,7 +47,7 @@ public:
 
   /** @brief Create a ReSolve linear solver with explicit options. */
   ReSolveLinearSolver(WorkspaceType  workspace_type,
-                      ReSolveOptions options);
+                      ReSolveOptions opts);
 
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;

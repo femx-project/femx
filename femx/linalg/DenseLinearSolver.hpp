@@ -1,11 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -29,18 +27,14 @@ public:
 private:
   void sample(const LinearOperator& op,
               bool                  transpose,
-              std::vector<Real>&    mat) const;
+              Vector<Real>&         mat) const;
 
-  void solveDense(std::vector<Real>   mat,
+  void solveDense(Vector<Real>        mat,
                   const Vector<Real>& rhs,
                   Vector<Real>&       out,
                   Index               size) const;
 
-  static std::size_t entry(Index row,
-                           Index col,
-                           Index size);
-
-  static void resize(Vector<Real>& out, Index size);
+  static Index entry(Index row, Index col, Index size);
 
 private:
   Real pivot_tolerance_{1.0e-14};

@@ -8,6 +8,8 @@
 #include <femx/linalg/petsc/PETScVectorBuilder.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
+using namespace std;
+
 namespace femx
 {
 namespace linalg
@@ -112,14 +114,14 @@ public:
     }
   }
 
-  KspOptions& options()
+  KspOptions& opts()
   {
-    return options_;
+    return opts_;
   }
 
-  const KspOptions& options() const
+  const KspOptions& opts() const
   {
-    return options_;
+    return opts_;
   }
 
   void solve(const LinearOperator& op,
@@ -180,11 +182,11 @@ private:
 
     if (op.numRows() != op.numCols())
     {
-      throw std::runtime_error("KspLinearSolver requires a square operator");
+      throw runtime_error("KspLinearSolver requires a square operator");
     }
     if (rhs.size() != op.numRows())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "KspLinearSolver received inconsistent rhs size");
     }
 
@@ -192,8 +194,8 @@ private:
 
     const PetscInt size = static_cast<PetscInt>(op.numRows());
 
-    ShellContext context;
-    context.op = &op;
+    ShellContext ctx;
+    ctx.op = &op;
 
     ScopedVec rhs_vec;
     ScopedVec out_vec;
@@ -205,7 +207,7 @@ private:
     check(detail::copyToPETSc(rhs, rhs_vec.get()), "copyToPETSc");
     setInitialGuess(out_vec.get(), out, op.numRows());
 
-    Mat mat = matrixForOperator(op, context, shell, size);
+    Mat mat = matrixForOperator(op, ctx, shell, size);
 
     check(KSPCreate(PETSC_COMM_SELF, ksp.put()), "KSPCreate");
     configureKsp(ksp.get());
@@ -234,12 +236,12 @@ private:
   {
     if (op.numRows() != op.numCols())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "KspLinearSolver requires a square PETSc matrix");
     }
     if (rhs.size() != op.numRows())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "KspLinearSolver received inconsistent rhs size");
     }
 
@@ -281,7 +283,7 @@ private:
   {
     if (op.numRows() != op.numCols())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "KspLinearSolver requires a square PETSc matrix");
     }
 
@@ -289,7 +291,7 @@ private:
     const Index out_size = transpose ? op.numRows() : op.numCols();
     if (rhs.size() != rhs_size || out.size() != out_size)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "KspLinearSolver received incompatible PETSc vectors");
     }
 
@@ -316,7 +318,7 @@ private:
   }
 
   static Mat matrixForOperator(const LinearOperator& op,
-                               ShellContext&         context,
+                               ShellContext&         ctx,
                                ScopedMat&            shell,
                                PetscInt              size)
   {
@@ -331,7 +333,7 @@ private:
                          size,
                          size,
                          size,
-                         &context,
+                         &ctx,
                          shell.put()),
           "MatCreateShell");
     check(MatShellSetOperation(shell.get(),
@@ -352,10 +354,10 @@ private:
   {
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
-    const PetscInt local_size = comm_size == 1 ? size : PETSC_DECIDE;
+    const PetscInt nloc = comm_size == 1 ? size : PETSC_DECIDE;
 
     check(VecCreate(comm, vec.put()), "VecCreate");
-    check(VecSetSizes(vec.get(), local_size, size), "VecSetSizes");
+    check(VecSetSizes(vec.get(), nloc, size), "VecSetSizes");
     check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
   }
 
@@ -363,7 +365,7 @@ private:
                        const Vector<Real>& guess,
                        Index               size)
   {
-    if (options_.nonzero_guess && guess.size() == size)
+    if (opts_.nonzero_guess && guess.size() == size)
     {
       check(detail::copyToPETSc(guess, vec), "copyToPETSc");
       return;
@@ -373,18 +375,18 @@ private:
 
   static PetscErrorCode matMult(Mat shell, Vec x, Vec y)
   {
-    ShellContext* context = nullptr;
-    PetscCall(MatShellGetContext(shell, &context));
-    if (context == nullptr || context->op == nullptr)
+    ShellContext* ctx = nullptr;
+    PetscCall(MatShellGetContext(shell, &ctx));
+    if (ctx == nullptr || ctx->op == nullptr)
     {
       return PETSC_ERR_ARG_NULL;
     }
 
     try
     {
-      PetscCall(detail::copyFromPETSc(x, context->input));
-      context->op->apply(context->input, context->output);
-      PetscCall(detail::copyToPETSc(context->output, y));
+      PetscCall(detail::copyFromPETSc(x, ctx->input));
+      ctx->op->apply(ctx->input, ctx->output);
+      PetscCall(detail::copyToPETSc(ctx->output, y));
     }
     catch (...)
     {
@@ -396,18 +398,18 @@ private:
 
   static PetscErrorCode matMultTranspose(Mat shell, Vec x, Vec y)
   {
-    ShellContext* context = nullptr;
-    PetscCall(MatShellGetContext(shell, &context));
-    if (context == nullptr || context->op == nullptr)
+    ShellContext* ctx = nullptr;
+    PetscCall(MatShellGetContext(shell, &ctx));
+    if (ctx == nullptr || ctx->op == nullptr)
     {
       return PETSC_ERR_ARG_NULL;
     }
 
     try
     {
-      PetscCall(detail::copyFromPETSc(x, context->input));
-      context->op->applyT(context->input, context->output);
-      PetscCall(detail::copyToPETSc(context->output, y));
+      PetscCall(detail::copyFromPETSc(x, ctx->input));
+      ctx->op->applyT(ctx->input, ctx->output);
+      PetscCall(detail::copyToPETSc(ctx->output, y));
     }
     catch (...)
     {
@@ -421,7 +423,7 @@ private:
   {
     if (ierr != PETSC_SUCCESS)
     {
-      throw std::runtime_error(std::string(operation) + " failed");
+      throw runtime_error(string(operation) + " failed");
     }
   }
 
@@ -429,7 +431,7 @@ private:
   {
     if (ierr != MPI_SUCCESS)
     {
-      throw std::runtime_error(std::string(operation) + " failed");
+      throw runtime_error(string(operation) + " failed");
     }
   }
 
@@ -439,20 +441,20 @@ private:
     check(PetscInitialized(&initialized), "PetscInitialized");
     if (initialized != PETSC_TRUE)
     {
-      throw std::runtime_error("KspLinearSolver requires initialized PETSc");
+      throw runtime_error("KspLinearSolver requires initialized PETSc");
     }
   }
 
-  static void checkSameComm(MPI_Comm    expected,
+  static void checkSameComm(MPI_Comm    exp,
                             MPI_Comm    actual,
                             const char* object)
   {
     int result = MPI_UNEQUAL;
-    if (MPI_Comm_compare(expected, actual, &result) != MPI_SUCCESS
+    if (MPI_Comm_compare(exp, actual, &result) != MPI_SUCCESS
         || (result != MPI_IDENT && result != MPI_CONGRUENT))
     {
-      throw std::runtime_error(
-          std::string("KspLinearSolver communicator mismatch for ") + object);
+      throw runtime_error(
+          string("KspLinearSolver communicator mismatch for ") + object);
     }
   }
 
@@ -467,30 +469,30 @@ private:
 
   void configureKsp(KSP ksp) const
   {
-    check(KSPSetType(ksp, options_.type.c_str()), "KSPSetType");
-    if (options_.restart > 0
-        && (options_.type == KSPGMRES || options_.type == KSPFGMRES))
+    check(KSPSetType(ksp, opts_.type.c_str()), "KSPSetType");
+    if (opts_.restart > 0
+        && (opts_.type == KSPGMRES || opts_.type == KSPFGMRES))
     {
       check(KSPGMRESSetRestart(ksp,
-                               static_cast<PetscInt>(options_.restart)),
+                               static_cast<PetscInt>(opts_.restart)),
             "KSPGMRESSetRestart");
     }
 
     PC pc = nullptr;
     check(KSPGetPC(ksp, &pc), "KSPGetPC");
-    check(PCSetType(pc, options_.pc_type.c_str()), "PCSetType");
+    check(PCSetType(pc, opts_.pc_type.c_str()), "PCSetType");
     check(KSPSetTolerances(
               ksp,
-              static_cast<PetscReal>(options_.rtol),
-              static_cast<PetscReal>(options_.atol),
-              static_cast<PetscReal>(options_.dtol),
-              static_cast<PetscInt>(options_.max_its)),
+              static_cast<PetscReal>(opts_.rtol),
+              static_cast<PetscReal>(opts_.atol),
+              static_cast<PetscReal>(opts_.dtol),
+              static_cast<PetscInt>(opts_.max_its)),
           "KSPSetTolerances");
     check(KSPSetInitialGuessNonzero(
               ksp,
-              options_.nonzero_guess ? PETSC_TRUE : PETSC_FALSE),
+              opts_.nonzero_guess ? PETSC_TRUE : PETSC_FALSE),
           "KSPSetInitialGuessNonzero");
-    if (options_.use_opts_db)
+    if (opts_.use_opts_db)
     {
       check(KSPSetFromOptions(ksp), "KSPSetFromOptions");
     }
@@ -510,34 +512,34 @@ private:
   {
     if (static_cast<int>(last_reason_) <= 0)
     {
-      throw std::runtime_error("KspLinearSolver failed to converge");
+      throw runtime_error("KspLinearSolver failed to converge");
     }
   }
 
 private:
   MPI_Comm           comm_{PETSC_COMM_SELF};
   KSP                ksp_{nullptr};
-  KspOptions         options_;
+  KspOptions         opts_;
   KSPConvergedReason last_reason_{KSP_CONVERGED_ITERATING};
   PetscInt           last_its_{0};
   PetscReal          last_rnorm_{0.0};
 };
 
 KspLinearSolver::KspLinearSolver(MPI_Comm comm)
-  : impl_(std::make_unique<Impl>(comm))
+  : impl_(make_unique<Impl>(comm))
 {
 }
 
 KspLinearSolver::~KspLinearSolver() = default;
 
-KspOptions& KspLinearSolver::options()
+KspOptions& KspLinearSolver::opts()
 {
-  return impl_->options();
+  return impl_->opts();
 }
 
-const KspOptions& KspLinearSolver::options() const
+const KspOptions& KspLinearSolver::opts() const
 {
-  return impl_->options();
+  return impl_->opts();
 }
 
 void KspLinearSolver::solve(const LinearOperator& op,

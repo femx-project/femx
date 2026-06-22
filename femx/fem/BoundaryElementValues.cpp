@@ -3,12 +3,14 @@
 
 #include <femx/fem/BoundaryElementValues.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
 BoundaryElementValues::BoundaryElementValues(const GaussQuadrature& quad)
   : quad_(&quad),
-    num_qp_(quad.size())
+    nq_(quad.size())
 {
 }
 
@@ -26,14 +28,14 @@ void BoundaryElementValues::reinit(const Mesh&                mesh,
     return;
 
   default:
-    throw std::runtime_error(
+    throw runtime_error(
         "BoundaryElementValues supports segment and triangle facets only");
   }
 }
 
 Index BoundaryElementValues::numNodes() const
 {
-  return num_nodes_;
+  return nn_;
 }
 
 Index BoundaryElementValues::dim() const
@@ -43,45 +45,43 @@ Index BoundaryElementValues::dim() const
 
 Index BoundaryElementValues::numQuadraturePoints() const
 {
-  return num_qp_;
+  return nq_;
 }
 
 VectorView<const Real> BoundaryElementValues::N(Index iq) const
 {
-  return VectorView<const Real>(
-      N_.data() + static_cast<std::size_t>(iq * num_nodes_), num_nodes_);
+  return VectorView<const Real>(N_.data() + iq * nn_, nn_);
 }
 
 VectorView<const Real> BoundaryElementValues::point(Index iq) const
 {
-  return VectorView<const Real>(
-      points_.data() + static_cast<std::size_t>(iq * dim_), dim_);
+  return VectorView<const Real>(pts_.data() + iq * dim_, dim_);
 }
 
-VectorView<const Real> BoundaryElementValues::normal(Index iq) const
+VectorView<const Real> BoundaryElementValues::nrm(Index iq) const
 {
   return VectorView<const Real>(
-      normals_.data() + static_cast<std::size_t>(iq * dim_), dim_);
+      normals_.data() + iq * dim_, dim_);
 }
 
-Real BoundaryElementValues::point(Index iq, Index component) const
+Real BoundaryElementValues::point(Index iq, Index comp) const
 {
-  return points_[static_cast<std::size_t>(iq * dim_ + component)];
+  return pts_[iq * dim_ + comp];
 }
 
-Real BoundaryElementValues::normal(Index iq, Index component) const
+Real BoundaryElementValues::nrm(Index iq, Index comp) const
 {
-  return normals_[static_cast<std::size_t>(iq * dim_ + component)];
+  return normals_[iq * dim_ + comp];
 }
 
-Real BoundaryElementValues::weight(Index iq) const
+Real BoundaryElementValues::wt(Index iq) const
 {
-  return weights_[static_cast<std::size_t>(iq)];
+  return wts_[iq];
 }
 
 Real BoundaryElementValues::JxW(Index iq) const
 {
-  return JxW_[static_cast<std::size_t>(iq)];
+  return JxW_[iq];
 }
 
 const Real* BoundaryElementValues::NData() const
@@ -91,7 +91,7 @@ const Real* BoundaryElementValues::NData() const
 
 const Real* BoundaryElementValues::pointData() const
 {
-  return points_.data();
+  return pts_.data();
 }
 
 const Real* BoundaryElementValues::normalData() const
@@ -101,7 +101,7 @@ const Real* BoundaryElementValues::normalData() const
 
 const Real* BoundaryElementValues::weightData() const
 {
-  return weights_.data();
+  return wts_.data();
 }
 
 const Real* BoundaryElementValues::JxWData() const
@@ -113,22 +113,22 @@ void BoundaryElementValues::reinitSegment(const Mesh&                mesh,
                                           const Mesh::BoundaryFacet& facet)
 {
   if (quad_->referenceElement() != ReferenceElement::Segment
-      || facet.node_ids.size() != 2)
+      || facet.nids.size() != 2)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "BoundaryElementValues segment facet requires segment quadrature and two nodes");
   }
 
-  num_nodes_ = 2;
-  dim_       = mesh.dim();
-  N_.assign(static_cast<std::size_t>(num_qp_ * num_nodes_), 0.0);
-  points_.assign(static_cast<std::size_t>(num_qp_ * dim_), 0.0);
-  normals_.assign(static_cast<std::size_t>(num_qp_ * dim_), 0.0);
-  weights_.assign(static_cast<std::size_t>(num_qp_), 0.0);
-  JxW_.assign(static_cast<std::size_t>(num_qp_), 0.0);
+  nn_  = 2;
+  dim_ = mesh.dim();
+  N_.assign(nq_ * nn_, 0.0);
+  pts_.assign(nq_ * dim_, 0.0);
+  normals_.assign(nq_ * dim_, 0.0);
+  wts_.assign(nq_, 0.0);
+  JxW_.assign(nq_, 0.0);
 
-  const auto& x0 = mesh.node(facet.node_ids[0]);
-  const auto& x1 = mesh.node(facet.node_ids[1]);
+  const auto& x0 = mesh.node(facet.nids[0]);
+  const auto& x1 = mesh.node(facet.nids[1]);
 
   const Real tx     = x1[0] - x0[0];
   const Real ty     = x1[1] - x0[1];
@@ -136,34 +136,31 @@ void BoundaryElementValues::reinitSegment(const Mesh&                mesh,
   const Real length = norm3(tx, ty, tz);
   if (length <= 0.0)
   {
-    throw std::runtime_error("BoundaryElementValues segment has zero length");
+    throw runtime_error("BoundaryElementValues segment has zero length");
   }
 
-  for (Index iq = 0; iq < num_qp_; ++iq)
+  for (Index iq = 0; iq < nq_; ++iq)
   {
     const QuadraturePoint& qp = (*quad_)[iq];
     const Real             n0 = 0.5 * (1.0 - qp[0]);
     const Real             n1 = 0.5 * (1.0 + qp[0]);
 
-    N_[static_cast<std::size_t>(iq * num_nodes_)]     = n0;
-    N_[static_cast<std::size_t>(iq * num_nodes_ + 1)] = n1;
+    N_[iq * nn_]     = n0;
+    N_[iq * nn_ + 1] = n1;
 
     for (Index d = 0; d < dim_; ++d)
     {
-      points_[static_cast<std::size_t>(iq * dim_ + d)] =
-          n0 * x0[d] + n1 * x1[d];
+      pts_[iq * dim_ + d] = n0 * x0[d] + n1 * x1[d];
     }
 
     if (dim_ == 2)
     {
-      normals_[static_cast<std::size_t>(iq * dim_)] =
-          ty / length;
-      normals_[static_cast<std::size_t>(iq * dim_ + 1)] =
-          -tx / length;
+      normals_[iq * dim_]     = ty / length;
+      normals_[iq * dim_ + 1] = -tx / length;
     }
 
-    weights_[static_cast<std::size_t>(iq)] = qp.weight;
-    JxW_[static_cast<std::size_t>(iq)]     = 0.5 * length * qp.weight;
+    wts_[iq] = qp.wt;
+    JxW_[iq] = 0.5 * length * qp.wt;
   }
 }
 
@@ -171,23 +168,23 @@ void BoundaryElementValues::reinitTriangle(const Mesh&                mesh,
                                            const Mesh::BoundaryFacet& facet)
 {
   if (quad_->referenceElement() != ReferenceElement::Triangle
-      || facet.node_ids.size() != 3 || mesh.dim() != 3)
+      || facet.nids.size() != 3 || mesh.dim() != 3)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "BoundaryElementValues triangle facet requires triangle quadrature, three nodes, and a 3D mesh");
   }
 
-  num_nodes_ = 3;
-  dim_       = mesh.dim();
-  N_.assign(static_cast<std::size_t>(num_qp_ * num_nodes_), 0.0);
-  points_.assign(static_cast<std::size_t>(num_qp_ * dim_), 0.0);
-  normals_.assign(static_cast<std::size_t>(num_qp_ * dim_), 0.0);
-  weights_.assign(static_cast<std::size_t>(num_qp_), 0.0);
-  JxW_.assign(static_cast<std::size_t>(num_qp_), 0.0);
+  nn_  = 3;
+  dim_ = mesh.dim();
+  N_.assign(nq_ * nn_, 0.0);
+  pts_.assign(nq_ * dim_, 0.0);
+  normals_.assign(nq_ * dim_, 0.0);
+  wts_.assign(nq_, 0.0);
+  JxW_.assign(nq_, 0.0);
 
-  const auto& x0 = mesh.node(facet.node_ids[0]);
-  const auto& x1 = mesh.node(facet.node_ids[1]);
-  const auto& x2 = mesh.node(facet.node_ids[2]);
+  const auto& x0 = mesh.node(facet.nids[0]);
+  const auto& x1 = mesh.node(facet.nids[1]);
+  const auto& x2 = mesh.node(facet.nids[2]);
 
   const Real e1x = x1[0] - x0[0];
   const Real e1y = x1[1] - x0[1];
@@ -202,32 +199,31 @@ void BoundaryElementValues::reinitTriangle(const Mesh&                mesh,
   const Real jac_s = norm3(nx, ny, nz);
   if (jac_s <= 0.0)
   {
-    throw std::runtime_error("BoundaryElementValues triangle has zero area");
+    throw runtime_error("BoundaryElementValues triangle has zero area");
   }
 
-  for (Index iq = 0; iq < num_qp_; ++iq)
+  for (Index iq = 0; iq < nq_; ++iq)
   {
     const QuadraturePoint& qp = (*quad_)[iq];
     const Real             n0 = 1.0 - qp[0] - qp[1];
     const Real             n1 = qp[0];
     const Real             n2 = qp[1];
 
-    N_[static_cast<std::size_t>(iq * num_nodes_)]     = n0;
-    N_[static_cast<std::size_t>(iq * num_nodes_ + 1)] = n1;
-    N_[static_cast<std::size_t>(iq * num_nodes_ + 2)] = n2;
+    N_[iq * nn_]     = n0;
+    N_[iq * nn_ + 1] = n1;
+    N_[iq * nn_ + 2] = n2;
 
     for (Index d = 0; d < dim_; ++d)
     {
-      points_[static_cast<std::size_t>(iq * dim_ + d)] =
-          n0 * x0[d] + n1 * x1[d] + n2 * x2[d];
+      pts_[iq * dim_ + d] = n0 * x0[d] + n1 * x1[d] + n2 * x2[d];
     }
 
-    normals_[static_cast<std::size_t>(iq * dim_)]     = nx / jac_s;
-    normals_[static_cast<std::size_t>(iq * dim_ + 1)] = ny / jac_s;
-    normals_[static_cast<std::size_t>(iq * dim_ + 2)] = nz / jac_s;
+    normals_[iq * dim_]     = nx / jac_s;
+    normals_[iq * dim_ + 1] = ny / jac_s;
+    normals_[iq * dim_ + 2] = nz / jac_s;
 
-    weights_[static_cast<std::size_t>(iq)] = qp.weight;
-    JxW_[static_cast<std::size_t>(iq)]     = jac_s * qp.weight;
+    wts_[iq] = qp.wt;
+    JxW_[iq] = jac_s * qp.wt;
   }
 }
 
@@ -239,11 +235,11 @@ Cell::Shape BoundaryElementValues::effectiveShape(
     return facet.shape;
   }
 
-  if (facet.node_ids.size() == 2)
+  if (facet.nids.size() == 2)
   {
     return Cell::Shape::Segment;
   }
-  if (facet.node_ids.size() == 3)
+  if (facet.nids.size() == 3)
   {
     return Cell::Shape::Triangle;
   }
@@ -253,7 +249,7 @@ Cell::Shape BoundaryElementValues::effectiveShape(
 
 Real BoundaryElementValues::norm3(Real x, Real y, Real z)
 {
-  return std::sqrt(x * x + y * y + z * z);
+  return sqrt(x * x + y * y + z * z);
 }
 
 } // namespace femx

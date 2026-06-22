@@ -2,6 +2,8 @@
 
 #include <femx/fem/Mesh.hpp>
 
+using namespace std;
+
 namespace femx
 {
 

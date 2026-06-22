@@ -2,21 +2,24 @@
 
 #include <femx/problem/SumTimeObjective.hpp>
 
+using namespace std;
+using namespace femx::state;
+
 namespace femx
 {
 namespace problem
 {
 
-SumTimeObjective::SumTimeObjective(Index num_steps,
-                                   Index num_states,
-                                   Index num_prm)
-  : num_steps_(num_steps),
-    num_states_(num_states),
-    num_prm_(num_prm)
+SumTimeObjective::SumTimeObjective(Index nt,
+                                   Index nst,
+                                   Index nprm)
+  : nt_(nt),
+    nst_(nst),
+    nprm_(nprm)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_prm_ < 0)
+  if (nt_ < 0 || nst_ < 0 || nprm_ < 0)
   {
-    throw std::runtime_error("SumTimeObjective received invalid dimensions");
+    throw runtime_error("SumTimeObjective received invalid dimensions");
   }
 }
 
@@ -25,7 +28,7 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
   if (term.numSteps() != numSteps() || term.numStates() != numStates()
       || term.numParams() != numParams())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "SumTimeObjective received term with inconsistent dimensions");
   }
   terms_.push_back(&term);
@@ -34,21 +37,21 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
 
 Index SumTimeObjective::numSteps() const
 {
-  return num_steps_;
+  return nt_;
 }
 
 Index SumTimeObjective::numStates() const
 {
-  return num_states_;
+  return nst_;
 }
 
 Index SumTimeObjective::numParams() const
 {
-  return num_prm_;
+  return nprm_;
 }
 
-Real SumTimeObjective::value(const solve::TimeTrajectory& tr,
-                             const Vector<Real>& prm) const
+Real SumTimeObjective::value(const TimeTrajectory& tr,
+                             const Vector<Real>&   prm) const
 {
   Real value_out = 0.0;
   for (const TimeObjective* term : terms_)
@@ -58,12 +61,12 @@ Real SumTimeObjective::value(const solve::TimeTrajectory& tr,
   return value_out;
 }
 
-void SumTimeObjective::stateGrad(Index level,
-                                 const solve::TimeTrajectory& tr,
-                                 const Vector<Real>& prm,
-                                 Vector<Real>& out) const
+void SumTimeObjective::stateGrad(Index                 level,
+                                 const TimeTrajectory& tr,
+                                 const Vector<Real>&   prm,
+                                 Vector<Real>&         out) const
 {
-  resize(out, numStates());
+  resizeOrZero(out, numStates());
   Vector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
@@ -72,11 +75,11 @@ void SumTimeObjective::stateGrad(Index level,
   }
 }
 
-void SumTimeObjective::paramGrad(const solve::TimeTrajectory& tr,
-                                 const Vector<Real>& prm,
-                                 Vector<Real>& out) const
+void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
+                                 const Vector<Real>&   prm,
+                                 Vector<Real>&         out) const
 {
-  resize(out, numParams());
+  resizeOrZero(out, numParams());
   Vector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
@@ -85,29 +88,22 @@ void SumTimeObjective::paramGrad(const solve::TimeTrajectory& tr,
   }
 }
 
-void SumTimeObjective::resize(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
 void SumTimeObjective::addInto(const Vector<Real>& input,
-                               Vector<Real>& out,
-                               Index size)
+                               Vector<Real>&       out,
+                               Index               size)
 {
-  if (input.size() != size)
-  {
-    throw std::runtime_error("SumTimeObjective term gradient size mismatch");
-  }
+  checkSize(input, size);
   for (Index i = 0; i < size; ++i)
   {
     out[i] += input[i];
+  }
+}
+
+void SumTimeObjective::checkSize(const Vector<Real>& value, Index exp)
+{
+  if (value.size() != exp)
+  {
+    throw runtime_error("SumTimeObjective vector size mismatch");
   }
 }
 

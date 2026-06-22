@@ -9,30 +9,34 @@
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
 
+using namespace std;
+using namespace femx;
+using namespace femx::fem;
+
 namespace femx::navier
 {
 
-std::unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
+unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
-    throw std::runtime_error("Mesh has no cells");
+    throw runtime_error("Mesh has no cells");
   }
 
   const Cell::Shape shape = mesh.cells().front().shape();
   if (shape == Cell::Shape::Quadrilateral)
   {
-    return std::make_unique<LagrangeQuadQ1>();
+    return make_unique<LagrangeQuadQ1>();
   }
   if (shape == Cell::Shape::Triangle)
   {
-    return std::make_unique<LagrangeTriangleP1>();
+    return make_unique<LagrangeTriangleP1>();
   }
   if (shape == Cell::Shape::Tetrahedron)
   {
-    return std::make_unique<LagrangeTetrahedronP1>();
+    return make_unique<LagrangeTetrahedronP1>();
   }
-  throw std::runtime_error("Unsupported mesh cell type for Navier app");
+  throw runtime_error("Unsupported mesh cell type for Navier app");
 }
 
 MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem)
@@ -47,24 +51,24 @@ MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem)
   return space;
 }
 
-Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& selector)
+Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& sel)
 {
-  if (!selector.name.empty())
+  if (!sel.name.empty())
   {
-    return fem::boundaryCenter(mesh, selector.name);
+    return boundaryCenter(mesh, sel.name);
   }
-  return fem::boundaryCenter(mesh, selector.physical);
+  return boundaryCenter(mesh, sel.physical);
 }
 
 Vector<Index> gaugeDofs(const MixedFESpace&     space,
-                        const BoundarySelector& selector)
+                        const BoundarySelector& sel)
 {
   Index      node_out = 0;
   Real       dist_out = 0.0;
-  const auto center   = selectorCenter(space.mesh(), selector);
+  const auto cen      = selectorCenter(space.mesh(), sel);
   for (Index node = 0; node < space.mesh().numNodes(); ++node)
   {
-    const Real dist = sqDist(space.mesh().node(node), center);
+    const Real dist = sqDist(space.mesh().node(node), cen);
     if (node == 0 || dist < dist_out)
     {
       node_out = node;
@@ -79,13 +83,13 @@ Vector<Index> gaugeDofs(const MixedFESpace&     space,
 
 DirichletControl makeVelocityControl(
     const MixedFESpace&     space,
-    const BoundarySelector& selector)
+    const BoundarySelector& sel)
 {
-  if (!selector.name.empty())
+  if (!sel.name.empty())
   {
-    return femx::makeVelocityControl(space, selector.name);
+    return makeVelocityControl(space, sel.name);
   }
-  return femx::makeVelocityControl(space, selector.physical);
+  return makeVelocityControl(space, sel.physical);
 }
 
 } // namespace femx::navier

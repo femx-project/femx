@@ -6,7 +6,6 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "Config.hpp"
 #include <NavierKernel.hpp>
@@ -22,10 +21,11 @@
 
 namespace femx
 {
-namespace solve
+namespace state
 {
 class TimeTrajectory;
-}
+class TimeLinearStateSolver;
+} // namespace state
 
 struct AppOptions
 {
@@ -37,7 +37,7 @@ struct AppOptions
 
 struct BuildInfo
 {
-  std::vector<std::pair<std::string, std::string>> entries;
+  Vector<std::pair<std::string, std::string>> entries;
 };
 
 struct Snapshot
@@ -52,7 +52,7 @@ struct Snapshot
 struct FixedBoundaryValues
 {
   Vector<Index> dofs;
-  Vector<Real>  values;
+  Vector<Real>  vals;
 };
 
 struct ForwardProblem
@@ -74,10 +74,16 @@ struct ForwardProblem
   navier::NavierKernel                   ns;
   assembly::TimeFEMResidual              fem;
   FixedBoundaryValues                    fixed;
-  assembly::TimeDirichletControlResidual eq;
+  assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pattern;
+  CsrPattern                             pat;
   Vector<Real>                           prm0;
+};
+
+struct ForwardSolveResult
+{
+  Vector<Real>     final_state;
+  Vector<Snapshot> snapshots;
 };
 
 using Clock = std::chrono::high_resolution_clock;
@@ -96,10 +102,10 @@ AppOptions parseAppOptions(int   argc,
                            char* argv[],
                            bool  allow_unknown_options);
 
-void printUsage(std::ostream&                   out,
-                const std::string&              executable,
-                const std::string&              option_suffix = {},
-                const std::vector<std::string>& extra_lines   = {});
+void printUsage(std::ostream&              out,
+                const std::string&         executable,
+                const std::string&         option_suffix = {},
+                const Vector<std::string>& extra_lines   = {});
 
 std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
                                         const std::string& executable);
@@ -107,20 +113,26 @@ std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
 bool isFinite(const Vector<Real>& x);
 
 bool shouldWriteOutput(Index               step,
-                       Index               num_steps,
+                       Index               nt,
                        const OutputParams& prm);
 
 Snapshot makeSnapshot(const MixedFESpace& space,
                       const Vector<Real>& x,
                       Real                time);
 
-void writeOutput(const Mesh&                  mesh,
-                 const OutputParams&          prm,
-                 const std::vector<Snapshot>& snapshots);
+void writeOutput(const Mesh&             mesh,
+                 const OutputParams&     prm,
+                 const Vector<Snapshot>& snapshots);
 
 void writeTrajectoryOutput(const ForwardProblem&        problem,
-                           const solve::TimeTrajectory& tr,
+                           const state::TimeTrajectory& tr,
                            const OutputParams&          prm);
+
+ForwardSolveResult solve(
+    state::TimeLinearStateSolver& state_solver,
+    const ForwardProblem&         problem,
+    const OutputParams&           prm,
+    bool                          collect_output);
 
 void writeBuildInfo(const OutputParams& prm, const BuildInfo& info);
 

@@ -18,24 +18,24 @@ struct KernelFluid
 
 struct LocalElementValues
 {
-  Index       num_qp    = 0;
-  Index       num_nodes = 0;
-  Index       dim       = 0;
-  const Real* N         = nullptr;
-  const Real* dNdx      = nullptr;
-  const Real* JxW       = nullptr;
+  Index       nq   = 0;
+  Index       nn   = 0;
+  Index       dim  = 0;
+  const Real* N    = nullptr;
+  const Real* dNdx = nullptr;
+  const Real* JxW  = nullptr;
 
   Real shape(Index qp, Index node) const
   {
-    return N[qp * num_nodes + node];
+    return N[qp * nn + node];
   }
 
-  Real grad(Index qp, Index node, Index component) const
+  Real grad(Index qp, Index node, Index comp) const
   {
-    return dNdx[(qp * num_nodes + node) * dim + component];
+    return dNdx[(qp * nn + node) * dim + comp];
   }
 
-  Real weight(Index qp) const
+  Real wt(Index qp) const
   {
     return JxW[qp];
   }
@@ -43,23 +43,23 @@ struct LocalElementValues
 
 struct LocalMatrix
 {
-  Index size   = 0;
-  Real* values = nullptr;
+  Index size = 0;
+  Real* vals = nullptr;
 
   Real& operator()(Index row, Index col) const
   {
-    return values[row * size + col];
+    return vals[row * size + col];
   }
 };
 
 struct LocalVector
 {
-  Index size   = 0;
-  Real* values = nullptr;
+  Index size = 0;
+  Real* vals = nullptr;
 
   Real& operator[](Index row) const
   {
-    return values[row];
+    return vals[row];
   }
 };
 
@@ -72,16 +72,17 @@ struct QPState
   Real tau[3]{};
 };
 
-Index vdof(Index node, Index component, Index dim);
-Index pdof(Index node, Index num_nodes, Index dim);
-Index numLocalDofs(Index num_nodes, Index dim);
+Index vdof(Index node, Index comp, Index dim);
+Index pdof(Index node, Index nn, Index dim);
+Index numLocalDofs(Index nn, Index dim);
 
-void zeroLocalSystem(Index num_dofs, LocalMatrix Ke, LocalVector Fe);
+void zeroLocalSystem(Index nd, LocalMatrix Ke, LocalVector Fe);
 
 void updateQpStates(const LocalElementValues& ev,
                     const KernelFluid&        fluid,
                     Real                      dt,
                     const Real*               state,
+                    const Real*               adv_state,
                     QPState*                  qps);
 
 void assembleMassLHS(const LocalElementValues& ev,
@@ -129,8 +130,8 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
                               Real                      dt,
                               LocalVector               Fe);
 
-void finishLocalResidual(Index       num_dofs,
-                         const Real* next_state,
+void finishLocalResidual(Index       nd,
+                         const Real* nxt,
                          LocalMatrix Ke,
                          LocalVector Fe,
                          Real*       out);

@@ -59,15 +59,15 @@ public:
 
   Index numCols() const;
 
-  void initVector(Vector<Real>& out) const;
+  void initVec(Vector<Real>& out) const;
 
-  void initMatrix(linalg::MatrixBuilder& out) const;
+  void initMat(linalg::MatrixBuilder& out) const;
 
-  void addVector(Index ic, const Vector<Real>& local, Vector<Real>& out) const;
+  void addVec(Index ic, const Vector<Real>& local, Vector<Real>& out) const;
 
-  void addMatrix(Index                  ic,
-                 const DenseMatrix&     local,
-                 linalg::MatrixBuilder& out) const;
+  void addMat(Index                  ic,
+              const DenseMatrix&     local,
+              linalg::MatrixBuilder& out) const;
 
 private:
   void checkCellCounts() const;

@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <string>
 #include <utility>
 
 #include <femx/assembly/Assembler.hpp>
@@ -8,6 +7,10 @@
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
 #endif
+
+using namespace std;
+using namespace femx::problem;
+using namespace femx::linalg;
 
 namespace femx
 {
@@ -28,52 +31,89 @@ void allreduce(Vector<Real>& out)
                                  PETSC_COMM_WORLD);
   if (ierr != MPI_SUCCESS)
   {
-    throw std::runtime_error("TimeFEMResidual MPI_Allreduce failed");
+    throw runtime_error("TimeFEMResidual MPI_Allreduce failed");
   }
 }
 #endif
 
+Vector<DofLayout> singleHistoryLayout(DofLayout lyt)
+{
+  Vector<DofLayout> out;
+  out.push_back(std::move(lyt));
+  return out;
+}
+
 } // namespace
 
-TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
+TimeFEMResidual::TimeFEMResidual(Index                    nt,
                                  DofLayout                res_layout,
                                  DofLayout                state_layout,
-                                 const TimeElementKernel& kernel)
-  : TimeFEMResidual(num_steps,
+                                 const TimeElementKernel& ker)
+  : TimeFEMResidual(nt,
                     std::move(res_layout),
-                    state_layout,
+                    singleHistoryLayout(state_layout),
                     std::move(state_layout),
-                    kernel)
+                    ker)
 {
 }
 
-TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
+TimeFEMResidual::TimeFEMResidual(Index                    nt,
                                  DofLayout                res_layout,
                                  DofLayout                prev_state_layout,
                                  DofLayout                next_state_layout,
-                                 const TimeElementKernel& kernel)
-  : num_steps_(num_steps),
+                                 const TimeElementKernel& ker)
+  : TimeFEMResidual(nt,
+                    std::move(res_layout),
+                    singleHistoryLayout(std::move(prev_state_layout)),
+                    std::move(next_state_layout),
+                    ker)
+{
+}
+
+TimeFEMResidual::TimeFEMResidual(
+    Index                    nt,
+    DofLayout                res_layout,
+    Vector<DofLayout>        history_state_layouts,
+    DofLayout                next_state_layout,
+    const TimeElementKernel& ker)
+  : nt_(nt),
     res_layout_(std::move(res_layout)),
-    prev_state_layout_(std::move(prev_state_layout)),
+    history_state_layouts_(std::move(history_state_layouts)),
     next_state_layout_(std::move(next_state_layout)),
-    kernel_(kernel),
+    kernel_(ker),
     cell_end_(res_layout_.numElems())
 {
   checkLayouts();
 }
 
-TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
+TimeFEMResidual::TimeFEMResidual(Index                    nt,
                                  DofLayout                res_layout,
                                  DofLayout                prev_state_layout,
                                  DofLayout                next_state_layout,
                                  DofLayout                param_layout,
-                                 const TimeElementKernel& kernel)
-  : num_steps_(num_steps),
+                                 const TimeElementKernel& ker)
+  : TimeFEMResidual(nt,
+                    std::move(res_layout),
+                    singleHistoryLayout(std::move(prev_state_layout)),
+                    std::move(next_state_layout),
+                    std::move(param_layout),
+                    ker)
+{
+}
+
+TimeFEMResidual::TimeFEMResidual(
+    Index                    nt,
+    DofLayout                res_layout,
+    Vector<DofLayout>        history_state_layouts,
+    DofLayout                next_state_layout,
+    DofLayout                param_layout,
+    const TimeElementKernel& ker)
+  : nt_(nt),
     res_layout_(std::move(res_layout)),
-    prev_state_layout_(std::move(prev_state_layout)),
+    history_state_layouts_(std::move(history_state_layouts)),
     next_state_layout_(std::move(next_state_layout)),
     param_layout_(std::move(param_layout)),
-    kernel_(kernel),
+    kernel_(ker),
     cell_end_(res_layout_.numElems())
 {
   checkLayouts();
@@ -83,45 +123,58 @@ void TimeFEMResidual::setCellRange(Index begin, Index end)
 {
   if (begin < 0 || end < begin || end > numCells())
   {
-    throw std::runtime_error("TimeFEMResidual received invalid cell range");
+    throw runtime_error("TimeFEMResidual received invalid cell range");
   }
 #if !defined(FEMX_HAS_PETSC)
   if (begin != 0 || end != numCells())
   {
-    throw std::runtime_error("TimeFEMResidual cell ranges require PETSc");
+    throw runtime_error("TimeFEMResidual cell ranges require PETSc");
   }
 #endif
   cell_begin_ = begin;
   cell_end_   = end;
 }
 
-problem::TimeDims TimeFEMResidual::dimensions() const
+TimeDims TimeFEMResidual::dims() const
 {
-  return {num_steps_,
+  return {nt_,
           next_state_layout_.numDofs(),
           numParams(),
-          res_layout_.numDofs()};
+          res_layout_.numDofs(),
+          numHistoryStates()};
 }
 
-void TimeFEMResidual::residual(const problem::TimeContext& ctx,
-                               Vector<Real>&               out) const
+void TimeFEMResidual::res(const TimeContext& ctx,
+                          Vector<Real>&      out) const
 {
   checkContext(ctx);
 
-  Assembler assembler(res_layout_);
-  assembler.initVector(out);
+  Assembler assembler(res_layout_, AssemblyMode::Atomic);
+  assembler.initVec(out);
 
-  Vector<Real> prev_e;
-  Vector<Real> next_e;
-  Vector<Real> prm_e;
-  Vector<Real> res_e;
-  for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+#pragma omp parallel
   {
-    gather(prev_state_layout_, *ctx.prev_state, ic, prev_e);
-    gather(next_state_layout_, *ctx.next_state, ic, next_e);
-    prm_e = gatherParam(ic, *ctx.prm);
-    kernel_.res(ctx.step, ic, prev_e, next_e, prm_e, res_e);
-    assembler.addVector(ic, res_e, out);
+    Vector<Real> hst_e;
+    Vector<Real> next_e;
+    Vector<Real> prm_e;
+    Vector<Real> res_e;
+
+#pragma omp for
+    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    {
+      gatherHistory(ctx, ic, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ic, next_e);
+      prm_e = gatherParam(ic, *ctx.prm);
+      kernel_.res(ctx.step,
+                  ic,
+                  TimeHistoryView(hst_e.data(),
+                                  numHistoryStates(),
+                                  next_state_layout_.numDofsPerElem()),
+                  next_e,
+                  prm_e,
+                  res_e);
+      assembler.addVec(ic, res_e, out);
+    }
   }
 
 #if defined(FEMX_HAS_PETSC)
@@ -132,14 +185,14 @@ void TimeFEMResidual::residual(const problem::TimeContext& ctx,
 #endif
 }
 
-void TimeFEMResidual::applyJac(const problem::TimeContext& ctx,
-                                    problem::VariableBlock      wrt,
-                                    const Vector<Real>&         dir,
-                                    Vector<Real>&               out) const
+void TimeFEMResidual::applyJac(const TimeContext&  ctx,
+                               VariableBlock       wrt,
+                               const Vector<Real>& dir,
+                               Vector<Real>&       out) const
 {
   checkContext(ctx);
   checkDirection(wrt, dir);
-  resize(out, dimensions().num_residuals);
+  resizeOrZero(out, dims().nres);
 
   const DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
@@ -147,22 +200,35 @@ void TimeFEMResidual::applyJac(const problem::TimeContext& ctx,
     return;
   }
 
-  Assembler    assembler(res_layout_);
-  Vector<Real> prev_e;
-  Vector<Real> next_e;
-  Vector<Real> prm_e;
-  Vector<Real> dir_e;
-  Vector<Real> res_e;
-  DenseMatrix  jac_e;
-  for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+  Assembler assembler(res_layout_, AssemblyMode::Atomic);
+#pragma omp parallel
   {
-    gather(prev_state_layout_, *ctx.prev_state, ic, prev_e);
-    gather(next_state_layout_, *ctx.next_state, ic, next_e);
-    prm_e = gatherParam(ic, *ctx.prm);
-    gather(*col_layout, dir, ic, dir_e);
-    kernel_.jacobian(ctx.step, ic, wrt, prev_e, next_e, prm_e, jac_e);
-    matVec(jac_e, dir_e, res_e);
-    assembler.addVector(ic, res_e, out);
+    Vector<Real> hst_e;
+    Vector<Real> next_e;
+    Vector<Real> prm_e;
+    Vector<Real> dir_e;
+    Vector<Real> res_e;
+    DenseMatrix  jac_e;
+
+#pragma omp for
+    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    {
+      gatherHistory(ctx, ic, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ic, next_e);
+      prm_e = gatherParam(ic, *ctx.prm);
+      gather(*col_layout, dir, ic, dir_e);
+      kernel_.jacobian(ctx.step,
+                       ic,
+                       wrt,
+                       TimeHistoryView(hst_e.data(),
+                                       numHistoryStates(),
+                                       next_state_layout_.numDofsPerElem()),
+                       next_e,
+                       prm_e,
+                       jac_e);
+      matVec(jac_e, dir_e, res_e);
+      assembler.addVec(ic, res_e, out);
+    }
   }
 
 #if defined(FEMX_HAS_PETSC)
@@ -173,42 +239,55 @@ void TimeFEMResidual::applyJac(const problem::TimeContext& ctx,
 #endif
 }
 
-void TimeFEMResidual::applyJacT(const problem::TimeContext& ctx,
-                                     problem::VariableBlock      wrt,
-                                     const Vector<Real>&         adjoint,
-                                     Vector<Real>&               out) const
+void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
+                                VariableBlock       wrt,
+                                const Vector<Real>& adj,
+                                Vector<Real>&       out) const
 {
   checkContext(ctx);
-  if (adjoint.size() != dimensions().num_residuals)
+  if (adj.size() != dims().nres)
   {
-    throw std::runtime_error("TimeFEMResidual adjoint size mismatch");
+    throw runtime_error("TimeFEMResidual adjoint size mismatch");
   }
 
   const DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
-    resize(out, numParams());
+    resizeOrZero(out, numParams());
     return;
   }
 
-  resize(out, col_layout->numDofs());
+  resizeOrZero(out, col_layout->numDofs());
 
-  Assembler    assembler(*col_layout);
-  Vector<Real> prev_e;
-  Vector<Real> next_e;
-  Vector<Real> prm_e;
-  Vector<Real> adj_e;
-  Vector<Real> col_e;
-  DenseMatrix  jac_e;
-  for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+  Assembler assembler(*col_layout, AssemblyMode::Atomic);
+#pragma omp parallel
   {
-    gather(prev_state_layout_, *ctx.prev_state, ic, prev_e);
-    gather(next_state_layout_, *ctx.next_state, ic, next_e);
-    prm_e = gatherParam(ic, *ctx.prm);
-    gather(res_layout_, adjoint, ic, adj_e);
-    kernel_.jacobian(ctx.step, ic, wrt, prev_e, next_e, prm_e, jac_e);
-    matTVec(jac_e, adj_e, col_e);
-    assembler.addVector(ic, col_e, out);
+    Vector<Real> hst_e;
+    Vector<Real> next_e;
+    Vector<Real> prm_e;
+    Vector<Real> adj_e;
+    Vector<Real> col_e;
+    DenseMatrix  jac_e;
+
+#pragma omp for
+    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    {
+      gatherHistory(ctx, ic, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ic, next_e);
+      prm_e = gatherParam(ic, *ctx.prm);
+      gather(res_layout_, adj, ic, adj_e);
+      kernel_.jacobian(ctx.step,
+                       ic,
+                       wrt,
+                       TimeHistoryView(hst_e.data(),
+                                       numHistoryStates(),
+                                       next_state_layout_.numDofsPerElem()),
+                       next_e,
+                       prm_e,
+                       jac_e);
+      matTVec(jac_e, adj_e, col_e);
+      assembler.addVec(ic, col_e, out);
+    }
   }
 
 #if defined(FEMX_HAS_PETSC)
@@ -219,33 +298,46 @@ void TimeFEMResidual::applyJacT(const problem::TimeContext& ctx,
 #endif
 }
 
-bool TimeFEMResidual::assembleJacobian(const problem::TimeContext& ctx,
-                                       problem::VariableBlock      wrt,
-                                       linalg::MatrixBuilder&     out) const
+bool TimeFEMResidual::assembleJac(const TimeContext& ctx,
+                                  VariableBlock      wrt,
+                                  MatrixBuilder&     out) const
 {
   checkContext(ctx);
   const DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
-    out.resize(dimensions().num_residuals, numParams());
+    out.resize(dims().nres, numParams());
     out.setZero();
     return true;
   }
 
-  Assembler assembler(res_layout_, *col_layout);
-  assembler.initMatrix(out);
+  Assembler assembler(res_layout_, *col_layout, AssemblyMode::Atomic);
+  assembler.initMat(out);
 
-  Vector<Real> prev_e;
-  Vector<Real> next_e;
-  Vector<Real> prm_e;
-  DenseMatrix  jac_e;
-  for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+#pragma omp parallel
   {
-    gather(prev_state_layout_, *ctx.prev_state, ic, prev_e);
-    gather(next_state_layout_, *ctx.next_state, ic, next_e);
-    prm_e = gatherParam(ic, *ctx.prm);
-    kernel_.jacobian(ctx.step, ic, wrt, prev_e, next_e, prm_e, jac_e);
-    assembler.addMatrix(ic, jac_e, out);
+    Vector<Real> hst_e;
+    Vector<Real> next_e;
+    Vector<Real> prm_e;
+    DenseMatrix  jac_e;
+
+#pragma omp for
+    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    {
+      gatherHistory(ctx, ic, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ic, next_e);
+      prm_e = gatherParam(ic, *ctx.prm);
+      kernel_.jacobian(ctx.step,
+                       ic,
+                       wrt,
+                       TimeHistoryView(hst_e.data(),
+                                       numHistoryStates(),
+                                       next_state_layout_.numDofsPerElem()),
+                       next_e,
+                       prm_e,
+                       jac_e);
+      assembler.addMat(ic, jac_e, out);
+    }
   }
   return true;
 }
@@ -260,13 +352,24 @@ Index TimeFEMResidual::numParams() const
   return param_layout_ ? param_layout_->numDofs() : 0;
 }
 
-const DofLayout* TimeFEMResidual::layoutFor(problem::VariableBlock wrt) const
+Index TimeFEMResidual::numHistoryStates() const
 {
-  if (wrt == problem::VariableBlock::PrevState)
+  return history_state_layouts_.size();
+}
+
+const DofLayout* TimeFEMResidual::layoutFor(VariableBlock wrt) const
+{
+  if (wrt.isHistoryState())
   {
-    return &prev_state_layout_;
+    const Index lag = wrt.historyLag();
+    if (lag < 0 || lag >= numHistoryStates())
+    {
+      throw runtime_error(
+          "TimeFEMResidual history lag is out of range");
+    }
+    return &history_state_layouts_[lag];
   }
-  if (wrt == problem::VariableBlock::NextState)
+  if (wrt.isNextState())
   {
     return &next_state_layout_;
   }
@@ -275,55 +378,93 @@ const DofLayout* TimeFEMResidual::layoutFor(problem::VariableBlock wrt) const
 
 void TimeFEMResidual::checkLayouts() const
 {
-  if (num_steps_ < 0)
+  if (nt_ < 0)
   {
-    throw std::runtime_error("TimeFEMResidual received negative step count");
+    throw runtime_error("TimeFEMResidual received negative step count");
   }
-  if (res_layout_.numElems() != prev_state_layout_.numElems()
-      || res_layout_.numElems() != next_state_layout_.numElems()
+  if (history_state_layouts_.empty())
+  {
+    throw runtime_error(
+        "TimeFEMResidual requires at least one history state layout");
+  }
+  if (res_layout_.numElems() != next_state_layout_.numElems()
       || (param_layout_ && res_layout_.numElems() != param_layout_->numElems()))
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimeFEMResidual layouts have different cell counts");
   }
-  if (prev_state_layout_.numDofs() != next_state_layout_.numDofs())
+  for (const DofLayout& lyt : history_state_layouts_)
   {
-    throw std::runtime_error(
-        "TimeFEMResidual previous and next state sizes differ");
+    if (res_layout_.numElems() != lyt.numElems())
+    {
+      throw runtime_error(
+          "TimeFEMResidual layouts have different cell counts");
+    }
+    if (lyt.numDofs() != next_state_layout_.numDofs())
+    {
+      throw runtime_error(
+          "TimeFEMResidual history and next state sizes differ");
+    }
+    if (lyt.numDofsPerElem() != next_state_layout_.numDofsPerElem())
+    {
+      throw runtime_error(
+          "TimeFEMResidual history and next state local sizes differ");
+    }
   }
 }
 
-void TimeFEMResidual::checkContext(const problem::TimeContext& ctx) const
+void TimeFEMResidual::checkContext(const TimeContext& ctx) const
 {
-  const problem::TimeDims dims = dimensions();
-  if (ctx.step < 0 || ctx.step >= dims.num_steps)
+  const TimeDims dm = dims();
+  if (ctx.step < 0 || ctx.step >= dm.nt)
   {
-    throw std::runtime_error("TimeFEMResidual step is out of range");
+    throw runtime_error("TimeFEMResidual step is out of range");
   }
-  checkVector(ctx.prev_state, dims.num_states, "previous state");
-  checkVector(ctx.next_state, dims.num_states, "next state");
-  checkVector(ctx.prm, dims.num_params, "parameter");
+  const TimeHistoryView hist = ctx.historyView();
+  if (hist.count() < dm.nhst
+      || hist.stateSize() != dm.nst)
+  {
+    throw runtime_error(
+        "TimeFEMResidual history state size mismatch");
+  }
+  checkVector(ctx.nxt, dm.nst);
+  checkVector(ctx.prm, dm.nprm);
 }
 
 void TimeFEMResidual::checkVector(const Vector<Real>* value,
-                                  Index               size,
-                                  const char*         name) const
+                                  Index               size) const
 {
   if (value == nullptr || value->size() != size)
   {
-    throw std::runtime_error(std::string("TimeFEMResidual ") + name
-                             + " size mismatch");
+    throw runtime_error("TimeFEMResidual vector size mismatch");
   }
 }
 
-void TimeFEMResidual::checkDirection(problem::VariableBlock wrt,
-                                     const Vector<Real>&    dir) const
+void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
+                                    Index              ic,
+                                    Vector<Real>&      local) const
 {
-  const DofLayout* layout   = layoutFor(wrt);
-  const Index      expected = layout == nullptr ? numParams() : layout->numDofs();
-  if (dir.size() != expected)
+  const Index nloc = next_state_layout_.numDofsPerElem();
+  resizeOrZero(local, numHistoryStates() * nloc);
+  const TimeHistoryView hist = ctx.historyView();
+  for (Index lag = 0; lag < numHistoryStates(); ++lag)
   {
-    throw std::runtime_error("TimeFEMResidual direction size mismatch");
+    Vector<Real> state = Vector<Real>::view(local.data() + lag * nloc, nloc);
+    gather(history_state_layouts_[lag],
+           hist.state(lag),
+           ic,
+           state);
+  }
+}
+
+void TimeFEMResidual::checkDirection(VariableBlock       wrt,
+                                     const Vector<Real>& dir) const
+{
+  const DofLayout* lyt = layoutFor(wrt);
+  const Index      exp = lyt == nullptr ? numParams() : lyt->numDofs();
+  if (dir.size() != exp)
+  {
+    throw runtime_error("TimeFEMResidual direction size mismatch");
   }
 }
 
@@ -338,21 +479,25 @@ Vector<Real> TimeFEMResidual::gatherParam(Index               ic,
   return local;
 }
 
-void TimeFEMResidual::gather(const DofLayout&    layout,
+void TimeFEMResidual::gather(const DofLayout&    lyt,
                              const Vector<Real>& global,
                              Index               ic,
                              Vector<Real>&       local)
 {
+  gather(lyt,
+         VectorView<const Real>(global.data(), global.size()),
+         ic,
+         local);
+}
+
+void TimeFEMResidual::gather(const DofLayout&       lyt,
+                             VectorView<const Real> global,
+                             Index                  ic,
+                             Vector<Real>&          local)
+{
   Vector<Index> dofs;
-  layout.elemDofs(ic, dofs);
-  if (local.size() != dofs.size())
-  {
-    local.resize(dofs.size());
-  }
-  else
-  {
-    local.setZero();
-  }
+  lyt.elemDofs(ic, dofs);
+  resizeOrZero(local, dofs.size());
 
   for (Index i = 0; i < local.size(); ++i)
   {
@@ -368,9 +513,9 @@ void TimeFEMResidual::matVec(const DenseMatrix&  mat,
 {
   if (mat.cols() != x.size())
   {
-    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
+    throw runtime_error("TimeFEMResidual local matrix size mismatch");
   }
-  resize(out, mat.rows());
+  resizeOrZero(out, mat.rows());
   for (Index i = 0; i < mat.rows(); ++i)
   {
     Real sum = 0.0;
@@ -388,9 +533,9 @@ void TimeFEMResidual::matTVec(const DenseMatrix&  mat,
 {
   if (mat.rows() != x.size())
   {
-    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
+    throw runtime_error("TimeFEMResidual local matrix size mismatch");
   }
-  resize(out, mat.cols());
+  resizeOrZero(out, mat.cols());
   for (Index j = 0; j < mat.cols(); ++j)
   {
     Real sum = 0.0;
@@ -402,23 +547,11 @@ void TimeFEMResidual::matTVec(const DenseMatrix&  mat,
   }
 }
 
-void TimeFEMResidual::resize(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
 void TimeFEMResidual::checkDof(Index dof, Index size)
 {
   if (dof < 0 || dof >= size)
   {
-    throw std::runtime_error("TimeFEMResidual dof is out of range");
+    throw runtime_error("TimeFEMResidual dof is out of range");
   }
 }
 

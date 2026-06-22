@@ -48,28 +48,28 @@ struct LinearInterpolation
   }
 };
 
-inline LinearInterpolation linearInterpolation(const Vector<Real>& points,
+inline LinearInterpolation linearInterpolation(const Vector<Real>& pts,
                                                Real                x)
 {
-  if (points.empty() || !std::isfinite(x))
+  if (pts.empty() || !std::isfinite(x))
   {
     throw std::runtime_error("linearInterpolation received invalid inputs");
   }
-  if (points.size() == 1 || x <= points.front())
+  if (pts.size() == 1 || x <= pts.front())
   {
     return {0, 0, 0.0};
   }
 
-  const Index last = static_cast<Index>(points.size()) - 1;
-  if (x >= points.back())
+  const Index last = pts.size() - 1;
+  if (x >= pts.back())
   {
     return {last, last, 0.0};
   }
 
   for (Index level = 0; level < last; ++level)
   {
-    const Real lo = points[level];
-    const Real hi = points[level + 1];
+    const Real lo = pts[level];
+    const Real hi = pts[level + 1];
     if (hi <= lo || !std::isfinite(lo) || !std::isfinite(hi))
     {
       throw std::runtime_error(

@@ -17,22 +17,22 @@ class TimeDirichletControlResidual final : public problem::TimeResidual
 {
 public:
   TimeDirichletControlResidual(const problem::TimeResidual& base,
-                               DirichletControl             control,
-                               Vector<Index>                fixed_dofs            = {},
+                               DirichletControl             ctr,
+                               Vector<Index>                fdofs             = {},
                                Index                        ctr_param_offset  = 0,
-                               Index                        num_params            = -1,
-                               Vector<Real>                 fixed_values          = {},
+                               Index                        nprm              = -1,
+                               Vector<Real>                 fvals             = {},
                                Vector<LinearInterpolation>  ctr_time_stencils = {});
 
-  problem::TimeDims dimensions() const override;
+  problem::TimeDims dims() const override;
 
   Index numSteps() const;
   Index numStates() const;
   Index numParams() const;
   Index numRes() const;
 
-  void residual(const problem::TimeContext& ctx,
-                Vector<Real>&               out) const override;
+  void res(const problem::TimeContext& ctx,
+           Vector<Real>&               out) const override;
 
   void applyJac(const problem::TimeContext& ctx,
                 problem::VariableBlock      wrt,
@@ -41,29 +41,35 @@ public:
 
   void applyJacT(const problem::TimeContext& ctx,
                  problem::VariableBlock      wrt,
-                 const Vector<Real>&         adjoint,
+                 const Vector<Real>&         adj,
                  Vector<Real>&               out) const override;
 
-  bool assembleJacobian(const problem::TimeContext& ctx,
-                        problem::VariableBlock      wrt,
-                        linalg::MatrixBuilder&      out) const override;
+  bool assembleJac(const problem::TimeContext& ctx,
+                   problem::VariableBlock      wrt,
+                   linalg::MatrixBuilder&      out) const override;
+
+  void prepareLinearSolve(const problem::TimeContext& ctx,
+                          problem::VariableBlock      wrt,
+                          linalg::MatrixBuilder&      jac,
+                          Vector<Real>&               rhs) const override;
 
   const DirichletControl& control() const;
 
 private:
-  void initializeControlTimeStencils(
-      Vector<LinearInterpolation> ctr_time_stencils);
+  void initializeControlTimeStencils(Vector<LinearInterpolation> ctr_time_stencils);
 
   void checkContext(const problem::TimeContext& ctx) const;
-  void checkVector(const Vector<Real>* value, Index size, const char* name) const;
+  void checkVector(const Vector<Real>* value, Index size) const;
 
   void replaceStateRows(linalg::MatrixBuilder& out, Real diag) const;
+  void eliminateStateColumns(linalg::MatrixBuilder& jac,
+                             Vector<Real>&          rhs) const;
 
   void applyControlParamJac(const problem::TimeContext& ctx,
                             const Vector<Real>&         dir,
                             Vector<Real>&               out) const;
   void applyControlParamJacT(const problem::TimeContext& ctx,
-                             const Vector<Real>&         adjoint,
+                             const Vector<Real>&         adj,
                              Vector<Real>&               out) const;
 
   Real  ctrValue(Index step, Index i, const Vector<Real>& prm) const;
@@ -75,11 +81,11 @@ private:
 private:
   const problem::TimeResidual& base_;
   DirichletControl             ctr_;
-  Vector<Index>                fixed_dofs_;
-  Vector<Real>                 fixed_values_;
+  Vector<Index>                fdofs_;
+  Vector<Real>                 fvals_;
   Vector<Real>                 base_prm_;
-  problem::TimeDims      base_dims_;
-  problem::TimeDims      dims_;
+  problem::TimeDims            base_dims_;
+  problem::TimeDims            dims_;
   Index                        ctr_param_offset_{0};
   Vector<LinearInterpolation>  ctr_time_stencils_;
   Index                        ctr_param_levels_{0};

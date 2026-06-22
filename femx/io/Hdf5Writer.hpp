@@ -1,16 +1,14 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 
 class Mesh;
-template <typename T>
-class Vector;
 
 class Hdf5Writer
 {
@@ -18,12 +16,12 @@ public:
   struct NodalField
   {
     std::string         name;
-    const Vector<Real>* values{nullptr};
+    const Vector<Real>* vals{nullptr};
   };
 
-  void write(const std::string&             filename,
-             const Mesh&                    mesh,
-             const std::vector<NodalField>& nodal_fields) const;
+  void write(const std::string&        fname,
+             const Mesh&               mesh,
+             const Vector<NodalField>& nodal_fields) const;
 };
 
 } // namespace femx

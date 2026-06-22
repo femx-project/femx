@@ -3,6 +3,8 @@
 
 #include <femx/common/Math.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
@@ -10,7 +12,7 @@ Real dot(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw std::runtime_error("dot received incompatible vectors");
+    throw runtime_error("dot received incompatible vectors");
   }
 
   Real value = 0.0;
@@ -28,14 +30,14 @@ Real squaredNorm(const Vector<Real>& x)
 
 Real norm(const Vector<Real>& x)
 {
-  return std::sqrt(squaredNorm(x));
+  return sqrt(squaredNorm(x));
 }
 
 Real rmse(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw std::runtime_error("rmse received incompatible vectors");
+    throw runtime_error("rmse received incompatible vectors");
   }
 
   Real sum = 0.0;
@@ -44,14 +46,14 @@ Real rmse(const Vector<Real>& x, const Vector<Real>& y)
     const Real diff  = x[i] - y[i];
     sum             += diff * diff;
   }
-  return std::sqrt(sum / x.size());
+  return sqrt(sum / x.size());
 }
 
 Vector<Real> difference(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw std::runtime_error("difference received incompatible vectors");
+    throw runtime_error("difference received incompatible vectors");
   }
 
   Vector<Real> diff(x.size());
@@ -86,7 +88,7 @@ Real squaredNorm(const Point3& x)
 
 Real norm(const Point3& x)
 {
-  return std::sqrt(squaredNorm(x));
+  return sqrt(squaredNorm(x));
 }
 
 Point3 unit(const Point3& x)
@@ -94,7 +96,7 @@ Point3 unit(const Point3& x)
   const Real len = norm(x);
   if (len <= 0.0)
   {
-    throw std::runtime_error("unit received zero vector");
+    throw runtime_error("unit received zero vector");
   }
   return {x[0] / len, x[1] / len, x[2] / len};
 }
@@ -106,7 +108,7 @@ Real sqDist(const Point3& x, const Point3& y)
 
 Real distance(const Point3& x, const Point3& y)
 {
-  return std::sqrt(sqDist(x, y));
+  return sqrt(sqDist(x, y));
 }
 
 Real triArea(const Point3& a, const Point3& b, const Point3& c)
@@ -123,9 +125,9 @@ Real radialSq(const Point3& point, const Point3& origin, const Point3& axis)
   return radial > 0.0 ? radial : 0.0;
 }
 
-bool contains(const Vector<Index>& values, Index target)
+bool contains(const Vector<Index>& vals, Index target)
 {
-  for (Index value : values)
+  for (Index value : vals)
   {
     if (value == target)
     {
@@ -135,9 +137,9 @@ bool contains(const Vector<Index>& values, Index target)
   return false;
 }
 
-void appendUnique(Vector<Index>& out, const Vector<Index>& values)
+void appendUnique(Vector<Index>& out, const Vector<Index>& vals)
 {
-  for (Index value : values)
+  for (Index value : vals)
   {
     if (!contains(out, value))
     {
@@ -147,10 +149,10 @@ void appendUnique(Vector<Index>& out, const Vector<Index>& values)
 }
 
 void appendUniqueExcept(Vector<Index>&       out,
-                        const Vector<Index>& values,
+                        const Vector<Index>& vals,
                         const Vector<Index>& skip)
 {
-  for (Index value : values)
+  for (Index value : vals)
   {
     if (!contains(skip, value) && !contains(out, value))
     {

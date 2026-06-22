@@ -3,7 +3,6 @@
 #include <array>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include <NavierConfig.hpp>
 #include <femx/common/LinearInterpolation.hpp>
@@ -12,7 +11,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx::navier_var_new
 {
@@ -41,29 +40,30 @@ struct FluidConfig
 struct TargetParams
 {
   std::string         type            = "poiseuille_pulse";
-  std::string         quantity        = "mean_velocity";
+  std::string         qty             = "mean_velocity";
   Real                bulk_speed      = 1.0;
   Real                pulse_amplitude = 0.35;
-  Real                period          = 1.0;
-  Real                radius          = 0.5;
-  std::array<Real, 3> center          = {0.0, 0.5, 0.0};
-  std::array<Real, 3> normal          = {1.0, 0.0, 0.0};
+  Real                per             = 1.0;
+  Real                rad             = 0.5;
+  std::array<Real, 3> cen             = {0.0, 0.5, 0.0};
+  std::array<Real, 3> nrm             = {1.0, 0.0, 0.0};
 };
 
 struct SolverParams
 {
   std::string type    = "auto";
   std::string backend = "cuda";
+  std::string method  = "iterative";
 };
 
 struct OutputParams
 {
-  std::string basename = "ns-var";
+  std::string base = "ns-var";
 };
 
 struct VizOptions
 {
-  std::string basename = "ns-var";
+  std::string base = "ns-var";
 };
 
 struct BCsParams
@@ -80,12 +80,12 @@ struct BCsParams
 
 struct ForwardParams
 {
-  MeshParams             mesh;
-  TimeParams             time;
-  FluidConfig            fluid;
-  std::vector<BCsParams> bcs;
-  OutputParams           output;
-  SolverParams           solver;
+  MeshParams        mesh;
+  TimeParams        time;
+  FluidConfig       fluid;
+  Vector<BCsParams> bcs;
+  OutputParams      output;
+  SolverParams      solver;
 };
 
 struct RegularizationParams
@@ -106,8 +106,8 @@ struct OptimizerParams
 
   struct Scale
   {
-    Real initial_velocity = 1.0;
-    Real boundary         = 1.0;
+    Real init_vel = 1.0;
+    Real bdry     = 1.0;
   };
 
   Scale scale;
@@ -118,7 +118,7 @@ struct BoundsParams
   Real                min = 0.0;
   std::optional<Real> max;
   Real                max_scale = 1.2;
-  std::array<Real, 3> normal    = {1.0, 0.0, 0.0};
+  std::array<Real, 3> nrm       = {1.0, 0.0, 0.0};
 };
 
 struct InitialVelocityParams
@@ -130,9 +130,9 @@ struct InitialVelocityParams
 
 struct InitialGuessParams
 {
-  TimeParams             time;
-  bool                   has_time = false;
-  std::vector<BCsParams> bcs;
+  TimeParams        time;
+  bool              has_time = false;
+  Vector<BCsParams> bcs;
 };
 
 struct ObservationParams
@@ -150,7 +150,7 @@ struct ObservationParams
   std::string         type = "grid";
   std::string         file;
   std::optional<Grid> grid;
-  std::vector<Index>  components;
+  Vector<Index>       comps;
 };
 
 struct InverseParams
@@ -159,7 +159,7 @@ struct InverseParams
   Real                  alpha = 1.0;
   RegularizationParams  reg;
   OptimizerParams       opt;
-  BoundsParams          bounds;
+  BoundsParams          bnds;
   InitialVelocityParams init_vel;
   InitialGuessParams    initial_guess;
   ObservationParams     obs;
@@ -174,19 +174,19 @@ struct Params
 Params      loadConfig(const std::string& path);
 FluidParams fluidParams(const Params& prm);
 
-BoundarySelector              bcSelector(const BCsParams& bc);
-const BCsParams&              controlBoundary(const Params& prm);
-const TargetParams&           controlTarget(const Params& prm);
+BoundarySelector    bcSelector(const BCsParams& bc);
+const BCsParams&    controlBoundary(const Params& prm);
+const TargetParams& controlTarget(const Params& prm);
 
 void writeResultViz(
-    const Mesh&                       mesh,
-    const MixedFESpace&               space,
-    const DirichletControl&           control,
-    const solve::TimeTrajectory&      tr,
-    const Vector<Real>&               prm,
+    const Mesh&                        mesh,
+    const MixedFESpace&                space,
+    const DirichletControl&            ctr,
+    const state::TimeTrajectory&       tr,
+    const Vector<Real>&                prm,
     const Vector<LinearInterpolation>& ctr_time_stencils,
-    Real                              dt,
-    const VizOptions&                 opts,
-    Real                              time_offset = 0.0);
+    Real                               dt,
+    const VizOptions&                  opts,
+    Real                               time_offset = 0.0);
 
 } // namespace femx::navier_var_new

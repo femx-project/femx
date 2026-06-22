@@ -42,9 +42,9 @@ public:
 
   ~KspLinearSolver() override;
 
-  KspOptions& options();
+  KspOptions& opts();
 
-  const KspOptions& options() const;
+  const KspOptions& opts() const;
 
   void solve(const LinearOperator& op,
              const Vector<Real>&   rhs,
@@ -55,12 +55,12 @@ public:
               Vector<Real>&         out) override;
 
   void solve(const PETScMatrixOperator& op,
-             const PETScVectorBuilder& rhs,
-             PETScVectorBuilder&       out);
+             const PETScVectorBuilder&  rhs,
+             PETScVectorBuilder&        out);
 
   void solveT(const PETScMatrixOperator& op,
-              const PETScVectorBuilder& rhs,
-              PETScVectorBuilder&       out);
+              const PETScVectorBuilder&  rhs,
+              PETScVectorBuilder&        out);
 
   KSPConvergedReason convergedReason() const;
 

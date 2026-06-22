@@ -2,12 +2,13 @@
 
 #include <optional>
 
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/assembly/TimeElementKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/VectorView.hpp>
 #include <femx/problem/TimeResidual.hpp>
 
 namespace femx
@@ -19,63 +20,86 @@ namespace assembly
 class TimeFEMResidual final : public problem::TimeResidual
 {
 public:
-  TimeFEMResidual(Index                    num_steps,
+  TimeFEMResidual(Index                    nt,
                   DofLayout                res_layout,
                   DofLayout                state_layout,
-                  const TimeElementKernel& kernel);
+                  const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    num_steps,
+  TimeFEMResidual(Index                    nt,
                   DofLayout                res_layout,
                   DofLayout                prev_state_layout,
                   DofLayout                next_state_layout,
-                  const TimeElementKernel& kernel);
+                  const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    num_steps,
+  TimeFEMResidual(Index                    nt,
+                  DofLayout                res_layout,
+                  Vector<DofLayout>        history_state_layouts,
+                  DofLayout                next_state_layout,
+                  const TimeElementKernel& ker);
+
+  TimeFEMResidual(Index                    nt,
                   DofLayout                res_layout,
                   DofLayout                prev_state_layout,
                   DofLayout                next_state_layout,
                   DofLayout                param_layout,
-                  const TimeElementKernel& kernel);
+                  const TimeElementKernel& ker);
+
+  TimeFEMResidual(Index                    nt,
+                  DofLayout                res_layout,
+                  Vector<DofLayout>        history_state_layouts,
+                  DofLayout                next_state_layout,
+                  DofLayout                param_layout,
+                  const TimeElementKernel& ker);
 
   void setCellRange(Index begin, Index end);
 
-  problem::TimeDims dimensions() const override;
+  problem::TimeDims dims() const override;
 
-  void residual(const problem::TimeContext& ctx,
-                Vector<Real>&               out) const override;
+  void res(const problem::TimeContext& ctx,
+           Vector<Real>&               out) const override;
 
   void applyJac(const problem::TimeContext& ctx,
-                     problem::VariableBlock      wrt,
-                     const Vector<Real>&         dir,
-                     Vector<Real>&               out) const override;
+                problem::VariableBlock      wrt,
+                const Vector<Real>&         dir,
+                Vector<Real>&               out) const override;
 
   void applyJacT(const problem::TimeContext& ctx,
-                      problem::VariableBlock      wrt,
-                      const Vector<Real>&         adjoint,
-                      Vector<Real>&               out) const override;
+                 problem::VariableBlock      wrt,
+                 const Vector<Real>&         adj,
+                 Vector<Real>&               out) const override;
 
-  bool assembleJacobian(const problem::TimeContext& ctx,
-                        problem::VariableBlock      wrt,
-                        linalg::MatrixBuilder&     out) const override;
+  bool assembleJac(const problem::TimeContext& ctx,
+                   problem::VariableBlock      wrt,
+                   linalg::MatrixBuilder&      out) const override;
 
 private:
   Index numCells() const;
   Index numParams() const;
+  Index numHistoryStates() const;
 
   const DofLayout* layoutFor(problem::VariableBlock wrt) const;
 
   void checkLayouts() const;
   void checkContext(const problem::TimeContext& ctx) const;
-  void checkVector(const Vector<Real>* value, Index size, const char* name) const;
+  void checkVector(const Vector<Real>* value, Index size) const;
   void checkDirection(problem::VariableBlock wrt,
                       const Vector<Real>&    dir) const;
 
+  void gatherHistory(const problem::TimeContext& ctx,
+                     Index                       ic,
+                     Vector<Real>&               local) const;
+
   Vector<Real> gatherParam(Index ic, const Vector<Real>& global) const;
 
-  static void gather(const DofLayout&    layout,
+  static void gather(const DofLayout&    lyt,
                      const Vector<Real>& global,
                      Index               ic,
                      Vector<Real>&       local);
+
+  static void gather(const DofLayout&       lyt,
+                     VectorView<const Real> global,
+                     Index                  ic,
+                     Vector<Real>&          local);
 
   static void matVec(const DenseMatrix&  mat,
                      const Vector<Real>& x,
@@ -85,13 +109,12 @@ private:
                       const Vector<Real>& x,
                       Vector<Real>&       out);
 
-  static void resize(Vector<Real>& out, Index size);
   static void checkDof(Index dof, Index size);
 
 private:
-  Index                    num_steps_{0};
+  Index                    nt_{0};
   DofLayout                res_layout_;
-  DofLayout                prev_state_layout_;
+  Vector<DofLayout>        history_state_layouts_;
   DofLayout                next_state_layout_;
   std::optional<DofLayout> param_layout_;
   const TimeElementKernel& kernel_;

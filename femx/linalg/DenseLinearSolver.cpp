@@ -4,6 +4,8 @@
 
 #include <femx/linalg/DenseLinearSolver.hpp>
 
+using namespace std;
+
 namespace femx
 {
 namespace linalg
@@ -20,11 +22,11 @@ void DenseLinearSolver::solve(const LinearOperator& op,
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "DenseLinearSolver received inconsistent dimensions");
   }
 
-  std::vector<Real> mat;
+  Vector<Real> mat;
   sample(op, false, mat);
   solveDense(mat, rhs, out, op.numCols());
 }
@@ -35,21 +37,21 @@ void DenseLinearSolver::solveT(const LinearOperator& op,
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "DenseLinearSolver received inconsistent transpose dimensions");
   }
 
-  std::vector<Real> mat;
+  Vector<Real> mat;
   sample(op, true, mat);
   solveDense(mat, rhs, out, op.numRows());
 }
 
 void DenseLinearSolver::sample(const LinearOperator& op,
                                bool                  transpose,
-                               std::vector<Real>&    mat) const
+                               Vector<Real>&         mat) const
 {
   const Index n = transpose ? op.numRows() : op.numCols();
-  mat.assign(static_cast<std::size_t>(n * n), 0.0);
+  mat.assign(n * n, 0.0);
 
   Vector<Real> basis(n);
   Vector<Real> column;
@@ -69,7 +71,7 @@ void DenseLinearSolver::sample(const LinearOperator& op,
 
     if (column.size() != n)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "DenseLinearSolver sampled operator with inconsistent size");
     }
 
@@ -80,26 +82,26 @@ void DenseLinearSolver::sample(const LinearOperator& op,
   }
 }
 
-void DenseLinearSolver::solveDense(std::vector<Real>   mat,
+void DenseLinearSolver::solveDense(Vector<Real>        mat,
                                    const Vector<Real>& rhs,
                                    Vector<Real>&       out,
                                    Index               size) const
 {
-  std::vector<Real> b(static_cast<std::size_t>(size), 0.0);
+  Vector<Real> b(size, 0.0);
 
   for (Index i = 0; i < size; ++i)
   {
-    b[static_cast<std::size_t>(i)] = rhs[i];
+    b[i] = rhs[i];
   }
 
   for (Index k = 0; k < size; ++k)
   {
     Index pivot = k;
-    Real  best  = std::abs(mat[entry(k, k, size)]);
+    Real  best  = abs(mat[entry(k, k, size)]);
 
     for (Index i = k + 1; i < size; ++i)
     {
-      const Real candidate = std::abs(mat[entry(i, k, size)]);
+      const Real candidate = abs(mat[entry(i, k, size)]);
 
       if (candidate > best)
       {
@@ -110,17 +112,16 @@ void DenseLinearSolver::solveDense(std::vector<Real>   mat,
 
     if (best <= pivot_tolerance_)
     {
-      throw std::runtime_error("DenseLinearSolver detected singular matrix");
+      throw runtime_error("DenseLinearSolver detected singular matrix");
     }
 
     if (pivot != k)
     {
       for (Index j = k; j < size; ++j)
       {
-        std::swap(mat[entry(k, j, size)], mat[entry(pivot, j, size)]);
+        swap(mat[entry(k, j, size)], mat[entry(pivot, j, size)]);
       }
-      std::swap(b[static_cast<std::size_t>(k)],
-                b[static_cast<std::size_t>(pivot)]);
+      swap(b[k], b[pivot]);
     }
 
     for (Index i = k + 1; i < size; ++i)
@@ -132,14 +133,14 @@ void DenseLinearSolver::solveDense(std::vector<Real>   mat,
       {
         mat[entry(i, j, size)] -= factor * mat[entry(k, j, size)];
       }
-      b[static_cast<std::size_t>(i)] -= factor * b[static_cast<std::size_t>(k)];
+      b[i] -= factor * b[k];
     }
   }
 
-  resize(out, size);
+  resizeOrZero(out, size);
   for (Index i = size; i-- > 0;)
   {
-    Real sum = b[static_cast<std::size_t>(i)];
+    Real sum = b[i];
 
     for (Index j = i + 1; j < size; ++j)
     {
@@ -149,24 +150,9 @@ void DenseLinearSolver::solveDense(std::vector<Real>   mat,
   }
 }
 
-std::size_t DenseLinearSolver::entry(Index row,
-                                     Index col,
-                                     Index size)
+Index DenseLinearSolver::entry(Index row, Index col, Index size)
 {
-  return static_cast<std::size_t>(row * size + col);
-}
-
-void DenseLinearSolver::resize(Vector<Real>& out,
-                               Index         size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
+  return row * size + col;
 }
 
 } // namespace linalg

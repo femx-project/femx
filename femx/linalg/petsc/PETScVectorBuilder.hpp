@@ -5,9 +5,9 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
-#include <femx/common/Types.hpp>
 
 namespace femx
 {
@@ -71,11 +71,11 @@ public:
     size_                 = size;
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
-    const PetscInt local_size =
+    const PetscInt nloc =
         comm_size == 1 ? static_cast<PetscInt>(size_) : PETSC_DECIDE;
 
     check(VecCreate(comm_, &vec_), "VecCreate");
-    check(VecSetSizes(vec_, local_size, static_cast<PetscInt>(size_)),
+    check(VecSetSizes(vec_, nloc, static_cast<PetscInt>(size_)),
           "VecSetSizes");
     check(VecSetFromOptions(vec_), "VecSetFromOptions");
     setZero();
@@ -107,19 +107,19 @@ public:
 
   void addValues(const PetscInt*     rows,
                  Index               count,
-                 const Vector<Real>& values)
+                 const Vector<Real>& vals)
   {
-    if (values.size() != count)
+    if (vals.size() != count)
     {
       throw std::runtime_error(
           "PETScVectorBuilder local values size does not match dofs");
     }
-    addValues(rows, count, values.data());
+    addValues(rows, count, vals.data());
   }
 
   void addValues(const PetscInt* rows,
                  Index           count,
-                 const Real*     values)
+                 const Real*     vals)
   {
     if (vec_ == nullptr)
     {
@@ -128,7 +128,7 @@ public:
     check(VecSetValues(vec_,
                        static_cast<PetscInt>(count),
                        rows,
-                       values,
+                       vals,
                        ADD_VALUES),
           "VecSetValues");
   }
@@ -143,9 +143,9 @@ public:
     check(VecAssemblyEnd(vec_), "VecAssemblyEnd");
   }
 
-  void copyOwnedFrom(const Vector<Real>& values)
+  void copyOwnedFrom(const Vector<Real>& vals)
   {
-    if (values.size() != size())
+    if (vals.size() != size())
     {
       throw std::runtime_error("PETScVectorBuilder copy size mismatch");
     }
@@ -157,14 +157,14 @@ public:
     check(VecGetArray(vec(), &data), "VecGetArray");
     for (PetscInt i = begin; i < end; ++i)
     {
-      data[i - begin] = static_cast<PetscScalar>(values[static_cast<Index>(i)]);
+      data[i - begin] = static_cast<PetscScalar>(vals[static_cast<Index>(i)]);
     }
     check(VecRestoreArray(vec(), &data), "VecRestoreArray");
   }
 
-  void copyToAll(Vector<Real>& values) const
+  void copyToAll(Vector<Real>& vals) const
   {
-    check(detail::copyFromPETSc(vec(), values), "copyFromPETSc");
+    check(detail::copyFromPETSc(vec(), vals), "copyFromPETSc");
   }
 
 private:

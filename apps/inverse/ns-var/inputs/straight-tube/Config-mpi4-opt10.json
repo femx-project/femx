@@ -29,7 +29,7 @@
         "normal": [1.0, 0.0, 0.0]
       }
     },
-    "initial_velocity":
+    "init_vel":
     {
       "enabled": true,
       "bounds":
@@ -90,7 +90,7 @@
     {
       "beta1": 1.0e-9,
       "beta2": 1.0e-11,
-      "beta3": 1.0e-3,
+      "beta3": 1.0e-7,
       "beta4": 1.0e-11
     }
   },
@@ -103,7 +103,7 @@
     "step_tol": 0.0,
     "scale":
     {
-      "initial_velocity": 10.0,
+      "init_vel": 4.0,
       "boundary": 1.0
     }
   },

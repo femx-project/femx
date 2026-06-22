@@ -9,7 +9,6 @@
 #include <array>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include <NavierConfig.hpp>
 #include <femx/common/Types.hpp>
@@ -33,6 +32,7 @@ struct TimeParams
 struct SolverParams
 {
   std::string backend = "cpu";
+  std::string method  = "iterative";
 };
 
 struct OutputParams
@@ -43,21 +43,21 @@ struct OutputParams
 
 struct VelocityProfileParams
 {
-  std::string                        type   = "uniform";
-  Real                               radius = 0.0;
-  std::optional<std::array<Real, 3>> center;
+  std::string                        type = "uniform";
+  Real                               rad  = 0.0;
+  std::optional<std::array<Real, 3>> cen;
 };
 
 struct VelocityParams
 {
   Vector<Real>          time;
   Vector<Real>          value;
-  Real                  area     = 1.0;
-  Real                  period   = 0.0;
-  std::array<Real, 3>   normal   = {1.0, 0.0, 0.0};
-  std::string           interp   = "linear";
-  std::string           quantity = "flowrate";
-  VelocityProfileParams profile;
+  Real                  area   = 1.0;
+  Real                  per    = 0.0;
+  std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0};
+  std::string           interp = "linear";
+  std::string           qty    = "flowrate";
+  VelocityProfileParams prof;
 };
 
 struct BCsParams
@@ -73,12 +73,12 @@ struct BCsParams
 
 struct Params
 {
-  std::string            mesh_file;
-  TimeParams             time;
-  FluidParams            fluid;
-  SolverParams           solver;
-  OutputParams           output;
-  std::vector<BCsParams> bcs;
+  std::string       mesh_file;
+  TimeParams        time;
+  FluidParams       fluid;
+  SolverParams      solver;
+  OutputParams      output;
+  Vector<BCsParams> bcs;
 };
 
 Params loadConfig(const std::string& path);

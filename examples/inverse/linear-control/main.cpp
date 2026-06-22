@@ -8,9 +8,9 @@
 #include <femx/linalg/backends/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/backends/petsc/PETScSystemMatrix.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
-#include <femx/solve/AdjointReducedFunctional.hpp>
-#include <femx/solve/MatrixAdjointSolver.hpp>
-#include <femx/solve/MatrixNewtonStateSolver.hpp>
+#include <femx/state/AdjointReducedFunctional.hpp>
+#include <femx/state/MatrixAdjointSolver.hpp>
+#include <femx/state/MatrixNewtonStateSolver.hpp>
 
 using namespace femx;
 using namespace femx::examples_inverse_linear_control;
@@ -24,29 +24,29 @@ PetscErrorCode runOptimization()
   linalg::PETScSystemMatrix state_jac;
   linalg::PETScSystemMatrix adj_state_jac;
   linalg::KspLinearSolver   lin_solver;
-  lin_solver.options().pc_type     = PCJACOBI;
-  lin_solver.options().rtol        = 1.0e-12;
-  lin_solver.options().atol        = 1.0e-14;
-  lin_solver.options().use_opts_db = true;
+  lin_solver.opts().pc_type     = PCJACOBI;
+  lin_solver.opts().rtol        = 1.0e-12;
+  lin_solver.opts().atol        = 1.0e-14;
+  lin_solver.opts().use_opts_db = true;
 
-  solve::MatrixNewtonStateSolver state_solver(
+  state::MatrixNewtonStateSolver state_solver(
       res_eq, state_jac, lin_solver);
-  solve::MatrixAdjointSolver adj_solver(
+  state::MatrixAdjointSolver adj_solver(
       res_eq, adj_state_jac, lin_solver);
-  LinearControlObjectiveParts objective_parts;
+  LinearControlObjectiveParts obj_parts;
 
-  solve::AdjointReducedFunctional functional(
-      state_solver, adj_solver, res_eq, objective_parts.objective);
+  state::AdjointReducedFunctional fn(
+      state_solver, adj_solver, res_eq, obj_parts.obj);
 
   Vector<Real> initial(2);
   initial[0] = 0.05;
   initial[1] = -0.02;
 
-  opt::TaoOptimizer optimizer(functional);
-  optimizer.options().abs_tol  = 1.0e-10;
-  optimizer.options().rel_tol  = 1.0e-10;
-  optimizer.options().step_tol = 0.0;
-  optimizer.options().max_its  = 100;
+  opt::TaoOptimizer optimizer(fn);
+  optimizer.opts().abs_tol  = 1.0e-10;
+  optimizer.opts().rel_tol  = 1.0e-10;
+  optimizer.opts().step_tol = 0.0;
+  optimizer.opts().max_its  = 100;
 
   opt::TaoResult result;
   PetscCall(optimizer.solve(initial, result));

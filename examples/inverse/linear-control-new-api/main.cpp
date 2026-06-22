@@ -15,7 +15,7 @@ int main()
   Vector<Real> grad;
 
   setup.state_solver.solve(prm, state);
-  const Real value = setup.functional.valueGrad(prm, grad);
+  const Real value = setup.fn.valueGrad(prm, grad);
 
   std::cout << std::setprecision(12);
   std::cout << "example-inverse-linear-control-new-api\n";

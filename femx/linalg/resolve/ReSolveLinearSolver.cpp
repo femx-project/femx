@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/SparseMatrix.hpp>
@@ -25,6 +24,8 @@
 #endif
 #endif
 
+using namespace std;
+
 namespace femx
 {
 namespace linalg
@@ -43,8 +44,8 @@ public:
 #endif
   }
 
-  Impl(WorkspaceType workspace_type, ReSolveOptions options)
-    : options_(std::move(options)),
+  Impl(WorkspaceType workspace_type, ReSolveOptions opts)
+    : opts_(std::move(opts)),
       A_(nullptr),
       workspace_type_(workspace_type)
   {
@@ -64,14 +65,14 @@ public:
         && mat_rows_ == A.rows()
         && mat_cols_ == A.cols()
         && mat_nnz_ == A.nnz()
-        && options_.factor == "none"
-        && options_.refactor == "none";
+        && opts_.factor == "none"
+        && opts_.refactor == "none";
 
     if (!reuse_mat)
     {
       resetSolver();
 
-      mat_ = std::make_unique<ReSolve::matrix::Csr>(
+      mat_ = make_unique<ReSolve::matrix::Csr>(
           A.rows(),
           A.cols(),
           A.nnz());
@@ -84,7 +85,7 @@ public:
 
     if (reuse_mat)
     {
-      if (options_.precond != "none")
+      if (opts_.precond != "none")
       {
         checkStatus(solver_->resetPreconditioner(mat_.get()),
                     "ReSolve SystemSolver::resetPreconditioner failed");
@@ -99,14 +100,14 @@ public:
 #endif
   }
 
-  void setPreconditioner(const std::string& method)
+  void setPreconditioner(const string& method)
   {
     if (method.empty())
     {
-      throw std::runtime_error("Preconditioner method must not be empty");
+      throw runtime_error("Preconditioner method must not be empty");
     }
 
-    options_.precond = method;
+    opts_.precond = method;
 
 #if defined(FEMX_HAS_RESOLVE)
     resetTransposeOperator();
@@ -121,21 +122,21 @@ public:
   {
     if (A_ == nullptr)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "LinearSolver::solve() called before setOperator()");
     }
     if (A_->rows() != A_->cols() || b.size() != A_->rows())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "ReSolveLinearSolver received inconsistent solve dimensions");
     }
 
-    resize(x, A_->cols());
+    resizeOrZero(x, A_->cols());
 
 #if defined(FEMX_HAS_RESOLVE)
     solveWith(*solver_, b, x, "ReSolve SystemSolver::solve failed");
 #else
-    throw std::runtime_error(
+    throw runtime_error(
         "ReSolveLinearSolver was built without ReSolve support");
 #endif
   }
@@ -145,11 +146,11 @@ public:
     const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "ReSolveLinearSolver received inconsistent operator solve dimensions");
     }
 
-    setOperator(sparse_op.matrix());
+    setOperator(sparse_op.mat());
     solve(rhs, out);
   }
 
@@ -158,14 +159,14 @@ public:
     const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "ReSolveLinearSolver received inconsistent transpose solve dimensions");
     }
 
 #if defined(FEMX_HAS_RESOLVE)
-    solveTranspose(sparse_op.matrix(), rhs, out);
+    solveTranspose(sparse_op.mat(), rhs, out);
 #else
-    throw std::runtime_error(
+    throw runtime_error(
         "ReSolveLinearSolver was built without ReSolve support");
 #endif
   }
@@ -173,9 +174,9 @@ public:
 private:
   struct HostCsrData
   {
-    std::vector<Index> row_ptr;
-    std::vector<Index> col_ind;
-    std::vector<Real>  values;
+    Vector<Index> rp;
+    Vector<Index> ci;
+    Vector<Real>  vals;
   };
 
   static const SparseMatrixOperator& requireSparseMatrixOperator(
@@ -184,71 +185,58 @@ private:
     const auto* sparse_op = dynamic_cast<const SparseMatrixOperator*>(&op);
     if (sparse_op == nullptr)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "ReSolveLinearSolver currently supports SparseMatrixOperator only");
     }
     return *sparse_op;
   }
 
-  static void resize(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
-    }
-  }
-
   static HostCsrData transposeHost(const SparseMatrix& A)
   {
     HostCsrData data;
-    data.row_ptr.assign(static_cast<std::size_t>(A.cols() + 1), 0);
-    data.col_ind.assign(static_cast<std::size_t>(A.nnz()), 0);
-    data.values.assign(static_cast<std::size_t>(A.nnz()), 0.0);
+    data.rp.assign(A.cols() + 1, 0);
+    data.ci.assign(A.nnz(), 0);
+    data.vals.assign(A.nnz(), 0.0);
 
-    const Index* row_ptr = A.rowPtrData();
-    const Index* col_ind = A.colIndData();
-    const Real*  values  = A.valuesData();
+    const Index* rp   = A.rowPtrData();
+    const Index* ci   = A.colIndData();
+    const Real*  vals = A.valuesData();
 
     for (Index k = 0; k < A.nnz(); ++k)
     {
-      ++data.row_ptr[static_cast<std::size_t>(col_ind[k] + 1)];
+      ++data.rp[ci[k] + 1];
     }
     for (Index row = 0; row < A.cols(); ++row)
     {
-      data.row_ptr[static_cast<std::size_t>(row + 1)] +=
-          data.row_ptr[static_cast<std::size_t>(row)];
+      data.rp[row + 1] += data.rp[row];
     }
 
-    std::vector<Index> next = data.row_ptr;
+    Vector<Index> next = data.rp;
     for (Index row = 0; row < A.rows(); ++row)
     {
-      for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+      for (Index k = rp[row]; k < rp[row + 1]; ++k)
       {
-        const Index col                              = col_ind[k];
-        const Index dest                             = next[static_cast<std::size_t>(col)]++;
-        data.col_ind[static_cast<std::size_t>(dest)] = row;
-        data.values[static_cast<std::size_t>(dest)]  = values[k];
+        const Index col  = ci[k];
+        const Index dest = next[col]++;
+        data.ci[dest]    = row;
+        data.vals[dest]  = vals[k];
       }
     }
 
     return data;
   }
 
-  static void checkStatus(int status, const char* message)
+  static void checkStatus(int status, const char* msg)
   {
     if (status != 0)
     {
-      throw std::runtime_error(message);
+      throw runtime_error(msg);
     }
   }
 
-  static void checkStatus(int status, const std::string& message)
+  static void checkStatus(int status, const string& msg)
   {
-    checkStatus(status, message.c_str());
+    checkStatus(status, msg.c_str());
   }
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -256,10 +244,10 @@ private:
   {
     if (A.rows() != A.cols() || b.size() != A.cols())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "ReSolveLinearSolver received inconsistent transpose dimensions");
     }
-    resize(x, A.rows());
+    resizeOrZero(x, A.rows());
 
     setTransposeOperator(A);
     solveWith(*transpose_solver_,
@@ -277,14 +265,14 @@ private:
         && mat_t_rows_ == A.cols()
         && mat_t_cols_ == A.rows()
         && mat_t_nnz_ == A.nnz()
-        && options_.factor == "none"
-        && options_.refactor == "none";
+        && opts_.factor == "none"
+        && opts_.refactor == "none";
 
     if (!reuse_mat)
     {
       resetTransposeSolver();
 
-      mat_t_ = std::make_unique<ReSolve::matrix::Csr>(
+      mat_t_ = make_unique<ReSolve::matrix::Csr>(
           A.cols(),
           A.rows(),
           A.nnz());
@@ -297,7 +285,7 @@ private:
 
     if (reuse_mat)
     {
-      if (options_.precond != "none")
+      if (opts_.precond != "none")
       {
         checkStatus(
             transpose_solver_->resetPreconditioner(mat_t_.get()),
@@ -340,7 +328,7 @@ private:
       return;
     }
 
-    if (options_.factor == "klu")
+    if (opts_.factor == "klu")
     {
       checkStatus(
           mat_->copyFromExternal(A.rowPtrData(),
@@ -369,20 +357,20 @@ private:
     {
       checkStatus(
           A.setDataPointers(
-              const_cast<Index*>(data.row_ptr.data()),
-              const_cast<Index*>(data.col_ind.data()),
-              const_cast<Real*>(data.values.data()),
+              const_cast<Index*>(data.rp.data()),
+              const_cast<Index*>(data.ci.data()),
+              const_cast<Real*>(data.vals.data()),
               ReSolve::memory::HOST),
           "ReSolve transpose Csr::setDataPointers failed");
       return;
     }
 
-    if (options_.factor == "klu")
+    if (opts_.factor == "klu")
     {
       checkStatus(
-          A.copyFromExternal(data.row_ptr.data(),
-                             data.col_ind.data(),
-                             data.values.data(),
+          A.copyFromExternal(data.rp.data(),
+                             data.ci.data(),
+                             data.vals.data(),
                              ReSolve::memory::HOST,
                              ReSolve::memory::HOST),
           "ReSolve transpose Csr::copyFromExternal to host failed");
@@ -392,9 +380,9 @@ private:
     }
 
     checkStatus(
-        A.copyFromExternal(data.row_ptr.data(),
-                           data.col_ind.data(),
-                           data.values.data(),
+        A.copyFromExternal(data.rp.data(),
+                           data.ci.data(),
+                           data.vals.data(),
                            ReSolve::memory::HOST,
                            memorySpace()),
         "ReSolve transpose Csr::copyFromExternal failed");
@@ -422,35 +410,35 @@ private:
     transpose_data_ = HostCsrData{};
   }
 
-  std::unique_ptr<ReSolve::SystemSolver> makeSolver()
+  unique_ptr<ReSolve::SystemSolver> makeSolver()
   {
     switch (workspace_type_)
     {
     case WorkspaceType::Cpu:
-      return std::make_unique<ReSolve::SystemSolver>(
+      return make_unique<ReSolve::SystemSolver>(
           cpu_workspace_.get(),
-          options_.factor,
-          options_.refactor,
-          options_.solve,
-          options_.precond,
-          options_.ir);
+          opts_.factor,
+          opts_.refactor,
+          opts_.solve,
+          opts_.precond,
+          opts_.ir);
 
     case WorkspaceType::Cuda:
 #if defined(RESOLVE_USE_CUDA)
-      return std::make_unique<ReSolve::SystemSolver>(
+      return make_unique<ReSolve::SystemSolver>(
           cuda_workspace_.get(),
-          options_.factor,
-          options_.refactor,
-          options_.solve,
-          options_.precond,
-          options_.ir);
+          opts_.factor,
+          opts_.refactor,
+          opts_.solve,
+          opts_.precond,
+          opts_.ir);
 #else
-      throw std::runtime_error(
+      throw runtime_error(
           "This ReSolve installation was not built with CUDA support");
 #endif
     }
 
-    throw std::runtime_error("Unknown ReSolve workspace type");
+    throw runtime_error("Unknown ReSolve workspace type");
   }
 
   void initializeWorkspace()
@@ -458,17 +446,17 @@ private:
     switch (workspace_type_)
     {
     case WorkspaceType::Cpu:
-      cpu_workspace_ = std::make_unique<ReSolve::LinAlgWorkspaceCpu>();
+      cpu_workspace_ = make_unique<ReSolve::LinAlgWorkspaceCpu>();
       cpu_workspace_->initializeHandles();
       break;
 
     case WorkspaceType::Cuda:
 #if defined(RESOLVE_USE_CUDA)
-      cuda_workspace_ = std::make_unique<ReSolve::LinAlgWorkspaceCUDA>();
+      cuda_workspace_ = make_unique<ReSolve::LinAlgWorkspaceCUDA>();
       cuda_workspace_->initializeHandles();
       break;
 #else
-      throw std::runtime_error(
+      throw runtime_error(
           "This ReSolve installation was not built with CUDA support");
 #endif
     }
@@ -476,28 +464,28 @@ private:
 
   void setupSolver(ReSolve::SystemSolver& solver, const char* prefix)
   {
-    if (options_.factor != "none")
+    if (opts_.factor != "none")
     {
       checkStatus(solver.analyze(),
-                  std::string(prefix) + " SystemSolver::analyze failed");
+                  string(prefix) + " SystemSolver::analyze failed");
       checkStatus(solver.factorize(),
-                  std::string(prefix) + " SystemSolver::factorize failed");
+                  string(prefix) + " SystemSolver::factorize failed");
     }
 
-    if (options_.refactor != "none")
+    if (opts_.refactor != "none")
     {
       checkStatus(
           solver.refactorizationSetup(),
-          std::string(prefix) + " SystemSolver::refactorizationSetup failed");
+          string(prefix) + " SystemSolver::refactorizationSetup failed");
       checkStatus(solver.refactorize(),
-                  std::string(prefix) + " SystemSolver::refactorize failed");
+                  string(prefix) + " SystemSolver::refactorize failed");
     }
 
-    if (options_.precond != "none")
+    if (opts_.precond != "none")
     {
       checkStatus(
           solver.preconditionerSetup(),
-          std::string(prefix) + " SystemSolver::preconditionerSetup failed");
+          string(prefix) + " SystemSolver::preconditionerSetup failed");
     }
   }
 
@@ -515,6 +503,7 @@ private:
                                      ReSolve::memory::HOST,
                                      memspace),
                 "ReSolve rhs Vector<Real>::copyFromExternal failed");
+
     checkStatus(sol.allocate(memspace),
                 "ReSolve solution Vector<Real>::allocate failed");
     checkStatus(sol.setToZero(memspace),
@@ -531,37 +520,37 @@ private:
 
   void checkIterativeConvergence(ReSolve::SystemSolver& solver) const
   {
-    if (options_.solve != "fgmres" && options_.solve != "randgmres")
+    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
     {
       return;
     }
 
     const Real res = solver.getIterativeSolver().getFinalResidualNorm();
-    if (!std::isfinite(res) || res > 10.0 * options_.rtol)
+    if (!isfinite(res) || res > 10.0 * opts_.rtol)
     {
-      std::ostringstream message;
-      message << "ReSolve iterative solve did not converge: final relative "
-              << "residual = " << res
-              << ", tolerance = " << options_.rtol
-              << ", its = "
-              << solver.getIterativeSolver().getNumIter()
-              << " / " << options_.max_its;
-      throw std::runtime_error(message.str());
+      ostringstream msg;
+      msg << "ReSolve iterative solve did not converge: final relative "
+          << "residual = " << res
+          << ", tolerance = " << opts_.rtol
+          << ", its = "
+          << solver.getIterativeSolver().getNumIter()
+          << " / " << opts_.max_its;
+      throw runtime_error(msg.str());
     }
   }
 
   void applyOptions(ReSolve::SystemSolver& solver)
   {
-    if (options_.solve == "fgmres" || options_.solve == "randgmres")
+    if (opts_.solve == "fgmres" || opts_.solve == "randgmres")
     {
-      solver.setGramSchmidtMethod(options_.gram_schmidt);
-      solver.getIterativeSolver().setMaxit(options_.max_its);
-      solver.getIterativeSolver().setTol(options_.rtol);
+      solver.setGramSchmidtMethod(opts_.gram_schmidt);
+      solver.getIterativeSolver().setMaxit(opts_.max_its);
+      solver.getIterativeSolver().setTol(opts_.rtol);
       solver.getIterativeSolver().setCliParam(
           "restart",
-          std::to_string(options_.restart));
-      std::string flexible = "no";
-      if (options_.flexible)
+          to_string(opts_.restart));
+      string flexible = "no";
+      if (opts_.flexible)
       {
         flexible = "yes";
       }
@@ -569,16 +558,16 @@ private:
           "flexible",
           flexible);
 
-      if (options_.solve == "randgmres")
+      if (opts_.solve == "randgmres")
       {
-        checkStatus(solver.setSketchingMethod(options_.sketching),
+        checkStatus(solver.setSketchingMethod(opts_.sketching),
                     "ReSolve SystemSolver::setSketchingMethod failed");
       }
     }
   }
 #endif
 
-  ReSolveOptions      options_;
+  ReSolveOptions      opts_;
   const SparseMatrix* A_;
   WorkspaceType       workspace_type_;
   Index               mat_rows_ = 0;
@@ -590,25 +579,25 @@ private:
   Index               mat_t_nnz_  = 0;
 
 #if defined(FEMX_HAS_RESOLVE)
-  std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
+  unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
 #if defined(RESOLVE_USE_CUDA)
-  std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_workspace_;
+  unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_workspace_;
 #endif
-  std::unique_ptr<ReSolve::SystemSolver> solver_;
-  std::unique_ptr<ReSolve::matrix::Csr>  mat_;
-  std::unique_ptr<ReSolve::SystemSolver> transpose_solver_;
-  std::unique_ptr<ReSolve::matrix::Csr>  mat_t_;
+  unique_ptr<ReSolve::SystemSolver> solver_;
+  unique_ptr<ReSolve::matrix::Csr>  mat_;
+  unique_ptr<ReSolve::SystemSolver> transpose_solver_;
+  unique_ptr<ReSolve::matrix::Csr>  mat_t_;
 #endif
 };
 
 ReSolveLinearSolver::ReSolveLinearSolver(WorkspaceType workspace_type)
-  : impl_(std::make_unique<Impl>(workspace_type))
+  : impl_(make_unique<Impl>(workspace_type))
 {
 }
 
 ReSolveLinearSolver::ReSolveLinearSolver(WorkspaceType  workspace_type,
-                                         ReSolveOptions options)
-  : impl_(std::make_unique<Impl>(workspace_type, std::move(options)))
+                                         ReSolveOptions opts)
+  : impl_(make_unique<Impl>(workspace_type, std::move(opts)))
 {
 }
 
@@ -633,7 +622,7 @@ void ReSolveLinearSolver::solveT(const LinearOperator& op,
   impl_->solveT(op, rhs, out);
 }
 
-void ReSolveLinearSolver::setPreconditioner(const std::string& method)
+void ReSolveLinearSolver::setPreconditioner(const string& method)
 {
   impl_->setPreconditioner(method);
 }

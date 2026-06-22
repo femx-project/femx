@@ -20,13 +20,8 @@ target_sources(
          TimeElementKernel.hpp
          TimeFEMResidual.hpp)
 
-target_link_libraries(
-  femx_assembly
-  PUBLIC femx_config
-         femx_ad
-         femx_linalg
-         femx_problem
-         femx_fem)
+target_link_libraries(femx_assembly PUBLIC femx_config femx_ad femx_linalg
+                                           femx_problem femx_fem)
 
 if(TARGET femx_linalg_petsc)
   target_link_libraries(femx_assembly PRIVATE femx_linalg_petsc)

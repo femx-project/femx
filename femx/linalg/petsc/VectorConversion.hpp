@@ -32,13 +32,13 @@ inline PetscErrorCode copyFromPETSc(Vec input, Vector<Real>& output)
                           INSERT_VALUES,
                           SCATTER_FORWARD));
 
-  const PetscScalar* values = nullptr;
-  PetscCall(VecGetArrayRead(all, &values));
+  const PetscScalar* vals = nullptr;
+  PetscCall(VecGetArrayRead(all, &vals));
   for (PetscInt i = 0; i < size; ++i)
   {
-    output[static_cast<Index>(i)] = PetscRealPart(values[i]);
+    output[static_cast<Index>(i)] = PetscRealPart(vals[i]);
   }
-  PetscCall(VecRestoreArrayRead(all, &values));
+  PetscCall(VecRestoreArrayRead(all, &vals));
 
   PetscCall(VecScatterDestroy(&scatter));
   PetscCall(VecDestroy(&all));
@@ -58,14 +58,14 @@ inline PetscErrorCode copyToPETSc(const Vector<Real>& input, Vec output)
   PetscInt end   = 0;
   PetscCall(VecGetOwnershipRange(output, &begin, &end));
 
-  PetscScalar* values = nullptr;
-  PetscCall(VecGetArray(output, &values));
+  PetscScalar* vals = nullptr;
+  PetscCall(VecGetArray(output, &vals));
   for (PetscInt i = begin; i < end; ++i)
   {
-    values[i - begin] =
+    vals[i - begin] =
         static_cast<PetscScalar>(input[static_cast<Index>(i)]);
   }
-  PetscCall(VecRestoreArray(output, &values));
+  PetscCall(VecRestoreArray(output, &vals));
   return PETSC_SUCCESS;
 }
 

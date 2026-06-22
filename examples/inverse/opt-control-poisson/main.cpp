@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <femx/assembly/BoundaryDofLayout.hpp>
 #include <femx/assembly/BoundaryResidualEquation.hpp>
@@ -30,10 +29,10 @@
 #include <femx/problem/MatrixResidual.hpp>
 #include <femx/problem/ObjectiveFunctional.hpp>
 #include <femx/problem/SumObjective.hpp>
-#include <femx/solve/AdjointReducedFunctional.hpp>
-#include <femx/solve/MatrixAdjointSolver.hpp>
-#include <femx/solve/MatrixLinearStateSolver.hpp>
-#include <femx/solve/StateSolver.hpp>
+#include <femx/state/AdjointReducedFunctional.hpp>
+#include <femx/state/MatrixAdjointSolver.hpp>
+#include <femx/state/MatrixLinearStateSolver.hpp>
+#include <femx/state/StateSolver.hpp>
 
 namespace
 {
@@ -43,7 +42,7 @@ using namespace femx::assembly;
 using namespace femx::linalg;
 using namespace femx::opt;
 using namespace femx::problem;
-using namespace femx::solve;
+using namespace femx::state;
 
 using Dofs = Vector<Index>;
 
@@ -58,7 +57,7 @@ struct VisualizationOptions
 {
   bool        enabled  = true;
   Index       interval = kVizInterval;
-  std::string basename = "poisson-boundary-neumann-history";
+  std::string base     = "poisson-boundary-neumann-history";
 };
 
 void checkPetsc(PetscErrorCode ierr, const std::string& action)
@@ -70,74 +69,62 @@ void checkPetsc(PetscErrorCode ierr, const std::string& action)
   }
 }
 
-void resize(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
 VisualizationOptions readVisualizationOptions()
 {
-  VisualizationOptions options;
+  VisualizationOptions opts;
 #ifndef FEMX_HAS_HDF5
-  options.enabled = false;
+  opts.enabled = false;
 #endif
 
-  PetscBool viz_enabled = options.enabled ? PETSC_TRUE : PETSC_FALSE;
+  PetscBool viz_enabled = opts.enabled ? PETSC_TRUE : PETSC_FALSE;
   checkPetsc(PetscOptionsGetBool(
                  nullptr, nullptr, "-viz", &viz_enabled, nullptr),
              "PetscOptionsGetBool(-viz)");
 
-  options.enabled = viz_enabled == PETSC_TRUE;
+  opts.enabled = viz_enabled == PETSC_TRUE;
 #ifndef FEMX_HAS_HDF5
-  options.enabled = false;
+  opts.enabled = false;
 #endif
 
-  PetscInt interval = static_cast<PetscInt>(options.interval);
+  PetscInt interval = static_cast<PetscInt>(opts.interval);
   checkPetsc(PetscOptionsGetInt(
                  nullptr, nullptr, "-viz_interval", &interval, nullptr),
              "PetscOptionsGetInt(-viz_interval)");
-  options.interval = static_cast<Index>(interval);
-  if (options.enabled && options.interval <= 0)
+  opts.interval = static_cast<Index>(interval);
+  if (opts.enabled && opts.interval <= 0)
   {
     throw std::runtime_error("-viz_interval must be positive");
   }
 
-  char      basename[4096] = {};
-  PetscBool basename_set   = PETSC_FALSE;
+  char      base[4096]   = {};
+  PetscBool basename_set = PETSC_FALSE;
   checkPetsc(PetscOptionsGetString(nullptr,
                                    nullptr,
                                    "-viz_output",
-                                   basename,
-                                   sizeof(basename),
+                                   base,
+                                   sizeof(base),
                                    &basename_set),
              "PetscOptionsGetString(-viz_output)");
   if (basename_set == PETSC_TRUE)
   {
-    options.basename = basename;
+    opts.base = base;
   }
 
-  return options;
+  return opts;
 }
 
 void addBoundaryFacet(Mesh&              mesh,
                       Index              tag,
                       const std::string& name,
-                      std::vector<Index> node_ids)
+                      Vector<Index>      nids)
 {
   Mesh::BoundaryFacet facet;
-  facet.dim           = 1;
-  facet.entity_tag    = tag;
-  facet.physical_tag  = tag;
-  facet.physical_name = name;
-  facet.shape         = Cell::Shape::Segment;
-  facet.node_ids      = std::move(node_ids);
+  facet.dim        = 1;
+  facet.entity_tag = tag;
+  facet.ptag       = tag;
+  facet.pname      = name;
+  facet.shape      = Cell::Shape::Segment;
+  facet.nids       = std::move(nids);
   mesh.addBoundaryFacet(std::move(facet));
 }
 
@@ -216,7 +203,7 @@ void getElementValues(const FESpace&      space,
   space.elemDofs(ic, dofs);
   const Index num_local_dofs = dofs.size();
 
-  resize(local, num_local_dofs);
+  resizeOrZero(local, num_local_dofs);
   for (Index i = 0; i < local.size(); ++i)
   {
     local[i] = global[dofs[i]];
@@ -224,12 +211,12 @@ void getElementValues(const FESpace&      space,
 }
 
 void poissonVolumeResidual(Index       cell,
-                           Index       num_qp,
-                           Index       num_nodes,
+                           Index       nq,
+                           Index       nn,
                            Index       dim,
-                           Index       num_res,
-                           Index       num_states,
-                           Index       num_prm,
+                           Index       nres,
+                           Index       nst,
+                           Index       nprm,
                            const Real* N,
                            const Real* dNdx,
                            const Real* JxW,
@@ -238,22 +225,22 @@ void poissonVolumeResidual(Index       cell,
                            Real*       out)
 {
   (void) cell;
-  (void) num_nodes;
-  (void) num_prm;
+  (void) nn;
+  (void) nprm;
   (void) N;
   (void) prm;
 
-  for (Index a = 0; a < num_res; ++a)
+  for (Index a = 0; a < nres; ++a)
   {
     out[a] = 0.0;
   }
 
-  for (Index iq = 0; iq < num_qp; ++iq)
+  for (Index iq = 0; iq < nq; ++iq)
   {
-    const Real* dNdx_q = dNdx + iq * num_states * dim;
+    const Real* dNdx_q = dNdx + iq * nst * dim;
 
     Real grad_u[3] = {0.0, 0.0, 0.0};
-    for (Index b = 0; b < num_states; ++b)
+    for (Index b = 0; b < nst; ++b)
     {
       for (Index d = 0; d < dim; ++d)
       {
@@ -261,7 +248,7 @@ void poissonVolumeResidual(Index       cell,
       }
     }
 
-    for (Index a = 0; a < num_res; ++a)
+    for (Index a = 0; a < nres; ++a)
     {
       Real term = 0.0;
       for (Index d = 0; d < dim; ++d)
@@ -277,10 +264,10 @@ class PoissonVolumeEquation final : public MatrixResidual
 {
 public:
   PoissonVolumeEquation(const FESpace&         space,
-                        Index                  num_prm,
+                        Index                  nprm,
                         const GaussQuadrature& quad)
     : space_(space),
-      num_prm_(num_prm),
+      nprm_(nprm),
       kernel_(space,
               quad,
               space.numDofsPerElem(),
@@ -296,7 +283,7 @@ public:
 
   Index numParams() const override
   {
-    return num_prm_;
+    return nprm_;
   }
 
   Index numRes() const override
@@ -309,7 +296,7 @@ public:
            Vector<Real>&       out) const override
   {
     checkSizes(state, prm);
-    resize(out, numRes());
+    resizeOrZero(out, numRes());
 
     Dofs         dofs;
     Vector<Real> state_e;
@@ -376,7 +363,7 @@ private:
 
 private:
   const FESpace&                            space_;
-  Index                                     num_prm_{0};
+  Index                                     nprm_{0};
   EnzymeVolumeKernel<poissonVolumeResidual> kernel_;
 };
 
@@ -384,33 +371,33 @@ class DirichletResidualEquation final : public MatrixResidual
 {
 public:
   DirichletResidualEquation(
-      const MatrixResidual& base_eq,
+      const MatrixResidual& base_problem,
       Dofs                  dofs)
-    : base_eq_(base_eq),
+    : base_problem_(base_problem),
       dofs_(std::move(dofs))
   {
   }
 
   Index numStates() const override
   {
-    return base_eq_.numStates();
+    return base_problem_.numStates();
   }
 
   Index numParams() const override
   {
-    return base_eq_.numParams();
+    return base_problem_.numParams();
   }
 
   Index numRes() const override
   {
-    return base_eq_.numRes();
+    return base_problem_.numRes();
   }
 
   void res(const Vector<Real>& state,
            const Vector<Real>& prm,
            Vector<Real>&       out) const override
   {
-    base_eq_.res(state, prm, out);
+    base_problem_.res(state, prm, out);
     for (Index dof : dofs_)
     {
       out[dof] = state[dof];
@@ -421,7 +408,7 @@ public:
                         const Vector<Real>& prm,
                         SystemMatrix&       out) const override
   {
-    base_eq_.assembleStateJac(state, prm, out);
+    base_problem_.assembleStateJac(state, prm, out);
     for (Index row : dofs_)
     {
       for (Index col = 0; col < out.numCols(); ++col)
@@ -436,7 +423,7 @@ public:
                         const Vector<Real>& prm,
                         SystemMatrix&       out) const override
   {
-    base_eq_.assembleParamJac(state, prm, out);
+    base_problem_.assembleParamJac(state, prm, out);
     for (Index row : dofs_)
     {
       for (Index col = 0; col < out.numCols(); ++col)
@@ -447,20 +434,20 @@ public:
   }
 
 private:
-  const MatrixResidual& base_eq_;
+  const MatrixResidual& base_problem_;
   Dofs                  dofs_;
 };
 
 void boundaryNeumannResidual(Index       facet,
-                             Index       num_qp,
-                             Index       num_nodes,
+                             Index       nq,
+                             Index       nn,
                              Index       dim,
-                             Index       num_res,
-                             Index       num_states,
-                             Index       num_prm,
+                             Index       nres,
+                             Index       nst,
+                             Index       nprm,
                              const Real* N,
                              const Real* point,
-                             const Real* normal,
+                             const Real* nrm,
                              const Real* JxW,
                              const Real* state,
                              const Real* prm,
@@ -468,29 +455,29 @@ void boundaryNeumannResidual(Index       facet,
 {
   (void) facet;
   (void) dim;
-  (void) num_res;
-  (void) num_states;
-  (void) num_prm;
+  (void) nres;
+  (void) nst;
+  (void) nprm;
   (void) point;
-  (void) normal;
+  (void) nrm;
   (void) state;
 
-  for (Index a = 0; a < num_nodes; ++a)
+  for (Index a = 0; a < nn; ++a)
   {
     out[a] = 0.0;
   }
 
-  for (Index iq = 0; iq < num_qp; ++iq)
+  for (Index iq = 0; iq < nq; ++iq)
   {
-    const Real* Nq = N + iq * num_nodes;
+    const Real* Nq = N + iq * nn;
 
     Real mq = 0.0;
-    for (Index b = 0; b < num_nodes; ++b)
+    for (Index b = 0; b < nn; ++b)
     {
       mq += Nq[b] * prm[b];
     }
 
-    for (Index a = 0; a < num_nodes; ++a)
+    for (Index a = 0; a < nn; ++a)
     {
       out[a] -= Nq[a] * mq * JxW[iq];
     }
@@ -501,15 +488,15 @@ class VelocityDataMisfit final : public ObjectiveFunctional
 {
 public:
   VelocityDataMisfit(const FESpace&         space,
-                     Index                  num_prm,
+                     Index                  nprm,
                      const Vector<Real>&    data,
                      const GaussQuadrature& quad,
-                     Real                   weight)
+                     Real                   wt)
     : space_(space),
-      num_prm_(num_prm),
+      nprm_(nprm),
       data_(data),
       quad_(quad),
-      weight_(weight)
+      weight_(wt)
   {
     if (data_.size() != space_.numDofs() || weight_ < 0.0)
     {
@@ -525,7 +512,7 @@ public:
 
   Index numParams() const override
   {
-    return num_prm_;
+    return nprm_;
   }
 
   Real value(const Vector<Real>& state,
@@ -541,7 +528,7 @@ public:
                  Vector<Real>&       out) const override
   {
     checkSizes(state, prm);
-    resize(out, numStates());
+    resizeOrZero(out, numStates());
 
     (void) integrateStateDifference(state, &out);
   }
@@ -551,39 +538,39 @@ public:
                  Vector<Real>&       out) const override
   {
     checkSizes(state, prm);
-    resize(out, numParams());
+    resizeOrZero(out, numParams());
   }
 
 private:
   Real integrateStateDifference(const Vector<Real>& state,
                                 Vector<Real>*       state_grad) const
   {
-    ElementValues values(space_.finiteElement(), quad_);
+    ElementValues vals(space_.finiteElement(), quad_);
     Dofs          dofs;
     Real          value_out = 0.0;
 
     for (Index ic = 0; ic < space_.numElems(); ++ic)
     {
       space_.elemDofs(ic, dofs);
-      values.reinit(space_.mesh().cell(ic));
+      vals.reinit(space_.mesh().cell(ic));
 
-      for (Index iq = 0; iq < values.numQuadraturePoints(); ++iq)
+      for (Index iq = 0; iq < vals.numQuadraturePoints(); ++iq)
       {
-        const auto N = values.N(iq);
+        const auto N = vals.N(iq);
 
         Real diff_q = 0.0;
-        for (Index a = 0; a < values.numDofs(); ++a)
+        for (Index a = 0; a < vals.numDofs(); ++a)
         {
           const Index dof  = dofs[a];
           diff_q          += N[a] * (state[dof] - data_[dof]);
         }
 
-        const Real w  = weight_ * values.JxW(iq);
+        const Real w  = weight_ * vals.JxW(iq);
         value_out    += 0.5 * diff_q * diff_q * w;
 
         if (state_grad != nullptr)
         {
-          for (Index a = 0; a < values.numDofs(); ++a)
+          for (Index a = 0; a < vals.numDofs(); ++a)
           {
             const Index dof     = dofs[a];
             (*state_grad)[dof] += N[a] * diff_q * w;
@@ -605,7 +592,7 @@ private:
 
 private:
   const FESpace&  space_;
-  Index           num_prm_{0};
+  Index           nprm_{0};
   Vector<Real>    data_;
   GaussQuadrature quad_;
   Real            weight_{1.0};
@@ -617,14 +604,14 @@ public:
   BoundaryRegularization(
       const Mesh&            mesh,
       BoundaryDofLayout      param_layout,
-      Index                  num_states,
+      Index                  nst,
       const GaussQuadrature& quad,
-      Real                   weight)
+      Real                   wt)
     : mesh_(mesh),
       param_layout_(std::move(param_layout)),
-      num_states_(num_states),
+      nst_(nst),
       quad_(quad),
-      weight_(weight)
+      weight_(wt)
   {
     if (weight_ < 0.0)
     {
@@ -635,7 +622,7 @@ public:
 
   Index numStates() const override
   {
-    return num_states_;
+    return nst_;
   }
 
   Index numParams() const override
@@ -656,7 +643,7 @@ public:
                  Vector<Real>&       out) const override
   {
     checkSizes(state, prm);
-    resize(out, numStates());
+    resizeOrZero(out, numStates());
   }
 
   void paramGrad(const Vector<Real>& state,
@@ -664,7 +651,7 @@ public:
                  Vector<Real>&       out) const override
   {
     checkSizes(state, prm);
-    resize(out, numParams());
+    resizeOrZero(out, numParams());
 
     (void) integrateBoundaryL2(prm, &out);
   }
@@ -673,31 +660,31 @@ private:
   Real integrateBoundaryL2(const Vector<Real>& prm,
                            Vector<Real>*       param_grad) const
   {
-    BoundaryElementValues values(quad_);
+    BoundaryElementValues vals(quad_);
     Dofs                  dofs;
     Real                  value_out = 0.0;
 
     for (Index ib = 0; ib < param_layout_.numFacets(); ++ib)
     {
       param_layout_.facetDofs(ib, dofs);
-      values.reinit(mesh_, param_layout_.facet(ib));
+      vals.reinit(mesh_, param_layout_.facet(ib));
 
-      for (Index iq = 0; iq < values.numQuadraturePoints(); ++iq)
+      for (Index iq = 0; iq < vals.numQuadraturePoints(); ++iq)
       {
-        const auto N = values.N(iq);
+        const auto N = vals.N(iq);
 
         Real mq = 0.0;
-        for (Index a = 0; a < values.numNodes(); ++a)
+        for (Index a = 0; a < vals.numNodes(); ++a)
         {
           mq += N[a] * prm[dofs[a]];
         }
 
-        const Real w  = weight_ * values.JxW(iq);
+        const Real w  = weight_ * vals.JxW(iq);
         value_out    += 0.5 * mq * mq * w;
 
         if (param_grad != nullptr)
         {
-          for (Index a = 0; a < values.numNodes(); ++a)
+          for (Index a = 0; a < vals.numNodes(); ++a)
           {
             (*param_grad)[dofs[a]] += N[a] * mq * w;
           }
@@ -719,22 +706,22 @@ private:
 private:
   const Mesh&       mesh_;
   BoundaryDofLayout param_layout_;
-  Index             num_states_{0};
+  Index             nst_{0};
   GaussQuadrature   quad_;
   Real              weight_{0.0};
 };
 
 Vector<Real> boundaryCoordinates(const Mesh&              mesh,
-                                 const BoundaryDofLayout& layout)
+                                 const BoundaryDofLayout& lyt)
 {
-  Vector<Real> x(layout.numDofs());
-  Vector<Real> seen(layout.numDofs());
+  Vector<Real> x(lyt.numDofs());
+  Vector<Real> seen(lyt.numDofs());
   Dofs         dofs;
 
-  for (Index ib = 0; ib < layout.numFacets(); ++ib)
+  for (Index ib = 0; ib < lyt.numFacets(); ++ib)
   {
-    layout.facetDofs(ib, dofs);
-    const auto& facet          = layout.facet(ib);
+    lyt.facetDofs(ib, dofs);
+    const auto& facet          = lyt.facet(ib);
     const Index num_facet_dofs = dofs.size();
 
     for (Index a = 0; a < num_facet_dofs; ++a)
@@ -742,7 +729,7 @@ Vector<Real> boundaryCoordinates(const Mesh&              mesh,
       const Index dof = dofs[a];
       if (seen[dof] == 0.0)
       {
-        const Index node = facet.node_ids[a];
+        const Index node = facet.nids[a];
         x[dof]           = mesh.node(node)[0];
         seen[dof]        = 1.0;
       }
@@ -762,24 +749,24 @@ Vector<Real> makeTrueNeumann(const Vector<Real>& x)
 }
 
 Vector<Real> boundaryFieldOnMesh(const Mesh&              mesh,
-                                 const BoundaryDofLayout& layout,
-                                 const Vector<Real>&      values)
+                                 const BoundaryDofLayout& lyt,
+                                 const Vector<Real>&      vals)
 {
-  if (values.size() != layout.numDofs())
+  if (vals.size() != lyt.numDofs())
   {
     throw std::runtime_error("boundaryFieldOnMesh size mismatch");
   }
 
   Vector<Real> field(mesh.numNodes());
   Dofs         dofs;
-  for (Index ib = 0; ib < layout.numFacets(); ++ib)
+  for (Index ib = 0; ib < lyt.numFacets(); ++ib)
   {
-    layout.facetDofs(ib, dofs);
-    const auto& facet = layout.facet(ib);
+    lyt.facetDofs(ib, dofs);
+    const auto& facet = lyt.facet(ib);
     Index       a     = 0;
-    for (Index node : facet.node_ids)
+    for (Index node : facet.nids)
     {
-      field[node] = values[dofs[a]];
+      field[node] = vals[dofs[a]];
       ++a;
     }
   }
@@ -794,24 +781,24 @@ public:
                             StateSolver&             state_solver,
                             const Vector<Real>&      observed_state,
                             const Vector<Real>&      true_prm,
-                            VisualizationOptions     options)
+                            VisualizationOptions     opts)
     : mesh_(mesh),
       param_layout_(param_layout),
       state_solver_(state_solver),
       observed_state_(observed_state),
       true_prm_(true_prm),
       true_param_field_(boundaryFieldOnMesh(mesh, param_layout, true_prm)),
-      options_(std::move(options))
+      opts_(std::move(opts))
   {
-    if (options_.enabled)
+    if (opts_.enabled)
     {
       out_.attachMesh(mesh_);
     }
   }
 
-  const VisualizationOptions& options() const
+  const VisualizationOptions& opts() const
   {
-    return options_;
+    return opts_;
   }
 
   bool hasRecorded() const
@@ -819,13 +806,13 @@ public:
     return recorded_;
   }
 
-  void record(Index iter, const Vector<Real>& prm, bool force = false)
+  void rec(Index iter, const Vector<Real>& prm, bool force = false)
   {
-    if (!options_.enabled)
+    if (!opts_.enabled)
     {
       return;
     }
-    if (!force && iter % options_.interval != 0)
+    if (!force && iter % opts_.interval != 0)
     {
       return;
     }
@@ -854,16 +841,16 @@ public:
 
   void write() const
   {
-    if (options_.enabled && recorded_)
+    if (opts_.enabled && recorded_)
     {
-      out_.write(options_.basename);
+      out_.write(opts_.base);
     }
   }
 
 private:
-  Vector<Real> boundaryField(const Vector<Real>& values) const
+  Vector<Real> boundaryField(const Vector<Real>& vals) const
   {
-    return boundaryFieldOnMesh(mesh_, param_layout_, values);
+    return boundaryFieldOnMesh(mesh_, param_layout_, vals);
   }
 
   const Mesh&              mesh_;
@@ -872,14 +859,14 @@ private:
   const Vector<Real>&      observed_state_;
   const Vector<Real>&      true_prm_;
   Vector<Real>             true_param_field_;
-  VisualizationOptions     options_;
+  VisualizationOptions     opts_;
   TimeSeriesDataOut        out_;
   bool                     recorded_{false};
   Index                    last_iter_{-1};
 };
 
 Real DirectionalDerivative(
-    AdjointReducedFunctional& functional,
+    AdjointReducedFunctional& fn,
     const Vector<Real>&       prm,
     const Vector<Real>&       dir,
     Real                      eps)
@@ -891,7 +878,7 @@ Real DirectionalDerivative(
     plus[i]  = prm[i] + eps * dir[i];
     minus[i] = prm[i] - eps * dir[i];
   }
-  return (functional.value(plus) - functional.value(minus)) / (2.0 * eps);
+  return (fn.value(plus) - fn.value(minus)) / (2.0 * eps);
 }
 
 int run()
@@ -918,18 +905,18 @@ int run()
   EnzymeBoundaryKernel<boundaryNeumannResidual>
       neumann_kernel(mesh, bd_quad, 2, 2, 2);
 
-  BoundaryResidualEquation neumann_eq(
+  BoundaryResidualEquation neumann_problem(
       vol_eq,
       top_state_layout,
       top_state_layout,
       top_param_layout,
       neumann_kernel);
 
-  DirichletResidualEquation eq(neumann_eq, makeDirichletDofs(space));
+  DirichletResidualEquation problem(neumann_problem, makeDirichletDofs(space));
 
   DenseSystemMatrix       state_jac;
   DenseLinearSolver       state_lin_solver;
-  MatrixLinearStateSolver state_solver(eq, state_jac, state_lin_solver);
+  MatrixLinearStateSolver state_solver(problem, state_jac, state_lin_solver);
 
   const auto   top_x        = boundaryCoordinates(mesh, top_param_layout);
   Vector<Real> neumann_true = makeTrueNeumann(top_x);
@@ -955,22 +942,22 @@ int run()
 
   DenseSystemMatrix   adj_jac;
   DenseLinearSolver   adj_lin_solver;
-  MatrixAdjointSolver adj_solver(eq, adj_jac, adj_lin_solver);
+  MatrixAdjointSolver adj_solver(problem, adj_jac, adj_lin_solver);
 
-  AdjointReducedFunctional reduced(state_solver, adj_solver, eq, obj);
+  AdjointReducedFunctional reduced(state_solver, adj_solver, problem, obj);
 
   Vector<Real> initial(top_param_layout.numDofs());
   initial.setZero();
 
   const VisualizationOptions viz_options = readVisualizationOptions();
-  OptimizationHistoryOutput  history(
+  OptimizationHistoryOutput  hist(
       mesh,
       top_param_layout,
       state_solver,
       u_obs,
       neumann_true,
       viz_options);
-  history.record(0, initial, true);
+  hist.rec(0, initial, true);
 
   Vector<Real> initial_grad;
   const Real   initial_value = reduced.valueGrad(initial, initial_grad);
@@ -990,16 +977,16 @@ int run()
   const Real fd_dir      = DirectionalDerivative(reduced, initial, dir, 1.0e-6);
 
   TaoOptimizer optimizer(reduced);
-  optimizer.options().type     = TAOLMVM;
-  optimizer.options().abs_tol  = 1.0e-10;
-  optimizer.options().rel_tol  = 1.0e-10;
-  optimizer.options().step_tol = 0.0;
-  optimizer.options().max_its  = 160;
+  optimizer.opts().type     = TAOLMVM;
+  optimizer.opts().abs_tol  = 1.0e-10;
+  optimizer.opts().rel_tol  = 1.0e-10;
+  optimizer.opts().step_tol = 0.0;
+  optimizer.opts().max_its  = 160;
 
   optimizer.setMonitor(
-      [&history](const TaoIterationInfo& info, const Vector<Real>& prm)
+      [&hist](const TaoIterationInfo& info, const Vector<Real>& prm)
       {
-        history.record(info.its, prm);
+        hist.rec(info.its, prm);
       });
 
   TaoResult            result;
@@ -1011,8 +998,8 @@ int run()
         + std::to_string(ierr));
   }
 
-  history.record(result.its, result.prm, true);
-  history.write();
+  hist.rec(result.its, result.prm, true);
+  hist.write();
 
   const Real final_rmse = rmse(result.prm, neumann_true);
 
@@ -1033,11 +1020,11 @@ int run()
   std::cout << "  final objective: " << result.value
             << ", |grad| = " << std::sqrt(result.grad_norm_squared)
             << ", Neumann RMSE = " << final_rmse << '\n';
-  if (history.options().enabled && history.hasRecorded())
+  if (hist.opts().enabled && hist.hasRecorded())
   {
-    std::cout << "  visualization: " << history.options().basename
+    std::cout << "  visualization: " << hist.opts().base
               << ".xdmf/.h5, interval = "
-              << history.options().interval << '\n';
+              << hist.opts().interval << '\n';
   }
   else
   {

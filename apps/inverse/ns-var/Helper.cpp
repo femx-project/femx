@@ -17,10 +17,14 @@
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/fem/VelocityProfile.hpp>
+#include <femx/linalg/BlockVectorView.hpp>
 
-using namespace femx::fem;
+using namespace std;
+using namespace femx;
 using namespace femx::problem;
-using namespace femx::solve;
+using namespace femx::state;
+using namespace femx::assembly;
+using namespace femx::fem;
 
 namespace femx::navier_var_new
 {
@@ -30,21 +34,9 @@ namespace
 
 constexpr Index kQuadOrder = 2;
 
-void resize(Vector<Real>& out, Index size)
+Point3 toPoint(const array<Real, 3>& vals)
 {
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
-Point3 toPoint(const std::array<Real, 3>& values)
-{
-  return {values[0], values[1], values[2]};
+  return {vals[0], vals[1], vals[2]};
 }
 
 Index observationSolveSteps(const Params& prm)
@@ -77,35 +69,35 @@ NavierKernel makeAppKernel(const MixedFESpace&    space,
 Vector<Index> obsComponents(const MixedFESpace&      space,
                             const ObservationParams& prm)
 {
-  Vector<Index> components;
+  Vector<Index> comps;
   const auto    field = space.field(0);
-  if (prm.components.empty())
+  if (prm.comps.empty())
   {
-    components.reserve(field.numComponents());
-    for (Index component = 0; component < field.numComponents(); ++component)
+    comps.reserve(field.numComponents());
+    for (Index comp = 0; comp < field.numComponents(); ++comp)
     {
-      components.push_back(component);
+      comps.push_back(comp);
     }
-    return components;
+    return comps;
   }
 
-  components.reserve(static_cast<Index>(prm.components.size()));
-  for (Index component : prm.components)
+  comps.reserve(prm.comps.size());
+  for (Index comp : prm.comps)
   {
-    if (component < 0 || component >= field.numComponents())
+    if (comp < 0 || comp >= field.numComponents())
     {
-      throw std::runtime_error("observation component is out of range");
+      throw runtime_error("observation component is out of range");
     }
-    components.push_back(component);
+    comps.push_back(comp);
   }
-  return components;
+  return comps;
 }
 
-std::vector<Point3> gridObsPoints(const ObservationParams& prm)
+Vector<Point3> gridObsPoints(const ObservationParams& prm)
 {
   if (!prm.grid)
   {
-    throw std::runtime_error("grid observation requires inverse.obs.grid");
+    throw runtime_error("grid observation requires inverse.obs.grid");
   }
 
   const auto& grid = *prm.grid;
@@ -118,87 +110,87 @@ std::vector<Point3> gridObsPoints(const ObservationParams& prm)
       toPoint(grid.lower), toPoint(grid.upper), grid.counts);
 }
 
-std::vector<Point3> obsPoints(const ObservationParams& prm)
+Vector<Point3> obsPoints(const ObservationParams& prm)
 {
   if (prm.type == "grid")
   {
     return gridObsPoints(prm);
   }
 
-  throw std::runtime_error(
+  throw runtime_error(
       "Unsupported observation type: " + prm.type
       + " (expected 'grid')");
 }
 
-std::vector<Point3> activeObsPoints(const MixedFESpace&      space,
-                                    const ObservationParams& prm)
+Vector<Point3> activeObsPoints(const MixedFESpace&      space,
+                               const ObservationParams& prm)
 {
   if (prm.type != "grid")
   {
     return obsPoints(prm);
   }
 
-  const std::vector<Point3> points = gridObsPoints(prm);
-  std::vector<Point3>       filtered =
-      TimePointInterpolator::filterPointsInside(space, 0, points);
+  const Vector<Point3> pts = gridObsPoints(prm);
+  Vector<Point3>       filtered =
+      TimePointInterpolator::filterPointsInside(space, 0, pts);
   if (filtered.empty())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "observation grid mask removed all points outside the fluid mesh");
   }
   return filtered;
 }
 
-bool matchesBoundaryConfig(const BoundarySelector& selector,
+bool matchesBoundaryConfig(const BoundarySelector& sel,
                            const BCsParams&        bc)
 {
-  if (!selector.name.empty())
+  if (!sel.name.empty())
   {
-    return bc.name == selector.name;
+    return bc.name == sel.name;
   }
-  return bc.physical == selector.physical;
+  return bc.physical == sel.physical;
 }
 
-bool matchesBoundaryFacet(const BoundarySelector&    selector,
+bool matchesBoundaryFacet(const BoundarySelector&    sel,
                           const Mesh::BoundaryFacet& facet)
 {
-  if (!selector.name.empty())
+  if (!sel.name.empty())
   {
-    return facet.physical_name == selector.name;
+    return facet.pname == sel.name;
   }
-  return facet.physical_tag == selector.physical;
+  return facet.ptag == sel.physical;
 }
 
-std::vector<ControlSpatialRegularization::Edge> controlSpatialEdges(
+Vector<ControlSpatialRegularization::Edge> controlSpatialEdges(
     const MixedFESpace&     space,
-    const BoundarySelector& selector,
-    const DirichletControl& control)
+    const BoundarySelector& sel,
+    const DirichletControl& ctr)
 {
-  const auto                               u_dof      = space.field(0);
-  const Index                              components = u_dof.numComponents();
-  std::map<std::pair<Index, Index>, Index> ctr_index;
+  const auto                     u_dof = space.field(0);
+  const Index                    comps = u_dof.numComponents();
+  map<pair<Index, Index>, Index> ctr_index;
 
-  for (Index i = 0; i < control.numDofs(); ++i)
+  for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof       = control.stateDof(i);
-    const Index node      = dof / components;
-    const Index component = dof % components;
+    const Index dof  = ctr.stateDof(i);
+    const Index node = dof / comps;
+    const Index comp = dof % comps;
     if (node < 0
         || node >= space.mesh().numNodes()
-        || u_dof.globalDof(node, component) != dof)
+        || u_dof.globalDof(node, comp) != dof)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "controlSpatialEdges expected velocity control dofs");
     }
-    ctr_index[{node, component}] = i;
+    ctr_index[{node, comp}] = i;
   }
 
-  std::set<ControlSpatialRegularization::Edge> unique_edges;
-  const auto                                   add_edge =
-      [&](Index node0, Index node1, Index component)
+  set<ControlSpatialRegularization::Edge> unique_edges;
+  const auto                              add_edge =
+      [&](Index node0, Index node1, Index comp)
   {
-    const auto it0 = ctr_index.find({node0, component});
-    const auto it1 = ctr_index.find({node1, component});
+    const auto it0 = ctr_index.find({node0, comp});
+    const auto it1 = ctr_index.find({node1, comp});
     if (it0 == ctr_index.end() || it1 == ctr_index.end())
     {
       return;
@@ -212,33 +204,38 @@ std::vector<ControlSpatialRegularization::Edge> controlSpatialEdges(
     }
     if (b < a)
     {
-      std::swap(a, b);
+      swap(a, b);
     }
     unique_edges.insert({a, b});
   };
 
   for (const auto& facet : space.mesh().boundaryFacets())
   {
-    if (!matchesBoundaryFacet(selector, facet)
-        || facet.node_ids.size() < 2)
+    if (!matchesBoundaryFacet(sel, facet)
+        || facet.nids.size() < 2)
     {
       continue;
     }
 
-    for (Index component = 0; component < components; ++component)
+    for (Index comp = 0; comp < comps; ++comp)
     {
-      for (std::size_t i = 1; i < facet.node_ids.size(); ++i)
+      for (Index i = 1; i < facet.nids.size(); ++i)
       {
-        add_edge(facet.node_ids[i - 1], facet.node_ids[i], component);
+        add_edge(facet.nids[i - 1], facet.nids[i], comp);
       }
-      if (facet.node_ids.size() > 2)
+      if (facet.nids.size() > 2)
       {
-        add_edge(facet.node_ids.back(), facet.node_ids.front(), component);
+        add_edge(facet.nids.back(), facet.nids.front(), comp);
       }
     }
   }
 
-  return {unique_edges.begin(), unique_edges.end()};
+  Vector<ControlSpatialRegularization::Edge> edges;
+  for (const auto& edge : unique_edges)
+  {
+    edges.push_back(edge);
+  }
+  return edges;
 }
 
 bool hasFixedVelocityValue(const BCsParams& bc)
@@ -246,23 +243,23 @@ bool hasFixedVelocityValue(const BCsParams& bc)
   return bc.ux || bc.uy || bc.uz || bc.vel;
 }
 
-std::optional<Real> constantVelocityComponent(
+optional<Real> constantVelocityComponent(
     const BCsParams& bc,
-    Index            component)
+    Index            comp)
 {
-  if (component == 0 && bc.ux)
+  if (comp == 0 && bc.ux)
   {
     return *bc.ux;
   }
-  if (component == 1 && bc.uy)
+  if (comp == 1 && bc.uy)
   {
     return *bc.uy;
   }
-  if (component == 2 && bc.uz)
+  if (comp == 2 && bc.uz)
   {
     return *bc.uz;
   }
-  return std::nullopt;
+  return nullopt;
 }
 
 const BCsParams& pressureGaugeBoundary(const Params& prm)
@@ -274,38 +271,38 @@ const BCsParams& pressureGaugeBoundary(const Params& prm)
       return bc;
     }
   }
-  throw std::runtime_error("simulation.bcs must contain a pressure boundary");
+  throw runtime_error("simulation.bcs must contain a pressure boundary");
 }
 
-void addFixedValue(std::map<Index, Vector<Real>>& values,
-                   Index                          dof,
-                   Index                          step,
-                   Index                          steps,
-                   Real                           value)
+void addFixedValue(map<Index, Vector<Real>>& vals,
+                   Index                     dof,
+                   Index                     step,
+                   Index                     steps,
+                   Real                      value)
 {
-  auto it = values.find(dof);
-  if (it == values.end())
+  auto it = vals.find(dof);
+  if (it == vals.end())
   {
-    it = values.emplace(dof, Vector<Real>(steps)).first;
+    it = vals.emplace(dof, Vector<Real>(steps)).first;
     for (Index i = 0; i < steps; ++i)
     {
-      it->second[i] = std::numeric_limits<Real>::quiet_NaN();
+      it->second[i] = numeric_limits<Real>::quiet_NaN();
     }
   }
-  else if (!std::isnan(it->second[step])
-           && std::abs(it->second[step] - value) > 1.0e-12)
+  else if (!isnan(it->second[step])
+           && abs(it->second[step] - value) > 1.0e-12)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "fixed boundary has conflicting values at dof "
-        + std::to_string(dof) + ", step " + std::to_string(step));
+        + to_string(dof) + ", step " + to_string(step));
   }
   it->second[step] = value;
 }
 
-void addPressureGaugeValues(const MixedFESpace&            space,
-                            const BCsParams&               bc,
-                            Index                          steps,
-                            std::map<Index, Vector<Real>>& values)
+void addPressureGaugeValues(const MixedFESpace&       space,
+                            const BCsParams&          bc,
+                            Index                     steps,
+                            map<Index, Vector<Real>>& vals)
 {
   if (!bc.p)
   {
@@ -315,22 +312,22 @@ void addPressureGaugeValues(const MixedFESpace&            space,
   const Vector<Index> dofs = gaugeDofs(space, bcSelector(bc));
   for (Index step = 0; step < steps; ++step)
   {
-    addFixedValue(values, dofs[0], step, steps, *bc.p);
+    addFixedValue(vals, dofs[0], step, steps, *bc.p);
   }
 }
 
 Real profileVelocityValue(const MixedFESpace&     space,
-                          const DirichletControl& control,
+                          const DirichletControl& ctr,
                           const TargetParams&     target,
                           Real                    time,
                           Index                   i);
 
-void addProfileVelocityValues(const MixedFESpace&            space,
-                              const DirichletControl&        control,
-                              const BCsParams&               bc,
-                              Index                          steps,
-                              Real                           dt,
-                              std::map<Index, Vector<Real>>& values)
+void addProfileVelocityValues(const MixedFESpace&       space,
+                              const DirichletControl&   ctr,
+                              const BCsParams&          bc,
+                              Index                     steps,
+                              Real                      dt,
+                              map<Index, Vector<Real>>& vals)
 {
   if (!bc.vel)
   {
@@ -339,15 +336,15 @@ void addProfileVelocityValues(const MixedFESpace&            space,
 
   for (Index step = 0; step < steps; ++step)
   {
-    for (Index i = 0; i < control.numDofs(); ++i)
+    for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      addFixedValue(values,
-                    control.stateDof(i),
+      addFixedValue(vals,
+                    ctr.stateDof(i),
                     step,
                     steps,
                     profileVelocityValue(
                         space,
-                        control,
+                        ctr,
                         *bc.vel,
                         static_cast<Real>(step + 1) * dt,
                         i));
@@ -358,20 +355,20 @@ void addProfileVelocityValues(const MixedFESpace&            space,
 Vector<Index> fixedvdofsForBc(const MixedFESpace& space,
                               const BCsParams&    bc)
 {
-  const DirichletControl boundary =
+  const DirichletControl bdry =
       makeVelocityControl(space, bcSelector(bc));
   if (bc.vel)
   {
-    return boundary.stateDofs();
+    return bdry.stateDofs();
   }
 
   const auto    u_dof = space.field(0);
   const Index   nd    = u_dof.numComponents();
   Vector<Index> dofs;
-  for (Index dof : boundary.stateDofs())
+  for (Index dof : bdry.stateDofs())
   {
-    const Index component = dof % nd;
-    if (constantVelocityComponent(bc, component))
+    const Index comp = dof % nd;
+    if (constantVelocityComponent(bc, comp))
     {
       dofs.push_back(dof);
     }
@@ -383,10 +380,10 @@ DirichletControl makeBoundaryControl(const MixedFESpace& space,
                                      const Params&       prm,
                                      const BCsParams&    bc)
 {
-  const DirichletControl boundary =
+  const DirichletControl bdry =
       makeVelocityControl(space, bcSelector(bc));
 
-  Vector<Index> fixed_velocity_dofs;
+  Vector<Index> fvdofs;
   for (const auto& fixed_bc : prm.fwd.bcs)
   {
     if (matchesBoundaryConfig(prm.inv.ctr, fixed_bc)
@@ -395,77 +392,77 @@ DirichletControl makeBoundaryControl(const MixedFESpace& space,
       continue;
     }
     appendUniqueExcept(
-        fixed_velocity_dofs, fixedvdofsForBc(space, fixed_bc), {});
+        fvdofs, fixedvdofsForBc(space, fixed_bc), {});
   }
 
-  Vector<Index> active_dofs;
-  active_dofs.reserve(boundary.numDofs());
-  for (Index dof : boundary.stateDofs())
+  Vector<Index> adofs;
+  adofs.reserve(bdry.numDofs());
+  for (Index dof : bdry.stateDofs())
   {
-    if (!contains(fixed_velocity_dofs, dof))
+    if (!contains(fvdofs, dof))
     {
-      active_dofs.push_back(dof);
+      adofs.push_back(dof);
     }
   }
-  if (active_dofs.empty())
+  if (adofs.empty())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "control boundary has no active velocity dofs after fixed-boundary exclusion");
   }
-  return DirichletControl(std::move(active_dofs));
+  return DirichletControl(std::move(adofs));
 }
 
-void addConstantVelocityValues(const MixedFESpace&            space,
-                               const DirichletControl&        control,
-                               const BCsParams&               bc,
-                               Index                          steps,
-                               std::map<Index, Vector<Real>>& values)
+void addConstantVelocityValues(const MixedFESpace&       space,
+                               const DirichletControl&   ctr,
+                               const BCsParams&          bc,
+                               Index                     steps,
+                               map<Index, Vector<Real>>& vals)
 {
   const auto  u_dof = space.field(0);
   const Index nd    = u_dof.numComponents();
-  for (Index i = 0; i < control.numDofs(); ++i)
+  for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof       = control.stateDof(i);
-    const Index component = dof % nd;
-    const auto  value     = constantVelocityComponent(bc, component);
+    const Index dof   = ctr.stateDof(i);
+    const Index comp  = dof % nd;
+    const auto  value = constantVelocityComponent(bc, comp);
     if (!value)
     {
       continue;
     }
     for (Index step = 0; step < steps; ++step)
     {
-      addFixedValue(values, dof, step, steps, *value);
+      addFixedValue(vals, dof, step, steps, *value);
     }
   }
 }
 
 Real profileVelocityValue(const MixedFESpace&     space,
-                          const DirichletControl& control,
+                          const DirichletControl& ctr,
                           const TargetParams&     target,
                           Real                    time,
                           Index                   i)
 {
   const auto  u_dof = space.field(0);
   const Index nd    = u_dof.numComponents();
-  const Index dof   = control.stateDof(i);
+  const Index dof   = ctr.stateDof(i);
   const Index node  = dof / nd;
   const Index comp  = dof - nd * node;
 
-  const auto profile = poiseuilleProfile(
-      target.center, target.normal, target.radius);
-  if (comp >= static_cast<Index>(profile.normal.size()))
+  const auto prof = poiseuilleProfile(
+      target.cen, target.nrm, target.rad);
+  if (comp >= 3)
   {
     return 0.0;
   }
 
   const Real pulse =
-      sinePulseFactor(time, target.pulse_amplitude, target.period);
+      sinePulseFactor(time, target.pulse_amplitude, target.per);
   const Real peak_speed =
       peakSpeed(
-          target.quantity, "poiseuille", target.bulk_speed, 1.0, 1.5)
+          target.qty, "poiseuille", target.bulk_speed, 1.0, 1.5)
       * pulse;
   return velocityComponent(
-      profile, space.mesh().node(node), peak_speed, comp);
+      prof, space.mesh().node(node), peak_speed, comp);
 }
 
 Real controlStepTime(Index step,
@@ -478,7 +475,7 @@ Vector<Real> rawObservationTimes(const TimeObservationData& data)
 {
   if (data.numLevels() <= 0)
   {
-    throw std::runtime_error("observation data has no time levels");
+    throw runtime_error("observation data has no time levels");
   }
 
   Vector<Real> times(data.numLevels());
@@ -488,10 +485,10 @@ Vector<Real> rawObservationTimes(const TimeObservationData& data)
         data.hasTimeValues()
             ? data.timeValue(row)
             : static_cast<Real>(data.timeLevel(row));
-    if (!std::isfinite(times[row])
+    if (!isfinite(times[row])
         || (row > 0 && times[row] <= times[row - 1]))
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "observation times must be finite and increasing");
     }
   }
@@ -502,9 +499,9 @@ Vector<Real> observationTimesOnSolveLevels(const TimeObservationData& data,
                                            Real                       dt,
                                            Index                      steps)
 {
-  if (steps <= 0 || dt <= 0.0 || !std::isfinite(dt))
+  if (steps <= 0 || dt <= 0.0 || !isfinite(dt))
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "observationTimesOnSolveLevels received invalid inputs");
   }
 
@@ -519,7 +516,7 @@ Vector<Real> observationTimesOnSolveLevels(const TimeObservationData& data,
   }
   if (steps <= 1)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "multiple observation times require at least two solve steps");
   }
 
@@ -527,17 +524,17 @@ Vector<Real> observationTimesOnSolveLevels(const TimeObservationData& data,
   const Real sim_span = final_solve_time - first_solve_time;
   if (raw_span <= 0.0 || sim_span <= 0.0)
   {
-    throw std::runtime_error("observation time span is invalid");
+    throw runtime_error("observation time span is invalid");
   }
 
   for (Index row = 0; row < raw_times.size(); ++row)
   {
     const Real s = (raw_times[row] - raw_times.front()) / raw_span;
     times[row]   = first_solve_time + s * sim_span;
-    if (!std::isfinite(times[row])
+    if (!isfinite(times[row])
         || (row > 0 && times[row] <= times[row - 1]))
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "mapped observation times must be finite and increasing");
     }
   }
@@ -568,7 +565,7 @@ Vector<LinearInterpolation> controlTimeStencils(
 {
   if (steps <= 0)
   {
-    throw std::runtime_error("controlTimeStencils requires positive steps");
+    throw runtime_error("controlTimeStencils requires positive steps");
   }
 
   Vector<LinearInterpolation> stencils(steps);
@@ -579,94 +576,94 @@ Vector<LinearInterpolation> controlTimeStencils(
   return stencils;
 }
 
-void addInitialVelocityValue(std::map<Index, Real>& values,
-                             Index                  dof,
-                             Real                   value)
+void addInitialVelocityValue(map<Index, Real>& vals,
+                             Index             dof,
+                             Real              value)
 {
-  const auto [it, inserted] = values.emplace(dof, value);
-  if (!inserted && std::abs(it->second - value) > 1.0e-12)
+  const auto [it, inserted] = vals.emplace(dof, value);
+  if (!inserted && abs(it->second - value) > 1.0e-12)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initial velocity boundary has conflicting values at dof "
-        + std::to_string(dof));
+        + to_string(dof));
   }
 }
 
 void addInitialProfileVelocityValues(const MixedFESpace&     space,
-                                     const DirichletControl& control,
+                                     const DirichletControl& ctr,
                                      const TargetParams&     target,
                                      Real                    time,
-                                     std::map<Index, Real>&  values)
+                                     map<Index, Real>&       vals)
 {
-  for (Index i = 0; i < control.numDofs(); ++i)
+  for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    addInitialVelocityValue(values,
-                            control.stateDof(i),
+    addInitialVelocityValue(vals,
+                            ctr.stateDof(i),
                             profileVelocityValue(
-                                space, control, target, time, i));
+                                space, ctr, target, time, i));
   }
 }
 
 void addInitialConstantVelocityValues(const MixedFESpace&     space,
-                                      const DirichletControl& control,
+                                      const DirichletControl& ctr,
                                       const BCsParams&        bc,
                                       bool                    fill_missing,
-                                      std::map<Index, Real>&  values)
+                                      map<Index, Real>&       vals)
 {
   const auto  u_dof = space.field(0);
   const Index nd    = u_dof.numComponents();
-  for (Index i = 0; i < control.numDofs(); ++i)
+  for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof       = control.stateDof(i);
-    const Index component = dof % nd;
-    const auto  value     = constantVelocityComponent(bc, component);
+    const Index dof   = ctr.stateDof(i);
+    const Index comp  = dof % nd;
+    const auto  value = constantVelocityComponent(bc, comp);
     if (!value && !fill_missing)
     {
       continue;
     }
-    addInitialVelocityValue(values, dof, value.value_or(0.0));
+    addInitialVelocityValue(vals, dof, value.value_or(0.0));
   }
 }
 
 void addInitialBoundaryVelocityValues(const MixedFESpace&     space,
-                                      const DirichletControl& control,
+                                      const DirichletControl& ctr,
                                       const BCsParams&        bc,
                                       bool                    fill_missing,
-                                      std::map<Index, Real>&  values)
+                                      map<Index, Real>&       vals)
 {
   if (bc.vel)
   {
     addInitialProfileVelocityValues(
-        space, control, *bc.vel, 0.0, values);
+        space, ctr, *bc.vel, 0.0, vals);
     return;
   }
   addInitialConstantVelocityValues(
-      space, control, bc, fill_missing, values);
+      space, ctr, bc, fill_missing, vals);
 }
 
 FixedDofValues toFixedDofValues(
-    const std::map<Index, Vector<Real>>& values,
-    Index                                steps)
+    const map<Index, Vector<Real>>& vals,
+    Index                           steps)
 {
   FixedDofValues out;
-  out.dofs.reserve(static_cast<Index>(values.size()));
-  for (const auto& entry : values)
+  for (const auto& entry : vals)
   {
     out.dofs.push_back(entry.first);
   }
 
-  out.values.resize(steps * out.dofs.size());
-  Index i = 0;
-  for (const auto& entry : values)
+  out.vals.resize(steps * out.dofs.size());
+  BlockVectorView<Real> values(out.vals.data(), steps, out.dofs.size());
+  Index                 i = 0;
+  for (const auto& entry : vals)
   {
     for (Index step = 0; step < steps; ++step)
     {
-      if (std::isnan(entry.second[step]))
+      if (isnan(entry.second[step]))
       {
-        throw std::runtime_error(
+        throw runtime_error(
             "fixed boundary value was not assigned for every time step");
       }
-      out.values[step * out.dofs.size() + i] = entry.second[step];
+      values(step, i) = entry.second[step];
     }
     ++i;
   }
@@ -676,35 +673,35 @@ FixedDofValues toFixedDofValues(
 } // namespace
 
 void initialStateFromParams(
-    const Vector<Index>&          velocity_dofs,
-    const InverseParameterLayout& layout,
+    const Vector<Index>&          vdofs,
+    const InverseParameterLayout& lyt,
     const Vector<Real>&           base_state,
     const Vector<Real>&           prm,
     Vector<Real>&                 out);
 
 InitialVelocityStateSolver::InitialVelocityStateSolver(
     TimeLinearStateSolver& solver,
-    Vector<Index>          velocity_dofs,
-    InverseParameterLayout layout,
+    Vector<Index>          vdofs,
+    InverseParameterLayout lyt,
     Vector<Real>           x0)
   : solver_(solver),
-    velocity_dofs_(std::move(velocity_dofs)),
-    layout_(layout),
+    vdofs_(std::move(vdofs)),
+    layout_(lyt),
     x0_(std::move(x0))
 {
   if (!layout_.hasInitialVelocity())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "InitialVelocityStateSolver requires initial velocity parameters");
   }
-  if (solver_.numParams() != layout_.total_size)
+  if (solver_.numParams() != layout_.ntot)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "InitialVelocityStateSolver parameter size mismatch");
   }
-  if (velocity_dofs_.size() != layout_.init_vel_size)
+  if (vdofs_.size() != layout_.niv)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "InitialVelocityStateSolver velocity dof size mismatch");
   }
   if (x0_.empty())
@@ -713,7 +710,7 @@ InitialVelocityStateSolver::InitialVelocityStateSolver(
   }
   else if (x0_.size() != solver_.numStates())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "InitialVelocityStateSolver base initial state size mismatch");
   }
 }
@@ -736,8 +733,7 @@ Index InitialVelocityStateSolver::numParams() const
 void InitialVelocityStateSolver::solve(const Vector<Real>& prm,
                                        TimeTrajectory&     tr)
 {
-  initialStateFromParams(
-      velocity_dofs_, layout_, x0_, prm, initial_state_);
+  initialStateFromParams(vdofs_, layout_, x0_, prm, initial_state_);
   solver_.setInitialState(initial_state_);
   solver_.solve(prm, tr);
 }
@@ -753,7 +749,7 @@ ParameterSliceTimeObjective::ParameterSliceTimeObjective(
   if (total_params_ < 0 || offset_ < 0
       || offset_ + base_.numParams() > total_params_)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ParameterSliceTimeObjective received invalid parameter slice");
   }
 }
@@ -796,11 +792,11 @@ void ParameterSliceTimeObjective::paramGrad(const TimeTrajectory& tr,
   base_.paramGrad(tr, sub_prm, sub_grad);
   if (sub_grad.size() != base_.numParams())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ParameterSliceTimeObjective base parameter gradient size mismatch");
   }
 
-  resize(out, total_params_);
+  resizeOrZero(out, total_params_);
   for (Index i = 0; i < sub_grad.size(); ++i)
   {
     out[offset_ + i] = sub_grad[i];
@@ -812,7 +808,7 @@ Vector<Real> ParameterSliceTimeObjective::slice(
 {
   if (prm.size() != total_params_)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ParameterSliceTimeObjective parameter size mismatch");
   }
 
@@ -825,56 +821,52 @@ Vector<Real> ParameterSliceTimeObjective::slice(
 }
 
 InitialVelocityRegularization::InitialVelocityRegularization(
-    Index                  num_steps,
-    Index                  num_states,
-    InverseParameterLayout layout,
+    Index                  nt,
+    Index                  nst,
+    InverseParameterLayout lyt,
     Real                   beta)
-  : num_steps_(num_steps),
-    num_states_(num_states),
-    layout_(layout),
+  : nt_(nt),
+    nst_(nst),
+    layout_(lyt),
     beta_(beta)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || layout_.total_size < 0
+  if (nt_ < 0 || nst_ < 0 || layout_.ntot < 0
       || layout_.init_vel_offset < 0
-      || layout_.init_vel_size < 0
-      || layout_.init_vel_offset + layout_.init_vel_size
-             > layout_.total_size
+      || layout_.niv < 0
+      || layout_.init_vel_offset + layout_.niv
+             > layout_.ntot
       || beta_ < 0.0)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "InitialVelocityRegularization received invalid inputs");
   }
 }
 
 Index InitialVelocityRegularization::numSteps() const
 {
-  return num_steps_;
+  return nt_;
 }
 
 Index InitialVelocityRegularization::numStates() const
 {
-  return num_states_;
+  return nst_;
 }
 
 Index InitialVelocityRegularization::numParams() const
 {
-  return layout_.total_size;
+  return layout_.ntot;
 }
 
 Real InitialVelocityRegularization::value(const TimeTrajectory& tr,
                                           const Vector<Real>&   prm) const
 {
   (void) tr;
-  if (prm.size() != numParams())
-  {
-    throw std::runtime_error(
-        "InitialVelocityRegularization parameter size mismatch");
-  }
 
-  Real out = 0.0;
-  for (Index i = 0; i < layout_.init_vel_size; ++i)
+  const VectorView<const Real> init = layout_.initVel(prm);
+  Real                         out  = 0.0;
+  for (Index i = 0; i < init.size(); ++i)
   {
-    const Real value  = prm[layout_.init_vel_offset + i];
+    const Real value  = init[i];
     out              += 0.5 * beta_ * value * value;
   }
   return out;
@@ -889,7 +881,7 @@ void InitialVelocityRegularization::stateGrad(
   (void) level;
   (void) tr;
   (void) prm;
-  resize(out, num_states_);
+  resizeOrZero(out, nst_);
 }
 
 void InitialVelocityRegularization::paramGrad(
@@ -898,66 +890,62 @@ void InitialVelocityRegularization::paramGrad(
     Vector<Real>&         out) const
 {
   (void) tr;
-  if (prm.size() != numParams())
-  {
-    throw std::runtime_error(
-        "InitialVelocityRegularization parameter size mismatch");
-  }
 
-  resize(out, numParams());
-  for (Index i = 0; i < layout_.init_vel_size; ++i)
+  const VectorView<const Real> init = layout_.initVel(prm);
+  resizeOrZero(out, numParams());
+  VectorView<Real> init_grad = layout_.initVel(out);
+  for (Index i = 0; i < init.size(); ++i)
   {
-    const Index idx = layout_.init_vel_offset + i;
-    out[idx]        = beta_ * prm[idx];
+    init_grad[i] = beta_ * init[i];
   }
 }
 
 ControlSpatialRegularization::ControlSpatialRegularization(
-    Index             num_steps,
-    Index             num_states,
-    Index             num_params,
-    Index             ctr_offset,
-    Index             ctr_levels,
-    Index             ctr_dofs,
-    std::vector<Edge> edges,
-    Real              beta)
-  : num_steps_(num_steps),
-    num_states_(num_states),
-    num_params_(num_params),
-    ctr_offset_(ctr_offset),
-    ctr_levels_(ctr_levels),
-    ctr_dofs_(ctr_dofs),
+    Index        nt,
+    Index        nst,
+    Index        nprm,
+    Index        coff,
+    Index        nctr,
+    Index        ncdof,
+    Vector<Edge> edges,
+    Real         beta)
+  : nt_(nt),
+    nst_(nst),
+    nprm_(nprm),
+    ctr_offset_(coff),
+    ctr_levels_(nctr),
+    ctr_dofs_(ncdof),
     edges_(std::move(edges)),
     beta_(beta)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0
+  if (nt_ < 0 || nst_ < 0 || nprm_ < 0
       || ctr_offset_ < 0 || ctr_levels_ < 0
       || ctr_dofs_ < 0 || beta_ < 0.0
-      || ctr_offset_ + ctr_levels_ * ctr_dofs_ > num_params_)
+      || ctr_offset_ + ctr_levels_ * ctr_dofs_ > nprm_)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlSpatialRegularization received invalid inputs");
   }
   if (beta_ > 0.0 && edges_.empty())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlSpatialRegularization found no boundary edges");
   }
 }
 
 Index ControlSpatialRegularization::numSteps() const
 {
-  return num_steps_;
+  return nt_;
 }
 
 Index ControlSpatialRegularization::numStates() const
 {
-  return num_states_;
+  return nst_;
 }
 
 Index ControlSpatialRegularization::numParams() const
 {
-  return num_params_;
+  return nprm_;
 }
 
 Real ControlSpatialRegularization::value(
@@ -967,7 +955,7 @@ Real ControlSpatialRegularization::value(
   (void) tr;
   if (prm.size() != numParams())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlSpatialRegularization parameter size mismatch");
   }
 
@@ -994,7 +982,7 @@ void ControlSpatialRegularization::stateGrad(
   (void) level;
   (void) tr;
   (void) prm;
-  resize(out, num_states_);
+  resizeOrZero(out, nst_);
 }
 
 void ControlSpatialRegularization::paramGrad(
@@ -1005,11 +993,11 @@ void ControlSpatialRegularization::paramGrad(
   (void) tr;
   if (prm.size() != numParams())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlSpatialRegularization parameter size mismatch");
   }
 
-  resize(out, num_params_);
+  resizeOrZero(out, nprm_);
   for (Index step = 0; step < ctr_levels_; ++step)
   {
     for (const Edge& edge : edges_)
@@ -1050,9 +1038,9 @@ Vector<Index> initialvdofs(const MixedFESpace& space)
 
 Vector<Index> initialvdofs(const MixedFESpace&     space,
                            const Params&           prm,
-                           const DirichletControl& control)
+                           const DirichletControl& ctr)
 {
-  Vector<Index> constrained = control.stateDofs();
+  Vector<Index> constrained = ctr.stateDofs();
   for (const auto& bc : prm.fwd.bcs)
   {
     if (matchesBoundaryConfig(prm.inv.ctr, bc)
@@ -1061,7 +1049,7 @@ Vector<Index> initialvdofs(const MixedFESpace&     space,
       continue;
     }
     appendUniqueExcept(
-        constrained, fixedvdofsForBc(space, bc), control.stateDofs());
+        constrained, fixedvdofsForBc(space, bc), ctr.stateDofs());
   }
 
   const Vector<Index> all = initialvdofs(space);
@@ -1080,12 +1068,12 @@ Vector<Index> initialvdofs(const MixedFESpace&     space,
 Vector<Real> initialVelocityBoundaryState(
     const MixedFESpace&     space,
     const Params&           prm,
-    const DirichletControl& control)
+    const DirichletControl& ctr)
 {
-  std::map<Index, Real> values;
+  map<Index, Real> vals;
 
   addInitialBoundaryVelocityValues(
-      space, control, controlBoundary(prm), true, values);
+      space, ctr, controlBoundary(prm), true, vals);
 
   for (const auto& bc : prm.fwd.bcs)
   {
@@ -1095,31 +1083,31 @@ Vector<Real> initialVelocityBoundaryState(
       continue;
     }
 
-    const Vector<Index> fixed_dofs = fixedvdofsForBc(space, bc);
-    Vector<Index>       active_dofs;
-    for (Index dof : fixed_dofs)
+    const Vector<Index> fdofs = fixedvdofsForBc(space, bc);
+    Vector<Index>       adofs;
+    for (Index dof : fdofs)
     {
-      if (!contains(control.stateDofs(), dof))
+      if (!contains(ctr.stateDofs(), dof))
       {
-        active_dofs.push_back(dof);
+        adofs.push_back(dof);
       }
     }
-    if (active_dofs.empty())
+    if (adofs.empty())
     {
       continue;
     }
-    const DirichletControl active_fixed(active_dofs);
+    const DirichletControl active_fixed(adofs);
     addInitialBoundaryVelocityValues(
-        space, active_fixed, bc, false, values);
+        space, active_fixed, bc, false, vals);
   }
 
   Vector<Real> out(space.numDofs());
   out.setZero();
-  for (const auto& entry : values)
+  for (const auto& entry : vals)
   {
     if (entry.first < 0 || entry.first >= out.size())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "initial velocity boundary dof is out of range");
     }
     out[entry.first] = entry.second;
@@ -1129,47 +1117,47 @@ Vector<Real> initialVelocityBoundaryState(
 
 InverseParameterLayout inverseParameterLayout(
     const MixedFESpace&          space,
-    const DirichletControl&      control,
-    const InitialVelocityParams& initial_velocity,
+    const DirichletControl&      ctr,
+    const InitialVelocityParams& init_vel,
     Index                        steps,
-    Index                        init_vel_size,
-    Index                        ctr_levels)
+    Index                        niv,
+    Index                        nctr)
 {
   (void) space;
-  if (steps <= 0 || init_vel_size < 0 || ctr_levels <= 0)
+  if (steps <= 0 || niv < 0 || nctr <= 0)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverseParameterLayout received invalid sizes");
   }
 
-  InverseParameterLayout layout;
-  if (initial_velocity.enabled)
+  InverseParameterLayout lyt;
+  if (init_vel.enabled)
   {
-    layout.init_vel_offset = 0;
-    layout.init_vel_size   = init_vel_size;
+    lyt.init_vel_offset = 0;
+    lyt.niv             = niv;
   }
-  layout.ctr_offset = layout.init_vel_offset
-                      + layout.init_vel_size;
-  layout.ctr_levels = ctr_levels;
-  layout.ctr_size   = ctr_levels * control.numDofs();
-  layout.total_size = layout.ctr_offset + layout.ctr_size;
-  return layout;
+  lyt.coff = lyt.init_vel_offset
+             + lyt.niv;
+  lyt.nctr = nctr;
+  lyt.csz  = nctr * ctr.numDofs();
+  lyt.ntot = lyt.coff + lyt.csz;
+  return lyt;
 }
 
 FixedDofValues fixedDofValues(const MixedFESpace&     space,
                               const Params&           prm,
-                              const DirichletControl& control,
+                              const DirichletControl& ctr,
                               Index                   steps,
                               Real                    dt)
 {
   if (steps <= 0)
   {
-    throw std::runtime_error("fixedDofValues requires positive steps");
+    throw runtime_error("fixedDofValues requires positive steps");
   }
 
-  std::map<Index, Vector<Real>> values;
+  map<Index, Vector<Real>> vals;
   addPressureGaugeValues(
-      space, pressureGaugeBoundary(prm), steps, values);
+      space, pressureGaugeBoundary(prm), steps, vals);
 
   for (const auto& bc : prm.fwd.bcs)
   {
@@ -1179,53 +1167,53 @@ FixedDofValues fixedDofValues(const MixedFESpace&     space,
       continue;
     }
 
-    const Vector<Index> fixed_dofs = fixedvdofsForBc(space, bc);
-    Vector<Index>       active_dofs;
-    for (Index dof : fixed_dofs)
+    const Vector<Index> fdofs = fixedvdofsForBc(space, bc);
+    Vector<Index>       adofs;
+    for (Index dof : fdofs)
     {
-      if (!contains(control.stateDofs(), dof))
+      if (!contains(ctr.stateDofs(), dof))
       {
-        active_dofs.push_back(dof);
+        adofs.push_back(dof);
       }
     }
-    if (active_dofs.empty())
+    if (adofs.empty())
     {
       continue;
     }
-    const DirichletControl active_fixed(active_dofs);
+    const DirichletControl active_fixed(adofs);
 
     addProfileVelocityValues(space,
                              active_fixed,
                              bc,
                              steps,
                              dt,
-                             values);
+                             vals);
     addConstantVelocityValues(
-        space, active_fixed, bc, steps, values);
+        space, active_fixed, bc, steps, vals);
   }
 
-  return toFixedDofValues(values, steps);
+  return toFixedDofValues(vals, steps);
 }
 
-std::unique_ptr<TimeObservationOperator> makeObs(
+unique_ptr<TimeObservationOperator> makeObs(
     const MixedFESpace&      space,
     const ObservationParams& prm,
     Index                    steps,
-    Index                    num_states,
-    Index                    num_prm)
+    Index                    nst,
+    Index                    nprm)
 {
-  if (num_states != space.numDofs())
+  if (nst != space.numDofs())
   {
-    throw std::runtime_error("makeObs state size does not match FEM space");
+    throw runtime_error("makeObs state size does not match FEM space");
   }
 
-  return std::make_unique<TimePointInterpolator>(
+  return make_unique<TimePointInterpolator>(
       steps,
       space,
       0,
       activeObsPoints(space, prm),
       obsComponents(space, prm),
-      num_prm);
+      nprm);
 }
 
 void setObsLayout(TimeObservationData&     data,
@@ -1236,63 +1224,65 @@ void setObsLayout(TimeObservationData&     data,
       "point", activeObsPoints(space, prm), obsComponents(space, prm));
 }
 
-Vector<Real> wError(Index num_steps,
-                    Real  weight,
+Vector<Real> wError(Index nt,
+                    Real  wt,
                     bool  include_initial)
 {
-  Vector<Real> weights(num_steps + 1);
-  weights[0] = include_initial ? weight : 0.0;
-  for (Index level = 1; level <= num_steps; ++level)
+  Vector<Real> wts(nt + 1);
+  wts[0] = include_initial ? wt : 0.0;
+  for (Index level = 1; level <= nt; ++level)
   {
-    weights[level] = weight;
+    wts[level] = wt;
   }
-  return weights;
+  return wts;
 }
 
 Real peakBaseSpeed(const TargetParams& target)
 {
   return peakSpeed(
-      target.quantity, "poiseuille", target.bulk_speed, 1.0, 1.5);
+      target.qty, "poiseuille", target.bulk_speed, 1.0, 1.5);
 }
 
 Real maxPulseSpeed(const TargetParams& target)
 {
-  return peakBaseSpeed(target) * (1.0 + std::abs(target.pulse_amplitude));
+  return peakBaseSpeed(target) * (1.0 + abs(target.pulse_amplitude));
 }
 
 Vector<Real> makeTrueParams(const MixedFESpace&     space,
-                            const DirichletControl& control,
+                            const DirichletControl& ctr,
                             const TargetParams&     target,
                             const Vector<Real>&     times)
 {
-  Vector<Real> prm(times.size() * control.numDofs());
+  Vector<Real>          prm(times.size() * ctr.numDofs());
+  BlockVectorView<Real> levels(prm.data(), times.size(), ctr.numDofs());
 
   for (Index level = 0; level < times.size(); ++level)
   {
-    for (Index i = 0; i < control.numDofs(); ++i)
+    VectorView<Real> values = levels.block(level);
+    for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      prm[level * control.numDofs() + i] =
-          profileVelocityValue(space, control, target, times[level], i);
+      values[i] =
+          profileVelocityValue(space, ctr, target, times[level], i);
     }
   }
   return prm;
 }
 
-std::optional<Real> componentValue(const BCsParams& bc, Index component)
+optional<Real> componentValue(const BCsParams& bc, Index comp)
 {
-  if (component == 0 && bc.ux)
+  if (comp == 0 && bc.ux)
   {
     return *bc.ux;
   }
-  if (component == 1 && bc.uy)
+  if (comp == 1 && bc.uy)
   {
     return *bc.uy;
   }
-  if (component == 2 && bc.uz)
+  if (comp == 2 && bc.uz)
   {
     return *bc.uz;
   }
-  return std::nullopt;
+  return nullopt;
 }
 
 Vector<Real> initialControlParams(const MixedFESpace&     space,
@@ -1302,7 +1292,7 @@ Vector<Real> initialControlParams(const MixedFESpace&     space,
 {
   if (times.empty())
   {
-    throw std::runtime_error("initialControlParams requires control times");
+    throw runtime_error("initialControlParams requires control times");
   }
 
   if (bc.vel)
@@ -1312,18 +1302,20 @@ Vector<Real> initialControlParams(const MixedFESpace&     space,
 
   Vector<Real> prm(times.size() * ctr.numDofs());
   prm.setZero();
+  BlockVectorView<Real> levels(prm.data(), times.size(), ctr.numDofs());
 
   const auto  u_dof = space.field(0);
   const Index nd    = u_dof.numComponents();
   for (Index level = 0; level < times.size(); ++level)
   {
+    VectorView<Real> values = levels.block(level);
     for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof       = ctr.stateDof(i);
-      const Index component = dof % nd;
-      if (const auto value = componentValue(bc, component))
+      const Index dof  = ctr.stateDof(i);
+      const Index comp = dof % nd;
+      if (const auto value = componentValue(bc, comp))
       {
-        prm[level * ctr.numDofs() + i] = *value;
+        values[i] = *value;
       }
     }
   }
@@ -1331,129 +1323,129 @@ Vector<Real> initialControlParams(const MixedFESpace&     space,
 }
 
 Vector<Real> initialInverseParams(const MixedFESpace&           space,
-                                  const DirichletControl&       control,
+                                  const DirichletControl&       ctr,
                                   const Params&                 prm,
-                                  const InverseParameterLayout& layout,
+                                  const InverseParameterLayout& lyt,
                                   Index                         steps,
                                   Real                          dt,
                                   const Vector<Real>&           ctr_times)
 {
   (void) steps;
   (void) dt;
-  Vector<Real> out(layout.total_size);
+  Vector<Real> out(lyt.ntot);
   out.setZero();
 
   const Vector<Real> ctr_prm =
       initialControlParams(
           space,
-          control,
+          ctr,
           controlBoundary(prm),
           ctr_times);
-  if (ctr_prm.size() != layout.ctr_size)
+  if (ctr_prm.size() != lyt.csz)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initialInverseParams control parameter size mismatch");
   }
+  VectorView<Real> ctr_out = lyt.ctr(out);
   for (Index i = 0; i < ctr_prm.size(); ++i)
   {
-    out[layout.ctr_offset + i] = ctr_prm[i];
+    ctr_out[i] = ctr_prm[i];
   }
   return out;
 }
 
-void setControlParams(const InverseParameterLayout& layout,
+void setControlParams(const InverseParameterLayout& lyt,
                       const Vector<Real>&           ctr_prm,
                       Vector<Real>&                 prm)
 {
-  if (prm.size() != layout.total_size
-      || ctr_prm.size() != layout.ctr_size)
+  if (prm.size() != lyt.ntot
+      || ctr_prm.size() != lyt.csz)
   {
-    throw std::runtime_error("setControlParams size mismatch");
+    throw runtime_error("setControlParams size mismatch");
   }
 
-  for (Index i = 0; i < layout.ctr_size; ++i)
+  VectorView<Real> ctr_dst = lyt.ctr(prm);
+  for (Index i = 0; i < ctr_dst.size(); ++i)
   {
-    prm[layout.ctr_offset + i] = ctr_prm[i];
+    ctr_dst[i] = ctr_prm[i];
   }
 }
 
-Vector<Real> controlParams(const InverseParameterLayout& layout,
+Vector<Real> controlParams(const InverseParameterLayout& lyt,
                            const Vector<Real>&           prm)
 {
-  if (prm.size() != layout.total_size)
+  const VectorView<const Real> ctr_src = lyt.ctr(prm);
+  Vector<Real>                 out(ctr_src.size());
+  for (Index i = 0; i < ctr_src.size(); ++i)
   {
-    throw std::runtime_error("controlParams parameter size mismatch");
-  }
-
-  Vector<Real> out(layout.ctr_size);
-  for (Index i = 0; i < layout.ctr_size; ++i)
-  {
-    out[i] = prm[layout.ctr_offset + i];
+    out[i] = ctr_src[i];
   }
   return out;
 }
 
-Vector<Real> optimizerScale(const InverseParameterLayout& layout,
+Vector<Real> optimizerScale(const InverseParameterLayout& lyt,
                             const OptimizerParams::Scale& scale)
 {
-  Vector<Real> out(layout.total_size);
-  for (Index i = 0; i < layout.init_vel_size; ++i)
+  Vector<Real>     out(lyt.ntot);
+  VectorView<Real> init = lyt.initVel(out);
+  VectorView<Real> ctr  = lyt.ctr(out);
+  for (Index i = 0; i < init.size(); ++i)
   {
-    out[layout.init_vel_offset + i] = scale.initial_velocity;
+    init[i] = scale.init_vel;
   }
-  for (Index i = 0; i < layout.ctr_size; ++i)
+  for (Index i = 0; i < ctr.size(); ++i)
   {
-    out[layout.ctr_offset + i] = scale.boundary;
+    ctr[i] = scale.bdry;
   }
   return out;
 }
 
-void setInitialVelocityParams(const Vector<Index>&          velocity_dofs,
-                              const InverseParameterLayout& layout,
+void setInitialVelocityParams(const Vector<Index>&          vdofs,
+                              const InverseParameterLayout& lyt,
                               const Vector<Real>&           state,
                               Vector<Real>&                 prm)
 {
-  if (prm.size() != layout.total_size
-      || velocity_dofs.size() != layout.init_vel_size)
+  if (prm.size() != lyt.ntot
+      || vdofs.size() != lyt.niv)
   {
-    throw std::runtime_error("setInitialVelocityParams size mismatch");
+    throw runtime_error("setInitialVelocityParams size mismatch");
   }
 
-  for (Index i = 0; i < velocity_dofs.size(); ++i)
+  VectorView<Real> init = lyt.initVel(prm);
+  for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = velocity_dofs[i];
+    const Index dof = vdofs[i];
     if (dof < 0 || dof >= state.size())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "setInitialVelocityParams velocity dof is out of range");
     }
-    prm[layout.init_vel_offset + i] = state[dof];
+    init[i] = state[dof];
   }
 }
 
-void initializeOptimizationGuess(const MixedFESpace&           space,
-                                 const DirichletControl&       control,
-                                 const Params&                 prm,
-                                 const InverseParameterLayout& layout,
-                                 const Vector<Index>&          vdofs,
-                                 TimeLinearStateSolver&        state_solver,
-                                 const Vector<Real>&           ctr_times,
-                                 Vector<Real>&                 prm_init,
-                                 Vector<Real>*                 x0)
+void initializeOptGuess(const MixedFESpace&           space,
+                        const DirichletControl&       ctr,
+                        const Params&                 prm,
+                        const InverseParameterLayout& lyt,
+                        const Vector<Index>&          vdofs,
+                        TimeLinearStateSolver&        state_solver,
+                        const Vector<Real>&           ctr_times,
+                        Vector<Real>&                 prm_init,
+                        Vector<Real>*                 x0)
 {
-  if (prm_init.size() != layout.total_size)
+  if (prm_init.size() != lyt.ntot)
   {
-    throw std::runtime_error(
-        "initializeOptimizationGuess parameter size mismatch");
+    throw runtime_error(
+        "initializeOptGuess parameter size mismatch");
   }
 
-  const Vector<Real> ctr_prm =
-      initialControlParams(space, control, controlBoundary(prm), ctr_times);
-  setControlParams(layout, ctr_prm, prm_init);
+  const Vector<Real> ctr_prm = initialControlParams(space, ctr, controlBoundary(prm), ctr_times);
+  setControlParams(lyt, ctr_prm, prm_init);
 
-  Vector<Real> guess_prm(layout.total_size);
+  Vector<Real> guess_prm(lyt.ntot);
   guess_prm.setZero();
-  setControlParams(layout, ctr_prm, guess_prm);
+  setControlParams(lyt, ctr_prm, guess_prm);
 
   TimeTrajectory tr;
   state_solver.solve(guess_prm, tr);
@@ -1463,207 +1455,213 @@ void initializeOptimizationGuess(const MixedFESpace&           space,
   {
     *x0 = final_state;
   }
-  setInitialVelocityParams(vdofs, layout, final_state, prm_init);
+  setInitialVelocityParams(vdofs, lyt, final_state, prm_init);
 }
 
-void initialStateFromParams(const Vector<Index>&          velocity_dofs,
-                            const InverseParameterLayout& layout,
-                            Index                         num_states,
+void initialStateFromParams(const Vector<Index>&          vdofs,
+                            const InverseParameterLayout& lyt,
+                            Index                         nst,
                             const Vector<Real>&           prm,
                             Vector<Real>&                 out)
 {
-  Vector<Real> base_state(num_states);
+  Vector<Real> base_state(nst);
   base_state.setZero();
-  initialStateFromParams(velocity_dofs, layout, base_state, prm, out);
+  initialStateFromParams(vdofs, lyt, base_state, prm, out);
 }
 
-void initialStateFromParams(const Vector<Index>&          velocity_dofs,
-                            const InverseParameterLayout& layout,
+void initialStateFromParams(const Vector<Index>&          vdofs,
+                            const InverseParameterLayout& lyt,
                             const Vector<Real>&           base_state,
                             const Vector<Real>&           prm,
                             Vector<Real>&                 out)
 {
-  if (prm.size() != layout.total_size)
+  if (prm.size() != lyt.ntot)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initialStateFromParams parameter size mismatch");
   }
-  if (velocity_dofs.size() != layout.init_vel_size)
+  if (vdofs.size() != lyt.niv)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initialStateFromParams velocity dof size mismatch");
   }
 
   if (base_state.empty())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "initialStateFromParams base state is empty");
   }
-  out = base_state;
-  for (Index i = 0; i < velocity_dofs.size(); ++i)
+  out                               = base_state;
+  const VectorView<const Real> init = lyt.initVel(prm);
+  for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = velocity_dofs[i];
+    const Index dof = vdofs[i];
     if (dof < 0 || dof >= out.size())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "initialStateFromParams velocity dof is out of range");
     }
-    out[dof] = prm[layout.init_vel_offset + i];
+    out[dof] = init[i];
   }
 }
 
 void applyInitialVelocityParamJacT(
-    const Vector<Index>&          velocity_dofs,
-    const InverseParameterLayout& layout,
+    const Vector<Index>&          vdofs,
+    const InverseParameterLayout& lyt,
     const Vector<Real>&           state_grad,
     Vector<Real>&                 out)
 {
-  if (velocity_dofs.size() != layout.init_vel_size)
+  if (vdofs.size() != lyt.niv)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "applyInitialVelocityParamJacT velocity dof size mismatch");
   }
 
-  resize(out, layout.total_size);
-  for (Index i = 0; i < velocity_dofs.size(); ++i)
+  resizeOrZero(out, lyt.ntot);
+  VectorView<Real> init = lyt.initVel(out);
+  for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = velocity_dofs[i];
+    const Index dof = vdofs[i];
     if (dof < 0 || dof >= state_grad.size())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "applyInitialVelocityParamJacT velocity dof is out of range");
     }
-    out[layout.init_vel_offset + i] = state_grad[dof];
+    init[i] = state_grad[dof];
   }
 }
 
 void controlBounds(const MixedFESpace&     space,
-                   const DirichletControl& control,
+                   const DirichletControl& ctr,
                    const TargetParams&     target,
-                   const BoundsParams&     bounds,
+                   const BoundsParams&     bnds,
                    Index                   steps,
                    Vector<Real>&           lower,
                    Vector<Real>&           upper)
 {
-  lower.resize(control.numParams(steps));
-  upper.resize(control.numParams(steps));
+  lower.resize(ctr.numParams(steps));
+  upper.resize(ctr.numParams(steps));
 
-  const auto  u_dof  = space.field(0);
-  const Index nd     = u_dof.numComponents();
-  const auto  normal = unit(target.normal);
+  const auto  u_dof = space.field(0);
+  const Index nd    = u_dof.numComponents();
+  const auto  nrm   = unit(target.nrm);
   const Real  max_axial =
-      bounds.max ? *bounds.max : bounds.max_scale * maxPulseSpeed(target);
+      bnds.max ? *bnds.max : bnds.max_scale * maxPulseSpeed(target);
 
   for (Index step = 0; step < steps; ++step)
   {
-    for (Index i = 0; i < control.numDofs(); ++i)
+    for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof  = control.stateDof(i);
+      const Index dof  = ctr.stateDof(i);
       const Index comp = dof % nd;
-      const Index idx  = control.paramIndex(step, i);
+      const Index idx  = ctr.paramIndex(step, i);
 
-      const Real normal_comp = normal[static_cast<std::size_t>(comp)];
-      const Real lo          = bounds.min * normal_comp;
-      const Real hi          = max_axial * normal_comp;
-      lower[idx]             = std::min(lo, hi);
-      upper[idx]             = std::max(lo, hi);
+      const Real nrm_comp = nrm[comp];
+      const Real lo       = bnds.min * nrm_comp;
+      const Real hi       = max_axial * nrm_comp;
+      lower[idx]          = min(lo, hi);
+      upper[idx]          = max(lo, hi);
     }
   }
 }
 
 void controlBounds(const MixedFESpace&     space,
-                   const DirichletControl& control,
-                   const BoundsParams&     bounds,
+                   const DirichletControl& ctr,
+                   const BoundsParams&     bnds,
                    Index                   steps,
                    Vector<Real>&           lower,
                    Vector<Real>&           upper)
 {
-  if (!bounds.max)
+  if (!bnds.max)
   {
-    throw std::runtime_error("controlBounds requires inverse.bounds.max");
+    throw runtime_error("controlBounds requires inverse.bounds.max");
   }
 
-  lower.resize(control.numParams(steps));
-  upper.resize(control.numParams(steps));
+  lower.resize(ctr.numParams(steps));
+  upper.resize(ctr.numParams(steps));
 
-  const auto  u_dof  = space.field(0);
-  const Index nd     = u_dof.numComponents();
-  const auto  normal = unit(bounds.normal);
+  const auto  u_dof = space.field(0);
+  const Index nd    = u_dof.numComponents();
+  const auto  nrm   = unit(bnds.nrm);
 
   for (Index step = 0; step < steps; ++step)
   {
-    for (Index i = 0; i < control.numDofs(); ++i)
+    for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof  = control.stateDof(i);
+      const Index dof  = ctr.stateDof(i);
       const Index comp = dof % nd;
-      const Index idx  = control.paramIndex(step, i);
+      const Index idx  = ctr.paramIndex(step, i);
 
-      const Real normal_comp = normal[static_cast<std::size_t>(comp)];
-      const Real lo          = bounds.min * normal_comp;
-      const Real hi          = *bounds.max * normal_comp;
-      lower[idx]             = std::min(lo, hi);
-      upper[idx]             = std::max(lo, hi);
+      const Real nrm_comp = nrm[comp];
+      const Real lo       = bnds.min * nrm_comp;
+      const Real hi       = *bnds.max * nrm_comp;
+      lower[idx]          = min(lo, hi);
+      upper[idx]          = max(lo, hi);
     }
   }
 }
 
 void inverseBounds(const MixedFESpace&           space,
-                   const DirichletControl&       control,
+                   const DirichletControl&       ctr,
                    const Params&                 prm,
-                   const InverseParameterLayout& layout,
+                   const InverseParameterLayout& lyt,
                    Index                         steps,
                    Vector<Real>&                 lower,
                    Vector<Real>&                 upper)
 {
-  resize(lower, layout.total_size);
-  resize(upper, layout.total_size);
+  resizeOrZero(lower, lyt.ntot);
+  resizeOrZero(upper, lyt.ntot);
 
-  if (layout.hasInitialVelocity())
+  if (lyt.hasInitialVelocity())
   {
     constexpr Real unbounded = 1.0e30;
     const Real     lo =
         prm.inv.init_vel.lower.value_or(-unbounded);
     const Real hi =
         prm.inv.init_vel.upper.value_or(unbounded);
-    for (Index i = 0; i < layout.init_vel_size; ++i)
+    VectorView<Real> init_lower = lyt.initVel(lower);
+    VectorView<Real> init_upper = lyt.initVel(upper);
+    for (Index i = 0; i < init_lower.size(); ++i)
     {
-      lower[layout.init_vel_offset + i] = lo;
-      upper[layout.init_vel_offset + i] = hi;
+      init_lower[i] = lo;
+      init_upper[i] = hi;
     }
   }
 
   Vector<Real> ctr_lower;
   Vector<Real> ctr_upper;
-  if (prm.inv.bounds.max)
+  if (prm.inv.bnds.max)
   {
     controlBounds(
         space,
-        control,
-        prm.inv.bounds,
-        layout.ctr_levels,
+        ctr,
+        prm.inv.bnds,
+        lyt.nctr,
         ctr_lower,
         ctr_upper);
   }
   else
   {
     controlBounds(space,
-                  control,
+                  ctr,
                   controlTarget(prm),
-                  prm.inv.bounds,
-                  layout.ctr_levels,
+                  prm.inv.bnds,
+                  lyt.nctr,
                   ctr_lower,
                   ctr_upper);
   }
-  if (ctr_lower.size() != layout.ctr_size
-      || ctr_upper.size() != layout.ctr_size)
+  if (ctr_lower.size() != lyt.csz
+      || ctr_upper.size() != lyt.csz)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "inverseBounds control bound size mismatch");
   }
-  for (Index i = 0; i < layout.ctr_size; ++i)
+  VectorView<Real> ctr_lower_out = lyt.ctr(lower);
+  VectorView<Real> ctr_upper_out = lyt.ctr(upper);
+  for (Index i = 0; i < ctr_lower_out.size(); ++i)
   {
-    lower[layout.ctr_offset + i] = ctr_lower[i];
-    upper[layout.ctr_offset + i] = ctr_upper[i];
+    ctr_lower_out[i] = ctr_lower[i];
+    ctr_upper_out[i] = ctr_upper[i];
   }
 }
 
@@ -1671,11 +1669,11 @@ void checkInverseRunParams(const Params& prm)
 {
   if (prm.fwd.time.steps <= 0 || prm.fwd.time.dt <= 0.0)
   {
-    throw std::runtime_error("time steps and dt must be positive");
+    throw runtime_error("time steps and dt must be positive");
   }
   if (prm.inv.obs.file.empty())
   {
-    throw std::runtime_error("inverse.obs.file is required");
+    throw runtime_error("inverse.obs.file is required");
   }
 }
 
@@ -1690,7 +1688,7 @@ AppNsVar::AppNsVar(const Params& prm)
     ns(makeAppKernel(space, quad, fluid, dt)),
     fem(steps,
         DofLayout(space),
-        DofLayout(space),
+        Vector<DofLayout>{DofLayout(space), DofLayout(space)},
         DofLayout(space),
         ns),
     bc(controlBoundary(prm)),
@@ -1698,68 +1696,68 @@ AppNsVar::AppNsVar(const Params& prm)
     init_vdofs(
         prm.inv.init_vel.enabled ? initialvdofs(space, prm, ctr)
                                  : Vector<Index>{}),
-    obs_data(problem::readTimeObsData(prm.inv.obs.file)),
+    obs_data(readTimeObsData(prm.inv.obs.file)),
     ctr_times(controlKnotTimes(obs_data, dt, steps)),
     ctr_time_stencils(controlTimeStencils(steps, dt, ctr_times)),
-    layout(inverseParameterLayout(space,
-                                  ctr,
-                                  prm.inv.init_vel,
-                                  steps,
-                                  init_vdofs.size(),
-                                  ctr_times.size())),
+    lyt(inverseParameterLayout(space,
+                               ctr,
+                               prm.inv.init_vel,
+                               steps,
+                               init_vdofs.size(),
+                               ctr_times.size())),
     fixed(fixedDofValues(space, prm, ctr, steps, dt)),
-    eq(fem,
-       ctr,
-       fixed.dofs,
-       layout.ctr_offset,
-       layout.total_size,
-       fixed.values,
-       ctr_time_stencils),
+    problem(fem,
+            ctr,
+            fixed.dofs,
+            lyt.coff,
+            lyt.ntot,
+            fixed.vals,
+            ctr_time_stencils),
     x0(initialVelocityBoundaryState(space, prm, ctr)),
-    pattern(assembly::SparsityPatternBuilder::build(space)),
+    pat(SparsityPatternBuilder::build(space)),
     prm0(initialInverseParams(
-        space, ctr, prm, layout, steps, dt, ctr_times))
+        space, ctr, prm, lyt, steps, dt, ctr_times))
 {
-  if (prm0.size() != eq.numParams())
+  if (prm0.size() != problem.numParams())
   {
-    throw std::runtime_error("initial inverse parameter size mismatch");
+    throw runtime_error("initial inverse parameter size mismatch");
   }
 }
 
-Objective::Objective(const Params&      prm,
+Objective::Objective(const Params&   prm,
                      const AppNsVar& core)
   : data(observationDataOnSolveLevels(core.obs_data, core.dt, core.steps)),
     op(core.steps,
        core.space,
        0,
-       data.points(),
-       data.components(),
-       core.eq.numParams()),
+       data.pts(),
+       data.comps(),
+       core.problem.numParams()),
     err(op,
         data,
         wError(core.steps, prm.inv.alpha, false),
         core.dt,
         0.0),
     ctr_reg(core.steps,
-            core.eq.numStates(),
-            core.layout.ctr_levels,
+            core.problem.numStates(),
+            core.lyt.nctr,
             core.ctr.numDofs(),
             prm.inv.reg.beta1,
             prm.inv.reg.beta2),
-    reg(ctr_reg, core.eq.numParams(), core.layout.ctr_offset),
+    reg(ctr_reg, core.problem.numParams(), core.lyt.coff),
     init_reg(core.steps,
-             core.eq.numStates(),
-             core.layout,
+             core.problem.numStates(),
+             core.lyt,
              prm.inv.reg.beta4),
     space_reg(core.steps,
-              core.eq.numStates(),
-              core.eq.numParams(),
-              core.layout.ctr_offset,
-              core.layout.ctr_levels,
+              core.problem.numStates(),
+              core.problem.numParams(),
+              core.lyt.coff,
+              core.lyt.nctr,
               core.ctr.numDofs(),
               controlSpatialEdges(core.space, prm.inv.ctr, core.ctr),
               prm.inv.reg.beta3),
-    obj(core.steps, core.eq.numStates(), core.eq.numParams())
+    obj(core.steps, core.problem.numStates(), core.problem.numParams())
 {
   obj.add(err).add(reg).add(init_reg).add(space_reg);
 }

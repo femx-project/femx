@@ -22,17 +22,17 @@ public:
   FEMResidual(DofLayout            res_layout,
               DofLayout            state_layout,
               DofLayout            param_layout,
-              const ElementKernel& kernel);
+              const ElementKernel& ker);
 
   FEMResidual(DofLayout            state_layout,
               DofLayout            param_layout,
-              const ElementKernel& kernel);
+              const ElementKernel& ker);
 
-  problem::Dimensions dimensions() const override;
+  problem::Dimensions dims() const override;
 
-  void residual(const Vector<Real>& state,
-                const Vector<Real>& prm,
-                Vector<Real>&       out) const override;
+  void res(const Vector<Real>& state,
+           const Vector<Real>& prm,
+           Vector<Real>&       out) const override;
 
   void linearize(const Vector<Real>&     state,
                  const Vector<Real>&     prm,
@@ -54,7 +54,7 @@ private:
   void checkGlobalSizes(const Vector<Real>& state,
                         const Vector<Real>& prm) const;
 
-  static void gather(const DofLayout&    layout,
+  static void gather(const DofLayout&    lyt,
                      const Vector<Real>& global,
                      Index               ic,
                      Vector<Real>&       local);
@@ -74,13 +74,13 @@ public:
                       BoundaryDofLayout            res_layout,
                       BoundaryDofLayout            state_layout,
                       BoundaryDofLayout            param_layout,
-                      const BoundaryElementKernel& kernel);
+                      const BoundaryElementKernel& ker);
 
-  problem::Dimensions dimensions() const override;
+  problem::Dimensions dims() const override;
 
-  void residual(const Vector<Real>& state,
-                const Vector<Real>& prm,
-                Vector<Real>&       out) const override;
+  void res(const Vector<Real>& state,
+           const Vector<Real>& prm,
+           Vector<Real>&       out) const override;
 
   void linearize(const Vector<Real>&     state,
                  const Vector<Real>&     prm,
@@ -103,21 +103,21 @@ private:
                         const Vector<Real>& prm,
                         const Vector<Real>& res_out) const;
 
-  static void gather(const BoundaryDofLayout& layout,
+  static void gather(const BoundaryDofLayout& lyt,
                      const Vector<Real>&      global,
                      Index                    ib,
                      Vector<Real>&            local);
 
-  static void addVector(const BoundaryDofLayout& layout,
-                        Index                    ib,
-                        const Vector<Real>&      local,
-                        Vector<Real>&            out);
+  static void addVec(const BoundaryDofLayout& lyt,
+                     Index                    ib,
+                     const Vector<Real>&      local,
+                     Vector<Real>&            out);
 
-  static void addMatrix(const BoundaryDofLayout& row_layout,
-                        const BoundaryDofLayout& col_layout,
-                        Index                    ib,
-                        const DenseMatrix&       local,
-                        linalg::MatrixBuilder&   out);
+  static void addMat(const BoundaryDofLayout& row_layout,
+                     const BoundaryDofLayout& col_layout,
+                     Index                    ib,
+                     const DenseMatrix&       local,
+                     linalg::MatrixBuilder&   out);
 
   static void checkDof(Index dof, Index size);
 

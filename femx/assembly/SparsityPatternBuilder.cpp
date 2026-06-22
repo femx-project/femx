@@ -1,5 +1,7 @@
 #include <femx/assembly/SparsityPatternBuilder.hpp>
 
+using namespace std;
+
 namespace femx
 {
 namespace assembly

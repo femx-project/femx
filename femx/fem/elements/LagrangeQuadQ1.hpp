@@ -10,7 +10,7 @@ class LagrangeQuadQ1 : public FiniteElement
 public:
   static constexpr Index spatial_dim = 2;
   static constexpr Index nnodes      = 4;
-  static constexpr Index num_dofs    = 4;
+  static constexpr Index nd          = 4;
   static constexpr Index degree      = 1;
 
   std::string name() const override
@@ -30,7 +30,7 @@ public:
 
   Index numDofsPerElement() const override
   {
-    return num_dofs;
+    return nd;
   }
 
   Index order() const override

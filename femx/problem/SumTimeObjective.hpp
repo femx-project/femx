@@ -1,11 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObjective.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
@@ -16,7 +14,7 @@ namespace problem
 class SumTimeObjective final : public TimeObjective
 {
 public:
-  SumTimeObjective(Index num_steps, Index num_states, Index num_prm);
+  SumTimeObjective(Index nt, Index nst, Index nprm);
 
   SumTimeObjective& add(const TimeObjective& term);
 
@@ -24,27 +22,27 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const solve::TimeTrajectory& tr,
+  Real value(const state::TimeTrajectory& tr,
              const Vector<Real>&          prm) const override;
 
   void stateGrad(Index                        level,
-                 const solve::TimeTrajectory& tr,
+                 const state::TimeTrajectory& tr,
                  const Vector<Real>&          prm,
                  Vector<Real>&                out) const override;
 
-  void paramGrad(const solve::TimeTrajectory& tr,
+  void paramGrad(const state::TimeTrajectory& tr,
                  const Vector<Real>&          prm,
                  Vector<Real>&                out) const override;
 
 private:
-  static void resize(Vector<Real>& out, Index size);
+  static void checkSize(const Vector<Real>& value, Index exp);
   static void addInto(const Vector<Real>& input, Vector<Real>& out, Index size);
 
 private:
-  Index                             num_steps_{0};
-  Index                             num_states_{0};
-  Index                             num_prm_{0};
-  std::vector<const TimeObjective*> terms_;
+  Index                        nt_{0};
+  Index                        nst_{0};
+  Index                        nprm_{0};
+  Vector<const TimeObjective*> terms_;
 };
 
 } // namespace problem

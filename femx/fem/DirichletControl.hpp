@@ -33,10 +33,10 @@ private:
 
 DirichletControl makeVelocityControl(
     const MixedFESpace& space,
-    Index               physical_tag);
+    Index               ptag);
 
 DirichletControl makeVelocityControl(
     const MixedFESpace& space,
-    const std::string&  physical_name);
+    const std::string&  pname);
 
 } // namespace femx

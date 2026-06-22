@@ -18,15 +18,15 @@ namespace assembly
 
 using LocalBoundaryResidualFunction =
     void (*)(Index       facet,
-             Index       num_qp,
-             Index       num_nodes,
+             Index       nq,
+             Index       nn,
              Index       dim,
-             Index       num_res,
-             Index       num_states,
-             Index       num_prm,
+             Index       nres,
+             Index       nst,
+             Index       nprm,
              const Real* N,
              const Real* point,
-             const Real* normal,
+             const Real* nrm,
              const Real* JxW,
              const Real* state,
              const Real* prm,
@@ -39,16 +39,16 @@ class EnzymeBoundaryKernel final : public BoundaryElementKernel
 public:
   EnzymeBoundaryKernel(const Mesh&            mesh,
                        const GaussQuadrature& quadrature,
-                       Index                  num_res,
-                       Index                  num_states,
-                       Index                  num_prm)
+                       Index                  nres,
+                       Index                  nst,
+                       Index                  nprm)
     : mesh_(mesh),
       quad_(quadrature),
-      num_res_(num_res),
-      num_states_(num_states),
-      num_prm_(num_prm)
+      nres_(nres),
+      nst_(nst),
+      nprm_(nprm)
   {
-    if (num_res_ < 0 || num_states_ < 0 || num_prm_ < 0)
+    if (nres_ < 0 || nst_ < 0 || nprm_ < 0)
     {
       throw std::runtime_error(
           "EnzymeBoundaryKernel received invalid dimensions");
@@ -62,21 +62,21 @@ public:
            Vector<Real>&              out) const override
   {
     checkInputSizes(u, m);
-    resize(out, num_res_);
+    resizeOrZero(out, nres_);
 
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
+    BoundaryElementValues vals(quad_);
+    vals.reinit(mesh_, facet);
     Residual(ib,
-             values.numQuadraturePoints(),
-             values.numNodes(),
-             values.dim(),
-             num_res_,
-             num_states_,
-             num_prm_,
-             values.NData(),
-             values.pointData(),
-             values.normalData(),
-             values.JxWData(),
+             vals.numQuadraturePoints(),
+             vals.numNodes(),
+             vals.dim(),
+             nres_,
+             nst_,
+             nprm_,
+             vals.NData(),
+             vals.pointData(),
+             vals.normalData(),
+             vals.JxWData(),
              u.data(),
              m.data(),
              out.data());
@@ -89,17 +89,17 @@ public:
                 DenseMatrix&               out) const override
   {
     checkInputSizes(u, m);
-    out.resize(num_res_, num_states_);
+    out.resize(nres_, nst_);
 
 #if defined(FEMX_HAS_ENZYME)
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
+    BoundaryElementValues vals(quad_);
+    vals.reinit(mesh_, facet);
 
-    Vector<Real> primal_out(num_res_);
-    Vector<Real> out_adj(num_res_);
-    Vector<Real> state_adj(num_states_);
+    Vector<Real> primal_out(nres_);
+    Vector<Real> out_adj(nres_);
+    Vector<Real> state_adj(nst_);
 
-    for (Index row = 0; row < num_res_; ++row)
+    for (Index row = 0; row < nres_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -110,25 +110,25 @@ public:
                               enzyme_const,
                               ib,
                               enzyme_const,
-                              values.numQuadraturePoints(),
+                              vals.numQuadraturePoints(),
                               enzyme_const,
-                              values.numNodes(),
+                              vals.numNodes(),
                               enzyme_const,
-                              values.dim(),
+                              vals.dim(),
                               enzyme_const,
-                              num_res_,
+                              nres_,
                               enzyme_const,
-                              num_states_,
+                              nst_,
                               enzyme_const,
-                              num_prm_,
+                              nprm_,
                               enzyme_const,
-                              values.NData(),
+                              vals.NData(),
                               enzyme_const,
-                              values.pointData(),
+                              vals.pointData(),
                               enzyme_const,
-                              values.normalData(),
+                              vals.normalData(),
                               enzyme_const,
-                              values.JxWData(),
+                              vals.JxWData(),
                               enzyme_dup,
                               u.data(),
                               state_adj.data(),
@@ -138,7 +138,7 @@ public:
                               primal_out.data(),
                               out_adj.data());
 
-      for (Index col = 0; col < num_states_; ++col)
+      for (Index col = 0; col < nst_; ++col)
       {
         out(row, col) = state_adj[col];
       }
@@ -158,17 +158,17 @@ public:
                 DenseMatrix&               out) const override
   {
     checkInputSizes(u, m);
-    out.resize(num_res_, num_prm_);
+    out.resize(nres_, nprm_);
 
 #if defined(FEMX_HAS_ENZYME)
-    BoundaryElementValues values(quad_);
-    values.reinit(mesh_, facet);
+    BoundaryElementValues vals(quad_);
+    vals.reinit(mesh_, facet);
 
-    Vector<Real> primal_out(num_res_);
-    Vector<Real> out_adj(num_res_);
-    Vector<Real> param_adj(num_prm_);
+    Vector<Real> primal_out(nres_);
+    Vector<Real> out_adj(nres_);
+    Vector<Real> param_adj(nprm_);
 
-    for (Index row = 0; row < num_res_; ++row)
+    for (Index row = 0; row < nres_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -179,25 +179,25 @@ public:
                               enzyme_const,
                               ib,
                               enzyme_const,
-                              values.numQuadraturePoints(),
+                              vals.numQuadraturePoints(),
                               enzyme_const,
-                              values.numNodes(),
+                              vals.numNodes(),
                               enzyme_const,
-                              values.dim(),
+                              vals.dim(),
                               enzyme_const,
-                              num_res_,
+                              nres_,
                               enzyme_const,
-                              num_states_,
+                              nst_,
                               enzyme_const,
-                              num_prm_,
+                              nprm_,
                               enzyme_const,
-                              values.NData(),
+                              vals.NData(),
                               enzyme_const,
-                              values.pointData(),
+                              vals.pointData(),
                               enzyme_const,
-                              values.normalData(),
+                              vals.normalData(),
                               enzyme_const,
-                              values.JxWData(),
+                              vals.JxWData(),
                               enzyme_const,
                               u.data(),
                               enzyme_dup,
@@ -207,7 +207,7 @@ public:
                               primal_out.data(),
                               out_adj.data());
 
-      for (Index col = 0; col < num_prm_; ++col)
+      for (Index col = 0; col < nprm_; ++col)
       {
         out(row, col) = param_adj[col];
       }
@@ -223,21 +223,9 @@ public:
 private:
   void checkInputSizes(const Vector<Real>& u, const Vector<Real>& m) const
   {
-    if (u.size() != num_states_ || m.size() != num_prm_)
+    if (u.size() != nst_ || m.size() != nprm_)
     {
       throw std::runtime_error("EnzymeBoundaryKernel input size mismatch");
-    }
-  }
-
-  static void resize(Vector<Real>& out, Index size)
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      out.setZero();
     }
   }
 
@@ -250,9 +238,9 @@ private:
 private:
   const Mesh&            mesh_;
   const GaussQuadrature& quad_;
-  Index                  num_res_{0};
-  Index                  num_states_{0};
-  Index                  num_prm_{0};
+  Index                  nres_{0};
+  Index                  nst_{0};
+  Index                  nprm_{0};
 };
 
 } // namespace assembly

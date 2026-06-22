@@ -18,23 +18,28 @@ class Vector
 public:
   Vector() = default;
 
-  Vector(std::initializer_list<T> values)
-    : values_(values)
+  Vector(std::initializer_list<T> vals)
+    : vals_(vals)
   {
   }
 
   explicit Vector(Index size)
-    : values_(static_cast<std::size_t>(size), T{})
+    : vals_(static_cast<std::size_t>(size), T{})
+  {
+  }
+
+  Vector(Index size, const T& value)
+    : vals_(static_cast<std::size_t>(size), value)
   {
   }
 
   Vector(const Vector& other)
-    : values_(other.begin(), other.end())
+    : vals_(other.begin(), other.end())
   {
   }
 
   Vector(Vector&& other) noexcept
-    : values_(std::move(other.values_)),
+    : vals_(std::move(other.vals_)),
       view_data_(other.view_data_),
       view_size_(other.view_size_)
   {
@@ -56,20 +61,20 @@ public:
     }
     else if (other.isView())
     {
-      values_.assign(other.begin(), other.end());
+      vals_.assign(other.begin(), other.end());
     }
     else
     {
-      values_ = std::move(other.values_);
+      vals_ = std::move(other.vals_);
     }
     return *this;
   }
 
-  Vector& operator=(std::initializer_list<T> values)
+  Vector& operator=(std::initializer_list<T> vals)
   {
-    assign(values.begin(),
-           values.end(),
-           static_cast<Index>(values.size()));
+    assign(vals.begin(),
+           vals.end(),
+           static_cast<Index>(vals.size()));
     return *this;
   }
 
@@ -101,12 +106,30 @@ public:
       setZero();
       return;
     }
-    values_.assign(static_cast<std::size_t>(size), T{});
+    vals_.assign(static_cast<std::size_t>(size), T{});
+  }
+
+  void assign(Index size, const T& value)
+  {
+    if (size < 0)
+    {
+      throw std::runtime_error("Vector size must be non-negative");
+    }
+    if (isView())
+    {
+      if (size != view_size_)
+      {
+        throw std::runtime_error("Vector view assignment size mismatch");
+      }
+      std::fill(begin(), end(), value);
+      return;
+    }
+    vals_.assign(static_cast<std::size_t>(size), value);
   }
 
   Index size() const
   {
-    return isView() ? view_size_ : static_cast<Index>(values_.size());
+    return isView() ? view_size_ : static_cast<Index>(vals_.size());
   }
 
   bool empty() const
@@ -117,19 +140,32 @@ public:
   void clear()
   {
     ensureOwning("clear");
-    values_.clear();
+    vals_.clear();
   }
 
   void reserve(Index size)
   {
     ensureOwning("reserve");
-    values_.reserve(static_cast<std::size_t>(size));
+    vals_.reserve(static_cast<std::size_t>(size));
   }
 
   void push_back(const T& value)
   {
     ensureOwning("push_back");
-    values_.push_back(value);
+    vals_.push_back(value);
+  }
+
+  void push_back(T&& value)
+  {
+    ensureOwning("push_back");
+    vals_.push_back(std::move(value));
+  }
+
+  template <class... Args>
+  T& emplace_back(Args&&... args)
+  {
+    ensureOwning("emplace_back");
+    return vals_.emplace_back(std::forward<Args>(args)...);
   }
 
   T& front()
@@ -137,7 +173,7 @@ public:
     return data()[0];
   }
 
-  T front() const
+  const T& front() const
   {
     return data()[0];
   }
@@ -147,7 +183,7 @@ public:
     return data()[size() - 1];
   }
 
-  T back() const
+  const T& back() const
   {
     return data()[size() - 1];
   }
@@ -157,19 +193,19 @@ public:
     return data()[static_cast<std::size_t>(i)];
   }
 
-  T operator[](Index i) const
+  const T& operator[](Index i) const
   {
     return data()[static_cast<std::size_t>(i)];
   }
 
   T* data()
   {
-    return isView() ? view_data_ : values_.data();
+    return isView() ? view_data_ : vals_.data();
   }
 
   const T* data() const
   {
-    return isView() ? view_data_ : values_.data();
+    return isView() ? view_data_ : vals_.data();
   }
 
   T* begin()
@@ -226,12 +262,25 @@ private:
       std::copy(begin_it, end_it, data());
       return;
     }
-    values_.assign(begin_it, end_it);
+    vals_.assign(begin_it, end_it);
   }
 
-  std::vector<T> values_;
+  std::vector<T> vals_;
   T*             view_data_{nullptr};
   Index          view_size_{0};
 };
+
+template <typename T>
+void resizeOrZero(Vector<T>& out, Index size)
+{
+  if (out.size() != size)
+  {
+    out.resize(size);
+  }
+  else
+  {
+    out.setZero();
+  }
+}
 
 } // namespace femx

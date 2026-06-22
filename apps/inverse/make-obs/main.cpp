@@ -7,143 +7,145 @@
 #include "Config.hpp"
 #include "TrajectoryObservation.hpp"
 
+using namespace std;
+using namespace femx;
+
 #ifndef FEMX_MAKE_OBS_APP_NAME
 #define FEMX_MAKE_OBS_APP_NAME "make-obs"
 #endif
 
-using namespace femx;
-using namespace femx::make_obs;
+using namespace make_obs;
 
 namespace
 {
 
 struct AppOptions
 {
-  std::string         config_file;
-  std::optional<femx::Real> snr;
-  std::optional<femx::Real> snr_db;
-  std::string         output_file;
-  std::string         trajectory_file;
-  bool                no_noise = false;
-  bool                help     = false;
+  string         config_file;
+  optional<Real> snr;
+  optional<Real> snr_db;
+  string         output_file;
+  string         trajectory_file;
+  bool           no_noise = false;
+  bool           help     = false;
 };
 
-std::string requireValue(int                argc,
-                         char**             argv,
-                         int&               i,
-                         const std::string& key)
+string requireValue(int           argc,
+                    char**        argv,
+                    int&          i,
+                    const string& key)
 {
   if (i + 1 >= argc)
   {
-    throw std::runtime_error("Missing value for " + key);
+    throw runtime_error("Missing value for " + key);
   }
-  return std::string(argv[++i]);
+  return string(argv[++i]);
 }
 
 AppOptions parseAppOptions(int argc, char** argv)
 {
-  AppOptions options;
+  AppOptions opts;
   for (int i = 1; i < argc; ++i)
   {
-    const std::string key(argv[i]);
+    const string key(argv[i]);
     if (key == "-h" || key == "--help")
     {
-      options.help = true;
-      return options;
+      opts.help = true;
+      return opts;
     }
     if (key == "--config" || key == "-config")
     {
-      options.config_file = requireValue(argc, argv, i, key);
+      opts.config_file = requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--output")
     {
-      options.output_file = requireValue(argc, argv, i, key);
+      opts.output_file = requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--trajectory")
     {
-      options.trajectory_file = requireValue(argc, argv, i, key);
+      opts.trajectory_file = requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--snr")
     {
-      options.snr = std::stod(requireValue(argc, argv, i, key));
+      opts.snr = stod(requireValue(argc, argv, i, key));
       continue;
     }
     if (key == "--snr-db")
     {
-      options.snr_db = std::stod(requireValue(argc, argv, i, key));
+      opts.snr_db = stod(requireValue(argc, argv, i, key));
       continue;
     }
     if (key == "--no-noise")
     {
-      options.no_noise = true;
+      opts.no_noise = true;
       continue;
     }
-    throw std::runtime_error("Unknown option: " + key);
+    throw runtime_error("Unknown option: " + key);
   }
-  return options;
+  return opts;
 }
 
-void printUsage(std::ostream& out)
+void printUsage(ostream& out)
 {
   out << "Usage: " << FEMX_MAKE_OBS_APP_NAME
       << " --config FILE [--trajectory FILE] [--output FILE]"
       << " [--snr R | --snr-db DB] [--no-noise]\n";
 }
 
-void setNoise(femx::make_obs::NoiseParams& noise,
-              const AppOptions&            options)
+void setNoise(make_obs::NoiseParams& noise,
+              const AppOptions&      opts)
 {
-  if (options.no_noise)
+  if (opts.no_noise)
   {
     noise.enabled = false;
     noise.snr.reset();
     noise.snr_db.reset();
   }
-  if (options.snr)
+  if (opts.snr)
   {
     noise.enabled = true;
-    noise.snr     = *options.snr;
+    noise.snr     = *opts.snr;
     noise.snr_db.reset();
   }
-  if (options.snr_db)
+  if (opts.snr_db)
   {
     noise.enabled = true;
-    noise.snr_db  = *options.snr_db;
+    noise.snr_db  = *opts.snr_db;
     noise.snr.reset();
   }
 }
 
-void applyOverrides(const AppOptions& options,
-                    femx::make_obs::Params& prm)
+void applyOverrides(const AppOptions& opts,
+                    make_obs::Params& prm)
 {
-  if (!options.trajectory_file.empty())
+  if (!opts.trajectory_file.empty())
   {
-    prm.input.trajectory = options.trajectory_file;
+    prm.input.tr = opts.trajectory_file;
   }
-  if (!options.output_file.empty())
+  if (!opts.output_file.empty())
   {
     if (prm.observations.empty())
     {
-      prm.output.file = options.output_file;
+      prm.output.file = opts.output_file;
     }
     else if (prm.observations.size() == 1)
     {
-      prm.observations.front().output.file = options.output_file;
+      prm.observations.front().output.file = opts.output_file;
     }
     else
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "--output is ambiguous when config has multiple observations");
     }
   }
 
-  setNoise(prm.noise, options);
+  setNoise(prm.noise, opts);
   for (auto& item : prm.observations)
   {
-    setNoise(item.noise, options);
+    setNoise(item.noise, opts);
   }
 }
 
@@ -153,26 +155,26 @@ int main(int argc, char** argv)
 {
   try
   {
-    const AppOptions options = parseAppOptions(argc, argv);
-    if (options.help)
+    const AppOptions opts = parseAppOptions(argc, argv);
+    if (opts.help)
     {
-      printUsage(std::cout);
+      printUsage(cout);
       return 0;
     }
-    if (options.config_file.empty())
+    if (opts.config_file.empty())
     {
-      throw std::runtime_error("--config FILE is required");
+      throw runtime_error("--config FILE is required");
     }
 
-    Params prm = loadConfig(options.config_file);
-    applyOverrides(options, prm);
+    Params prm = loadConfig(opts.config_file);
+    applyOverrides(opts, prm);
     writeTrajectoryObservationOutputs(prm);
     return 0;
   }
-  catch (const std::exception& e)
+  catch (const exception& e)
   {
-    std::cerr << FEMX_MAKE_OBS_APP_NAME << " failed: " << e.what()
-              << '\n';
+    cerr << FEMX_MAKE_OBS_APP_NAME << " failed: " << e.what()
+         << '\n';
     return 1;
   }
 }

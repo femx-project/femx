@@ -118,10 +118,10 @@ private:
   };
 
 public:
-  TaoOptimizer(TaoNumParamsCallback num_params,
+  TaoOptimizer(TaoNumParamsCallback nprm,
                TaoValueGradCallback value_grad,
                MPI_Comm             comm = PETSC_COMM_SELF)
-    : num_params_(std::move(num_params)),
+    : nprm_(std::move(nprm)),
       value_grad_(std::move(value_grad)),
       comm_(comm)
   {
@@ -132,25 +132,25 @@ public:
             typename = decltype(std::declval<Functional&>().valueGrad(
                 std::declval<const Vector<Real>&>(),
                 std::declval<Vector<Real>&>()))>
-  explicit TaoOptimizer(Functional& functional,
+  explicit TaoOptimizer(Functional& fn,
                         MPI_Comm    comm = PETSC_COMM_SELF)
     : TaoOptimizer(
-          [&functional]()
-          { return functional.numParams(); },
-          [&functional](const Vector<Real>& prm, Vector<Real>& grad)
-          { return functional.valueGrad(prm, grad); },
+          [&fn]()
+          { return fn.numParams(); },
+          [&fn](const Vector<Real>& prm, Vector<Real>& grad)
+          { return fn.valueGrad(prm, grad); },
           comm)
   {
   }
 
-  TaoOptions& options()
+  TaoOptions& opts()
   {
-    return options_;
+    return opts_;
   }
 
-  const TaoOptions& options() const
+  const TaoOptions& opts() const
   {
-    return options_;
+    return opts_;
   }
 
   void setBounds(const Vector<Real>& lower, const Vector<Real>& upper)
@@ -171,7 +171,7 @@ public:
     return has_bounds_;
   }
 
-  const TaoBounds& bounds() const
+  const TaoBounds& bnds() const
   {
     return bounds_;
   }
@@ -200,7 +200,7 @@ public:
 
   PetscErrorCode solve(const Vector<Real>& init, TaoResult& result)
   {
-    if (!num_params_ || !value_grad_)
+    if (!nprm_ || !value_grad_)
     {
       return PETSC_ERR_ARG_NULL;
     }
@@ -238,7 +238,7 @@ public:
       PetscCall(::femx::linalg::detail::copyToPETSc(opt_init, prm.get()));
 
       TaoReducedFunctionalAdapter adapter(
-          num_params_,
+          nprm_,
           [this](const Vector<Real>& opt_prm, Vector<Real>& opt_grad)
           {
             return valueGradInOptimizerCoordinates(opt_prm, opt_grad);
@@ -270,11 +270,11 @@ public:
       }
       PetscCall(TaoSetTolerances(
           tao.get(),
-          static_cast<PetscReal>(options_.abs_tol),
-          static_cast<PetscReal>(options_.rel_tol),
-          static_cast<PetscReal>(options_.step_tol)));
+          static_cast<PetscReal>(opts_.abs_tol),
+          static_cast<PetscReal>(opts_.rel_tol),
+          static_cast<PetscReal>(opts_.step_tol)));
       PetscCall(TaoSetMaximumIterations(
-          tao.get(), static_cast<PetscInt>(options_.max_its)));
+          tao.get(), static_cast<PetscInt>(opts_.max_its)));
       PetscCall(TaoSetFromOptions(tao.get()));
       PetscCall(TaoSolve(tao.get()));
 
@@ -361,16 +361,16 @@ private:
 
   Index numParams() const
   {
-    return num_params_();
+    return nprm_();
   }
 
   const char* taoType() const
   {
-    if (has_bounds_ && options_.type == TAOLMVM)
+    if (has_bounds_ && opts_.type == TAOLMVM)
     {
       return TAOBLMVM;
     }
-    return options_.type.c_str();
+    return opts_.type.c_str();
   }
 
   PetscErrorCode validateBounds() const
@@ -417,7 +417,7 @@ private:
   Real valueGradInOptimizerCoordinates(const Vector<Real>& opt_prm,
                                        Vector<Real>&       opt_grad)
   {
-    const Vector<Real> prm   = toPhysicalParam(opt_prm);
+    const Vector<Real> prm = toPhysicalParam(opt_prm);
     Vector<Real>       grad;
     const Real         value = value_grad_(prm, grad);
     opt_grad                 = toOptimizerGrad(grad);
@@ -486,10 +486,10 @@ private:
   {
     PetscMPIInt comm_size = 1;
     PetscCallMPI(MPI_Comm_size(comm, &comm_size));
-    const PetscInt local_size = comm_size == 1 ? size : PETSC_DECIDE;
+    const PetscInt nloc = comm_size == 1 ? size : PETSC_DECIDE;
 
     PetscCall(VecCreate(comm, vec.put()));
-    PetscCall(VecSetSizes(vec.get(), local_size, size));
+    PetscCall(VecSetSizes(vec.get(), nloc, size));
     PetscCall(VecSetFromOptions(vec.get()));
     return PETSC_SUCCESS;
   }
@@ -505,10 +505,10 @@ private:
   }
 
 private:
-  TaoNumParamsCallback num_params_;
+  TaoNumParamsCallback nprm_;
   TaoValueGradCallback value_grad_;
   MPI_Comm             comm_{PETSC_COMM_SELF};
-  TaoOptions           options_;
+  TaoOptions           opts_;
   TaoBounds            bounds_;
   bool                 has_bounds_{false};
   Vector<Real>         scale_;

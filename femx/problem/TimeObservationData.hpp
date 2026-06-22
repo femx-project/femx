@@ -1,13 +1,12 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObservationOperator.hpp>
-#include <femx/solve/TimeTrajectory.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
@@ -19,9 +18,9 @@ class TimeObservationData
 public:
   TimeObservationData() = default;
 
-  TimeObservationData(Index num_levels, Index num_observations);
+  TimeObservationData(Index nl, Index num_observations);
 
-  void resize(Index num_levels, Index num_observations);
+  void resize(Index nl, Index num_observations);
 
   bool  empty() const;
   Index numLevels() const;
@@ -32,21 +31,21 @@ public:
   bool hasTimeLevels() const;
   bool hasTimeValues() const;
 
-  const std::string&         sampler() const;
-  const std::vector<Point3>& points() const;
-  const Vector<Index>&       components() const;
-  const Vector<Index>&       timeLevels() const;
-  const Vector<Real>&        timeValues() const;
+  const std::string&    sampler() const;
+  const Vector<Point3>& pts() const;
+  const Vector<Index>&  comps() const;
+  const Vector<Index>&  timeLevels() const;
+  const Vector<Real>&   timeValues() const;
 
   Index timeLevel(Index row) const;
   Real  timeValue(Index row) const;
 
-  void setLayout(std::string         sampler,
-                 std::vector<Point3> points,
-                 Vector<Index>       components);
+  void setLayout(std::string    sampler,
+                 Vector<Point3> pts,
+                 Vector<Index>  comps);
 
   void setTimeLevels(Vector<Index> levels);
-  void setTimeValues(Vector<Real> values);
+  void setTimeValues(Vector<Real> vals);
 
   Vector<Real> operator[](Index level);
   Vector<Real> operator[](Index level) const;
@@ -60,18 +59,18 @@ private:
   void checkTimeValues() const;
 
 private:
-  Vector<Real>        data_;
-  Index               num_levels_{0};
-  Index               num_obs_{0};
-  std::string         sampler_;
-  std::vector<Point3> points_;
-  Vector<Index>       components_;
-  Vector<Index>       time_levels_;
-  Vector<Real>        time_values_;
+  Vector<Real>   data_;
+  Index          nl_{0};
+  Index          num_obs_{0};
+  std::string    sampler_;
+  Vector<Point3> pts_;
+  Vector<Index>  comps_;
+  Vector<Index>  time_levels_;
+  Vector<Real>   time_values_;
 };
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
-                                  const solve::TimeTrajectory&   tr,
+                                  const state::TimeTrajectory&   tr,
                                   const Vector<Real>&            prm);
 
 void writeTimeObsData(const std::string& path, const TimeObservationData& data);

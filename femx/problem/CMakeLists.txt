@@ -3,10 +3,8 @@ add_library(femx::problem ALIAS femx_problem)
 
 target_sources(
   femx_problem
-  PRIVATE SumTimeObjective.cpp
-          TimeLeastSquaresObjective.cpp
-          TimeObservationData.cpp
-          TimeRegularization.cpp
+  PRIVATE SumTimeObjective.cpp TimeLeastSquaresObjective.cpp
+          TimeObservationData.cpp TimeRegularization.cpp
   PUBLIC Linearization.hpp
          Objective.hpp
          Observation.hpp

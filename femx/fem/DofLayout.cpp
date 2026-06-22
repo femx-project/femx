@@ -4,6 +4,8 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
@@ -48,7 +50,7 @@ void DofLayout::elemDofs(Index ic, Vector<Index>& dofs) const
 {
   if (ic < 0 || ic >= numElems())
   {
-    throw std::runtime_error("DofLayout cell index is out of range");
+    throw runtime_error("DofLayout cell index is out of range");
   }
   if (fe_space_ != nullptr)
   {
@@ -62,7 +64,7 @@ const MixedFESpace& DofLayout::mixedSpace() const
 {
   if (mixed_space_ == nullptr)
   {
-    throw std::runtime_error("DofLayout is not initialized");
+    throw runtime_error("DofLayout is not initialized");
   }
   return *mixed_space_;
 }

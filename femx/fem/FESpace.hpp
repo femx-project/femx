@@ -15,7 +15,7 @@ public:
   /** @brief Create a finite elem space on a mesh with the given component count. */
   FESpace(const Mesh*          mesh,
           const FiniteElement* finite_element,
-          Index                components = 1);
+          Index                comps = 1);
 
   /** @brief Build the elem-to-global-dof map for the space. */
   void setup();
@@ -32,11 +32,11 @@ public:
 
   /** @brief Return the local dof index for a shape function component. */
   Index localDof(Index shape_index,
-                 Index component) const noexcept;
+                 Index comp) const noexcept;
 
   /** @brief Return the global dof index for a mesh node component. */
   Index globalDof(Index in,
-                  Index component) const noexcept;
+                  Index comp) const noexcept;
 
   /** @brief Fill the global dof indices used by one elem. */
   void elemDofs(Index          ic,
@@ -49,9 +49,9 @@ private:
   const Mesh*          mesh_{nullptr};
   const FiniteElement* fe_{nullptr};
   DofMap               dof_map_;
-  Index                components_{1};
+  Index                comps_{1};
   Index                num_shapes_per_elem_{0};
-  Index                num_dofs_{0};
+  Index                nd_{0};
 };
 
 } // namespace femx

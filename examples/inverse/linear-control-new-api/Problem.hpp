@@ -5,42 +5,30 @@
 
 #include <femx/linalg/DenseLinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/backends/native/DenseSystemMatrix.hpp>
+#include <femx/linalg/native/DenseMatrixOperator.hpp>
 #include <femx/problem/Objective.hpp>
 #include <femx/problem/Residual.hpp>
-#include <femx/solve/Newton.hpp>
-#include <femx/solve/ReducedFunctional.hpp>
+#include <femx/state/NewtonStateSolver.hpp>
+#include <femx/state/ReducedFunctional.hpp>
 
 namespace femx
 {
 namespace examples_inverse_linear_ctr_new_api
 {
 
-inline void resize(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
 class LinearControlProblem final : public problem::Residual
 {
 public:
-  problem::Dimensions dimensions() const override
+  problem::Dimensions dims() const override
   {
     return {2, 2, 2};
   }
 
-  void residual(const Vector<Real>& state,
-                const Vector<Real>& prm,
-                Vector<Real>&       out) const override
+  void res(const Vector<Real>& state,
+           const Vector<Real>& prm,
+           Vector<Real>&       out) const override
   {
-    resize(out, 2);
+    resizeOrZero(out, 2);
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * prm[0] - 2.0 * prm[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -108,7 +96,7 @@ public:
                  Vector<Real>&       out) const override
   {
     (void) prm;
-    resize(out, numStates());
+    resizeOrZero(out, numStates());
     out[0] = state[0] - target0();
     out[1] = state[1] - target1();
   }
@@ -118,7 +106,7 @@ public:
                  Vector<Real>&       out) const override
   {
     (void) state;
-    resize(out, numParams());
+    resizeOrZero(out, numParams());
     out[0] = regularizationWeight() * prm[0];
     out[1] = regularizationWeight() * prm[1];
   }
@@ -142,20 +130,20 @@ public:
 struct LinearControlSetup
 {
   LinearControlProblem         problem;
-  LinearControlObjective       objective;
-  linalg::DenseSystemMatrix    state_jac;
-  linalg::DenseSystemMatrix    param_jac;
-  problem::MatrixLinearization linearization;
-  linalg::DenseLinearSolver    linear_solver;
-  solve::Newton                state_solver;
-  solve::ReducedFunctional     functional;
+  LinearControlObjective       obj;
+  linalg::DenseMatrixOperator  state_jac;
+  linalg::DenseMatrixOperator  param_jac;
+  problem::MatrixLinearization lin;
+  linalg::DenseLinearSolver    lin_solver;
+  state::NewtonStateSolver     state_solver;
+  state::ReducedFunctional     fn;
 
   LinearControlSetup()
-    : linearization(state_jac, param_jac),
-      state_solver(problem, linearization, linear_solver),
-      functional(problem, objective, state_solver, linear_solver)
+    : lin(state_jac, param_jac),
+      state_solver(problem, lin, lin_solver),
+      fn(problem, obj, state_solver, lin, lin_solver)
   {
-    state_solver.options().residual_tolerance = 1.0e-12;
+    state_solver.opts().residual_tolerance = 1.0e-12;
   }
 };
 

@@ -3,18 +3,18 @@
 #include <array>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/ReferenceElement.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 
 struct QuadraturePoint
 {
-  Real x[3]   = {0.0, 0.0, 0.0};
-  Real weight = 0.0;
+  Real x[3] = {0.0, 0.0, 0.0};
+  Real wt   = 0.0;
 
   Real operator[](Index i) const
   {
@@ -27,18 +27,18 @@ class GaussQuadrature
 public:
   GaussQuadrature() = default;
 
-  GaussQuadrature(ReferenceElement             elem,
-                  Index                        dim,
-                  std::vector<QuadraturePoint> points)
+  GaussQuadrature(ReferenceElement        elem,
+                  Index                   dim,
+                  Vector<QuadraturePoint> pts)
     : cell_(elem),
       dim_(dim),
-      points_(std::move(points))
+      pts_(std::move(pts))
   {
   }
 
   Index size() const
   {
-    return static_cast<Index>(points_.size());
+    return pts_.size();
   }
 
   Index dim() const
@@ -53,7 +53,7 @@ public:
 
   const QuadraturePoint& operator[](Index iq) const
   {
-    return points_[iq];
+    return pts_[iq];
   }
 
   static GaussQuadrature make(ReferenceElement cell, Index order)
@@ -236,9 +236,9 @@ public:
   }
 
 private:
-  ReferenceElement             cell_ = ReferenceElement::Segment;
-  Index                        dim_  = 0;
-  std::vector<QuadraturePoint> points_;
+  ReferenceElement        cell_ = ReferenceElement::Segment;
+  Index                   dim_  = 0;
+  Vector<QuadraturePoint> pts_;
 };
 
 } // namespace femx

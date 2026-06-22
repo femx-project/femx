@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <vector>
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/Cell.hpp>
@@ -11,6 +10,8 @@
 #include <hdf5.h>
 #endif
 
+using namespace std;
+
 namespace femx
 {
 namespace
@@ -20,7 +21,7 @@ Index nodesPerCell(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
-    throw std::runtime_error("Hdf5Writer needs a non-empty mesh");
+    throw runtime_error("Hdf5Writer needs a non-empty mesh");
   }
 
   const Index nodes = mesh.cells().front().numNodes();
@@ -28,24 +29,24 @@ Index nodesPerCell(const Mesh& mesh)
   {
     if (mesh.cell(ic).numNodes() != nodes)
     {
-      throw std::runtime_error("Hdf5Writer supports one cell type per mesh");
+      throw runtime_error("Hdf5Writer supports one cell type per mesh");
     }
   }
   return nodes;
 }
 
-void checkMeshAndFields(const Mesh&                                mesh,
-                        const std::vector<Hdf5Writer::NodalField>& fields)
+void checkMeshAndFields(const Mesh&                           mesh,
+                        const Vector<Hdf5Writer::NodalField>& fields)
 {
   if (mesh.dim() != 2)
   {
-    throw std::runtime_error("Hdf5Writer supports 2D meshes for now");
+    throw runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  const Index cell_nodes = nodesPerCell(mesh);
-  if (cell_nodes != 3 && cell_nodes != 4)
+  const Index cn = nodesPerCell(mesh);
+  if (cn != 3 && cn != 4)
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "Hdf5Writer supports triangle and quadrilateral cells for now");
   }
 
@@ -53,17 +54,17 @@ void checkMeshAndFields(const Mesh&                                mesh,
   {
     if (field.name.empty())
     {
-      throw std::runtime_error("Hdf5Writer field name must not be empty");
+      throw runtime_error("Hdf5Writer field name must not be empty");
     }
 
-    if (field.values == nullptr)
+    if (field.vals == nullptr)
     {
-      throw std::runtime_error("Hdf5Writer field has null values");
+      throw runtime_error("Hdf5Writer field has null values");
     }
 
-    if (field.values->size() != mesh.numNodes())
+    if (field.vals->size() != mesh.numNodes())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "Hdf5Writer expects one field value per mesh node");
     }
   }
@@ -71,41 +72,41 @@ void checkMeshAndFields(const Mesh&                                mesh,
 
 #ifdef FEMX_HAS_HDF5
 
-void checkHdf5(herr_t status, const std::string& message)
+void checkHdf5(herr_t status, const string& msg)
 {
   if (status < 0)
   {
-    throw std::runtime_error(message);
+    throw runtime_error(msg);
   }
 }
 
-void checkHdf5Id(hid_t id, const std::string& message)
+void checkHdf5Id(hid_t id, const string& msg)
 {
   if (id < 0)
   {
-    throw std::runtime_error(message);
+    throw runtime_error(msg);
   }
 }
 
-void writeDoubleDataset(hid_t                       file,
-                        const std::string&          path,
-                        const std::vector<double>&  data,
-                        const std::vector<hsize_t>& dims)
+void writeDoubleDataset(hid_t                  file,
+                        const string&          path,
+                        const Vector<double>&  data,
+                        const Vector<hsize_t>& dims)
 {
-  hid_t dataspace = H5Screate_simple(
+  hid_t dspace = H5Screate_simple(
       static_cast<int>(dims.size()), dims.data(), nullptr);
-  checkHdf5Id(dataspace, "Failed to create HDF5 dataspace for " + path);
+  checkHdf5Id(dspace, "Failed to create HDF5 dataspace for " + path);
 
-  hid_t dataset = H5Dcreate2(file,
-                             path.c_str(),
-                             H5T_NATIVE_DOUBLE,
-                             dataspace,
-                             H5P_DEFAULT,
-                             H5P_DEFAULT,
-                             H5P_DEFAULT);
-  checkHdf5Id(dataset, "Failed to create HDF5 dataset " + path);
+  hid_t dset = H5Dcreate2(file,
+                          path.c_str(),
+                          H5T_NATIVE_DOUBLE,
+                          dspace,
+                          H5P_DEFAULT,
+                          H5P_DEFAULT,
+                          H5P_DEFAULT);
+  checkHdf5Id(dset, "Failed to create HDF5 dataset " + path);
 
-  checkHdf5(H5Dwrite(dataset,
+  checkHdf5(H5Dwrite(dset,
                      H5T_NATIVE_DOUBLE,
                      H5S_ALL,
                      H5S_ALL,
@@ -113,29 +114,29 @@ void writeDoubleDataset(hid_t                       file,
                      data.data()),
             "Failed to write HDF5 dataset " + path);
 
-  checkHdf5(H5Dclose(dataset), "Failed to close HDF5 dataset " + path);
-  checkHdf5(H5Sclose(dataspace), "Failed to close HDF5 dataspace " + path);
+  checkHdf5(H5Dclose(dset), "Failed to close HDF5 dataset " + path);
+  checkHdf5(H5Sclose(dspace), "Failed to close HDF5 dataspace " + path);
 }
 
-void writeIntDataset(hid_t                       file,
-                     const std::string&          path,
-                     const std::vector<Index>&   data,
-                     const std::vector<hsize_t>& dims)
+void writeIntDataset(hid_t                  file,
+                     const string&          path,
+                     const Vector<Index>&   data,
+                     const Vector<hsize_t>& dims)
 {
-  hid_t dataspace = H5Screate_simple(
+  hid_t dspace = H5Screate_simple(
       static_cast<int>(dims.size()), dims.data(), nullptr);
-  checkHdf5Id(dataspace, "Failed to create HDF5 dataspace for " + path);
+  checkHdf5Id(dspace, "Failed to create HDF5 dataspace for " + path);
 
-  hid_t dataset = H5Dcreate2(file,
-                             path.c_str(),
-                             H5T_NATIVE_INT,
-                             dataspace,
-                             H5P_DEFAULT,
-                             H5P_DEFAULT,
-                             H5P_DEFAULT);
-  checkHdf5Id(dataset, "Failed to create HDF5 dataset " + path);
+  hid_t dset = H5Dcreate2(file,
+                          path.c_str(),
+                          H5T_NATIVE_INT,
+                          dspace,
+                          H5P_DEFAULT,
+                          H5P_DEFAULT,
+                          H5P_DEFAULT);
+  checkHdf5Id(dset, "Failed to create HDF5 dataset " + path);
 
-  checkHdf5(H5Dwrite(dataset,
+  checkHdf5(H5Dwrite(dset,
                      H5T_NATIVE_INT,
                      H5S_ALL,
                      H5S_ALL,
@@ -143,24 +144,24 @@ void writeIntDataset(hid_t                       file,
                      data.data()),
             "Failed to write HDF5 dataset " + path);
 
-  checkHdf5(H5Dclose(dataset), "Failed to close HDF5 dataset " + path);
-  checkHdf5(H5Sclose(dataspace), "Failed to close HDF5 dataspace " + path);
+  checkHdf5(H5Dclose(dset), "Failed to close HDF5 dataset " + path);
+  checkHdf5(H5Sclose(dspace), "Failed to close HDF5 dataspace " + path);
 }
 
 #endif
 
 } // namespace
 
-void Hdf5Writer::write(const std::string&             filename,
-                       const Mesh&                    mesh,
-                       const std::vector<NodalField>& nodal_fields) const
+void Hdf5Writer::write(const string&             fname,
+                       const Mesh&               mesh,
+                       const Vector<NodalField>& nodal_fields) const
 {
   checkMeshAndFields(mesh, nodal_fields);
 
 #ifdef FEMX_HAS_HDF5
   hid_t file =
-      H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  checkHdf5Id(file, "Failed to create HDF5 file: " + filename);
+      H5Fcreate(fname.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  checkHdf5Id(file, "Failed to create HDF5 file: " + fname);
 
   hid_t mesh_group =
       H5Gcreate2(file, "/Mesh", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -172,25 +173,23 @@ void Hdf5Writer::write(const std::string&             filename,
   checkHdf5Id(data_group, "Failed to create /Data group");
   checkHdf5(H5Gclose(data_group), "Failed to close /Data group");
 
-  std::vector<double> geometry(
-      static_cast<std::size_t>(mesh.numNodes()) * 3);
+  Vector<double> geometry(mesh.numNodes() * 3);
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     for (Index d = 0; d < 3; ++d)
     {
-      geometry[static_cast<std::size_t>(in) * 3 + static_cast<std::size_t>(d)] = mesh.node(in)[d];
+      geometry[in * 3 + d] = mesh.node(in)[d];
     }
   }
 
-  const Index        nnodes = nodesPerCell(mesh);
-  std::vector<Index> topology(
-      static_cast<std::size_t>(mesh.numElems()) * static_cast<std::size_t>(nnodes));
+  const Index   nnodes = nodesPerCell(mesh);
+  Vector<Index> topology(mesh.numElems() * nnodes);
   for (Index ic = 0; ic < mesh.numElems(); ++ic)
   {
-    const Index* node_ids = mesh.cellNodeIds(ic);
+    const Index* nids = mesh.cellNodeIds(ic);
     for (Index i = 0; i < nnodes; ++i)
     {
-      topology[static_cast<std::size_t>(ic) * static_cast<std::size_t>(nnodes) + static_cast<std::size_t>(i)] = node_ids[i];
+      topology[ic * nnodes + i] = nids[i];
     }
   }
 
@@ -206,22 +205,22 @@ void Hdf5Writer::write(const std::string&             filename,
 
   for (const auto& field : nodal_fields)
   {
-    std::vector<double> values(static_cast<std::size_t>(field.values->size()));
-    for (Index i = 0; i < field.values->size(); ++i)
+    Vector<double> vals(field.vals->size());
+    for (Index i = 0; i < field.vals->size(); ++i)
     {
-      values[static_cast<std::size_t>(i)] = (*field.values)[i];
+      vals[i] = (*field.vals)[i];
     }
 
     writeDoubleDataset(file,
                        "/Data/" + field.name,
-                       values,
-                       {static_cast<hsize_t>(field.values->size())});
+                       vals,
+                       {static_cast<hsize_t>(field.vals->size())});
   }
 
-  checkHdf5(H5Fclose(file), "Failed to close HDF5 file: " + filename);
+  checkHdf5(H5Fclose(file), "Failed to close HDF5 file: " + fname);
 #else
-  (void) filename;
-  throw std::runtime_error(
+  (void) fname;
+  throw runtime_error(
       "HDF5 support is not enabled. Configure with FEMX_ENABLE_HDF5=ON "
       "and an available HDF5 C library.");
 #endif

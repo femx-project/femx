@@ -2,7 +2,6 @@
 
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "../ns-var/IO.hpp"
 
@@ -20,7 +19,7 @@ struct OutputParams
 
 struct InputParams
 {
-  std::string trajectory;
+  std::string tr;
   std::string velocity_field = "velocity";
 };
 
@@ -56,7 +55,7 @@ struct Params
   OutputParams                      output;
   NoiseParams                       noise;
   TimeSampleParams                  time;
-  std::vector<ObservationCase>      observations;
+  Vector<ObservationCase>           observations;
 };
 
 Params loadConfig(const std::string& path);

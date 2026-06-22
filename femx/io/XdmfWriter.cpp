@@ -2,8 +2,10 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/io/XdmfWriter.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/io/XdmfWriter.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -14,12 +16,12 @@ Index nodesPerCell(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
-    throw std::runtime_error("XdmfWriter needs a non-empty mesh");
+    throw runtime_error("XdmfWriter needs a non-empty mesh");
   }
   return mesh.cells().front().numNodes();
 }
 
-std::string topologyType(const Mesh& mesh)
+string topologyType(const Mesh& mesh)
 {
   const Index nodes = nodesPerCell(mesh);
   if (nodes == 3)
@@ -30,13 +32,13 @@ std::string topologyType(const Mesh& mesh)
   {
     return "Quadrilateral";
   }
-  throw std::runtime_error("XdmfWriter supports triangle and quadrilateral cells for now");
+  throw runtime_error("XdmfWriter supports triangle and quadrilateral cells for now");
 }
 
-std::string filenameOnly(const std::string& path)
+string filenameOnly(const string& path)
 {
-  const std::size_t pos = path.find_last_of("/\\");
-  if (pos == std::string::npos)
+  const size_t pos = path.find_last_of("/\\");
+  if (pos == string::npos)
   {
     return path;
   }
@@ -45,29 +47,29 @@ std::string filenameOnly(const std::string& path)
 
 } // namespace
 
-void XdmfWriter::write(const std::string&              filename,
-                       const std::string&              hdf5_filename,
-                       const Mesh&                     mesh,
-                       const std::vector<std::string>& nodal_field_names) const
+void XdmfWriter::write(const string&         fname,
+                       const string&         hdf5_filename,
+                       const Mesh&           mesh,
+                       const Vector<string>& nodal_field_names) const
 {
-  std::ofstream out(filename);
+  ofstream out(fname);
   if (!out)
   {
-    throw std::runtime_error("Failed to open XDMF file for writing: " + filename);
+    throw runtime_error("Failed to open XDMF file for writing: " + fname);
   }
 
-  const std::string h5_ref = filenameOnly(hdf5_filename);
+  const string h5_ref = filenameOnly(hdf5_filename);
 
   out << R"(<?xml version="1.0" ?>)" << '\n';
   out << R"(<Xdmf Version="3.0">)" << '\n';
   out << "  <Domain>\n";
   out << R"(    <Grid Name="mesh" GridType="Uniform">)" << '\n';
-  const Index cell_nodes = nodesPerCell(mesh);
+  const Index cn = nodesPerCell(mesh);
   out << R"(      <Topology TopologyType=")" << topologyType(mesh)
       << R"(" NumberOfElements=")"
       << mesh.numElems() << "\">\n";
   out << R"(        <DataItem Dimensions=")" << mesh.numElems()
-      << " " << cell_nodes << R"(" NumberType="Int" Precision="4" Format="HDF">)"
+      << " " << cn << R"(" NumberType="Int" Precision="4" Format="HDF">)"
       << h5_ref << ":/Mesh/Topology</DataItem>\n";
   out << "      </Topology>\n";
   out << R"(      <Geometry GeometryType="XYZ">)" << '\n';
@@ -76,7 +78,7 @@ void XdmfWriter::write(const std::string&              filename,
       << h5_ref << ":/Mesh/Geometry</DataItem>\n";
   out << "      </Geometry>\n";
 
-  for (const std::string& name : nodal_field_names)
+  for (const string& name : nodal_field_names)
   {
     out << R"(      <Attribute Name=")" << name
         << R"(" AttributeType="Scalar" Center="Node">)" << '\n';

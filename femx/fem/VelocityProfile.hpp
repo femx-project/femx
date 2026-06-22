@@ -15,40 +15,40 @@ using BoundaryFacetSelector =
 
 struct AxialVelocityProfile
 {
-  std::string type   = "uniform";
-  Real        radius = 0.0;
-  Point3      center = {0.0, 0.0, 0.0};
-  Point3      normal = {1.0, 0.0, 0.0};
+  std::string type = "uniform";
+  Real        rad  = 0.0;
+  Point3      cen  = {0.0, 0.0, 0.0};
+  Point3      nrm  = {1.0, 0.0, 0.0};
 };
 
 Point3 boundaryCenter(const Mesh&                  mesh,
-                      const BoundaryFacetSelector& selector,
+                      const BoundaryFacetSelector& sel,
                       const std::string&           label = "boundary");
 
-Point3 boundaryCenter(const Mesh& mesh, Index physical_tag);
+Point3 boundaryCenter(const Mesh& mesh, Index ptag);
 
-Point3 boundaryCenter(const Mesh& mesh, const std::string& physical_name);
+Point3 boundaryCenter(const Mesh& mesh, const std::string& pname);
 
-AxialVelocityProfile uniformProfile(const Point3& normal);
+AxialVelocityProfile uniformProfile(const Point3& nrm);
 
-AxialVelocityProfile poiseuilleProfile(const Point3& center,
-                                       const Point3& normal,
-                                       Real          radius);
+AxialVelocityProfile poiseuilleProfile(const Point3& cen,
+                                       const Point3& nrm,
+                                       Real          rad);
 
-Real profileFactor(const AxialVelocityProfile& profile,
+Real profileFactor(const AxialVelocityProfile& prof,
                    const Point3&               point);
 
-Real velocityComponent(const AxialVelocityProfile& profile,
+Real velocityComponent(const AxialVelocityProfile& prof,
                        const Point3&               point,
                        Real                        peak_speed,
-                       Index                       component);
+                       Index                       comp);
 
-Real peakSpeed(const std::string& quantity,
+Real peakSpeed(const std::string& qty,
                const std::string& profile_type,
                Real               value,
                Real               area         = 1.0,
                Real               mean_to_peak = 2.0);
 
-Real sinePulseFactor(Real time, Real amplitude, Real period);
+Real sinePulseFactor(Real time, Real amplitude, Real per);
 
 } // namespace femx::fem

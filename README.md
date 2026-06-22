@@ -42,6 +42,15 @@ Common configuration options are:
 - `FEMX_RESOLVE_BACKEND=AUTO`: requested ReSolve backend, one of `AUTO`, `CPU`,
   or `CUDA`.
 
+## Coding conventions
+
+- Loop index variables in `for` statements should be at most two characters
+  long, such as `i`, `j`, `t`, or `ft`.
+- Prefer short names for common local variables, parameters, and private
+  members: `prm`, `ctr`, `st`, `tr`, `obj`, `res`, `adj`, `grad`, `lin`,
+  `dims`, `ctx`, `hist`, `lyt`, `bdry`, `sel`, `comp`, `vals`, `wts`, and
+  count names such as `nt`, `nst`, `nprm`, `nres`, `nn`, `ne`, `nd`, and `nq`.
+
 If ReSolve is installed in a custom location, pass its install prefix:
 
 ```shell
@@ -65,7 +74,7 @@ Individual component targets are also available:
 - `femx::fem`: mesh-facing FEM data structures, spaces, quadrature, and elements.
 - `femx::assembly`: FEM kernels, assemblers, sparsity builders, and residual adapters.
 - `femx::problem`: residual, objective, observation, and time-residual interfaces.
-- `femx::solve`: Newton, time-stepping, and reduced-functional utilities.
+- `femx::state`: Newton, time-stepping, and reduced-functional utilities.
 - `femx::opt`: PETSc/TAO optimization adapters, when PETSc is enabled.
 - `femx::io`: output and data readers.
 
@@ -75,7 +84,7 @@ Preferred include paths use the new public component layout:
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/Residual.hpp>
-#include <femx/solve/Newton.hpp>
+#include <femx/state/NewtonStateSolver.hpp>
 ```
 
 The pre-refactor component targets and include paths have been removed. Update

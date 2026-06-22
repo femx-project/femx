@@ -5,7 +5,7 @@ if(FEMX_ENABLE_ENZYME)
 endif()
 
 target_sources(navier_common PUBLIC Components.hpp NavierConfig.hpp
-                                     NavierHelper.hpp NavierKernel.hpp)
+                                    NavierHelper.hpp NavierKernel.hpp)
 
 target_include_directories(navier_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

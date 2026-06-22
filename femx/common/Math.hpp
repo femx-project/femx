@@ -40,12 +40,12 @@ Real triArea(const Point3& a, const Point3& b, const Point3& c);
 
 Real radialSq(const Point3& point, const Point3& origin, const Point3& axis);
 
-bool contains(const Vector<Index>& values, Index target);
+bool contains(const Vector<Index>& vals, Index target);
 
-void appendUnique(Vector<Index>& out, const Vector<Index>& values);
+void appendUnique(Vector<Index>& out, const Vector<Index>& vals);
 
 void appendUniqueExcept(Vector<Index>&       out,
-                        const Vector<Index>& values,
+                        const Vector<Index>& vals,
                         const Vector<Index>& skip);
 
 } // namespace femx

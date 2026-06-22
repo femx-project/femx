@@ -15,18 +15,6 @@ namespace femx
 namespace examples_inverse_linear_control
 {
 
-inline void resize(Vector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
 class LinearResidualEquation final : public problem::MatrixResidual
 {
 public:
@@ -49,7 +37,7 @@ public:
            const Vector<Real>& prm,
            Vector<Real>&       out) const override
   {
-    resize(out, numRes());
+    resizeOrZero(out, numRes());
     out[0] = 2.0 * state[0] + 3.0 * state[1]
              + 5.0 * prm[0] - 2.0 * prm[1];
     out[1] = 7.0 * state[0] + 11.0 * state[1]
@@ -108,7 +96,7 @@ public:
                Vector<Real>&       out) const override
   {
     (void) prm;
-    resize(out, numObservations());
+    resizeOrZero(out, numObservations());
     out[0] = state[0];
     out[1] = state[1];
   }
@@ -120,7 +108,7 @@ public:
   {
     (void) state;
     (void) prm;
-    resize(out, numObservations());
+    resizeOrZero(out, numObservations());
     out[0] = dir[0];
     out[1] = dir[1];
   }
@@ -132,7 +120,7 @@ public:
   {
     (void) state;
     (void) prm;
-    resize(out, numStates());
+    resizeOrZero(out, numStates());
     out[0] = dir[0];
     out[1] = dir[1];
   }
@@ -145,7 +133,7 @@ public:
     (void) state;
     (void) prm;
     (void) dir;
-    resize(out, numObservations());
+    resizeOrZero(out, numObservations());
   }
 
   void applyParamJacT(const Vector<Real>& state,
@@ -156,7 +144,7 @@ public:
     (void) state;
     (void) prm;
     (void) dir;
-    resize(out, numParams());
+    resizeOrZero(out, numParams());
   }
 };
 
@@ -183,16 +171,16 @@ struct LinearControlObjectiveParts
   problem::LeastSquaresObjective            tracking;
   Vector<Real>                              reference;
   problem::QuadraticParameterRegularization regularization;
-  problem::SumObjective                     objective;
+  problem::SumObjective                     obj;
 
   LinearControlObjectiveParts()
     : target(makeStateTarget()),
       tracking(observation, target),
       reference(makeZeroParams()),
       regularization(2, reference, 0.25),
-      objective(2, 2)
+      obj(2, 2)
   {
-    objective.add(tracking).add(regularization);
+    obj.add(tracking).add(regularization);
   }
 };
 

@@ -2,6 +2,8 @@
 
 #include <femx/fem/ObservationGrid.hpp>
 
+using namespace std;
+
 namespace femx
 {
 namespace fem
@@ -10,13 +12,13 @@ namespace fem
 namespace
 {
 
-void checkCounts(const std::array<Index, 3>& counts)
+void checkCounts(const array<Index, 3>& counts)
 {
   for (Index count : counts)
   {
     if (count <= 0)
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "observationGridPoints received non-positive grid count");
     }
   }
@@ -36,15 +38,15 @@ Real coordFromBounds(Real  lower,
 
 } // namespace
 
-std::vector<Point3> observationGridPoints(
-    const Point3&               lower,
-    const Point3&               upper,
-    const std::array<Index, 3>& counts)
+Vector<Point3> observationGridPoints(
+    const Point3&          lower,
+    const Point3&          upper,
+    const array<Index, 3>& counts)
 {
   checkCounts(counts);
 
-  std::vector<Point3> points;
-  points.reserve(static_cast<std::size_t>(counts[0] * counts[1] * counts[2]));
+  Vector<Point3> pts;
+  pts.reserve(counts[0] * counts[1] * counts[2]);
 
   for (Index k = 0; k < counts[2]; ++k)
   {
@@ -52,25 +54,25 @@ std::vector<Point3> observationGridPoints(
     {
       for (Index i = 0; i < counts[0]; ++i)
       {
-        points.push_back(
+        pts.push_back(
             {coordFromBounds(lower[0], upper[0], counts[0], i),
              coordFromBounds(lower[1], upper[1], counts[1], j),
              coordFromBounds(lower[2], upper[2], counts[2], k)});
       }
     }
   }
-  return points;
+  return pts;
 }
 
-std::vector<Point3> observationGridPoints(
-    const Point3&               origin,
-    const std::array<Index, 3>& counts,
-    const Point3&               spacing)
+Vector<Point3> observationGridPoints(
+    const Point3&          origin,
+    const array<Index, 3>& counts,
+    const Point3&          spacing)
 {
   checkCounts(counts);
 
-  std::vector<Point3> points;
-  points.reserve(static_cast<std::size_t>(counts[0] * counts[1] * counts[2]));
+  Vector<Point3> pts;
+  pts.reserve(counts[0] * counts[1] * counts[2]);
 
   for (Index k = 0; k < counts[2]; ++k)
   {
@@ -78,13 +80,13 @@ std::vector<Point3> observationGridPoints(
     {
       for (Index i = 0; i < counts[0]; ++i)
       {
-        points.push_back({origin[0] + spacing[0] * static_cast<Real>(i),
-                          origin[1] + spacing[1] * static_cast<Real>(j),
-                          origin[2] + spacing[2] * static_cast<Real>(k)});
+        pts.push_back({origin[0] + spacing[0] * static_cast<Real>(i),
+                       origin[1] + spacing[1] * static_cast<Real>(j),
+                       origin[2] + spacing[2] * static_cast<Real>(k)});
       }
     }
   }
-  return points;
+  return pts;
 }
 
 } // namespace fem

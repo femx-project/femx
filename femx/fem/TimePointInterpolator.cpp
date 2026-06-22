@@ -2,14 +2,15 @@
 #include <cmath>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
-#include <femx/linalg/MatrixView.hpp>
-#include <femx/linalg/VectorView.hpp>
 #include <femx/fem/Cell.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
+#include <femx/linalg/MatrixView.hpp>
+#include <femx/linalg/VectorView.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -24,8 +25,8 @@ constexpr Real det_tol   = 1.0e-14;
 
 struct ScalarStencil
 {
-  std::vector<Index> node_ids;
-  Vector<Real>       weights;
+  Vector<Index> nids;
+  Vector<Real>  wts;
 };
 
 bool insideBox(const Cell&   cell,
@@ -38,8 +39,8 @@ bool insideBox(const Cell&   cell,
     Real upper = cell.node(0)[a];
     for (Index in = 1; in < cell.numNodes(); ++in)
     {
-      lower = std::min(lower, cell.node(in)[a]);
-      upper = std::max(upper, cell.node(in)[a]);
+      lower = min(lower, cell.node(in)[a]);
+      upper = max(upper, cell.node(in)[a]);
     }
     if (point[a] < lower - point_tol || point[a] > upper + point_tol)
     {
@@ -49,32 +50,32 @@ bool insideBox(const Cell&   cell,
   return true;
 }
 
-bool insideSimplex(const Vector<Real>& weights)
+bool insideSimplex(const Vector<Real>& wts)
 {
   Real sum = 0.0;
-  for (Real weight : weights)
+  for (Real wt : wts)
   {
-    if (weight < -point_tol || weight > 1.0 + point_tol)
+    if (wt < -point_tol || wt > 1.0 + point_tol)
     {
       return false;
     }
-    sum += weight;
+    sum += wt;
   }
-  return std::abs(sum - 1.0) <= 10.0 * point_tol;
+  return abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
 Vector<Real> shapeWeights(const FiniteElement&   fe,
                           const QuadraturePoint& qp)
 {
-  Vector<Real> weights(fe.numDofsPerElement());
-  fe.calcShape(qp, VectorView<Real>(weights.data(), weights.size()));
-  return weights;
+  Vector<Real> wts(fe.numDofsPerElement());
+  fe.calcShape(qp, VectorView<Real>(wts.data(), wts.size()));
+  return wts;
 }
 
 bool triWeights(const FiniteElement& fe,
                 const Cell&          cell,
                 const Point3&        point,
-                Vector<Real>&        weights)
+                Vector<Real>&        wts)
 {
   const Point3 a   = cell.node(0);
   const Point3 e1  = difference(cell.node(1), a);
@@ -82,7 +83,7 @@ bool triWeights(const FiniteElement& fe,
   const Point3 rhs = difference(point, a);
 
   const Real det = e1[0] * e2[1] - e1[1] * e2[0];
-  if (std::abs(det) < det_tol)
+  if (abs(det) < det_tol)
   {
     return false;
   }
@@ -90,14 +91,14 @@ bool triWeights(const FiniteElement& fe,
   const Real r = (rhs[0] * e2[1] - rhs[1] * e2[0]) / det;
   const Real s = (e1[0] * rhs[1] - e1[1] * rhs[0]) / det;
 
-  weights = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
-  return insideSimplex(weights);
+  wts = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
+  return insideSimplex(wts);
 }
 
 bool tetWeights(const FiniteElement& fe,
                 const Cell&          cell,
                 const Point3&        point,
-                Vector<Real>&        weights)
+                Vector<Real>&        wts)
 {
   const Point3 a   = cell.node(0);
   const Point3 e1  = difference(cell.node(1), a);
@@ -106,7 +107,7 @@ bool tetWeights(const FiniteElement& fe,
   const Point3 rhs = difference(point, a);
 
   const Real det = dot(e1, cross(e2, e3));
-  if (std::abs(det) < det_tol)
+  if (abs(det) < det_tol)
   {
     return false;
   }
@@ -115,12 +116,12 @@ bool tetWeights(const FiniteElement& fe,
   const Real s = dot(e1, cross(rhs, e3)) / det;
   const Real t = dot(e1, cross(e2, rhs)) / det;
 
-  weights = shapeWeights(fe, QuadraturePoint{{r, s, t}, 0.0});
-  return insideSimplex(weights);
+  wts = shapeWeights(fe, QuadraturePoint{{r, s, t}, 0.0});
+  return insideSimplex(wts);
 }
 
 Point3 mappedPoint(const Cell&         cell,
-                   const Vector<Real>& weights,
+                   const Vector<Real>& wts,
                    Index               dim)
 {
   Point3 mapped{0.0, 0.0, 0.0};
@@ -128,7 +129,7 @@ Point3 mappedPoint(const Cell&         cell,
   {
     for (Index a = 0; a < dim; ++a)
     {
-      mapped[a] += weights[in] * cell.node(in)[a];
+      mapped[a] += wts[in] * cell.node(in)[a];
     }
   }
   return mapped;
@@ -141,13 +142,12 @@ bool quadSolveStep(const Cell&          cell,
                    const Point3&        point,
                    Real&                dr,
                    Real&                ds,
-                   Vector<Real>&        weights)
+                   Vector<Real>&        wts)
 {
   const QuadraturePoint qp{{r, s, 0.0}, 0.0};
-  weights = shapeWeights(fe, qp);
+  wts = shapeWeights(fe, qp);
 
-  std::vector<Real> grad(
-      static_cast<std::size_t>(fe.numDofsPerElement() * fe.dim()));
+  Vector<Real> grad(fe.numDofsPerElement() * fe.dim());
   fe.calcShapeGrad(
       qp,
       MatrixView<Real>(
@@ -161,17 +161,17 @@ bool quadSolveStep(const Cell&          cell,
   {
     const Real x  = cell.node(in)[0];
     const Real y  = cell.node(in)[1];
-    j00          += x * grad[static_cast<std::size_t>(in * fe.dim())];
-    j01          += x * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
-    j10          += y * grad[static_cast<std::size_t>(in * fe.dim())];
-    j11          += y * grad[static_cast<std::size_t>(in * fe.dim() + 1)];
+    j00          += x * grad[in * fe.dim()];
+    j01          += x * grad[in * fe.dim() + 1];
+    j10          += y * grad[in * fe.dim()];
+    j11          += y * grad[in * fe.dim() + 1];
   }
 
-  const Point3 phys = mappedPoint(cell, weights, fe.dim());
+  const Point3 phys = mappedPoint(cell, wts, fe.dim());
   const Real   res0 = phys[0] - point[0];
   const Real   res1 = phys[1] - point[1];
   const Real   det  = j00 * j11 - j01 * j10;
-  if (std::abs(det) < det_tol)
+  if (abs(det) < det_tol)
   {
     return false;
   }
@@ -184,7 +184,7 @@ bool quadSolveStep(const Cell&          cell,
 bool quadWeights(const FiniteElement& fe,
                  const Cell&          cell,
                  const Point3&        point,
-                 Vector<Real>&        weights)
+                 Vector<Real>&        wts)
 {
   Real r = 0.0;
   Real s = 0.0;
@@ -193,7 +193,7 @@ bool quadWeights(const FiniteElement& fe,
   {
     Real dr = 0.0;
     Real ds = 0.0;
-    if (!quadSolveStep(cell, fe, r, s, point, dr, ds, weights))
+    if (!quadSolveStep(cell, fe, r, s, point, dr, ds, wts))
     {
       return false;
     }
@@ -201,14 +201,14 @@ bool quadWeights(const FiniteElement& fe,
     r -= dr;
     s -= ds;
 
-    if (std::abs(dr) + std::abs(ds) <= point_tol)
+    if (abs(dr) + abs(ds) <= point_tol)
     {
       break;
     }
   }
 
-  weights           = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
-  const Point3 phys = mappedPoint(cell, weights, fe.dim());
+  wts               = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
+  const Point3 phys = mappedPoint(cell, wts, fe.dim());
   const Real   err0 = phys[0] - point[0];
   const Real   err1 = phys[1] - point[1];
   const bool   inside =
@@ -221,24 +221,24 @@ bool quadWeights(const FiniteElement& fe,
 bool cellWeights(const FiniteElement& fe,
                  const Cell&          cell,
                  const Point3&        point,
-                 Vector<Real>&        weights)
+                 Vector<Real>&        wts)
 {
   switch (fe.referenceElement())
   {
   case ReferenceElement::Triangle:
-    return triWeights(fe, cell, point, weights);
+    return triWeights(fe, cell, point, wts);
 
   case ReferenceElement::Quadrilateral:
-    return quadWeights(fe, cell, point, weights);
+    return quadWeights(fe, cell, point, wts);
 
   case ReferenceElement::Tetrahedron:
-    return tetWeights(fe, cell, point, weights);
+    return tetWeights(fe, cell, point, wts);
 
   case ReferenceElement::Segment:
     break;
   }
 
-  throw std::runtime_error(
+  throw runtime_error(
       "TimePointInterpolator does not support this reference element");
 }
 
@@ -250,7 +250,7 @@ bool tryFindScalarStencil(const FESpace& space,
   const FiniteElement& fe   = space.finiteElement();
   if (mesh.dim() != fe.dim())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimePointInterpolator mesh dimension does not match finite element");
   }
 
@@ -259,7 +259,7 @@ bool tryFindScalarStencil(const FESpace& space,
     const Cell& cell = mesh.cell(ic);
     if (cell.numNodes() != fe.numNodes())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "TimePointInterpolator cell node count does not match finite element");
     }
     if (!insideBox(cell, point, mesh.dim()))
@@ -267,10 +267,10 @@ bool tryFindScalarStencil(const FESpace& space,
       continue;
     }
 
-    Vector<Real> weights;
-    if (cellWeights(fe, cell, point, weights))
+    Vector<Real> wts;
+    if (cellWeights(fe, cell, point, wts))
     {
-      out = ScalarStencil{cell.nodeIds(), weights};
+      out = ScalarStencil{cell.nodeIds(), wts};
       return true;
     }
   }
@@ -286,67 +286,67 @@ ScalarStencil findScalarStencil(const FESpace& space,
   {
     return stencil;
   }
-  throw std::runtime_error("TimePointInterpolator point is outside the mesh");
+  throw runtime_error("TimePointInterpolator point is outside the mesh");
 }
 
 } // namespace
 
-TimePointInterpolator::TimePointInterpolator(Index               num_steps,
+TimePointInterpolator::TimePointInterpolator(Index               nt,
                                              const MixedFESpace& space,
-                                             Index               field_id,
-                                             std::vector<Point3> points,
-                                             Vector<Index>       components,
-                                             Index               num_prm)
-  : num_steps_(num_steps),
-    num_states_(space.numDofs()),
-    num_prm_(num_prm),
-    points_(std::move(points)),
-    components_(std::move(components))
+                                             Index               fid,
+                                             Vector<Point3>      pts,
+                                             Vector<Index>       comps,
+                                             Index               nprm)
+  : nt_(nt),
+    nst_(space.numDofs()),
+    nprm_(nprm),
+    pts_(std::move(pts)),
+    comps_(std::move(comps))
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_prm_ < 0)
+  if (nt_ < 0 || nst_ < 0 || nprm_ < 0)
   {
-    throw std::runtime_error("TimePointInterpolator received invalid dimensions");
+    throw runtime_error("TimePointInterpolator received invalid dimensions");
   }
 
-  const MixedFieldView field = space.field(field_id);
-  if (components_.empty())
+  const MixedFieldView field = space.field(fid);
+  if (comps_.empty())
   {
     for (Index c = 0; c < field.numComponents(); ++c)
     {
-      components_.push_back(c);
+      comps_.push_back(c);
     }
   }
 
-  for (Index component : components_)
+  for (Index comp : comps_)
   {
-    if (component < 0 || component >= field.numComponents())
+    if (comp < 0 || comp >= field.numComponents())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "TimePointInterpolator component is out of range");
     }
   }
 
-  stencils_ = buildStencils(field, points_, components_);
+  stencils_ = buildStencils(field, pts_, comps_);
 }
 
 Index TimePointInterpolator::numSteps() const
 {
-  return num_steps_;
+  return nt_;
 }
 
 Index TimePointInterpolator::numStates() const
 {
-  return num_states_;
+  return nst_;
 }
 
 Index TimePointInterpolator::numParams() const
 {
-  return num_prm_;
+  return nprm_;
 }
 
 Index TimePointInterpolator::numObservations() const
 {
-  return static_cast<Index>(stencils_.size());
+  return stencils_.size();
 }
 
 void TimePointInterpolator::observe(Index               level,
@@ -356,14 +356,14 @@ void TimePointInterpolator::observe(Index               level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  resize(out, numObservations());
+  resizeOrZero(out, numObservations());
 
   for (Index i = 0; i < numObservations(); ++i)
   {
-    const Stencil& stencil = stencils_[static_cast<std::size_t>(i)];
+    const Stencil& stencil = stencils_[i];
     for (Index j = 0; j < stencil.indices.size(); ++j)
     {
-      out[i] += stencil.weights[j] * state[stencil.indices[j]];
+      out[i] += stencil.wts[j] * state[stencil.indices[j]];
     }
   }
 }
@@ -378,17 +378,17 @@ void TimePointInterpolator::applyStateJac(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numStates())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimePointInterpolator state direction size mismatch");
   }
 
-  resize(out, numObservations());
+  resizeOrZero(out, numObservations());
   for (Index i = 0; i < numObservations(); ++i)
   {
-    const Stencil& stencil = stencils_[static_cast<std::size_t>(i)];
+    const Stencil& stencil = stencils_[i];
     for (Index j = 0; j < stencil.indices.size(); ++j)
     {
-      out[i] += stencil.weights[j] * dir[stencil.indices[j]];
+      out[i] += stencil.wts[j] * dir[stencil.indices[j]];
     }
   }
 }
@@ -403,17 +403,17 @@ void TimePointInterpolator::applyStateJacT(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numObservations())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimePointInterpolator observation direction size mismatch");
   }
 
-  resize(out, numStates());
+  resizeOrZero(out, numStates());
   for (Index i = 0; i < numObservations(); ++i)
   {
-    const Stencil& stencil = stencils_[static_cast<std::size_t>(i)];
+    const Stencil& stencil = stencils_[i];
     for (Index j = 0; j < stencil.indices.size(); ++j)
     {
-      out[stencil.indices[j]] += stencil.weights[j] * dir[i];
+      out[stencil.indices[j]] += stencil.wts[j] * dir[i];
     }
   }
 }
@@ -428,11 +428,11 @@ void TimePointInterpolator::applyParamJac(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numParams())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimePointInterpolator parameter direction size mismatch");
   }
 
-  resize(out, numObservations());
+  resizeOrZero(out, numObservations());
 }
 
 void TimePointInterpolator::applyParamJacT(Index               level,
@@ -445,42 +445,42 @@ void TimePointInterpolator::applyParamJacT(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numObservations())
   {
-    throw std::runtime_error(
+    throw runtime_error(
         "TimePointInterpolator observation direction size mismatch");
   }
 
-  resize(out, numParams());
+  resizeOrZero(out, numParams());
 }
 
-const std::vector<Point3>& TimePointInterpolator::points() const
+const Vector<Point3>& TimePointInterpolator::pts() const
 {
-  return points_;
+  return pts_;
 }
 
-const Vector<Index>& TimePointInterpolator::components() const
+const Vector<Index>& TimePointInterpolator::comps() const
 {
-  return components_;
+  return comps_;
 }
 
 bool TimePointInterpolator::containsPoint(const MixedFESpace& space,
-                                          Index               field_id,
+                                          Index               fid,
                                           const Point3&       point)
 {
-  const MixedFieldView field = space.field(field_id);
+  const MixedFieldView field = space.field(fid);
   ScalarStencil        stencil;
   return tryFindScalarStencil(field.space(), point, stencil);
 }
 
-std::vector<Point3> TimePointInterpolator::filterPointsInside(
-    const MixedFESpace&        space,
-    Index                      field_id,
-    const std::vector<Point3>& points)
+Vector<Point3> TimePointInterpolator::filterPointsInside(
+    const MixedFESpace&   space,
+    Index                 fid,
+    const Vector<Point3>& pts)
 {
-  std::vector<Point3> filtered;
-  filtered.reserve(points.size());
-  for (const Point3& point : points)
+  Vector<Point3> filtered;
+  filtered.reserve(pts.size());
+  for (const Point3& point : pts)
   {
-    if (containsPoint(space, field_id, point))
+    if (containsPoint(space, fid, point))
     {
       filtered.push_back(point);
     }
@@ -492,7 +492,7 @@ void TimePointInterpolator::checkLevel(Index level) const
 {
   if (level < 0 || level > numSteps())
   {
-    throw std::runtime_error("TimePointInterpolator time level is out of range");
+    throw runtime_error("TimePointInterpolator time level is out of range");
   }
 }
 
@@ -502,51 +502,37 @@ void TimePointInterpolator::checkInputs(
 {
   if (state.size() != numStates() || prm.size() != numParams())
   {
-    throw std::runtime_error("TimePointInterpolator input size mismatch");
+    throw runtime_error("TimePointInterpolator input size mismatch");
   }
 }
 
-std::vector<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
-    const MixedFieldView&      field,
-    const std::vector<Point3>& points,
-    const Vector<Index>&       components)
+Vector<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
+    const MixedFieldView& field,
+    const Vector<Point3>& pts,
+    const Vector<Index>&  comps)
 {
-  std::vector<Stencil> stencils;
-  stencils.reserve(points.size() * static_cast<std::size_t>(components.size()));
+  Vector<Stencil> stencils;
+  stencils.reserve(pts.size() * comps.size());
 
-  for (const Point3& point : points)
+  for (const Point3& point : pts)
   {
     const ScalarStencil scalar = findScalarStencil(field.space(), point);
-    for (Index component : components)
+    for (Index comp : comps)
     {
       Stencil stencil;
-      stencil.indices.reserve(scalar.weights.size());
-      stencil.weights.reserve(scalar.weights.size());
-      for (Index i = 0; i < scalar.weights.size(); ++i)
+      stencil.indices.reserve(scalar.wts.size());
+      stencil.wts.reserve(scalar.wts.size());
+      for (Index i = 0; i < scalar.wts.size(); ++i)
       {
         stencil.indices.push_back(
-            field.globalDof(scalar.node_ids[static_cast<std::size_t>(i)],
-                            component));
-        stencil.weights.push_back(scalar.weights[i]);
+            field.globalDof(scalar.nids[i], comp));
+        stencil.wts.push_back(scalar.wts[i]);
       }
       stencils.push_back(std::move(stencil));
     }
   }
 
   return stencils;
-}
-
-void TimePointInterpolator::resize(Vector<Real>& out,
-                                   Index         size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
 }
 
 } // namespace fem

@@ -3,9 +3,9 @@
 #include <array>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -27,13 +27,13 @@ public:
   struct CellField
   {
     std::string         name;
-    Index               num_components = 1;
-    const Vector<Real>* values{nullptr};
+    Index               nc = 1;
+    const Vector<Real>* vals{nullptr};
   };
 
-  void writeCellData(const std::string&            filename,
-                     const Image&                  image,
-                     const std::vector<CellField>& fields) const;
+  void writeCellData(const std::string&       fname,
+                     const Image&             image,
+                     const Vector<CellField>& fields) const;
 };
 
 } // namespace femx

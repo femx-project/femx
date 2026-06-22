@@ -1,9 +1,10 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
 #include <femx/linalg/CsrPattern.hpp>
+
+using namespace std;
 
 namespace femx
 {
@@ -14,15 +15,15 @@ CsrPattern::CsrPattern(Index               rows,
 {
   if (rows < 0 || cols < 0)
   {
-    throw std::runtime_error("CsrPattern dimensions must be non-negative");
+    throw runtime_error("CsrPattern dimensions must be non-negative");
   }
 
-  num_rows_  = rows;
-  num_cols_  = cols;
-  num_elems_ = cdofs.numSets();
+  num_rows_ = rows;
+  num_cols_ = cols;
+  ne_       = cdofs.numSets();
 
-  elem_coo_offsets_.assign(static_cast<std::size_t>(num_elems_ + 1), 0);
-  elem_num_dofs_.assign(static_cast<std::size_t>(num_elems_), 0);
+  elem_coo_offsets_.assign(ne_ + 1, 0);
+  elem_num_dofs_.assign(ne_, 0);
 
   countCooEntries(cdofs);
 
@@ -38,12 +39,12 @@ void CsrPattern::countCooEntries(const IndexSetList& cdofs)
 {
   num_coo_entries_ = 0;
 
-  for (Index ic = 0; ic < num_elems_; ++ic)
+  for (Index ic = 0; ic < ne_; ++ic)
   {
-    const Index num_dofs = cdofs.setSize(ic);
+    const Index nd = cdofs.setSize(ic);
 
-    elem_num_dofs_[ic]  = num_dofs;
-    num_coo_entries_   += num_dofs * num_dofs;
+    elem_num_dofs_[ic]  = nd;
+    num_coo_entries_   += nd * nd;
   }
 }
 
@@ -55,23 +56,23 @@ void CsrPattern::setupCooArrays(
 {
   Index counter = 0;
 
-  for (Index ic = 0; ic < num_elems_; ++ic)
+  for (Index ic = 0; ic < ne_; ++ic)
   {
-    const Vector<Index> dofs     = cdofs.set(ic);
-    const Index         num_dofs = elem_num_dofs_[ic];
+    const Vector<Index> dofs = cdofs.set(ic);
+    const Index         nd   = elem_num_dofs_[ic];
 
     elem_coo_offsets_[ic] = counter;
 
-    for (Index i = 0; i < num_dofs; ++i)
+    for (Index i = 0; i < nd; ++i)
     {
-      for (Index j = 0; j < num_dofs; ++j)
+      for (Index j = 0; j < nd; ++j)
       {
         const Index row = dofs[i];
         const Index col = dofs[j];
 
         if (row < 0 || row >= num_rows_ || col < 0 || col >= num_cols_)
         {
-          throw std::runtime_error("CsrPattern cell dof is out of range");
+          throw runtime_error("CsrPattern cell dof is out of range");
         }
         coo_rows[counter] = row;
         coo_cols[counter] = col;
@@ -82,40 +83,39 @@ void CsrPattern::setupCooArrays(
     }
   }
 
-  elem_coo_offsets_[num_elems_] = num_coo_entries_;
+  elem_coo_offsets_[ne_] = num_coo_entries_;
 }
 
 void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
                                 const Vector<Index>& coo_cols,
                                 Vector<Index>&       order)
 {
-  std::sort(order.begin(),
-            order.end(),
-            [&coo_rows, &coo_cols](Index a, Index b)
-            {
-              if (coo_rows[a] != coo_rows[b])
-              {
-                return coo_rows[a] < coo_rows[b];
-              }
-              return coo_cols[a] < coo_cols[b];
-            });
+  sort(order.begin(),
+       order.end(),
+       [&coo_rows, &coo_cols](Index a, Index b)
+       {
+         if (coo_rows[a] != coo_rows[b])
+         {
+           return coo_rows[a] < coo_rows[b];
+         }
+         return coo_cols[a] < coo_cols[b];
+       });
 
-  row_ptr_.assign(static_cast<std::size_t>(num_rows_ + 1), 0);
-  map_to_csr_.assign(static_cast<std::size_t>(num_coo_entries_), 0);
+  row_ptr_.assign(num_rows_ + 1, 0);
+  map_to_csr_.assign(num_coo_entries_, 0);
 
-  std::vector<Index> col_tmp;
-  col_tmp.reserve(static_cast<std::size_t>(num_coo_entries_));
+  Vector<Index> col_tmp;
+  col_tmp.reserve(num_coo_entries_);
   nnz_ = 0;
 
   for (Index k = 0; k < num_coo_entries_; ++k)
   {
-    const Index current = order[static_cast<std::size_t>(k)];
-    const Index previous =
-        k == 0 ? current : order[static_cast<std::size_t>(k - 1)];
+    const Index current = order[k];
+    const Index prev    = k == 0 ? current : order[k - 1];
 
     const bool is_new =
-        k == 0 || coo_rows[current] != coo_rows[previous]
-        || coo_cols[current] != coo_cols[previous];
+        k == 0 || coo_rows[current] != coo_rows[prev]
+        || coo_cols[current] != coo_cols[prev];
 
     if (is_new)
     {
@@ -155,7 +155,7 @@ Index CsrPattern::nnz() const
 
 Index CsrPattern::numElems() const
 {
-  return num_elems_;
+  return ne_;
 }
 
 Index CsrPattern::numCooEntries() const
@@ -190,17 +190,17 @@ const Index* CsrPattern::cellNumDofsData() const
 
 Index CsrPattern::mapToCsr(Index i) const
 {
-  return map_to_csr_[static_cast<std::size_t>(i)];
+  return map_to_csr_[i];
 }
 
 Index CsrPattern::elemCooOffset(Index ic) const
 {
-  return elem_coo_offsets_[static_cast<std::size_t>(ic)];
+  return elem_coo_offsets_[ic];
 }
 
 Index CsrPattern::elemNumDofs(Index ic) const
 {
-  return elem_num_dofs_[static_cast<std::size_t>(ic)];
+  return elem_num_dofs_[ic];
 }
 
 } // namespace femx

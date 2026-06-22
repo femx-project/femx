@@ -50,9 +50,9 @@ public:
   void addAtomic(Index row, Real value)
   {
     checkIndex(row);
-    Real* values = vec_.data();
+    Real* vals = vec_.data();
 #pragma omp atomic update
-    values[static_cast<std::size_t>(row)] += value;
+    vals[row] += value;
   }
 
   void finalize()

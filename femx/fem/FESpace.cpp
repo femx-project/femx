@@ -2,23 +2,25 @@
 
 #include <femx/fem/FESpace.hpp>
 
+using namespace std;
+
 namespace femx
 {
 
 FESpace::FESpace(const Mesh*          mesh,
                  const FiniteElement* finite_element,
-                 Index                components)
+                 Index                comps)
   : mesh_(mesh),
     fe_(finite_element),
-    components_(components)
+    comps_(comps)
 {
   if (!mesh_ || !fe_)
   {
-    throw std::runtime_error("FESpace: null mesh or finite elem");
+    throw runtime_error("FESpace: null mesh or finite elem");
   }
-  if (components_ <= 0)
+  if (comps_ <= 0)
   {
-    throw std::runtime_error("FESpace: invalid component count");
+    throw runtime_error("FESpace: invalid component count");
   }
 }
 
@@ -26,24 +28,24 @@ void FESpace::setup()
 {
   const Index num_elem = mesh_->numElems();
   num_shapes_per_elem_ = fe_->numDofsPerElement();
-  const Index ndof_e   = components_ * num_shapes_per_elem_;
+  const Index ndof_e   = comps_ * num_shapes_per_elem_;
 
   dof_map_.allocate(num_elem, ndof_e);
-  num_dofs_ = components_ * mesh_->numNodes();
+  nd_ = comps_ * mesh_->numNodes();
 
   for (Index ic = 0; ic < num_elem; ++ic)
   {
     const auto& cell = mesh_->cell(ic);
     if (cell.numNodes() != fe_->numNodes())
     {
-      throw std::runtime_error(
+      throw runtime_error(
           "FESpace: finite elem node count does not match mesh cell");
     }
 
     const Index* conn = mesh_->cellNodeIds(ic);
     for (Index a = 0; a < num_shapes_per_elem_; ++a)
     {
-      for (Index c = 0; c < components_; ++c)
+      for (Index c = 0; c < comps_; ++c)
       {
         dof_map_.setElementDof(ic, localDof(a, c), globalDof(conn[a], c));
       }
@@ -73,12 +75,12 @@ Index FESpace::numElems() const noexcept
 
 Index FESpace::numDofs() const noexcept
 {
-  return num_dofs_;
+  return nd_;
 }
 
 Index FESpace::numComponents() const noexcept
 {
-  return components_;
+  return comps_;
 }
 
 Index FESpace::numShapesPerElem() const noexcept
@@ -92,15 +94,15 @@ Index FESpace::numDofsPerElem() const noexcept
 }
 
 Index FESpace::localDof(Index shape_index,
-                        Index component) const noexcept
+                        Index comp) const noexcept
 {
-  return components_ * shape_index + component;
+  return comps_ * shape_index + comp;
 }
 
 Index FESpace::globalDof(Index in,
-                         Index component) const noexcept
+                         Index comp) const noexcept
 {
-  return components_ * in + component;
+  return comps_ * in + comp;
 }
 
 void FESpace::elemDofs(Index          ic,

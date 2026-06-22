@@ -34,69 +34,69 @@ public:
 
   /** @brief Add a constant value on a physical boundary tag. */
   void addBoundary(const FESpace& space,
-                   Index          physical_tag,
+                   Index          ptag,
                    Real           value,
-                   Real           time      = 0.0,
-                   Index          component = 0);
+                   Real           time = 0.0,
+                   Index          comp = 0);
 
   /** @brief Add a value function on a physical boundary tag. */
   void addBoundary(const FESpace&       space,
-                   Index                physical_tag,
+                   Index                ptag,
                    const BoundaryValue& value,
-                   Real                 time      = 0.0,
-                   Index                component = 0);
+                   Real                 time = 0.0,
+                   Index                comp = 0);
 
   /** @brief Add a constant value on a mixed field physical boundary tag. */
   void addBoundary(const MixedFieldView& field,
-                   Index                 physical_tag,
+                   Index                 ptag,
                    Real                  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   /** @brief Add a value function on a mixed field physical boundary tag. */
   void addBoundary(const MixedFieldView& field,
-                   Index                 physical_tag,
+                   Index                 ptag,
                    const BoundaryValue&  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   /** @brief Add a constant value on nodes selected by a boundary marker. */
   void addBoundary(const FESpace&        space,
-                   const BoundaryMarker& marker,
+                   const BoundaryMarker& mark,
                    Real                  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   /** @brief Add a value function on nodes selected by a boundary marker. */
   void addBoundary(const FESpace&        space,
-                   const BoundaryMarker& marker,
+                   const BoundaryMarker& mark,
                    const BoundaryValue&  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   /** @brief Add a constant value on mixed field nodes selected by a marker. */
   void addBoundary(const MixedFieldView& field,
-                   const BoundaryMarker& marker,
+                   const BoundaryMarker& mark,
                    Real                  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   /** @brief Add a value function on mixed field nodes selected by a marker. */
   void addBoundary(const MixedFieldView& field,
-                   const BoundaryMarker& marker,
+                   const BoundaryMarker& mark,
                    const BoundaryValue&  value,
-                   Real                  time      = 0.0,
-                   Index                 component = 0);
+                   Real                  time = 0.0,
+                   Index                 comp = 0);
 
   const Vector<Index>& dofs() const noexcept;
-  const Vector<Real>&  values() const noexcept;
+  const Vector<Real>&  vals() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
   void apply(SparseMatrix& A, Vector<Real>& b) const;
 
 private:
   Vector<Index> dofs_;
-  Vector<Real>  values_;
+  Vector<Real>  vals_;
 };
 
 using BoundaryCondition = DirichletCondition;
