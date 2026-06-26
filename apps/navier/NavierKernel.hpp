@@ -12,7 +12,7 @@ namespace femx::navier
 {
 
 void NavierResidual(Index       step,
-                    Index       cell,
+                    Index       elem,
                     Index       nq,
                     Index       nn,
                     Index       dim,
@@ -47,14 +47,14 @@ public:
                Vector<Real>           fixed_prm);
 
   void res(Index                    step,
-           Index                    ic,
+           Index                    ie,
            problem::TimeHistoryView hist,
            const Vector<Real>&      nxt,
            const Vector<Real>&      prm,
            Vector<Real>&            out) const override;
 
   void jacobian(Index                    step,
-                Index                    ic,
+                Index                    ie,
                 problem::VariableBlock   wrt,
                 problem::TimeHistoryView hist,
                 const Vector<Real>&      nxt,

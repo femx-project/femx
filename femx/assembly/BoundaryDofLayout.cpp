@@ -109,11 +109,11 @@ void BoundaryDofLayout::appendFacetDofs(const FESpace&             space,
                                         const Mesh::BoundaryFacet& facet,
                                         Vector<Index>&             dofs)
 {
-  for (Index node : facet.nids)
+  for (Index in : facet.nids)
   {
     for (Index c = 0; c < space.numComponents(); ++c)
     {
-      dofs.push_back(space.globalDof(node, c));
+      dofs.push_back(space.globalDof(in, c));
     }
   }
 }
@@ -125,11 +125,11 @@ void BoundaryDofLayout::appendFacetDofs(const MixedFESpace&        space,
   for (Index fid = 0; fid < space.numFields(); ++fid)
   {
     const MixedFieldView field = space.field(fid);
-    for (Index node : facet.nids)
+    for (Index in : facet.nids)
     {
       for (Index c = 0; c < field.numComponents(); ++c)
       {
-        dofs.push_back(field.globalDof(node, c));
+        dofs.push_back(field.globalDof(in, c));
       }
     }
   }

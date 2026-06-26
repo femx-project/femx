@@ -14,8 +14,8 @@ target_include_directories(
 target_link_libraries(ns_var_new_kernels PUBLIC navier_common femx::femx)
 
 function(configure_ns_var_new_app target)
-  target_link_libraries(${target} PRIVATE ns_var_new_kernels femx::opt
-                                          femx::femx)
+  target_link_libraries(${target} PRIVATE inverse_common ns_var_new_kernels
+                                          femx::opt femx::femx)
   target_compile_definitions(${target}
                              PRIVATE FEMX_NAVIER_VAR_NEW_APP_NAME="${target}")
 endfunction()

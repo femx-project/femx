@@ -40,7 +40,7 @@ Assembler::Assembler(DofLayout    row_layout,
     same_layout_(false),
     mode_(mode)
 {
-  checkCellCounts();
+  checkElemCounts();
 }
 
 Assembler::Assembler(const FESpace& row_space,
@@ -71,7 +71,7 @@ Assembler::Assembler(const MixedFESpace& row_space,
 {
 }
 
-Index Assembler::numCells() const
+Index Assembler::numElems() const
 {
   return row_layout_.numElems();
 }
@@ -104,7 +104,7 @@ void Assembler::initMat(MatrixBuilder& out) const
   out.setZero();
 }
 
-void Assembler::addVec(Index               ic,
+void Assembler::addVec(Index               ie,
                        const Vector<Real>& local,
                        Vector<Real>&       out) const
 {
@@ -114,7 +114,7 @@ void Assembler::addVec(Index               ic,
   }
 
   Vector<Index> row_dofs;
-  row_layout_.elemDofs(ic, row_dofs);
+  row_layout_.elemDofs(ie, row_dofs);
   if (local.size() != row_dofs.size())
   {
     throw runtime_error(
@@ -138,7 +138,7 @@ void Assembler::addVec(Index               ic,
   }
 }
 
-void Assembler::addMat(Index              ic,
+void Assembler::addMat(Index              ie,
                        const DenseMatrix& local,
                        MatrixBuilder&     out) const
 {
@@ -147,15 +147,15 @@ void Assembler::addMat(Index              ic,
     throw runtime_error("Assembler global matrix has incompatible size");
   }
 
-  if (same_layout_ && out.addLocalMatrix(ic, local, mode_ == AssemblyMode::Atomic))
+  if (same_layout_ && out.addLocalMatrix(ie, local, mode_ == AssemblyMode::Atomic))
   {
     return;
   }
 
   Vector<Index> row_dofs;
   Vector<Index> col_dofs;
-  row_layout_.elemDofs(ic, row_dofs);
-  col_layout_.elemDofs(ic, col_dofs);
+  row_layout_.elemDofs(ie, row_dofs);
+  col_layout_.elemDofs(ie, col_dofs);
 
   if (local.rows() != row_dofs.size() || local.cols() != col_dofs.size())
   {
@@ -183,21 +183,21 @@ void Assembler::addMat(Index              ic,
   }
 }
 
-void Assembler::checkCellCounts() const
+void Assembler::checkElemCounts() const
 {
   if (row_layout_.numElems() != col_layout_.numElems())
   {
     throw runtime_error(
-        "Assembler row and column layouts have different cell counts");
+        "Assembler row and column layouts have different elem counts");
   }
 }
 
-void Assembler::checkDof(Index dof, Index size, const char* name)
+void Assembler::checkDof(Index id, Index size, const char* name)
 {
-  if (dof < 0 || dof >= size)
+  if (id < 0 || id >= size)
   {
     throw runtime_error(
-        string("Assembler ") + name + " dof is out of range");
+        string("Assembler ") + name + " id is out of range");
   }
 }
 

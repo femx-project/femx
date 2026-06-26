@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -11,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <Common.hpp>
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/io/VtiWriter.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -83,16 +83,6 @@ string pvdPath(const string& root)
   return root + ".pvd";
 }
 
-void ensureParentDir(const string& path)
-{
-  const filesystem::path parent =
-      filesystem::path(path).parent_path();
-  if (!parent.empty())
-  {
-    filesystem::create_directories(parent);
-  }
-}
-
 Index checkedGridPointCount(const array<Index, 3>& counts)
 {
   Index product = 1;
@@ -154,7 +144,7 @@ VtiWriter::Image makeImage(const Vector<Point3>&  pts,
   }
 
   VtiWriter::Image image;
-  image.cell_counts = counts;
+  image.elem_counts = counts;
 
   const Point3&         first  = pts.front();
   const array<Index, 3> stride = {1, counts[0], counts[0] * counts[1]};
@@ -194,7 +184,7 @@ Real observationTime(const TimeObservationData& data,
   return static_cast<Real>(data.timeLevel(level));
 }
 
-VtiFields observationCellFields(const TimeObservationData& data,
+VtiFields observationElemFields(const TimeObservationData& data,
                                 Index                      level,
                                 const Vector<Point3>&      grid_points)
 {
@@ -220,16 +210,16 @@ VtiFields observationCellFields(const TimeObservationData& data,
   }
 
   Index data_point = 0;
-  for (Index grid_point = 0; grid_point < num_grid_points; ++grid_point)
+  for (Index in = 0; in < num_grid_points; ++in)
   {
     if (data_point >= num_data_points
-        || !samePoint(grid_points[grid_point],
+        || !samePoint(grid_points[in],
                       data.pts()[data_point]))
     {
       continue;
     }
 
-    fields.mask[grid_point] = 1.0;
+    fields.mask[in] = 1.0;
     for (Index local_component = 0; local_component < nc;
          ++local_component)
     {
@@ -239,7 +229,7 @@ VtiFields observationCellFields(const TimeObservationData& data,
         throw runtime_error(
             "make_obs.output.vti supports velocity components 0, 1, and 2");
       }
-      fields.velocity[3 * grid_point + comp] =
+      fields.velocity[3 * in + comp] =
           vals[data_point * nc + local_component];
     }
     ++data_point;
@@ -256,7 +246,7 @@ void writePvd(const string&              path,
               const string&              root,
               const TimeObservationData& data)
 {
-  ensureParentDir(path);
+  inverse::ensureParentDir(path);
   ofstream out(path);
   if (!out)
   {
@@ -311,11 +301,11 @@ string writeObservationVtiOutputs(const Params&              prm,
   {
     VtiWriter::Image image =
         makeImage(grid_points, prm.obs.grid->counts);
-    VtiFields fields = observationCellFields(data, level, grid_points);
+    VtiFields fields = observationElemFields(data, level, grid_points);
 
     const string file = vtiPath(root, level);
-    ensureParentDir(file);
-    writer.writeCellData(file,
+    inverse::ensureParentDir(file);
+    writer.writeElemData(file,
                          image,
                          {{"mask", 1, &fields.mask},
                           {"velocity", 3, &fields.velocity}});

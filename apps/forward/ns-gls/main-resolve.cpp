@@ -4,7 +4,6 @@
  */
 
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -80,15 +79,18 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
     return;
   }
 
-  opts.factor   = "none";
-  opts.refactor = "none";
-  opts.ir       = "none";
-  opts.max_its  = 5000;
-  opts.restart  = 200;
-  opts.rtol     = 1.0e-8;
-  opts.solve    = "fgmres";
-  opts.precond  = "ilu0";
-  opts.flexible = true;
+  opts.factor              = "none";
+  opts.refactor            = "none";
+  opts.ir                  = "none";
+  opts.max_its             = solver.max_iterations;
+  opts.restart             = solver.restart;
+  opts.rtol                = solver.relative_tolerance;
+  opts.solve               = solver.solve;
+  opts.precond             = solver.preconditioner;
+  opts.gram_schmidt        = solver.gram_schmidt;
+  opts.sketching           = solver.sketching;
+  opts.preconditioner_side = solver.preconditioner_side;
+  opts.flexible            = solver.flexible;
 }
 
 WorkspaceType workspaceType(const SolverParams& solver)
@@ -100,22 +102,6 @@ WorkspaceType workspaceType(const SolverParams& solver)
   return WorkspaceType::Cpu;
 }
 
-void writeRunSummary(ofstream&                    run_log,
-                     const ForwardProblem&        problem,
-                     const TimeLinearStateSolver& state_solver,
-                     Real                         total_seconds)
-{
-  run_log << "steps = " << problem.steps << '\n'
-          << "dt = " << problem.dt << '\n'
-          << "dofs = " << problem.space.numDofs() << '\n'
-          << "cells = " << problem.space.mesh().numElems() << '\n'
-          << "assembly calls = " << state_solver.assemblyCalls() << '\n'
-          << "solve calls = " << state_solver.solveCalls() << '\n'
-          << "assembly seconds = " << state_solver.assemblySeconds() << '\n'
-          << "solve seconds = " << state_solver.solveSeconds() << '\n'
-          << "total seconds = " << total_seconds << '\n';
-}
-
 int run(const Params& prm, bool enable_output)
 {
   if (enable_output)
@@ -123,57 +109,41 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output, makeBuildInfo());
   }
 
-  ForwardProblem forward(prm);
+  ForwardProblem fwd(prm);
 
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  SparseMatrixOperator next_jac(forward.pat);
+  SparseMatrixOperator A(fwd.pettern);
   ReSolveLinearSolver  solver(workspaceType(prm.solver), opts);
 
-  TimeLinearStateSolver state_solver(forward.problem, next_jac, solver);
-  state_solver.setInitialState(forward.x0);
-  state_solver.setStepMonitor(
-      [](Index step, Index total)
-      {
-        cout << "\r  time step " << setw(7) << step << " / "
-             << setw(7) << total << flush;
-        if (step >= total)
-        {
-          cout << '\n';
-        }
-      });
+  TimeLinearStateSolver state_solver(fwd.problem, A, solver);
+  state_solver.setInitialState(fwd.x0);
 
   cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = 1"
-       << ", dofs = " << forward.space.numDofs()
-       << ", cells = " << forward.space.mesh().numElems() << '\n';
+       << ", dofs = " << fwd.space.numDofs()
+       << ", elems = " << fwd.space.mesh().numElems() << '\n';
+
+  ofstream log_out;
+  if (enable_output)
+  {
+    log_out = openRunLog(prm.output);
+  }
 
   ForwardSolveResult result;
   state_solver.resetTiming();
-  const double total_time = timeBlock(
-      [&]
-      {
-        result = solve(state_solver, forward, prm.output, enable_output);
-      });
+  result = solve(state_solver,
+                 fwd,
+                 prm.time,
+                 prm.output,
+                 enable_output,
+                 &cout,
+                 enable_output ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
     throw runtime_error("Linear solve produced non-finite values in x");
   }
-
-  if (enable_output)
-  {
-    if (!result.snapshots.empty())
-    {
-      writeOutput(forward.mesh, prm.output, result.snapshots);
-    }
-    ofstream run_log = openRunLog(prm.output);
-    writeRunSummary(run_log, forward, state_solver, total_time);
-  }
-
-  cout << "  assembly = " << state_solver.assemblySeconds() << " s"
-       << ", solve = " << state_solver.solveSeconds() << " s"
-       << ", total = " << total_time << " s" << '\n';
 
   return 0;
 }

@@ -119,12 +119,12 @@ void addBoundaryFacet(Mesh&              mesh,
                       Vector<Index>      nids)
 {
   Mesh::BoundaryFacet facet;
-  facet.dim        = 1;
-  facet.entity_tag = tag;
-  facet.ptag       = tag;
-  facet.pname      = name;
-  facet.shape      = Cell::Shape::Segment;
-  facet.nids       = std::move(nids);
+  facet.dim   = 1;
+  facet.etag  = tag;
+  facet.ptag  = tag;
+  facet.pname = name;
+  facet.shape = Element::Shape::Segment;
+  facet.nids  = std::move(nids);
   mesh.addBoundaryFacet(std::move(facet));
 }
 
@@ -196,11 +196,11 @@ Dofs makeDirichletDofs(const FESpace& space)
 
 void getElementValues(const FESpace&      space,
                       const Vector<Real>& global,
-                      Index               ic,
+                      Index               ie,
                       Dofs&               dofs,
                       Vector<Real>&       local)
 {
-  space.elemDofs(ic, dofs);
+  space.elemDofs(ie, dofs);
   const Index num_local_dofs = dofs.size();
 
   resizeOrZero(local, num_local_dofs);
@@ -210,7 +210,7 @@ void getElementValues(const FESpace&      space,
   }
 }
 
-void poissonVolumeResidual(Index       cell,
+void poissonVolumeResidual(Index       elem,
                            Index       nq,
                            Index       nn,
                            Index       dim,
@@ -224,7 +224,7 @@ void poissonVolumeResidual(Index       cell,
                            const Real* prm,
                            Real*       out)
 {
-  (void) cell;
+  (void) elem;
   (void) nn;
   (void) nprm;
   (void) N;
@@ -303,10 +303,10 @@ public:
     Vector<Real> prm_e;
     Vector<Real> res_e(space_.numDofsPerElem());
 
-    for (Index ic = 0; ic < space_.numElems(); ++ic)
+    for (Index ie = 0; ie < space_.numElems(); ++ie)
     {
-      getElementValues(space_, state, ic, dofs, state_e);
-      kernel_.res(ic, state_e, prm_e, res_e);
+      getElementValues(space_, state, ie, dofs, state_e);
+      kernel_.res(ie, state_e, prm_e, res_e);
 
       for (Index a = 0; a < res_e.size(); ++a)
       {
@@ -326,17 +326,17 @@ public:
     Dofs         dofs;
     Vector<Real> state_e;
     Vector<Real> prm_e;
-    DenseMatrix  jac_e;
+    DenseMatrix  J_e;
 
-    for (Index ic = 0; ic < space_.numElems(); ++ic)
+    for (Index ie = 0; ie < space_.numElems(); ++ie)
     {
-      getElementValues(space_, state, ic, dofs, state_e);
-      kernel_.stateJac(ic, state_e, prm_e, jac_e);
-      for (Index a = 0; a < jac_e.rows(); ++a)
+      getElementValues(space_, state, ie, dofs, state_e);
+      kernel_.stateJac(ie, state_e, prm_e, J_e);
+      for (Index a = 0; a < J_e.rows(); ++a)
       {
-        for (Index b = 0; b < jac_e.cols(); ++b)
+        for (Index b = 0; b < J_e.cols(); ++b)
         {
-          out.add(dofs[a], dofs[b], jac_e(a, b));
+          out.add(dofs[a], dofs[b], J_e(a, b));
         }
       }
     }
@@ -398,9 +398,9 @@ public:
            Vector<Real>&       out) const override
   {
     base_problem_.res(state, prm, out);
-    for (Index dof : dofs_)
+    for (Index id : dofs_)
     {
-      out[dof] = state[dof];
+      out[id] = state[id];
     }
   }
 
@@ -549,10 +549,10 @@ private:
     Dofs          dofs;
     Real          value_out = 0.0;
 
-    for (Index ic = 0; ic < space_.numElems(); ++ic)
+    for (Index ie = 0; ie < space_.numElems(); ++ie)
     {
-      space_.elemDofs(ic, dofs);
-      vals.reinit(space_.mesh().cell(ic));
+      space_.elemDofs(ie, dofs);
+      vals.reinit(space_.mesh().elem(ie));
 
       for (Index iq = 0; iq < vals.numQuadraturePoints(); ++iq)
       {
@@ -561,8 +561,8 @@ private:
         Real diff_q = 0.0;
         for (Index a = 0; a < vals.numDofs(); ++a)
         {
-          const Index dof  = dofs[a];
-          diff_q          += N[a] * (state[dof] - data_[dof]);
+          const Index id  = dofs[a];
+          diff_q         += N[a] * (state[id] - data_[id]);
         }
 
         const Real w  = weight_ * vals.JxW(iq);
@@ -572,8 +572,8 @@ private:
         {
           for (Index a = 0; a < vals.numDofs(); ++a)
           {
-            const Index dof     = dofs[a];
-            (*state_grad)[dof] += N[a] * diff_q * w;
+            const Index id     = dofs[a];
+            (*state_grad)[id] += N[a] * diff_q * w;
           }
         }
       }
@@ -726,12 +726,12 @@ Vector<Real> boundaryCoordinates(const Mesh&              mesh,
 
     for (Index a = 0; a < num_facet_dofs; ++a)
     {
-      const Index dof = dofs[a];
-      if (seen[dof] == 0.0)
+      const Index id = dofs[a];
+      if (seen[id] == 0.0)
       {
-        const Index node = facet.nids[a];
-        x[dof]           = mesh.node(node)[0];
-        seen[dof]        = 1.0;
+        const Index in = facet.nids[a];
+        x[id]          = mesh.node(in)[0];
+        seen[id]       = 1.0;
       }
     }
   }
@@ -764,9 +764,9 @@ Vector<Real> boundaryFieldOnMesh(const Mesh&              mesh,
     lyt.facetDofs(ib, dofs);
     const auto& facet = lyt.facet(ib);
     Index       a     = 0;
-    for (Index node : facet.nids)
+    for (Index in : facet.nids)
     {
-      field[node] = vals[dofs[a]];
+      field[in] = vals[dofs[a]];
       ++a;
     }
   }
@@ -914,9 +914,9 @@ int run()
 
   DirichletResidualEquation problem(neumann_problem, makeDirichletDofs(space));
 
-  DenseSystemMatrix       state_jac;
+  DenseSystemMatrix       J_state;
   DenseLinearSolver       state_lin_solver;
-  MatrixLinearStateSolver state_solver(problem, state_jac, state_lin_solver);
+  MatrixLinearStateSolver state_solver(problem, J_state, state_lin_solver);
 
   const auto   top_x        = boundaryCoordinates(mesh, top_param_layout);
   Vector<Real> neumann_true = makeTrueNeumann(top_x);
@@ -940,9 +940,9 @@ int run()
   SumObjective obj(space.numDofs(), top_param_layout.numDofs());
   obj.add(misfit).add(reg);
 
-  DenseSystemMatrix   adj_jac;
+  DenseSystemMatrix   J_adj;
   DenseLinearSolver   adj_lin_solver;
-  MatrixAdjointSolver adj_solver(problem, adj_jac, adj_lin_solver);
+  MatrixAdjointSolver adj_solver(problem, J_adj, adj_lin_solver);
 
   AdjointReducedFunctional reduced(state_solver, adj_solver, problem, obj);
 
@@ -1005,7 +1005,7 @@ int run()
 
   std::cout << std::scientific << std::setprecision(6);
   std::cout << "2D Poisson boundary Neumann inverse problem\n";
-  std::cout << "  mesh: " << nx << " x " << ny << " Q1 cells\n";
+  std::cout << "  mesh: " << nx << " x " << ny << " Q1 elems\n";
   std::cout << "  states: " << space.numDofs()
             << ", top Neumann parameters: " << top_param_layout.numDofs()
             << '\n';

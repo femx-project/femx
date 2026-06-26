@@ -81,7 +81,7 @@ TimeFEMResidual::TimeFEMResidual(
     history_state_layouts_(std::move(history_state_layouts)),
     next_state_layout_(std::move(next_state_layout)),
     kernel_(ker),
-    cell_end_(res_layout_.numElems())
+    elem_end_(res_layout_.numElems())
 {
   checkLayouts();
 }
@@ -114,25 +114,25 @@ TimeFEMResidual::TimeFEMResidual(
     next_state_layout_(std::move(next_state_layout)),
     param_layout_(std::move(param_layout)),
     kernel_(ker),
-    cell_end_(res_layout_.numElems())
+    elem_end_(res_layout_.numElems())
 {
   checkLayouts();
 }
 
-void TimeFEMResidual::setCellRange(Index begin, Index end)
+void TimeFEMResidual::setElemRange(Index begin, Index end)
 {
-  if (begin < 0 || end < begin || end > numCells())
+  if (begin < 0 || end < begin || end > numElems())
   {
-    throw runtime_error("TimeFEMResidual received invalid cell range");
+    throw runtime_error("TimeFEMResidual received invalid elem range");
   }
 #if !defined(FEMX_HAS_PETSC)
-  if (begin != 0 || end != numCells())
+  if (begin != 0 || end != numElems())
   {
-    throw runtime_error("TimeFEMResidual cell ranges require PETSc");
+    throw runtime_error("TimeFEMResidual elem ranges require PETSc");
   }
 #endif
-  cell_begin_ = begin;
-  cell_end_   = end;
+  elem_begin_ = begin;
+  elem_end_   = end;
 }
 
 TimeDims TimeFEMResidual::dims() const
@@ -160,25 +160,25 @@ void TimeFEMResidual::res(const TimeContext& ctx,
     Vector<Real> res_e;
 
 #pragma omp for
-    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    for (Index ie = elem_begin_; ie < elem_end_; ++ie)
     {
-      gatherHistory(ctx, ic, hst_e);
-      gather(next_state_layout_, *ctx.nxt, ic, next_e);
-      prm_e = gatherParam(ic, *ctx.prm);
+      gatherHistory(ctx, ie, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ie, next_e);
+      prm_e = gatherParam(ie, *ctx.prm);
       kernel_.res(ctx.step,
-                  ic,
+                  ie,
                   TimeHistoryView(hst_e.data(),
                                   numHistoryStates(),
                                   next_state_layout_.numDofsPerElem()),
                   next_e,
                   prm_e,
                   res_e);
-      assembler.addVec(ic, res_e, out);
+      assembler.addVec(ie, res_e, out);
     }
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (cell_begin_ != 0 || cell_end_ != numCells())
+  if (elem_begin_ != 0 || elem_end_ != numElems())
   {
     allreduce(out);
   }
@@ -208,31 +208,31 @@ void TimeFEMResidual::applyJac(const TimeContext&  ctx,
     Vector<Real> prm_e;
     Vector<Real> dir_e;
     Vector<Real> res_e;
-    DenseMatrix  jac_e;
+    DenseMatrix  J_e;
 
 #pragma omp for
-    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    for (Index ie = elem_begin_; ie < elem_end_; ++ie)
     {
-      gatherHistory(ctx, ic, hst_e);
-      gather(next_state_layout_, *ctx.nxt, ic, next_e);
-      prm_e = gatherParam(ic, *ctx.prm);
-      gather(*col_layout, dir, ic, dir_e);
+      gatherHistory(ctx, ie, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ie, next_e);
+      prm_e = gatherParam(ie, *ctx.prm);
+      gather(*col_layout, dir, ie, dir_e);
       kernel_.jacobian(ctx.step,
-                       ic,
+                       ie,
                        wrt,
                        TimeHistoryView(hst_e.data(),
                                        numHistoryStates(),
                                        next_state_layout_.numDofsPerElem()),
                        next_e,
                        prm_e,
-                       jac_e);
-      matVec(jac_e, dir_e, res_e);
-      assembler.addVec(ic, res_e, out);
+                       J_e);
+      matVec(J_e, dir_e, res_e);
+      assembler.addVec(ie, res_e, out);
     }
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (cell_begin_ != 0 || cell_end_ != numCells())
+  if (elem_begin_ != 0 || elem_end_ != numElems())
   {
     allreduce(out);
   }
@@ -267,31 +267,31 @@ void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
     Vector<Real> prm_e;
     Vector<Real> adj_e;
     Vector<Real> col_e;
-    DenseMatrix  jac_e;
+    DenseMatrix  J_e;
 
 #pragma omp for
-    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    for (Index ie = elem_begin_; ie < elem_end_; ++ie)
     {
-      gatherHistory(ctx, ic, hst_e);
-      gather(next_state_layout_, *ctx.nxt, ic, next_e);
-      prm_e = gatherParam(ic, *ctx.prm);
-      gather(res_layout_, adj, ic, adj_e);
+      gatherHistory(ctx, ie, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ie, next_e);
+      prm_e = gatherParam(ie, *ctx.prm);
+      gather(res_layout_, adj, ie, adj_e);
       kernel_.jacobian(ctx.step,
-                       ic,
+                       ie,
                        wrt,
                        TimeHistoryView(hst_e.data(),
                                        numHistoryStates(),
                                        next_state_layout_.numDofsPerElem()),
                        next_e,
                        prm_e,
-                       jac_e);
-      matTVec(jac_e, adj_e, col_e);
-      assembler.addVec(ic, col_e, out);
+                       J_e);
+      matTVec(J_e, adj_e, col_e);
+      assembler.addVec(ie, col_e, out);
     }
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (cell_begin_ != 0 || cell_end_ != numCells())
+  if (elem_begin_ != 0 || elem_end_ != numElems())
   {
     allreduce(out);
   }
@@ -319,30 +319,30 @@ bool TimeFEMResidual::assembleJac(const TimeContext& ctx,
     Vector<Real> hst_e;
     Vector<Real> next_e;
     Vector<Real> prm_e;
-    DenseMatrix  jac_e;
+    DenseMatrix  J_e;
 
 #pragma omp for
-    for (Index ic = cell_begin_; ic < cell_end_; ++ic)
+    for (Index ie = elem_begin_; ie < elem_end_; ++ie)
     {
-      gatherHistory(ctx, ic, hst_e);
-      gather(next_state_layout_, *ctx.nxt, ic, next_e);
-      prm_e = gatherParam(ic, *ctx.prm);
+      gatherHistory(ctx, ie, hst_e);
+      gather(next_state_layout_, *ctx.nxt, ie, next_e);
+      prm_e = gatherParam(ie, *ctx.prm);
       kernel_.jacobian(ctx.step,
-                       ic,
+                       ie,
                        wrt,
                        TimeHistoryView(hst_e.data(),
                                        numHistoryStates(),
                                        next_state_layout_.numDofsPerElem()),
                        next_e,
                        prm_e,
-                       jac_e);
-      assembler.addMat(ic, jac_e, out);
+                       J_e);
+      assembler.addMat(ie, J_e, out);
     }
   }
   return true;
 }
 
-Index TimeFEMResidual::numCells() const
+Index TimeFEMResidual::numElems() const
 {
   return res_layout_.numElems();
 }
@@ -391,14 +391,14 @@ void TimeFEMResidual::checkLayouts() const
       || (param_layout_ && res_layout_.numElems() != param_layout_->numElems()))
   {
     throw runtime_error(
-        "TimeFEMResidual layouts have different cell counts");
+        "TimeFEMResidual layouts have different elem counts");
   }
   for (const DofLayout& lyt : history_state_layouts_)
   {
     if (res_layout_.numElems() != lyt.numElems())
     {
       throw runtime_error(
-          "TimeFEMResidual layouts have different cell counts");
+          "TimeFEMResidual layouts have different elem counts");
     }
     if (lyt.numDofs() != next_state_layout_.numDofs())
     {
@@ -441,7 +441,7 @@ void TimeFEMResidual::checkVector(const Vector<Real>* value,
 }
 
 void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
-                                    Index              ic,
+                                    Index              ie,
                                     Vector<Real>&      local) const
 {
   const Index nloc = next_state_layout_.numDofsPerElem();
@@ -452,7 +452,7 @@ void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
     Vector<Real> state = Vector<Real>::view(local.data() + lag * nloc, nloc);
     gather(history_state_layouts_[lag],
            hist.state(lag),
-           ic,
+           ie,
            state);
   }
 }
@@ -468,42 +468,42 @@ void TimeFEMResidual::checkDirection(VariableBlock       wrt,
   }
 }
 
-Vector<Real> TimeFEMResidual::gatherParam(Index               ic,
+Vector<Real> TimeFEMResidual::gatherParam(Index               ie,
                                           const Vector<Real>& global) const
 {
   Vector<Real> local;
   if (param_layout_)
   {
-    gather(*param_layout_, global, ic, local);
+    gather(*param_layout_, global, ie, local);
   }
   return local;
 }
 
 void TimeFEMResidual::gather(const DofLayout&    lyt,
                              const Vector<Real>& global,
-                             Index               ic,
+                             Index               ie,
                              Vector<Real>&       local)
 {
   gather(lyt,
          VectorView<const Real>(global.data(), global.size()),
-         ic,
+         ie,
          local);
 }
 
 void TimeFEMResidual::gather(const DofLayout&       lyt,
                              VectorView<const Real> global,
-                             Index                  ic,
+                             Index                  ie,
                              Vector<Real>&          local)
 {
   Vector<Index> dofs;
-  lyt.elemDofs(ic, dofs);
+  lyt.elemDofs(ie, dofs);
   resizeOrZero(local, dofs.size());
 
   for (Index i = 0; i < local.size(); ++i)
   {
-    const Index dof = dofs[i];
-    checkDof(dof, global.size());
-    local[i] = global[dof];
+    const Index id = dofs[i];
+    checkDof(id, global.size());
+    local[i] = global[id];
   }
 }
 
@@ -547,11 +547,11 @@ void TimeFEMResidual::matTVec(const DenseMatrix&  mat,
   }
 }
 
-void TimeFEMResidual::checkDof(Index dof, Index size)
+void TimeFEMResidual::checkDof(Index id, Index size)
 {
-  if (dof < 0 || dof >= size)
+  if (id < 0 || id >= size)
   {
-    throw runtime_error("TimeFEMResidual dof is out of range");
+    throw runtime_error("TimeFEMResidual id is out of range");
   }
 }
 

@@ -33,21 +33,21 @@ void FESpace::setup()
   dof_map_.allocate(num_elem, ndof_e);
   nd_ = comps_ * mesh_->numNodes();
 
-  for (Index ic = 0; ic < num_elem; ++ic)
+  for (Index ie = 0; ie < num_elem; ++ie)
   {
-    const auto& cell = mesh_->cell(ic);
-    if (cell.numNodes() != fe_->numNodes())
+    const auto& elem = mesh_->elem(ie);
+    if (elem.numNodes() != fe_->numNodes())
     {
       throw runtime_error(
-          "FESpace: finite elem node count does not match mesh cell");
+          "FESpace: finite elem node count does not match mesh elem");
     }
 
-    const Index* conn = mesh_->cellNodeIds(ic);
+    const Index* conn = mesh_->elemNodeIds(ie);
     for (Index a = 0; a < num_shapes_per_elem_; ++a)
     {
       for (Index c = 0; c < comps_; ++c)
       {
-        dof_map_.setElementDof(ic, localDof(a, c), globalDof(conn[a], c));
+        dof_map_.setElementDof(ie, localDof(a, c), globalDof(conn[a], c));
       }
     }
   }
@@ -105,22 +105,22 @@ Index FESpace::globalDof(Index in,
   return comps_ * in + comp;
 }
 
-void FESpace::elemDofs(Index          ic,
+void FESpace::elemDofs(Index          ie,
                        Vector<Index>& dofs) const
 {
   dofs.resize(dof_map_.numElementDofs());
 
-  const Index* data = dof_map_.elementDofsData(ic);
+  const Index* data = dof_map_.elementDofsData(ie);
   for (Index i = 0; i < dof_map_.numElementDofs(); ++i)
   {
     dofs[i] = data[i];
   }
 }
 
-Vector<Index> FESpace::elemDofs(Index ic) const
+Vector<Index> FESpace::elemDofs(Index ie) const
 {
   Vector<Index> dofs;
-  elemDofs(ic, dofs);
+  elemDofs(ie, dofs);
   return dofs;
 }
 

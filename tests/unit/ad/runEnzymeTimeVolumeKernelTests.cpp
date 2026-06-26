@@ -20,7 +20,7 @@ namespace
 {
 
 void localTimeVolumeResidual(Index       step,
-                             Index       cell,
+                             Index       elem,
                              Index       nq,
                              Index       nn,
                              Index       dim,
@@ -36,7 +36,7 @@ void localTimeVolumeResidual(Index       step,
                              const Real* prm,
                              Real*       out)
 {
-  (void) cell;
+  (void) elem;
   (void) dim;
   (void) num_prev_states;
   (void) num_next_states;
@@ -136,15 +136,15 @@ public:
       status *= near(out[i], 0.25 * source);
     }
 
-    linalg::DenseMatrixOperator previous_jac;
-    linalg::DenseMatrixOperator next_jac;
-    linalg::DenseMatrixOperator param_jac;
+    linalg::DenseMatrixOperator J_prev;
+    linalg::DenseMatrixOperator J_next;
+    linalg::DenseMatrixOperator J_param;
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::PrevState, previous_jac);
+        ctx, problem::VariableBlock::PrevState, J_prev);
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::NextState, next_jac);
+        ctx, problem::VariableBlock::NextState, J_next);
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::Param, param_jac);
+        ctx, problem::VariableBlock::Param, J_param);
 
     const Real expected_previous = 0.25 * 2.0 * 0.25;
     const Real expected_next     = 0.25 * 2.0 * next_q * 0.25;
@@ -154,10 +154,10 @@ public:
     {
       for (Index j = 0; j < 4; ++j)
       {
-        status *= near(previous_jac.mat()(i, j),
+        status *= near(J_prev.mat()(i, j),
                        expected_previous);
-        status *= near(next_jac.mat()(i, j), expected_next);
-        status *= near(param_jac.mat()(i, j), expected_param);
+        status *= near(J_next.mat()(i, j), expected_next);
+        status *= near(J_param.mat()(i, j), expected_param);
       }
     }
 

@@ -34,9 +34,9 @@ void requirePositiveRadius(Real rad)
 Point3 facetCenter(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 {
   Point3 cen = {0.0, 0.0, 0.0};
-  for (Index node_id : facet.nids)
+  for (Index id : facet.nids)
   {
-    const Point3& point = mesh.node(node_id);
+    const Point3& point = mesh.node(id);
     for (Index d = 0; d < 3; ++d)
     {
       cen[d] += point[d];

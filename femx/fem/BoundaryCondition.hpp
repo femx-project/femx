@@ -30,7 +30,7 @@ public:
   DirichletCondition() = default;
 
   /** @brief Add one constrained degree of freedom. */
-  void addDof(Index dof, Real value);
+  void addDof(Index id, Real value);
 
   /** @brief Add a constant value on a physical boundary tag. */
   void addBoundary(const FESpace& space,

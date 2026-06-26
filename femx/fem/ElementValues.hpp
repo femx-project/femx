@@ -8,7 +8,7 @@
 namespace femx
 {
 
-class Cell;
+class Element;
 class FiniteElement;
 class GaussQuadrature;
 
@@ -18,7 +18,7 @@ public:
   ElementValues(const FiniteElement&   finite_element,
                 const GaussQuadrature& quad);
 
-  void reinit(const Cell& cell);
+  void reinit(const Element& elem);
 
   Index numNodes() const;
   Index numDofs() const;
@@ -39,7 +39,7 @@ public:
 
 private:
   void calcReferenceValues();
-  void calcPhysicalValues(const Cell& cell);
+  void calcPhysicalValues(const Element& elem);
 
   static Real invJacobian(const Vector<Real>& J,
                           Vector<Real>&       invJ,

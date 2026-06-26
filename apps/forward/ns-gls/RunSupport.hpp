@@ -40,15 +40,6 @@ struct BuildInfo
   Vector<std::pair<std::string, std::string>> entries;
 };
 
-struct Snapshot
-{
-  Real         time{0.0};
-  Vector<Real> ux;
-  Vector<Real> uy;
-  Vector<Real> uz;
-  Vector<Real> p;
-};
-
 struct FixedBoundaryValues
 {
   Vector<Index> dofs;
@@ -76,27 +67,22 @@ struct ForwardProblem
   FixedBoundaryValues                    fixed;
   assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pat;
+  CsrPattern                             pettern;
   Vector<Real>                           prm0;
 };
 
 struct ForwardSolveResult
 {
-  Vector<Real>     final_state;
-  Vector<Snapshot> snapshots;
+  Vector<Real> final_state;
+  Index        final_step{0};
+  Real         final_time{0.0};
+  Real         vel_change{0.0};
+  bool         converged{false};
 };
 
 using Clock = std::chrono::high_resolution_clock;
 
 double elapsedSeconds(Clock::time_point begin, Clock::time_point end);
-
-template <typename Fn>
-double timeBlock(Fn&& fn)
-{
-  const auto begin = Clock::now();
-  std::forward<Fn>(fn)();
-  return elapsedSeconds(begin, Clock::now());
-}
 
 AppOptions parseAppOptions(int   argc,
                            char* argv[],
@@ -116,14 +102,6 @@ bool shouldWriteOutput(Index               step,
                        Index               nt,
                        const OutputParams& prm);
 
-Snapshot makeSnapshot(const MixedFESpace& space,
-                      const Vector<Real>& x,
-                      Real                time);
-
-void writeOutput(const Mesh&             mesh,
-                 const OutputParams&     prm,
-                 const Vector<Snapshot>& snapshots);
-
 void writeTrajectoryOutput(const ForwardProblem&        problem,
                            const state::TimeTrajectory& tr,
                            const OutputParams&          prm);
@@ -131,8 +109,11 @@ void writeTrajectoryOutput(const ForwardProblem&        problem,
 ForwardSolveResult solve(
     state::TimeLinearStateSolver& state_solver,
     const ForwardProblem&         problem,
+    const TimeParams&             time,
     const OutputParams&           prm,
-    bool                          collect_output);
+    bool                          collect_output,
+    std::ostream*                 terminal = nullptr,
+    std::ostream*                 log_out  = nullptr);
 
 void writeBuildInfo(const OutputParams& prm, const BuildInfo& info);
 

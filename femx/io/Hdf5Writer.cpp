@@ -1,7 +1,7 @@
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
-#include <femx/fem/Cell.hpp>
+#include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/Hdf5Writer.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -17,19 +17,19 @@ namespace femx
 namespace
 {
 
-Index nodesPerCell(const Mesh& mesh)
+Index nodesPerElem(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
     throw runtime_error("Hdf5Writer needs a non-empty mesh");
   }
 
-  const Index nodes = mesh.cells().front().numNodes();
-  for (Index ic = 1; ic < mesh.numElems(); ++ic)
+  const Index nodes = mesh.elems().front().numNodes();
+  for (Index ie = 1; ie < mesh.numElems(); ++ie)
   {
-    if (mesh.cell(ic).numNodes() != nodes)
+    if (mesh.elem(ie).numNodes() != nodes)
     {
-      throw runtime_error("Hdf5Writer supports one cell type per mesh");
+      throw runtime_error("Hdf5Writer supports one elem type per mesh");
     }
   }
   return nodes;
@@ -43,11 +43,11 @@ void checkMeshAndFields(const Mesh&                           mesh,
     throw runtime_error("Hdf5Writer supports 2D meshes for now");
   }
 
-  const Index cn = nodesPerCell(mesh);
+  const Index cn = nodesPerElem(mesh);
   if (cn != 3 && cn != 4)
   {
     throw runtime_error(
-        "Hdf5Writer supports triangle and quadrilateral cells for now");
+        "Hdf5Writer supports triangle and quadrilateral elems for now");
   }
 
   for (const auto& field : fields)
@@ -182,14 +182,14 @@ void Hdf5Writer::write(const string&             fname,
     }
   }
 
-  const Index   nnodes = nodesPerCell(mesh);
+  const Index   nnodes = nodesPerElem(mesh);
   Vector<Index> topology(mesh.numElems() * nnodes);
-  for (Index ic = 0; ic < mesh.numElems(); ++ic)
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const Index* nids = mesh.cellNodeIds(ic);
+    const Index* nids = mesh.elemNodeIds(ie);
     for (Index i = 0; i < nnodes; ++i)
     {
-      topology[ic * nnodes + i] = nids[i];
+      topology[ie * nnodes + i] = nids[i];
     }
   }
 

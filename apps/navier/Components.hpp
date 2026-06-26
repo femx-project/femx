@@ -25,14 +25,14 @@ struct LocalElementValues
   const Real* dNdx = nullptr;
   const Real* JxW  = nullptr;
 
-  Real shape(Index qp, Index node) const
+  Real shape(Index qp, Index in) const
   {
-    return N[qp * nn + node];
+    return N[qp * nn + in];
   }
 
-  Real grad(Index qp, Index node, Index comp) const
+  Real grad(Index qp, Index in, Index comp) const
   {
-    return dNdx[(qp * nn + node) * dim + comp];
+    return dNdx[(qp * nn + in) * dim + comp];
   }
 
   Real wt(Index qp) const
@@ -72,8 +72,8 @@ struct QPState
   Real tau[3]{};
 };
 
-Index vdof(Index node, Index comp, Index dim);
-Index pdof(Index node, Index nn, Index dim);
+Index vdof(Index in, Index comp, Index dim);
+Index pdof(Index in, Index nn, Index dim);
 Index numLocalDofs(Index nn, Index dim);
 
 void zeroLocalSystem(Index nd, LocalMatrix Ke, LocalVector Fe);

@@ -19,11 +19,11 @@ void BoundaryElementValues::reinit(const Mesh&                mesh,
 {
   switch (effectiveShape(facet))
   {
-  case Cell::Shape::Segment:
+  case Element::Shape::Segment:
     reinitSegment(mesh, facet);
     return;
 
-  case Cell::Shape::Triangle:
+  case Element::Shape::Triangle:
     reinitTriangle(mesh, facet);
     return;
 
@@ -193,11 +193,11 @@ void BoundaryElementValues::reinitTriangle(const Mesh&                mesh,
   const Real e2y = x2[1] - x0[1];
   const Real e2z = x2[2] - x0[2];
 
-  const Real nx    = e1y * e2z - e1z * e2y;
-  const Real ny    = e1z * e2x - e1x * e2z;
-  const Real nz    = e1x * e2y - e1y * e2x;
-  const Real jac_s = norm3(nx, ny, nz);
-  if (jac_s <= 0.0)
+  const Real nx  = e1y * e2z - e1z * e2y;
+  const Real ny  = e1z * e2x - e1x * e2z;
+  const Real nz  = e1x * e2y - e1y * e2x;
+  const Real J_s = norm3(nx, ny, nz);
+  if (J_s <= 0.0)
   {
     throw runtime_error("BoundaryElementValues triangle has zero area");
   }
@@ -218,33 +218,33 @@ void BoundaryElementValues::reinitTriangle(const Mesh&                mesh,
       pts_[iq * dim_ + d] = n0 * x0[d] + n1 * x1[d] + n2 * x2[d];
     }
 
-    normals_[iq * dim_]     = nx / jac_s;
-    normals_[iq * dim_ + 1] = ny / jac_s;
-    normals_[iq * dim_ + 2] = nz / jac_s;
+    normals_[iq * dim_]     = nx / J_s;
+    normals_[iq * dim_ + 1] = ny / J_s;
+    normals_[iq * dim_ + 2] = nz / J_s;
 
     wts_[iq] = qp.wt;
-    JxW_[iq] = jac_s * qp.wt;
+    JxW_[iq] = J_s * qp.wt;
   }
 }
 
-Cell::Shape BoundaryElementValues::effectiveShape(
+Element::Shape BoundaryElementValues::effectiveShape(
     const Mesh::BoundaryFacet& facet)
 {
-  if (facet.shape != Cell::Shape::Unknown)
+  if (facet.shape != Element::Shape::Unknown)
   {
     return facet.shape;
   }
 
   if (facet.nids.size() == 2)
   {
-    return Cell::Shape::Segment;
+    return Element::Shape::Segment;
   }
   if (facet.nids.size() == 3)
   {
-    return Cell::Shape::Triangle;
+    return Element::Shape::Triangle;
   }
 
-  return Cell::Shape::Unknown;
+  return Element::Shape::Unknown;
 }
 
 Real BoundaryElementValues::norm3(Real x, Real y, Real z)

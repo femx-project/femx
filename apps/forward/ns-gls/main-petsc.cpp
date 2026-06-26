@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -57,7 +56,7 @@ using namespace femx::linalg;
 namespace
 {
 
-struct CellRange
+struct ElemRange
 {
   Index begin = 0;
   Index end   = 0;
@@ -88,22 +87,12 @@ void checkPetsc(PetscErrorCode ierr, const string& action)
   }
 }
 
-void forceSerialOpenMp()
+void setSerialOpenMp()
 {
 #if defined(_OPENMP)
   omp_set_dynamic(0);
   omp_set_num_threads(1);
 #endif
-}
-
-template <typename Fn>
-double timeCollective(Fn&& fn)
-{
-  MPI_Barrier(PETSC_COMM_WORLD);
-  const auto begin = Clock::now();
-  fn();
-  MPI_Barrier(PETSC_COMM_WORLD);
-  return elapsedSeconds(begin, Clock::now());
 }
 
 bool isRoot()
@@ -113,15 +102,15 @@ bool isRoot()
   return rank == 0;
 }
 
-CellRange cellRange(Index num_cells)
+ElemRange elemRange(Index num_elems)
 {
   PetscMPIInt rank = 0;
   PetscMPIInt size = 1;
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
   MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-  const Index base  = num_cells / static_cast<Index>(size);
-  const Index extra = num_cells % static_cast<Index>(size);
+  const Index base  = num_elems / static_cast<Index>(size);
+  const Index extra = num_elems % static_cast<Index>(size);
   const Index begin = static_cast<Index>(rank) * base
                       + min<Index>(rank, extra);
   const Index count = base + (rank < extra ? 1 : 0);
@@ -149,41 +138,37 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
   opts.max_its     = 5000;
   opts.use_opts_db = true;
 
+  PetscMPIInt comm_size = 1;
+  checkPetsc(MPI_Comm_size(PETSC_COMM_WORLD, &comm_size), "MPI_Comm_size");
+
   if (prm.method == "direct")
   {
     opts.type          = KSPPREONLY;
     opts.pc_type       = PCLU;
     opts.nonzero_guess = false;
+    setPetscDefaultOption(
+        "-pc_factor_mat_solver_type",
+        comm_size > 1 ? "mumps" : "petsc");
+    setPetscDefaultOption("-pc_factor_mat_ordering_type", "rcm");
   }
   else
   {
     opts.type          = KSPFGMRES;
-    opts.pc_type       = PCLU;
+    opts.pc_type       = comm_size > 1 ? PCBJACOBI : PCILU;
     opts.nonzero_guess = true;
+
+    if (comm_size > 1)
+    {
+      setPetscDefaultOption("-sub_pc_type", "ilu");
+      setPetscDefaultOption("-sub_pc_factor_levels", "0");
+      setPetscDefaultOption("-sub_pc_factor_mat_ordering_type", "rcm");
+    }
+    else
+    {
+      setPetscDefaultOption("-pc_factor_levels", "0");
+      setPetscDefaultOption("-pc_factor_mat_ordering_type", "rcm");
+    }
   }
-
-  setPetscDefaultOption("-pc_factor_mat_solver_type", "mumps");
-  setPetscDefaultOption("-pc_factor_mat_ordering_type", "rcm");
-  setPetscDefaultOption("-sub_pc_factor_mat_ordering_type", "rcm");
-}
-
-void writeRunSummary(ofstream&                    run_log,
-                     const ForwardProblem&        problem,
-                     const TimeLinearStateSolver& state_solver,
-                     const KspLinearSolver&       solver,
-                     Real                         total_seconds)
-{
-  run_log << "steps = " << problem.steps << '\n'
-          << "dt = " << problem.dt << '\n'
-          << "dofs = " << problem.space.numDofs() << '\n'
-          << "cells = " << problem.space.mesh().numElems() << '\n'
-          << "assembly calls = " << state_solver.assemblyCalls() << '\n'
-          << "solve calls = " << state_solver.solveCalls() << '\n'
-          << "assembly seconds = " << state_solver.assemblySeconds() << '\n'
-          << "solve seconds = " << state_solver.solveSeconds() << '\n'
-          << "total seconds = " << total_seconds << '\n'
-          << "last KSP its = " << solver.its() << '\n'
-          << "last KSP residual = " << solver.rnorm() << '\n';
 }
 
 int run(const Params& prm, bool enable_output)
@@ -198,73 +183,48 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output, makeBuildInfo());
   }
 
-  ForwardProblem  forward(prm);
-  const CellRange cells = cellRange(forward.space.mesh().numElems());
-  forward.fem.setCellRange(cells.begin, cells.end);
+  ForwardProblem  fwd(prm);
+  const ElemRange elems = elemRange(fwd.space.mesh().numElems());
+  fwd.fem.setElemRange(elems.begin, elems.end);
 
   PETScVectorBuilder row_layout(PETSC_COMM_WORLD);
-  row_layout.resize(forward.space.numDofs());
+  row_layout.resize(fwd.space.numDofs());
 
-  PETScMatrixOperator next_jac(PETSC_COMM_WORLD);
-  next_jac.resize(forward.pat, row_layout);
+  PETScMatrixOperator A(PETSC_COMM_WORLD);
+  A.resize(fwd.pettern, row_layout);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  TimeLinearStateSolver state_solver(forward.problem, next_jac, solver);
-  state_solver.setInitialState(forward.x0);
-  state_solver.setStepMonitor(
-      [rank](Index step, Index total)
-      {
-        if (rank != 0)
-        {
-          return;
-        }
-        cout << "\r  time step " << setw(7) << step << " / "
-             << setw(7) << total << flush;
-        if (step >= total)
-        {
-          cout << '\n';
-        }
-      });
+  TimeLinearStateSolver state_solver(fwd.problem, A, solver);
+  state_solver.setInitialState(fwd.x0);
 
   if (rank == 0)
   {
     cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = " << size
-         << ", dofs = " << forward.space.numDofs()
-         << ", cells = " << forward.space.mesh().numElems() << '\n';
+         << ", dofs = " << fwd.space.numDofs()
+         << ", elems = " << fwd.space.mesh().numElems() << '\n';
+  }
+
+  ofstream log_out;
+  if (rank == 0 && enable_output)
+  {
+    log_out = openRunLog(prm.output);
   }
 
   ForwardSolveResult result;
   state_solver.resetTiming();
-  const double total_time = timeCollective(
-      [&]
-      {
-        result = solve(state_solver, forward, prm.output, rank == 0 && enable_output);
-      });
+  result = solve(state_solver,
+                 fwd,
+                 prm.time,
+                 prm.output,
+                 rank == 0 && enable_output,
+                 rank == 0 ? &cout : nullptr,
+                 rank == 0 && enable_output ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
     throw runtime_error("Linear solve produced non-finite values in x");
-  }
-
-  if (rank == 0)
-  {
-    if (enable_output)
-    {
-      if (!result.snapshots.empty())
-      {
-        writeOutput(forward.mesh, prm.output, result.snapshots);
-      }
-      ofstream run_log = openRunLog(prm.output);
-      writeRunSummary(run_log, forward, state_solver, solver, total_time);
-    }
-
-    cout << "  assembly = " << state_solver.assemblySeconds() << " s"
-         << ", solve = " << state_solver.solveSeconds() << " s"
-         << ", total = " << total_time << " s"
-         << ", last KSP its = " << solver.its()
-         << ", |r| = " << solver.rnorm() << '\n';
   }
 
   return 0;
@@ -279,7 +239,7 @@ int main(int argc, char* argv[])
   {
     return 1;
   }
-  forceSerialOpenMp();
+  setSerialOpenMp();
 
   int status = 0;
   try

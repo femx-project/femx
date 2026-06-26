@@ -11,7 +11,7 @@ class CsrPattern;
 class SparseMatrix
 {
 public:
-  explicit SparseMatrix(const CsrPattern& pat);
+  explicit SparseMatrix(const CsrPattern& pettern);
 
   void setZero();
 
@@ -19,7 +19,7 @@ public:
   Index cols() const;
   Index nnz() const;
 
-  const CsrPattern& pat() const;
+  const CsrPattern& pettern() const;
 
   const Index* rowPtrData() const;
   const Index* colIndData() const;

@@ -15,7 +15,7 @@ namespace femx
 namespace assembly
 {
 
-/** @brief problem::Residual assembled from cell-local FEM kernels. */
+/** @brief problem::Residual assembled from elem-local FEM kernels. */
 class FEMResidual final : public problem::Residual
 {
 public:
@@ -39,7 +39,7 @@ public:
                  problem::Linearization& out) const override;
 
 private:
-  Index numCells() const;
+  Index numElems() const;
 
   void assembleStateJac(const Vector<Real>&    state,
                         const Vector<Real>&    prm,
@@ -49,14 +49,14 @@ private:
                         const Vector<Real>&    prm,
                         linalg::MatrixBuilder& out) const;
 
-  void checkCellCounts() const;
+  void checkElemCounts() const;
 
   void checkGlobalSizes(const Vector<Real>& state,
                         const Vector<Real>& prm) const;
 
   static void gather(const DofLayout&    lyt,
                      const Vector<Real>& global,
-                     Index               ic,
+                     Index               ie,
                      Vector<Real>&       local);
 
 private:
@@ -119,7 +119,7 @@ private:
                      const DenseMatrix&       local,
                      linalg::MatrixBuilder&   out);
 
-  static void checkDof(Index dof, Index size);
+  static void checkDof(Index id, Index size);
 
 private:
   const problem::Residual&     volume_;

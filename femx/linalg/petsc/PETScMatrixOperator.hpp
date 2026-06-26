@@ -122,18 +122,18 @@ public:
           "MatSetOption");
   }
 
-  void resize(const CsrPattern&         pat,
+  void resize(const CsrPattern&         pettern,
               const PETScVectorBuilder& lyt)
   {
     checkInitialized();
 
-    if (lyt.size() != pat.rows())
+    if (lyt.size() != pettern.rows())
     {
       throw std::runtime_error(
           "PETScMatrixOperator row layout does not match sparsity pattern");
     }
 
-    if (mat_ != nullptr && rows_ == pat.rows() && cols_ == pat.cols())
+    if (mat_ != nullptr && rows_ == pettern.rows() && cols_ == pettern.cols())
     {
       setZero();
       return;
@@ -145,8 +145,8 @@ public:
     }
 
     comm_ = lyt.comm();
-    rows_ = pat.rows();
-    cols_ = pat.cols();
+    rows_ = pettern.rows();
+    cols_ = pettern.cols();
 
     PetscInt begin = 0;
     PetscInt end   = 0;
@@ -155,7 +155,7 @@ public:
 
     Vector<PetscInt> d_nnz;
     Vector<PetscInt> o_nnz;
-    computePreallocation(pat, begin, end, d_nnz, o_nnz);
+    computePreallocation(pettern, begin, end, d_nnz, o_nnz);
 
     check(MatCreateAIJ(comm_,
                        end - begin,
@@ -438,7 +438,7 @@ private:
     }
   }
 
-  static void computePreallocation(const CsrPattern& pat,
+  static void computePreallocation(const CsrPattern& pettern,
                                    PetscInt          begin,
                                    PetscInt          end,
                                    Vector<PetscInt>& d_nnz,
@@ -448,8 +448,8 @@ private:
     d_nnz.assign(local_rows, 0);
     o_nnz.assign(local_rows, 0);
 
-    const Index* rp = pat.rowPtrData();
-    const Index* ci = pat.colIndData();
+    const Index* rp = pettern.rowPtrData();
+    const Index* ci = pettern.colIndData();
     for (PetscInt row = begin; row < end; ++row)
     {
       PetscInt diagonal = 0;

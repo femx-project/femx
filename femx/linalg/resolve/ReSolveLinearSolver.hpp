@@ -30,8 +30,9 @@ struct ReSolveOptions
   std::string precond  = "none";
   std::string ir       = "none";
 
-  std::string gram_schmidt = "cgs2";
-  std::string sketching    = "count";
+  std::string gram_schmidt        = "cgs2";
+  std::string sketching           = "count";
+  std::string preconditioner_side = "right";
 
   Index max_its  = 1000;
   Index restart  = 200;

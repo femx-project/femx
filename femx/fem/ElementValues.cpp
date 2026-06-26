@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/fem/Cell.hpp>
+#include <femx/fem/Element.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
 
@@ -35,9 +35,9 @@ ElementValues::ElementValues(const FiniteElement&   fe,
   calcReferenceValues();
 }
 
-void ElementValues::reinit(const Cell& cell)
+void ElementValues::reinit(const Element& elem)
 {
-  calcPhysicalValues(cell);
+  calcPhysicalValues(elem);
 }
 
 Index ElementValues::numNodes() const
@@ -135,7 +135,7 @@ void ElementValues::calcReferenceValues()
   }
 }
 
-void ElementValues::calcPhysicalValues(const Cell& cell)
+void ElementValues::calcPhysicalValues(const Element& elem)
 {
   for (Index iq = 0; iq < nq_; ++iq)
   {
@@ -147,7 +147,7 @@ void ElementValues::calcPhysicalValues(const Cell& cell)
     {
       for (Index a = 0; a < dim_; ++a)
       {
-        const Real x_a = cell.node(in)[a];
+        const Real x_a = elem.node(in)[a];
 
         for (Index b = 0; b < dim_; ++b)
         {

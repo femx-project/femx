@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "Helper.hpp"
+#include <Common.hpp>
+#include <PetscError.hpp>
 #include <femx/common/Workspace.hpp>
 #include <femx/linalg/native/SparseMatrixOperator.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
@@ -24,6 +26,7 @@ using namespace femx;
 using namespace femx::state;
 using namespace femx::linalg;
 using namespace femx::opt;
+namespace inv = femx::inverse;
 
 #ifndef FEMX_NAVIER_VAR_NEW_APP_NAME
 #define FEMX_NAVIER_VAR_NEW_APP_NAME "ns-var-resolve"
@@ -41,27 +44,6 @@ struct AppOptions
   bool            help = false;
 };
 
-void checkPetsc(PetscErrorCode ierr, const string& action)
-{
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw runtime_error(
-        action + " failed with PETSc error code " + to_string(ierr));
-  }
-}
-
-string requireValue(int           argc,
-                    char**        argv,
-                    int&          i,
-                    const string& key)
-{
-  if (i + 1 >= argc)
-  {
-    throw runtime_error("Missing value for " + key);
-  }
-  return string(argv[++i]);
-}
-
 AppOptions parseAppOptions(int argc, char** argv)
 {
   AppOptions opts;
@@ -75,13 +57,13 @@ AppOptions parseAppOptions(int argc, char** argv)
     }
     if (key == "--config" || key == "-config")
     {
-      opts.config_file = requireValue(argc, argv, i, key);
+      opts.config_file = inv::requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--steps")
     {
       opts.steps = static_cast<Index>(
-          stoi(requireValue(argc, argv, i, key)));
+          stoi(inv::requireValue(argc, argv, i, key)));
       if (*opts.steps <= 0)
       {
         throw runtime_error("--steps must be positive");
@@ -332,10 +314,10 @@ int run(Params& prm)
 
   prog.phase("linear solvers");
 
-  SparseMatrixOperator fwd_next_jac(app.pat);
+  SparseMatrixOperator J_fwd_next(app.pettern);
   ReSolveLinearSolver  fwd_solver(work, makeReSolveOptions(prm.fwd.solver));
 
-  TimeLinearStateSolver state_solver(app.problem, fwd_next_jac, fwd_solver);
+  TimeLinearStateSolver state_solver(app.problem, J_fwd_next, fwd_solver);
   state_solver.setInitialState(app.x0);
 
   if (app.lyt.hasInitialVelocity())
@@ -378,16 +360,16 @@ int run(Params& prm)
 
   Objective obj(prm, app);
 
-  SparseMatrixOperator       adj_next_jac(app.pat);
-  SparseMatrixOperator       adj_prev_jac(app.pat);
+  SparseMatrixOperator       J_adj_next(app.pettern);
+  SparseMatrixOperator       J_adj_hist(app.pettern);
   ReSolveLinearSolver        adj_solver(work, makeReSolveOptions(prm.fwd.solver));
   problem::TimeLinearization adj_lin;
 
   TimeReducedFunctional reduced(*reduced_state_solver,
                                 app.problem,
                                 adj_lin,
-                                adj_next_jac,
-                                adj_prev_jac,
+                                J_adj_next,
+                                J_adj_hist,
                                 adj_solver,
                                 obj.obj);
   reduced.setProgress(
@@ -431,7 +413,7 @@ int run(Params& prm)
 
   TaoResult            result;
   const PetscErrorCode ierr = optimizer.solve(app.prm0, result);
-  checkPetsc(ierr, "TAO solve");
+  inv::checkPetsc(ierr, "TAO solve");
 
   prog.phase("final forward solve");
 

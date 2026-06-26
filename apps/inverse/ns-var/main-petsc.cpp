@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "Helper.hpp"
+#include <PetscCommon.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrixOperator.hpp>
 #include <femx/linalg/petsc/PETScVectorBuilder.hpp>
@@ -21,15 +22,12 @@
 #include <femx/state/TimeReducedFunctional.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
-
 using namespace std;
 using namespace femx;
 using namespace femx::state;
 using namespace femx::linalg;
 using namespace femx::opt;
+namespace inv = femx::inverse;
 
 #ifndef FEMX_NAVIER_VAR_NEW_APP_NAME
 #define FEMX_NAVIER_VAR_NEW_APP_NAME "ns-var"
@@ -47,42 +45,6 @@ struct AppOptions
   bool            help = false;
 };
 
-struct CellRange
-{
-  Index begin = 0;
-  Index end   = 0;
-};
-
-void checkPetsc(PetscErrorCode ierr,
-                const string&  action)
-{
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw runtime_error(
-        action + " failed with PETSc error code " + to_string(ierr));
-  }
-}
-
-void forceSerialOpenMp()
-{
-#if defined(_OPENMP)
-  omp_set_dynamic(0);
-  omp_set_num_threads(1);
-#endif
-}
-
-string requireValue(int           argc,
-                    char**        argv,
-                    int&          i,
-                    const string& key)
-{
-  if (i + 1 >= argc)
-  {
-    throw runtime_error("Missing value for " + key);
-  }
-  return string(argv[++i]);
-}
-
 AppOptions parseAppOptions(int argc, char** argv)
 {
   AppOptions opts;
@@ -96,13 +58,13 @@ AppOptions parseAppOptions(int argc, char** argv)
     }
     if (key == "--config" || key == "-config")
     {
-      opts.config_file = requireValue(argc, argv, i, key);
+      opts.config_file = inv::requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--steps")
     {
       opts.steps = static_cast<Index>(
-          stoi(requireValue(argc, argv, i, key)));
+          stoi(inv::requireValue(argc, argv, i, key)));
       if (*opts.steps <= 0)
       {
         throw runtime_error("--steps must be positive");
@@ -252,46 +214,6 @@ private:
   bool         has_prev_prm_{false};
 };
 
-void setPetscOpt(const char* name,
-                 const char* value)
-{
-  PetscBool      exists = PETSC_FALSE;
-  PetscErrorCode ierr   = PetscOptionsHasName(nullptr, nullptr, name, &exists);
-  checkPetsc(ierr, string("PetscOptionsHasName(") + name + ")");
-  if (exists == PETSC_TRUE)
-  {
-    return;
-  }
-  ierr = PetscOptionsSetValue(nullptr, name, value);
-  checkPetsc(ierr, string("PetscOptionsSetValue(") + name + ")");
-}
-
-void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
-{
-  auto& opts       = solver.opts();
-  opts.restart     = 200;
-  opts.rtol        = 1.0e-8;
-  opts.max_its     = 5000;
-  opts.use_opts_db = true;
-
-  if (prm.method == "direct")
-  {
-    opts.type          = KSPPREONLY;
-    opts.pc_type       = PCLU;
-    opts.nonzero_guess = false;
-  }
-  else
-  {
-    opts.type          = KSPFGMRES;
-    opts.pc_type       = PCLU;
-    opts.nonzero_guess = true;
-  }
-
-  setPetscOpt("-pc_factor_mat_solver_type", "mumps");
-  setPetscOpt("-pc_factor_mat_ordering_type", "rcm");
-  setPetscOpt("-sub_pc_factor_mat_ordering_type", "rcm");
-}
-
 Vector<Real> unboundedLower(Index size)
 {
   Vector<Real> out(size);
@@ -336,21 +258,6 @@ void printFinalSummary(const TaoResult&      result,
   cout << "  trajectory levels: " << tr.numLevels() << '\n';
 }
 
-CellRange cellRange(Index num_cells)
-{
-  PetscMPIInt rank = 0;
-  PetscMPIInt size = 1;
-  MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-  MPI_Comm_size(PETSC_COMM_WORLD, &size);
-
-  const Index base  = num_cells / static_cast<Index>(size);
-  const Index extra = num_cells % static_cast<Index>(size);
-  const Index begin = static_cast<Index>(rank) * base
-                      + min<Index>(rank, extra);
-  const Index count = base + (rank < extra ? 1 : 0);
-  return {begin, begin + count};
-}
-
 int run(Params& prm)
 {
   PetscMPIInt rank = 0;
@@ -367,9 +274,10 @@ int run(Params& prm)
     prog.phase("mesh and space");
   }
 
-  AppNsVar        app(prm);
-  const CellRange cells = cellRange(app.space.mesh().numElems());
-  app.fem.setCellRange(cells.begin, cells.end);
+  AppNsVar             app(prm);
+  const inv::ElemRange elems =
+      inv::mpiElemRange(app.space.mesh().numElems());
+  app.fem.setElemRange(elems.begin, elems.end);
 
   if (rank == 0)
   {
@@ -379,13 +287,13 @@ int run(Params& prm)
   PETScVectorBuilder mat_row(PETSC_COMM_WORLD);
   mat_row.resize(app.space.numDofs());
 
-  PETScMatrixOperator fwd_next_jac(PETSC_COMM_WORLD);
-  fwd_next_jac.resize(app.pat, mat_row);
+  PETScMatrixOperator J_fwd_next(PETSC_COMM_WORLD);
+  J_fwd_next.resize(app.pettern, mat_row);
 
   KspLinearSolver fwd_solver(PETSC_COMM_WORLD);
-  setKspOptions(fwd_solver, prm.fwd.solver);
+  inv::setKspOptions(fwd_solver, prm.fwd.solver);
 
-  TimeLinearStateSolver state_solver(app.problem, fwd_next_jac, fwd_solver);
+  TimeLinearStateSolver state_solver(app.problem, J_fwd_next, fwd_solver);
   state_solver.setInitialState(app.x0);
 
   if (app.lyt.hasInitialVelocity())
@@ -436,20 +344,20 @@ int run(Params& prm)
 
   Objective obj(prm, app);
 
-  PETScMatrixOperator adj_next_jac(PETSC_COMM_WORLD);
-  PETScMatrixOperator adj_prev_jac(PETSC_COMM_WORLD);
-  adj_next_jac.resize(app.pat, mat_row);
-  adj_prev_jac.resize(app.pat, mat_row);
+  PETScMatrixOperator J_adj_next(PETSC_COMM_WORLD);
+  PETScMatrixOperator J_adj_hist(PETSC_COMM_WORLD);
+  J_adj_next.resize(app.pettern, mat_row);
+  J_adj_hist.resize(app.pettern, mat_row);
 
   KspLinearSolver adj_solver(PETSC_COMM_WORLD);
-  setKspOptions(adj_solver, prm.fwd.solver);
+  inv::setKspOptions(adj_solver, prm.fwd.solver);
   problem::TimeLinearization adj_lin;
 
   TimeReducedFunctional reduced(*reduced_state_solver,
                                 app.problem,
                                 adj_lin,
-                                adj_next_jac,
-                                adj_prev_jac,
+                                J_adj_next,
+                                J_adj_hist,
                                 adj_solver,
                                 obj.obj);
   reduced.setProgress(
@@ -503,7 +411,7 @@ int run(Params& prm)
 
   TaoResult            result;
   const PetscErrorCode ierr = optimizer.solve(app.prm0, result);
-  checkPetsc(ierr, "TAO solve");
+  inv::checkPetsc(ierr, "TAO solve");
 
   if (rank == 0)
   {
@@ -543,7 +451,7 @@ int main(int argc, char** argv)
   {
     return 1;
   }
-  forceSerialOpenMp();
+  inv::setSerialOpenMp();
 
   int exit_code = 0;
   try

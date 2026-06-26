@@ -57,25 +57,25 @@ string escapeXml(const string& text)
 
 array<Index, 3> wholeExtentMax(const VtiWriter::Image& image)
 {
-  return {image.cell_counts[0] > 1 ? image.cell_counts[0] : 0,
-          image.cell_counts[1] > 1 ? image.cell_counts[1] : 0,
-          image.cell_counts[2] > 1 ? image.cell_counts[2] : 0};
+  return {image.elem_counts[0] > 1 ? image.elem_counts[0] : 0,
+          image.elem_counts[1] > 1 ? image.elem_counts[1] : 0,
+          image.elem_counts[2] > 1 ? image.elem_counts[2] : 0};
 }
 
-Index numCells(const VtiWriter::Image& image)
+Index numElems(const VtiWriter::Image& image)
 {
   Index count = 1;
-  for (Index cells : image.cell_counts)
+  for (Index elems : image.elem_counts)
   {
-    if (cells <= 0)
+    if (elems <= 0)
     {
-      throw runtime_error("VtiWriter cell counts must be positive");
+      throw runtime_error("VtiWriter elem counts must be positive");
     }
-    if (count > numeric_limits<Index>::max() / cells)
+    if (count > numeric_limits<Index>::max() / elems)
     {
-      throw runtime_error("VtiWriter cell count overflow");
+      throw runtime_error("VtiWriter elem count overflow");
     }
-    count *= cells;
+    count *= elems;
   }
   return count;
 }
@@ -95,16 +95,16 @@ void checkFinite(const VtiWriter::Image& image)
   }
 }
 
-uint64_t fieldBytes(const VtiWriter::CellField& field)
+uint64_t fieldBytes(const VtiWriter::ElemField& field)
 {
   if (field.vals == nullptr)
   {
-    throw runtime_error("VtiWriter cell field has null values");
+    throw runtime_error("VtiWriter elem field has null values");
   }
   const auto size = static_cast<uint64_t>(field.vals->size());
   if (size > numeric_limits<uint64_t>::max() / sizeof(Real))
   {
-    throw runtime_error("VtiWriter cell field is too large");
+    throw runtime_error("VtiWriter elem field is too large");
   }
   return size * static_cast<uint64_t>(sizeof(Real));
 }
@@ -132,7 +132,7 @@ string base64Encode(const unsigned char* data,
   return out;
 }
 
-string fieldBinaryBase64(const VtiWriter::CellField& field)
+string fieldBinaryBase64(const VtiWriter::ElemField& field)
 {
   const uint64_t        bytes = fieldBytes(field);
   Vector<unsigned char> buffer(static_cast<Index>(sizeof(bytes) + bytes));
@@ -143,33 +143,33 @@ string fieldBinaryBase64(const VtiWriter::CellField& field)
   return base64Encode(buffer.data(), buffer.size());
 }
 
-void checkFields(const Vector<VtiWriter::CellField>& fields,
-                 Index                               cells)
+void checkFields(const Vector<VtiWriter::ElemField>& fields,
+                 Index                               elems)
 {
   if (fields.empty())
   {
-    throw runtime_error("VtiWriter needs at least one cell field");
+    throw runtime_error("VtiWriter needs at least one elem field");
   }
 
   for (const auto& field : fields)
   {
     if (field.name.empty())
     {
-      throw runtime_error("VtiWriter cell field name must not be empty");
+      throw runtime_error("VtiWriter elem field name must not be empty");
     }
     if (field.nc <= 0)
     {
       throw runtime_error(
-          "VtiWriter cell field component count must be positive");
+          "VtiWriter elem field component count must be positive");
     }
     if (field.vals == nullptr)
     {
-      throw runtime_error("VtiWriter cell field has null values");
+      throw runtime_error("VtiWriter elem field has null values");
     }
-    if (field.vals->size() != cells * field.nc)
+    if (field.vals->size() != elems * field.nc)
     {
       throw runtime_error(
-          "VtiWriter cell field size does not match image cell count");
+          "VtiWriter elem field size does not match image elem count");
     }
   }
 }
@@ -192,9 +192,9 @@ string point3String(const array<Real, 3>& vals)
 
 } // namespace
 
-void VtiWriter::writeCellData(const string&            fname,
+void VtiWriter::writeElemData(const string&            fname,
                               const Image&             image,
-                              const Vector<CellField>& fields) const
+                              const Vector<ElemField>& fields) const
 {
   if (!isLittleEndian())
   {
@@ -203,8 +203,8 @@ void VtiWriter::writeCellData(const string&            fname,
   }
 
   checkFinite(image);
-  const Index cells = numCells(image);
-  checkFields(fields, cells);
+  const Index elems = numElems(image);
+  checkFields(fields, elems);
 
   ofstream out(fname, ios::binary);
   if (!out)

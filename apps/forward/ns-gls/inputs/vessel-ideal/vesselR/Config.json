@@ -1,0 +1,72 @@
+{
+  "mesh":
+  {
+    "file": "../../../../../data/vessel-ideal/vesselR.msh"
+  },
+  "time":
+  {
+    "dt": 4.0e-5,
+    "end_time": 1.92
+  },
+  "fluid":
+  {
+    "rho": 1050,
+    "mu": 0.0035
+  },
+  "solver":
+  {
+    "backend": "cuda",
+    "method": "iterative",
+    "solve": "fgmres",
+    "preconditioner": "ilu0",
+    "relative_tolerance": 1.0e-8,
+    "restart": 200,
+    "gram_schmidt": "cgs2",
+    "flexible": true,
+    "preconditioner_side": "right"
+  },
+  "bcs":
+  [
+    {
+      "name": "inlet",
+      "tag": 4,
+      "type": "dirichlet",
+      "velocity":
+      {
+        "time":
+        {
+          "table": "flowrate.csv",
+          "period": 0.48,
+          "quantity": "flowrate",
+          "interpolate": "cubic"
+        },
+        "space":
+        {
+          "type": "poiseuille",
+          "radius": 0.002,
+          "center": "auto",
+          "normal": [0.999999500000375, 0.0009999995000007852, 0.0],
+          "area": 1.256637061435917e-5
+        }
+      }
+    },
+    {
+      "name": "outlet",
+      "tag": 5,
+      "type": "dirichlet",
+      "p": 0.0
+    },
+    {
+      "name": "wall",
+      "tag": 6,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    }
+  ],
+  "output":
+  {
+    "interval": 200,
+    "directory": "/home/ku/research/femx-cmame/vessel-ideal/vesselR/outputs"
+  }
+}

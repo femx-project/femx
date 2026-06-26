@@ -11,7 +11,7 @@
 namespace femx
 {
 
-/** @brief Interface for a finite elem on a reference cell. */
+/** @brief Interface for a finite elem on a reference elem. */
 class FiniteElement
 {
 public:
@@ -20,7 +20,7 @@ public:
   /** @brief Return a human-readable elem type name. */
   virtual std::string name() const = 0;
 
-  /** @brief Return the spatial dimension of the reference cell. */
+  /** @brief Return the spatial dimension of the reference elem. */
   virtual Index dim() const = 0;
 
   /** @brief Return the number of interpolation nodes in one elem. */
@@ -32,7 +32,7 @@ public:
   /** @brief Return the polynomial order of the elem. */
   virtual Index order() const = 0;
 
-  /** @brief Return the reference cell shape used by this elem. */
+  /** @brief Return the reference elem shape used by this elem. */
   virtual ReferenceElement referenceElement() const = 0;
 
   /** @brief Evaluate shape functions at a reference quad point. */

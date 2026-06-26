@@ -46,18 +46,18 @@ Index DofLayout::numDofsPerElem() const
   return mixedSpace().numDofsPerElem();
 }
 
-void DofLayout::elemDofs(Index ic, Vector<Index>& dofs) const
+void DofLayout::elemDofs(Index ie, Vector<Index>& dofs) const
 {
-  if (ic < 0 || ic >= numElems())
+  if (ie < 0 || ie >= numElems())
   {
-    throw runtime_error("DofLayout cell index is out of range");
+    throw runtime_error("DofLayout elem index is out of range");
   }
   if (fe_space_ != nullptr)
   {
-    fe_space_->elemDofs(ic, dofs);
+    fe_space_->elemDofs(ie, dofs);
     return;
   }
-  mixedSpace().elemDofs(ic, dofs);
+  mixedSpace().elemDofs(ie, dofs);
 }
 
 const MixedFESpace& DofLayout::mixedSpace() const

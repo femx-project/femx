@@ -18,22 +18,22 @@ class VtiWriter
 public:
   struct Image
   {
-    std::array<Index, 3> cell_counts = {1, 1, 1};
+    std::array<Index, 3> elem_counts = {1, 1, 1};
     std::array<Real, 3>  origin      = {0.0, 0.0, 0.0};
     std::array<Real, 3>  spacing     = {1.0, 1.0, 1.0};
     std::optional<Real>  time;
   };
 
-  struct CellField
+  struct ElemField
   {
     std::string         name;
     Index               nc = 1;
     const Vector<Real>* vals{nullptr};
   };
 
-  void writeCellData(const std::string&       fname,
+  void writeElemData(const std::string&       fname,
                      const Image&             image,
-                     const Vector<CellField>& fields) const;
+                     const Vector<ElemField>& fields) const;
 };
 
 } // namespace femx

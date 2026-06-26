@@ -9,7 +9,7 @@ namespace femx
 class FESpace;
 class MixedFESpace;
 
-/** @brief Non-owning view of cell-to-global dof connectivity. */
+/** @brief Non-owning view of elem-to-global id connectivity. */
 class DofLayout
 {
 public:
@@ -23,7 +23,7 @@ public:
 
   Index numDofsPerElem() const;
 
-  void elemDofs(Index ic, Vector<Index>& dofs) const;
+  void elemDofs(Index ie, Vector<Index>& dofs) const;
 
 private:
   const MixedFESpace& mixedSpace() const;

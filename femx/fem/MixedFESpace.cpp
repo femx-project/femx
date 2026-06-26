@@ -118,7 +118,7 @@ Index MixedFESpace::numDofsPerElem() const noexcept
   return ndpe_;
 }
 
-void MixedFESpace::elemDofs(Index          ic,
+void MixedFESpace::elemDofs(Index          ie,
                             Vector<Index>& dofs) const
 {
   dofs.resize(ndpe_);
@@ -127,7 +127,7 @@ void MixedFESpace::elemDofs(Index          ic,
   for (Index fid = 0; fid < numFields(); ++fid)
   {
     const FESpace& field      = fields_[fid];
-    const Index*   field_dofs = field.dofMap().elementDofsData(ic);
+    const Index*   field_dofs = field.dofMap().elementDofsData(ie);
     for (Index j = 0; j < field.numDofsPerElem(); ++j)
     {
       dofs[offset + j] = global_offsets_[fid] + field_dofs[j];
@@ -136,10 +136,10 @@ void MixedFESpace::elemDofs(Index          ic,
   }
 }
 
-Vector<Index> MixedFESpace::elemDofs(Index ic) const
+Vector<Index> MixedFESpace::elemDofs(Index ie) const
 {
   Vector<Index> dofs;
-  elemDofs(ic, dofs);
+  elemDofs(ie, dofs);
   return dofs;
 }
 

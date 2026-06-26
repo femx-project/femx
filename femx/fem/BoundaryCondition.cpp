@@ -13,9 +13,9 @@ using namespace std;
 namespace femx
 {
 
-void DirichletCondition::addDof(Index dof, Real value)
+void DirichletCondition::addDof(Index id, Real value)
 {
-  dofs_.push_back(dof);
+  dofs_.push_back(id);
   vals_.push_back(value);
 }
 
@@ -206,16 +206,16 @@ void DirichletCondition::apply(SparseMatrix& A, Vector<Real>& b) const
 
   for (Index c = 0; c < dofs_.size(); ++c)
   {
-    const Index dof   = dofs_[c];
+    const Index id    = dofs_[c];
     const Real  value = vals_[c];
 
-    if (dof < 0 || dof >= A.rows() || dof >= b.size())
+    if (id < 0 || id >= A.rows() || id >= b.size())
     {
-      throw runtime_error("Dirichlet dof is out of range");
+      throw runtime_error("Dirichlet id is out of range");
     }
 
-    is_dirichlet[dof]     = 1;
-    dirichlet_values[dof] = value;
+    is_dirichlet[id]     = 1;
+    dirichlet_values[id] = value;
   }
 
   for (Index row = 0; row < A.rows(); ++row)
@@ -248,9 +248,9 @@ void DirichletCondition::apply(SparseMatrix& A, Vector<Real>& b) const
     }
   }
 
-  for (Index dof = 0; dof < A.rows(); ++dof)
+  for (Index id = 0; id < A.rows(); ++id)
   {
-    if (is_dirichlet[dof] != 0 && found_diagonal[dof] == 0)
+    if (is_dirichlet[id] != 0 && found_diagonal[id] == 0)
     {
       throw runtime_error("Dirichlet row has no diagonal entry");
     }

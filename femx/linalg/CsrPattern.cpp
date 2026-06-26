@@ -39,11 +39,11 @@ void CsrPattern::countCooEntries(const IndexSetList& cdofs)
 {
   num_coo_entries_ = 0;
 
-  for (Index ic = 0; ic < ne_; ++ic)
+  for (Index ie = 0; ie < ne_; ++ie)
   {
-    const Index nd = cdofs.setSize(ic);
+    const Index nd = cdofs.setSize(ie);
 
-    elem_num_dofs_[ic]  = nd;
+    elem_num_dofs_[ie]  = nd;
     num_coo_entries_   += nd * nd;
   }
 }
@@ -56,12 +56,12 @@ void CsrPattern::setupCooArrays(
 {
   Index counter = 0;
 
-  for (Index ic = 0; ic < ne_; ++ic)
+  for (Index ie = 0; ie < ne_; ++ie)
   {
-    const Vector<Index> dofs = cdofs.set(ic);
-    const Index         nd   = elem_num_dofs_[ic];
+    const Vector<Index> dofs = cdofs.set(ie);
+    const Index         nd   = elem_num_dofs_[ie];
 
-    elem_coo_offsets_[ic] = counter;
+    elem_coo_offsets_[ie] = counter;
 
     for (Index i = 0; i < nd; ++i)
     {
@@ -72,7 +72,7 @@ void CsrPattern::setupCooArrays(
 
         if (row < 0 || row >= num_rows_ || col < 0 || col >= num_cols_)
         {
-          throw runtime_error("CsrPattern cell dof is out of range");
+          throw runtime_error("CsrPattern elem id is out of range");
         }
         coo_rows[counter] = row;
         coo_cols[counter] = col;
@@ -193,14 +193,14 @@ Index CsrPattern::mapToCsr(Index i) const
   return map_to_csr_[i];
 }
 
-Index CsrPattern::elemCooOffset(Index ic) const
+Index CsrPattern::elemCooOffset(Index ie) const
 {
-  return elem_coo_offsets_[ic];
+  return elem_coo_offsets_[ie];
 }
 
-Index CsrPattern::elemNumDofs(Index ic) const
+Index CsrPattern::elemNumDofs(Index ie) const
 {
-  return elem_num_dofs_[ic];
+  return elem_num_dofs_[ie];
 }
 
 } // namespace femx

@@ -12,18 +12,18 @@ namespace femx
 namespace
 {
 
-Index nodesPerCell(const Mesh& mesh)
+Index nodesPerElem(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
     throw runtime_error("XdmfWriter needs a non-empty mesh");
   }
-  return mesh.cells().front().numNodes();
+  return mesh.elems().front().numNodes();
 }
 
 string topologyType(const Mesh& mesh)
 {
-  const Index nodes = nodesPerCell(mesh);
+  const Index nodes = nodesPerElem(mesh);
   if (nodes == 3)
   {
     return "Triangle";
@@ -32,7 +32,7 @@ string topologyType(const Mesh& mesh)
   {
     return "Quadrilateral";
   }
-  throw runtime_error("XdmfWriter supports triangle and quadrilateral cells for now");
+  throw runtime_error("XdmfWriter supports triangle and quadrilateral elems for now");
 }
 
 string filenameOnly(const string& path)
@@ -64,7 +64,7 @@ void XdmfWriter::write(const string&         fname,
   out << R"(<Xdmf Version="3.0">)" << '\n';
   out << "  <Domain>\n";
   out << R"(    <Grid Name="mesh" GridType="Uniform">)" << '\n';
-  const Index cn = nodesPerCell(mesh);
+  const Index cn = nodesPerElem(mesh);
   out << R"(      <Topology TopologyType=")" << topologyType(mesh)
       << R"(" NumberOfElements=")"
       << mesh.numElems() << "\">\n";

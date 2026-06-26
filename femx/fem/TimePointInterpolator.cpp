@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/fem/Cell.hpp>
+#include <femx/fem/Element.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
@@ -29,18 +29,18 @@ struct ScalarStencil
   Vector<Real>  wts;
 };
 
-bool insideBox(const Cell&   cell,
-               const Point3& point,
-               Index         dim)
+bool insideBox(const Element& elem,
+               const Point3&  point,
+               Index          dim)
 {
   for (Index a = 0; a < dim; ++a)
   {
-    Real lower = cell.node(0)[a];
-    Real upper = cell.node(0)[a];
-    for (Index in = 1; in < cell.numNodes(); ++in)
+    Real lower = elem.node(0)[a];
+    Real upper = elem.node(0)[a];
+    for (Index in = 1; in < elem.numNodes(); ++in)
     {
-      lower = min(lower, cell.node(in)[a]);
-      upper = max(upper, cell.node(in)[a]);
+      lower = min(lower, elem.node(in)[a]);
+      upper = max(upper, elem.node(in)[a]);
     }
     if (point[a] < lower - point_tol || point[a] > upper + point_tol)
     {
@@ -73,13 +73,13 @@ Vector<Real> shapeWeights(const FiniteElement&   fe,
 }
 
 bool triWeights(const FiniteElement& fe,
-                const Cell&          cell,
+                const Element&       elem,
                 const Point3&        point,
                 Vector<Real>&        wts)
 {
-  const Point3 a   = cell.node(0);
-  const Point3 e1  = difference(cell.node(1), a);
-  const Point3 e2  = difference(cell.node(2), a);
+  const Point3 a   = elem.node(0);
+  const Point3 e1  = difference(elem.node(1), a);
+  const Point3 e2  = difference(elem.node(2), a);
   const Point3 rhs = difference(point, a);
 
   const Real det = e1[0] * e2[1] - e1[1] * e2[0];
@@ -96,14 +96,14 @@ bool triWeights(const FiniteElement& fe,
 }
 
 bool tetWeights(const FiniteElement& fe,
-                const Cell&          cell,
+                const Element&       elem,
                 const Point3&        point,
                 Vector<Real>&        wts)
 {
-  const Point3 a   = cell.node(0);
-  const Point3 e1  = difference(cell.node(1), a);
-  const Point3 e2  = difference(cell.node(2), a);
-  const Point3 e3  = difference(cell.node(3), a);
+  const Point3 a   = elem.node(0);
+  const Point3 e1  = difference(elem.node(1), a);
+  const Point3 e2  = difference(elem.node(2), a);
+  const Point3 e3  = difference(elem.node(3), a);
   const Point3 rhs = difference(point, a);
 
   const Real det = dot(e1, cross(e2, e3));
@@ -120,22 +120,22 @@ bool tetWeights(const FiniteElement& fe,
   return insideSimplex(wts);
 }
 
-Point3 mappedPoint(const Cell&         cell,
+Point3 mappedPoint(const Element&      elem,
                    const Vector<Real>& wts,
                    Index               dim)
 {
   Point3 mapped{0.0, 0.0, 0.0};
-  for (Index in = 0; in < cell.numNodes(); ++in)
+  for (Index in = 0; in < elem.numNodes(); ++in)
   {
     for (Index a = 0; a < dim; ++a)
     {
-      mapped[a] += wts[in] * cell.node(in)[a];
+      mapped[a] += wts[in] * elem.node(in)[a];
     }
   }
   return mapped;
 }
 
-bool quadSolveStep(const Cell&          cell,
+bool quadSolveStep(const Element&       elem,
                    const FiniteElement& fe,
                    Real                 r,
                    Real                 s,
@@ -157,17 +157,17 @@ bool quadSolveStep(const Cell&          cell,
   Real j01 = 0.0;
   Real j10 = 0.0;
   Real j11 = 0.0;
-  for (Index in = 0; in < cell.numNodes(); ++in)
+  for (Index in = 0; in < elem.numNodes(); ++in)
   {
-    const Real x  = cell.node(in)[0];
-    const Real y  = cell.node(in)[1];
+    const Real x  = elem.node(in)[0];
+    const Real y  = elem.node(in)[1];
     j00          += x * grad[in * fe.dim()];
     j01          += x * grad[in * fe.dim() + 1];
     j10          += y * grad[in * fe.dim()];
     j11          += y * grad[in * fe.dim() + 1];
   }
 
-  const Point3 phys = mappedPoint(cell, wts, fe.dim());
+  const Point3 phys = mappedPoint(elem, wts, fe.dim());
   const Real   res0 = phys[0] - point[0];
   const Real   res1 = phys[1] - point[1];
   const Real   det  = j00 * j11 - j01 * j10;
@@ -182,7 +182,7 @@ bool quadSolveStep(const Cell&          cell,
 }
 
 bool quadWeights(const FiniteElement& fe,
-                 const Cell&          cell,
+                 const Element&       elem,
                  const Point3&        point,
                  Vector<Real>&        wts)
 {
@@ -193,7 +193,7 @@ bool quadWeights(const FiniteElement& fe,
   {
     Real dr = 0.0;
     Real ds = 0.0;
-    if (!quadSolveStep(cell, fe, r, s, point, dr, ds, wts))
+    if (!quadSolveStep(elem, fe, r, s, point, dr, ds, wts))
     {
       return false;
     }
@@ -208,7 +208,7 @@ bool quadWeights(const FiniteElement& fe,
   }
 
   wts               = shapeWeights(fe, QuadraturePoint{{r, s, 0.0}, 0.0});
-  const Point3 phys = mappedPoint(cell, wts, fe.dim());
+  const Point3 phys = mappedPoint(elem, wts, fe.dim());
   const Real   err0 = phys[0] - point[0];
   const Real   err1 = phys[1] - point[1];
   const bool   inside =
@@ -218,21 +218,21 @@ bool quadWeights(const FiniteElement& fe,
          && (err0 * err0 + err1 * err1 <= 100.0 * point_tol * point_tol);
 }
 
-bool cellWeights(const FiniteElement& fe,
-                 const Cell&          cell,
+bool elemWeights(const FiniteElement& fe,
+                 const Element&       elem,
                  const Point3&        point,
                  Vector<Real>&        wts)
 {
   switch (fe.referenceElement())
   {
   case ReferenceElement::Triangle:
-    return triWeights(fe, cell, point, wts);
+    return triWeights(fe, elem, point, wts);
 
   case ReferenceElement::Quadrilateral:
-    return quadWeights(fe, cell, point, wts);
+    return quadWeights(fe, elem, point, wts);
 
   case ReferenceElement::Tetrahedron:
-    return tetWeights(fe, cell, point, wts);
+    return tetWeights(fe, elem, point, wts);
 
   case ReferenceElement::Segment:
     break;
@@ -254,23 +254,23 @@ bool tryFindScalarStencil(const FESpace& space,
         "TimePointInterpolator mesh dimension does not match finite element");
   }
 
-  for (Index ic = 0; ic < mesh.numElems(); ++ic)
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const Cell& cell = mesh.cell(ic);
-    if (cell.numNodes() != fe.numNodes())
+    const Element& elem = mesh.elem(ie);
+    if (elem.numNodes() != fe.numNodes())
     {
       throw runtime_error(
-          "TimePointInterpolator cell node count does not match finite element");
+          "TimePointInterpolator elem node count does not match finite element");
     }
-    if (!insideBox(cell, point, mesh.dim()))
+    if (!insideBox(elem, point, mesh.dim()))
     {
       continue;
     }
 
     Vector<Real> wts;
-    if (cellWeights(fe, cell, point, wts))
+    if (elemWeights(fe, elem, point, wts))
     {
-      out = ScalarStencil{cell.nodeIds(), wts};
+      out = ScalarStencil{elem.nodeIds(), wts};
       return true;
     }
   }

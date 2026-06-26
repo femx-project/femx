@@ -17,7 +17,7 @@ public:
           const FiniteElement* finite_element,
           Index                comps = 1);
 
-  /** @brief Build the elem-to-global-dof map for the space. */
+  /** @brief Build the elem-to-global-id map for the space. */
   void setup();
 
   // Accessors
@@ -30,20 +30,20 @@ public:
   Index                numShapesPerElem() const noexcept;
   Index                numDofsPerElem() const noexcept;
 
-  /** @brief Return the local dof index for a shape function component. */
+  /** @brief Return the local id index for a shape function component. */
   Index localDof(Index shape_index,
                  Index comp) const noexcept;
 
-  /** @brief Return the global dof index for a mesh node component. */
+  /** @brief Return the global id index for a mesh node component. */
   Index globalDof(Index in,
                   Index comp) const noexcept;
 
-  /** @brief Fill the global dof indices used by one elem. */
-  void elemDofs(Index          ic,
+  /** @brief Fill the global id indices used by one elem. */
+  void elemDofs(Index          ie,
                 Vector<Index>& dofs) const;
 
-  /** @brief Return the global dof indices used by one elem. */
-  Vector<Index> elemDofs(Index ic) const;
+  /** @brief Return the global id indices used by one elem. */
+  Vector<Index> elemDofs(Index ie) const;
 
 private:
   const Mesh*          mesh_{nullptr};

@@ -2,13 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
 #include <iostream>
 #include <random>
 #include <stdexcept>
 
 #include "../ns-var/Helper.hpp"
 #include "ObservationVti.hpp"
+#include <Common.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
@@ -34,16 +34,6 @@ struct NoiseReport
   Real  sigma      = 0.0;
   Index count      = 0;
 };
-
-void ensureParentDir(const string& path)
-{
-  const filesystem::path file(path);
-  const filesystem::path dir = file.parent_path();
-  if (!dir.empty())
-  {
-    filesystem::create_directories(dir);
-  }
-}
 
 bool hasTimeSample(const TimeSampleParams& time)
 {
@@ -239,10 +229,10 @@ array<Vector<Real>, 3> interpolateVelocity(
       tr.vectorField(interp.upper, field_name);
   for (Index d = 0; d < 3; ++d)
   {
-    for (Index node = 0; node < tr.mesh().numNodes(); ++node)
+    for (Index in = 0; in < tr.mesh().numNodes(); ++in)
     {
-      out[d][node] = interp.lowerWeight() * lower[d][node]
-                     + interp.upperWeight() * upper[d][node];
+      out[d][in] = interp.lowerWeight() * lower[d][in]
+                   + interp.upperWeight() * upper[d][in];
     }
   }
   return out;
@@ -265,13 +255,13 @@ Vector<Real> velocityState(
   state.setZero();
 
   const auto field = space.field(0);
-  for (Index node = 0; node < space.mesh().numNodes(); ++node)
+  for (Index in = 0; in < space.mesh().numNodes(); ++in)
   {
     for (Index comp = 0; comp < field.numComponents();
          ++comp)
     {
-      state[field.globalDof(node, comp)] =
-          velocity[comp][node];
+      state[field.globalDof(in, comp)] =
+          velocity[comp][in];
     }
   }
   return state;
@@ -427,13 +417,13 @@ void writeTrajectoryObservationOutput(
   TimeObservationData noisy = sampled;
   const NoiseReport   noise = addGaussianNoise(noisy, prm.noise);
 
-  ensureParentDir(prm.output.file);
+  inverse::ensureParentDir(prm.output.file);
   writeTimeObsData(prm.output.file, noisy);
   const string vti_output = writeObservationVtiOutputs(prm, noisy);
 
   if (prm.output.write_reference && !prm.output.reference_basename.empty())
   {
-    ensureParentDir(prm.output.reference_basename + ".h5");
+    inverse::ensureParentDir(prm.output.reference_basename + ".h5");
     reference_out.write(prm.output.reference_basename);
   }
 

@@ -30,7 +30,7 @@ public:
   GaussQuadrature(ReferenceElement        elem,
                   Index                   dim,
                   Vector<QuadraturePoint> pts)
-    : cell_(elem),
+    : elem_(elem),
       dim_(dim),
       pts_(std::move(pts))
   {
@@ -48,7 +48,7 @@ public:
 
   ReferenceElement referenceElement() const
   {
-    return cell_;
+    return elem_;
   }
 
   const QuadraturePoint& operator[](Index iq) const
@@ -56,9 +56,9 @@ public:
     return pts_[iq];
   }
 
-  static GaussQuadrature make(ReferenceElement cell, Index order)
+  static GaussQuadrature make(ReferenceElement elem, Index order)
   {
-    switch (cell)
+    switch (elem)
     {
     case ReferenceElement::Segment:
       return segment(order);
@@ -73,7 +73,7 @@ public:
       return tetrahedron(order);
     }
 
-    throw std::runtime_error("Unsupported reference cell");
+    throw std::runtime_error("Unsupported reference elem");
   }
 
   static GaussQuadrature segment(Index n)
@@ -236,7 +236,7 @@ public:
   }
 
 private:
-  ReferenceElement        cell_ = ReferenceElement::Segment;
+  ReferenceElement        elem_ = ReferenceElement::Segment;
   Index                   dim_  = 0;
   Vector<QuadraturePoint> pts_;
 };

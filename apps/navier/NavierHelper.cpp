@@ -20,23 +20,23 @@ unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
-    throw runtime_error("Mesh has no cells");
+    throw runtime_error("Mesh has no elems");
   }
 
-  const Cell::Shape shape = mesh.cells().front().shape();
-  if (shape == Cell::Shape::Quadrilateral)
+  const Element::Shape shape = mesh.elems().front().shape();
+  if (shape == Element::Shape::Quadrilateral)
   {
     return make_unique<LagrangeQuadQ1>();
   }
-  if (shape == Cell::Shape::Triangle)
+  if (shape == Element::Shape::Triangle)
   {
     return make_unique<LagrangeTriangleP1>();
   }
-  if (shape == Cell::Shape::Tetrahedron)
+  if (shape == Element::Shape::Tetrahedron)
   {
     return make_unique<LagrangeTetrahedronP1>();
   }
-  throw runtime_error("Unsupported mesh cell type for Navier app");
+  throw runtime_error("Unsupported mesh elem type for Navier app");
 }
 
 MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem)
@@ -63,21 +63,21 @@ Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& sel)
 Vector<Index> gaugeDofs(const MixedFESpace&     space,
                         const BoundarySelector& sel)
 {
-  Index      node_out = 0;
+  Index      in_out   = 0;
   Real       dist_out = 0.0;
   const auto cen      = selectorCenter(space.mesh(), sel);
-  for (Index node = 0; node < space.mesh().numNodes(); ++node)
+  for (Index in = 0; in < space.mesh().numNodes(); ++in)
   {
-    const Real dist = sqDist(space.mesh().node(node), cen);
-    if (node == 0 || dist < dist_out)
+    const Real dist = sqDist(space.mesh().node(in), cen);
+    if (in == 0 || dist < dist_out)
     {
-      node_out = node;
+      in_out   = in;
       dist_out = dist;
     }
   }
 
   Vector<Index> dofs(1);
-  dofs[0] = space.field(1).globalDof(node_out, 0);
+  dofs[0] = space.field(1).globalDof(in_out, 0);
   return dofs;
 }
 

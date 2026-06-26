@@ -115,24 +115,24 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
         "TimeDirichletControlResidual fixed value size mismatch");
   }
 
-  for (Index dof : ctr_.stateDofs())
+  for (Index id : ctr_.stateDofs())
   {
-    if (dof < 0 || dof >= base_dims_.nst)
+    if (id < 0 || id >= base_dims_.nst)
     {
       throw runtime_error(
-          "TimeDirichletControlResidual control dof is out of range");
+          "TimeDirichletControlResidual control id is out of range");
     }
   }
-  for (Index dof : fdofs_)
+  for (Index id : fdofs_)
   {
-    if (dof < 0 || dof >= base_dims_.nst)
+    if (id < 0 || id >= base_dims_.nst)
     {
       throw runtime_error(
-          "TimeDirichletControlResidual fixed dof is out of range");
+          "TimeDirichletControlResidual fixed id is out of range");
     }
-    for (Index ctr_dof : ctr_.stateDofs())
+    for (Index ctr_id : ctr_.stateDofs())
     {
-      if (dof == ctr_dof)
+      if (id == ctr_id)
       {
         throw runtime_error(
             "TimeDirichletControlResidual received overlapping dofs");
@@ -276,7 +276,7 @@ bool TimeDirichletControlResidual::assembleJac(
 void TimeDirichletControlResidual::prepareLinearSolve(
     const TimeContext& ctx,
     VariableBlock      wrt,
-    MatrixBuilder&     jac,
+    MatrixBuilder&     J,
     Vector<Real>&      rhs) const
 {
   checkContext(ctx);
@@ -284,7 +284,7 @@ void TimeDirichletControlResidual::prepareLinearSolve(
   {
     return;
   }
-  eliminateStateColumns(jac, rhs);
+  eliminateStateColumns(J, rhs);
 }
 
 const DirichletControl& TimeDirichletControlResidual::control() const
@@ -365,7 +365,7 @@ void TimeDirichletControlResidual::replaceStateRows(
 }
 
 void TimeDirichletControlResidual::eliminateStateColumns(
-    MatrixBuilder& jac,
+    MatrixBuilder& J,
     Vector<Real>&  rhs) const
 {
   if (rhs.size() != dims_.nres)
@@ -373,7 +373,7 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     throw runtime_error(
         "TimeDirichletControlResidual RHS size mismatch");
   }
-  if (jac.numRows() != dims_.nres || jac.numCols() != dims_.nst)
+  if (J.numRows() != dims_.nres || J.numCols() != dims_.nst)
   {
     throw runtime_error(
         "TimeDirichletControlResidual matrix size mismatch");
@@ -391,7 +391,7 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     is_constrained[row] = 1;
   }
 
-  auto* sparse = dynamic_cast<SparseMatrixOperator*>(&jac);
+  auto* sparse = dynamic_cast<SparseMatrixOperator*>(&J);
   if (sparse == nullptr)
   {
     return;

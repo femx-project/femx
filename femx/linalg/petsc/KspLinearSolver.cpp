@@ -1,3 +1,6 @@
+#include <cmath>
+#include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -212,6 +215,12 @@ private:
     check(KSPCreate(PETSC_COMM_SELF, ksp.put()), "KSPCreate");
     configureKsp(ksp.get());
     check(KSPSetOperators(ksp.get(), mat, mat), "KSPSetOperators");
+    if (opts_.check_finite)
+    {
+      checkFinite(rhs_vec.get(), "right-hand side");
+      checkFinite(out_vec.get(), "initial guess");
+      checkFinite(mat, "operator");
+    }
 
     if (transpose)
     {
@@ -259,6 +268,12 @@ private:
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
+    if (opts_.check_finite)
+    {
+      checkFinite(rhs_vec.get(), "right-hand side");
+      checkFinite(out_vec.get(), "initial guess");
+      checkFinite(op.mat(), "operator");
+    }
 
     if (transpose)
     {
@@ -302,6 +317,12 @@ private:
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
+    if (opts_.check_finite)
+    {
+      checkFinite(rhs.vec(), "right-hand side");
+      checkFinite(out.vec(), "initial guess");
+      checkFinite(op.mat(), "operator");
+    }
 
     if (transpose)
     {
@@ -435,6 +456,62 @@ private:
     }
   }
 
+  static void checkFinite(Vec vec, const char* object)
+  {
+    PetscInt local_size = 0;
+    check(VecGetLocalSize(vec, &local_size), "VecGetLocalSize");
+
+    const PetscScalar* data = nullptr;
+    check(VecGetArrayRead(vec, &data), "VecGetArrayRead");
+
+    PetscReal local_max = 0.0;
+    bool      local_ok  = true;
+    for (PetscInt i = 0; i < local_size; ++i)
+    {
+      const PetscReal value = PetscAbsScalar(data[i]);
+      if (!isfinite(value))
+      {
+        local_ok = false;
+        break;
+      }
+      local_max = std::max(local_max, value);
+    }
+    check(VecRestoreArrayRead(vec, &data), "VecRestoreArrayRead");
+
+    PetscReal global_max = 0.0;
+    PetscInt  ok         = local_ok ? 1 : 0;
+    PetscInt  global_ok  = 0;
+    MPI_Comm  comm       = PETSC_COMM_SELF;
+    check(PetscObjectGetComm(reinterpret_cast<PetscObject>(vec), &comm),
+          "PetscObjectGetComm");
+    checkMPI(MPI_Allreduce(
+                 &local_max, &global_max, 1, MPIU_REAL, MPIU_MAX, comm),
+             "MPI_Allreduce");
+    checkMPI(MPI_Allreduce(&ok, &global_ok, 1, MPI_INT, MPI_MIN, comm),
+             "MPI_Allreduce");
+
+    if (!global_ok || !isfinite(global_max)
+        || global_max > std::sqrt(std::numeric_limits<PetscReal>::max()))
+    {
+      std::ostringstream msg;
+      msg << "KspLinearSolver received non-finite or too-large " << object
+          << " (max_abs=" << global_max << ")";
+      throw runtime_error(
+          msg.str());
+    }
+  }
+
+  static void checkFinite(Mat mat, const char* object)
+  {
+    PetscReal norm = 0.0;
+    check(MatNorm(mat, NORM_FROBENIUS, &norm), "MatNorm");
+    if (!isfinite(norm))
+    {
+      throw runtime_error(
+          string("KspLinearSolver received non-finite ") + object);
+    }
+  }
+
   static void checkInitialized()
   {
     PetscBool initialized = PETSC_FALSE;
@@ -512,7 +589,11 @@ private:
   {
     if (static_cast<int>(last_reason_) <= 0)
     {
-      throw runtime_error("KspLinearSolver failed to converge");
+      throw runtime_error(
+          "KspLinearSolver failed to converge: reason="
+          + to_string(static_cast<int>(last_reason_))
+          + ", iterations=" + to_string(static_cast<long long>(last_its_))
+          + ", residual=" + to_string(last_rnorm_));
     }
   }
 

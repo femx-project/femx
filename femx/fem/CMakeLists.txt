@@ -5,7 +5,7 @@ target_sources(
   femx_fem
   PRIVATE BoundaryCondition.cpp
           BoundaryElementValues.cpp
-          Cell.cpp
+          Element.cpp
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp
@@ -19,7 +19,7 @@ target_sources(
           VelocityProfile.cpp
   PUBLIC BoundaryCondition.hpp
          BoundaryElementValues.hpp
-         Cell.hpp
+         Element.hpp
          DirichletControl.hpp
          DofLayout.hpp
          MixedFESpace.hpp

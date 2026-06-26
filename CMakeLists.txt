@@ -166,10 +166,9 @@ if(ReSolve_FOUND)
 
   if(FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU" AND FEMX_HAS_RESOLVE_CUDA)
     message(
-      FATAL_ERROR
-        "FEMX_RESOLVE_BACKEND=CPU requires a CPU-only ReSolve package, "
-        "but the found package exposes CUDA. Use the resolve-cuda preset "
-        "or set ReSolve_ROOT to a CPU-only ReSolve installation.")
+      STATUS
+        "FEMX_RESOLVE_BACKEND=CPU selected; the CUDA-capable ReSolve package "
+        "will be used with the CPU workspace.")
   endif()
 endif()
 
@@ -233,7 +232,7 @@ if(ReSolve_FOUND)
   target_compile_definitions(femx_config INTERFACE FEMX_HAS_RESOLVE=1)
   if(FEMX_HAS_RESOLVE_CUDA)
     if(NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-      target_compile_definitions(femx_config INTERFACE RESOLVE_USE_CUDA=1)
+      target_compile_definitions(femx_config INTERFACE FEMX_RESOLVE_USE_CUDA=1)
     endif()
   endif()
 endif()

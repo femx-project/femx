@@ -99,7 +99,7 @@ bool assembleLocalSystem(Index       step,
 } // namespace
 
 void NavierResidual(Index       step,
-                    Index       cell,
+                    Index       elem,
                     Index       nq,
                     Index       nn,
                     Index       dim,
@@ -115,7 +115,7 @@ void NavierResidual(Index       step,
                     const Real* prm,
                     Real*       out)
 {
-  (void) cell;
+  (void) elem;
 
   for (Index i = 0; i < nres; ++i)
   {
@@ -194,7 +194,7 @@ NavierKernel::NavierKernel(const FESpace&         space,
 }
 
 void NavierKernel::res(Index                    step,
-                       Index                    ic,
+                       Index                    ie,
                        problem::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm,
@@ -204,7 +204,7 @@ void NavierKernel::res(Index                    step,
   resizeOrZero(out, nres_);
 
   ElementValues vals(space_.finiteElement(), quad_);
-  vals.reinit(space_.mesh().cell(ic));
+  vals.reinit(space_.mesh().elem(ie));
 
   const Index nd = num_next_states_;
   Real        s1[64 * 64];
@@ -243,7 +243,7 @@ void NavierKernel::res(Index                    step,
 }
 
 void NavierKernel::jacobian(Index                    step,
-                            Index                    ic,
+                            Index                    ie,
                             problem::VariableBlock   wrt,
                             problem::TimeHistoryView hist,
                             const Vector<Real>&      nxt,
@@ -253,14 +253,14 @@ void NavierKernel::jacobian(Index                    step,
   checkInputSizes(hist, nxt, prm);
   if (!wrt.isNextState())
   {
-    fallback_.jacobian(step, ic, wrt, hist, nxt, prm, out);
+    fallback_.jacobian(step, ie, wrt, hist, nxt, prm, out);
     return;
   }
 
   out.resize(nres_, num_next_states_);
 
   ElementValues vals(space_.finiteElement(), quad_);
-  vals.reinit(space_.mesh().cell(ic));
+  vals.reinit(space_.mesh().elem(ie));
 
   const Index nd = num_next_states_;
   Real        s1[64 * 64];

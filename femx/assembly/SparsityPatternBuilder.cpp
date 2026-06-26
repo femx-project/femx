@@ -22,9 +22,9 @@ IndexSetList SparsityPatternBuilder::collect(const FESpace& space)
   IndexSetList cdofs;
   cdofs.reserveSets(space.numElems());
   cdofs.reserveValues(space.numElems() * space.numDofsPerElem());
-  for (Index ic = 0; ic < space.numElems(); ++ic)
+  for (Index ie = 0; ie < space.numElems(); ++ie)
   {
-    cdofs.pushBack(space.elemDofs(ic));
+    cdofs.pushBack(space.elemDofs(ie));
   }
   return cdofs;
 }
@@ -34,9 +34,9 @@ IndexSetList SparsityPatternBuilder::collect(const MixedFESpace& space)
   IndexSetList cdofs;
   cdofs.reserveSets(space.numElems());
   cdofs.reserveValues(space.numElems() * space.numDofsPerElem());
-  for (Index ic = 0; ic < space.numElems(); ++ic)
+  for (Index ie = 0; ie < space.numElems(); ++ie)
   {
-    cdofs.pushBack(space.elemDofs(ic));
+    cdofs.pushBack(space.elemDofs(ie));
   }
   return cdofs;
 }

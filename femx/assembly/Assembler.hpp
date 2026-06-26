@@ -53,7 +53,7 @@ public:
             const MixedFESpace& col_space,
             AssemblyMode        mode = AssemblyMode::Serial);
 
-  Index numCells() const;
+  Index numElems() const;
 
   Index numRows() const;
 
@@ -63,16 +63,16 @@ public:
 
   void initMat(linalg::MatrixBuilder& out) const;
 
-  void addVec(Index ic, const Vector<Real>& local, Vector<Real>& out) const;
+  void addVec(Index ie, const Vector<Real>& local, Vector<Real>& out) const;
 
-  void addMat(Index                  ic,
+  void addMat(Index                  ie,
               const DenseMatrix&     local,
               linalg::MatrixBuilder& out) const;
 
 private:
-  void checkCellCounts() const;
+  void checkElemCounts() const;
 
-  static void checkDof(Index dof, Index size, const char* name);
+  static void checkDof(Index id, Index size, const char* name);
 
 private:
   DofLayout    row_layout_;

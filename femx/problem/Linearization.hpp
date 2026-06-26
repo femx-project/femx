@@ -20,36 +20,36 @@ public:
 class MatrixLinearization final : public Linearization
 {
 public:
-  MatrixLinearization(linalg::MatrixOperator& state_jac,
-                      linalg::MatrixOperator& param_jac)
-    : state_jac_(state_jac),
-      param_jac_(param_jac)
+  MatrixLinearization(linalg::MatrixOperator& J_state,
+                      linalg::MatrixOperator& J_param)
+    : J_state_(J_state),
+      J_param_(J_param)
   {
   }
 
   linalg::MatrixOperator& stateMatrix()
   {
-    return state_jac_;
+    return J_state_;
   }
 
   linalg::MatrixOperator& paramMatrix()
   {
-    return param_jac_;
+    return J_param_;
   }
 
   const linalg::LinearOperator& stateJac() const override
   {
-    return state_jac_;
+    return J_state_;
   }
 
   const linalg::LinearOperator& paramJac() const override
   {
-    return param_jac_;
+    return J_param_;
   }
 
 private:
-  linalg::MatrixOperator& state_jac_;
-  linalg::MatrixOperator& param_jac_;
+  linalg::MatrixOperator& J_state_;
+  linalg::MatrixOperator& J_param_;
 };
 
 } // namespace problem

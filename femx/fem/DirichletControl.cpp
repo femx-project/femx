@@ -44,9 +44,9 @@ DirichletControl buildVelocityControl(const MixedFESpace& space,
   }
 
   Vector<Index> dofs;
-  for (Index dof : dof_set)
+  for (Index id : dof_set)
   {
-    dofs.push_back(dof);
+    dofs.push_back(id);
   }
 
   return DirichletControl(std::move(dofs));
@@ -58,17 +58,17 @@ DirichletControl::DirichletControl(Vector<Index> dofs)
   : dofs_(std::move(dofs))
 {
   set<Index> seen;
-  for (Index dof : dofs_)
+  for (Index id : dofs_)
   {
-    if (dof < 0)
+    if (id < 0)
     {
       throw runtime_error(
-          "DirichletControl received negative state dof");
+          "DirichletControl received negative state id");
     }
-    if (!seen.insert(dof).second)
+    if (!seen.insert(id).second)
     {
       throw runtime_error(
-          "DirichletControl received duplicate state dof");
+          "DirichletControl received duplicate state id");
     }
   }
 }
@@ -104,7 +104,7 @@ void DirichletControl::checkDofIndex(Index i) const
 {
   if (i < 0 || i >= numDofs())
   {
-    throw runtime_error("DirichletControl dof index is out of range");
+    throw runtime_error("DirichletControl id index is out of range");
   }
 }
 

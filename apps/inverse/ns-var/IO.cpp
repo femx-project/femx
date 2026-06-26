@@ -1067,32 +1067,32 @@ void splitState(const MixedFESpace& space,
 }
 
 void assignControlDof(const MixedFESpace& space,
-                      Index               dof,
+                      Index               id,
                       Real                value,
                       Vector<Real>&       ux,
                       Vector<Real>&       uy,
                       Vector<Real>&       uz)
 {
   const auto u_dof = space.field(0);
-  for (Index node = 0; node < space.mesh().numNodes(); ++node)
+  for (Index in = 0; in < space.mesh().numNodes(); ++in)
   {
     for (Index d = 0; d < u_dof.numComponents(); ++d)
     {
-      if (u_dof.globalDof(node, d) != dof)
+      if (u_dof.globalDof(in, d) != id)
       {
         continue;
       }
       if (d == 0)
       {
-        ux[node] = value;
+        ux[in] = value;
       }
       else if (d == 1)
       {
-        uy[node] = value;
+        uy[in] = value;
       }
       else if (d == 2)
       {
-        uz[node] = value;
+        uz[in] = value;
       }
       return;
     }

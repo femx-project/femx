@@ -10,21 +10,21 @@ namespace femx
 namespace assembly
 {
 
-/** @brief Cell-local residual and Jacobian kernel for one time step. */
+/** @brief Elem-local residual and Jacobian kernel for one time step. */
 class TimeElementKernel
 {
 public:
   virtual ~TimeElementKernel() = default;
 
   virtual void res(Index                    step,
-                   Index                    ic,
+                   Index                    ie,
                    problem::TimeHistoryView hist,
                    const Vector<Real>&      nxt,
                    const Vector<Real>&      prm,
                    Vector<Real>&            out) const = 0;
 
   virtual void jacobian(Index                    step,
-                        Index                    ic,
+                        Index                    ie,
                         problem::VariableBlock   wrt,
                         problem::TimeHistoryView hist,
                         const Vector<Real>&      nxt,

@@ -108,6 +108,55 @@ Index stepsForEndTime(Real end_time,
   return static_cast<Index>(ceil(scaled - eps));
 }
 
+void assignVelocityRelativeTolerance(const json&        node,
+                                     ConvergenceParams& convergence)
+{
+  if (node.contains("velocity_relative_tolerance"))
+  {
+    convergence.velocity_relative_tolerance =
+        node.at("velocity_relative_tolerance").get<Real>();
+  }
+  else if (node.contains("velocity_rel_tol"))
+  {
+    convergence.velocity_relative_tolerance =
+        node.at("velocity_rel_tol").get<Real>();
+  }
+  else if (node.contains("relative_tolerance"))
+  {
+    convergence.velocity_relative_tolerance =
+        node.at("relative_tolerance").get<Real>();
+  }
+  else if (node.contains("relative_tol"))
+  {
+    convergence.velocity_relative_tolerance =
+        node.at("relative_tol").get<Real>();
+  }
+  else if (node.contains("tol"))
+  {
+    convergence.velocity_relative_tolerance =
+        node.at("tol").get<Real>();
+  }
+}
+
+void parseConvergenceConfig(const json&        node,
+                            ConvergenceParams& convergence)
+{
+  if (node.is_boolean())
+  {
+    convergence.enabled = node.get<bool>();
+    return;
+  }
+  if (!node.is_object())
+  {
+    throw runtime_error("Config time.convergence must be a boolean or object");
+  }
+
+  convergence.enabled = true;
+  assign(node, "enabled", convergence.enabled);
+  assignVelocityRelativeTolerance(node, convergence);
+  assign(node, "min_steps", convergence.min_steps);
+}
+
 void parseTimeConfig(const json& node,
                      TimeParams& time)
 {
@@ -128,6 +177,10 @@ void parseTimeConfig(const json& node,
           "Config time.steps and time.end_time disagree for the configured dt");
     }
     time.steps = derived_steps;
+  }
+  if (node.contains("convergence"))
+  {
+    parseConvergenceConfig(node.at("convergence"), time.convergence);
   }
 }
 
@@ -198,8 +251,7 @@ VelocityProfileParams parseVelocityProfile(const json& node)
     }
     else
     {
-      prof.cen =
-          parseVector3(node.at("center"), "Boundary velocity profile center");
+      prof.cen = parseVector3(node.at("center"), "Boundary velocity profile center");
     }
   }
   return prof;
@@ -541,6 +593,19 @@ void validate(const Params& prm)
   {
     throw runtime_error("Time steps and dt must be positive");
   }
+  if (prm.time.convergence.enabled)
+  {
+    if (!isfinite(prm.time.convergence.velocity_relative_tolerance)
+        || prm.time.convergence.velocity_relative_tolerance <= 0.0)
+    {
+      throw runtime_error(
+          "Config time.convergence velocity relative tolerance must be positive");
+    }
+    if (prm.time.convergence.min_steps < 1)
+    {
+      throw runtime_error("Config time.convergence min_steps must be positive");
+    }
+  }
   if (prm.fluid.rho <= 0.0 || prm.fluid.mu <= 0.0)
   {
     throw runtime_error("Fluid rho and mu must be positive");
@@ -553,6 +618,51 @@ void validate(const Params& prm)
       && prm.solver.method != "iterative")
   {
     throw runtime_error("Solver method must be either 'direct' or 'iterative'");
+  }
+  if (prm.solver.solve != "fgmres"
+      && prm.solver.solve != "randgmres")
+  {
+    throw runtime_error("Solver solve must be either 'fgmres' or 'randgmres'");
+  }
+  if (prm.solver.preconditioner != "ilu0"
+      && prm.solver.preconditioner != "none")
+  {
+    throw runtime_error(
+        "Solver preconditioner must be either 'ilu0' or 'none'");
+  }
+  if (prm.solver.gram_schmidt != "cgs1"
+      && prm.solver.gram_schmidt != "cgs2"
+      && prm.solver.gram_schmidt != "mgs"
+      && prm.solver.gram_schmidt != "mgs_two_sync"
+      && prm.solver.gram_schmidt != "mgs_pm")
+  {
+    throw runtime_error(
+        "Solver gram_schmidt must be 'cgs1', 'cgs2', 'mgs', 'mgs_two_sync', or 'mgs_pm'");
+  }
+  if (prm.solver.sketching != "count" && prm.solver.sketching != "fwht")
+  {
+    throw runtime_error("Solver sketching must be either 'count' or 'fwht'");
+  }
+  if (prm.solver.preconditioner_side != "left"
+      && prm.solver.preconditioner_side != "right")
+  {
+    throw runtime_error(
+        "Solver preconditioner_side must be either 'left' or 'right'");
+  }
+  if (prm.solver.flexible && prm.solver.preconditioner_side == "left")
+  {
+    throw runtime_error(
+        "ReSolve flexible GMRES requires right preconditioning");
+  }
+  if (prm.solver.max_iterations <= 0 || prm.solver.restart <= 0)
+  {
+    throw runtime_error(
+        "Solver max_iterations and restart must be positive");
+  }
+  if (!isfinite(prm.solver.relative_tolerance)
+      || prm.solver.relative_tolerance <= 0.0)
+  {
+    throw runtime_error("Solver relative_tolerance must be positive");
   }
   if (prm.bcs.empty())
   {
@@ -605,8 +715,77 @@ Params loadConfig(const string& path)
   }
   if (root.contains("solver"))
   {
-    assign(root.at("solver"), "backend", prm.solver.backend);
-    assign(root.at("solver"), "method", prm.solver.method);
+    const auto& solver = root.at("solver");
+    assign(solver, "backend", prm.solver.backend);
+    assign(solver, "method", prm.solver.method);
+    if (solver.contains("solve"))
+    {
+      prm.solver.solve = solver.at("solve").get<string>();
+    }
+    else if (solver.contains("linear_solver"))
+    {
+      prm.solver.solve = solver.at("linear_solver").get<string>();
+    }
+    else if (solver.contains("krylov"))
+    {
+      prm.solver.solve = solver.at("krylov").get<string>();
+    }
+    if (solver.contains("preconditioner"))
+    {
+      prm.solver.preconditioner =
+          solver.at("preconditioner").get<string>();
+    }
+    else if (solver.contains("precond"))
+    {
+      prm.solver.preconditioner = solver.at("precond").get<string>();
+    }
+    if (solver.contains("gram_schmidt"))
+    {
+      prm.solver.gram_schmidt = solver.at("gram_schmidt").get<string>();
+    }
+    else if (solver.contains("gramSchmidt"))
+    {
+      prm.solver.gram_schmidt = solver.at("gramSchmidt").get<string>();
+    }
+    assign(solver, "sketching", prm.solver.sketching);
+    if (solver.contains("preconditioner_side"))
+    {
+      prm.solver.preconditioner_side =
+          solver.at("preconditioner_side").get<string>();
+    }
+    else if (solver.contains("precond_side"))
+    {
+      prm.solver.preconditioner_side =
+          solver.at("precond_side").get<string>();
+    }
+    assign(solver, "restart", prm.solver.restart);
+    if (solver.contains("max_iterations"))
+    {
+      prm.solver.max_iterations =
+          solver.at("max_iterations").get<Index>();
+    }
+    else if (solver.contains("max_its"))
+    {
+      prm.solver.max_iterations = solver.at("max_its").get<Index>();
+    }
+    else if (solver.contains("max_iter"))
+    {
+      prm.solver.max_iterations = solver.at("max_iter").get<Index>();
+    }
+    if (solver.contains("relative_tolerance"))
+    {
+      prm.solver.relative_tolerance =
+          solver.at("relative_tolerance").get<Real>();
+    }
+    else if (solver.contains("rtol"))
+    {
+      prm.solver.relative_tolerance = solver.at("rtol").get<Real>();
+    }
+    else if (solver.contains("rel_tol"))
+    {
+      prm.solver.relative_tolerance = solver.at("rel_tol").get<Real>();
+    }
+    assign(solver, "flexible", prm.solver.flexible);
   }
   if (root.contains("output"))
   {

@@ -8,9 +8,9 @@ using namespace std;
 namespace femx
 {
 
-SparseMatrix::SparseMatrix(const CsrPattern& pat)
-  : pattern_(&pat),
-    vals_(pat.nnz(), Real{})
+SparseMatrix::SparseMatrix(const CsrPattern& pettern)
+  : pattern_(&pettern),
+    vals_(pettern.nnz(), Real{})
 {
 }
 
@@ -34,7 +34,7 @@ Index SparseMatrix::nnz() const
   return pattern_->nnz();
 }
 
-const CsrPattern& SparseMatrix::pat() const
+const CsrPattern& SparseMatrix::pettern() const
 {
   return *pattern_;
 }

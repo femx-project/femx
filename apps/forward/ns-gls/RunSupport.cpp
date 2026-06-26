@@ -3,9 +3,11 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #include "BCs.hpp"
@@ -81,12 +83,12 @@ void assignBoundaryValues(Vector<Real>&             state,
 
   for (Index i = 0; i < bc.dofs().size(); ++i)
   {
-    const Index dof = bc.dofs()[i];
-    if (dof < 0 || dof >= state.size())
+    const Index id = bc.dofs()[i];
+    if (id < 0 || id >= state.size())
     {
-      throw runtime_error("Dirichlet dof is out of range");
+      throw runtime_error("Dirichlet id is out of range");
     }
-    state[dof] = bc.vals()[i];
+    state[id] = bc.vals()[i];
   }
 }
 
@@ -192,7 +194,7 @@ ForwardProblem::ForwardProblem(const Params& prm)
     fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
     problem(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
     x0(makeInitialState(space, prm.bcs)),
-    pat(SparsityPatternBuilder::build(space)),
+    pettern(SparsityPatternBuilder::build(space)),
     prm0(0)
 {
 }
@@ -304,6 +306,189 @@ bool shouldWriteOutput(Index               step,
 namespace
 {
 
+Real velocityRelativeChange(const MixedFESpace& space,
+                            const Vector<Real>& previous,
+                            const Vector<Real>& current)
+{
+  if (previous.size() != current.size()
+      || previous.size() != space.numDofs())
+  {
+    throw runtime_error("velocity convergence received incompatible states");
+  }
+
+  const auto  velocity = space.field(0);
+  const Index nodes    = velocity.space().mesh().numNodes();
+  const Index comps    = velocity.numComponents();
+
+  Real diff2 = 0.0;
+  Real ref2  = 0.0;
+  for (Index in = 0; in < nodes; ++in)
+  {
+    for (Index d = 0; d < comps; ++d)
+    {
+      const Index id    = velocity.globalDof(in, d);
+      const Real  diff  = current[id] - previous[id];
+      diff2            += diff * diff;
+      ref2             += previous[id] * previous[id];
+    }
+  }
+
+  if (diff2 <= 0.0)
+  {
+    return 0.0;
+  }
+  if (ref2 <= 0.0)
+  {
+    return numeric_limits<Real>::infinity();
+  }
+  return sqrt(diff2 / ref2);
+}
+
+Real elemMinEdge(const Element& elem)
+{
+  Real h = numeric_limits<Real>::infinity();
+  for (Index i = 0; i < elem.numNodes(); ++i)
+  {
+    for (Index j = i + 1; j < elem.numNodes(); ++j)
+    {
+      h = min(h, distance(elem.node(i), elem.node(j)));
+    }
+  }
+  return isfinite(h) ? h : 0.0;
+}
+
+Real maxVelocityCfl(const MixedFESpace& space,
+                    const Vector<Real>& state,
+                    Real                dt)
+{
+  if (state.size() != space.numDofs())
+  {
+    throw runtime_error("CFL calculation received incompatible state size");
+  }
+
+  const auto  velocity = space.field(0);
+  const Index comps    = velocity.numComponents();
+  Real        max_cfl  = 0.0;
+
+  for (Index ie = 0; ie < space.mesh().numElems(); ++ie)
+  {
+    const Element& elem = space.mesh().elem(ie);
+    const Real     h    = elemMinEdge(elem);
+    if (h <= 0.0)
+    {
+      continue;
+    }
+
+    for (Index in = 0; in < elem.numNodes(); ++in)
+    {
+      const Index id   = elem.nodeIds()[in];
+      Real        vel2 = 0.0;
+      for (Index d = 0; d < comps; ++d)
+      {
+        const Real value  = state[velocity.globalDof(id, d)];
+        vel2             += value * value;
+      }
+      max_cfl = max(max_cfl, sqrt(vel2) * dt / h);
+    }
+  }
+
+  return max_cfl;
+}
+
+struct StepLog
+{
+  Clock::time_point begin;
+  Index             level{0};
+  Real              time{0.0};
+  Real              max_cfl{0.0};
+  Real              vel_change{0.0};
+  Real              assm_seconds{0.0};
+  Real              solve_seconds{0.0};
+  bool              ready{false};
+};
+
+struct StopCondition
+{
+  TimeLinearStateSolver& state_solver;
+  const ForwardProblem&  problem;
+  const TimeParams&      time;
+  bool                   log_steps{false};
+  ForwardSolveResult&    result;
+  StepLog&               log;
+
+  bool operator()(Index               level,
+                  const Vector<Real>& current,
+                  const Vector<Real>& previous) const
+  {
+    if (time.convergence.enabled)
+    {
+      result.vel_change = velocityRelativeChange(problem.space, previous, current);
+
+      const bool cond_steps = level >= time.convergence.min_steps;
+      const bool cond_vel   = result.vel_change < time.convergence.velocity_relative_tolerance;
+
+      result.converged = cond_steps && cond_vel;
+    }
+    else
+    {
+      result.converged = false;
+    }
+
+    if (log_steps)
+    {
+      log.level      = level;
+      log.time       = static_cast<Real>(level) * problem.dt;
+      log.max_cfl    = maxVelocityCfl(problem.space, previous, problem.dt);
+      log.vel_change = result.vel_change;
+      if (!isfinite(log.max_cfl))
+      {
+        throw runtime_error("Stopping as CFL became invalid");
+      }
+      log.assm_seconds  = state_solver.lastAssemblySeconds();
+      log.solve_seconds = state_solver.lastSolveSeconds();
+      log.ready         = true;
+    }
+    return result.converged;
+  }
+};
+
+string stepLogLine(Index step,
+                   Real  time,
+                   Real  max_cfl,
+                   bool  show_velocity_change,
+                   Real  vel_change,
+                   Real  assembly_seconds,
+                   Real  solve_seconds,
+                   Real  total_seconds)
+{
+  ostringstream line;
+  line << "step " << setw(7) << step << ", t = " << setw(11) << time
+       << ", max CFL = " << setw(11) << max_cfl;
+  if (show_velocity_change)
+  {
+    line << ", rel du = " << setw(11) << vel_change;
+  }
+  line << ", assembly = " << setw(11) << assembly_seconds << " s"
+       << ", solve = " << setw(11) << solve_seconds << " s"
+       << ", total = " << setw(11) << total_seconds << " s";
+  return line.str();
+}
+
+void writeStepLog(const string& line,
+                  ostream*      terminal,
+                  ostream*      log_out)
+{
+  if (terminal)
+  {
+    *terminal << line << '\n';
+  }
+  if (log_out)
+  {
+    *log_out << line << '\n';
+    log_out->flush();
+  }
+}
+
 void splitFields(const Vector<Real>& x,
                  const MixedFESpace& space,
                  Vector<Real>&       ux,
@@ -333,88 +518,163 @@ void splitFields(const Vector<Real>& x,
   }
 }
 
-} // namespace
-
-Snapshot makeSnapshot(const MixedFESpace& space,
-                      const Vector<Real>& x,
-                      Real                time)
+struct OutputSeries
 {
-  const Index nodes = space.mesh().numNodes();
-  Snapshot    snapshot{
-      time, Vector<Real>(nodes), Vector<Real>(nodes), Vector<Real>(nodes), Vector<Real>(nodes)};
-  splitFields(x, space, snapshot.ux, snapshot.uy, snapshot.uz, snapshot.p);
-  return snapshot;
-}
+  const OutputParams& prm;
+  TimeSeriesDataOut   vel_out;
+  TimeSeriesDataOut   pre_out;
+  Vector<Real>        ux;
+  Vector<Real>        uy;
+  Vector<Real>        uz;
+  Vector<Real>        p;
 
-void writeOutput(const Mesh&             mesh,
-                 const OutputParams&     prm,
-                 const Vector<Snapshot>& snapshots)
-{
-  filesystem::create_directories(prm.directory);
-
-  TimeSeriesDataOut vel_out;
-  vel_out.attachMesh(mesh);
-
-  TimeSeriesDataOut pre_out;
-  pre_out.attachMesh(mesh);
-
-  for (const Snapshot& snap : snapshots)
+  OutputSeries(const Mesh& mesh, const OutputParams& prm_in)
+    : prm(prm_in),
+      ux(mesh.numNodes()),
+      uy(mesh.numNodes()),
+      uz(mesh.numNodes()),
+      p(mesh.numNodes())
   {
-    vel_out.beginStep(snap.time);
-    vel_out.addNodalVectorField("velocity",
-                                snap.ux,
-                                snap.uy,
-                                snap.uz);
-
-    pre_out.beginStep(snap.time);
-    pre_out.addNodalScalarField("pressure", snap.p);
+    filesystem::create_directories(prm.directory);
+    vel_out.attachMesh(mesh);
+    pre_out.attachMesh(mesh);
   }
 
-  vel_out.write(prm.directory + "/velocity");
-  pre_out.write(prm.directory + "/pressure");
-}
+  void add(const MixedFESpace& space,
+           const Vector<Real>& state,
+           Real                time)
+  {
+    splitFields(state, space, ux, uy, uz, p);
+
+    vel_out.beginStep(time);
+    vel_out.addNodalVectorField("velocity", ux, uy, uz);
+
+    pre_out.beginStep(time);
+    pre_out.addNodalScalarField("pressure", p);
+  }
+
+  void write() const
+  {
+    vel_out.write(prm.directory + "/velocity");
+    pre_out.write(prm.directory + "/pressure");
+  }
+};
+
+} // namespace
 
 void writeTrajectoryOutput(const ForwardProblem& problem,
                            const TimeTrajectory& tr,
                            const OutputParams&   prm)
 {
-  Vector<Snapshot> snapshots;
+  OutputSeries output(problem.mesh, prm);
   for (Index step = 1; step <= problem.steps; ++step)
   {
     if (shouldWriteOutput(step, problem.steps, prm))
     {
-      snapshots.push_back(makeSnapshot(
-          problem.space, tr[step], static_cast<Real>(step) * problem.dt));
+      output.add(problem.space,
+                 tr[step],
+                 static_cast<Real>(step) * problem.dt);
+      output.write();
     }
-  }
-
-  if (!snapshots.empty())
-  {
-    writeOutput(problem.mesh, prm, snapshots);
   }
 }
 
+namespace
+{
+
+struct StateObserver
+{
+  const ForwardProblem& problem;
+  const TimeParams&     time;
+  const OutputParams&   prm;
+  OutputSeries*         output{nullptr};
+  ostream*              terminal{nullptr};
+  ostream*              log_out{nullptr};
+  ForwardSolveResult&   result;
+  StepLog&              log;
+
+  void operator()(Index level, const Vector<Real>& state) const
+  {
+    if (level > 0)
+    {
+      result.final_step  = level;
+      result.final_time  = static_cast<Real>(level) * problem.dt;
+      result.final_state = state;
+    }
+    if (output && level > 0
+        && shouldWriteOutput(level, problem.steps, prm))
+    {
+      output->add(problem.space, state, result.final_time);
+      output->write();
+    }
+    if (log.ready && log.level == level)
+    {
+      const Real total_sec = elapsedSeconds(log.begin, Clock::now());
+      writeStepLog(stepLogLine(log.level,
+                               log.time,
+                               log.max_cfl,
+                               time.convergence.enabled,
+                               log.vel_change,
+                               log.assm_seconds,
+                               log.solve_seconds,
+                               total_sec),
+                   terminal,
+                   log_out);
+      log.begin = Clock::now();
+      log.ready = false;
+    }
+  }
+};
+
+} // namespace
+
 ForwardSolveResult solve(TimeLinearStateSolver& state_solver,
                          const ForwardProblem&  problem,
+                         const TimeParams&      time,
                          const OutputParams&    prm,
-                         bool                   collect_output)
+                         bool                   collect_output,
+                         ostream*               terminal,
+                         ostream*               log_out)
 {
   ForwardSolveResult result;
-  state_solver.solve(
-      problem.prm0,
-      [&](Index level, const Vector<Real>& state)
-      {
-        if (level == problem.steps)
-        {
-          result.final_state = state;
-        }
-        if (collect_output && level > 0
-            && shouldWriteOutput(level, problem.steps, prm))
-        {
-          result.snapshots.push_back(makeSnapshot(
-              problem.space, state, static_cast<Real>(level) * problem.dt));
-        }
-      });
+  result.vel_change = numeric_limits<Real>::quiet_NaN();
+
+  optional<OutputSeries> output;
+  if (collect_output)
+  {
+    output.emplace(problem.mesh, prm);
+  }
+
+  StepLog log;
+  log.begin            = Clock::now();
+  const bool log_steps = terminal || log_out;
+  if (time.convergence.enabled || log_steps)
+  {
+    const auto cond = StopCondition{state_solver, problem, time, log_steps, result, log};
+    state_solver.setStopCondition(cond);
+  }
+  else
+  {
+    state_solver.clearStopCondition();
+  }
+
+  const auto observer = StateObserver{problem,
+                                      time,
+                                      prm,
+                                      output ? &(*output) : nullptr,
+                                      terminal,
+                                      log_out,
+                                      result,
+                                      log};
+  state_solver.solve(problem.prm0, observer);
+  state_solver.clearStopCondition();
+
+  if (output && result.final_step > 0
+      && !shouldWriteOutput(result.final_step, problem.steps, prm))
+  {
+    output->add(problem.space, result.final_state, result.final_time);
+    output->write();
+  }
   return result;
 }
 

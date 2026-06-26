@@ -1,5 +1,10 @@
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include <femx/linalg/BlockVectorView.hpp>
@@ -27,6 +32,30 @@ Real elapsedSeconds(const Clock::time_point& begin)
 Index historyLevel(Index step, Index lag)
 {
   return step > lag ? step - lag : 0;
+}
+
+void checkFinite(const Vector<Real>& x, const string& name, Index step)
+{
+  Real max_abs = 0.0;
+  for (Index i = 0; i < x.size(); ++i)
+  {
+    const Real value = abs(x[i]);
+    if (!isfinite(value))
+    {
+      throw runtime_error(
+          name + " contains a non-finite value at step "
+          + to_string(static_cast<long long>(step)) + ", index "
+          + to_string(static_cast<long long>(i)));
+    }
+    max_abs = max(max_abs, value);
+  }
+  if (max_abs > sqrt(numeric_limits<Real>::max()))
+  {
+    ostringstream msg;
+    msg << name << " is too large at step " << step
+        << " (max_abs=" << max_abs << ")";
+    throw runtime_error(msg.str());
+  }
 }
 
 void fillHistory(const TimeTrajectory& tr,
@@ -84,15 +113,15 @@ TimeReducedFunctional::TimeReducedFunctional(
     TimeStateSolver&     state_solver,
     const TimeResidual&  problem,
     TimeLinearization&   lin,
-    MatrixOperator&      nxt_jac,
-    MatrixOperator&      hist_jac,
+    MatrixOperator&      J_next,
+    MatrixOperator&      J_hist,
     LinearSolver&        adj_solver,
     const TimeObjective& obj)
   : state_solver_(state_solver),
     problem_(problem),
     lin_(lin),
-    nxt_jac_(nxt_jac),
-    hist_jac_(hist_jac),
+    J_next_(J_next),
+    J_hist_(J_hist),
     adj_solver_(adj_solver),
     obj_(obj),
     dims_(problem.dims())
@@ -113,19 +142,19 @@ void TimeReducedFunctional::clearProgress()
 void TimeReducedFunctional::setInitialStateParamJacT(
     InitialStateParamJacT cb)
 {
-  init_param_jac_t_ = std::move(cb);
+  init_param_JT_ = std::move(cb);
 }
 
 void TimeReducedFunctional::clearInitialStateParamJacT()
 {
-  init_param_jac_t_ = nullptr;
+  init_param_JT_ = nullptr;
 }
 
 void TimeReducedFunctional::resetTiming()
 {
   assembly_seconds_ = 0.0;
-  solve_seconds_    = 0.0;
-  assembly_calls_   = 0;
+  solve_sec_        = 0.0;
+  assm_calls_       = 0;
   solve_calls_      = 0;
 }
 
@@ -136,12 +165,12 @@ Real TimeReducedFunctional::assemblySeconds() const
 
 Real TimeReducedFunctional::solveSeconds() const
 {
-  return solve_seconds_;
+  return solve_sec_;
 }
 
 Index TimeReducedFunctional::assemblyCalls() const
 {
-  return assembly_calls_;
+  return assm_calls_;
 }
 
 Index TimeReducedFunctional::solveCalls() const
@@ -243,6 +272,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
     notify("adjoint-step", steps - t, steps);
     obj_.stateGrad(t + 1, tr, prm, rhs);
     checkSize(rhs, dims_.nst);
+    checkFinite(rhs, "adjoint objective gradient", t);
 
     const Index level = t + 1;
     for (Index i = 0; i < dims_.nhst; ++i)
@@ -261,16 +291,18 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
                                           carry_prev_state,
                                           carry_next_state);
 
-      assemble(carry_ctx, VariableBlock::hist(i), hist_jac_);
-      hist_jac_.applyT(adjoints[ft], carry);
+      assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
+      J_hist_.applyT(adjoints[ft], carry);
 
       checkSize(carry, dims_.nst);
+      checkFinite(carry, "adjoint history carry", t);
 
       for (Index j = 0; j < rhs.size(); ++j)
       {
         rhs[j] -= carry[j];
       }
     }
+    checkFinite(rhs, "adjoint right-hand side", t);
 
     TimeContext ctx = makeContext(tr,
                                   t,
@@ -280,14 +312,15 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
                                   prev,
                                   ctx_next_state);
 
-    assemble(ctx, VariableBlock::NextState, nxt_jac_);
+    assemble(ctx, VariableBlock::NextState, J_next_);
 
     const auto solve_begin = Clock::now();
-    adj_solver_.solveT(nxt_jac_, rhs, adj);
-    solve_seconds_ += elapsedSeconds(solve_begin);
+    adj_solver_.solveT(J_next_, rhs, adj);
+    solve_sec_ += elapsedSeconds(solve_begin);
 
     ++solve_calls_;
     checkSize(adj, dims_.nres);
+    checkFinite(adj, "adjoint solution", t);
 
     problem_.linearize(ctx, lin_);
     lin_.applyJacT(VariableBlock::Param, adj, param_adj);
@@ -300,7 +333,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
     adjoints[t] = adj;
   }
 
-  if (init_param_jac_t_)
+  if (init_param_JT_)
   {
     obj_.stateGrad(0, tr, prm, init_state_grad);
     checkSize(init_state_grad, dims_.nst);
@@ -323,8 +356,8 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
                         carry_prev_state,
                         carry_next_state);
 
-        assemble(carry_ctx, VariableBlock::hist(i), hist_jac_);
-        hist_jac_.applyT(adjoints[t], carry);
+        assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
+        J_hist_.applyT(adjoints[t], carry);
 
         checkSize(carry, dims_.nst);
 
@@ -335,7 +368,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
       }
     }
 
-    init_param_jac_t_(prm, init_state_grad, param_adj);
+    init_param_JT_(prm, init_state_grad, param_adj);
     checkSize(param_adj, numParams());
     for (Index i = 0; i < out.size(); ++i)
     {
@@ -358,7 +391,7 @@ void TimeReducedFunctional::assemble(TimeContext     ctx,
   }
   out.finalize();
   assembly_seconds_ += elapsedSeconds(assembly_begin);
-  ++assembly_calls_;
+  ++assm_calls_;
 }
 
 void TimeReducedFunctional::notify(const char* phase,

@@ -19,7 +19,7 @@ namespace assembly
 
 using LocalTimeVolumeResidualFunction =
     void (*)(Index       step,
-             Index       cell,
+             Index       elem,
              Index       nq,
              Index       nn,
              Index       dim,
@@ -110,7 +110,7 @@ public:
   }
 
   void res(Index                    step,
-           Index                    ic,
+           Index                    ie,
            problem::TimeHistoryView hist,
            const Vector<Real>&      nxt,
            const Vector<Real>&      prm,
@@ -121,9 +121,9 @@ public:
     const Vector<Real> residual_prm = makeResidualPrm(prm);
 
     ElementValues vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
     Residual(step,
-             ic,
+             ie,
              vals.numQuadraturePoints(),
              vals.numNodes(),
              vals.dim(),
@@ -141,7 +141,7 @@ public:
   }
 
   void jacobian(Index                    step,
-                Index                    ic,
+                Index                    ie,
                 problem::VariableBlock   wrt,
                 problem::TimeHistoryView hist,
                 const Vector<Real>&      nxt,
@@ -153,20 +153,20 @@ public:
     if (wrt.isHistoryState())
     {
       historyStateJac(
-          step, ic, wrt.historyLag(), hist, nxt, prm, out);
+          step, ie, wrt.historyLag(), hist, nxt, prm, out);
       return;
     }
     if (wrt.isNextState())
     {
-      nextStateJac(step, ic, hist, nxt, prm, out);
+      nextStateJac(step, ie, hist, nxt, prm, out);
       return;
     }
-    paramJac(step, ic, hist, nxt, prm, out);
+    paramJac(step, ie, hist, nxt, prm, out);
   }
 
 private:
   void historyStateJac(Index                    step,
-                       Index                    ic,
+                       Index                    ie,
                        Index                    lag,
                        problem::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
@@ -188,7 +188,7 @@ private:
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
     ElementValues      vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(nres_);
     Vector<Real> out_adj(nres_);
@@ -205,7 +205,7 @@ private:
                               enzyme_const,
                               step,
                               enzyme_const,
-                              ic,
+                              ie,
                               enzyme_const,
                               vals.numQuadraturePoints(),
                               enzyme_const,
@@ -245,7 +245,7 @@ private:
     }
 #else
     (void) step;
-    (void) ic;
+    (void) ie;
     (void) hist;
     (void) nxt;
     (void) prm;
@@ -254,7 +254,7 @@ private:
   }
 
   void nextStateJac(Index                    step,
-                    Index                    ic,
+                    Index                    ie,
                     problem::TimeHistoryView hist,
                     const Vector<Real>&      nxt,
                     const Vector<Real>&      prm,
@@ -269,7 +269,7 @@ private:
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
     ElementValues      vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(nres_);
     Vector<Real> out_adj(nres_);
@@ -286,7 +286,7 @@ private:
                               enzyme_const,
                               step,
                               enzyme_const,
-                              ic,
+                              ie,
                               enzyme_const,
                               vals.numQuadraturePoints(),
                               enzyme_const,
@@ -325,7 +325,7 @@ private:
     }
 #else
     (void) step;
-    (void) ic;
+    (void) ie;
     (void) hist;
     (void) nxt;
     (void) prm;
@@ -334,7 +334,7 @@ private:
   }
 
   void paramJac(Index                    step,
-                Index                    ic,
+                Index                    ie,
                 problem::TimeHistoryView hist,
                 const Vector<Real>&      nxt,
                 const Vector<Real>&      prm,
@@ -349,7 +349,7 @@ private:
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
     ElementValues      vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(nres_);
     Vector<Real> out_adj(nres_);
@@ -366,7 +366,7 @@ private:
                               enzyme_const,
                               step,
                               enzyme_const,
-                              ic,
+                              ie,
                               enzyme_const,
                               vals.numQuadraturePoints(),
                               enzyme_const,
@@ -405,7 +405,7 @@ private:
     }
 #else
     (void) step;
-    (void) ic;
+    (void) ie;
     (void) hist;
     (void) nxt;
     (void) prm;

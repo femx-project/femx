@@ -10,7 +10,7 @@
 namespace femx
 {
 
-class Cell
+class Element
 {
 public:
   using Node = std::array<Real, 3>;
@@ -25,22 +25,22 @@ public:
     Hexahedron
   };
 
-  Cell() = default;
+  Element() = default;
 
-  Cell(Vector<Index> nids,
-       Vector<Node>  nodes,
-       Shape         shape      = Shape::Unknown,
-       Index         edim       = 0,
-       Index         entity_tag = 0,
-       Index         ptag       = 0,
-       std::string   pname      = {})
-    : node_ids_(std::move(nids)),
+  Element(Vector<Index> nids,
+          Vector<Node>  nodes,
+          Shape         shape = Shape::Unknown,
+          Index         edim  = 0,
+          Index         etag  = 0,
+          Index         ptag  = 0,
+          std::string   pname = {})
+    : nids_(std::move(nids)),
       nodes_(std::move(nodes)),
       shape_(shape),
-      entity_dim_(edim),
-      entity_tag_(entity_tag),
-      physical_tag_(ptag),
-      physical_name_(std::move(pname))
+      edim_(edim),
+      etag_(etag),
+      ptag_(ptag),
+      pname_(std::move(pname))
   {
   }
 
@@ -51,12 +51,12 @@ public:
 
   const Index* nodeIdsData() const
   {
-    return node_ids_.data();
+    return nids_.data();
   }
 
   const Vector<Index>& nodeIds() const
   {
-    return node_ids_;
+    return nids_;
   }
 
   const Node& node(Index in) const
@@ -71,32 +71,32 @@ public:
 
   Index entityDim() const noexcept
   {
-    return entity_dim_;
+    return edim_;
   }
 
   Index entityTag() const noexcept
   {
-    return entity_tag_;
+    return etag_;
   }
 
   Index physicalTag() const noexcept
   {
-    return physical_tag_;
+    return ptag_;
   }
 
   const std::string& physicalName() const noexcept
   {
-    return physical_name_;
+    return pname_;
   }
 
 private:
-  Vector<Index> node_ids_;
+  Vector<Index> nids_;
   Vector<Node>  nodes_;
   Shape         shape_{Shape::Unknown};
-  Index         entity_dim_{0};
-  Index         entity_tag_{0};
-  Index         physical_tag_{0};
-  std::string   physical_name_;
+  Index         edim_{0};
+  Index         etag_{0};
+  Index         ptag_{0};
+  std::string   pname_;
 };
 
 } // namespace femx

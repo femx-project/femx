@@ -29,6 +29,7 @@ struct KspOptions
 
   bool nonzero_guess = false;
   bool use_opts_db   = true;
+  bool check_finite  = false;
 };
 
 /** @brief PETSc KSP adapter for linalg::LinearSolver. */

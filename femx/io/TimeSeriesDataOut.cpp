@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/fem/Cell.hpp>
+#include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 
@@ -65,20 +65,20 @@ void checkMesh(const Mesh& mesh)
     throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const Index       cn    = mesh.cells().front().numNodes();
-  const Cell::Shape shape = mesh.cells().front().shape();
-  if (shape != Cell::Shape::Triangle && shape != Cell::Shape::Quadrilateral && shape != Cell::Shape::Tetrahedron)
+  const Index          cn    = mesh.elems().front().numNodes();
+  const Element::Shape shape = mesh.elems().front().shape();
+  if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
   {
     throw runtime_error(
-        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
+        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
   }
 
-  for (Index ic = 1; ic < mesh.numElems(); ++ic)
+  for (Index ie = 1; ie < mesh.numElems(); ++ie)
   {
-    const auto& cell = mesh.cell(ic);
-    if (cell.numNodes() != cn || cell.shape() != shape)
+    const auto& elem = mesh.elem(ie);
+    if (elem.numNodes() != cn || elem.shape() != shape)
     {
-      throw runtime_error("TimeSeriesDataOut supports one cell type per mesh");
+      throw runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
   }
 }
@@ -233,26 +233,26 @@ void writeMesh(hid_t file, const Mesh& mesh)
     throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const Index       cn    = mesh.cells().front().numNodes();
-  const Cell::Shape shape = mesh.cells().front().shape();
-  if (shape != Cell::Shape::Triangle && shape != Cell::Shape::Quadrilateral && shape != Cell::Shape::Tetrahedron)
+  const Index          cn    = mesh.elems().front().numNodes();
+  const Element::Shape shape = mesh.elems().front().shape();
+  if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
   {
     throw runtime_error(
-        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron cells");
+        "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
   }
 
   Vector<Index> topology(mesh.numElems() * cn);
-  for (Index ic = 0; ic < mesh.numElems(); ++ic)
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const auto& cell = mesh.cell(ic);
-    if (cell.numNodes() != cn || cell.shape() != shape)
+    const auto& elem = mesh.elem(ie);
+    if (elem.numNodes() != cn || elem.shape() != shape)
     {
-      throw runtime_error("TimeSeriesDataOut supports one cell type per mesh");
+      throw runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
-    const Index* nodes = mesh.cellNodeIds(ic);
+    const Index* nids = mesh.elemNodeIds(ie);
     for (Index i = 0; i < cn; ++i)
     {
-      topology[ic * cn + i] = nodes[i];
+      topology[ie * cn + i] = nids[i];
     }
   }
 
@@ -331,14 +331,14 @@ void writeXdmf(const string&                          fname,
     {
       throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
     }
-    const Index       cn            = mesh.cells().front().numNodes();
-    const Cell::Shape shape         = mesh.cells().front().shape();
-    const char*       topology_type = "Triangle";
-    if (shape == Cell::Shape::Quadrilateral)
+    const Index          cn            = mesh.elems().front().numNodes();
+    const Element::Shape shape         = mesh.elems().front().shape();
+    const char*          topology_type = "Triangle";
+    if (shape == Element::Shape::Quadrilateral)
     {
       topology_type = "Quadrilateral";
     }
-    else if (shape == Cell::Shape::Tetrahedron)
+    else if (shape == Element::Shape::Tetrahedron)
     {
       topology_type = "Tetrahedron";
     }

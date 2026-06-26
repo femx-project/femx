@@ -17,12 +17,12 @@ Real absoluteValue(Real value)
 Real advectionDerivative(const LocalElementValues& ev,
                          const QPState&            qp,
                          Index                     iq,
-                         Index                     node)
+                         Index                     in)
 {
   Real value = 0.0;
   for (Index d = 0; d < ev.dim; ++d)
   {
-    value += ev.grad(iq, node, d) * qp.u_adv[d];
+    value += ev.grad(iq, in, d) * qp.u_adv[d];
   }
   return value;
 }
@@ -47,25 +47,25 @@ void evalQp(const LocalElementValues& ev,
             QPState&                  qp)
 {
   qp = {};
-  for (Index node = 0; node < ev.nn; ++node)
+  for (Index in = 0; in < ev.nn; ++in)
   {
     for (Index c = 0; c < ev.dim; ++c)
     {
-      const Real value  = state[vdof(node, c, ev.dim)];
-      qp.u[c]          += ev.shape(iq, node) * value;
+      const Real value  = state[vdof(in, c, ev.dim)];
+      qp.u[c]          += ev.shape(iq, in) * value;
       for (Index d = 0; d < ev.dim; ++d)
       {
-        qp.grad_u[c][d] += ev.grad(iq, node, d) * value;
+        qp.grad_u[c][d] += ev.grad(iq, in, d) * value;
       }
     }
   }
 
-  for (Index node = 0; node < ev.nn; ++node)
+  for (Index in = 0; in < ev.nn; ++in)
   {
     for (Index d = 0; d < ev.dim; ++d)
     {
       qp.u_adv[d] +=
-          ev.shape(iq, node) * adv_state[vdof(node, d, ev.dim)];
+          ev.shape(iq, in) * adv_state[vdof(in, d, ev.dim)];
     }
   }
 
@@ -105,12 +105,12 @@ Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
   }
 
   Real sum = 0.0;
-  for (Index node = 0; node < ev.nn; ++node)
+  for (Index in = 0; in < ev.nn; ++in)
   {
     Real grad_dir = 0.0;
     for (Index d = 0; d < ev.dim; ++d)
     {
-      grad_dir += dir[d] * ev.grad(iq, node, d);
+      grad_dir += dir[d] * ev.grad(iq, in, d);
     }
     sum += absoluteValue(grad_dir);
   }
@@ -151,14 +151,14 @@ void stabilization(const QPState&     qp,
 
 } // namespace
 
-Index vdof(Index node, Index comp, Index dim)
+Index vdof(Index in, Index comp, Index dim)
 {
-  return dim * node + comp;
+  return dim * in + comp;
 }
 
-Index pdof(Index node, Index nn, Index dim)
+Index pdof(Index in, Index nn, Index dim)
 {
-  return dim * nn + node;
+  return dim * nn + in;
 }
 
 Index numLocalDofs(Index nn, Index dim)

@@ -70,9 +70,9 @@ public:
     status = true;
 
     QuadraticResidual            problem;
-    linalg::DenseMatrixOperator  state_jac;
-    linalg::DenseMatrixOperator  param_jac;
-    problem::MatrixLinearization lin(state_jac, param_jac);
+    linalg::DenseMatrixOperator  J_state;
+    linalg::DenseMatrixOperator  J_param;
+    problem::MatrixLinearization lin(J_state, J_param);
     linalg::DenseLinearSolver    lin_solver;
     state::NewtonStateSolver     solver(problem, lin, lin_solver);
     solver.opts().residual_tolerance = 1.0e-13;

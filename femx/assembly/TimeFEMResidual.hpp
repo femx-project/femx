@@ -16,7 +16,7 @@ namespace femx
 namespace assembly
 {
 
-/** @brief problem::TimeResidual assembled from cell-local FEM time kernels. */
+/** @brief problem::TimeResidual assembled from elem-local FEM time kernels. */
 class TimeFEMResidual final : public problem::TimeResidual
 {
 public:
@@ -51,7 +51,7 @@ public:
                   DofLayout                param_layout,
                   const TimeElementKernel& ker);
 
-  void setCellRange(Index begin, Index end);
+  void setElemRange(Index begin, Index end);
 
   problem::TimeDims dims() const override;
 
@@ -73,7 +73,7 @@ public:
                    linalg::MatrixBuilder&      out) const override;
 
 private:
-  Index numCells() const;
+  Index numElems() const;
   Index numParams() const;
   Index numHistoryStates() const;
 
@@ -86,19 +86,19 @@ private:
                       const Vector<Real>&    dir) const;
 
   void gatherHistory(const problem::TimeContext& ctx,
-                     Index                       ic,
+                     Index                       ie,
                      Vector<Real>&               local) const;
 
-  Vector<Real> gatherParam(Index ic, const Vector<Real>& global) const;
+  Vector<Real> gatherParam(Index ie, const Vector<Real>& global) const;
 
   static void gather(const DofLayout&    lyt,
                      const Vector<Real>& global,
-                     Index               ic,
+                     Index               ie,
                      Vector<Real>&       local);
 
   static void gather(const DofLayout&       lyt,
                      VectorView<const Real> global,
-                     Index                  ic,
+                     Index                  ie,
                      Vector<Real>&          local);
 
   static void matVec(const DenseMatrix&  mat,
@@ -109,7 +109,7 @@ private:
                       const Vector<Real>& x,
                       Vector<Real>&       out);
 
-  static void checkDof(Index dof, Index size);
+  static void checkDof(Index id, Index size);
 
 private:
   Index                    nt_{0};
@@ -118,8 +118,8 @@ private:
   DofLayout                next_state_layout_;
   std::optional<DofLayout> param_layout_;
   const TimeElementKernel& kernel_;
-  Index                    cell_begin_{0};
-  Index                    cell_end_{0};
+  Index                    elem_begin_{0};
+  Index                    elem_end_{0};
 };
 
 } // namespace assembly

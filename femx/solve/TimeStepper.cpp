@@ -195,7 +195,7 @@ void TimeStepper::solveStep(Index               step,
   Vector<Real>      rhs;
   Vector<Real>      update;
   Vector<Real>      prev;
-  NextStateJacobian next_jac(*this);
+  NextStateJacobian J_next(*this);
   copyHistoryState(hist, numStates(), prev);
 
   TimeContext ctx;
@@ -229,8 +229,8 @@ void TimeStepper::solveStep(Index               step,
       rhs[i] = -res[i];
     }
 
-    next_jac.reset(ctx);
-    lin_solver_.solve(next_jac, rhs, update);
+    J_next.reset(ctx);
+    lin_solver_.solve(J_next, rhs, update);
     if (update.size() != numStates())
     {
       throw runtime_error("TimeStepper update size mismatch");

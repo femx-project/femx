@@ -3,6 +3,7 @@
 #include <petsctao.h>
 
 #include <functional>
+#include <iostream>
 #include <stdexcept>
 #include <utility>
 
@@ -83,8 +84,15 @@ public:
             adapter->grad_, grad));
       }
     }
+    catch (const std::exception& e)
+    {
+      std::cerr << "TAO value/gradient callback failed: " << e.what()
+                << '\n';
+      return PETSC_ERR_LIB;
+    }
     catch (...)
     {
+      std::cerr << "TAO value/gradient callback failed with unknown exception\n";
       return PETSC_ERR_LIB;
     }
 

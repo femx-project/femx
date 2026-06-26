@@ -28,8 +28,8 @@ public:
   const Index* cellNumDofsData() const;
 
   Index mapToCsr(Index coo_index) const;
-  Index elemCooOffset(Index ic) const;
-  Index elemNumDofs(Index ic) const;
+  Index elemCooOffset(Index ie) const;
+  Index elemNumDofs(Index ie) const;
 
 private:
   void countCooEntries(const IndexSetList& cdofs);

@@ -172,25 +172,25 @@ Vector<ControlSpatialRegularization::Edge> controlSpatialEdges(
 
   for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof  = ctr.stateDof(i);
-    const Index node = dof / comps;
-    const Index comp = dof % comps;
-    if (node < 0
-        || node >= space.mesh().numNodes()
-        || u_dof.globalDof(node, comp) != dof)
+    const Index id   = ctr.stateDof(i);
+    const Index in   = id / comps;
+    const Index comp = id % comps;
+    if (in < 0
+        || in >= space.mesh().numNodes()
+        || u_dof.globalDof(in, comp) != id)
     {
       throw runtime_error(
           "controlSpatialEdges expected velocity control dofs");
     }
-    ctr_index[{node, comp}] = i;
+    ctr_index[{in, comp}] = i;
   }
 
   set<ControlSpatialRegularization::Edge> unique_edges;
   const auto                              add_edge =
-      [&](Index node0, Index node1, Index comp)
+      [&](Index in0, Index in1, Index comp)
   {
-    const auto it0 = ctr_index.find({node0, comp});
-    const auto it1 = ctr_index.find({node1, comp});
+    const auto it0 = ctr_index.find({in0, comp});
+    const auto it1 = ctr_index.find({in1, comp});
     if (it0 == ctr_index.end() || it1 == ctr_index.end())
     {
       return;
@@ -275,15 +275,15 @@ const BCsParams& pressureGaugeBoundary(const Params& prm)
 }
 
 void addFixedValue(map<Index, Vector<Real>>& vals,
-                   Index                     dof,
+                   Index                     id,
                    Index                     step,
                    Index                     steps,
                    Real                      value)
 {
-  auto it = vals.find(dof);
+  auto it = vals.find(id);
   if (it == vals.end())
   {
-    it = vals.emplace(dof, Vector<Real>(steps)).first;
+    it = vals.emplace(id, Vector<Real>(steps)).first;
     for (Index i = 0; i < steps; ++i)
     {
       it->second[i] = numeric_limits<Real>::quiet_NaN();
@@ -293,8 +293,8 @@ void addFixedValue(map<Index, Vector<Real>>& vals,
            && abs(it->second[step] - value) > 1.0e-12)
   {
     throw runtime_error(
-        "fixed boundary has conflicting values at dof "
-        + to_string(dof) + ", step " + to_string(step));
+        "fixed boundary has conflicting values at id "
+        + to_string(id) + ", step " + to_string(step));
   }
   it->second[step] = value;
 }
@@ -365,12 +365,12 @@ Vector<Index> fixedvdofsForBc(const MixedFESpace& space,
   const auto    u_dof = space.field(0);
   const Index   nd    = u_dof.numComponents();
   Vector<Index> dofs;
-  for (Index dof : bdry.stateDofs())
+  for (Index id : bdry.stateDofs())
   {
-    const Index comp = dof % nd;
+    const Index comp = id % nd;
     if (constantVelocityComponent(bc, comp))
     {
-      dofs.push_back(dof);
+      dofs.push_back(id);
     }
   }
   return dofs;
@@ -397,11 +397,11 @@ DirichletControl makeBoundaryControl(const MixedFESpace& space,
 
   Vector<Index> adofs;
   adofs.reserve(bdry.numDofs());
-  for (Index dof : bdry.stateDofs())
+  for (Index id : bdry.stateDofs())
   {
-    if (!contains(fvdofs, dof))
+    if (!contains(fvdofs, id))
     {
-      adofs.push_back(dof);
+      adofs.push_back(id);
     }
   }
   if (adofs.empty())
@@ -422,8 +422,8 @@ void addConstantVelocityValues(const MixedFESpace&       space,
   const Index nd    = u_dof.numComponents();
   for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof   = ctr.stateDof(i);
-    const Index comp  = dof % nd;
+    const Index id    = ctr.stateDof(i);
+    const Index comp  = id % nd;
     const auto  value = constantVelocityComponent(bc, comp);
     if (!value)
     {
@@ -431,7 +431,7 @@ void addConstantVelocityValues(const MixedFESpace&       space,
     }
     for (Index step = 0; step < steps; ++step)
     {
-      addFixedValue(vals, dof, step, steps, *value);
+      addFixedValue(vals, id, step, steps, *value);
     }
   }
 }
@@ -444,9 +444,9 @@ Real profileVelocityValue(const MixedFESpace&     space,
 {
   const auto  u_dof = space.field(0);
   const Index nd    = u_dof.numComponents();
-  const Index dof   = ctr.stateDof(i);
-  const Index node  = dof / nd;
-  const Index comp  = dof - nd * node;
+  const Index id    = ctr.stateDof(i);
+  const Index in    = id / nd;
+  const Index comp  = id - nd * in;
 
   const auto prof = poiseuilleProfile(
       target.cen, target.nrm, target.rad);
@@ -462,7 +462,7 @@ Real profileVelocityValue(const MixedFESpace&     space,
           target.qty, "poiseuille", target.bulk_speed, 1.0, 1.5)
       * pulse;
   return velocityComponent(
-      prof, space.mesh().node(node), peak_speed, comp);
+      prof, space.mesh().node(in), peak_speed, comp);
 }
 
 Real controlStepTime(Index step,
@@ -577,15 +577,15 @@ Vector<LinearInterpolation> controlTimeStencils(
 }
 
 void addInitialVelocityValue(map<Index, Real>& vals,
-                             Index             dof,
+                             Index             id,
                              Real              value)
 {
-  const auto [it, inserted] = vals.emplace(dof, value);
+  const auto [it, inserted] = vals.emplace(id, value);
   if (!inserted && abs(it->second - value) > 1.0e-12)
   {
     throw runtime_error(
-        "initial velocity boundary has conflicting values at dof "
-        + to_string(dof));
+        "initial velocity boundary has conflicting values at id "
+        + to_string(id));
   }
 }
 
@@ -614,14 +614,14 @@ void addInitialConstantVelocityValues(const MixedFESpace&     space,
   const Index nd    = u_dof.numComponents();
   for (Index i = 0; i < ctr.numDofs(); ++i)
   {
-    const Index dof   = ctr.stateDof(i);
-    const Index comp  = dof % nd;
+    const Index id    = ctr.stateDof(i);
+    const Index comp  = id % nd;
     const auto  value = constantVelocityComponent(bc, comp);
     if (!value && !fill_missing)
     {
       continue;
     }
-    addInitialVelocityValue(vals, dof, value.value_or(0.0));
+    addInitialVelocityValue(vals, id, value.value_or(0.0));
   }
 }
 
@@ -702,7 +702,7 @@ InitialVelocityStateSolver::InitialVelocityStateSolver(
   if (vdofs_.size() != layout_.niv)
   {
     throw runtime_error(
-        "InitialVelocityStateSolver velocity dof size mismatch");
+        "InitialVelocityStateSolver velocity id size mismatch");
   }
   if (x0_.empty())
   {
@@ -1026,11 +1026,11 @@ Vector<Index> initialvdofs(const MixedFESpace& space)
 
   Vector<Index> dofs;
   dofs.reserve(nodes * comps);
-  for (Index node = 0; node < nodes; ++node)
+  for (Index in = 0; in < nodes; ++in)
   {
     for (Index comp = 0; comp < comps; ++comp)
     {
-      dofs.push_back(u_dof.globalDof(node, comp));
+      dofs.push_back(u_dof.globalDof(in, comp));
     }
   }
   return dofs;
@@ -1055,11 +1055,11 @@ Vector<Index> initialvdofs(const MixedFESpace&     space,
   const Vector<Index> all = initialvdofs(space);
   Vector<Index>       out;
   out.reserve(all.size());
-  for (Index dof : all)
+  for (Index id : all)
   {
-    if (!contains(constrained, dof))
+    if (!contains(constrained, id))
     {
-      out.push_back(dof);
+      out.push_back(id);
     }
   }
   return out;
@@ -1085,11 +1085,11 @@ Vector<Real> initialVelocityBoundaryState(
 
     const Vector<Index> fdofs = fixedvdofsForBc(space, bc);
     Vector<Index>       adofs;
-    for (Index dof : fdofs)
+    for (Index id : fdofs)
     {
-      if (!contains(ctr.stateDofs(), dof))
+      if (!contains(ctr.stateDofs(), id))
       {
-        adofs.push_back(dof);
+        adofs.push_back(id);
       }
     }
     if (adofs.empty())
@@ -1108,7 +1108,7 @@ Vector<Real> initialVelocityBoundaryState(
     if (entry.first < 0 || entry.first >= out.size())
     {
       throw runtime_error(
-          "initial velocity boundary dof is out of range");
+          "initial velocity boundary id is out of range");
     }
     out[entry.first] = entry.second;
   }
@@ -1169,11 +1169,11 @@ FixedDofValues fixedDofValues(const MixedFESpace&     space,
 
     const Vector<Index> fdofs = fixedvdofsForBc(space, bc);
     Vector<Index>       adofs;
-    for (Index dof : fdofs)
+    for (Index id : fdofs)
     {
-      if (!contains(ctr.stateDofs(), dof))
+      if (!contains(ctr.stateDofs(), id))
       {
-        adofs.push_back(dof);
+        adofs.push_back(id);
       }
     }
     if (adofs.empty())
@@ -1311,8 +1311,8 @@ Vector<Real> initialControlParams(const MixedFESpace&     space,
     VectorView<Real> values = levels.block(level);
     for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof  = ctr.stateDof(i);
-      const Index comp = dof % nd;
+      const Index id   = ctr.stateDof(i);
+      const Index comp = id % nd;
       if (const auto value = componentValue(bc, comp))
       {
         values[i] = *value;
@@ -1414,13 +1414,13 @@ void setInitialVelocityParams(const Vector<Index>&          vdofs,
   VectorView<Real> init = lyt.initVel(prm);
   for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = vdofs[i];
-    if (dof < 0 || dof >= state.size())
+    const Index id = vdofs[i];
+    if (id < 0 || id >= state.size())
     {
       throw runtime_error(
-          "setInitialVelocityParams velocity dof is out of range");
+          "setInitialVelocityParams velocity id is out of range");
     }
-    init[i] = state[dof];
+    init[i] = state[id];
   }
 }
 
@@ -1483,7 +1483,7 @@ void initialStateFromParams(const Vector<Index>&          vdofs,
   if (vdofs.size() != lyt.niv)
   {
     throw runtime_error(
-        "initialStateFromParams velocity dof size mismatch");
+        "initialStateFromParams velocity id size mismatch");
   }
 
   if (base_state.empty())
@@ -1495,13 +1495,13 @@ void initialStateFromParams(const Vector<Index>&          vdofs,
   const VectorView<const Real> init = lyt.initVel(prm);
   for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = vdofs[i];
-    if (dof < 0 || dof >= out.size())
+    const Index id = vdofs[i];
+    if (id < 0 || id >= out.size())
     {
       throw runtime_error(
-          "initialStateFromParams velocity dof is out of range");
+          "initialStateFromParams velocity id is out of range");
     }
-    out[dof] = init[i];
+    out[id] = init[i];
   }
 }
 
@@ -1514,20 +1514,20 @@ void applyInitialVelocityParamJacT(
   if (vdofs.size() != lyt.niv)
   {
     throw runtime_error(
-        "applyInitialVelocityParamJacT velocity dof size mismatch");
+        "applyInitialVelocityParamJacT velocity id size mismatch");
   }
 
   resizeOrZero(out, lyt.ntot);
   VectorView<Real> init = lyt.initVel(out);
   for (Index i = 0; i < vdofs.size(); ++i)
   {
-    const Index dof = vdofs[i];
-    if (dof < 0 || dof >= state_grad.size())
+    const Index id = vdofs[i];
+    if (id < 0 || id >= state_grad.size())
     {
       throw runtime_error(
-          "applyInitialVelocityParamJacT velocity dof is out of range");
+          "applyInitialVelocityParamJacT velocity id is out of range");
     }
-    init[i] = state_grad[dof];
+    init[i] = state_grad[id];
   }
 }
 
@@ -1552,8 +1552,8 @@ void controlBounds(const MixedFESpace&     space,
   {
     for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof  = ctr.stateDof(i);
-      const Index comp = dof % nd;
+      const Index id   = ctr.stateDof(i);
+      const Index comp = id % nd;
       const Index idx  = ctr.paramIndex(step, i);
 
       const Real nrm_comp = nrm[comp];
@@ -1588,8 +1588,8 @@ void controlBounds(const MixedFESpace&     space,
   {
     for (Index i = 0; i < ctr.numDofs(); ++i)
     {
-      const Index dof  = ctr.stateDof(i);
-      const Index comp = dof % nd;
+      const Index id   = ctr.stateDof(i);
+      const Index comp = id % nd;
       const Index idx  = ctr.paramIndex(step, i);
 
       const Real nrm_comp = nrm[comp];
@@ -1714,7 +1714,7 @@ AppNsVar::AppNsVar(const Params& prm)
             fixed.vals,
             ctr_time_stencils),
     x0(initialVelocityBoundaryState(space, prm, ctr)),
-    pat(SparsityPatternBuilder::build(space)),
+    pettern(SparsityPatternBuilder::build(space)),
     prm0(initialInverseParams(
         space, ctr, prm, lyt, steps, dt, ctr_times))
 {

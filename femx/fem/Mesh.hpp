@@ -6,7 +6,7 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
-#include <femx/fem/Cell.hpp>
+#include <femx/fem/Element.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -15,7 +15,7 @@ namespace femx
 class Mesh
 {
 public:
-  using Node = Cell::Node;
+  using Node = Element::Node;
 
   struct PhysicalName
   {
@@ -26,12 +26,12 @@ public:
 
   struct BoundaryFacet
   {
-    Index         dim        = 0;
-    Index         entity_tag = 0;
-    Index         ptag       = 0;
-    std::string   pname;
-    Cell::Shape   shape = Cell::Shape::Unknown;
-    Vector<Index> nids;
+    Index          dim  = 0;
+    Index          etag = 0;
+    Index          ptag = 0;
+    std::string    pname;
+    Element::Shape shape = Element::Shape::Unknown;
+    Vector<Index>  nids;
   };
 
   Mesh() = default;
@@ -60,17 +60,17 @@ public:
 
   Index numElems() const noexcept
   {
-    return cells_.size();
+    return elems_.size();
   }
 
-  const Vector<Cell>& cells() const noexcept
+  const Vector<Element>& elems() const noexcept
   {
-    return cells_;
+    return elems_;
   }
 
-  const Cell& cell(Index ic) const
+  const Element& elem(Index ie) const
   {
-    return cells_[ic];
+    return elems_[ie];
   }
 
   const Vector<BoundaryFacet>& boundaryFacets() const noexcept
@@ -112,9 +112,9 @@ public:
     return nodes_[in];
   }
 
-  const Index* cellNodeIds(Index ic) const
+  const Index* elemNodeIds(Index ie) const
   {
-    return cells_[ic].nodeIdsData();
+    return elems_[ie].nodeIdsData();
   }
 
   void addNode(const Node& node)
@@ -122,15 +122,15 @@ public:
     nodes_.push_back(node);
   }
 
-  void addCell(const Vector<Index>& nids)
+  void addElem(const Vector<Index>& nids)
   {
-    addCell(nids, Cell::Shape::Unknown, dim_, 0, 0, {});
+    addElem(nids, Element::Shape::Unknown, dim_, 0, 0, {});
   }
 
-  void addCell(const Vector<Index>& nids,
-               Cell::Shape          shape,
+  void addElem(const Vector<Index>& nids,
+               Element::Shape       shape,
                Index                edim,
-               Index                entity_tag,
+               Index                etag,
                Index                ptag,
                std::string          pname)
   {
@@ -140,11 +140,11 @@ public:
     {
       cn.push_back(node(in));
     }
-    cells_.emplace_back(nids,
+    elems_.emplace_back(nids,
                         std::move(cn),
                         shape,
                         edim,
-                        entity_tag,
+                        etag,
                         ptag,
                         std::move(pname));
   }
@@ -164,7 +164,7 @@ public:
 private:
   Index                 dim_{0};
   Vector<Node>          nodes_;
-  Vector<Cell>          cells_;
+  Vector<Element>       elems_;
   Vector<BoundaryFacet> boundary_facets_;
   std::map<std::pair<Index, Index>, std::string>
       physical_names_;

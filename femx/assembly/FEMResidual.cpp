@@ -23,7 +23,7 @@ FEMResidual::FEMResidual(DofLayout            res_layout,
     param_layout_(param_layout),
     kernel_(ker)
 {
-  checkCellCounts();
+  checkElemCounts();
 }
 
 FEMResidual::FEMResidual(DofLayout            state_layout,
@@ -50,12 +50,12 @@ void FEMResidual::res(const Vector<Real>& state,
   Vector<Real> state_e;
   Vector<Real> prm_e;
   Vector<Real> res_e;
-  for (Index ic = 0; ic < numCells(); ++ic)
+  for (Index ie = 0; ie < numElems(); ++ie)
   {
-    gather(state_layout_, state, ic, state_e);
-    gather(param_layout_, prm, ic, prm_e);
-    kernel_.res(ic, state_e, prm_e, res_e);
-    assembler.addVec(ic, res_e, out);
+    gather(state_layout_, state, ie, state_e);
+    gather(param_layout_, prm, ie, prm_e);
+    kernel_.res(ie, state_e, prm_e, res_e);
+    assembler.addVec(ie, res_e, out);
   }
 }
 
@@ -77,7 +77,7 @@ void FEMResidual::linearize(const Vector<Real>& state,
   matrix_out->paramMatrix().finalize();
 }
 
-Index FEMResidual::numCells() const
+Index FEMResidual::numElems() const
 {
   return res_layout_.numElems();
 }
@@ -93,13 +93,13 @@ void FEMResidual::assembleStateJac(const Vector<Real>& state,
 
   Vector<Real> state_e;
   Vector<Real> prm_e;
-  DenseMatrix  jac_e;
-  for (Index ic = 0; ic < numCells(); ++ic)
+  DenseMatrix  J_e;
+  for (Index ie = 0; ie < numElems(); ++ie)
   {
-    gather(state_layout_, state, ic, state_e);
-    gather(param_layout_, prm, ic, prm_e);
-    kernel_.stateJac(ic, state_e, prm_e, jac_e);
-    assembler.addMat(ic, jac_e, out);
+    gather(state_layout_, state, ie, state_e);
+    gather(param_layout_, prm, ie, prm_e);
+    kernel_.stateJac(ie, state_e, prm_e, J_e);
+    assembler.addMat(ie, J_e, out);
   }
 }
 
@@ -114,23 +114,23 @@ void FEMResidual::assembleParamJac(const Vector<Real>& state,
 
   Vector<Real> state_e;
   Vector<Real> prm_e;
-  DenseMatrix  jac_e;
-  for (Index ic = 0; ic < numCells(); ++ic)
+  DenseMatrix  J_e;
+  for (Index ie = 0; ie < numElems(); ++ie)
   {
-    gather(state_layout_, state, ic, state_e);
-    gather(param_layout_, prm, ic, prm_e);
-    kernel_.paramJac(ic, state_e, prm_e, jac_e);
-    assembler.addMat(ic, jac_e, out);
+    gather(state_layout_, state, ie, state_e);
+    gather(param_layout_, prm, ie, prm_e);
+    kernel_.paramJac(ie, state_e, prm_e, J_e);
+    assembler.addMat(ie, J_e, out);
   }
 }
 
-void FEMResidual::checkCellCounts() const
+void FEMResidual::checkElemCounts() const
 {
   if (res_layout_.numElems() != state_layout_.numElems()
       || res_layout_.numElems() != param_layout_.numElems())
   {
     throw runtime_error(
-        "FEMResidual layouts have different cell counts");
+        "FEMResidual layouts have different elem counts");
   }
 }
 
@@ -150,11 +150,11 @@ void FEMResidual::checkGlobalSizes(const Vector<Real>& state,
 
 void FEMResidual::gather(const DofLayout&    lyt,
                          const Vector<Real>& global,
-                         Index               ic,
+                         Index               ie,
                          Vector<Real>&       local)
 {
   Vector<Index> dofs;
-  lyt.elemDofs(ic, dofs);
+  lyt.elemDofs(ie, dofs);
   if (local.size() != dofs.size())
   {
     local.resize(dofs.size());
@@ -166,12 +166,12 @@ void FEMResidual::gather(const DofLayout&    lyt,
 
   for (Index i = 0; i < local.size(); ++i)
   {
-    const Index dof = dofs[i];
-    if (dof < 0 || dof >= global.size())
+    const Index id = dofs[i];
+    if (id < 0 || id >= global.size())
     {
-      throw runtime_error("FEMResidual dof is out of range");
+      throw runtime_error("FEMResidual id is out of range");
     }
-    local[i] = global[dof];
+    local[i] = global[id];
   }
 }
 
@@ -248,13 +248,13 @@ void BoundaryFEMResidual::addStateJac(const Vector<Real>& state,
 
   Vector<Real> state_b;
   Vector<Real> prm_b;
-  DenseMatrix  jac_b;
+  DenseMatrix  J_b;
   for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
   {
     gather(state_layout_, state, ib, state_b);
     gather(param_layout_, prm, ib, prm_b);
-    kernel_.stateJac(ib, res_layout_.facet(ib), state_b, prm_b, jac_b);
-    addMat(res_layout_, state_layout_, ib, jac_b, out);
+    kernel_.stateJac(ib, res_layout_.facet(ib), state_b, prm_b, J_b);
+    addMat(res_layout_, state_layout_, ib, J_b, out);
   }
 }
 
@@ -271,13 +271,13 @@ void BoundaryFEMResidual::addParamJac(const Vector<Real>& state,
 
   Vector<Real> state_b;
   Vector<Real> prm_b;
-  DenseMatrix  jac_b;
+  DenseMatrix  J_b;
   for (Index ib = 0; ib < res_layout_.numFacets(); ++ib)
   {
     gather(state_layout_, state, ib, state_b);
     gather(param_layout_, prm, ib, prm_b);
-    kernel_.paramJac(ib, res_layout_.facet(ib), state_b, prm_b, jac_b);
-    addMat(res_layout_, param_layout_, ib, jac_b, out);
+    kernel_.paramJac(ib, res_layout_.facet(ib), state_b, prm_b, J_b);
+    addMat(res_layout_, param_layout_, ib, J_b, out);
   }
 }
 
@@ -344,9 +344,9 @@ void BoundaryFEMResidual::gather(const BoundaryDofLayout& lyt,
 
   for (Index i = 0; i < local.size(); ++i)
   {
-    const Index dof = dofs[i];
-    checkDof(dof, global.size());
-    local[i] = global[dof];
+    const Index id = dofs[i];
+    checkDof(id, global.size());
+    local[i] = global[id];
   }
 }
 
@@ -401,11 +401,11 @@ void BoundaryFEMResidual::addMat(const BoundaryDofLayout& row_layout,
   }
 }
 
-void BoundaryFEMResidual::checkDof(Index dof, Index size)
+void BoundaryFEMResidual::checkDof(Index id, Index size)
 {
-  if (dof < 0 || dof >= size)
+  if (id < 0 || id >= size)
   {
-    throw runtime_error("BoundaryFEMResidual dof is out of range");
+    throw runtime_error("BoundaryFEMResidual id is out of range");
   }
 }
 

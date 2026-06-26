@@ -110,10 +110,10 @@ void advanceHistoryWindow(Vector<Real>&       hist,
 
 TimeLinearStateSolver::TimeLinearStateSolver(
     const TimeResidual& problem,
-    MatrixOperator&     next_state_jac,
+    MatrixOperator&     J_next,
     LinearSolver&       lin_solver)
   : problem_(problem),
-    next_state_jac_(next_state_jac),
+    J_next_(J_next),
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
@@ -156,11 +156,23 @@ void TimeLinearStateSolver::clearStepMonitor()
   step_monitor_ = nullptr;
 }
 
+void TimeLinearStateSolver::setStopCondition(StopCondition condition)
+{
+  stop_condition_ = std::move(condition);
+}
+
+void TimeLinearStateSolver::clearStopCondition()
+{
+  stop_condition_ = nullptr;
+}
+
 void TimeLinearStateSolver::resetTiming()
 {
   assembly_seconds_ = 0.0;
-  solve_seconds_    = 0.0;
-  assembly_calls_   = 0;
+  solve_sec_        = 0.0;
+  last_assm_sec_    = 0.0;
+  last_solve_sec_   = 0.0;
+  assm_calls_       = 0;
   solve_calls_      = 0;
 }
 
@@ -171,12 +183,22 @@ Real TimeLinearStateSolver::assemblySeconds() const
 
 Real TimeLinearStateSolver::solveSeconds() const
 {
-  return solve_seconds_;
+  return solve_sec_;
+}
+
+Real TimeLinearStateSolver::lastAssemblySeconds() const
+{
+  return last_assm_sec_;
+}
+
+Real TimeLinearStateSolver::lastSolveSeconds() const
+{
+  return last_solve_sec_;
 }
 
 Index TimeLinearStateSolver::assemblyCalls() const
 {
-  return assembly_calls_;
+  return assm_calls_;
 }
 
 Index TimeLinearStateSolver::solveCalls() const
@@ -234,6 +256,7 @@ void TimeLinearStateSolver::solve(const Vector<Real>&  prm,
     Vector<Real> cur_state = Vector<Real>::view(hist.data(), numStates());
     Vector<Real> x_next    = cur_state;
     solveStep(step, prm, hist, x_next);
+    const bool stop = stop_condition_ && stop_condition_(step + 1, x_next, cur_state);
     advanceHistoryWindow(hist, dims_.nhst, numStates(), x_next);
     if (observer)
     {
@@ -242,6 +265,10 @@ void TimeLinearStateSolver::solve(const Vector<Real>&  prm,
     if (step_monitor_)
     {
       step_monitor_(step + 1, numSteps());
+    }
+    if (stop)
+    {
+      break;
     }
   }
 }
@@ -252,6 +279,9 @@ void TimeLinearStateSolver::solveStep(
     const Vector<Real>& hist,
     Vector<Real>&       x_next)
 {
+  last_assm_sec_  = 0.0;
+  last_solve_sec_ = 0.0;
+
   Vector<Real> prev;
   copyHistoryState(hist, numStates(), prev);
 
@@ -271,15 +301,15 @@ void TimeLinearStateSolver::solveStep(
 
   const auto assembly_begin = Clock::now();
   if (!problem_.assembleJac(
-          ctx, VariableBlock::NextState, next_state_jac_))
+          ctx, VariableBlock::NextState, J_next_))
   {
     throw runtime_error(
         "TimeLinearStateSolver requires an assembled next-state Jacobian");
   }
-  next_state_jac_.finalize();
+  J_next_.finalize();
 
   Vector<Real> rhs;
-  next_state_jac_.apply(x_next, rhs);
+  J_next_.apply(x_next, rhs);
   if (rhs.size() != res.size())
   {
     throw runtime_error("TimeLinearStateSolver RHS size mismatch");
@@ -288,15 +318,16 @@ void TimeLinearStateSolver::solveStep(
   {
     rhs[i] -= res[i];
   }
-  problem_.prepareLinearSolve(
-      ctx, VariableBlock::NextState, next_state_jac_, rhs);
-  assembly_seconds_ += elapsedSeconds(assembly_begin);
-  ++assembly_calls_;
+  problem_.prepareLinearSolve(ctx, VariableBlock::NextState, J_next_, rhs);
+  last_assm_sec_     = elapsedSeconds(assembly_begin);
+  assembly_seconds_ += last_assm_sec_;
+  ++assm_calls_;
 
   Vector<Real> next;
   const auto   solve_begin = Clock::now();
-  lin_solver_.solve(next_state_jac_, rhs, next);
-  solve_seconds_ += elapsedSeconds(solve_begin);
+  lin_solver_.solve(J_next_, rhs, next);
+  last_solve_sec_  = elapsedSeconds(solve_begin);
+  solve_sec_      += last_solve_sec_;
   ++solve_calls_;
   if (next.size() != numStates())
   {

@@ -133,12 +133,12 @@ DerivativeCheckResult DerivativeCheck::stateJacTranspose(
 {
   problem.linearize(state, prm, lin);
 
-  Vector<Real> jac_dir;
-  Vector<Real> jt_lam;
-  lin.stateJac().apply(dir, jac_dir);
-  lin.stateJac().applyT(lambda, jt_lam);
+  Vector<Real> J_dir;
+  Vector<Real> JT_lam;
+  lin.stateJac().apply(dir, J_dir);
+  lin.stateJac().applyT(lambda, JT_lam);
 
-  return compareScalars(dot(jac_dir, lambda), dot(dir, jt_lam));
+  return compareScalars(dot(J_dir, lambda), dot(dir, JT_lam));
 }
 
 DerivativeCheckResult DerivativeCheck::paramJacTranspose(
@@ -151,12 +151,12 @@ DerivativeCheckResult DerivativeCheck::paramJacTranspose(
 {
   problem.linearize(state, prm, lin);
 
-  Vector<Real> jac_dir;
-  Vector<Real> jt_lam;
-  lin.paramJac().apply(dir, jac_dir);
-  lin.paramJac().applyT(lambda, jt_lam);
+  Vector<Real> J_dir;
+  Vector<Real> JT_lam;
+  lin.paramJac().apply(dir, J_dir);
+  lin.paramJac().applyT(lambda, JT_lam);
 
-  return compareScalars(dot(jac_dir, lambda), dot(dir, jt_lam));
+  return compareScalars(dot(J_dir, lambda), dot(dir, JT_lam));
 }
 
 Vector<Real> DerivativeCheck::shifted(const Vector<Real>& base,

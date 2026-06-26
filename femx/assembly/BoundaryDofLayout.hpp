@@ -17,7 +17,7 @@ namespace femx
 namespace assembly
 {
 
-/** @brief Boundary-facet-to-global-dof connectivity for node-based spaces. */
+/** @brief Boundary-facet-to-global-id connectivity for node-based spaces. */
 class BoundaryDofLayout
 {
 public:
@@ -169,14 +169,14 @@ private:
     appendFacetDofs(space, facet, full_dofs);
     dofs.reserve(full_dofs.size());
 
-    for (Index full_dof : full_dofs)
+    for (Index id : full_dofs)
     {
-      auto it = compact_dofs.find(full_dof);
+      auto it = compact_dofs.find(id);
       if (it == compact_dofs.end())
       {
         const Index compact_dof =
             static_cast<Index>(compact_dofs.size());
-        it = compact_dofs.emplace(full_dof, compact_dof).first;
+        it = compact_dofs.emplace(id, compact_dof).first;
       }
       dofs.push_back(it->second);
     }

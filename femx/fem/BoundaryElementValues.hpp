@@ -41,7 +41,7 @@ private:
   void reinitSegment(const Mesh& mesh, const Mesh::BoundaryFacet& facet);
   void reinitTriangle(const Mesh& mesh, const Mesh::BoundaryFacet& facet);
 
-  static Cell::Shape effectiveShape(const Mesh::BoundaryFacet& facet);
+  static Element::Shape effectiveShape(const Mesh::BoundaryFacet& facet);
 
   static Real norm3(Real x, Real y, Real z);
 

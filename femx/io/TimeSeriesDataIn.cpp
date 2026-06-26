@@ -59,46 +59,46 @@ SeriesPaths seriesPaths(const string& path)
   return {root, root + ".h5", root + ".xdmf"};
 }
 
-Cell::Shape shapeFromName(const string& name)
+Element::Shape shapeFromName(const string& name)
 {
   if (name == "Triangle")
   {
-    return Cell::Shape::Triangle;
+    return Element::Shape::Triangle;
   }
   if (name == "Quadrilateral")
   {
-    return Cell::Shape::Quadrilateral;
+    return Element::Shape::Quadrilateral;
   }
   if (name == "Tetrahedron")
   {
-    return Cell::Shape::Tetrahedron;
+    return Element::Shape::Tetrahedron;
   }
-  return Cell::Shape::Unknown;
+  return Element::Shape::Unknown;
 }
 
-Cell::Shape inferShape(Index cn,
-                       Index mesh_dim)
+Element::Shape inferShape(Index cn,
+                          Index mesh_dim)
 {
   if (cn == 3 && mesh_dim == 2)
   {
-    return Cell::Shape::Triangle;
+    return Element::Shape::Triangle;
   }
   if (cn == 4 && mesh_dim == 2)
   {
-    return Cell::Shape::Quadrilateral;
+    return Element::Shape::Quadrilateral;
   }
   if (cn == 4 && mesh_dim == 3)
   {
-    return Cell::Shape::Tetrahedron;
+    return Element::Shape::Tetrahedron;
   }
-  throw runtime_error("TimeSeriesDataIn cannot infer mesh cell shape");
+  throw runtime_error("TimeSeriesDataIn cannot infer mesh elem shape");
 }
 
 struct XdmfInfo
 {
   Vector<Real>   times;
   Vector<string> vector_fields;
-  Cell::Shape    shape = Cell::Shape::Unknown;
+  Element::Shape shape = Element::Shape::Unknown;
 };
 
 string xmlAttribute(const string& text,
@@ -170,9 +170,9 @@ XdmfInfo readXdmfInfo(const string& path)
 }
 
 Index meshDim(const Vector<double>& geometry,
-              Cell::Shape           shape)
+              Element::Shape        shape)
 {
-  if (shape == Cell::Shape::Tetrahedron)
+  if (shape == Element::Shape::Tetrahedron)
   {
     return 3;
   }
@@ -281,7 +281,7 @@ Vector<Index> readIntDataset(hid_t            file,
   return data;
 }
 
-Mesh readMesh(hid_t file, Cell::Shape shape)
+Mesh readMesh(hid_t file, Element::Shape shape)
 {
   Vector<hsize_t> geom_dims;
   const auto      geometry =
@@ -303,7 +303,7 @@ Mesh readMesh(hid_t file, Cell::Shape shape)
   const Index elems = static_cast<Index>(topo_dims[0]);
   const Index cn    = static_cast<Index>(topo_dims[1]);
   const Index dim   = meshDim(geometry, shape);
-  if (shape == Cell::Shape::Unknown)
+  if (shape == Element::Shape::Unknown)
   {
     shape = inferShape(cn, dim);
   }
@@ -316,15 +316,15 @@ Mesh readMesh(hid_t file, Cell::Shape shape)
                   geometry[3 * in + 2]});
   }
 
-  for (Index ic = 0; ic < elems; ++ic)
+  for (Index ie = 0; ie < elems; ++ie)
   {
     Vector<Index> nids;
     nids.reserve(cn);
     for (Index i = 0; i < cn; ++i)
     {
-      nids.push_back(topology[ic * cn + i]);
+      nids.push_back(topology[ie * cn + i]);
     }
-    mesh.addCell(nids, shape, dim, 0, 0, {});
+    mesh.addElem(nids, shape, dim, 0, 0, {});
   }
   return mesh;
 }

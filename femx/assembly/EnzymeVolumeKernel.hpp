@@ -17,7 +17,7 @@ namespace assembly
 {
 
 using LocalVolumeResidualFunction =
-    void (*)(Index       cell,
+    void (*)(Index       elem,
              Index       nq,
              Index       nn,
              Index       dim,
@@ -71,7 +71,7 @@ public:
     }
   }
 
-  void res(Index               ic,
+  void res(Index               ie,
            const Vector<Real>& u,
            const Vector<Real>& m,
            Vector<Real>&       out) const override
@@ -80,8 +80,8 @@ public:
     resizeOrZero(out, nres_);
 
     ElementValues vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
-    Residual(ic,
+    vals.reinit(space_.mesh().elem(ie));
+    Residual(ie,
              vals.numQuadraturePoints(),
              vals.numNodes(),
              vals.dim(),
@@ -96,7 +96,7 @@ public:
              out.data());
   }
 
-  void stateJac(Index               ic,
+  void stateJac(Index               ie,
                 const Vector<Real>& u,
                 const Vector<Real>& m,
                 DenseMatrix&        out) const override
@@ -106,7 +106,7 @@ public:
 
 #if defined(FEMX_HAS_ENZYME)
     ElementValues vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(nres_);
     Vector<Real> out_adj(nres_);
@@ -121,7 +121,7 @@ public:
 
       __enzyme_autodiff<void>(reinterpret_cast<void*>(Residual),
                               enzyme_const,
-                              ic,
+                              ie,
                               enzyme_const,
                               vals.numQuadraturePoints(),
                               enzyme_const,
@@ -155,13 +155,13 @@ public:
       }
     }
 #else
-    (void) ic;
+    (void) ie;
     (void) out;
     throwUnavailable();
 #endif
   }
 
-  void paramJac(Index               ic,
+  void paramJac(Index               ie,
                 const Vector<Real>& u,
                 const Vector<Real>& m,
                 DenseMatrix&        out) const override
@@ -171,7 +171,7 @@ public:
 
 #if defined(FEMX_HAS_ENZYME)
     ElementValues vals(space_.finiteElement(), quad_);
-    vals.reinit(space_.mesh().cell(ic));
+    vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(nres_);
     Vector<Real> out_adj(nres_);
@@ -186,7 +186,7 @@ public:
 
       __enzyme_autodiff<void>(reinterpret_cast<void*>(Residual),
                               enzyme_const,
-                              ic,
+                              ie,
                               enzyme_const,
                               vals.numQuadraturePoints(),
                               enzyme_const,
@@ -220,7 +220,7 @@ public:
       }
     }
 #else
-    (void) ic;
+    (void) ie;
     (void) out;
     throwUnavailable();
 #endif

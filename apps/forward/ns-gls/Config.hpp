@@ -23,16 +23,33 @@ namespace femx
 
 using navier::FluidParams;
 
+struct ConvergenceParams
+{
+  bool  enabled                     = false;
+  Real  velocity_relative_tolerance = 1.0e-8;
+  Index min_steps                   = 1;
+};
+
 struct TimeParams
 {
-  Index steps = 100;
-  Real  dt    = 0.01;
+  Index             steps = 100;
+  Real              dt    = 0.01;
+  ConvergenceParams convergence;
 };
 
 struct SolverParams
 {
-  std::string backend = "cpu";
-  std::string method  = "iterative";
+  std::string backend             = "cpu";
+  std::string method              = "iterative";
+  std::string solve               = "fgmres";
+  std::string preconditioner      = "ilu0";
+  std::string gram_schmidt        = "cgs2";
+  std::string sketching           = "count";
+  std::string preconditioner_side = "right";
+  Index       max_iterations      = 5000;
+  Index       restart             = 200;
+  Real        relative_tolerance  = 1.0e-8;
+  bool        flexible            = true;
 };
 
 struct OutputParams

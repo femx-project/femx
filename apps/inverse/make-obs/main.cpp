@@ -6,9 +6,11 @@
 
 #include "Config.hpp"
 #include "TrajectoryObservation.hpp"
+#include <Common.hpp>
 
 using namespace std;
 using namespace femx;
+namespace inv = femx::inverse;
 
 #ifndef FEMX_MAKE_OBS_APP_NAME
 #define FEMX_MAKE_OBS_APP_NAME "make-obs"
@@ -30,18 +32,6 @@ struct AppOptions
   bool           help     = false;
 };
 
-string requireValue(int           argc,
-                    char**        argv,
-                    int&          i,
-                    const string& key)
-{
-  if (i + 1 >= argc)
-  {
-    throw runtime_error("Missing value for " + key);
-  }
-  return string(argv[++i]);
-}
-
 AppOptions parseAppOptions(int argc, char** argv)
 {
   AppOptions opts;
@@ -55,27 +45,27 @@ AppOptions parseAppOptions(int argc, char** argv)
     }
     if (key == "--config" || key == "-config")
     {
-      opts.config_file = requireValue(argc, argv, i, key);
+      opts.config_file = inv::requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--output")
     {
-      opts.output_file = requireValue(argc, argv, i, key);
+      opts.output_file = inv::requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--trajectory")
     {
-      opts.trajectory_file = requireValue(argc, argv, i, key);
+      opts.trajectory_file = inv::requireValue(argc, argv, i, key);
       continue;
     }
     if (key == "--snr")
     {
-      opts.snr = stod(requireValue(argc, argv, i, key));
+      opts.snr = stod(inv::requireValue(argc, argv, i, key));
       continue;
     }
     if (key == "--snr-db")
     {
-      opts.snr_db = stod(requireValue(argc, argv, i, key));
+      opts.snr_db = stod(inv::requireValue(argc, argv, i, key));
       continue;
     }
     if (key == "--no-noise")

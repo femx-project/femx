@@ -265,12 +265,12 @@ public:
 
   virtual void prepareLinearSolve(const TimeContext&     ctx,
                                   VariableBlock          wrt,
-                                  linalg::MatrixBuilder& jac,
+                                  linalg::MatrixBuilder& J,
                                   Vector<Real>&          rhs) const
   {
     (void) ctx;
     (void) wrt;
-    (void) jac;
+    (void) J;
     (void) rhs;
   }
 };

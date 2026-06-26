@@ -19,8 +19,8 @@ namespace linalg
 class SparseMatrixOperator final : public MatrixOperator
 {
 public:
-  explicit SparseMatrixOperator(const CsrPattern& pat)
-    : mat_(pat)
+  explicit SparseMatrixOperator(const CsrPattern& pettern)
+    : mat_(pettern)
   {
   }
 
@@ -66,15 +66,15 @@ public:
     vals[entry] += value;
   }
 
-  bool addLocalMatrix(Index ic, const DenseMatrix& local, bool atomic) override
+  bool addLocalMatrix(Index ie, const DenseMatrix& local, bool atomic) override
   {
     if (atomic)
     {
-      addLocalMatrixAtomic(ic, local);
+      addLocalMatrixAtomic(ie, local);
     }
     else
     {
-      addLocalMatrixSerial(ic, local);
+      addLocalMatrixSerial(ie, local);
     }
     return true;
   }
@@ -140,30 +140,30 @@ public:
   }
 
 private:
-  void checkLocalMatrix(Index ic, const DenseMatrix& local) const
+  void checkLocalMatrix(Index ie, const DenseMatrix& local) const
   {
-    const CsrPattern& pat = mat_.pat();
-    if (ic < 0 || ic >= pat.numElems())
+    const CsrPattern& pettern = mat_.pettern();
+    if (ie < 0 || ie >= pettern.numElems())
     {
-      throw std::runtime_error("SparseMatrixOperator cell index is out of range");
+      throw std::runtime_error("SparseMatrixOperator elem index is out of range");
     }
 
-    const Index nd = pat.elemNumDofs(ic);
+    const Index nd = pettern.elemNumDofs(ie);
     if (local.rows() != nd || local.cols() != nd)
     {
       throw std::runtime_error(
-          "SparseMatrixOperator local matrix size does not match cell dofs");
+          "SparseMatrixOperator local matrix size does not match elem dofs");
     }
   }
 
-  void addLocalMatrixSerial(Index ic, const DenseMatrix& local)
+  void addLocalMatrixSerial(Index ie, const DenseMatrix& local)
   {
-    checkLocalMatrix(ic, local);
+    checkLocalMatrix(ie, local);
 
-    const CsrPattern& pat        = mat_.pat();
-    const Index       nd         = pat.elemNumDofs(ic);
-    const Index       coo_offset = pat.elemCooOffset(ic);
-    const Index*      coo_to_csr = pat.cooToCsrData();
+    const CsrPattern& pettern    = mat_.pettern();
+    const Index       nd         = pettern.elemNumDofs(ie);
+    const Index       coo_offset = pettern.elemCooOffset(ie);
+    const Index*      coo_to_csr = pettern.cooToCsrData();
     const Real*       local_vals = local.data();
     Real*             vals       = mat_.valuesData();
 
@@ -179,14 +179,14 @@ private:
     }
   }
 
-  void addLocalMatrixAtomic(Index ic, const DenseMatrix& local)
+  void addLocalMatrixAtomic(Index ie, const DenseMatrix& local)
   {
-    checkLocalMatrix(ic, local);
+    checkLocalMatrix(ie, local);
 
-    const CsrPattern& pat        = mat_.pat();
-    const Index       nd         = pat.elemNumDofs(ic);
-    const Index       coo_offset = pat.elemCooOffset(ic);
-    const Index*      coo_to_csr = pat.cooToCsrData();
+    const CsrPattern& pettern    = mat_.pettern();
+    const Index       nd         = pettern.elemNumDofs(ie);
+    const Index       coo_offset = pettern.elemCooOffset(ie);
+    const Index*      coo_to_csr = pettern.cooToCsrData();
     const Real*       local_vals = local.data();
     Real*             vals       = mat_.valuesData();
 

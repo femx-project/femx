@@ -2,9 +2,11 @@
 #include <iostream>
 
 #include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/native/DenseMatrixOperator.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeResidual.hpp>
+#include <femx/state/EnsembleReducedFunctional.hpp>
 #include <femx/state/TimeLinearStateSolver.hpp>
 #include <femx/state/TimeReducedFunctional.hpp>
 #include <tests/TestBase.hpp>
@@ -219,9 +221,9 @@ public:
     const Real  coeff = 0.7;
 
     AB2ScalarResidual            problem(steps, dt, coeff);
-    linalg::DenseMatrixOperator  next_jac;
+    linalg::DenseMatrixOperator  J_next;
     linalg::DenseLinearSolver    solver;
-    state::TimeLinearStateSolver state_solver(problem, next_jac, solver);
+    state::TimeLinearStateSolver state_solver(problem, J_next, solver);
 
     Vector<Real> initial(1);
     initial[0] = 0.35;
@@ -273,10 +275,10 @@ public:
     status = true;
 
     AB2ScalarResidual                problem(4, 0.25, 0.7);
-    linalg::DenseMatrixOperator      next_jac;
-    linalg::DenseMatrixOperator      history_jac;
+    linalg::DenseMatrixOperator      J_next;
+    linalg::DenseMatrixOperator      J_hist;
     linalg::DenseLinearSolver        solver;
-    state::TimeLinearStateSolver     state_solver(problem, next_jac, solver);
+    state::TimeLinearStateSolver     state_solver(problem, J_next, solver);
     femx::problem::TimeLinearization adj_lin;
 
     Vector<Real> initial(1);
@@ -285,7 +287,7 @@ public:
 
     TerminalTrackingObjective    obj(problem.dims().nt, 1.1);
     state::TimeReducedFunctional reduced(
-        state_solver, problem, adj_lin, next_jac, history_jac, solver, obj);
+        state_solver, problem, adj_lin, J_next, J_hist, solver, obj);
 
     Vector<Real> prm(1);
     prm[0] = 0.4;
@@ -327,6 +329,79 @@ public:
 
     return status.report(__func__);
   }
+
+  TestOutcome ensembleReducedFunctionalWrapsTimeReducedFunctional()
+  {
+    TestStatus status;
+    status = true;
+
+    AB2ScalarResidual                problem(4, 0.25, 0.7);
+    linalg::DenseMatrixOperator      J_next;
+    linalg::DenseMatrixOperator      J_hist;
+    linalg::DenseLinearSolver        solver;
+    state::TimeLinearStateSolver     state_solver(problem, J_next, solver);
+    femx::problem::TimeLinearization adj_lin;
+
+    Vector<Real> initial(1);
+    initial[0] = 0.35;
+    state_solver.setInitialState(initial);
+
+    TerminalTrackingObjective    obj(problem.dims().nt, 1.1);
+    state::TimeReducedFunctional physical(
+        state_solver, problem, adj_lin, J_next, J_hist, solver, obj);
+
+    Vector<Real> mean{0.4};
+    DenseMatrix  perturbations(1, 2);
+    perturbations(0, 0) = 0.8;
+    perturbations(0, 1) = -0.3;
+    const state::EnsembleBasis basis(mean, perturbations);
+
+    const Real                       prior_weight = 0.6;
+    state::EnsembleReducedFunctional reduced(
+        physical, basis, prior_weight);
+
+    Vector<Real> alpha{0.35, -0.2};
+    Vector<Real> prm;
+    basis.apply(alpha, prm);
+
+    Vector<Real> physical_grad;
+    const Real   physical_value =
+        physical.valueGrad(prm, physical_grad);
+
+    Vector<Real> expected_grad;
+    basis.applyT(physical_grad, expected_grad);
+    for (Index i = 0; i < expected_grad.size(); ++i)
+    {
+      expected_grad[i] += prior_weight * alpha[i];
+    }
+    const Real expected_value =
+        physical_value
+        + 0.5 * prior_weight
+              * (alpha[0] * alpha[0] + alpha[1] * alpha[1]);
+
+    Vector<Real> grad;
+    const Real   value  = reduced.valueGrad(alpha, grad);
+    status             *= near(value, expected_value, 1.0e-14);
+    status             *= grad.size() == expected_grad.size();
+    for (Index i = 0; i < grad.size(); ++i)
+    {
+      status *= near(grad[i], expected_grad[i], 1.0e-14);
+    }
+
+    const Real eps = 1.0e-6;
+    for (Index i = 0; i < alpha.size(); ++i)
+    {
+      Vector<Real> plus   = alpha;
+      Vector<Real> minus  = alpha;
+      plus[i]            += eps;
+      minus[i]           -= eps;
+      const Real fd =
+          (reduced.value(plus) - reduced.value(minus)) / (2.0 * eps);
+      status *= near(grad[i], fd, 1.0e-7);
+    }
+
+    return status.report(__func__);
+  }
 };
 
 } // namespace tests
@@ -339,6 +414,7 @@ int main(int, char**)
 
   results += test.observerSolveMatchesExpectedHistory();
   results += test.gradientMatchesFiniteDifferenceAndDescends();
+  results += test.ensembleReducedFunctionalWrapsTimeReducedFunctional();
 
   return results.summary();
 }

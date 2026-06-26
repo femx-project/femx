@@ -50,7 +50,7 @@ public:
 
   void prepareLinearSolve(const problem::TimeContext& ctx,
                           problem::VariableBlock      wrt,
-                          linalg::MatrixBuilder&      jac,
+                          linalg::MatrixBuilder&      J,
                           Vector<Real>&               rhs) const override;
 
   const DirichletControl& control() const;
@@ -62,7 +62,7 @@ private:
   void checkVector(const Vector<Real>* value, Index size) const;
 
   void replaceStateRows(linalg::MatrixBuilder& out, Real diag) const;
-  void eliminateStateColumns(linalg::MatrixBuilder& jac,
+  void eliminateStateColumns(linalg::MatrixBuilder& J,
                              Vector<Real>&          rhs) const;
 
   void applyControlParamJac(const problem::TimeContext& ctx,

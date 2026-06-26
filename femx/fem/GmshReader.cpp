@@ -29,16 +29,16 @@ struct EntityKey
 
 struct EntityData
 {
-  Vector<Index> physical_tags;
+  Vector<Index> ptags;
 };
 
-struct ElementRecord
+struct ElemRecord
 {
-  Index         edim       = 0;
-  Index         entity_tag = 0;
-  Index         ptag       = 0;
-  Cell::Shape   shape      = Cell::Shape::Unknown;
-  Vector<Index> nids;
+  Index          edim  = 0;
+  Index          etag  = 0;
+  Index          ptag  = 0;
+  Element::Shape shape = Element::Shape::Unknown;
+  Vector<Index>  nids;
 };
 
 string stripQuotes(string value)
@@ -62,22 +62,22 @@ void expectMarker(istream& in, const string& exp)
   }
 }
 
-Cell::Shape gmshShape(Index elem_type)
+Element::Shape gmshShape(Index elem_type)
 {
   switch (elem_type)
   {
   case 1:
-    return Cell::Shape::Segment;
+    return Element::Shape::Segment;
   case 2:
-    return Cell::Shape::Triangle;
+    return Element::Shape::Triangle;
   case 3:
-    return Cell::Shape::Quadrilateral;
+    return Element::Shape::Quadrilateral;
   case 4:
-    return Cell::Shape::Tetrahedron;
+    return Element::Shape::Tetrahedron;
   case 5:
-    return Cell::Shape::Hexahedron;
+    return Element::Shape::Hexahedron;
   default:
-    return Cell::Shape::Unknown;
+    return Element::Shape::Unknown;
   }
 }
 
@@ -102,7 +102,7 @@ Index gmshNumNodes(Index elem_type)
   }
 }
 
-Index gmshElementDimension(Index elem_type)
+Index gmshElemDim(Index elem_type)
 {
   switch (elem_type)
   {
@@ -126,11 +126,11 @@ Index firstPhysicalTag(const map<EntityKey, EntityData>& entities,
                        Index                             tag)
 {
   const auto it = entities.find({dim, tag});
-  if (it == entities.end() || it->second.physical_tags.empty())
+  if (it == entities.end() || it->second.ptags.empty())
   {
     return 0;
   }
-  return it->second.physical_tags.front();
+  return it->second.ptags.front();
 }
 
 void skipUnknownSection(istream& in, const string& mark)
@@ -181,13 +181,13 @@ void readEntityBlock(istream&                    in,
       in >> ignored;
     }
 
-    Index num_physical_tags = 0;
-    in >> num_physical_tags;
+    Index num_ptags = 0;
+    in >> num_ptags;
     EntityData entity;
-    entity.physical_tags.resize(num_physical_tags);
-    for (Index j = 0; j < num_physical_tags; ++j)
+    entity.ptags.resize(num_ptags);
+    for (Index j = 0; j < num_ptags; ++j)
     {
-      in >> entity.physical_tags[j];
+      in >> entity.ptags[j];
     }
 
     Index num_bounding_entities = 0;
@@ -223,19 +223,19 @@ void readEntities(istream& in, map<EntityKey, EntityData>& entities)
 
 void readNodesV2(istream&           in,
                  Mesh&              mesh,
-                 map<Index, Index>& node_index_by_tag)
+                 map<Index, Index>& nid_by_tag)
 {
   Index nn = 0;
   in >> nn;
 
   for (Index i = 0; i < nn; ++i)
   {
-    Index      node_tag = 0;
+    Index      ntag = 0;
     Mesh::Node node{};
-    in >> node_tag >> node[0] >> node[1] >> node[2];
+    in >> ntag >> node[0] >> node[1] >> node[2];
 
-    const Index local_id        = mesh.numNodes();
-    node_index_by_tag[node_tag] = local_id;
+    const Index local_id = mesh.numNodes();
+    nid_by_tag[ntag]     = local_id;
     mesh.addNode(node);
   }
 
@@ -244,29 +244,29 @@ void readNodesV2(istream&           in,
 
 void readNodesV4(istream&           in,
                  Mesh&              mesh,
-                 map<Index, Index>& node_index_by_tag)
+                 map<Index, Index>& nid_by_tag)
 {
-  Index num_entity_blocks = 0;
-  Index nn                = 0;
-  Index min_node_tag      = 0;
-  Index max_node_tag      = 0;
-  in >> num_entity_blocks >> nn >> min_node_tag >> max_node_tag;
+  Index num_blocks = 0;
+  Index nn         = 0;
+  Index min_ntag   = 0;
+  Index max_ntag   = 0;
+  in >> num_blocks >> nn >> min_ntag >> max_ntag;
 
-  for (Index block = 0; block < num_entity_blocks; ++block)
+  for (Index block = 0; block < num_blocks; ++block)
   {
-    Index edim               = 0;
-    Index entity_tag         = 0;
-    Index parametric         = 0;
-    Index num_nodes_in_block = 0;
-    in >> edim >> entity_tag >> parametric >> num_nodes_in_block;
+    Index edim       = 0;
+    Index etag       = 0;
+    Index parametric = 0;
+    Index nn_block   = 0;
+    in >> edim >> etag >> parametric >> nn_block;
 
-    Vector<Index> node_tags(num_nodes_in_block);
-    for (Index i = 0; i < num_nodes_in_block; ++i)
+    Vector<Index> ntags(nn_block);
+    for (Index i = 0; i < nn_block; ++i)
     {
-      in >> node_tags[i];
+      in >> ntags[i];
     }
 
-    for (Index i = 0; i < num_nodes_in_block; ++i)
+    for (Index i = 0; i < nn_block; ++i)
     {
       Mesh::Node node{};
       in >> node[0] >> node[1] >> node[2];
@@ -279,8 +279,8 @@ void readNodesV4(istream&           in,
         }
       }
 
-      const Index local_id            = mesh.numNodes();
-      node_index_by_tag[node_tags[i]] = local_id;
+      const Index local_id = mesh.numNodes();
+      nid_by_tag[ntags[i]] = local_id;
       mesh.addNode(node);
     }
   }
@@ -288,13 +288,13 @@ void readNodesV4(istream&           in,
   expectMarker(in, "$EndNodes");
 }
 
-void readElementsV2(istream&                 in,
-                    const map<Index, Index>& node_index_by_tag,
-                    Vector<ElementRecord>&   elements)
+void readElemsV2(istream&                 in,
+                 const map<Index, Index>& nid_by_tag,
+                 Vector<ElemRecord>&      elems)
 {
   Index ne = 0;
   in >> ne;
-  elements.reserve(elements.size() + ne);
+  elems.reserve(elems.size() + ne);
 
   for (Index i = 0; i < ne; ++i)
   {
@@ -309,86 +309,86 @@ void readElementsV2(istream&                 in,
       in >> tags[j];
     }
 
-    const Index       nn    = gmshNumNodes(elem_type);
-    const Cell::Shape shape = gmshShape(elem_type);
+    const Index          nn    = gmshNumNodes(elem_type);
+    const Element::Shape shape = gmshShape(elem_type);
 
-    ElementRecord rec;
-    rec.edim       = gmshElementDimension(elem_type);
-    rec.ptag       = num_tags > 0 ? tags[0] : 0;
-    rec.entity_tag = num_tags > 1 ? tags[1] : 0;
-    rec.shape      = shape;
+    ElemRecord rec;
+    rec.edim  = gmshElemDim(elem_type);
+    rec.ptag  = num_tags > 0 ? tags[0] : 0;
+    rec.etag  = num_tags > 1 ? tags[1] : 0;
+    rec.shape = shape;
     rec.nids.reserve(nn);
 
     for (Index j = 0; j < nn; ++j)
     {
-      Index node_tag = 0;
-      in >> node_tag;
-      const auto node_it = node_index_by_tag.find(node_tag);
-      if (node_it == node_index_by_tag.end())
+      Index ntag = 0;
+      in >> ntag;
+      const auto node_it = nid_by_tag.find(ntag);
+      if (node_it == nid_by_tag.end())
       {
-        throw runtime_error("GmshReader: elem references unknown node " + to_string(node_tag));
+        throw runtime_error("GmshReader: elem references unknown node " + to_string(ntag));
       }
       rec.nids.push_back(node_it->second);
     }
 
-    if (shape != Cell::Shape::Unknown && rec.edim > 0)
+    if (shape != Element::Shape::Unknown && rec.edim > 0)
     {
-      elements.push_back(std::move(rec));
+      elems.push_back(std::move(rec));
     }
   }
 
   expectMarker(in, "$EndElements");
 }
 
-void readElementsV4(istream&                 in,
-                    const map<Index, Index>& node_index_by_tag,
-                    Vector<ElementRecord>&   elements)
+void readElemsV4(istream&                 in,
+                 const map<Index, Index>& nid_by_tag,
+                 Vector<ElemRecord>&      elems)
 {
-  Index num_entity_blocks = 0;
-  Index ne                = 0;
-  Index min_elem_tag      = 0;
-  Index max_elem_tag      = 0;
-  in >> num_entity_blocks >> ne >> min_elem_tag >> max_elem_tag;
+  Index num_blocks   = 0;
+  Index ne           = 0;
+  Index min_elem_tag = 0;
+  Index max_elem_tag = 0;
+  in >> num_blocks >> ne >> min_elem_tag >> max_elem_tag;
 
-  elements.reserve(ne);
-  for (Index block = 0; block < num_entity_blocks; ++block)
+  elems.reserve(ne);
+  for (Index block = 0; block < num_blocks; ++block)
   {
-    Index edim               = 0;
-    Index entity_tag         = 0;
-    Index elem_type          = 0;
-    Index num_elems_in_block = 0;
-    in >> edim >> entity_tag >> elem_type >> num_elems_in_block;
+    Index edim      = 0;
+    Index etag      = 0;
+    Index elem_type = 0;
+    Index ne_block  = 0;
+    in >> edim >> etag >> elem_type >> ne_block;
 
-    const Index       nn    = gmshNumNodes(elem_type);
-    const Cell::Shape shape = gmshShape(elem_type);
+    const Index          nn    = gmshNumNodes(elem_type);
+    const Element::Shape shape = gmshShape(elem_type);
 
-    for (Index i = 0; i < num_elems_in_block; ++i)
+    for (Index i = 0; i < ne_block; ++i)
     {
       Index elem_tag = 0;
       in >> elem_tag;
 
-      ElementRecord rec;
-      rec.edim       = edim;
-      rec.entity_tag = entity_tag;
-      rec.ptag       = 0;
-      rec.shape      = shape;
+      ElemRecord rec;
+      rec.edim  = edim;
+      rec.etag  = etag;
+      rec.ptag  = 0;
+      rec.shape = shape;
       rec.nids.reserve(nn);
 
       for (Index j = 0; j < nn; ++j)
       {
-        Index node_tag = 0;
-        in >> node_tag;
-        const auto node_it = node_index_by_tag.find(node_tag);
-        if (node_it == node_index_by_tag.end())
+        Index ntag = 0;
+        in >> ntag;
+        const auto node_it = nid_by_tag.find(ntag);
+        if (node_it == nid_by_tag.end())
         {
-          throw runtime_error("GmshReader: elem references unknown node " + to_string(node_tag));
+          throw runtime_error("GmshReader: elem references unknown node " + to_string(ntag));
         }
         rec.nids.push_back(node_it->second);
       }
 
-      if (shape != Cell::Shape::Unknown)
+      if (shape != Element::Shape::Unknown)
       {
-        elements.push_back(std::move(rec));
+        elems.push_back(std::move(rec));
       }
     }
   }
@@ -396,19 +396,19 @@ void readElementsV4(istream&                 in,
   expectMarker(in, "$EndElements");
 }
 
-Index meshDimension(const Vector<ElementRecord>& elements)
+Index meshDim(const Vector<ElemRecord>& elems)
 {
   Index dim = 0;
-  for (const auto& elem : elements)
+  for (const auto& elem : elems)
   {
     switch (elem.shape)
     {
-    case Cell::Shape::Triangle:
-    case Cell::Shape::Quadrilateral:
+    case Element::Shape::Triangle:
+    case Element::Shape::Quadrilateral:
       dim = max<Index>(dim, 2);
       break;
-    case Cell::Shape::Tetrahedron:
-    case Cell::Shape::Hexahedron:
+    case Element::Shape::Tetrahedron:
+    case Element::Shape::Hexahedron:
       dim = max<Index>(dim, 3);
       break;
     default:
@@ -417,43 +417,43 @@ Index meshDimension(const Vector<ElementRecord>& elements)
   }
   if (dim == 0)
   {
-    throw runtime_error("GmshReader: no supported volume or surface cells found");
+    throw runtime_error("GmshReader: no supported volume or surface elems found");
   }
   return dim;
 }
 
-void addElementsToMesh(Mesh&                             mesh,
-                       const Vector<ElementRecord>&      elements,
-                       const map<EntityKey, EntityData>& entities)
+void addElemsToMesh(Mesh&                             mesh,
+                    const Vector<ElemRecord>&         elems,
+                    const map<EntityKey, EntityData>& entities)
 {
-  for (const auto& elem : elements)
+  for (const auto& elem : elems)
   {
     const Index  ptag = elem.ptag > 0
                             ? elem.ptag
                             : firstPhysicalTag(entities,
                                               elem.edim,
-                                              elem.entity_tag);
+                                              elem.etag);
     const string pname =
         mesh.physicalName(elem.edim, ptag);
 
     if (elem.edim == mesh.dim())
     {
-      mesh.addCell(elem.nids,
+      mesh.addElem(elem.nids,
                    elem.shape,
                    elem.edim,
-                   elem.entity_tag,
+                   elem.etag,
                    ptag,
                    pname);
     }
     else if (elem.edim == mesh.dim() - 1)
     {
       Mesh::BoundaryFacet facet;
-      facet.dim        = elem.edim;
-      facet.entity_tag = elem.entity_tag;
-      facet.ptag       = ptag;
-      facet.pname      = pname;
-      facet.shape      = elem.shape;
-      facet.nids       = elem.nids;
+      facet.dim   = elem.edim;
+      facet.etag  = elem.etag;
+      facet.ptag  = ptag;
+      facet.pname = pname;
+      facet.shape = elem.shape;
+      facet.nids  = elem.nids;
       mesh.addBoundaryFacet(std::move(facet));
     }
   }
@@ -471,8 +471,8 @@ Mesh GmshReader::read(const string& path)
 
   Mesh                       mesh;
   map<EntityKey, EntityData> entities;
-  map<Index, Index>          node_index_by_tag;
-  Vector<ElementRecord>      elements;
+  map<Index, Index>          nid_by_tag;
+  Vector<ElemRecord>         elems;
   Real                       version = 0.0;
 
   string mark;
@@ -505,22 +505,22 @@ Mesh GmshReader::read(const string& path)
     {
       if (version >= 4.0)
       {
-        readNodesV4(in, mesh, node_index_by_tag);
+        readNodesV4(in, mesh, nid_by_tag);
       }
       else
       {
-        readNodesV2(in, mesh, node_index_by_tag);
+        readNodesV2(in, mesh, nid_by_tag);
       }
     }
     else if (mark == "$Elements")
     {
       if (version >= 4.0)
       {
-        readElementsV4(in, node_index_by_tag, elements);
+        readElemsV4(in, nid_by_tag, elems);
       }
       else
       {
-        readElementsV2(in, node_index_by_tag, elements);
+        readElemsV2(in, nid_by_tag, elems);
       }
     }
     else
@@ -529,7 +529,7 @@ Mesh GmshReader::read(const string& path)
     }
   }
 
-  Mesh result(meshDimension(elements));
+  Mesh result(meshDim(elems));
   for (const auto& pname : mesh.physicalNames())
   {
     result.addPhysicalName(pname.first.first,
@@ -540,7 +540,7 @@ Mesh GmshReader::read(const string& path)
   {
     result.addNode(mesh.node(i));
   }
-  addElementsToMesh(result, elements, entities);
+  addElemsToMesh(result, elems, entities);
 
   return result;
 }

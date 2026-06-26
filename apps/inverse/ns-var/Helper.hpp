@@ -313,7 +313,7 @@ struct AppNsVar
   FixedDofValues                         fixed;
   assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pat;
+  CsrPattern                             pettern;
   Vector<Real>                           prm0;
 };
 

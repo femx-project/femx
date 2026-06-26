@@ -29,8 +29,8 @@ public:
   TimeReducedFunctional(TimeStateSolver&              state_solver,
                         const problem::TimeResidual&  problem,
                         problem::TimeLinearization&   lin,
-                        linalg::MatrixOperator&       nxt_jac,
-                        linalg::MatrixOperator&       hist_jac,
+                        linalg::MatrixOperator&       J_next,
+                        linalg::MatrixOperator&       J_hist,
                         linalg::LinearSolver&         adj_solver,
                         const problem::TimeObjective& obj);
 
@@ -70,16 +70,16 @@ private:
   TimeStateSolver&              state_solver_;
   const problem::TimeResidual&  problem_;
   problem::TimeLinearization&   lin_;
-  linalg::MatrixOperator&       nxt_jac_;
-  linalg::MatrixOperator&       hist_jac_;
+  linalg::MatrixOperator&       J_next_;
+  linalg::MatrixOperator&       J_hist_;
   linalg::LinearSolver&         adj_solver_;
   const problem::TimeObjective& obj_;
   problem::TimeDims             dims_;
   ProgressCallback              callback_;
-  InitialStateParamJacT         init_param_jac_t_;
+  InitialStateParamJacT         init_param_JT_;
   Real                          assembly_seconds_{0.0};
-  Real                          solve_seconds_{0.0};
-  Index                         assembly_calls_{0};
+  Real                          solve_sec_{0.0};
+  Index                         assm_calls_{0};
   Index                         solve_calls_{0};
 };
 

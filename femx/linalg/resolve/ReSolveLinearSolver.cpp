@@ -19,7 +19,7 @@
 #include <resolve/resolve_defs.hpp>
 #include <resolve/vector/Vector.hpp>
 #include <resolve/workspace/LinAlgWorkspaceCpu.hpp>
-#if defined(RESOLVE_USE_CUDA)
+#if defined(FEMX_RESOLVE_USE_CUDA)
 #include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
 #endif
 #endif
@@ -76,6 +76,8 @@ public:
           A.rows(),
           A.cols(),
           A.nnz());
+      checkStatus(mat_->allocateMatrixData(memorySpace()),
+                  "ReSolve Csr::allocateMatrixData failed");
       mat_rows_ = A.rows();
       mat_cols_ = A.cols();
       mat_nnz_  = A.nnz();
@@ -276,6 +278,8 @@ private:
           A.cols(),
           A.rows(),
           A.nnz());
+      checkStatus(mat_t_->allocateMatrixData(memorySpace()),
+                  "ReSolve transpose Csr::allocateMatrixData failed");
       mat_t_rows_ = A.cols();
       mat_t_cols_ = A.rows();
       mat_t_nnz_  = A.nnz();
@@ -424,7 +428,7 @@ private:
           opts_.ir);
 
     case WorkspaceType::Cuda:
-#if defined(RESOLVE_USE_CUDA)
+#if defined(FEMX_RESOLVE_USE_CUDA)
       return make_unique<ReSolve::SystemSolver>(
           cuda_workspace_.get(),
           opts_.factor,
@@ -451,7 +455,7 @@ private:
       break;
 
     case WorkspaceType::Cuda:
-#if defined(RESOLVE_USE_CUDA)
+#if defined(FEMX_RESOLVE_USE_CUDA)
       cuda_workspace_ = make_unique<ReSolve::LinAlgWorkspaceCUDA>();
       cuda_workspace_->initializeHandles();
       break;
@@ -499,6 +503,8 @@ private:
     ReSolve::vector::Vector rhs(b.size());
     ReSolve::vector::Vector sol(x.size());
 
+    checkStatus(rhs.allocate(memspace),
+                "ReSolve rhs Vector<Real>::allocate failed");
     checkStatus(rhs.copyFromExternal(b.data(),
                                      ReSolve::memory::HOST,
                                      memspace),
@@ -580,7 +586,7 @@ private:
 
 #if defined(FEMX_HAS_RESOLVE)
   unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_workspace_;
-#if defined(RESOLVE_USE_CUDA)
+#if defined(FEMX_RESOLVE_USE_CUDA)
   unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_workspace_;
 #endif
   unique_ptr<ReSolve::SystemSolver> solver_;

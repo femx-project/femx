@@ -21,11 +21,11 @@ public:
   Index          numShapesPerElem() const noexcept;
   Index          numDofsPerElem() const noexcept;
 
-  /** @brief Return the mixed-space local dof index for a shape function component. */
+  /** @brief Return the mixed-space local id index for a shape function component. */
   Index localDof(Index shape_index,
                  Index comp = 0) const noexcept;
 
-  /** @brief Return the mixed-space global dof index for a scalar dof component. */
+  /** @brief Return the mixed-space global id index for a scalar id component. */
   Index globalDof(Index scalar_dof,
                   Index comp = 0) const noexcept;
 
@@ -41,7 +41,7 @@ public:
   /** @brief Add a finite elem field to the mixed space. */
   void addField(const FESpace& space);
 
-  /** @brief Build offsets and dof maps for all fields in the mixed space. */
+  /** @brief Build offsets and id maps for all fields in the mixed space. */
   void setup();
 
   // Accessor
@@ -52,12 +52,12 @@ public:
   Index          numDofs() const noexcept;
   Index          numDofsPerElem() const noexcept;
 
-  /** @brief Fill the mixed-space global dof indices used by one elem. */
-  void elemDofs(Index          ic,
+  /** @brief Fill the mixed-space global id indices used by one elem. */
+  void elemDofs(Index          ie,
                 Vector<Index>& dofs) const;
 
-  /** @brief Return the mixed-space global dof indices used by one elem. */
-  Vector<Index> elemDofs(Index ic) const;
+  /** @brief Return the mixed-space global id indices used by one elem. */
+  Vector<Index> elemDofs(Index ie) const;
 
 private:
   Vector<FESpace> fields_;
