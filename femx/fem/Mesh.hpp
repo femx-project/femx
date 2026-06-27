@@ -17,13 +17,6 @@ class Mesh
 public:
   using Node = Element::Node;
 
-  struct PhysicalName
-  {
-    Index       dim = 0;
-    Index       tag = 0;
-    std::string name;
-  };
-
   struct BoundaryFacet
   {
     Index          dim  = 0;

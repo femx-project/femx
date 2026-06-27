@@ -31,23 +31,6 @@ using LocalVolumeResidualFunction =
              const Real* prm,
              Real*       out);
 
-inline bool canUseEnzymeVolumeKernel(const ElementValues& vals,
-                                     Index                nloc,
-                                     Index                max_nodes,
-                                     Index                max_local_size)
-{
-#if defined(FEMX_HAS_ENZYME)
-  return vals.numDofs() <= max_nodes && vals.dim() <= 3
-         && nloc <= max_local_size;
-#else
-  (void) vals;
-  (void) nloc;
-  (void) max_nodes;
-  (void) max_local_size;
-  return false;
-#endif
-}
-
 /** @brief Enzyme element kernel with volume element values. */
 template <LocalVolumeResidualFunction Residual>
 class EnzymeVolumeKernel final : public ElementKernel

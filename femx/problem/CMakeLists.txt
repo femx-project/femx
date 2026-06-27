@@ -7,7 +7,6 @@ target_sources(
           TimeObservationData.cpp TimeRegularization.cpp
   PUBLIC Linearization.hpp
          Objective.hpp
-         Observation.hpp
          Residual.hpp
          SumTimeObjective.hpp
          TimeLeastSquaresObjective.hpp

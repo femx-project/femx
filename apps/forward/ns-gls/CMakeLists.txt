@@ -8,17 +8,20 @@ target_sources(navier_gls_support PUBLIC Config.hpp BCs.hpp RunSupport.hpp)
 
 target_link_libraries(navier_gls_support PUBLIC navier_common femx::femx)
 
+get_filename_component(FEMX_APP_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../.."
+                       ABSOLUTE)
+
 target_include_directories(
   navier_gls_support
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-  PRIVATE ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
+  PRIVATE ${FEMX_APP_SOURCE_DIR}/third-party/nlohmann-json/single_include)
 
 set(FEMX_NAVIER_GLS_GIT_COMMIT "unknown")
 find_package(Git QUIET)
-if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+if(GIT_FOUND AND EXISTS "${FEMX_APP_SOURCE_DIR}/.git")
   execute_process(
     COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${FEMX_APP_SOURCE_DIR}
     OUTPUT_VARIABLE FEMX_NAVIER_GLS_GIT_COMMIT
     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 endif()
@@ -28,7 +31,7 @@ function(configure_navier_gls_app target)
 
   target_include_directories(
     ${target}
-    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
+    PRIVATE ${FEMX_APP_SOURCE_DIR}/third-party/nlohmann-json/single_include)
 
   target_compile_definitions(
     ${target}

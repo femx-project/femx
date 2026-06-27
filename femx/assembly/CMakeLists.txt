@@ -14,7 +14,6 @@ target_sources(
          EnzymeTimeVolumeKernel.hpp
          EnzymeVolumeKernel.hpp
          FEMResidual.hpp
-         Kernel.hpp
          SparsityPatternBuilder.hpp
          TimeDirichletControlResidual.hpp
          TimeElementKernel.hpp

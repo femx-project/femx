@@ -5,7 +5,8 @@ target_sources(
   femx_linalg
   PRIVATE ../common/Math.cpp CsrPattern.cpp DenseLinearSolver.cpp
           DenseMatrix.cpp SparseMatrix.cpp
-  PUBLIC CsrPattern.hpp
+  PUBLIC BlockVectorView.hpp
+         CsrPattern.hpp
          DenseMatrix.hpp
          DenseLinearSolver.hpp
          IndexSetList.hpp

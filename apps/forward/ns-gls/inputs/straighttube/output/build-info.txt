@@ -1,8 +1,0 @@
-femx commit: 6a16c0f663406882a315ca1bd23be83d751fa268
-cmake build type: Release
-cmake cxx compiler: /usr/bin/clang++
-FEMX_ENABLE_HDF5: ON
-FEMX_ENABLE_OPENMP: ON
-FEMX_ENABLE_PETSC: ON
-FEMX_ENABLE_ENZYME: ON
-PETSc version: 3.19.6

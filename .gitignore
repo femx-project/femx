@@ -6,5 +6,6 @@
 build/
 private/
 
+runs/
 output/
 outputs/
