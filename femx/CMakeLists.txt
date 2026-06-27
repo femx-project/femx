@@ -12,6 +12,8 @@ if(FEMX_HAS_PETSC)
   add_subdirectory(opt)
 endif()
 add_subdirectory(io)
+add_subdirectory(runtime)
+add_subdirectory(model)
 
 target_link_libraries(
   femx
@@ -21,7 +23,9 @@ target_link_libraries(
             femx_assembly
             femx_fem
             femx_io
+            femx_model_ns
             femx_problem
+            femx_runtime
             femx_state)
 
 if(FEMX_HAS_PETSC)

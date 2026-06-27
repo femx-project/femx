@@ -31,29 +31,26 @@ femx_add_test_if_exists(
   unit/state/runAB2TimeReducedFunctionalTests.cpp)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierConfigTests.cpp")
-  add_executable(
-    runNavierConfigTests
-    unit/navier/runNavierConfigTests.cpp ../apps/forward/ns-gls/Config.cpp
-    ../apps/forward/ns-gls/BCs.cpp)
+  add_executable(runNavierConfigTests
+                 unit/navier/runNavierConfigTests.cpp)
 
   target_include_directories(
     runNavierConfigTests
-    PRIVATE ${CMAKE_SOURCE_DIR}/apps/forward/ns-gls
-            ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
+    PRIVATE ${CMAKE_SOURCE_DIR}/third-party/nlohmann-json/single_include)
 
-  target_link_libraries(runNavierConfigTests PRIVATE femx::femx)
+  target_link_libraries(runNavierConfigTests PRIVATE femx::model::ns)
 
   add_test(NAME NavierConfigTests COMMAND runNavierConfigTests)
 endif()
 
-if(TARGET navier_common
+if(TARGET femx::model::ns
    AND EXISTS
        "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierElementResidualTests.cpp"
 )
   add_executable(runNavierElementResidualTests
                  unit/navier/runNavierElementResidualTests.cpp)
 
-  target_link_libraries(runNavierElementResidualTests PRIVATE navier_common)
+  target_link_libraries(runNavierElementResidualTests PRIVATE femx::model::ns)
 
   add_test(NAME NavierElementResidualTests
            COMMAND runNavierElementResidualTests)
