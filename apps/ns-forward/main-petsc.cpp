@@ -11,7 +11,7 @@
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
-#include <femx/runtime/PetscRuntime.hpp>
+#include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
 
 using namespace std;

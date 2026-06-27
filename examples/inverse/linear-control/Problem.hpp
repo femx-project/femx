@@ -3,7 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/DenseMatrixOperator.hpp>
 #include <femx/problem/Objective.hpp>
