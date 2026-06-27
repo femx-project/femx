@@ -323,12 +323,12 @@ private:
     if (workspace_type_ == WorkspaceType::Cpu)
     {
       checkStatus(
-          mat_->setDataPointers(
-              const_cast<Index*>(A.rowPtrData()),
-              const_cast<Index*>(A.colIndData()),
-              const_cast<Real*>(A.valuesData()),
-              ReSolve::memory::HOST),
-          "ReSolve Csr::setDataPointers failed");
+          mat_->copyFromExternal(A.rowPtrData(),
+                                 A.colIndData(),
+                                 A.valuesData(),
+                                 ReSolve::memory::HOST,
+                                 ReSolve::memory::HOST),
+          "ReSolve Csr::copyFromExternal to host failed");
       return;
     }
 
@@ -360,12 +360,12 @@ private:
     if (workspace_type_ == WorkspaceType::Cpu)
     {
       checkStatus(
-          A.setDataPointers(
-              const_cast<Index*>(data.rp.data()),
-              const_cast<Index*>(data.ci.data()),
-              const_cast<Real*>(data.vals.data()),
-              ReSolve::memory::HOST),
-          "ReSolve transpose Csr::setDataPointers failed");
+          A.copyFromExternal(data.rp.data(),
+                             data.ci.data(),
+                             data.vals.data(),
+                             ReSolve::memory::HOST,
+                             ReSolve::memory::HOST),
+          "ReSolve transpose Csr::copyFromExternal to host failed");
       return;
     }
 

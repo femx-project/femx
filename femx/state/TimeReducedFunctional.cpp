@@ -5,7 +5,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/state/TimeReducedFunctional.hpp>
@@ -85,14 +84,13 @@ void fillHistory(const TimeTrajectory& tr,
   }
 }
 
-TimeContext makeContext(
-    const TimeTrajectory& tr,
-    Index                 step,
-    Index                 nhst,
-    const Vector<Real>&   prm,
-    Vector<Real>&         hist,
-    Vector<Real>&         prev,
-    Vector<Real>&         nxt)
+TimeContext makeContext(const TimeTrajectory& tr,
+                        Index                 step,
+                        Index                 nhst,
+                        const Vector<Real>&   prm,
+                        Vector<Real>&         hist,
+                        Vector<Real>&         prev,
+                        Vector<Real>&         nxt)
 {
   fillHistory(tr, step, nhst, hist);
   prev = tr[step];
@@ -110,14 +108,14 @@ TimeContext makeContext(
 } // namespace
 
 TimeReducedFunctional::TimeReducedFunctional(
-    TimeStateSolver&     state_solver,
+    TimeIntegrator&     integrator,
     const TimeResidual&  problem,
     TimeLinearization&   lin,
     MatrixOperator&      J_next,
     MatrixOperator&      J_hist,
     LinearSolver&        adj_solver,
     const TimeObjective& obj)
-  : state_solver_(state_solver),
+  : integrator_(integrator),
     problem_(problem),
     lin_(lin),
     J_next_(J_next),
@@ -129,30 +127,31 @@ TimeReducedFunctional::TimeReducedFunctional(
   checkDims();
 }
 
-void TimeReducedFunctional::setProgress(ProgressCallback cb)
+void TimeReducedFunctional::setMonitor(
+    TimeReducedProgressMonitor* monitor)
 {
-  callback_ = std::move(cb);
+  progress_monitor_ = monitor;
 }
 
-void TimeReducedFunctional::clearProgress()
+void TimeReducedFunctional::clearMonitor()
 {
-  callback_ = nullptr;
+  progress_monitor_ = nullptr;
 }
 
 void TimeReducedFunctional::setInitialStateParamJacT(
-    InitialStateParamJacT cb)
+    InitialStateGradientMap* map)
 {
-  init_param_JT_ = std::move(cb);
+  init_grad_map_ = map;
 }
 
 void TimeReducedFunctional::clearInitialStateParamJacT()
 {
-  init_param_JT_ = nullptr;
+  init_grad_map_ = nullptr;
 }
 
 void TimeReducedFunctional::resetTiming()
 {
-  assembly_seconds_ = 0.0;
+  assm_sec_ = 0.0;
   solve_sec_        = 0.0;
   assm_calls_       = 0;
   solve_calls_      = 0;
@@ -160,7 +159,7 @@ void TimeReducedFunctional::resetTiming()
 
 Real TimeReducedFunctional::assemblySeconds() const
 {
-  return assembly_seconds_;
+  return assm_sec_;
 }
 
 Real TimeReducedFunctional::solveSeconds() const
@@ -180,7 +179,7 @@ Index TimeReducedFunctional::solveCalls() const
 
 Index TimeReducedFunctional::numParams() const
 {
-  return state_solver_.numParams();
+  return integrator_.numParams();
 }
 
 Real TimeReducedFunctional::value(const Vector<Real>& prm)
@@ -210,12 +209,12 @@ Real TimeReducedFunctional::valueGrad(const Vector<Real>& prm,
 
 void TimeReducedFunctional::checkDims() const
 {
-  if (state_solver_.numSteps() != dims_.nt
-      || state_solver_.numSteps() != obj_.numSteps()
-      || state_solver_.numStates() != dims_.nst
-      || state_solver_.numStates() != obj_.numStates()
-      || state_solver_.numParams() != dims_.nprm
-      || state_solver_.numParams() != obj_.numParams()
+  if (integrator_.numSteps() != dims_.nt
+      || integrator_.numSteps() != obj_.numSteps()
+      || integrator_.numStates() != dims_.nst
+      || integrator_.numStates() != obj_.numStates()
+      || integrator_.numParams() != dims_.nprm
+      || integrator_.numParams() != obj_.numParams()
       || dims_.nres != dims_.nst
       || dims_.nhst <= 0)
   {
@@ -233,11 +232,11 @@ void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
         "TimeReducedFunctional parameter size mismatch");
   }
 
-  notify("forward-begin", 0, state_solver_.numSteps());
-  state_solver_.solve(prm, tr);
-  notify("forward-end", state_solver_.numSteps(), state_solver_.numSteps());
-  if (tr.numSteps() != state_solver_.numSteps()
-      || tr.numStates() != state_solver_.numStates())
+  notify("forward-begin", 0, integrator_.numSteps());
+  integrator_.solve(prm, tr);
+  notify("forward-end", integrator_.numSteps(), integrator_.numSteps());
+  if (tr.numSteps() != integrator_.numSteps()
+      || tr.numStates() != integrator_.numStates())
   {
     throw runtime_error(
         "TimeReducedFunctional forward trajectory size mismatch");
@@ -251,7 +250,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
   obj_.paramGrad(tr, prm, out);
   checkSize(out, numParams());
 
-  const Index  steps = state_solver_.numSteps();
+  const Index  steps = integrator_.numSteps();
   Vector<Real> rhs;
   Vector<Real> carry;
   Vector<Real> adj;
@@ -333,7 +332,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
     adjoints[t] = adj;
   }
 
-  if (init_param_JT_)
+  if (init_grad_map_ != nullptr)
   {
     obj_.stateGrad(0, tr, prm, init_state_grad);
     checkSize(init_state_grad, dims_.nst);
@@ -368,7 +367,10 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
       }
     }
 
-    init_param_JT_(prm, init_state_grad, param_adj);
+    if (init_grad_map_ != nullptr)
+    {
+      init_grad_map_->apply(prm, init_state_grad, param_adj);
+    }
     checkSize(param_adj, numParams());
     for (Index i = 0; i < out.size(); ++i)
     {
@@ -390,7 +392,7 @@ void TimeReducedFunctional::assemble(TimeContext     ctx,
         "TimeReducedFunctional requires assembled state Jacobians");
   }
   out.finalize();
-  assembly_seconds_ += elapsedSeconds(assembly_begin);
+  assm_sec_ += elapsedSeconds(assembly_begin);
   ++assm_calls_;
 }
 
@@ -398,9 +400,9 @@ void TimeReducedFunctional::notify(const char* phase,
                                    Index       step,
                                    Index       total_steps)
 {
-  if (callback_)
+  if (progress_monitor_ != nullptr)
   {
-    callback_(phase, step, total_steps);
+    progress_monitor_->progress(phase, step, total_steps);
   }
 }
 

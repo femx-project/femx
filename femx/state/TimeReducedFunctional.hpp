@@ -1,14 +1,12 @@
 #pragma once
 
-#include <functional>
-
 #include <femx/common/Types.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeResidual.hpp>
-#include <femx/state/TimeStateSolver.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -16,17 +14,30 @@ namespace femx
 namespace state
 {
 
+class TimeReducedProgressMonitor
+{
+public:
+  virtual ~TimeReducedProgressMonitor() = default;
+
+  virtual void progress(const char* phase,
+                        Index       step,
+                        Index       total_steps) = 0;
+};
+
+class InitialStateGradientMap
+{
+public:
+  virtual ~InitialStateGradientMap() = default;
+
+  virtual void apply(const Vector<Real>& prm,
+                     const Vector<Real>& state_grad,
+                     Vector<Real>&       out) = 0;
+};
+
 class TimeReducedFunctional final
 {
 public:
-  using ProgressCallback = std::function<void(const char* phase, Index step, Index total_steps)>;
-
-  using InitialStateParamJacT =
-      std::function<void(const Vector<Real>& prm,
-                         const Vector<Real>& st_grad,
-                         Vector<Real>&       out)>;
-
-  TimeReducedFunctional(TimeStateSolver&              state_solver,
+  TimeReducedFunctional(TimeIntegrator&               integrator,
                         const problem::TimeResidual&  problem,
                         problem::TimeLinearization&   lin,
                         linalg::MatrixOperator&       J_next,
@@ -34,10 +45,10 @@ public:
                         linalg::LinearSolver&         adj_solver,
                         const problem::TimeObjective& obj);
 
-  void setProgress(ProgressCallback cb);
-  void clearProgress();
+  void setMonitor(TimeReducedProgressMonitor* monitor);
+  void clearMonitor();
 
-  void setInitialStateParamJacT(InitialStateParamJacT cb);
+  void setInitialStateParamJacT(InitialStateGradientMap* map);
   void clearInitialStateParamJacT();
 
   void  resetTiming();
@@ -63,11 +74,10 @@ private:
                 linalg::MatrixOperator& out);
 
   void        notify(const char* phase, Index step, Index total_steps);
-  static void checkSize(const Vector<Real>& value,
-                        Index               exp);
+  static void checkSize(const Vector<Real>& value, Index exp);
 
 private:
-  TimeStateSolver&              state_solver_;
+  TimeIntegrator&               integrator_;
   const problem::TimeResidual&  problem_;
   problem::TimeLinearization&   lin_;
   linalg::MatrixOperator&       J_next_;
@@ -75,9 +85,9 @@ private:
   linalg::LinearSolver&         adj_solver_;
   const problem::TimeObjective& obj_;
   problem::TimeDims             dims_;
-  ProgressCallback              callback_;
-  InitialStateParamJacT         init_param_JT_;
-  Real                          assembly_seconds_{0.0};
+  TimeReducedProgressMonitor*   progress_monitor_{nullptr};
+  InitialStateGradientMap*      init_grad_map_{nullptr};
+  Real                          assm_sec_{0.0};
   Real                          solve_sec_{0.0};
   Index                         assm_calls_{0};
   Index                         solve_calls_{0};

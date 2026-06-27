@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <iosfwd>
 #include <memory>
 #include <optional>
@@ -8,6 +7,7 @@
 #include <utility>
 
 #include "Config.hpp"
+#include <ForwardSolveMonitor.hpp>
 #include <NavierKernel.hpp>
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/assembly/TimeFEMResidual.hpp>
@@ -23,8 +23,7 @@ namespace femx
 {
 namespace state
 {
-class TimeTrajectory;
-class TimeLinearStateSolver;
+class TimeLinearIntegrator;
 } // namespace state
 
 struct AppOptions
@@ -71,18 +70,7 @@ struct ForwardProblem
   Vector<Real>                           prm0;
 };
 
-struct ForwardSolveResult
-{
-  Vector<Real> final_state;
-  Index        final_step{0};
-  Real         final_time{0.0};
-  Real         vel_change{0.0};
-  bool         converged{false};
-};
-
-using Clock = std::chrono::high_resolution_clock;
-
-double elapsedSeconds(Clock::time_point begin, Clock::time_point end);
+using ForwardSolveResult = navier::ForwardSolveResult;
 
 AppOptions parseAppOptions(int   argc,
                            char* argv[],
@@ -98,16 +86,8 @@ std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
 
 bool isFinite(const Vector<Real>& x);
 
-bool shouldWriteOutput(Index               step,
-                       Index               nt,
-                       const OutputParams& prm);
-
-void writeTrajectoryOutput(const ForwardProblem&        problem,
-                           const state::TimeTrajectory& tr,
-                           const OutputParams&          prm);
-
 ForwardSolveResult solve(
-    state::TimeLinearStateSolver& state_solver,
+    state::TimeLinearIntegrator& integrator,
     const ForwardProblem&         problem,
     const TimeParams&             time,
     const OutputParams&           prm,

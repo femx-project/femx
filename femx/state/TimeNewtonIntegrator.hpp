@@ -1,13 +1,11 @@
 #pragma once
 
-#include <functional>
-
 #include <femx/common/Types.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
-#include <femx/state/TimeStateSolver.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -22,15 +20,12 @@ struct TimeNewtonOptions
   Real  step_tolerance     = 0.0;
 };
 
-/** @brief Time-marching solver using Newton iterations at each time step. */
-class TimeNewtonStateSolver final : public TimeStateSolver
+/** @brief Time integrator using Newton iterations at each time step. */
+class TimeNewtonIntegrator final : public TimeIntegrator
 {
 public:
-  using StateObserver =
-      std::function<void(Index level, const Vector<Real>& state)>;
-
-  TimeNewtonStateSolver(const problem::TimeResidual& problem,
-                        linalg::LinearSolver&        lin_solver);
+  TimeNewtonIntegrator(const problem::TimeResidual& problem,
+                       linalg::LinearSolver&        lin_solver);
 
   TimeNewtonOptions& opts();
 
@@ -51,14 +46,13 @@ public:
   void solve(const Vector<Real>& prm,
              TimeTrajectory&     tr) override;
 
-  void solve(const Vector<Real>&  prm,
-             const StateObserver& observer);
+  void solve(const Vector<Real>& prm);
 
 private:
   class NextStateJacobian final : public linalg::LinearOperator
   {
   public:
-    explicit NextStateJacobian(const TimeNewtonStateSolver& owner);
+    explicit NextStateJacobian(const TimeNewtonIntegrator& owner);
 
     void reset(problem::TimeContext ctx);
 
@@ -73,9 +67,12 @@ private:
                 Vector<Real>&       out) const override;
 
   private:
-    const TimeNewtonStateSolver& owner_;
+    const TimeNewtonIntegrator& owner_;
     problem::TimeContext         ctx_;
   };
+
+  void solveImpl(const Vector<Real>& prm,
+                 TimeTrajectory*     tr);
 
   void solveStep(Index               step,
                  const Vector<Real>& prm,

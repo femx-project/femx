@@ -12,7 +12,7 @@
 #include <femx/common/Workspace.hpp>
 #include <femx/linalg/native/SparseMatrixOperator.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeLinearIntegrator.hpp>
 
 using namespace std;
 using namespace femx;
@@ -117,8 +117,8 @@ int run(const Params& prm, bool enable_output)
   SparseMatrixOperator A(fwd.pettern);
   ReSolveLinearSolver  solver(workspaceType(prm.solver), opts);
 
-  TimeLinearStateSolver state_solver(fwd.problem, A, solver);
-  state_solver.setInitialState(fwd.x0);
+  TimeLinearIntegrator integrator(fwd.problem, A, solver);
+  integrator.setInitialState(fwd.x0);
 
   cout << FEMX_NAVIER_GLS_APP_NAME << ": ranks = 1"
        << ", dofs = " << fwd.space.numDofs()
@@ -131,8 +131,8 @@ int run(const Params& prm, bool enable_output)
   }
 
   ForwardSolveResult result;
-  state_solver.resetTiming();
-  result = solve(state_solver,
+  integrator.resetTiming();
+  result = solve(integrator,
                  fwd,
                  prm.time,
                  prm.output,

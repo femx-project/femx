@@ -22,7 +22,7 @@ Real advectionDerivative(const LocalElementValues& ev,
   Real value = 0.0;
   for (Index d = 0; d < ev.dim; ++d)
   {
-    value += ev.grad(iq, in, d) * qp.u_adv[d];
+    value += ev.dNdx(iq, in, d) * qp.u_adv[d];
   }
   return value;
 }
@@ -35,7 +35,7 @@ Real shapeGradientDot(const LocalElementValues& ev,
   Real value = 0.0;
   for (Index d = 0; d < ev.dim; ++d)
   {
-    value += ev.grad(iq, i, d) * ev.grad(iq, j, d);
+    value += ev.dNdx(iq, i, d) * ev.dNdx(iq, j, d);
   }
   return value;
 }
@@ -52,10 +52,10 @@ void evalQp(const LocalElementValues& ev,
     for (Index c = 0; c < ev.dim; ++c)
     {
       const Real value  = state[vdof(in, c, ev.dim)];
-      qp.u[c]          += ev.shape(iq, in) * value;
+      qp.u[c]          += ev.N(iq, in) * value;
       for (Index d = 0; d < ev.dim; ++d)
       {
-        qp.grad_u[c][d] += ev.grad(iq, in, d) * value;
+        qp.grad_u[c][d] += ev.dNdx(iq, in, d) * value;
       }
     }
   }
@@ -65,7 +65,7 @@ void evalQp(const LocalElementValues& ev,
     for (Index d = 0; d < ev.dim; ++d)
     {
       qp.u_adv[d] +=
-          ev.shape(iq, in) * adv_state[vdof(in, d, ev.dim)];
+          ev.N(iq, in) * adv_state[vdof(in, d, ev.dim)];
     }
   }
 
@@ -110,7 +110,7 @@ Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
     Real grad_dir = 0.0;
     for (Index d = 0; d < ev.dim; ++d)
     {
-      grad_dir += dir[d] * ev.grad(iq, in, d);
+      grad_dir += dir[d] * ev.dNdx(iq, in, d);
     }
     sum += absoluteValue(grad_dir);
   }
@@ -201,13 +201,13 @@ void assembleMassLHS(const LocalElementValues& ev,
   const Real coeff = fluid.rho / dt;
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
-    const Real Jw = ev.wt(iq);
+    const Real Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
-      const Real row = coeff * ev.shape(iq, i) * Jw;
+      const Real row = coeff * ev.N(iq, i) * Jw;
       for (Index j = 0; j < ev.nn; ++j)
       {
-        const Real value = row * ev.shape(iq, j);
+        const Real value = row * ev.N(iq, j);
         for (Index d = 0; d < ev.dim; ++d)
         {
           Ke(vdof(i, d, ev.dim), vdof(j, d, ev.dim)) += value;
@@ -226,13 +226,12 @@ void assembleMassRHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       for (Index d = 0; d < ev.dim; ++d)
       {
-        Fe[vdof(i, d, ev.dim)] +=
-            fluid.rho / dt * ev.shape(iq, i) * qp.u[d] * Jw;
+        Fe[vdof(i, d, ev.dim)] += fluid.rho / dt * ev.N(iq, i) * qp.u[d] * Jw;
       }
     }
   }
@@ -246,10 +245,10 @@ void assembleAdvectionLHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
-      const Real test = 0.5 * fluid.rho * ev.shape(iq, i) * Jw;
+      const Real test = 0.5 * fluid.rho * ev.N(iq, i) * Jw;
       for (Index j = 0; j < ev.nn; ++j)
       {
         const Real grad  = advectionDerivative(ev, qp, iq, j);
@@ -271,13 +270,12 @@ void assembleAdvectionRHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       for (Index d = 0; d < ev.dim; ++d)
       {
-        Fe[vdof(i, d, ev.dim)] -=
-            0.5 * fluid.rho * ev.shape(iq, i) * qp.u_adv_grad_u[d] * Jw;
+        Fe[vdof(i, d, ev.dim)] -= 0.5 * fluid.rho * ev.N(iq, i) * qp.u_adv_grad_u[d] * Jw;
       }
     }
   }
@@ -289,7 +287,7 @@ void assembleDiffusionLHS(const LocalElementValues& ev,
 {
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
-    const Real Jw = ev.wt(iq);
+    const Real Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       for (Index j = 0; j < ev.nn; ++j)
@@ -312,7 +310,7 @@ void assembleDiffusionRHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       for (Index c = 0; c < ev.dim; ++c)
@@ -320,7 +318,7 @@ void assembleDiffusionRHS(const LocalElementValues& ev,
         Real dot = 0.0;
         for (Index d = 0; d < ev.dim; ++d)
         {
-          dot += ev.grad(iq, i, d) * qp.grad_u[c][d];
+          dot += ev.dNdx(iq, i, d) * qp.grad_u[c][d];
         }
         Fe[vdof(i, c, ev.dim)] -= 0.5 * fluid.mu * dot * Jw;
       }
@@ -333,7 +331,7 @@ void assemblePreVelCouplingLHS(const LocalElementValues& ev,
 {
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
-    const Real Jw = ev.wt(iq);
+    const Real Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       const Index ip = pdof(i, ev.nn, ev.dim);
@@ -342,8 +340,8 @@ void assemblePreVelCouplingLHS(const LocalElementValues& ev,
         const Index jp = pdof(j, ev.nn, ev.dim);
         for (Index d = 0; d < ev.dim; ++d)
         {
-          Ke(vdof(i, d, ev.dim), jp) -= ev.grad(iq, i, d) * ev.shape(iq, j) * Jw;
-          Ke(ip, vdof(j, d, ev.dim)) += ev.shape(iq, i) * ev.grad(iq, j, d) * Jw;
+          Ke(vdof(i, d, ev.dim), jp) -= ev.dNdx(iq, i, d) * ev.N(iq, j) * Jw;
+          Ke(ip, vdof(j, d, ev.dim)) += ev.N(iq, i) * ev.dNdx(iq, j, d) * Jw;
         }
       }
     }
@@ -359,7 +357,7 @@ void assembleStabilizationLHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       const Index ip    = pdof(i, ev.nn, ev.dim);
@@ -375,15 +373,14 @@ void assembleStabilizationLHS(const LocalElementValues& ev,
           const Index iu = vdof(i, d, ev.dim);
           const Index ju = vdof(j, d, ev.dim);
 
-          Ke(iu, ju) += qp.tau[0] * fluid.rho / dt * dvidx * ev.shape(iq, j) * Jw;
+          Ke(iu, ju) += qp.tau[0] * fluid.rho / dt * dvidx * ev.N(iq, j) * Jw;
           Ke(iu, ju) += 0.5 * qp.tau[0] * fluid.rho * dvidx * dvjdx * Jw;
-          Ke(iu, jp) += qp.tau[0] * dvidx * ev.grad(iq, j, d) * Jw;
-          Ke(ip, ju) += qp.tau[1] / dt * ev.grad(iq, i, d) * ev.shape(iq, j) * Jw;
-          Ke(ip, ju) += 0.5 * qp.tau[1] * ev.grad(iq, i, d) * dvjdx * Jw;
+          Ke(iu, jp) += qp.tau[0] * dvidx * ev.dNdx(iq, j, d) * Jw;
+          Ke(ip, ju) += qp.tau[1] / dt * ev.dNdx(iq, i, d) * ev.N(iq, j) * Jw;
+          Ke(ip, ju) += 0.5 * qp.tau[1] * ev.dNdx(iq, i, d) * dvjdx * Jw;
         }
 
-        Ke(ip, jp) += qp.tau[1] / fluid.rho * shapeGradientDot(ev, iq, i, j)
-                      * Jw;
+        Ke(ip, jp) += qp.tau[1] / fluid.rho * shapeGradientDot(ev, iq, i, j) * Jw;
       }
     }
   }
@@ -398,7 +395,7 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
   for (Index iq = 0; iq < ev.nq; ++iq)
   {
     const QPState& qp = qps[iq];
-    const Real     Jw = ev.wt(iq);
+    const Real     Jw = ev.JxW(iq);
     for (Index i = 0; i < ev.nn; ++i)
     {
       const Index ip             = pdof(i, ev.nn, ev.dim);
@@ -412,8 +409,8 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
         Fe[iu]         += qp.tau[0] * fluid.rho / dt * dvidx * qp.u[d] * Jw;
         Fe[iu]         -= 0.5 * qp.tau[0] * fluid.rho * dvidx * qp.u_adv_grad_u[d] * Jw;
 
-        div_u          += ev.grad(iq, i, d) * qp.u[d];
-        div_adv_grad_u += ev.grad(iq, i, d) * qp.u_adv_grad_u[d];
+        div_u          += ev.dNdx(iq, i, d) * qp.u[d];
+        div_adv_grad_u += ev.dNdx(iq, i, d) * qp.u_adv_grad_u[d];
       }
 
       Fe[ip] += qp.tau[1] / dt * div_u * Jw;

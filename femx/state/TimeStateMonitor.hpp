@@ -1,0 +1,49 @@
+#pragma once
+
+#include <femx/common/Types.hpp>
+#include <femx/linalg/Vector.hpp>
+
+namespace femx
+{
+namespace state
+{
+
+struct TimeStepStateContext
+{
+  Index               level = 0;
+  Index               total_steps = 0;
+  const Vector<Real>& previous;
+  const Vector<Real>& current;
+  Real                assembly_seconds = 0.0;
+  Real                solve_seconds = 0.0;
+};
+
+/** @brief Non-owning sink for states produced by a time-marching solve. */
+class TimeStateMonitor
+{
+public:
+  virtual ~TimeStateMonitor() = default;
+
+  virtual void start(Index num_steps,
+                     Index num_states)
+  {
+    (void) num_steps;
+    (void) num_states;
+  }
+
+  virtual void observe(Index               level,
+                       const Vector<Real>& state) = 0;
+
+  virtual bool observeStep(const TimeStepStateContext& ctx)
+  {
+    observe(ctx.level, ctx.current);
+    return false;
+  }
+
+  virtual void stop()
+  {
+  }
+};
+
+} // namespace state
+} // namespace femx

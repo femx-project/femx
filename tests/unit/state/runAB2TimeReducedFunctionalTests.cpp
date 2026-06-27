@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #include <femx/linalg/DenseLinearSolver.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
@@ -7,8 +8,9 @@
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/state/EnsembleReducedFunctional.hpp>
-#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeLinearIntegrator.hpp>
 #include <femx/state/TimeReducedFunctional.hpp>
+#include <femx/state/TimeStateMonitor.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -206,12 +208,43 @@ bool near(Real actual, Real exp, Real tol)
   return std::abs(actual - exp) <= tol;
 }
 
+class RecordingTimeMonitor final : public state::TimeStateMonitor
+{
+public:
+  void start(Index num_steps,
+             Index num_states) override
+  {
+    ++starts;
+    steps  = num_steps;
+    states = num_states;
+  }
+
+  void observe(Index               level,
+               const Vector<Real>& state) override
+  {
+    levels.push_back(level);
+    values.push_back(scalar(VectorView<const Real>(state.data(), state.size())));
+  }
+
+  void stop() override
+  {
+    ++stops;
+  }
+
+  Index              starts{0};
+  Index              stops{0};
+  Index              steps{0};
+  Index              states{0};
+  std::vector<Index> levels;
+  std::vector<Real>  values;
+};
+
 } // namespace
 
 class AB2TimeReducedFunctionalTests
 {
 public:
-  TestOutcome observerSolveMatchesExpectedHistory()
+  TestOutcome monitorSolveMatchesExpectedHistory()
   {
     TestStatus status;
     status = true;
@@ -223,11 +256,11 @@ public:
     AB2ScalarResidual            problem(steps, dt, coeff);
     linalg::DenseMatrixOperator  J_next;
     linalg::DenseLinearSolver    solver;
-    state::TimeLinearStateSolver state_solver(problem, J_next, solver);
+    state::TimeLinearIntegrator integrator(problem, J_next, solver);
 
     Vector<Real> initial(1);
     initial[0] = 0.35;
-    state_solver.setInitialState(initial);
+    integrator.setInitialState(initial);
 
     Vector<Real> prm(1);
     prm[0] = 0.4;
@@ -242,24 +275,26 @@ public:
       expected[step + 1] = current + dt * (coeff * adv + prm[0]);
     }
 
-    Vector<Real> streamed;
-    state_solver.solve(
-        prm,
-        [&](Index level, const Vector<Real>& state)
-        {
-          status *= level == streamed.size();
-          status *= state.size() == 1;
-          streamed.push_back(state[0]);
-        });
+    RecordingTimeMonitor monitor;
+    integrator.setMonitor(&monitor);
+    integrator.solve(prm);
+    integrator.clearMonitor();
 
-    status *= streamed.size() == steps + 1;
-    for (Index level = 0; level < streamed.size(); ++level)
+    status *= monitor.starts == 1;
+    status *= monitor.stops == 1;
+    status *= monitor.steps == steps;
+    status *= monitor.states == 1;
+    status *= static_cast<Index>(monitor.levels.size()) == steps + 1;
+    status *= static_cast<Index>(monitor.values.size()) == steps + 1;
+    for (Index level = 0; level < static_cast<Index>(monitor.levels.size()); ++level)
     {
-      status *= near(streamed[level], expected[level], 1.0e-12);
+      status *= monitor.levels[level] == level;
+      status *= near(monitor.values[level], expected[level], 1.0e-12);
     }
 
     state::TimeTrajectory tr;
-    state_solver.solve(prm, tr);
+    integrator.solve(prm, tr);
+
     status *= tr.numTimeLevels() == steps + 1;
     for (Index level = 0; level < tr.numTimeLevels(); ++level)
     {
@@ -278,16 +313,16 @@ public:
     linalg::DenseMatrixOperator      J_next;
     linalg::DenseMatrixOperator      J_hist;
     linalg::DenseLinearSolver        solver;
-    state::TimeLinearStateSolver     state_solver(problem, J_next, solver);
+    state::TimeLinearIntegrator     integrator(problem, J_next, solver);
     femx::problem::TimeLinearization adj_lin;
 
     Vector<Real> initial(1);
     initial[0] = 0.35;
-    state_solver.setInitialState(initial);
+    integrator.setInitialState(initial);
 
     TerminalTrackingObjective    obj(problem.dims().nt, 1.1);
     state::TimeReducedFunctional reduced(
-        state_solver, problem, adj_lin, J_next, J_hist, solver, obj);
+        integrator, problem, adj_lin, J_next, J_hist, solver, obj);
 
     Vector<Real> prm(1);
     prm[0] = 0.4;
@@ -339,16 +374,16 @@ public:
     linalg::DenseMatrixOperator      J_next;
     linalg::DenseMatrixOperator      J_hist;
     linalg::DenseLinearSolver        solver;
-    state::TimeLinearStateSolver     state_solver(problem, J_next, solver);
+    state::TimeLinearIntegrator     integrator(problem, J_next, solver);
     femx::problem::TimeLinearization adj_lin;
 
     Vector<Real> initial(1);
     initial[0] = 0.35;
-    state_solver.setInitialState(initial);
+    integrator.setInitialState(initial);
 
     TerminalTrackingObjective    obj(problem.dims().nt, 1.1);
     state::TimeReducedFunctional physical(
-        state_solver, problem, adj_lin, J_next, J_hist, solver, obj);
+        integrator, problem, adj_lin, J_next, J_hist, solver, obj);
 
     Vector<Real> mean{0.4};
     DenseMatrix  perturbations(1, 2);
@@ -412,7 +447,7 @@ int main(int, char**)
   femx::tests::TestingResults                results;
   femx::tests::AB2TimeReducedFunctionalTests test;
 
-  results += test.observerSolveMatchesExpectedHistory();
+  results += test.monitorSolveMatchesExpectedHistory();
   results += test.gradientMatchesFiniteDifferenceAndDescends();
   results += test.ensembleReducedFunctionalWrapsTimeReducedFunctional();
 

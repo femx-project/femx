@@ -18,10 +18,10 @@ bool supportedLocalSize(Index nq,
                         Index dim,
                         Index nloc)
 {
-  return dim > 0 && dim <= kMaxSpatialDim
-         && nn > 0 && nn <= kMaxLocalNodes
-         && nq > 0 && nq <= kMaxLocalQuadraturePoints
-         && nloc > 0 && nloc <= kMaxLocalDofs
+  return dim > 0 && dim <= kMaxDim
+         && nn > 0 && nn <= kMaxNn
+         && nq > 0 && nq <= kMaxNq
+         && nloc > 0 && nloc <= kMaxNd
          && nloc == numLocalDofs(nn, dim);
 }
 
@@ -63,8 +63,8 @@ bool assembleLocalSystem(Index       step,
   const Real        dt = prm[2];
 
   LocalElementValues ev{nq, nn, dim, N, dNdx, JxW};
-  QPState            qps[64]{};
-  Real               adv[64];
+  QPState            qps[kMaxNq]{};
+  Real               adv[kMaxNd];
 
   const Real* cur = prev;
   const Real* old = prev + nd;
@@ -124,8 +124,8 @@ void NavierResidual(Index       step,
 
   (void) nprm;
   const Index nd = numLocalDofs(nn, dim);
-  Real        s1[64 * 64];
-  Real        s2[64];
+  Real        s1[kMaxNd * kMaxNd];
+  Real        s2[kMaxNd];
   LocalMatrix Ke{nd, s1};
   LocalVector Fe{nd, s2};
 
@@ -207,8 +207,8 @@ void NavierKernel::res(Index                    step,
   vals.reinit(space_.mesh().elem(ie));
 
   const Index nd = num_next_states_;
-  Real        s1[64 * 64];
-  Real        s2[64];
+  Real        s1[kMaxNd * kMaxNd];
+  Real        s2[kMaxNd];
   LocalMatrix Ke{nd, s1};
   LocalVector Fe{nd, s2};
 
@@ -263,8 +263,8 @@ void NavierKernel::jacobian(Index                    step,
   vals.reinit(space_.mesh().elem(ie));
 
   const Index nd = num_next_states_;
-  Real        s1[64 * 64];
-  Real        s2[64];
+  Real        s1[kMaxNd * kMaxNd];
+  Real        s2[kMaxNd];
   LocalMatrix Ke{nd, s1};
   LocalVector Fe{nd, s2};
 
@@ -317,8 +317,8 @@ void NavierKernel::checkDimensions()
     throw runtime_error(
         "NavierKernel history size must be a multiple of next-state size");
   }
-  num_history_states_     = num_prev_states_ / num_next_states_;
-  num_history_state_dofs_ = num_next_states_;
+  num_hist_states_     = num_prev_states_ / num_next_states_;
+  num_hist_state_dofs_ = num_next_states_;
   if (nres_ != num_next_states_ || nprm_ < 3)
   {
     throw runtime_error("NavierKernel received unsupported dimensions");
@@ -329,8 +329,8 @@ void NavierKernel::checkInputSizes(problem::TimeHistoryView hist,
                                    const Vector<Real>&      nxt,
                                    const Vector<Real>&      prm) const
 {
-  if (hist.count() != num_history_states_
-      || hist.stateSize() != num_history_state_dofs_
+  if (hist.count() != num_hist_states_
+      || hist.stateSize() != num_hist_state_dofs_
       || nxt.size() != num_next_states_
       || prm.size() != num_variable_prm_)
   {
@@ -338,8 +338,7 @@ void NavierKernel::checkInputSizes(problem::TimeHistoryView hist,
   }
 }
 
-Vector<Real> NavierKernel::makeResidualPrm(
-    const Vector<Real>& variable_prm) const
+Vector<Real> NavierKernel::makeResidualPrm(const Vector<Real>& variable_prm) const
 {
   if (fixed_prm_.empty())
   {
@@ -372,23 +371,23 @@ Vector<Real> physicalParams(Real rho, Real mu, Real dt)
   return prm;
 }
 
-NavierKernel makeNavierKernel(const FESpace&         velocity_space,
-                              const GaussQuadrature& quadrature,
+NavierKernel makeNavierKernel(const FESpace&         vel_space,
+                              const GaussQuadrature& quad,
                               Index                  nloc,
                               Real                   rho,
                               Real                   mu,
                               Real                   dt)
 {
-  if (!supportedLocalSize(quadrature.size(),
-                          velocity_space.numShapesPerElem(),
-                          velocity_space.numComponents(),
+  if (!supportedLocalSize(quad.size(),
+                          vel_space.numShapesPerElem(),
+                          vel_space.numComponents(),
                           nloc))
   {
     throw runtime_error("NavierKernel received unsupported element size");
   }
 
-  return NavierKernel(velocity_space,
-                      quadrature,
+  return NavierKernel(vel_space,
+                      quad,
                       nloc,
                       2 * nloc,
                       nloc,

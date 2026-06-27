@@ -26,7 +26,7 @@ using navier::FluidParams;
 struct ConvergenceParams
 {
   bool  enabled                     = false;
-  Real  velocity_relative_tolerance = 1.0e-8;
+  Real  vel_rel_tol = 1.0e-8;
   Index min_steps                   = 1;
 };
 

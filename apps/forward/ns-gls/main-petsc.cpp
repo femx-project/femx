@@ -10,7 +10,7 @@
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrixOperator.hpp>
 #include <femx/linalg/petsc/PETScVectorBuilder.hpp>
-#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeLinearIntegrator.hpp>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -196,8 +196,8 @@ int run(const Params& prm, bool enable_output)
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  TimeLinearStateSolver state_solver(fwd.problem, A, solver);
-  state_solver.setInitialState(fwd.x0);
+  TimeLinearIntegrator integrator(fwd.problem, A, solver);
+  integrator.setInitialState(fwd.x0);
 
   if (rank == 0)
   {
@@ -213,8 +213,8 @@ int run(const Params& prm, bool enable_output)
   }
 
   ForwardSolveResult result;
-  state_solver.resetTiming();
-  result = solve(state_solver,
+  integrator.resetTiming();
+  result = solve(integrator,
                  fwd,
                  prm.time,
                  prm.output,

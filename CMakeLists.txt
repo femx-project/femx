@@ -4,14 +4,6 @@ list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
 
-if(FEMX_ENABLE_ENZYME)
-  find_package(Enzyme REQUIRED)
-
-  if(Enzyme_LLVM_BINARY_DIR AND NOT CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER "${Enzyme_LLVM_BINARY_DIR}/bin/clang++")
-  endif()
-endif()
-
 project(
   femx
   VERSION 0.1.0
@@ -58,9 +50,72 @@ set(FEMX_HAS_RESOLVE OFF)
 set(FEMX_HAS_RESOLVE_CUDA OFF)
 
 if(FEMX_ENABLE_ENZYME)
+  find_package(Enzyme REQUIRED)
+
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "FEMX_ENABLE_ENZYME requires a Clang C++ compiler.")
   endif()
+
+  set(_FEMX_ENZYME_LLVM_MAJOR "${Enzyme_LLVM_VERSION_MAJOR}")
+  if(NOT _FEMX_ENZYME_LLVM_MAJOR)
+    string(REGEX MATCH "^[0-9]+" _FEMX_ENZYME_LLVM_MAJOR
+                 "${CMAKE_CXX_COMPILER_VERSION}")
+  endif()
+
+  function(femx_import_enzyme_plugin_target target_name)
+    if(TARGET "${target_name}")
+      get_target_property(_is_imported "${target_name}" IMPORTED)
+      if(_is_imported)
+        set_target_properties("${target_name}" PROPERTIES IMPORTED_GLOBAL TRUE)
+      endif()
+      return()
+    endif()
+
+    set(_hints)
+    if(Enzyme_DIR)
+      list(APPEND _hints "${Enzyme_DIR}" "${Enzyme_DIR}/../../..")
+    endif()
+    if(Enzyme_LLVM_BINARY_DIR)
+      list(APPEND _hints "${Enzyme_LLVM_BINARY_DIR}"
+           "${Enzyme_LLVM_BINARY_DIR}/..")
+    endif()
+
+    string(MAKE_C_IDENTIFIER "${target_name}" _target_id)
+    set(_cache_var "FEMX_${_target_id}_PLUGIN")
+    find_library(
+      ${_cache_var}
+      NAMES "${target_name}"
+      HINTS ${_hints}
+      PATH_SUFFIXES lib lib64)
+
+    if(${_cache_var})
+      add_library("${target_name}" MODULE IMPORTED GLOBAL)
+      set_target_properties("${target_name}" PROPERTIES IMPORTED_LOCATION
+                                                        "${${_cache_var}}")
+      if("${target_name}" MATCHES "^ClangEnzyme-")
+        set_target_properties("${target_name}"
+                              PROPERTIES INTERFACE_COMPILE_DEFINITIONS
+                                         ENZYME_RUNPASS)
+      endif()
+    endif()
+  endfunction()
+
+  if(_FEMX_ENZYME_LLVM_MAJOR)
+    femx_import_enzyme_plugin_target(
+      "ClangEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
+    femx_import_enzyme_plugin_target("LLDEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
+  endif()
+
+  foreach(_enzyme_target ClangEnzymeFlags LLDEnzymeFlags
+                         "LLVMEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
+    if(TARGET "${_enzyme_target}")
+      get_target_property(_is_imported "${_enzyme_target}" IMPORTED)
+      if(_is_imported)
+        set_target_properties("${_enzyme_target}" PROPERTIES IMPORTED_GLOBAL
+                                                             TRUE)
+      endif()
+    endif()
+  endforeach()
 
   if(TARGET ClangEnzymeFlags)
     set(FEMX_ENZYME_FLAGS_TARGET ClangEnzymeFlags)

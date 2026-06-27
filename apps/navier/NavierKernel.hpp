@@ -75,8 +75,8 @@ private:
   Index                                            nres_{0};
   Index                                            num_prev_states_{0};
   Index                                            num_next_states_{0};
-  Index                                            num_history_states_{1};
-  Index                                            num_history_state_dofs_{0};
+  Index                                            num_hist_states_{1};
+  Index                                            num_hist_state_dofs_{0};
   Index                                            num_variable_prm_{0};
   Index                                            nprm_{0};
   Vector<Real>                                     fixed_prm_;
@@ -85,7 +85,7 @@ private:
 
 Vector<Real> physicalParams(Real rho, Real mu, Real dt);
 
-NavierKernel makeNavierKernel(const FESpace&         velocity_space,
+NavierKernel makeNavierKernel(const FESpace&         vel_space,
                               const GaussQuadrature& quadrature,
                               Index                  nloc,
                               Real                   rho,

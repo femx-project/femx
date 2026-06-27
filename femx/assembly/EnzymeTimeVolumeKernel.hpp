@@ -105,8 +105,8 @@ public:
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel history size must be a multiple of next-state size");
     }
-    num_history_states_     = num_prev_states_ / num_next_states_;
-    num_history_state_dofs_ = num_next_states_;
+    num_hist_states_     = num_prev_states_ / num_next_states_;
+    num_hist_state_dofs_ = num_next_states_;
   }
 
   void res(Index                    step,
@@ -173,14 +173,14 @@ private:
                        const Vector<Real>&      prm,
                        DenseMatrix&             out) const
   {
-    if (lag < 0 || lag >= num_history_states_)
+    if (lag < 0 || lag >= num_hist_states_)
     {
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel history lag is out of range");
     }
 
-    out.resize(nres_, num_history_state_dofs_);
-    if (num_history_state_dofs_ == 0)
+    out.resize(nres_, num_hist_state_dofs_);
+    if (num_hist_state_dofs_ == 0)
     {
       return;
     }
@@ -237,8 +237,8 @@ private:
                               primal_out.data(),
                               out_adj.data());
 
-      const Index offset = lag * num_history_state_dofs_;
-      for (Index col = 0; col < num_history_state_dofs_; ++col)
+      const Index offset = lag * num_hist_state_dofs_;
+      for (Index col = 0; col < num_hist_state_dofs_; ++col)
       {
         out(row, col) = previous_adj[offset + col];
       }
@@ -417,8 +417,8 @@ private:
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm) const
   {
-    if (hist.count() != num_history_states_
-        || hist.stateSize() != num_history_state_dofs_
+    if (hist.count() != num_hist_states_
+        || hist.stateSize() != num_hist_state_dofs_
         || nxt.size() != num_next_states_
         || prm.size() != num_variable_prm_)
     {
@@ -457,8 +457,8 @@ private:
   Index                  nres_{0};
   Index                  num_prev_states_{0};
   Index                  num_next_states_{0};
-  Index                  num_history_states_{1};
-  Index                  num_history_state_dofs_{0};
+  Index                  num_hist_states_{1};
+  Index                  num_hist_state_dofs_{0};
   Index                  num_variable_prm_{0};
   Index                  nprm_{0};
   Vector<Real>           fixed_prm_;

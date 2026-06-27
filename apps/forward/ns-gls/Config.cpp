@@ -111,29 +111,29 @@ Index stepsForEndTime(Real end_time,
 void assignVelocityRelativeTolerance(const json&        node,
                                      ConvergenceParams& convergence)
 {
-  if (node.contains("velocity_relative_tolerance"))
+  if (node.contains("vel_rel_tol"))
   {
-    convergence.velocity_relative_tolerance =
-        node.at("velocity_relative_tolerance").get<Real>();
+    convergence.vel_rel_tol =
+        node.at("vel_rel_tol").get<Real>();
   }
   else if (node.contains("velocity_rel_tol"))
   {
-    convergence.velocity_relative_tolerance =
+    convergence.vel_rel_tol =
         node.at("velocity_rel_tol").get<Real>();
   }
   else if (node.contains("relative_tolerance"))
   {
-    convergence.velocity_relative_tolerance =
+    convergence.vel_rel_tol =
         node.at("relative_tolerance").get<Real>();
   }
   else if (node.contains("relative_tol"))
   {
-    convergence.velocity_relative_tolerance =
+    convergence.vel_rel_tol =
         node.at("relative_tol").get<Real>();
   }
   else if (node.contains("tol"))
   {
-    convergence.velocity_relative_tolerance =
+    convergence.vel_rel_tol =
         node.at("tol").get<Real>();
   }
 }
@@ -595,8 +595,8 @@ void validate(const Params& prm)
   }
   if (prm.time.convergence.enabled)
   {
-    if (!isfinite(prm.time.convergence.velocity_relative_tolerance)
-        || prm.time.convergence.velocity_relative_tolerance <= 0.0)
+    if (!isfinite(prm.time.convergence.vel_rel_tol)
+        || prm.time.convergence.vel_rel_tol <= 0.0)
     {
       throw runtime_error(
           "Config time.convergence velocity relative tolerance must be positive");

@@ -1,7 +1,7 @@
 #include <stdexcept>
 
 #include <femx/linalg/BlockVectorView.hpp>
-#include <femx/state/TimeNewtonStateSolver.hpp>
+#include <femx/state/TimeNewtonIntegrator.hpp>
 
 using namespace std;
 using namespace femx::problem;
@@ -35,7 +35,7 @@ void copyStateToView(const Vector<Real>& src,
   if (src.size() != dst.size())
   {
     throw runtime_error(
-        "TimeNewtonStateSolver state view size mismatch");
+        "TimeNewtonIntegrator state view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
   {
@@ -49,7 +49,7 @@ void copyView(VectorView<Real> src,
   if (src.size() != dst.size())
   {
     throw runtime_error(
-        "TimeNewtonStateSolver history view size mismatch");
+        "TimeNewtonIntegrator history view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
   {
@@ -65,7 +65,7 @@ void initializeHistoryWindow(const Vector<Real>& initial,
   if (depth < 0 || nst < 0 || initial.size() != nst)
   {
     throw runtime_error(
-        "TimeNewtonStateSolver received invalid history window dimensions");
+        "TimeNewtonIntegrator received invalid history window dimensions");
   }
   hist.resize(depth * nst);
   BlockVectorView<Real> hist_view(hist.data(), depth, nst);
@@ -84,7 +84,7 @@ void advanceHistoryWindow(Vector<Real>&       hist,
       || next.size() != nst)
   {
     throw runtime_error(
-        "TimeNewtonStateSolver history window size mismatch");
+        "TimeNewtonIntegrator history window size mismatch");
   }
   BlockVectorView<Real> hist_view(hist.data(), depth, nst);
   for (Index lag = depth - 1; lag > 0; --lag)
@@ -99,7 +99,7 @@ void advanceHistoryWindow(Vector<Real>&       hist,
 
 } // namespace
 
-TimeNewtonStateSolver::TimeNewtonStateSolver(
+TimeNewtonIntegrator::TimeNewtonIntegrator(
     const TimeResidual& problem,
     LinearSolver&       lin_solver)
   : problem_(problem),
@@ -109,87 +109,94 @@ TimeNewtonStateSolver::TimeNewtonStateSolver(
   if (dims_.nres != dims_.nst)
   {
     throw runtime_error(
-        "TimeNewtonStateSolver requires square next-state residual dimensions");
+        "TimeNewtonIntegrator requires square next-state residual dimensions");
   }
   if (dims_.nhst <= 0)
   {
     throw runtime_error(
-        "TimeNewtonStateSolver requires at least one history state");
+        "TimeNewtonIntegrator requires at least one history state");
   }
 }
 
-TimeNewtonOptions& TimeNewtonStateSolver::opts()
+TimeNewtonOptions& TimeNewtonIntegrator::opts()
 {
   return opts_;
 }
 
-const TimeNewtonOptions& TimeNewtonStateSolver::opts() const
+const TimeNewtonOptions& TimeNewtonIntegrator::opts() const
 {
   return opts_;
 }
 
-void TimeNewtonStateSolver::setInitialState(const Vector<Real>& state)
+void TimeNewtonIntegrator::setInitialState(const Vector<Real>& state)
 {
   if (state.size() != numStates())
   {
-    throw runtime_error("TimeNewtonStateSolver initial state size mismatch");
+    throw runtime_error("TimeNewtonIntegrator initial state size mismatch");
   }
   init_state_     = state;
   has_init_state_ = true;
 }
 
-void TimeNewtonStateSolver::clearInitialState()
+void TimeNewtonIntegrator::clearInitialState()
 {
   init_state_     = Vector<Real>{};
   has_init_state_ = false;
 }
 
-Index TimeNewtonStateSolver::numSteps() const
+Index TimeNewtonIntegrator::numSteps() const
 {
   return dims_.nt;
 }
 
-Index TimeNewtonStateSolver::numStates() const
+Index TimeNewtonIntegrator::numStates() const
 {
   return dims_.nst;
 }
 
-Index TimeNewtonStateSolver::numParams() const
+Index TimeNewtonIntegrator::numParams() const
 {
   return dims_.nprm;
 }
 
-Index TimeNewtonStateSolver::numResiduals() const
+Index TimeNewtonIntegrator::numResiduals() const
 {
   return dims_.nres;
 }
 
-void TimeNewtonStateSolver::solve(const Vector<Real>& prm,
+void TimeNewtonIntegrator::solve(const Vector<Real>& prm,
                                   TimeTrajectory&     tr)
 {
-  tr.resize(numSteps(), numStates());
-  solve(
-      prm,
-      [&](Index level, const Vector<Real>& state)
-      {
-        tr[level] = state;
-      });
+  solveImpl(prm, &tr);
 }
 
-void TimeNewtonStateSolver::solve(const Vector<Real>&  prm,
-                                  const StateObserver& observer)
+void TimeNewtonIntegrator::solve(const Vector<Real>& prm)
+{
+  solveImpl(prm, nullptr);
+}
+
+void TimeNewtonIntegrator::solveImpl(const Vector<Real>& prm,
+                                      TimeTrajectory*     tr)
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error("TimeNewtonStateSolver parameter size mismatch");
+    throw runtime_error("TimeNewtonIntegrator parameter size mismatch");
   }
+
+  if (tr != nullptr)
+  {
+    tr->resize(numSteps(), numStates());
+  }
+
+  MonitorScope monitor_scope(*this);
 
   Vector<Real> init;
   initializeInitialState(init);
-  if (observer)
+  if (tr != nullptr)
   {
-    observer(0, init);
+    (*tr)[0] = init;
   }
+  observeState(0, init);
 
   Vector<Real> hist;
   initializeHistoryWindow(init, dims_.nhst, numStates(), hist);
@@ -198,36 +205,48 @@ void TimeNewtonStateSolver::solve(const Vector<Real>&  prm,
     Vector<Real> cur_state = Vector<Real>::view(hist.data(), numStates());
     Vector<Real> nxt       = cur_state;
     solveStep(step, prm, hist, nxt);
-    advanceHistoryWindow(hist, dims_.nhst, numStates(), nxt);
-    if (observer)
+    if (tr != nullptr)
     {
-      observer(step + 1, nxt);
+      (*tr)[step + 1] = nxt;
+    }
+    const TimeStepStateContext ctx{
+        step + 1,
+        numSteps(),
+        cur_state,
+        nxt,
+        0.0,
+        0.0};
+    const bool stop = observeStep(ctx);
+    advanceHistoryWindow(hist, dims_.nhst, numStates(), nxt);
+    if (stop)
+    {
+      break;
     }
   }
 }
 
-TimeNewtonStateSolver::NextStateJacobian::NextStateJacobian(
-    const TimeNewtonStateSolver& owner)
+TimeNewtonIntegrator::NextStateJacobian::NextStateJacobian(
+    const TimeNewtonIntegrator& owner)
   : owner_(owner)
 {
 }
 
-void TimeNewtonStateSolver::NextStateJacobian::reset(TimeContext ctx)
+void TimeNewtonIntegrator::NextStateJacobian::reset(TimeContext ctx)
 {
   ctx_ = ctx;
 }
 
-Index TimeNewtonStateSolver::NextStateJacobian::numRows() const
+Index TimeNewtonIntegrator::NextStateJacobian::numRows() const
 {
   return owner_.numResiduals();
 }
 
-Index TimeNewtonStateSolver::NextStateJacobian::numCols() const
+Index TimeNewtonIntegrator::NextStateJacobian::numCols() const
 {
   return owner_.numStates();
 }
 
-void TimeNewtonStateSolver::NextStateJacobian::apply(
+void TimeNewtonIntegrator::NextStateJacobian::apply(
     const Vector<Real>& dir,
     Vector<Real>&       out) const
 {
@@ -235,7 +254,7 @@ void TimeNewtonStateSolver::NextStateJacobian::apply(
       ctx_, VariableBlock::NextState, dir, out);
 }
 
-void TimeNewtonStateSolver::NextStateJacobian::applyT(
+void TimeNewtonIntegrator::NextStateJacobian::applyT(
     const Vector<Real>& dir,
     Vector<Real>&       out) const
 {
@@ -243,7 +262,7 @@ void TimeNewtonStateSolver::NextStateJacobian::applyT(
       ctx_, VariableBlock::NextState, dir, out);
 }
 
-void TimeNewtonStateSolver::solveStep(Index               step,
+void TimeNewtonIntegrator::solveStep(Index               step,
                                       const Vector<Real>& prm,
                                       const Vector<Real>& hist,
                                       Vector<Real>&       nxt)
@@ -267,7 +286,7 @@ void TimeNewtonStateSolver::solveStep(Index               step,
     problem_.res(ctx, res);
     if (res.size() != numResiduals())
     {
-      throw runtime_error("TimeNewtonStateSolver residual size mismatch");
+      throw runtime_error("TimeNewtonIntegrator residual size mismatch");
     }
 
     if (squaredNorm(res)
@@ -290,7 +309,7 @@ void TimeNewtonStateSolver::solveStep(Index               step,
     lin_solver_.solve(J_next, rhs, update);
     if (update.size() != numStates())
     {
-      throw runtime_error("TimeNewtonStateSolver update size mismatch");
+      throw runtime_error("TimeNewtonIntegrator update size mismatch");
     }
 
     for (Index i = 0; i < numStates(); ++i)
@@ -305,10 +324,10 @@ void TimeNewtonStateSolver::solveStep(Index               step,
     }
   }
 
-  throw runtime_error("TimeNewtonStateSolver failed to converge");
+  throw runtime_error("TimeNewtonIntegrator failed to converge");
 }
 
-void TimeNewtonStateSolver::initializeInitialState(Vector<Real>& state) const
+void TimeNewtonIntegrator::initializeInitialState(Vector<Real>& state) const
 {
   if (has_init_state_)
   {
@@ -318,7 +337,7 @@ void TimeNewtonStateSolver::initializeInitialState(Vector<Real>& state) const
   resizeOrZero(state, numStates());
 }
 
-Real TimeNewtonStateSolver::squaredNorm(const Vector<Real>& x)
+Real TimeNewtonIntegrator::squaredNorm(const Vector<Real>& x)
 {
   Real value = 0.0;
   for (Index i = 0; i < x.size(); ++i)

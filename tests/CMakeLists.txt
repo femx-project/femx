@@ -16,8 +16,8 @@ femx_add_test_if_exists(runNewtonStateSolverTests NewtonStateSolverTests
                         unit/state/runNewtonStateSolverTests.cpp)
 
 femx_add_test_if_exists(
-  runTimeNewtonStateSolverTests TimeNewtonStateSolverTests
-  unit/state/runTimeNewtonStateSolverTests.cpp)
+  runTimeNewtonIntegratorTests TimeNewtonIntegratorTests
+  unit/state/runTimeNewtonIntegratorTests.cpp)
 
 femx_add_test_if_exists(runEnsembleBasisTests EnsembleBasisTests
                         unit/state/runEnsembleBasisTests.cpp)

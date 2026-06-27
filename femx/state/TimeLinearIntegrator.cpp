@@ -1,9 +1,8 @@
 #include <chrono>
 #include <stdexcept>
-#include <utility>
 
 #include <femx/linalg/BlockVectorView.hpp>
-#include <femx/state/TimeLinearStateSolver.hpp>
+#include <femx/state/TimeLinearIntegrator.hpp>
 
 using namespace std;
 using namespace femx::problem;
@@ -44,7 +43,7 @@ void copyStateToView(const Vector<Real>& src,
   if (src.size() != dst.size())
   {
     throw runtime_error(
-        "TimeLinearStateSolver state view size mismatch");
+        "TimeLinearIntegrator state view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
   {
@@ -58,7 +57,7 @@ void copyView(VectorView<Real> src,
   if (src.size() != dst.size())
   {
     throw runtime_error(
-        "TimeLinearStateSolver history view size mismatch");
+        "TimeLinearIntegrator history view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
   {
@@ -74,7 +73,7 @@ void initializeHistoryWindow(const Vector<Real>& initial,
   if (depth < 0 || nst < 0 || initial.size() != nst)
   {
     throw runtime_error(
-        "TimeLinearStateSolver received invalid history window dimensions");
+        "TimeLinearIntegrator received invalid history window dimensions");
   }
   hist.resize(depth * nst);
   BlockVectorView<Real> hist_view(hist.data(), depth, nst);
@@ -93,7 +92,7 @@ void advanceHistoryWindow(Vector<Real>&       hist,
       || next.size() != nst)
   {
     throw runtime_error(
-        "TimeLinearStateSolver history window size mismatch");
+        "TimeLinearIntegrator history window size mismatch");
   }
   BlockVectorView<Real> hist_view(hist.data(), depth, nst);
   for (Index lag = depth - 1; lag > 0; --lag)
@@ -108,7 +107,7 @@ void advanceHistoryWindow(Vector<Real>&       hist,
 
 } // namespace
 
-TimeLinearStateSolver::TimeLinearStateSolver(
+TimeLinearIntegrator::TimeLinearIntegrator(
     const TimeResidual& problem,
     MatrixOperator&     J_next,
     LinearSolver&       lin_solver)
@@ -120,55 +119,35 @@ TimeLinearStateSolver::TimeLinearStateSolver(
   if (dims_.nres != dims_.nst)
   {
     throw runtime_error(
-        "TimeLinearStateSolver requires square state residual dimensions");
+        "TimeLinearIntegrator requires square state residual dimensions");
   }
   if (dims_.nhst <= 0)
   {
     throw runtime_error(
-        "TimeLinearStateSolver requires at least one history state");
+        "TimeLinearIntegrator requires at least one history state");
   }
 }
 
-void TimeLinearStateSolver::setInitialState(const Vector<Real>& state)
+void TimeLinearIntegrator::setInitialState(const Vector<Real>& state)
 {
   if (state.size() != numStates())
   {
     throw runtime_error(
-        "TimeLinearStateSolver initial state size mismatch");
+        "TimeLinearIntegrator initial state size mismatch");
   }
   init_state_     = state;
   has_init_state_ = true;
 }
 
-void TimeLinearStateSolver::clearInitialState()
+void TimeLinearIntegrator::clearInitialState()
 {
   init_state_     = Vector<Real>{};
   has_init_state_ = false;
 }
 
-void TimeLinearStateSolver::setStepMonitor(StepMonitor monitor)
+void TimeLinearIntegrator::resetTiming()
 {
-  step_monitor_ = std::move(monitor);
-}
-
-void TimeLinearStateSolver::clearStepMonitor()
-{
-  step_monitor_ = nullptr;
-}
-
-void TimeLinearStateSolver::setStopCondition(StopCondition condition)
-{
-  stop_condition_ = std::move(condition);
-}
-
-void TimeLinearStateSolver::clearStopCondition()
-{
-  stop_condition_ = nullptr;
-}
-
-void TimeLinearStateSolver::resetTiming()
-{
-  assembly_seconds_ = 0.0;
+  assm_sec_ = 0.0;
   solve_sec_        = 0.0;
   last_assm_sec_    = 0.0;
   last_solve_sec_   = 0.0;
@@ -176,78 +155,85 @@ void TimeLinearStateSolver::resetTiming()
   solve_calls_      = 0;
 }
 
-Real TimeLinearStateSolver::assemblySeconds() const
+Real TimeLinearIntegrator::assemblySeconds() const
 {
-  return assembly_seconds_;
+  return assm_sec_;
 }
 
-Real TimeLinearStateSolver::solveSeconds() const
+Real TimeLinearIntegrator::solveSeconds() const
 {
   return solve_sec_;
 }
 
-Real TimeLinearStateSolver::lastAssemblySeconds() const
+Real TimeLinearIntegrator::lastAssemblySeconds() const
 {
   return last_assm_sec_;
 }
 
-Real TimeLinearStateSolver::lastSolveSeconds() const
+Real TimeLinearIntegrator::lastSolveSeconds() const
 {
   return last_solve_sec_;
 }
 
-Index TimeLinearStateSolver::assemblyCalls() const
+Index TimeLinearIntegrator::assemblyCalls() const
 {
   return assm_calls_;
 }
 
-Index TimeLinearStateSolver::solveCalls() const
+Index TimeLinearIntegrator::solveCalls() const
 {
   return solve_calls_;
 }
 
-Index TimeLinearStateSolver::numSteps() const
+Index TimeLinearIntegrator::numSteps() const
 {
   return dims_.nt;
 }
 
-Index TimeLinearStateSolver::numStates() const
+Index TimeLinearIntegrator::numStates() const
 {
   return dims_.nst;
 }
 
-Index TimeLinearStateSolver::numParams() const
+Index TimeLinearIntegrator::numParams() const
 {
   return dims_.nprm;
 }
 
-void TimeLinearStateSolver::solve(const Vector<Real>& prm,
+void TimeLinearIntegrator::solve(const Vector<Real>& prm,
                                   TimeTrajectory&     tr)
 {
-  tr.resize(numSteps(), numStates());
-  solve(
-      prm,
-      [&](Index level, const Vector<Real>& state)
-      {
-        tr[level] = state;
-      });
+  solveImpl(prm, &tr);
 }
 
-void TimeLinearStateSolver::solve(const Vector<Real>&  prm,
-                                  const StateObserver& observer)
+void TimeLinearIntegrator::solve(const Vector<Real>& prm)
+{
+  solveImpl(prm, nullptr);
+}
+
+void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
+                                      TimeTrajectory*     tr)
 {
   if (prm.size() != numParams())
   {
     throw runtime_error(
-        "TimeLinearStateSolver parameter size mismatch");
+        "TimeLinearIntegrator parameter size mismatch");
   }
+
+  if (tr != nullptr)
+  {
+    tr->resize(numSteps(), numStates());
+  }
+
+  MonitorScope monitor_scope(*this);
 
   Vector<Real> init;
   initializeInitialState(init);
-  if (observer)
+  if (tr != nullptr)
   {
-    observer(0, init);
+    (*tr)[0] = init;
   }
+  observeState(0, init);
 
   Vector<Real> hist;
   initializeHistoryWindow(init, dims_.nhst, numStates(), hist);
@@ -256,16 +242,19 @@ void TimeLinearStateSolver::solve(const Vector<Real>&  prm,
     Vector<Real> cur_state = Vector<Real>::view(hist.data(), numStates());
     Vector<Real> x_next    = cur_state;
     solveStep(step, prm, hist, x_next);
-    const bool stop = stop_condition_ && stop_condition_(step + 1, x_next, cur_state);
+    if (tr != nullptr)
+    {
+      (*tr)[step + 1] = x_next;
+    }
+    const TimeStepStateContext ctx{
+        step + 1,
+        numSteps(),
+        cur_state,
+        x_next,
+        last_assm_sec_,
+        last_solve_sec_};
+    const bool stop = observeStep(ctx);
     advanceHistoryWindow(hist, dims_.nhst, numStates(), x_next);
-    if (observer)
-    {
-      observer(step + 1, x_next);
-    }
-    if (step_monitor_)
-    {
-      step_monitor_(step + 1, numSteps());
-    }
     if (stop)
     {
       break;
@@ -273,7 +262,7 @@ void TimeLinearStateSolver::solve(const Vector<Real>&  prm,
   }
 }
 
-void TimeLinearStateSolver::solveStep(
+void TimeLinearIntegrator::solveStep(
     Index               step,
     const Vector<Real>& prm,
     const Vector<Real>& hist,
@@ -296,7 +285,7 @@ void TimeLinearStateSolver::solveStep(
   problem_.res(ctx, res);
   if (res.size() != dims_.nres)
   {
-    throw runtime_error("TimeLinearStateSolver residual size mismatch");
+    throw runtime_error("TimeLinearIntegrator residual size mismatch");
   }
 
   const auto assembly_begin = Clock::now();
@@ -304,7 +293,7 @@ void TimeLinearStateSolver::solveStep(
           ctx, VariableBlock::NextState, J_next_))
   {
     throw runtime_error(
-        "TimeLinearStateSolver requires an assembled next-state Jacobian");
+        "TimeLinearIntegrator requires an assembled next-state Jacobian");
   }
   J_next_.finalize();
 
@@ -312,7 +301,7 @@ void TimeLinearStateSolver::solveStep(
   J_next_.apply(x_next, rhs);
   if (rhs.size() != res.size())
   {
-    throw runtime_error("TimeLinearStateSolver RHS size mismatch");
+    throw runtime_error("TimeLinearIntegrator RHS size mismatch");
   }
   for (Index i = 0; i < res.size(); ++i)
   {
@@ -320,7 +309,7 @@ void TimeLinearStateSolver::solveStep(
   }
   problem_.prepareLinearSolve(ctx, VariableBlock::NextState, J_next_, rhs);
   last_assm_sec_     = elapsedSeconds(assembly_begin);
-  assembly_seconds_ += last_assm_sec_;
+  assm_sec_ += last_assm_sec_;
   ++assm_calls_;
 
   Vector<Real> next;
@@ -332,7 +321,7 @@ void TimeLinearStateSolver::solveStep(
   if (next.size() != numStates())
   {
     throw runtime_error(
-        "TimeLinearStateSolver update size mismatch");
+        "TimeLinearIntegrator update size mismatch");
   }
 
   for (Index i = 0; i < numStates(); ++i)
@@ -341,7 +330,7 @@ void TimeLinearStateSolver::solveStep(
   }
 }
 
-void TimeLinearStateSolver::initializeInitialState(Vector<Real>& state) const
+void TimeLinearIntegrator::initializeInitialState(Vector<Real>& state) const
 {
   if (has_init_state_)
   {

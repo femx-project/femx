@@ -3,7 +3,6 @@
 #include <petsctao.h>
 
 #include <cmath>
-#include <functional>
 #include <string>
 #include <utility>
 
@@ -60,8 +59,14 @@ struct TaoIterationInfo
   Vector<Real>       grad;
 };
 
-using TaoMonitorCallback =
-    std::function<void(const TaoIterationInfo&, const Vector<Real>&)>;
+class TaoProgressMonitor
+{
+public:
+  virtual ~TaoProgressMonitor() = default;
+
+  virtual void observe(const TaoIterationInfo& info,
+                       const Vector<Real>&     current_prm) = 0;
+};
 
 /** @brief PETSc/TAO optimizer for reduced functionals. */
 class TaoOptimizer
@@ -188,14 +193,14 @@ public:
     has_scale_ = false;
   }
 
-  void setMonitor(TaoMonitorCallback monitor)
+  void setMonitor(TaoProgressMonitor* monitor)
   {
-    monitor_ = std::move(monitor);
+    progress_monitor_ = monitor;
   }
 
   void clearMonitor()
   {
-    monitor_ = nullptr;
+    progress_monitor_ = nullptr;
   }
 
   PetscErrorCode solve(const Vector<Real>& init, TaoResult& result)
@@ -248,7 +253,7 @@ public:
       PetscCall(TaoSetType(tao.get(), taoType()));
       PetscCall(TaoSetSolution(tao.get(), prm.get()));
       PetscCall(adapter.setValueGrad(tao.get()));
-      if (monitor_)
+      if (progress_monitor_ != nullptr)
       {
 #if PETSC_VERSION_GE(3, 21, 0)
         PetscCall(TaoMonitorSet(
@@ -273,8 +278,7 @@ public:
           static_cast<PetscReal>(opts_.abs_tol),
           static_cast<PetscReal>(opts_.rel_tol),
           static_cast<PetscReal>(opts_.step_tol)));
-      PetscCall(TaoSetMaximumIterations(
-          tao.get(), static_cast<PetscInt>(opts_.max_its)));
+      PetscCall(TaoSetMaximumIterations(tao.get(), static_cast<PetscInt>(opts_.max_its)));
       PetscCall(TaoSetFromOptions(tao.get()));
       PetscCall(TaoSolve(tao.get()));
 
@@ -302,7 +306,7 @@ private:
   static PetscErrorCode monitorCallback(Tao tao, void* ctx)
   {
     auto* self = static_cast<TaoOptimizer*>(ctx);
-    if (self == nullptr || !self->monitor_)
+    if (self == nullptr || self->progress_monitor_ == nullptr)
     {
       return PETSC_SUCCESS;
     }
@@ -349,7 +353,7 @@ private:
 
     try
     {
-      self->monitor_(info, current);
+      self->progress_monitor_->observe(info, current);
     }
     catch (...)
     {
@@ -513,7 +517,7 @@ private:
   bool                 has_bounds_{false};
   Vector<Real>         scale_;
   bool                 has_scale_{false};
-  TaoMonitorCallback   monitor_;
+  TaoProgressMonitor*  progress_monitor_{nullptr};
 };
 
 } // namespace opt

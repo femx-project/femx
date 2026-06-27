@@ -5,10 +5,10 @@
 namespace femx::navier
 {
 
-constexpr Index kMaxLocalNodes            = 16;
-constexpr Index kMaxLocalDofs             = 64;
-constexpr Index kMaxLocalQuadraturePoints = 64;
-constexpr Index kMaxSpatialDim            = 3;
+constexpr Index kMaxNn  = 16;
+constexpr Index kMaxNd  = 64;
+constexpr Index kMaxNq  = 64;
+constexpr Index kMaxDim = 3;
 
 struct KernelFluid
 {
@@ -21,23 +21,23 @@ struct LocalElementValues
   Index       nq   = 0;
   Index       nn   = 0;
   Index       dim  = 0;
-  const Real* N    = nullptr;
-  const Real* dNdx = nullptr;
-  const Real* JxW  = nullptr;
+  const Real* N_data    = nullptr;
+  const Real* dNdx_data = nullptr;
+  const Real* JxW_data  = nullptr;
 
-  Real shape(Index qp, Index in) const
+  Real N(Index qp, Index in) const
   {
-    return N[qp * nn + in];
+    return N_data[qp * nn + in];
   }
 
-  Real grad(Index qp, Index in, Index comp) const
+  Real dNdx(Index qp, Index in, Index comp) const
   {
-    return dNdx[(qp * nn + in) * dim + comp];
+    return dNdx_data[(qp * nn + in) * dim + comp];
   }
 
-  Real wt(Index qp) const
+  Real JxW(Index qp) const
   {
-    return JxW[qp];
+    return JxW_data[qp];
   }
 };
 

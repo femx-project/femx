@@ -8,19 +8,20 @@ target_sources(
           NewtonStateSolver.cpp
           ReducedFunctional.cpp
           DerivativeCheck.cpp
-          TimeLinearStateSolver.cpp
+          TimeLinearIntegrator.cpp
           TimeReducedFunctional.cpp
-          TimeNewtonStateSolver.cpp
+          TimeNewtonIntegrator.cpp
   PUBLIC EnsembleBasis.hpp
          EnsembleReducedFunctional.hpp
          NewtonStateSolver.hpp
          ReducedFunctional.hpp
          StateSolver.hpp
          DerivativeCheck.hpp
-         TimeLinearStateSolver.hpp
-         TimeNewtonStateSolver.hpp
+         TimeLinearIntegrator.hpp
+         TimeNewtonIntegrator.hpp
          TimeReducedFunctional.hpp
-         TimeStateSolver.hpp
+         TimeStateMonitor.hpp
+         TimeIntegrator.hpp
          TimeTrajectory.hpp)
 
 target_link_libraries(femx_state PUBLIC femx_problem femx_linalg)
