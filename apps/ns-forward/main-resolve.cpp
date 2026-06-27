@@ -10,7 +10,7 @@
 
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/SparseMatrixOperator.hpp>
+#include <femx/linalg/native/CsrMatrixOperator.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
@@ -21,7 +21,7 @@ using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
 using namespace femx::linalg;
-namespace rt = femx::runtime;
+using namespace femx::runtime;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -62,9 +62,9 @@ namespace rt = femx::runtime;
 namespace
 {
 
-rt::BuildInfo makeBuildInfo()
+BuildInfo makeBuildInfo()
 {
-  return rt::BuildInfo{
+  return BuildInfo{
       {{"femx commit", FEMX_GIT_COMMIT},
        {"cmake build type", FEMX_CMAKE_BUILD_TYPE},
        {"cmake cxx compiler", FEMX_CMAKE_CXX_COMPILER},
@@ -110,7 +110,7 @@ int run(const Params& prm, bool enable_output)
 {
   if (enable_output)
   {
-    rt::writeBuildInfo(prm.output.directory, makeBuildInfo());
+    writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
 
   ForwardProblem fwd(prm);
@@ -118,7 +118,7 @@ int run(const Params& prm, bool enable_output)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  SparseMatrixOperator A(fwd.pettern);
+  CsrMatrixOperator A(fwd.pettern);
   ReSolveLinearSolver  solver(workspaceType(prm.solver), opts);
 
   TimeLinearIntegrator integrator(fwd.problem, A, solver);
@@ -131,7 +131,7 @@ int run(const Params& prm, bool enable_output)
   ofstream log_out;
   if (enable_output)
   {
-    log_out = rt::openOutputFile(prm.output.directory, "run-info.txt");
+    log_out = openOutputFile(prm.output.directory, "run-info.txt");
   }
 
   ForwardSolveResult result;

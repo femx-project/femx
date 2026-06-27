@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 
@@ -19,6 +20,20 @@ public:
   {
   }
 
+  template <class Values>
+  VectorView& operator=(const Values& vals)
+  {
+    if (vals.size() != size_)
+    {
+      throw std::runtime_error("VectorView assignment size mismatch");
+    }
+    for (Index i = 0; i < size_; ++i)
+    {
+      data_[i] = vals[i];
+    }
+    return *this;
+  }
+
   T& operator[](Index i) const
   {
     return data_[i];
@@ -32,6 +47,26 @@ public:
   Index size() const
   {
     return size_;
+  }
+
+  bool empty() const
+  {
+    return size_ == 0;
+  }
+
+  T* begin() const
+  {
+    return data_;
+  }
+
+  T* end() const
+  {
+    return data_ + size_;
+  }
+
+  void setZero() const
+  {
+    std::fill(begin(), end(), T{});
   }
 
 private:

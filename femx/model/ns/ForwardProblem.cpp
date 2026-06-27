@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include "Boundary.hpp"
-#include <femx/assembly/SparsityPatternBuilder.hpp>
+#include <femx/assembly/CsrBuilder.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
@@ -185,7 +185,7 @@ ForwardProblem::ForwardProblem(const Params& prm)
     fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
     problem(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
     x0(makeInitialState(space, prm.bcs)),
-    pettern(SparsityPatternBuilder::build(space)),
+    pettern(CsrBuilder::build(space)),
     prm0(0)
 {
 }
@@ -286,9 +286,7 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                          ostream*              terminal,
                          ostream*              log_out)
 {
-  ForwardSolveMonitor monitor(problem.space,
-                                         problem.dt,
-                                         problem.steps);
+  ForwardSolveMonitor monitor(problem.space, problem.dt, problem.steps);
   if (collect_output)
   {
     monitor.setFieldOutput(prm.directory, prm.interval);

@@ -5,11 +5,11 @@
 
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
-#include <femx/linalg/SparseMatrix.hpp>
-#include <femx/linalg/native/SparseMatrixOperator.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/native/CsrMatrixOperator.hpp>
 
 #if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScMatrixOperator.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
 #endif
 
 using namespace std;
@@ -24,11 +24,11 @@ namespace assembly
 namespace
 {
 
-void replaceSparseRow(SparseMatrixOperator& mat,
+void replaceSparseRow(CsrMatrixOperator& mat,
                       Index                 row,
                       Real                  diag)
 {
-  SparseMatrix& sparse = mat.mat();
+  CsrMatrix& sparse = mat.mat();
   if (row < 0 || row >= sparse.rows())
   {
     throw runtime_error(
@@ -333,7 +333,7 @@ void TimeDirichletControlResidual::replaceStateRows(
   }
 
   const Vector<Index> rows = constrainedRows();
-  if (auto* sparse = dynamic_cast<SparseMatrixOperator*>(&out))
+  if (auto* sparse = dynamic_cast<CsrMatrixOperator*>(&out))
   {
     for (Index row : rows)
     {
@@ -343,7 +343,7 @@ void TimeDirichletControlResidual::replaceStateRows(
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (auto* petsc = dynamic_cast<PETScMatrixOperator*>(&out))
+  if (auto* petsc = dynamic_cast<PETScMatrix*>(&out))
   {
     out.finalize();
     petsc->zeroRows(rows, diag);
@@ -391,13 +391,13 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     is_constrained[row] = 1;
   }
 
-  auto* sparse = dynamic_cast<SparseMatrixOperator*>(&J);
+  auto* sparse = dynamic_cast<CsrMatrixOperator*>(&J);
   if (sparse == nullptr)
   {
     return;
   }
 
-  SparseMatrix& mat  = sparse->mat();
+  CsrMatrix& mat  = sparse->mat();
   const Index*  rp   = mat.rowPtrData();
   const Index*  ci   = mat.colIndData();
   Real*         vals = mat.valuesData();

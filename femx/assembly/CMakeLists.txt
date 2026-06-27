@@ -4,7 +4,7 @@ add_library(femx::assembly ALIAS femx_assembly)
 target_sources(
   femx_assembly
   PRIVATE Assembler.cpp BoundaryDofLayout.cpp FEMResidual.cpp
-          SparsityPatternBuilder.cpp TimeDirichletControlResidual.cpp
+          CsrBuilder.cpp TimeDirichletControlResidual.cpp
           TimeFEMResidual.cpp
   PUBLIC BoundaryDofLayout.hpp
          BoundaryElementKernel.hpp
@@ -14,7 +14,7 @@ target_sources(
          EnzymeTimeVolumeKernel.hpp
          EnzymeVolumeKernel.hpp
          FEMResidual.hpp
-         SparsityPatternBuilder.hpp
+         CsrBuilder.hpp
          TimeDirichletControlResidual.hpp
          TimeElementKernel.hpp
          TimeFEMResidual.hpp)

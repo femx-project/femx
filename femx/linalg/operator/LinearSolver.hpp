@@ -1,6 +1,6 @@
 #pragma once
 
-#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/operator/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx

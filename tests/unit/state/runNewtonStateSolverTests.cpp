@@ -1,7 +1,7 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/linalg/native/DenseMatrixOperator.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/state/NewtonStateSolver.hpp>

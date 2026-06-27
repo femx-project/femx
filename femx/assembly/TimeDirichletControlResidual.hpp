@@ -3,7 +3,7 @@
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/operator/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 

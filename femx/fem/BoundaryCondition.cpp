@@ -5,7 +5,7 @@
 #include <femx/fem/BoundaryCondition.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/SparseMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
 using namespace std;
@@ -189,7 +189,7 @@ const Vector<Real>& DirichletCondition::vals() const noexcept
   return vals_;
 }
 
-void DirichletCondition::apply(SparseMatrix& A, Vector<Real>& b) const
+void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
 {
   if (dofs_.size() != vals_.size())
   {

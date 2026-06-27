@@ -449,7 +449,7 @@ void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
   const TimeHistoryView hist = ctx.historyView();
   for (Index lag = 0; lag < numHistoryStates(); ++lag)
   {
-    Vector<Real> state = Vector<Real>::view(local.data() + lag * nloc, nloc);
+    VectorView<Real> state(local.data() + lag * nloc, nloc);
     gather(history_state_layouts_[lag],
            hist.state(lag),
            ie,
@@ -498,6 +498,24 @@ void TimeFEMResidual::gather(const DofLayout&       lyt,
   Vector<Index> dofs;
   lyt.elemDofs(ie, dofs);
   resizeOrZero(local, dofs.size());
+
+  gather(lyt,
+         global,
+         ie,
+         VectorView<Real>(local.data(), local.size()));
+}
+
+void TimeFEMResidual::gather(const DofLayout&       lyt,
+                             VectorView<const Real> global,
+                             Index                  ie,
+                             VectorView<Real>       local)
+{
+  Vector<Index> dofs;
+  lyt.elemDofs(ie, dofs);
+  if (local.size() != dofs.size())
+  {
+    throw runtime_error("TimeFEMResidual local vector size mismatch");
+  }
 
   for (Index i = 0; i < local.size(); ++i)
   {

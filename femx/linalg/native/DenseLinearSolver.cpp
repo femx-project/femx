@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 
 using namespace std;
 

@@ -7,8 +7,8 @@
 
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScMatrixOperator.hpp>
-#include <femx/linalg/petsc/PETScVectorBuilder.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PetscRuntime.hpp>
@@ -19,7 +19,7 @@ using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
 using namespace femx::linalg;
-namespace rt = femx::runtime;
+using namespace femx::runtime;
 
 #ifndef FEMX_GIT_COMMIT
 #define FEMX_GIT_COMMIT "unknown"
@@ -56,9 +56,9 @@ namespace rt = femx::runtime;
 namespace
 {
 
-rt::BuildInfo makeBuildInfo()
+BuildInfo makeBuildInfo()
 {
-  return rt::BuildInfo{
+  return BuildInfo{
       {{"femx commit", FEMX_GIT_COMMIT},
        {"cmake build type", FEMX_CMAKE_BUILD_TYPE},
        {"cmake cxx compiler", FEMX_CMAKE_CXX_COMPILER},
@@ -80,17 +80,15 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
   opts.max_its     = 5000;
   opts.use_opts_db = true;
 
-  const PetscMPIInt comm_size = rt::commSize(PETSC_COMM_WORLD);
+  const PetscMPIInt comm_size = commSize(PETSC_COMM_WORLD);
 
   if (prm.method == "direct")
   {
     opts.type          = KSPPREONLY;
     opts.pc_type       = PCLU;
     opts.nonzero_guess = false;
-    rt::setPetscOptionIfMissing(
-        "-pc_factor_mat_solver_type",
-        comm_size > 1 ? "mumps" : "petsc");
-    rt::setPetscOptionIfMissing("-pc_factor_mat_ordering_type", "rcm");
+    setPetscOptionIfMissing("-pc_factor_mat_solver_type", comm_size > 1 ? "mumps" : "petsc");
+    setPetscOptionIfMissing("-pc_factor_mat_ordering_type", "rcm");
   }
   else
   {
@@ -100,36 +98,36 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
 
     if (comm_size > 1)
     {
-      rt::setPetscOptionIfMissing("-sub_pc_type", "ilu");
-      rt::setPetscOptionIfMissing("-sub_pc_factor_levels", "0");
-      rt::setPetscOptionIfMissing("-sub_pc_factor_mat_ordering_type", "rcm");
+      setPetscOptionIfMissing("-sub_pc_type", "ilu");
+      setPetscOptionIfMissing("-sub_pc_factor_levels", "0");
+      setPetscOptionIfMissing("-sub_pc_factor_mat_ordering_type", "rcm");
     }
     else
     {
-      rt::setPetscOptionIfMissing("-pc_factor_levels", "0");
-      rt::setPetscOptionIfMissing("-pc_factor_mat_ordering_type", "rcm");
+      setPetscOptionIfMissing("-pc_factor_levels", "0");
+      setPetscOptionIfMissing("-pc_factor_mat_ordering_type", "rcm");
     }
   }
 }
 
 int run(const Params& prm, bool enable_output)
 {
-  const PetscMPIInt rank = rt::commRank(PETSC_COMM_WORLD);
-  const PetscMPIInt size = rt::commSize(PETSC_COMM_WORLD);
+  const PetscMPIInt rank = commRank(PETSC_COMM_WORLD);
+  const PetscMPIInt size = commSize(PETSC_COMM_WORLD);
 
   if (rank == 0 && enable_output)
   {
-    rt::writeBuildInfo(prm.output.directory, makeBuildInfo());
+    writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
 
   ForwardProblem  fwd(prm);
-  rt::setElemRange(fwd.fem, fwd.space.mesh().numElems());
+  setElemRange(fwd.fem, fwd.space.mesh().numElems());
 
-  PETScVectorBuilder row_layout(PETSC_COMM_WORLD);
-  row_layout.resize(fwd.space.numDofs());
+  PETScVector mat_row(PETSC_COMM_WORLD);
+  mat_row.resize(fwd.space.numDofs());
 
-  PETScMatrixOperator A(PETSC_COMM_WORLD);
-  A.resize(fwd.pettern, row_layout);
+  PETScMatrix A(PETSC_COMM_WORLD);
+  A.resize(fwd.pettern, mat_row);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
@@ -147,7 +145,7 @@ int run(const Params& prm, bool enable_output)
   ofstream log_out;
   if (rank == 0 && enable_output)
   {
-    log_out = rt::openOutputFile(prm.output.directory, "run-info.txt");
+    log_out = openOutputFile(prm.output.directory, "run-info.txt");
   }
 
   ForwardSolveResult result;
@@ -175,15 +173,15 @@ int main(int argc, char* argv[])
   int status = 0;
   try
   {
-    rt::PetscSession petsc(argc, argv);
-    rt::setSerialOpenMp();
+    PetscSession petsc(argc, argv);
+    setSerialOpenMp();
 
     try
     {
       const AppOptions opts = parseAppOptions(argc, argv, true);
       if (opts.help)
       {
-        if (rt::isRoot())
+        if (isRoot())
         {
           printUsage(
               cout,
@@ -204,7 +202,7 @@ int main(int argc, char* argv[])
     }
     catch (const exception& e)
     {
-      if (rt::isRoot())
+      if (isRoot())
       {
         cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
       }

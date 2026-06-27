@@ -202,7 +202,7 @@ void TimeNewtonIntegrator::solveImpl(const Vector<Real>& prm,
   initializeHistoryWindow(init, dims_.nhst, numStates(), hist);
   for (Index step = 0; step < numSteps(); ++step)
   {
-    Vector<Real> cur_state = Vector<Real>::view(hist.data(), numStates());
+    Vector<Real> cur_state = VectorView<Real>(hist.data(), numStates());
     Vector<Real> nxt       = cur_state;
     solveStep(step, prm, hist, nxt);
     if (tr != nullptr)

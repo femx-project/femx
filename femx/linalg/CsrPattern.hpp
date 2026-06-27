@@ -1,7 +1,8 @@
 #pragma once
 
+#include <functional>
+
 #include <femx/common/Types.hpp>
-#include <femx/linalg/IndexSetList.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -10,9 +11,12 @@ namespace femx
 class CsrPattern
 {
 public:
-  CsrPattern(Index               rows,
-             Index               cols,
-             const IndexSetList& cdofs);
+  using ElementDofProvider = std::function<void(Index, Vector<Index>&)>;
+
+  CsrPattern(Index                     rows,
+             Index                     cols,
+             Index                     num_elems,
+             const ElementDofProvider& elem_dofs);
 
   Index rows() const;
   Index cols() const;
@@ -32,11 +36,11 @@ public:
   Index elemNumDofs(Index ie) const;
 
 private:
-  void countCooEntries(const IndexSetList& cdofs);
-  void setupCooArrays(const IndexSetList& cdofs,
-                      Vector<Index>&      coo_rows,
-                      Vector<Index>&      coo_cols,
-                      Vector<Index>&      order);
+  void countCooEntries(const ElementDofProvider& elem_dofs);
+  void setupCooArrays(const ElementDofProvider& elem_dofs,
+                      Vector<Index>&            coo_rows,
+                      Vector<Index>&            coo_cols,
+                      Vector<Index>&            order);
   void setupCsrArrays(const Vector<Index>& coo_rows,
                       const Vector<Index>& coo_cols,
                       Vector<Index>&       order);

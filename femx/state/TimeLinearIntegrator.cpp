@@ -147,12 +147,12 @@ void TimeLinearIntegrator::clearInitialState()
 
 void TimeLinearIntegrator::resetTiming()
 {
-  assm_sec_ = 0.0;
-  solve_sec_        = 0.0;
-  last_assm_sec_    = 0.0;
-  last_solve_sec_   = 0.0;
-  assm_calls_       = 0;
-  solve_calls_      = 0;
+  assm_sec_       = 0.0;
+  solve_sec_      = 0.0;
+  last_assm_sec_  = 0.0;
+  last_solve_sec_ = 0.0;
+  assm_calls_     = 0;
+  solve_calls_    = 0;
 }
 
 Real TimeLinearIntegrator::assemblySeconds() const
@@ -201,7 +201,7 @@ Index TimeLinearIntegrator::numParams() const
 }
 
 void TimeLinearIntegrator::solve(const Vector<Real>& prm,
-                                  TimeTrajectory&     tr)
+                                 TimeTrajectory&     tr)
 {
   solveImpl(prm, &tr);
 }
@@ -212,7 +212,7 @@ void TimeLinearIntegrator::solve(const Vector<Real>& prm)
 }
 
 void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
-                                      TimeTrajectory*     tr)
+                                     TimeTrajectory*     tr)
 {
   if (prm.size() != numParams())
   {
@@ -239,13 +239,15 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
   initializeHistoryWindow(init, dims_.nhst, numStates(), hist);
   for (Index step = 0; step < numSteps(); ++step)
   {
-    Vector<Real> cur_state = Vector<Real>::view(hist.data(), numStates());
+    Vector<Real> cur_state = VectorView<Real>(hist.data(), numStates());
     Vector<Real> x_next    = cur_state;
+
     solveStep(step, prm, hist, x_next);
     if (tr != nullptr)
     {
       (*tr)[step + 1] = x_next;
     }
+
     const TimeStepStateContext ctx{
         step + 1,
         numSteps(),
@@ -253,6 +255,7 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
         x_next,
         last_assm_sec_,
         last_solve_sec_};
+
     const bool stop = observeStep(ctx);
     advanceHistoryWindow(hist, dims_.nhst, numStates(), x_next);
     if (stop)
@@ -308,15 +311,18 @@ void TimeLinearIntegrator::solveStep(
     rhs[i] -= res[i];
   }
   problem_.prepareLinearSolve(ctx, VariableBlock::NextState, J_next_, rhs);
-  last_assm_sec_     = elapsedSeconds(assembly_begin);
-  assm_sec_ += last_assm_sec_;
+  last_assm_sec_  = elapsedSeconds(assembly_begin);
+  assm_sec_      += last_assm_sec_;
   ++assm_calls_;
 
   Vector<Real> next;
   const auto   solve_begin = Clock::now();
+
   lin_solver_.solve(J_next_, rhs, next);
+
   last_solve_sec_  = elapsedSeconds(solve_begin);
   solve_sec_      += last_solve_sec_;
+  
   ++solve_calls_;
   if (next.size() != numStates())
   {

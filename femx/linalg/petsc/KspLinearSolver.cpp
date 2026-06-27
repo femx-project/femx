@@ -4,11 +4,11 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/operator/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScMatrixOperator.hpp>
-#include <femx/linalg/petsc/PETScVectorBuilder.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
 using namespace std;
@@ -141,16 +141,16 @@ public:
     solveLinearOperator(op, rhs, out, true);
   }
 
-  void solve(const PETScMatrixOperator& op,
-             const PETScVectorBuilder&  rhs,
-             PETScVectorBuilder&        out)
+  void solve(const PETScMatrix& op,
+             const PETScVector&  rhs,
+             PETScVector&        out)
   {
     solveSystem(op, rhs, out, false);
   }
 
-  void solveT(const PETScMatrixOperator& op,
-              const PETScVectorBuilder&  rhs,
-              PETScVectorBuilder&        out)
+  void solveT(const PETScMatrix& op,
+              const PETScVector&  rhs,
+              PETScVector&        out)
   {
     solveSystem(op, rhs, out, true);
   }
@@ -177,7 +177,7 @@ private:
                            bool                  transpose)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScMatrixOperator*>(&op))
+            dynamic_cast<const PETScMatrix*>(&op))
     {
       solveSystem(*petsc_mat, rhs, out, transpose);
       return;
@@ -238,7 +238,7 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScMatrixOperator& op,
+  void solveSystem(const PETScMatrix& op,
                    const Vector<Real>&        rhs,
                    Vector<Real>&              out,
                    bool                       transpose)
@@ -291,9 +291,9 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScMatrixOperator& op,
-                   const PETScVectorBuilder&  rhs,
-                   PETScVectorBuilder&        out,
+  void solveSystem(const PETScMatrix& op,
+                   const PETScVector&  rhs,
+                   PETScVector&        out,
                    bool                       transpose)
   {
     if (op.numRows() != op.numCols())
@@ -344,7 +344,7 @@ private:
                                PetscInt              size)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScMatrixOperator*>(&op))
+            dynamic_cast<const PETScMatrix*>(&op))
     {
       return petsc_mat->mat();
     }
@@ -637,16 +637,16 @@ void KspLinearSolver::solveT(const LinearOperator& op,
   impl_->solveT(op, rhs, out);
 }
 
-void KspLinearSolver::solve(const PETScMatrixOperator& op,
-                            const PETScVectorBuilder&  rhs,
-                            PETScVectorBuilder&        out)
+void KspLinearSolver::solve(const PETScMatrix& op,
+                            const PETScVector&  rhs,
+                            PETScVector&        out)
 {
   impl_->solve(op, rhs, out);
 }
 
-void KspLinearSolver::solveT(const PETScMatrixOperator& op,
-                             const PETScVectorBuilder&  rhs,
-                             PETScVectorBuilder&        out)
+void KspLinearSolver::solveT(const PETScMatrix& op,
+                             const PETScVector&  rhs,
+                             PETScVector&        out)
 {
   impl_->solveT(op, rhs, out);
 }

@@ -11,11 +11,11 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/Workspace.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/operator/LinearSolver.hpp>
 
 namespace femx
 {
-class SparseMatrix;
+class CsrMatrix;
 template <typename T>
 class Vector;
 
@@ -53,18 +53,18 @@ public:
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /** @brief Solve op x = rhs for a SparseMatrixOperator-backed operator. */
+  /** @brief Solve op x = rhs for a CsrMatrixOperator-backed operator. */
   void solve(const LinearOperator& op,
              const Vector<Real>&   rhs,
              Vector<Real>&         out) override;
 
-  /** @brief Solve op^T x = rhs for a SparseMatrixOperator-backed operator. */
+  /** @brief Solve op^T x = rhs for a CsrMatrixOperator-backed operator. */
   void solveT(const LinearOperator& op,
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;
 
   /** @brief Set the system matrix used by subsequent solves. */
-  void setOperator(const SparseMatrix& A);
+  void setOperator(const CsrMatrix& A);
 
   /** @brief Select or update the preconditioner method. */
   void setPreconditioner(const std::string& method);

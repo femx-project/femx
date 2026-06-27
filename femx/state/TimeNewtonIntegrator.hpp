@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearOperator.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/operator/LinearOperator.hpp>
+#include <femx/linalg/operator/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>

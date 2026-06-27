@@ -9,7 +9,6 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/IndexSetList.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -101,6 +100,7 @@ private:
   template <typename DofAppender>
   void buildByTag(Index ptag, DofAppender append_dofs)
   {
+    clearFacets();
     const auto& facets = mesh().boundaryFacets();
     for (Index i = 0; i < facets.size(); ++i)
     {
@@ -109,7 +109,7 @@ private:
         addFacet(i, facets[i], append_dofs);
       }
     }
-    if (facet_dofs_.empty())
+    if (facet_indices_.empty())
     {
       throw std::runtime_error(
           "No boundary facets found for physical tag "
@@ -120,6 +120,7 @@ private:
   template <typename DofAppender>
   void buildByName(const std::string& pname, DofAppender append_dofs)
   {
+    clearFacets();
     const auto& facets = mesh().boundaryFacets();
     for (Index i = 0; i < facets.size(); ++i)
     {
@@ -128,7 +129,7 @@ private:
         addFacet(i, facets[i], append_dofs);
       }
     }
-    if (facet_dofs_.empty())
+    if (facet_indices_.empty())
     {
       throw std::runtime_error(
           "No boundary facets found for physical name " + pname);
@@ -147,7 +148,11 @@ private:
       throw std::runtime_error("BoundaryDofLayout facet has no dofs");
     }
     facet_indices_.push_back(mesh_facet_index);
-    facet_dofs_.pushBack(dofs);
+    for (Index dof : dofs)
+    {
+      facet_dofs_.push_back(dof);
+    }
+    facet_dof_offsets_.push_back(facet_dofs_.size());
   }
 
   static void appendFacetDofs(const FESpace&             space,
@@ -157,6 +162,8 @@ private:
   static void appendFacetDofs(const MixedFESpace&        space,
                               const Mesh::BoundaryFacet& facet,
                               Vector<Index>&             dofs);
+
+  void clearFacets();
 
   template <typename Space>
   static void appendCompactFacetDofs(
@@ -190,7 +197,8 @@ private:
   const Mesh*   mesh_{nullptr};
   Index         nd_{0};
   Vector<Index> facet_indices_;
-  IndexSetList  facet_dofs_;
+  Vector<Index> facet_dof_offsets_;
+  Vector<Index> facet_dofs_;
 };
 
 } // namespace assembly

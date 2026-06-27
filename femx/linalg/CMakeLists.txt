@@ -3,19 +3,16 @@ add_library(femx::linalg ALIAS femx_linalg)
 
 target_sources(
   femx_linalg
-  PRIVATE ../common/Math.cpp CsrPattern.cpp DenseLinearSolver.cpp
-          DenseMatrix.cpp SparseMatrix.cpp
+  PRIVATE ../common/Math.cpp CsrPattern.cpp CsrMatrix.cpp DenseMatrix.cpp
   PUBLIC BlockVectorView.hpp
+         CsrMatrix.hpp
          CsrPattern.hpp
          DenseMatrix.hpp
-         DenseLinearSolver.hpp
-         IndexSetList.hpp
-         LinearOperator.hpp
-         LinearSolver.hpp
-         MatrixBuilder.hpp
-         MatrixOperator.hpp
          MatrixView.hpp
-         SparseMatrix.hpp
+         operator/LinearOperator.hpp
+         operator/LinearSolver.hpp
+         operator/MatrixBuilder.hpp
+         operator/MatrixOperator.hpp
          Vector.hpp
          VectorView.hpp)
 

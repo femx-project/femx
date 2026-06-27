@@ -8,10 +8,10 @@ namespace femx
 
 class CsrPattern;
 
-class SparseMatrix
+class CsrMatrix
 {
 public:
-  explicit SparseMatrix(const CsrPattern& pettern);
+  explicit CsrMatrix(const CsrPattern& pettern);
 
   void setZero();
 

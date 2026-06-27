@@ -140,17 +140,16 @@ void TimeObservationData::setTimeValues(Vector<Real> vals)
   checkTimeValues();
 }
 
-Vector<Real> TimeObservationData::operator[](Index level)
+VectorView<Real> TimeObservationData::operator[](Index level)
 {
   checkLevel(level);
-  return Vector<Real>::view(data_.data() + level * num_obs_, num_obs_);
+  return VectorView<Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
-Vector<Real> TimeObservationData::operator[](Index level) const
+VectorView<const Real> TimeObservationData::operator[](Index level) const
 {
   checkLevel(level);
-  return Vector<Real>::view(
-      const_cast<Real*>(data_.data()) + level * num_obs_, num_obs_);
+  return VectorView<const Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
 void TimeObservationData::setZero()
@@ -242,8 +241,9 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   TimeObservationData data(obs.numSteps() + 1, obs.numObservations());
   for (Index level = 0; level < data.numLevels(); ++level)
   {
-    Vector<Real> vals = data[level];
+    Vector<Real> vals(obs.numObservations());
     obs.observe(level, tr[level], prm, vals);
+    data[level] = vals;
   }
   return data;
 }
@@ -431,7 +431,7 @@ TimeObservationData readTimeObsData(const string& path)
           "Time observation data has unexpected level label");
     }
 
-    Vector<Real> vals = data[level];
+    VectorView<Real> vals = data[level];
     for (Index i = 0; i < vals.size(); ++i)
     {
       if (!(in >> vals[i]))

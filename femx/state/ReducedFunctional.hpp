@@ -1,7 +1,7 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/operator/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/Linearization.hpp>
 #include <femx/problem/Objective.hpp>

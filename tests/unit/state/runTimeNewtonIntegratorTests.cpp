@@ -1,7 +1,7 @@
 #include <cmath>
 #include <vector>
 
-#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/state/TimeNewtonIntegrator.hpp>
 #include <femx/state/TimeStateMonitor.hpp>

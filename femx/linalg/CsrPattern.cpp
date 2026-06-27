@@ -9,39 +9,47 @@ using namespace std;
 namespace femx
 {
 
-CsrPattern::CsrPattern(Index               rows,
-                       Index               cols,
-                       const IndexSetList& cdofs)
+CsrPattern::CsrPattern(Index                     rows,
+                       Index                     cols,
+                       Index                     num_elems,
+                       const ElementDofProvider& elem_dofs)
 {
-  if (rows < 0 || cols < 0)
+  if (rows < 0 || cols < 0 || num_elems < 0)
   {
     throw runtime_error("CsrPattern dimensions must be non-negative");
+  }
+  if (!elem_dofs)
+  {
+    throw runtime_error("CsrPattern element dof provider is empty");
   }
 
   num_rows_ = rows;
   num_cols_ = cols;
-  ne_       = cdofs.numSets();
+  ne_       = num_elems;
 
   elem_coo_offsets_.assign(ne_ + 1, 0);
   elem_num_dofs_.assign(ne_, 0);
 
-  countCooEntries(cdofs);
+  countCooEntries(elem_dofs);
 
   Vector<Index> coo_rows(num_coo_entries_);
   Vector<Index> coo_cols(num_coo_entries_);
   Vector<Index> order(num_coo_entries_);
 
-  setupCooArrays(cdofs, coo_rows, coo_cols, order);
+  setupCooArrays(elem_dofs, coo_rows, coo_cols, order);
   setupCsrArrays(coo_rows, coo_cols, order);
 }
 
-void CsrPattern::countCooEntries(const IndexSetList& cdofs)
+void CsrPattern::countCooEntries(const ElementDofProvider& elem_dofs)
 {
   num_coo_entries_ = 0;
 
+  Vector<Index> dofs;
   for (Index ie = 0; ie < ne_; ++ie)
   {
-    const Index nd = cdofs.setSize(ie);
+    dofs.clear();
+    elem_dofs(ie, dofs);
+    const Index nd = dofs.size();
 
     elem_num_dofs_[ie]  = nd;
     num_coo_entries_   += nd * nd;
@@ -49,17 +57,23 @@ void CsrPattern::countCooEntries(const IndexSetList& cdofs)
 }
 
 void CsrPattern::setupCooArrays(
-    const IndexSetList& cdofs,
-    Vector<Index>&      coo_rows,
-    Vector<Index>&      coo_cols,
-    Vector<Index>&      order)
+    const ElementDofProvider& elem_dofs,
+    Vector<Index>&            coo_rows,
+    Vector<Index>&            coo_cols,
+    Vector<Index>&            order)
 {
   Index counter = 0;
+  Vector<Index> dofs;
 
   for (Index ie = 0; ie < ne_; ++ie)
   {
-    const Vector<Index> dofs = cdofs.set(ie);
-    const Index         nd   = elem_num_dofs_[ie];
+    dofs.clear();
+    elem_dofs(ie, dofs);
+    const Index nd = elem_num_dofs_[ie];
+    if (dofs.size() != nd)
+    {
+      throw runtime_error("CsrPattern elem dof count changed");
+    }
 
     elem_coo_offsets_[ie] = counter;
 

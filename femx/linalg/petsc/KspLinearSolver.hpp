@@ -6,15 +6,15 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/operator/LinearSolver.hpp>
 
 namespace femx
 {
 namespace linalg
 {
 
-class PETScMatrixOperator;
-class PETScVectorBuilder;
+class PETScMatrix;
+class PETScVector;
 
 struct KspOptions
 {
@@ -55,13 +55,13 @@ public:
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;
 
-  void solve(const PETScMatrixOperator& op,
-             const PETScVectorBuilder&  rhs,
-             PETScVectorBuilder&        out);
+  void solve(const PETScMatrix& op,
+             const PETScVector&  rhs,
+             PETScVector&        out);
 
-  void solveT(const PETScMatrixOperator& op,
-              const PETScVectorBuilder&  rhs,
-              PETScVectorBuilder&        out);
+  void solveT(const PETScMatrix& op,
+              const PETScVector&  rhs,
+              PETScVector&        out);
 
   KSPConvergedReason convergedReason() const;
 

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-#include <femx/linalg/DenseLinearSolver.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/native/DenseMatrixOperator.hpp>
 #include <femx/problem/TimeObjective.hpp>

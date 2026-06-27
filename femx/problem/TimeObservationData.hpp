@@ -5,6 +5,7 @@
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/VectorView.hpp>
 #include <femx/problem/TimeObservationOperator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -47,8 +48,8 @@ public:
   void setTimeLevels(Vector<Index> levels);
   void setTimeValues(Vector<Real> vals);
 
-  Vector<Real> operator[](Index level);
-  Vector<Real> operator[](Index level) const;
+  VectorView<Real> operator[](Index level);
+  VectorView<const Real> operator[](Index level) const;
 
   void setZero();
 

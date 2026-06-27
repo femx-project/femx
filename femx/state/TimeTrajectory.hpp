@@ -4,6 +4,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/VectorView.hpp>
 
 namespace femx
 {
@@ -60,17 +61,16 @@ public:
     return empty() ? 0 : nst_;
   }
 
-  Vector<Real> operator[](Index level)
+  VectorView<Real> operator[](Index level)
   {
     checkLevel(level);
-    return Vector<Real>::view(data_.data() + level * nst_, nst_);
+    return VectorView<Real>(data_.data() + level * nst_, nst_);
   }
 
-  Vector<Real> operator[](Index level) const
+  VectorView<const Real> operator[](Index level) const
   {
     checkLevel(level);
-    return Vector<Real>::view(
-        const_cast<Real*>(data_.data()) + level * nst_, nst_);
+    return VectorView<const Real>(data_.data() + level * nst_, nst_);
   }
 
   void setZero()

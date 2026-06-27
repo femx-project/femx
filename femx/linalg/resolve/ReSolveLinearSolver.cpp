@@ -5,10 +5,10 @@
 #include <string>
 #include <utility>
 
-#include <femx/linalg/LinearOperator.hpp>
-#include <femx/linalg/SparseMatrix.hpp>
+#include <femx/linalg/operator/LinearOperator.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/SparseMatrixOperator.hpp>
+#include <femx/linalg/native/CsrMatrixOperator.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -55,7 +55,7 @@ public:
 #endif
   }
 
-  void setOperator(const SparseMatrix& A)
+  void setOperator(const CsrMatrix& A)
   {
     A_ = &A;
 
@@ -145,7 +145,7 @@ public:
 
   void solve(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
+    const CsrMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
     {
       throw runtime_error(
@@ -158,7 +158,7 @@ public:
 
   void solveT(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const SparseMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
+    const CsrMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
     {
       throw runtime_error(
@@ -181,19 +181,19 @@ private:
     Vector<Real>  vals;
   };
 
-  static const SparseMatrixOperator& requireSparseMatrixOperator(
+  static const CsrMatrixOperator& requireSparseMatrixOperator(
       const LinearOperator& op)
   {
-    const auto* sparse_op = dynamic_cast<const SparseMatrixOperator*>(&op);
+    const auto* sparse_op = dynamic_cast<const CsrMatrixOperator*>(&op);
     if (sparse_op == nullptr)
     {
       throw runtime_error(
-          "ReSolveLinearSolver currently supports SparseMatrixOperator only");
+          "ReSolveLinearSolver currently supports CsrMatrixOperator only");
     }
     return *sparse_op;
   }
 
-  static HostCsrData transposeHost(const SparseMatrix& A)
+  static HostCsrData transposeHost(const CsrMatrix& A)
   {
     HostCsrData data;
     data.rp.assign(A.cols() + 1, 0);
@@ -242,7 +242,7 @@ private:
   }
 
 #if defined(FEMX_HAS_RESOLVE)
-  void solveTranspose(const SparseMatrix& A, const Vector<Real>& b, Vector<Real>& x)
+  void solveTranspose(const CsrMatrix& A, const Vector<Real>& b, Vector<Real>& x)
   {
     if (A.rows() != A.cols() || b.size() != A.cols())
     {
@@ -258,7 +258,7 @@ private:
               "ReSolve transpose SystemSolver::solve failed");
   }
 
-  void setTransposeOperator(const SparseMatrix& A)
+  void setTransposeOperator(const CsrMatrix& A)
   {
     transpose_data_ = transposeHost(A);
 
@@ -318,7 +318,7 @@ private:
     return ReSolve::memory::HOST;
   }
 
-  void updateMatrixData(const SparseMatrix& A)
+  void updateMatrixData(const CsrMatrix& A)
   {
     if (workspace_type_ == WorkspaceType::Cpu)
     {
@@ -574,7 +574,7 @@ private:
 #endif
 
   ReSolveOptions      opts_;
-  const SparseMatrix* A_;
+  const CsrMatrix* A_;
   WorkspaceType       workspace_type_;
   Index               mat_rows_ = 0;
   Index               mat_cols_ = 0;
@@ -609,7 +609,7 @@ ReSolveLinearSolver::ReSolveLinearSolver(WorkspaceType  workspace_type,
 
 ReSolveLinearSolver::~ReSolveLinearSolver() = default;
 
-void ReSolveLinearSolver::setOperator(const SparseMatrix& A)
+void ReSolveLinearSolver::setOperator(const CsrMatrix& A)
 {
   impl_->setOperator(A);
 }

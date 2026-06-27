@@ -1,60 +1,60 @@
 #include <algorithm>
 
 #include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/SparseMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 
 using namespace std;
 
 namespace femx
 {
 
-SparseMatrix::SparseMatrix(const CsrPattern& pettern)
+CsrMatrix::CsrMatrix(const CsrPattern& pettern)
   : pattern_(&pettern),
     vals_(pettern.nnz(), Real{})
 {
 }
 
-void SparseMatrix::setZero()
+void CsrMatrix::setZero()
 {
   fill(vals_.begin(), vals_.end(), Real{});
 }
 
-Index SparseMatrix::rows() const
+Index CsrMatrix::rows() const
 {
   return pattern_->rows();
 }
 
-Index SparseMatrix::cols() const
+Index CsrMatrix::cols() const
 {
   return pattern_->cols();
 }
 
-Index SparseMatrix::nnz() const
+Index CsrMatrix::nnz() const
 {
   return pattern_->nnz();
 }
 
-const CsrPattern& SparseMatrix::pettern() const
+const CsrPattern& CsrMatrix::pettern() const
 {
   return *pattern_;
 }
 
-const Index* SparseMatrix::rowPtrData() const
+const Index* CsrMatrix::rowPtrData() const
 {
   return pattern_->rowPtrData();
 }
 
-const Index* SparseMatrix::colIndData() const
+const Index* CsrMatrix::colIndData() const
 {
   return pattern_->colIndData();
 }
 
-Real* SparseMatrix::valuesData()
+Real* CsrMatrix::valuesData()
 {
   return vals_.data();
 }
 
-const Real* SparseMatrix::valuesData() const
+const Real* CsrMatrix::valuesData() const
 {
   return vals_.data();
 }

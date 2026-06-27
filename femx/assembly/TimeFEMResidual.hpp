@@ -6,7 +6,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/operator/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
 #include <femx/problem/TimeResidual.hpp>
@@ -100,6 +100,11 @@ private:
                      VectorView<const Real> global,
                      Index                  ie,
                      Vector<Real>&          local);
+
+  static void gather(const DofLayout&       lyt,
+                     VectorView<const Real> global,
+                     Index                  ie,
+                     VectorView<Real>       local);
 
   static void matVec(const DenseMatrix&  mat,
                      const Vector<Real>& x,

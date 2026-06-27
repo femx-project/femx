@@ -11,7 +11,7 @@ namespace femx
 
 class MixedFieldView;
 class FESpace;
-class SparseMatrix;
+class CsrMatrix;
 
 /** @brief Stores and applies Dirichlet boundary constraints.
  *
@@ -92,7 +92,7 @@ public:
   const Vector<Real>&  vals() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
-  void apply(SparseMatrix& A, Vector<Real>& b) const;
+  void apply(CsrMatrix& A, Vector<Real>& b) const;
 
 private:
   Vector<Index> dofs_;

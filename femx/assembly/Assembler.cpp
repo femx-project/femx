@@ -147,7 +147,8 @@ void Assembler::addMat(Index              ie,
     throw runtime_error("Assembler global matrix has incompatible size");
   }
 
-  if (same_layout_ && out.addLocalMatrix(ie, local, mode_ == AssemblyMode::Atomic))
+  const bool atomic = mode_ == AssemblyMode::Atomic;
+  if (same_layout_ && out.addMappedMat(ie, local, atomic))
   {
     return;
   }
@@ -159,28 +160,10 @@ void Assembler::addMat(Index              ie,
 
   if (local.rows() != row_dofs.size() || local.cols() != col_dofs.size())
   {
-    throw runtime_error(
-        "Assembler local matrix size does not match elem dofs");
+    throw runtime_error("Assembler local matrix size does not match elem dofs");
   }
 
-  for (Index i = 0; i < local.rows(); ++i)
-  {
-    const Index row = row_dofs[i];
-    checkDof(row, numRows(), "row");
-    for (Index j = 0; j < local.cols(); ++j)
-    {
-      const Index col = col_dofs[j];
-      checkDof(col, numCols(), "column");
-      if (mode_ == AssemblyMode::Atomic)
-      {
-        out.addAtomic(row, col, local(i, j));
-      }
-      else
-      {
-        out.add(row, col, local(i, j));
-      }
-    }
-  }
+  out.addMat(row_dofs, col_dofs, local, atomic);
 }
 
 void Assembler::checkElemCounts() const

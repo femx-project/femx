@@ -3,7 +3,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/operator/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx

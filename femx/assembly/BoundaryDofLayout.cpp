@@ -77,7 +77,7 @@ BoundaryDofLayout BoundaryDofLayout::compact(
 
 Index BoundaryDofLayout::numFacets() const
 {
-  return facet_dofs_.numSets();
+  return facet_indices_.size();
 }
 
 Index BoundaryDofLayout::numDofs() const
@@ -102,7 +102,21 @@ void BoundaryDofLayout::facetDofs(Index          ib,
                                   Vector<Index>& dofs) const
 {
   checkFacetIndex(ib);
-  dofs = facet_dofs_.set(ib);
+  const Index begin = facet_dof_offsets_[ib];
+  const Index end   = facet_dof_offsets_[ib + 1];
+  dofs.resize(end - begin);
+  for (Index i = 0; i < dofs.size(); ++i)
+  {
+    dofs[i] = facet_dofs_[begin + i];
+  }
+}
+
+void BoundaryDofLayout::clearFacets()
+{
+  facet_indices_.clear();
+  facet_dof_offsets_.clear();
+  facet_dof_offsets_.push_back(0);
+  facet_dofs_.clear();
 }
 
 void BoundaryDofLayout::appendFacetDofs(const FESpace&             space,
