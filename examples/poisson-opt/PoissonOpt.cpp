@@ -502,12 +502,38 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     control_mask[node]   = 1.0;
   }
 
+  Vector<Real> observation_mask(mesh_.numNodes(), 0.0);
+  Vector<Real> observation_value(mesh_.numNodes(), 0.0);
+  Vector<Real> observation_prediction(mesh_.numNodes(), 0.0);
+  Vector<Real> observation_misfit(mesh_.numNodes(), 0.0);
+  const Index  comps = space_.numComponents();
+  for (Index dof : obs_dofs_)
+  {
+    if (dof < 0 || dof >= numStates() || dof % comps != 0)
+    {
+      throw std::runtime_error("Poisson optimization observation dof is not a mesh node");
+    }
+    const Index node = dof / comps;
+    if (node < 0 || node >= mesh_.numNodes())
+    {
+      throw std::runtime_error("Poisson optimization observation node is out of range");
+    }
+    observation_mask[node]       = 1.0;
+    observation_value[node]      = target_state_[dof];
+    observation_prediction[node] = state[dof];
+    observation_misfit[node]     = state[dof] - target_state_[dof];
+  }
+
   VtuWriter out;
   out.writePointData(output_path.string(),
                      mesh_,
                      {{"state", 1, &state_field},
                       {"target_state", 1, &target_state_field},
                       {"state_error", 1, &state_error},
+                      {"observation_mask", 1, &observation_mask},
+                      {"observation_value", 1, &observation_value},
+                      {"observation_prediction", 1, &observation_prediction},
+                      {"observation_misfit", 1, &observation_misfit},
                       {"control", 1, &control},
                       {"target_control", 1, &target_control},
                       {"control_error", 1, &control_error},
@@ -516,8 +542,9 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
 
 Real PoissonOptProblem::exactValue(const Mesh::Node& p)
 {
-  return sin(constants::PI * p[0]) * sinh(constants::PI * p[1])
-         / sinh(constants::PI);
+  const Real wave_number = 2.0 * constants::PI;
+  return std::sin(wave_number * p[0]) * std::sinh(wave_number * p[1])
+         / std::sinh(wave_number);
 }
 
 void PoissonOptProblem::initializeBoundaryDofs()

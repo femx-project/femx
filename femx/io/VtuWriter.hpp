@@ -13,7 +13,7 @@ class Mesh;
 /**
  * @brief Write unstructured meshes and point data in VTK XML VTU format.
  *
- * VtuWriter writes plain ASCII `.vtu` files for visualization in tools such as
+ * VtuWriter writes binary XML `.vtu` files for visualization in tools such as
  * ParaView.  It is intentionally lightweight and does not require HDF5.
  */
 class VtuWriter

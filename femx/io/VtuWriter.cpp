@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -12,6 +14,12 @@ namespace femx
 {
 namespace
 {
+
+bool isLittleEndian()
+{
+  const uint16_t value = 1;
+  return *reinterpret_cast<const unsigned char*>(&value) == 1;
+}
 
 std::string escapeXml(const std::string& text)
 {
@@ -64,6 +72,130 @@ int vtkCellType(Element::Shape shape)
   throw std::runtime_error("VtuWriter received unsupported elem shape");
 }
 
+std::string base64Encode(const unsigned char* data,
+                         size_t               size)
+{
+  static constexpr char table[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  std::string out;
+  out.reserve(((size + 2) / 3) * 4);
+  for (size_t i = 0; i < size; i += 3)
+  {
+    const unsigned int b0    = data[i];
+    const unsigned int b1    = (i + 1 < size) ? data[i + 1] : 0;
+    const unsigned int b2    = (i + 2 < size) ? data[i + 2] : 0;
+    const unsigned int value = (b0 << 16) | (b1 << 8) | b2;
+
+    out.push_back(table[(value >> 18) & 0x3f]);
+    out.push_back(table[(value >> 12) & 0x3f]);
+    out.push_back(i + 1 < size ? table[(value >> 6) & 0x3f] : '=');
+    out.push_back(i + 2 < size ? table[value & 0x3f] : '=');
+  }
+  return out;
+}
+
+uint64_t dataBytes(Index count, size_t value_size, const char* label)
+{
+  if (count < 0)
+  {
+    throw std::runtime_error(std::string("VtuWriter ") + label + " size is negative");
+  }
+  const auto size = static_cast<uint64_t>(count);
+  if (size > std::numeric_limits<uint64_t>::max() / value_size)
+  {
+    throw std::runtime_error(std::string("VtuWriter ") + label + " data is too large");
+  }
+  return size * static_cast<uint64_t>(value_size);
+}
+
+Index bufferSize(uint64_t bytes, const char* label)
+{
+  if (bytes > static_cast<uint64_t>(std::numeric_limits<Index>::max())
+                  - static_cast<uint64_t>(sizeof(bytes)))
+  {
+    throw std::runtime_error(std::string("VtuWriter ") + label + " data is too large");
+  }
+  return static_cast<Index>(sizeof(bytes) + bytes);
+}
+
+template <typename T>
+std::string binaryBase64(const T* data, Index count, const char* label)
+{
+  const uint64_t        bytes = dataBytes(count, sizeof(T), label);
+  Vector<unsigned char> buffer(bufferSize(bytes, label));
+  std::memcpy(buffer.data(), &bytes, sizeof(bytes));
+  if (bytes > 0)
+  {
+    std::memcpy(buffer.data() + sizeof(bytes),
+                data,
+                static_cast<size_t>(bytes));
+  }
+  return base64Encode(buffer.data(), static_cast<size_t>(buffer.size()));
+}
+
+template <typename T>
+std::string binaryBase64(const Vector<T>& values, const char* label)
+{
+  return binaryBase64(values.data(), values.size(), label);
+}
+
+Vector<Real> pointValues(const Mesh& mesh)
+{
+  Vector<Real> values(mesh.numNodes() * 3);
+  for (Index in = 0; in < mesh.numNodes(); ++in)
+  {
+    const auto& node        = mesh.node(in);
+    values[3 * in]         = node[0];
+    values[3 * in + 1]     = node[1];
+    values[3 * in + 2]     = node[2];
+  }
+  return values;
+}
+
+Vector<int64_t> connectivityValues(const Mesh& mesh)
+{
+  Index num_node_ids = 0;
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
+  {
+    num_node_ids += mesh.elem(ie).numNodes();
+  }
+
+  Vector<int64_t> values;
+  values.reserve(num_node_ids);
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
+  {
+    const auto& elem = mesh.elem(ie);
+    for (Index i = 0; i < elem.numNodes(); ++i)
+    {
+      values.push_back(static_cast<int64_t>(elem.nodeIds()[i]));
+    }
+  }
+  return values;
+}
+
+Vector<int64_t> offsetValues(const Mesh& mesh)
+{
+  Vector<int64_t> values(mesh.numElems());
+  int64_t         offset = 0;
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
+  {
+    offset     += static_cast<int64_t>(mesh.elem(ie).numNodes());
+    values[ie] = offset;
+  }
+  return values;
+}
+
+Vector<uint8_t> cellTypeValues(const Mesh& mesh)
+{
+  Vector<uint8_t> values(mesh.numElems());
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
+  {
+    values[ie] = static_cast<uint8_t>(vtkCellType(mesh.elem(ie).shape()));
+  }
+  return values;
+}
+
 void checkField(const Mesh& mesh, const VtuWriter::PointField& field)
 {
   if (field.name.empty())
@@ -90,6 +222,11 @@ void VtuWriter::writePointData(const std::string&        fname,
                                const Mesh&               mesh,
                                const Vector<PointField>& fields) const
 {
+  if (!isLittleEndian())
+  {
+    throw std::runtime_error(
+        "VtuWriter currently writes little-endian VTU files only");
+  }
   if (mesh.numNodes() == 0 || mesh.numElems() == 0)
   {
     throw std::runtime_error("VtuWriter needs a non-empty mesh");
@@ -100,68 +237,46 @@ void VtuWriter::writePointData(const std::string&        fname,
     checkField(mesh, field);
   }
 
-  std::ofstream out(fname);
+  const Vector<Real>    points       = pointValues(mesh);
+  const Vector<int64_t> connectivity = connectivityValues(mesh);
+  const Vector<int64_t> offsets      = offsetValues(mesh);
+  const Vector<uint8_t> cell_types   = cellTypeValues(mesh);
+
+  std::ofstream out(fname, std::ios::binary);
   if (!out)
   {
     throw std::runtime_error("Failed to open VTU file: " + fname);
   }
 
   out << "<?xml version=\"1.0\"?>\n";
-  out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" "
-         "byte_order=\"LittleEndian\">\n";
+  out << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" "
+         "byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
   out << "  <UnstructuredGrid>\n";
   out << "    <Piece NumberOfPoints=\"" << mesh.numNodes()
       << "\" NumberOfCells=\"" << mesh.numElems() << "\">\n";
 
   out << "      <Points>\n";
   out << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
-         "format=\"ascii\">\n";
-  out << std::setprecision(std::numeric_limits<Real>::max_digits10);
-  for (Index in = 0; in < mesh.numNodes(); ++in)
-  {
-    const auto& node = mesh.node(in);
-    out << "          " << node[0] << ' ' << node[1] << ' ' << node[2]
-        << '\n';
-  }
-  out << "        </DataArray>\n";
+         "format=\"binary\">"
+      << binaryBase64(points, "points")
+      << "</DataArray>\n";
   out << "      </Points>\n";
 
   out << "      <Cells>\n";
   out << "        <DataArray type=\"Int64\" Name=\"connectivity\" "
-         "format=\"ascii\">\n";
-  for (Index ie = 0; ie < mesh.numElems(); ++ie)
-  {
-    const auto& elem = mesh.elem(ie);
-    out << "          ";
-    for (Index i = 0; i < elem.numNodes(); ++i)
-    {
-      if (i > 0)
-      {
-        out << ' ';
-      }
-      out << elem.nodeIds()[i];
-    }
-    out << '\n';
-  }
-  out << "        </DataArray>\n";
+         "format=\"binary\">"
+      << binaryBase64(connectivity, "connectivity")
+      << "</DataArray>\n";
 
   out << "        <DataArray type=\"Int64\" Name=\"offsets\" "
-         "format=\"ascii\">\n";
-  Index offset = 0;
-  for (Index ie = 0; ie < mesh.numElems(); ++ie)
-  {
-    offset += mesh.elem(ie).numNodes();
-    out << "          " << offset << '\n';
-  }
-  out << "        </DataArray>\n";
+         "format=\"binary\">"
+      << binaryBase64(offsets, "offsets")
+      << "</DataArray>\n";
 
   out << "        <DataArray type=\"UInt8\" Name=\"types\" "
-         "format=\"ascii\">\n";
-  for (Index ie = 0; ie < mesh.numElems(); ++ie)
-  {
-    out << "          " << vtkCellType(mesh.elem(ie).shape()) << '\n';
-  }
-  out << "        </DataArray>\n";
+         "format=\"binary\">"
+      << binaryBase64(cell_types, "cell types")
+      << "</DataArray>\n";
   out << "      </Cells>\n";
 
   if (!fields.empty())
@@ -175,21 +290,9 @@ void VtuWriter::writePointData(const std::string&        fname,
       {
         out << " NumberOfComponents=\"" << field.num_components << "\"";
       }
-      out << " format=\"ascii\">\n";
-      for (Index in = 0; in < mesh.numNodes(); ++in)
-      {
-        out << "          ";
-        for (Index comp = 0; comp < field.num_components; ++comp)
-        {
-          if (comp > 0)
-          {
-            out << ' ';
-          }
-          out << (*field.vals)[in * field.num_components + comp];
-        }
-        out << '\n';
-      }
-      out << "        </DataArray>\n";
+      out << " format=\"binary\">"
+          << binaryBase64(*field.vals, field.name.c_str())
+          << "</DataArray>\n";
     }
     out << "      </PointData>\n";
   }
