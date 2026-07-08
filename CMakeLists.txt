@@ -93,16 +93,15 @@ if(FEMX_ENABLE_ENZYME)
       set_target_properties("${target_name}" PROPERTIES IMPORTED_LOCATION
                                                         "${${_cache_var}}")
       if("${target_name}" MATCHES "^ClangEnzyme-")
-        set_target_properties("${target_name}"
-                              PROPERTIES INTERFACE_COMPILE_DEFINITIONS
-                                         ENZYME_RUNPASS)
+        set_target_properties(
+          "${target_name}" PROPERTIES INTERFACE_COMPILE_DEFINITIONS
+                                      ENZYME_RUNPASS)
       endif()
     endif()
   endfunction()
 
   if(_FEMX_ENZYME_LLVM_MAJOR)
-    femx_import_enzyme_plugin_target(
-      "ClangEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
+    femx_import_enzyme_plugin_target("ClangEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
     femx_import_enzyme_plugin_target("LLDEnzyme-${_FEMX_ENZYME_LLVM_MAJOR}")
   endif()
 

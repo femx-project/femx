@@ -6,8 +6,6 @@
 #include <string>
 
 #include "ForwardConfig.hpp"
-#include <femx/model/ns/ForwardSolveMonitor.hpp>
-#include <femx/model/ns/Kernel.hpp>
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/assembly/TimeFEMResidual.hpp>
 #include <femx/common/Types.hpp>
@@ -17,6 +15,8 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/model/ns/ForwardSolveMonitor.hpp>
+#include <femx/model/ns/Kernel.hpp>
 
 namespace femx
 {
@@ -84,11 +84,11 @@ bool isFinite(const Vector<Real>& x);
 
 ForwardSolveResult solve(
     femx::state::TimeLinearIntegrator& integrator,
-    const ForwardProblem&         problem,
-    const TimeParams&             time,
-    const OutputParams&           prm,
-    bool                          collect_output,
-    std::ostream*                 terminal = nullptr,
-    std::ostream*                 log_out  = nullptr);
+    const ForwardProblem&              problem,
+    const TimeParams&                  time,
+    const OutputParams&                prm,
+    bool                               collect_output,
+    std::ostream*                      terminal = nullptr,
+    std::ostream*                      log_out  = nullptr);
 
 } // namespace femx::model::ns

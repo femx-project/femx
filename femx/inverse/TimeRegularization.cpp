@@ -1,8 +1,6 @@
 #include <stdexcept>
 
 #include <femx/inverse/TimeRegularization.hpp>
-
-using namespace std;
 using namespace femx::state;
 
 namespace femx
@@ -27,7 +25,7 @@ TimeRegularization::TimeRegularization(Index               num_steps,
   if (num_steps_ < 0 || num_states_ < 0 || num_levels_ < 0
       || block_size_ < 0 || beta_difference_ < 0.0 || beta_value_ < 0.0)
   {
-    throw runtime_error("TimeRegularization received invalid inputs");
+    throw std::runtime_error("TimeRegularization received invalid inputs");
   }
   if (reference.empty())
   {
@@ -39,7 +37,7 @@ TimeRegularization::TimeRegularization(Index               num_steps,
   }
   else
   {
-    throw runtime_error("TimeRegularization reference size mismatch");
+    throw std::runtime_error("TimeRegularization reference size mismatch");
   }
 }
 
@@ -132,7 +130,7 @@ void TimeRegularization::checkParamSize(const Vector<Real>& prm) const
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error("TimeRegularization parameter size mismatch");
+    throw std::runtime_error("TimeRegularization parameter size mismatch");
   }
 }
 

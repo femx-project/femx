@@ -46,26 +46,26 @@ public:
                Index                  num_next_states,
                Vector<Real>           fixed_prm);
 
-  void res(Index                    step,
-           Index                    ie,
+  void res(Index                  step,
+           Index                  ie,
            state::TimeHistoryView hist,
-           const Vector<Real>&      nxt,
-           const Vector<Real>&      prm,
-           Vector<Real>&            out) const override;
+           const Vector<Real>&    nxt,
+           const Vector<Real>&    prm,
+           Vector<Real>&          out) const override;
 
-  void jacobian(Index                    step,
-                Index                    ie,
+  void jacobian(Index                  step,
+                Index                  ie,
                 state::VariableBlock   wrt,
                 state::TimeHistoryView hist,
-                const Vector<Real>&      nxt,
-                const Vector<Real>&      prm,
-                DenseMatrix&             out) const override;
+                const Vector<Real>&    nxt,
+                const Vector<Real>&    prm,
+                DenseMatrix&           out) const override;
 
 private:
   void checkDimensions();
   void checkInputSizes(state::TimeHistoryView hist,
-                       const Vector<Real>&      nxt,
-                       const Vector<Real>&      prm) const;
+                       const Vector<Real>&    nxt,
+                       const Vector<Real>&    prm) const;
 
   Vector<Real> makeResidualPrm(const Vector<Real>& variable_prm) const;
 

@@ -2,8 +2,6 @@
 
 #include <femx/common/Math.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -22,7 +20,7 @@ NewtonStateSolver::NewtonStateSolver(const Residual& problem,
 {
   if (dims_.num_residuals != dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "NewtonStateSolver requires square state residual dimensions");
   }
 }
@@ -41,7 +39,7 @@ void NewtonStateSolver::setInitialState(const Vector<Real>& state)
 {
   if (state.size() != numStates())
   {
-    throw runtime_error("NewtonStateSolver initial state size mismatch");
+    throw std::runtime_error("NewtonStateSolver initial state size mismatch");
   }
   init_state_     = state;
   has_init_state_ = true;
@@ -73,7 +71,7 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error("NewtonStateSolver parameter size mismatch");
+    throw std::runtime_error("NewtonStateSolver parameter size mismatch");
   }
 
   initializeState(state);
@@ -86,7 +84,7 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
     problem_.res(state, prm, res);
     if (res.size() != numResiduals())
     {
-      throw runtime_error("NewtonStateSolver residual size mismatch");
+      throw std::runtime_error("NewtonStateSolver residual size mismatch");
     }
 
     if (squaredNorm(res)
@@ -109,7 +107,7 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
     lin_solver_.solve(linearization_.stateJac(), rhs, step);
     if (step.size() != numStates())
     {
-      throw runtime_error("NewtonStateSolver step size mismatch");
+      throw std::runtime_error("NewtonStateSolver step size mismatch");
     }
 
     for (Index k = 0; k < numStates(); ++k)
@@ -123,7 +121,7 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
     }
   }
 
-  throw runtime_error("NewtonStateSolver failed to converge");
+  throw std::runtime_error("NewtonStateSolver failed to converge");
 }
 
 void NewtonStateSolver::initializeState(Vector<Real>& state) const

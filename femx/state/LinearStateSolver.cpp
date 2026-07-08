@@ -1,8 +1,6 @@
 #include <stdexcept>
 
 #include <femx/state/LinearStateSolver.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -21,7 +19,7 @@ LinearStateSolver::LinearStateSolver(const Residual& problem,
 {
   if (dims_.num_residuals != dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "LinearStateSolver requires square state residual dimensions");
   }
 }
@@ -46,7 +44,7 @@ void LinearStateSolver::solve(const Vector<Real>& prm,
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error("LinearStateSolver parameter size mismatch");
+    throw std::runtime_error("LinearStateSolver parameter size mismatch");
   }
 
   Vector<Real> zero_state(numStates());
@@ -54,7 +52,7 @@ void LinearStateSolver::solve(const Vector<Real>& prm,
   problem_.res(zero_state, prm, res);
   if (res.size() != numResiduals())
   {
-    throw runtime_error("LinearStateSolver residual size mismatch");
+    throw std::runtime_error("LinearStateSolver residual size mismatch");
   }
 
   Vector<Real> rhs(res.size());
@@ -67,7 +65,7 @@ void LinearStateSolver::solve(const Vector<Real>& prm,
   lin_solver_.solve(linearization_.stateJac(), rhs, state);
   if (state.size() != numStates())
   {
-    throw runtime_error("LinearStateSolver solution size mismatch");
+    throw std::runtime_error("LinearStateSolver solution size mismatch");
   }
 }
 

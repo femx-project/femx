@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -32,7 +32,7 @@ public:
   void apply(const Vector<Real>& dir, Vector<Real>& out) const override;
   void applyT(const Vector<Real>& dir, Vector<Real>& out) const override;
 
-  DenseMatrix& mat();
+  DenseMatrix&       mat();
   const DenseMatrix& mat() const;
 
 private:

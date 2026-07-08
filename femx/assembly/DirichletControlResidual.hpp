@@ -2,8 +2,8 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx
@@ -22,11 +22,11 @@ class DirichletControlResidual final : public state::Residual
 {
 public:
   DirichletControlResidual(const state::Residual& base,
-                           DirichletControl         ctr,
-                           Vector<Index>            fdofs            = {},
-                           Index                    ctr_param_offset = 0,
-                           Index                    num_params       = -1,
-                           Vector<Real>             fvals            = {});
+                           DirichletControl       ctr,
+                           Vector<Index>          fdofs            = {},
+                           Index                  ctr_param_offset = 0,
+                           Index                  num_params       = -1,
+                           Vector<Real>           fvals            = {});
 
   state::Dimensions dims() const override;
 
@@ -36,8 +36,8 @@ public:
            const Vector<Real>& prm,
            Vector<Real>&       out) const override;
 
-  void linearize(const Vector<Real>&     state,
-                 const Vector<Real>&     prm,
+  void linearize(const Vector<Real>&   state,
+                 const Vector<Real>&   prm,
                  state::Linearization& out) const override;
 
 private:
@@ -54,13 +54,13 @@ private:
 
 private:
   const state::Residual& base_;
-  DirichletControl         ctr_;
-  Vector<Index>            fdofs_;
-  Vector<Real>             fvals_;
-  Vector<Real>             base_prm_;
+  DirichletControl       ctr_;
+  Vector<Index>          fdofs_;
+  Vector<Real>           fvals_;
+  Vector<Real>           base_prm_;
   state::Dimensions      base_dims_;
   state::Dimensions      dims_;
-  Index                    ctr_param_offset_{0};
+  Index                  ctr_param_offset_{0};
 };
 
 } // namespace assembly

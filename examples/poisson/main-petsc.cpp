@@ -17,7 +17,7 @@ using namespace femx;
 using namespace femx::examples::poisson;
 using namespace femx::linalg;
 using namespace femx::runtime;
-using namespace std;
+using namespace femx::examples;
 
 #ifndef FEMX_POISSON_APP_NAME
 #define FEMX_POISSON_APP_NAME "poisson-petsc"
@@ -59,14 +59,11 @@ int run(const PoissonOptions& opts)
 {
   if (opts.backend != WorkspaceType::Cpu)
   {
-    throw runtime_error("PETSc Poisson backend supports only 'cpu'");
+    throw std::runtime_error("PETSc Poisson backend supports only 'cpu'");
   }
 
-  examples::ExampleHelper helper("petsc",
-                                 "PETSc",
-                                 opts.backend,
-                                 defaultOutputDirectory());
-  PoissonForwardProblem   problem(opts);
+  ExampleHelper         helper("petsc", opts.backend, outputDir());
+  PoissonForwardProblem problem(opts);
 
   CsrAssemblyMatrix A_csr(problem.pattern());
   Vector<Real>      rhs;
@@ -91,7 +88,7 @@ int run(const PoissonOptions& opts)
 
   if (isRoot())
   {
-    printReport(cout,
+    printReport(std::cout,
                 helper.backendName(),
                 problem,
                 problem.errorReport(x),
@@ -99,7 +96,7 @@ int run(const PoissonOptions& opts)
 
     if (opts.write_output)
     {
-      const string base = helper.outputBase(outputStem(opts));
+      const std::string base = helper.outputBase(outputStem(opts));
       problem.writeSolution(x, base);
       helper.printVisualizationPath(base);
     }
@@ -124,7 +121,7 @@ int main(int argc, char* argv[])
       {
         for (int i = 1; i < argc; ++i)
         {
-          if (string(argv[i]) == "--help" || string(argv[i]) == "-h")
+          if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h")
           {
             return true;
           }
@@ -144,14 +141,14 @@ int main(int argc, char* argv[])
         status = run(parseOptions(argc, argv, true));
       }
     }
-      catch (const exception& e)
+    catch (const std::exception& e)
+    {
+      if (isRoot())
       {
-        if (isRoot())
-        {
-          examples::reportError(FEMX_POISSON_APP_NAME, e);
-        }
-        status = 1;
+        examples::reportError(FEMX_POISSON_APP_NAME, e);
       }
+      status = 1;
+    }
 
     const PetscErrorCode ierr = petsc.finalize();
     if (ierr != PETSC_SUCCESS && status == 0)
@@ -159,7 +156,7 @@ int main(int argc, char* argv[])
       return 1;
     }
   }
-  catch (const exception& e)
+  catch (const std::exception& e)
   {
     return examples::reportError(FEMX_POISSON_APP_NAME, e);
   }

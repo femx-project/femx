@@ -27,9 +27,9 @@ struct ForwardSolveResult
 
 struct ForwardConvergenceParams
 {
-  bool  enabled                     = false;
+  bool  enabled     = false;
   Real  vel_rel_tol = 1.0e-8;
-  Index min_steps                   = 1;
+  Index min_steps   = 1;
 };
 
 class ForwardSolveMonitor final : public state::TimeStateMonitor

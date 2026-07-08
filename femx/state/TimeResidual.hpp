@@ -4,9 +4,9 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
 
 namespace femx
 {

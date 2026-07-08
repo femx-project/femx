@@ -4,8 +4,8 @@
 #include <femx/fem/DofLayout.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

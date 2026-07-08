@@ -14,8 +14,6 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/runtime/Output.hpp>
 
-using namespace std;
-
 namespace femx::model::ns
 {
 namespace
@@ -28,15 +26,15 @@ double elapsedSeconds(Clock::time_point begin, Clock::time_point end)
 
 Real elemMinEdge(const Element& elem)
 {
-  Real h = numeric_limits<Real>::infinity();
+  Real h = std::numeric_limits<Real>::infinity();
   for (Index i = 0; i < elem.numNodes(); ++i)
   {
     for (Index j = i + 1; j < elem.numNodes(); ++j)
     {
-      h = min(h, distance(elem.node(i), elem.node(j)));
+      h = std::min(h, distance(elem.node(i), elem.node(j)));
     }
   }
-  return isfinite(h) ? h : 0.0;
+  return std::isfinite(h) ? h : 0.0;
 }
 
 void splitFields(const Vector<Real>& x,
@@ -46,10 +44,10 @@ void splitFields(const Vector<Real>& x,
                  Vector<Real>&       uz,
                  Vector<Real>&       p)
 {
-  const Mesh& mesh  = space.mesh();
-  const auto  u_dof = space.field(0);
-  const auto  p_dof = space.field(1);
-  const Index num_components    = u_dof.numComponents();
+  const Mesh& mesh           = space.mesh();
+  const auto  u_dof          = space.field(0);
+  const auto  p_dof          = space.field(1);
+  const Index num_components = u_dof.numComponents();
 
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
@@ -68,31 +66,31 @@ void splitFields(const Vector<Real>& x,
   }
 }
 
-string stepLogLine(Index step,
-                   Real  time,
-                   Real  max_cfl,
-                   bool  show_velocity_change,
-                   Real  vel_change,
-                   Real  assembly_seconds,
-                   Real  solve_seconds,
-                   Real  total_seconds)
+std::string stepLogLine(Index step,
+                        Real  time,
+                        Real  max_cfl,
+                        bool  show_velocity_change,
+                        Real  vel_change,
+                        Real  assembly_seconds,
+                        Real  solve_seconds,
+                        Real  total_seconds)
 {
-  ostringstream line;
-  line << "step " << setw(7) << step << ", t = " << setw(11) << time
-       << ", max CFL = " << setw(11) << max_cfl;
+  std::ostringstream line;
+  line << "step " << std::setw(7) << step << ", t = " << std::setw(11) << time
+       << ", max CFL = " << std::setw(11) << max_cfl;
   if (show_velocity_change)
   {
-    line << ", rel du = " << setw(11) << vel_change;
+    line << ", rel du = " << std::setw(11) << vel_change;
   }
-  line << ", assembly = " << setw(11) << assembly_seconds << " s"
-       << ", solve = " << setw(11) << solve_seconds << " s"
-       << ", total = " << setw(11) << total_seconds << " s";
+  line << ", assembly = " << std::setw(11) << assembly_seconds << " s"
+       << ", solve = " << std::setw(11) << solve_seconds << " s"
+       << ", total = " << std::setw(11) << total_seconds << " s";
   return line.str();
 }
 
-void writeLine(const string& line,
-               ostream*      terminal,
-               ostream*      log_out)
+void writeLine(const std::string& line,
+               std::ostream*      terminal,
+               std::ostream*      log_out)
 {
   if (terminal != nullptr)
   {
@@ -222,23 +220,23 @@ void ForwardSolveMonitor::start(Index num_steps,
     num_steps_ = num_steps;
   }
   result_            = ForwardSolveResult{};
-  result_.vel_change = numeric_limits<Real>::quiet_NaN();
+  result_.vel_change = std::numeric_limits<Real>::quiet_NaN();
   last_field_step_   = 0;
   step_begin_        = Clock::now();
 
   if (fieldOutputEnabled())
   {
     runtime::ensureDirectory(field_dir_);
-    field_out_ = make_unique<FieldOutput>(space_->mesh());
+    field_out_ = std::make_unique<FieldOutput>(space_->mesh());
   }
   if (diagnosticsEnabled())
   {
     runtime::ensureParentDirectory(diag_file_name_);
-    auto file = make_unique<ofstream>(diag_file_name_);
+    auto file = std::make_unique<std::ofstream>(diag_file_name_);
     if (!*file)
     {
-      throw runtime_error("Failed to open diagnostics file: "
-                          + diag_file_name_);
+      throw std::runtime_error("Failed to open diagnostics file: "
+                               + diag_file_name_);
     }
     diag_out_  = file.get();
     diag_file_ = std::move(file);
@@ -293,9 +291,9 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
       && shouldWriteDetailedLog(ctx.level, ctx.total_steps))
   {
     const Real max_cfl = maxVelocityCfl(*space_, ctx.previous, dt_);
-    if (!isfinite(max_cfl))
+    if (!std::isfinite(max_cfl))
     {
-      throw runtime_error("Stopping as CFL became invalid");
+      throw std::runtime_error("Stopping as CFL became invalid");
     }
     writeDetailedStepLog(ctx.level,
                          result_.final_time,
@@ -406,7 +404,7 @@ void ForwardSolveMonitor::writeDiagnosticsRow(Index               level,
   }
 
   const auto prec = diag_out_->precision();
-  *diag_out_ << setprecision(numeric_limits<Real>::digits10 + 1)
+  *diag_out_ << std::setprecision(std::numeric_limits<Real>::digits10 + 1)
              << level << ',' << time << ',' << norm(state) << '\n';
   diag_out_->precision(prec);
 }
@@ -419,15 +417,15 @@ void ForwardSolveMonitor::writeProgress(Index step,
     return;
   }
 
-  const Index stride = max<Index>(Index{1}, total / 5);
+  const Index stride = std::max<Index>(Index{1}, total / 5);
   if (step % stride != 0 && step < total)
   {
     return;
   }
 
   *prog_out_ << "\r    " << prog_label_ << " step "
-             << setw(4) << step << " / "
-             << setw(4) << total << flush;
+             << std::setw(4) << step << " / "
+             << std::setw(4) << total << std::flush;
   if (step >= total)
   {
     *prog_out_ << '\n';
@@ -462,12 +460,12 @@ Real velocityRelativeChange(const MixedFESpace& space,
   if (previous.size() != current.size()
       || previous.size() != space.numDofs())
   {
-    throw runtime_error("velocity convergence received incompatible states");
+    throw std::runtime_error("velocity convergence received incompatible states");
   }
 
-  const auto  velocity = space.field(0);
-  const Index num_nodes    = velocity.space().mesh().numNodes();
-  const Index comps    = velocity.numComponents();
+  const auto  velocity  = space.field(0);
+  const Index num_nodes = velocity.space().mesh().numNodes();
+  const Index comps     = velocity.numComponents();
 
   Real diff2 = 0.0;
   Real ref2  = 0.0;
@@ -488,9 +486,9 @@ Real velocityRelativeChange(const MixedFESpace& space,
   }
   if (ref2 <= 0.0)
   {
-    return numeric_limits<Real>::infinity();
+    return std::numeric_limits<Real>::infinity();
   }
-  return sqrt(diff2 / ref2);
+  return std::sqrt(diff2 / ref2);
 }
 
 Real maxVelocityCfl(const MixedFESpace& space,
@@ -499,7 +497,7 @@ Real maxVelocityCfl(const MixedFESpace& space,
 {
   if (state.size() != space.numDofs())
   {
-    throw runtime_error("CFL calculation received incompatible state size");
+    throw std::runtime_error("CFL calculation received incompatible state size");
   }
 
   const auto  velocity = space.field(0);
@@ -524,7 +522,7 @@ Real maxVelocityCfl(const MixedFESpace& space,
         const Real value  = state[velocity.globalDof(id, d)];
         vel2             += value * value;
       }
-      max_cfl = max(max_cfl, sqrt(vel2) * dt / h);
+      max_cfl = std::max(max_cfl, std::sqrt(vel2) * dt / h);
     }
   }
 

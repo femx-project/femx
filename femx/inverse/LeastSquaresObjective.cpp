@@ -4,8 +4,6 @@
 
 #include <femx/inverse/LeastSquaresObjective.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace inverse
@@ -18,7 +16,7 @@ LeastSquaresObjective::LeastSquaresObjective(Index num_states,
 {
   if (num_states_ < 0 || num_params_ < 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "LeastSquaresObjective received invalid dimensions");
   }
 }
@@ -118,9 +116,9 @@ void LeastSquaresObjective::paramGrad(const Vector<Real>& state,
 
 Vector<Real> LeastSquaresObjective::uniformWeights(Index size, Real weight)
 {
-  if (weight < 0.0 || !isfinite(weight))
+  if (weight < 0.0 || !std::isfinite(weight))
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "LeastSquaresObjective received invalid weight");
   }
   return Vector<Real>(size, weight);
@@ -138,8 +136,8 @@ Real LeastSquaresObjective::termValue(const Vector<Real>& x,
   Real value = 0.0;
   for (Index i = 0; i < x.size(); ++i)
   {
-    const Real diff = x[i] - target[i];
-    value += 0.5 * weights[i] * diff * diff;
+    const Real diff  = x[i] - target[i];
+    value           += 0.5 * weights[i] * diff * diff;
   }
   return value;
 }
@@ -167,7 +165,7 @@ void LeastSquaresObjective::checkInputSizes(
 {
   if (state.size() != num_states_ || prm.size() != num_params_)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "LeastSquaresObjective received inconsistent vector sizes");
   }
 }
@@ -179,15 +177,15 @@ void LeastSquaresObjective::checkTerm(const Vector<Real>& target,
 {
   if (target.size() != size || weights.size() != size)
   {
-    throw runtime_error(
-        string("LeastSquaresObjective ") + name + " term size mismatch");
+    throw std::runtime_error(
+        std::string("LeastSquaresObjective ") + name + " term size mismatch");
   }
   for (Index i = 0; i < weights.size(); ++i)
   {
-    if (weights[i] < 0.0 || !isfinite(weights[i]))
+    if (weights[i] < 0.0 || !std::isfinite(weights[i]))
     {
-      throw runtime_error(
-          string("LeastSquaresObjective ") + name
+      throw std::runtime_error(
+          std::string("LeastSquaresObjective ") + name
           + " weight must be nonnegative");
     }
   }

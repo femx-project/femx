@@ -2,8 +2,6 @@
 
 #include <cmath>
 
-using namespace std;
-
 namespace femx::model::ns
 {
 namespace
@@ -86,7 +84,7 @@ Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
     speed2 += u[d] * u[d];
   }
 
-  const Real speed = sqrt(speed2);
+  const Real speed = std::sqrt(speed2);
   Real       dir[3]{};
   if (speed > 1.0e-10)
   {
@@ -97,7 +95,7 @@ Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
   }
   else
   {
-    const Real value = 1.0 / sqrt(static_cast<Real>(ev.dim));
+    const Real value = 1.0 / std::sqrt(static_cast<Real>(ev.dim));
     for (Index d = 0; d < ev.dim; ++d)
     {
       dir[d] = value;
@@ -131,7 +129,7 @@ void stabilization(const QPState&     qp,
     speed2 += qp.u[d] * qp.u[d];
   }
 
-  const Real speed = sqrt(speed2);
+  const Real speed = std::sqrt(speed2);
   const Real nu    = fluid.mu / fluid.rho;
   const Real time  = (2.0 / dt) * (2.0 / dt);
   Real       flow  = 0.0;
@@ -142,7 +140,7 @@ void stabilization(const QPState&     qp,
     diff = (4.0 * nu / (h * h)) * (4.0 * nu / (h * h));
   }
 
-  const Real value = 1.0 / sqrt(time + flow + diff);
+  const Real value = 1.0 / std::sqrt(time + flow + diff);
   for (Index d = 0; d < 3; ++d)
   {
     tau[d] = value;

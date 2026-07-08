@@ -29,7 +29,7 @@ class NewtonStateSolver final : public StateSolver
 public:
   NewtonStateSolver(const state::Residual& problem,
                     state::Linearization&  lin,
-                    linalg::LinearSolver&    lin_solver);
+                    linalg::LinearSolver&  lin_solver);
 
   NewtonStateOptions& opts();
 
@@ -53,11 +53,11 @@ private:
 private:
   const state::Residual& problem_;
   state::Linearization&  linearization_;
-  linalg::LinearSolver&    lin_solver_;
+  linalg::LinearSolver&  lin_solver_;
   state::Dimensions      dims_;
-  NewtonStateOptions       opts_;
-  Vector<Real>             init_state_;
-  bool                     has_init_state_{false};
+  NewtonStateOptions     opts_;
+  Vector<Real>           init_state_;
+  bool                   has_init_state_{false};
 };
 
 } // namespace state

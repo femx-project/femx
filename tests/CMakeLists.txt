@@ -23,8 +23,7 @@ femx_add_test_if_exists(runEnsembleBasisTests EnsembleBasisTests
                         unit/state/runEnsembleBasisTests.cpp)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierConfigTests.cpp")
-  add_executable(runNavierConfigTests
-                 unit/navier/runNavierConfigTests.cpp)
+  add_executable(runNavierConfigTests unit/navier/runNavierConfigTests.cpp)
 
   target_include_directories(
     runNavierConfigTests

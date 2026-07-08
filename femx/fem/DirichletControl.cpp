@@ -6,8 +6,6 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -18,8 +16,8 @@ template <typename Match>
 DirichletControl buildVelocityControl(const MixedFESpace& space,
                                       Match               match)
 {
-  const auto u_dof = space.field(0);
-  set<Index> dof_set;
+  const auto      u_dof = space.field(0);
+  std::set<Index> dof_set;
 
   for (const auto& facet : space.mesh().boundaryFacets())
   {
@@ -39,7 +37,7 @@ DirichletControl buildVelocityControl(const MixedFESpace& space,
 
   if (dof_set.empty())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControl found no velocity boundary dofs");
   }
 
@@ -57,17 +55,17 @@ DirichletControl buildVelocityControl(const MixedFESpace& space,
 DirichletControl::DirichletControl(Vector<Index> dofs)
   : dofs_(std::move(dofs))
 {
-  set<Index> seen;
+  std::set<Index> seen;
   for (Index id : dofs_)
   {
     if (id < 0)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControl received negative state id");
     }
     if (!seen.insert(id).second)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControl received duplicate state id");
     }
   }
@@ -104,7 +102,7 @@ void DirichletControl::checkDofIndex(Index i) const
 {
   if (i < 0 || i >= numDofs())
   {
-    throw runtime_error("DirichletControl id index is out of range");
+    throw std::runtime_error("DirichletControl id index is out of range");
   }
 }
 
@@ -122,7 +120,7 @@ DirichletControl makeVelocityControl(
 
 DirichletControl makeVelocityControl(
     const MixedFESpace& space,
-    const string&       pname)
+    const std::string&  pname)
 {
   return buildVelocityControl(
       space,

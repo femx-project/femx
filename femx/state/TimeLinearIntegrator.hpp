@@ -1,11 +1,11 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
+#include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -23,8 +23,8 @@ class TimeLinearIntegrator final : public TimeIntegrator
 {
 public:
   TimeLinearIntegrator(const state::TimeResidual& problem,
-                       linalg::AssemblyMatrix&      J_next,
-                       linalg::LinearSolver&        lin_solver);
+                       linalg::AssemblyMatrix&    J_next,
+                       linalg::LinearSolver&      lin_solver);
 
   void setInitialState(const Vector<Real>& state);
   void clearInitialState();
@@ -59,17 +59,17 @@ private:
 
 private:
   const state::TimeResidual& problem_;
-  linalg::AssemblyMatrix&      J_next_;
-  linalg::LinearSolver&        lin_solver_;
+  linalg::AssemblyMatrix&    J_next_;
+  linalg::LinearSolver&      lin_solver_;
   state::TimeDims            dims_;
-  Vector<Real>                 init_state_;
-  Real                         assm_sec_{0.0};
-  Real                         solve_sec_{0.0};
-  Real                         last_assm_sec_{0.0};
-  Real                         last_solve_sec_{0.0};
-  Index                        assm_calls_{0};
-  Index                        solve_calls_{0};
-  bool                         has_init_state_{false};
+  Vector<Real>               init_state_;
+  Real                       assm_sec_{0.0};
+  Real                       solve_sec_{0.0};
+  Real                       last_assm_sec_{0.0};
+  Real                       last_solve_sec_{0.0};
+  Index                      assm_calls_{0};
+  Index                      solve_calls_{0};
+  bool                       has_init_state_{false};
 };
 
 } // namespace state

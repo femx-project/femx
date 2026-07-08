@@ -21,13 +21,13 @@ namespace assembly
 class TimeDirichletControlResidual final : public state::TimeResidual
 {
 public:
-  TimeDirichletControlResidual(const state::TimeResidual& base,
-                               DirichletControl             ctr,
-                               Vector<Index>                fdofs             = {},
-                               Index                        ctr_param_offset  = 0,
-                               Index                        num_params              = -1,
-                               Vector<Real>                 fvals             = {},
-                               Vector<LinearInterpolation>  ctr_time_stencils = {});
+  TimeDirichletControlResidual(const state::TimeResidual&  base,
+                               DirichletControl            ctr,
+                               Vector<Index>               fdofs             = {},
+                               Index                       ctr_param_offset  = 0,
+                               Index                       num_params        = -1,
+                               Vector<Real>                fvals             = {},
+                               Vector<LinearInterpolation> ctr_time_stencils = {});
 
   state::TimeDims dims() const override;
 
@@ -37,26 +37,26 @@ public:
   Index numRes() const;
 
   void res(const state::TimeContext& ctx,
-           Vector<Real>&               out) const override;
+           Vector<Real>&             out) const override;
 
   void applyJac(const state::TimeContext& ctx,
                 state::VariableBlock      wrt,
-                const Vector<Real>&         dir,
-                Vector<Real>&               out) const override;
+                const Vector<Real>&       dir,
+                Vector<Real>&             out) const override;
 
   void applyJacT(const state::TimeContext& ctx,
                  state::VariableBlock      wrt,
-                 const Vector<Real>&         adj,
-                 Vector<Real>&               out) const override;
+                 const Vector<Real>&       adj,
+                 Vector<Real>&             out) const override;
 
   bool assembleJac(const state::TimeContext& ctx,
                    state::VariableBlock      wrt,
-                   linalg::MatrixBuilder&      out) const override;
+                   linalg::MatrixBuilder&    out) const override;
 
   void prepareLinearSolve(const state::TimeContext& ctx,
                           state::VariableBlock      wrt,
-                          linalg::MatrixBuilder&      J,
-                          Vector<Real>&               rhs) const override;
+                          linalg::MatrixBuilder&    J,
+                          Vector<Real>&             rhs) const override;
 
   const DirichletControl& control() const;
 
@@ -71,11 +71,11 @@ private:
                              Vector<Real>&          rhs) const;
 
   void applyControlParamJac(const state::TimeContext& ctx,
-                            const Vector<Real>&         dir,
-                            Vector<Real>&               out) const;
+                            const Vector<Real>&       dir,
+                            Vector<Real>&             out) const;
   void applyControlParamJacT(const state::TimeContext& ctx,
-                             const Vector<Real>&         adj,
-                             Vector<Real>&               out) const;
+                             const Vector<Real>&       adj,
+                             Vector<Real>&             out) const;
 
   Real  ctrValue(Index step, Index i, const Vector<Real>& prm) const;
   Index ctrIndex(Index level, Index i) const;
@@ -84,16 +84,16 @@ private:
   Vector<Index> constrainedRows() const;
 
 private:
-  const state::TimeResidual& base_;
-  DirichletControl             ctr_;
-  Vector<Index>                fdofs_;
-  Vector<Real>                 fvals_;
-  Vector<Real>                 base_prm_;
-  state::TimeDims            base_dims_;
-  state::TimeDims            dims_;
-  Index                        ctr_param_offset_{0};
-  Vector<LinearInterpolation>  ctr_time_stencils_;
-  Index                        ctr_param_levels_{0};
+  const state::TimeResidual&  base_;
+  DirichletControl            ctr_;
+  Vector<Index>               fdofs_;
+  Vector<Real>                fvals_;
+  Vector<Real>                base_prm_;
+  state::TimeDims             base_dims_;
+  state::TimeDims             dims_;
+  Index                       ctr_param_offset_{0};
+  Vector<LinearInterpolation> ctr_time_stencils_;
+  Index                       ctr_param_levels_{0};
 };
 
 } // namespace assembly

@@ -33,7 +33,7 @@ private:
   /** @brief Return the flat storage offset for an elem-local id pair. */
   Index offset(Index ie, Index il) const noexcept;
 
-  Index         num_elems_   = 0;
+  Index         num_elems_         = 0;
   Index         num_dofs_per_elem_ = 0;
   Vector<Index> elem_dofs_;
 };

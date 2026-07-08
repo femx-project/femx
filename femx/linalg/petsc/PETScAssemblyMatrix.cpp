@@ -180,8 +180,8 @@ void PETScAssemblyMatrix::addAtomic(Index row, Index col, Real value)
 }
 
 void PETScAssemblyMatrix::addBlock(const PetscInt*    dofs,
-                           Index              num_dofs,
-                           const DenseMatrix& local)
+                                   Index              num_dofs,
+                                   const DenseMatrix& local)
 {
   addBlock(dofs, num_dofs, dofs, num_dofs, local);
 }
@@ -192,10 +192,10 @@ void PETScAssemblyMatrix::addBlock(const PetscInt* dofs, Index num_dofs, const R
 }
 
 void PETScAssemblyMatrix::addBlock(const PetscInt*    rows,
-                           Index              num_rows,
-                           const PetscInt*    cols,
-                           Index              num_cols,
-                           const DenseMatrix& local)
+                                   Index              num_rows,
+                                   const PetscInt*    cols,
+                                   Index              num_cols,
+                                   const DenseMatrix& local)
 {
   if (local.rows() != num_rows || local.cols() != num_cols)
   {
@@ -206,10 +206,10 @@ void PETScAssemblyMatrix::addBlock(const PetscInt*    rows,
 }
 
 void PETScAssemblyMatrix::addBlock(const PetscInt* rows,
-                           Index           num_rows,
-                           const PetscInt* cols,
-                           Index           num_cols,
-                           const Real*     vals)
+                                   Index           num_rows,
+                                   const PetscInt* cols,
+                                   Index           num_cols,
+                                   const Real*     vals)
 {
   if (mat_ == nullptr)
   {
@@ -236,9 +236,9 @@ void PETScAssemblyMatrix::finalize()
 }
 
 void PETScAssemblyMatrix::zeroRowsColumns(const Vector<Index>& rows,
-                                  Real                 diagonal,
-                                  const PETScVector&   vals,
-                                  PETScVector&         rhs)
+                                          Real                 diagonal,
+                                          const PETScVector&   vals,
+                                          PETScVector&         rhs)
 {
   if (vals.size() != rows_ || rhs.size() != rows_)
   {
@@ -355,8 +355,8 @@ void PETScAssemblyMatrix::createVec(Index size, ScopedVec& out) const
   PetscMPIInt comm_size = 1;
   checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
 
-  const PetscInt global_size = static_cast<PetscInt>(size);
-  const PetscInt num_local_dofs        = comm_size == 1 ? global_size : PETSC_DECIDE;
+  const PetscInt global_size    = static_cast<PetscInt>(size);
+  const PetscInt num_local_dofs = comm_size == 1 ? global_size : PETSC_DECIDE;
 
   check(VecCreate(comm_, out.put()), "VecCreate");
   check(VecSetSizes(out.get(), num_local_dofs, global_size), "VecSetSizes");
@@ -404,10 +404,10 @@ void PETScAssemblyMatrix::checkMPI(int ierr, const char* operation)
 }
 
 void PETScAssemblyMatrix::computePreallocation(const CsrPattern& pattern,
-                                       PetscInt          begin,
-                                       PetscInt          end,
-                                       Vector<PetscInt>& d_nnz,
-                                       Vector<PetscInt>& o_nnz)
+                                               PetscInt          begin,
+                                               PetscInt          end,
+                                               Vector<PetscInt>& d_nnz,
+                                               Vector<PetscInt>& o_nnz)
 {
   const PetscInt local_rows = end - begin;
   d_nnz.assign(local_rows, 0);

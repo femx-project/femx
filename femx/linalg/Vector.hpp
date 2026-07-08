@@ -39,10 +39,10 @@ public:
     assign(view);
   }
 
-  Vector(const Vector&) = default;
+  Vector(const Vector&)     = default;
   Vector(Vector&&) noexcept = default;
 
-  Vector& operator=(const Vector&) = default;
+  Vector& operator=(const Vector&)     = default;
   Vector& operator=(Vector&&) noexcept = default;
 
   Vector& operator=(std::initializer_list<T> vals)

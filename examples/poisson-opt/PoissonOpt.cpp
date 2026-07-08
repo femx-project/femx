@@ -24,19 +24,19 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
+#include <femx/inverse/LeastSquaresObjective.hpp>
+#include <femx/inverse/Objective.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
+#include <femx/inverse/SumObjective.hpp>
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
-#include <femx/inverse/LeastSquaresObjective.hpp>
-#include <femx/state/Linearization.hpp>
-#include <femx/inverse/Objective.hpp>
-#include <femx/state/Residual.hpp>
-#include <femx/inverse/SumObjective.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/LinearStateSolver.hpp>
-#include <femx/inverse/ReducedFunctional.hpp>
+#include <femx/state/Linearization.hpp>
+#include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 using namespace femx;
@@ -44,7 +44,6 @@ using namespace femx::assembly;
 using namespace femx::linalg;
 using namespace femx::state;
 using namespace femx::inverse;
-using namespace std;
 
 #ifndef FEMX_POISSON_OPT_DEFAULT_OUTPUT_DIR
 #define FEMX_POISSON_OPT_DEFAULT_OUTPUT_DIR "output"
@@ -139,141 +138,141 @@ Mesh makePoissonMesh(const Options& opts)
 {
   if (opts.num_x_cells <= 0 || opts.num_y_cells <= 0)
   {
-    throw runtime_error("Poisson optimization mesh dimensions must be positive");
+    throw std::runtime_error("Poisson optimization mesh dimensions must be positive");
   }
-  if (opts.alpha < 0.0 || !isfinite(opts.alpha))
+  if (opts.alpha < 0.0 || !std::isfinite(opts.alpha))
   {
-    throw runtime_error("Poisson optimization alpha must be nonnegative");
+    throw std::runtime_error("Poisson optimization alpha must be nonnegative");
   }
   if (opts.max_its <= 0)
   {
-    throw runtime_error("Poisson optimization max iterations must be positive");
+    throw std::runtime_error("Poisson optimization max iterations must be positive");
   }
   if (opts.obs_stride < 0)
   {
-    throw runtime_error("Poisson optimization observation stride must be nonnegative");
+    throw std::runtime_error("Poisson optimization observation stride must be nonnegative");
   }
   return Mesh::makeStructuredQuad(opts.num_x_cells, opts.num_y_cells);
 }
 
-Index readIndexOption(int& i, int argc, char** argv, const string& name)
+Index readIndexOption(int& i, int argc, char** argv, const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
 
-  const long value = stol(argv[++i]);
-  if (value <= 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(argv[++i]);
+  if (value <= 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a positive integer");
+    throw std::runtime_error(name + " must be a positive integer");
   }
   return static_cast<Index>(value);
 }
 
-Real readRealOption(int& i, int argc, char** argv, const string& name)
+Real readRealOption(int& i, int argc, char** argv, const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
 
-  const Real value = stod(argv[++i]);
-  if (!isfinite(value))
+  const Real value = std::stod(argv[++i]);
+  if (!std::isfinite(value))
   {
-    throw runtime_error(name + " must be finite");
+    throw std::runtime_error(name + " must be finite");
   }
   return value;
 }
 
-Index readNonnegativeIndexOption(int&          i,
-                                 int           argc,
-                                 char**        argv,
-                                 const string& name)
+Index readNonnegativeIndexOption(int&               i,
+                                 int                argc,
+                                 char**             argv,
+                                 const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
 
-  const long value = stol(argv[++i]);
-  if (value < 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(argv[++i]);
+  if (value < 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a nonnegative integer");
+    throw std::runtime_error(name + " must be a nonnegative integer");
   }
   return static_cast<Index>(value);
 }
 
-string readStringOption(int& i, int argc, char** argv, const string& name)
+std::string readStringOption(int& i, int argc, char** argv, const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
   return argv[++i];
 }
 
-bool readIndexAssignment(const string& arg,
-                         const string& name,
-                         Index&        out)
+bool readIndexAssignment(const std::string& arg,
+                         const std::string& name,
+                         Index&             out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
   }
 
-  const long value = stol(arg.substr(prefix.size()));
-  if (value <= 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(arg.substr(prefix.size()));
+  if (value <= 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a positive integer");
+    throw std::runtime_error(name + " must be a positive integer");
   }
   out = static_cast<Index>(value);
   return true;
 }
 
-bool readNonnegativeIndexAssignment(const string& arg,
-                                    const string& name,
-                                    Index&        out)
+bool readNonnegativeIndexAssignment(const std::string& arg,
+                                    const std::string& name,
+                                    Index&             out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
   }
 
-  const long value = stol(arg.substr(prefix.size()));
-  if (value < 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(arg.substr(prefix.size()));
+  if (value < 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a nonnegative integer");
+    throw std::runtime_error(name + " must be a nonnegative integer");
   }
   out = static_cast<Index>(value);
   return true;
 }
 
-bool readRealAssignment(const string& arg,
-                        const string& name,
-                        Real&         out)
+bool readRealAssignment(const std::string& arg,
+                        const std::string& name,
+                        Real&              out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
   }
 
-  out = stod(arg.substr(prefix.size()));
-  if (!isfinite(out))
+  out = std::stod(arg.substr(prefix.size()));
+  if (!std::isfinite(out))
   {
-    throw runtime_error(name + " must be finite");
+    throw std::runtime_error(name + " must be finite");
   }
   return true;
 }
 
-bool readStringAssignment(const string& arg,
-                          const string& name,
-                          string&       out)
+bool readStringAssignment(const std::string& arg,
+                          const std::string& name,
+                          std::string&       out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
@@ -281,12 +280,12 @@ bool readStringAssignment(const string& arg,
   out = arg.substr(prefix.size());
   if (out.empty())
   {
-    throw runtime_error(name + " must not be empty");
+    throw std::runtime_error(name + " must not be empty");
   }
   return true;
 }
 
-string lowerAscii(string value)
+std::string lowerAscii(std::string value)
 {
   transform(value.begin(),
             value.end(),
@@ -296,9 +295,9 @@ string lowerAscii(string value)
   return value;
 }
 
-WorkspaceType parseWorkspaceType(const string& value)
+WorkspaceType parseWorkspaceType(const std::string& value)
 {
-  const string backend = lowerAscii(value);
+  const std::string backend = lowerAscii(value);
   if (backend == "cpu")
   {
     return WorkspaceType::Cpu;
@@ -307,22 +306,22 @@ WorkspaceType parseWorkspaceType(const string& value)
   {
     return WorkspaceType::Cuda;
   }
-  throw runtime_error("Backend must be 'cpu' or 'cuda'");
+  throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
 }
 
-WorkspaceType readBackendOption(int&          i,
-                                int           argc,
-                                char**        argv,
-                                const string& name)
+WorkspaceType readBackendOption(int&               i,
+                                int                argc,
+                                char**             argv,
+                                const std::string& name)
 {
   return parseWorkspaceType(readStringOption(i, argc, argv, name));
 }
 
-bool readBackendAssignment(const string&  arg,
-                           const string&  name,
-                           WorkspaceType& out)
+bool readBackendAssignment(const std::string& arg,
+                           const std::string& name,
+                           WorkspaceType&     out)
 {
-  string value;
+  std::string value;
   if (!readStringAssignment(arg, name, value))
   {
     return false;
@@ -331,9 +330,9 @@ bool readBackendAssignment(const string&  arg,
   return true;
 }
 
-bool parseOutputValue(const string& value)
+bool parseOutputValue(const std::string& value)
 {
-  const string output = lowerAscii(value);
+  const std::string output = lowerAscii(value);
   if (output == "yes" || output == "true" || output == "on" || output == "1")
   {
     return true;
@@ -342,12 +341,12 @@ bool parseOutputValue(const string& value)
   {
     return false;
   }
-  throw runtime_error("--output expects 'yes' or 'no'");
+  throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-filesystem::path vtuPathFromBase(const string& output_base)
+std::filesystem::path vtuPathFromBase(const std::string& output_base)
 {
-  filesystem::path path(output_base);
+  std::filesystem::path path(output_base);
   if (path.extension() == ".vtu")
   {
     return path;
@@ -365,7 +364,7 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
     quad_(GaussQuadrature::make(fe_.referenceElement(), 2))
 {
   space_.setup();
-  state_pattern_ = make_unique<CsrPattern>(assembly::makeCsrPattern(space_));
+  state_pattern_ = std::make_unique<CsrPattern>(assembly::makeCsrPattern(space_));
   initializeBoundaryDofs();
   initializeTrueControl();
   initializeObservationLayout();
@@ -391,7 +390,7 @@ const Objective& PoissonOptProblem::objective() const
 {
   if (!obj_)
   {
-    throw runtime_error("Poisson optimization objective is not prepared");
+    throw std::runtime_error("Poisson optimization objective is not prepared");
   }
   return *obj_;
 }
@@ -424,7 +423,7 @@ Report PoissonOptProblem::report(const Vector<Real>& prm,
   if (state.size() != numStates() || prm.size() != numParams()
       || grad.size() != numParams())
   {
-    throw runtime_error("Poisson report vector size mismatch");
+    throw std::runtime_error("Poisson report vector size mismatch");
   }
 
   Report out;
@@ -436,25 +435,25 @@ Report PoissonOptProblem::report(const Vector<Real>& prm,
   {
     const Real err     = state[i] - target_state_[i];
     state_err2        += err * err;
-    out.state_max_err  = max(out.state_max_err, abs(err));
+    out.state_max_err  = std::max(out.state_max_err, std::abs(err));
   }
-  out.state_rms_error = sqrt(state_err2 / static_cast<Real>(state.size()));
+  out.state_rms_error = std::sqrt(state_err2 / static_cast<Real>(state.size()));
 
   Real control_err2 = 0.0;
   for (Index i = 0; i < prm.size(); ++i)
   {
     const Real err         = prm[i] - target_ctr_[i];
     control_err2          += err * err;
-    out.control_max_error  = max(out.control_max_error, abs(err));
+    out.control_max_error  = std::max(out.control_max_error, std::abs(err));
   }
-  out.ctr_rms_error = prm.empty() ? 0.0 : sqrt(control_err2 / static_cast<Real>(prm.size()));
+  out.ctr_rms_error = prm.empty() ? 0.0 : std::sqrt(control_err2 / static_cast<Real>(prm.size()));
 
   return out;
 }
 
 void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
                                       const Vector<Real>& state,
-                                      const string&       output_base) const
+                                      const std::string&  output_base) const
 {
   if (output_base.empty())
   {
@@ -462,17 +461,17 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
   }
   if (state.size() != numStates() || prm.size() != numParams())
   {
-    throw runtime_error("Poisson optimization visualization vector size mismatch");
+    throw std::runtime_error("Poisson optimization visualization vector size mismatch");
   }
   if (target_state_.size() != numStates() || target_ctr_.size() != numParams())
   {
-    throw runtime_error("Poisson optimization target vectors are not ready");
+    throw std::runtime_error("Poisson optimization target vectors are not ready");
   }
 
-  const filesystem::path output_path = vtuPathFromBase(output_base);
+  const std::filesystem::path output_path = vtuPathFromBase(output_base);
   if (output_path.has_parent_path())
   {
-    filesystem::create_directories(output_path.parent_path());
+    std::filesystem::create_directories(output_path.parent_path());
   }
 
   Vector<Real> state_field(mesh_.numNodes());
@@ -495,7 +494,7 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     const Index node = control_dofs_[i];
     if (node < 0 || node >= mesh_.numNodes())
     {
-      throw runtime_error("Poisson optimization control dof is not a mesh node");
+      throw std::runtime_error("Poisson optimization control dof is not a mesh node");
     }
     control[node]        = prm[i];
     target_control[node] = target_ctr_[i];
@@ -523,8 +522,8 @@ Real PoissonOptProblem::exactValue(const Mesh::Node& p)
 
 void PoissonOptProblem::initializeBoundaryDofs()
 {
-  set<Index> control;
-  set<Index> fixed;
+  std::set<Index> control;
+  std::set<Index> fixed;
 
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
@@ -542,7 +541,7 @@ void PoissonOptProblem::initializeBoundaryDofs()
 
   if (control.empty())
   {
-    throw runtime_error("Poisson optimization found no control dofs");
+    throw std::runtime_error("Poisson optimization found no control dofs");
   }
 
   for (Index dof : control)
@@ -580,7 +579,7 @@ void PoissonOptProblem::initializeObservationLayout()
   const Index count_y = (ny - 1) / stride;
   if (count_x <= 0 || count_y <= 0)
   {
-    throw runtime_error("Poisson optimization found no observation points");
+    throw std::runtime_error("Poisson optimization found no observation points");
   }
 
   const Real dx = 1.0 / static_cast<Real>(nx);
@@ -605,11 +604,11 @@ void PoissonOptProblem::initializeObservationLayout()
 
 void PoissonOptProblem::initializeResidual()
 {
-  residual_kernel_ = make_unique<PoissonElementKernel>(space_, quad_);
-  base_residual_   = make_unique<FEMResidual>(DofLayout(space_), *residual_kernel_);
+  residual_kernel_ = std::make_unique<PoissonElementKernel>(space_, quad_);
+  base_residual_   = std::make_unique<FEMResidual>(DofLayout(space_), *residual_kernel_);
 
   Vector<Real> fixed_values(fixed_dofs_.size(), 0.0);
-  residual_ = make_unique<DirichletControlResidual>(
+  residual_ = std::make_unique<DirichletControlResidual>(
       *base_residual_,
       DirichletControl(control_dofs_),
       fixed_dofs_,
@@ -624,14 +623,14 @@ Index PoissonOptProblem::effectiveObservationStride() const
   {
     return opts_.obs_stride;
   }
-  return max<Index>(1, min(opts_.num_x_cells, opts_.num_y_cells) / 8);
+  return std::max<Index>(1, std::min(opts_.num_x_cells, opts_.num_y_cells) / 8);
 }
 
 Vector<Real> PoissonOptProblem::observationWeights() const
 {
   if (obs_dofs_.empty())
   {
-    throw runtime_error("Poisson optimization has no observation dofs");
+    throw std::runtime_error("Poisson optimization has no observation dofs");
   }
 
   Vector<Real> weights(numStates(), 0.0);
@@ -659,35 +658,35 @@ void PoissonOptProblem::prepareObjective(state::StateSolver& state_solver)
     reg_weights[i] = opts_.alpha * control_weights_[i];
   }
 
-  tracking_obj_ = make_unique<LeastSquaresObjective>(numStates(), numParams());
-  tracking_obj_->setStateTerm(target_state_, observationWeights());
+  misfit_ = std::make_unique<LeastSquaresObjective>(numStates(), numParams());
+  misfit_->setStateTerm(target_state_, observationWeights());
 
-  reg_ = make_unique<LeastSquaresObjective>(numStates(), numParams());
+  reg_ = std::make_unique<LeastSquaresObjective>(numStates(), numParams());
   reg_->setParamTerm(std::move(zero_ctr), std::move(reg_weights));
 
-  obj_ = make_unique<SumObjective>(numStates(), numParams());
-  obj_->add(*tracking_obj_);
+  obj_ = std::make_unique<SumObjective>(numStates(), numParams());
+  obj_->add(*misfit_);
   obj_->add(*reg_);
 }
 
 bool PoissonOptProblem::isBoundaryNode(const Mesh::Node& p) const
 {
-  return abs(p[0]) < boundary_eps || abs(p[0] - 1.0) < boundary_eps
-         || abs(p[1]) < boundary_eps
-         || abs(p[1] - 1.0) < boundary_eps;
+  return std::abs(p[0]) < boundary_eps || std::abs(p[0] - 1.0) < boundary_eps
+         || std::abs(p[1]) < boundary_eps
+         || std::abs(p[1] - 1.0) < boundary_eps;
 }
 
 bool PoissonOptProblem::isControlNode(const Mesh::Node& p) const
 {
-  return abs(p[1] - 1.0) < boundary_eps
+  return std::abs(p[1] - 1.0) < boundary_eps
          && p[0] > boundary_eps
          && p[0] < 1.0 - boundary_eps;
 }
 
-Result solve(PoissonOptProblem&      problem,
+Result solve(PoissonOptProblem&    problem,
              state::Linearization& lin,
-             linalg::LinearSolver&   fwd_lin_solver,
-             linalg::LinearSolver&   adj_lin_solver)
+             linalg::LinearSolver& fwd_lin_solver,
+             linalg::LinearSolver& adj_lin_solver)
 {
   state::LinearStateSolver state_solver(problem.residual(),
                                         lin,
@@ -696,10 +695,10 @@ Result solve(PoissonOptProblem&      problem,
   problem.prepareObjective(state_solver);
 
   inverse::ReducedFunctional fn(problem.residual(),
-                              problem.objective(),
-                              state_solver,
-                              lin,
-                              adj_lin_solver);
+                                problem.objective(),
+                                state_solver,
+                                lin,
+                                adj_lin_solver);
 
   opt::TaoOptimizer tao(fn, PETSC_COMM_SELF);
   tao.opts().max_its = problem.options().max_its;
@@ -729,7 +728,7 @@ Options parseOptions(int    argc,
 
   for (int i = 1; i < argc; ++i)
   {
-    const string arg = argv[i];
+    const std::string arg = argv[i];
     if (arg == "--help" || arg == "-h")
     {
       continue;
@@ -746,7 +745,7 @@ Options parseOptions(int    argc,
     }
     if (arg == "--output")
     {
-      if (i + 1 < argc && string(argv[i + 1]).rfind("-", 0) != 0)
+      if (i + 1 < argc && std::string(argv[i + 1]).rfind("-", 0) != 0)
       {
         opts.write_output = parseOutputValue(argv[++i]);
       }
@@ -778,7 +777,7 @@ Options parseOptions(int    argc,
     }
     if (arg == "--cells" || arg.rfind("--cells=", 0) == 0)
     {
-      throw runtime_error("Use --nx and --ny instead of --cells");
+      throw std::runtime_error("Use --nx and --ny instead of --cells");
     }
     if (readIndexAssignment(arg, "--nx", opts.num_x_cells)
         || readIndexAssignment(arg, "--ny", opts.num_y_cells)
@@ -793,12 +792,12 @@ Options parseOptions(int    argc,
     }
     if (arg.rfind("--output=", 0) == 0)
     {
-      opts.write_output = parseOutputValue(arg.substr(string("--output=").size()));
+      opts.write_output = parseOutputValue(arg.substr(std::string("--output=").size()));
       continue;
     }
     if (arg == "-o" || arg.rfind("-o=", 0) == 0)
     {
-      throw runtime_error("Use --output yes or --output no");
+      throw std::runtime_error("Use --output yes or --output no");
     }
     if (readBackendAssignment(arg, "--backend", opts.backend)
         || readBackendAssignment(arg, "-b", opts.backend))
@@ -807,17 +806,17 @@ Options parseOptions(int    argc,
     }
     if (!ignore_unknown)
     {
-      throw runtime_error("Unknown option: " + arg);
+      throw std::runtime_error("Unknown option: " + arg);
     }
   }
 
-  if (opts.alpha < 0.0 || !isfinite(opts.alpha))
+  if (opts.alpha < 0.0 || !std::isfinite(opts.alpha))
   {
-    throw runtime_error("--alpha must be nonnegative");
+    throw std::runtime_error("--alpha must be nonnegative");
   }
   if (opts.obs_stride < 0)
   {
-    throw runtime_error("--obs-stride must be nonnegative");
+    throw std::runtime_error("--obs-stride must be nonnegative");
   }
   return opts;
 }
@@ -826,7 +825,7 @@ bool hasPoissonOptHelp(int argc, char** argv)
 {
   for (int i = 1; i < argc; ++i)
   {
-    const string arg = argv[i];
+    const std::string arg = argv[i];
     if (arg == "--help" || arg == "-h")
     {
       return true;
@@ -835,9 +834,9 @@ bool hasPoissonOptHelp(int argc, char** argv)
   return false;
 }
 
-void printPoissonOptUsage(ostream&    out,
-                          const char* app_name,
-                          bool        petsc_options)
+void printPoissonOptUsage(std::ostream& out,
+                          const char*   app_name,
+                          bool          petsc_options)
 {
   out << "Usage: " << app_name
       << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]"
@@ -854,25 +853,25 @@ void printPoissonOptUsage(ostream&    out,
   }
   out << '\n';
   out << "  --output yes writes a VTU file under "
-      << defaultOutputDirectory()
+      << outputDir()
       << '\n';
 }
 
-const char* defaultOutputDirectory()
+const char* outputDir()
 {
   return FEMX_POISSON_OPT_DEFAULT_OUTPUT_DIR;
 }
 
-string outputStem(const Options& opts)
+std::string outputStem(const Options& opts)
 {
-  return string("poisson-opt-nx")
-         + to_string(opts.num_x_cells)
+  return std::string("poisson-opt-nx")
+         + std::to_string(opts.num_x_cells)
          + "-ny"
-         + to_string(opts.num_y_cells);
+         + std::to_string(opts.num_y_cells);
 }
 
-void printReport(ostream&                 out,
-                 const string&            backend,
+void printReport(std::ostream&            out,
+                 const std::string&       backend,
                  const PoissonOptProblem& problem,
                  const Report&            report,
                  Index                    tao_itr,

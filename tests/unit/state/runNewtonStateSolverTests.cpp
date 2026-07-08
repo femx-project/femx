@@ -1,10 +1,10 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
-#include <femx/state/Residual.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
+#include <femx/state/Residual.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -30,8 +30,8 @@ public:
     out[0] = state[0] * state[0] - prm[0];
   }
 
-  void linearize(const Vector<Real>&     state,
-                 const Vector<Real>&     prm,
+  void linearize(const Vector<Real>&   state,
+                 const Vector<Real>&   prm,
                  state::Linearization& out) const override
   {
     (void) prm;
@@ -69,12 +69,12 @@ public:
     TestStatus status;
     status = true;
 
-    QuadraticResidual            problem;
-    linalg::DenseAssemblyMatrix  J_state;
-    linalg::DenseAssemblyMatrix  J_param;
-    state::MatrixLinearization lin(J_state, J_param);
-    linalg::DenseLinearSolver    lin_solver;
-    state::NewtonStateSolver     solver(problem, lin, lin_solver);
+    QuadraticResidual           problem;
+    linalg::DenseAssemblyMatrix J_state;
+    linalg::DenseAssemblyMatrix J_param;
+    state::MatrixLinearization  lin(J_state, J_param);
+    linalg::DenseLinearSolver   lin_solver;
+    state::NewtonStateSolver    solver(problem, lin, lin_solver);
     solver.opts().residual_tolerance = 1.0e-13;
 
     Vector<Real> initial(1);

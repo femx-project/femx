@@ -6,8 +6,6 @@
 #include "Components.hpp"
 #include <femx/fem/ElementValues.hpp>
 
-using namespace std;
-
 namespace femx::model::ns
 {
 namespace
@@ -193,12 +191,12 @@ NavierKernel::NavierKernel(const FESpace&         space,
 {
 }
 
-void NavierKernel::res(Index                    step,
-                       Index                    ie,
+void NavierKernel::res(Index                  step,
+                       Index                  ie,
                        state::TimeHistoryView hist,
-                       const Vector<Real>&      nxt,
-                       const Vector<Real>&      prm,
-                       Vector<Real>&            out) const
+                       const Vector<Real>&    nxt,
+                       const Vector<Real>&    prm,
+                       Vector<Real>&          out) const
 {
   checkInputSizes(hist, nxt, prm);
   resizeOrZero(out, num_residuals_);
@@ -242,13 +240,13 @@ void NavierKernel::res(Index                    step,
   finishLocalResidual(num_dofs, nxt.data(), Ke, Fe, out.data());
 }
 
-void NavierKernel::jacobian(Index                    step,
-                            Index                    ie,
+void NavierKernel::jacobian(Index                  step,
+                            Index                  ie,
                             state::VariableBlock   wrt,
                             state::TimeHistoryView hist,
-                            const Vector<Real>&      nxt,
-                            const Vector<Real>&      prm,
-                            DenseMatrix&             out) const
+                            const Vector<Real>&    nxt,
+                            const Vector<Real>&    prm,
+                            DenseMatrix&           out) const
 {
   checkInputSizes(hist, nxt, prm);
   if (!wrt.isNextState())
@@ -310,31 +308,31 @@ void NavierKernel::checkDimensions()
   if (num_residuals_ < 0 || num_hist_dofs_ < 0
       || num_next_states_ < 0 || num_variable_params_ < 0 || num_params_ < 0)
   {
-    throw runtime_error("NavierKernel received invalid dimensions");
+    throw std::runtime_error("NavierKernel received invalid dimensions");
   }
   if (num_next_states_ <= 0 || num_hist_dofs_ % num_next_states_ != 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "NavierKernel history size must be a multiple of next-state size");
   }
   num_hist_states_     = num_hist_dofs_ / num_next_states_;
   num_hist_state_dofs_ = num_next_states_;
   if (num_residuals_ != num_next_states_ || num_params_ < 3)
   {
-    throw runtime_error("NavierKernel received unsupported dimensions");
+    throw std::runtime_error("NavierKernel received unsupported dimensions");
   }
 }
 
 void NavierKernel::checkInputSizes(state::TimeHistoryView hist,
-                                   const Vector<Real>&      nxt,
-                                   const Vector<Real>&      prm) const
+                                   const Vector<Real>&    nxt,
+                                   const Vector<Real>&    prm) const
 {
   if (hist.count() != num_hist_states_
       || hist.stateSize() != num_hist_state_dofs_
       || nxt.size() != num_next_states_
       || prm.size() != num_variable_params_)
   {
-    throw runtime_error("NavierKernel input size mismatch");
+    throw std::runtime_error("NavierKernel input size mismatch");
   }
 }
 
@@ -361,7 +359,7 @@ Vector<Real> physicalParams(Real rho, Real mu, Real dt)
 {
   if (rho <= 0.0 || mu < 0.0 || dt <= 0.0)
   {
-    throw runtime_error("NavierKernel received invalid parameters");
+    throw std::runtime_error("NavierKernel received invalid parameters");
   }
 
   Vector<Real> prm(3);
@@ -383,7 +381,7 @@ NavierKernel makeNavierKernel(const FESpace&         vel_space,
                           vel_space.numComponents(),
                           num_local_dofs))
   {
-    throw runtime_error("NavierKernel received unsupported element size");
+    throw std::runtime_error("NavierKernel received unsupported element size");
   }
 
   return NavierKernel(vel_space,

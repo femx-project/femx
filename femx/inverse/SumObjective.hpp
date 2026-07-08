@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/Objective.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
@@ -42,8 +42,8 @@ private:
                       Index               size);
 
 private:
-  Index num_states_{0};
-  Index num_params_{0};
+  Index                    num_states_{0};
+  Index                    num_params_{0};
   Vector<const Objective*> terms_;
 };
 

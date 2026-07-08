@@ -9,8 +9,6 @@
 #if defined(FEMX_HAS_PETSC)
 #include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 #endif
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -28,7 +26,7 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
   CsrMatrix& sparse = mat.mat();
   if (row < 0 || row >= sparse.rows())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual sparse row is out of range");
   }
 
@@ -48,7 +46,7 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
   }
   if (diag != 0.0 && !has_diag)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual sparse pattern lacks diagonal");
   }
 }
@@ -56,12 +54,12 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
 } // namespace
 
 DirichletControlResidual::DirichletControlResidual(
-    const Residual& base,
+    const Residual&  base,
     DirichletControl ctr,
-    Vector<Index>   fdofs,
-    Index           ctr_param_offset,
-    Index           num_params,
-    Vector<Real>    fvals)
+    Vector<Index>    fdofs,
+    Index            ctr_param_offset,
+    Index            num_params,
+    Vector<Real>     fvals)
   : base_(base),
     ctr_(std::move(ctr)),
     fdofs_(std::move(fdofs)),
@@ -72,17 +70,17 @@ DirichletControlResidual::DirichletControlResidual(
 {
   if (base_dims_.num_residuals != base_dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual requires square state residuals");
   }
   if (base_dims_.num_params != 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual requires a parameter-free base residual");
   }
   if (ctr_param_offset_ < 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual received negative parameter offset");
   }
 
@@ -93,7 +91,7 @@ DirichletControlResidual::DirichletControlResidual(
           : num_params;
   if (dims_.num_params < ctr_param_offset_ + required_ctr_params)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual parameter count is too small");
   }
   base_prm_.resize(base_dims_.num_params);
@@ -104,21 +102,21 @@ DirichletControlResidual::DirichletControlResidual(
   }
   else if (fvals_.size() != fdofs_.size())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual fixed value size mismatch");
   }
 
-  set<Index> rows;
+  std::set<Index> rows;
   for (Index id : ctr_.stateDofs())
   {
     if (id < 0 || id >= base_dims_.num_states)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControlResidual control id is out of range");
     }
     if (!rows.insert(id).second)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControlResidual received duplicate control dofs");
     }
   }
@@ -126,12 +124,12 @@ DirichletControlResidual::DirichletControlResidual(
   {
     if (id < 0 || id >= base_dims_.num_states)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControlResidual fixed id is out of range");
     }
     if (!rows.insert(id).second)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DirichletControlResidual received overlapping dofs");
     }
   }
@@ -156,7 +154,7 @@ void DirichletControlResidual::res(const Vector<Real>& state,
   base_.res(state, base_prm_, out);
   if (out.size() != dims_.num_residuals)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual base residual size mismatch");
   }
 
@@ -182,7 +180,7 @@ void DirichletControlResidual::linearize(
   auto* mat_out = dynamic_cast<MatrixLinearization*>(&out);
   if (mat_out == nullptr)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual requires MatrixLinearization output");
   }
 
@@ -200,7 +198,7 @@ void DirichletControlResidual::checkVectorSizes(
 {
   if (state.size() != dims_.num_states || prm.size() != dims_.num_params)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual vector size mismatch");
   }
 }
@@ -211,7 +209,7 @@ void DirichletControlResidual::replaceStateRows(MatrixBuilder& out,
   if (out.numRows() != dims_.num_residuals
       || out.numCols() != dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DirichletControlResidual state matrix size mismatch");
   }
 

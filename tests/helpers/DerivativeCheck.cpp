@@ -3,8 +3,6 @@
 
 #include <femx/common/Math.hpp>
 #include <tests/helpers/DerivativeCheck.hpp>
-
-using namespace std;
 using namespace femx;
 using namespace femx::state;
 using namespace femx::inverse;
@@ -26,7 +24,7 @@ DerivativeCheck::DerivativeCheck(Real step)
 {
   if (step_ <= 0.0)
   {
-    throw runtime_error("DerivativeCheck step must be positive");
+    throw std::runtime_error("DerivativeCheck step must be positive");
   }
 }
 
@@ -67,8 +65,8 @@ DerivativeCheckResult DerivativeCheck::objectiveParamGrad(
 
 DerivativeCheckResult DerivativeCheck::reducedGrad(
     inverse::ReducedFunctional& fn,
-    const Vector<Real>&       prm,
-    const Vector<Real>&       dir) const
+    const Vector<Real>&         prm,
+    const Vector<Real>&         dir) const
 {
   const Vector<Real> param_p = shifted(prm, dir, step_);
   const Vector<Real> param_m = shifted(prm, dir, -step_);
@@ -167,7 +165,7 @@ Vector<Real> DerivativeCheck::shifted(const Vector<Real>& base,
 {
   if (base.size() != dir.size())
   {
-    throw runtime_error("DerivativeCheck vector size mismatch");
+    throw std::runtime_error("DerivativeCheck vector size mismatch");
   }
 
   Vector<Real> out(base.size());
@@ -184,7 +182,7 @@ Vector<Real> DerivativeCheck::centralDifference(
 {
   if (plus.size() != minus.size())
   {
-    throw runtime_error("DerivativeCheck residual size mismatch");
+    throw std::runtime_error("DerivativeCheck residual size mismatch");
   }
 
   Vector<Real> out(plus.size());
@@ -201,8 +199,8 @@ DerivativeCheckResult DerivativeCheck::compareScalars(Real computed,
   DerivativeCheckResult result;
   result.computed  = computed;
   result.reference = reference;
-  result.abs_err   = abs(computed - reference);
-  result.rel_err   = result.abs_err / (1.0 + abs(reference));
+  result.abs_err   = std::abs(computed - reference);
+  result.rel_err   = result.abs_err / (1.0 + std::abs(reference));
   return result;
 }
 
@@ -212,7 +210,7 @@ DerivativeCheckResult DerivativeCheck::compareVectors(
 {
   if (computed.size() != reference.size())
   {
-    throw runtime_error("DerivativeCheck comparison size mismatch");
+    throw std::runtime_error("DerivativeCheck comparison size mismatch");
   }
 
   Vector<Real> error(computed.size());

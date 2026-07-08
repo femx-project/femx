@@ -1,7 +1,7 @@
 #pragma once
 
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

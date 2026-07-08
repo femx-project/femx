@@ -5,8 +5,8 @@
 #include <femx/assembly/ElementKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx
@@ -42,8 +42,8 @@ public:
            const Vector<Real>& prm,
            Vector<Real>&       out) const override;
 
-  void linearize(const Vector<Real>&     state,
-                 const Vector<Real>&     prm,
+  void linearize(const Vector<Real>&   state,
+                 const Vector<Real>&   prm,
                  state::Linearization& out) const override;
 
 private:

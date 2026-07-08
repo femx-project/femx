@@ -61,21 +61,21 @@ public:
   state::TimeDims dims() const override;
 
   void res(const state::TimeContext& ctx,
-           Vector<Real>&               out) const override;
+           Vector<Real>&             out) const override;
 
   void applyJac(const state::TimeContext& ctx,
                 state::VariableBlock      wrt,
-                const Vector<Real>&         dir,
-                Vector<Real>&               out) const override;
+                const Vector<Real>&       dir,
+                Vector<Real>&             out) const override;
 
   void applyJacT(const state::TimeContext& ctx,
                  state::VariableBlock      wrt,
-                 const Vector<Real>&         adj,
-                 Vector<Real>&               out) const override;
+                 const Vector<Real>&       adj,
+                 Vector<Real>&             out) const override;
 
   bool assembleJac(const state::TimeContext& ctx,
                    state::VariableBlock      wrt,
-                   linalg::MatrixBuilder&      out) const override;
+                   linalg::MatrixBuilder&    out) const override;
 
 private:
   Index numElems() const;
@@ -88,11 +88,11 @@ private:
   void checkContext(const state::TimeContext& ctx) const;
   void checkVector(const Vector<Real>* value, Index size) const;
   void checkDirection(state::VariableBlock wrt,
-                      const Vector<Real>&    dir) const;
+                      const Vector<Real>&  dir) const;
 
   void gatherHistory(const state::TimeContext& ctx,
-                     Index                       ie,
-                     Vector<Real>&               local) const;
+                     Index                     ie,
+                     Vector<Real>&             local) const;
 
   Vector<Real> gatherParam(Index ie, const Vector<Real>& global) const;
 

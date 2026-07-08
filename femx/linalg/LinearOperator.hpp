@@ -13,7 +13,7 @@ namespace linalg
  *
  * Algorithms depend on this interface instead of concrete matrix storage.
  * Implementations are responsible for resizing or assigning the output vector.
-*/
+ */
 class LinearOperator
 {
 public:

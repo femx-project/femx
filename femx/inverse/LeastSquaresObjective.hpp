@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/Objective.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

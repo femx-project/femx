@@ -2,8 +2,6 @@
 
 #include <femx/fem/ObservationGrid.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace fem
@@ -12,13 +10,13 @@ namespace fem
 namespace
 {
 
-void checkCounts(const array<Index, 3>& counts)
+void checkCounts(const std::array<Index, 3>& counts)
 {
   for (Index count : counts)
   {
     if (count <= 0)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "observationGridPoints received non-positive grid count");
     }
   }
@@ -39,9 +37,9 @@ Real coordFromBounds(Real  lower,
 } // namespace
 
 Vector<Point3> observationGridPoints(
-    const Point3&          lower,
-    const Point3&          upper,
-    const array<Index, 3>& counts)
+    const Point3&               lower,
+    const Point3&               upper,
+    const std::array<Index, 3>& counts)
 {
   checkCounts(counts);
 
@@ -65,9 +63,9 @@ Vector<Point3> observationGridPoints(
 }
 
 Vector<Point3> observationGridPoints(
-    const Point3&          origin,
-    const array<Index, 3>& counts,
-    const Point3&          spacing)
+    const Point3&               origin,
+    const std::array<Index, 3>& counts,
+    const Point3&               spacing)
 {
   checkCounts(counts);
 

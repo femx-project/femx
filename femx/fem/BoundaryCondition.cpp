@@ -8,8 +8,6 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -39,11 +37,11 @@ void DirichletCondition::addBoundary(const FESpace&       space,
 {
   if (comp < 0 || comp >= space.numComponents())
   {
-    throw runtime_error("Dirichlet boundary component is out of range");
+    throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
-  const Mesh& mesh = space.mesh();
-  set<Index>  nodes;
+  const Mesh&     mesh = space.mesh();
+  std::set<Index> nodes;
   for (const auto& facet : mesh.boundaryFacets())
   {
     if (facet.ptag == ptag)
@@ -54,8 +52,8 @@ void DirichletCondition::addBoundary(const FESpace&       space,
 
   if (nodes.empty())
   {
-    throw runtime_error(
-        "No boundary facets found for physical tag " + to_string(ptag));
+    throw std::runtime_error(
+        "No boundary facets found for physical tag " + std::to_string(ptag));
   }
 
   for (Index in : nodes)
@@ -85,11 +83,11 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
 {
   if (comp < 0 || comp >= field.numComponents())
   {
-    throw runtime_error("Dirichlet boundary component is out of range");
+    throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
-  const Mesh& mesh = field.space().mesh();
-  set<Index>  nodes;
+  const Mesh&     mesh = field.space().mesh();
+  std::set<Index> nodes;
   for (const auto& facet : mesh.boundaryFacets())
   {
     if (facet.ptag == ptag)
@@ -100,8 +98,8 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
 
   if (nodes.empty())
   {
-    throw runtime_error(
-        "No boundary facets found for physical tag " + to_string(ptag));
+    throw std::runtime_error(
+        "No boundary facets found for physical tag " + std::to_string(ptag));
   }
 
   for (Index in : nodes)
@@ -131,7 +129,7 @@ void DirichletCondition::addBoundary(const FESpace&        space,
 {
   if (comp < 0 || comp >= space.numComponents())
   {
-    throw runtime_error("Dirichlet boundary component is out of range");
+    throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
   const Mesh& mesh = space.mesh();
@@ -165,7 +163,7 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
 {
   if (comp < 0 || comp >= field.numComponents())
   {
-    throw runtime_error("Dirichlet boundary component is out of range");
+    throw std::runtime_error("Dirichlet boundary component is out of range");
   }
 
   const Mesh& mesh = field.space().mesh();
@@ -193,7 +191,7 @@ void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
 {
   if (dofs_.size() != vals_.size())
   {
-    throw runtime_error("DirichletCondition has inconsistent data");
+    throw std::runtime_error("DirichletCondition has inconsistent data");
   }
 
   const Index* rp   = A.rowPtrData();
@@ -211,7 +209,7 @@ void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
 
     if (id < 0 || id >= A.rows() || id >= b.size())
     {
-      throw runtime_error("Dirichlet id is out of range");
+      throw std::runtime_error("Dirichlet id is out of range");
     }
 
     is_dirichlet[id]     = 1;
@@ -252,7 +250,7 @@ void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
   {
     if (is_dirichlet[id] != 0 && found_diagonal[id] == 0)
     {
-      throw runtime_error("Dirichlet row has no diagonal entry");
+      throw std::runtime_error("Dirichlet row has no diagonal entry");
     }
   }
 }

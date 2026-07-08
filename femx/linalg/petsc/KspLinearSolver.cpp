@@ -11,8 +11,6 @@
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace linalg
@@ -142,15 +140,15 @@ public:
   }
 
   void solve(const PETScAssemblyMatrix& op,
-             const PETScVector&  rhs,
-             PETScVector&        out)
+             const PETScVector&         rhs,
+             PETScVector&               out)
   {
     solveSystem(op, rhs, out, false);
   }
 
   void solveT(const PETScAssemblyMatrix& op,
-              const PETScVector&  rhs,
-              PETScVector&        out)
+              const PETScVector&         rhs,
+              PETScVector&               out)
   {
     solveSystem(op, rhs, out, true);
   }
@@ -185,11 +183,11 @@ private:
 
     if (op.numRows() != op.numCols())
     {
-      throw runtime_error("KspLinearSolver requires a square operator");
+      throw std::runtime_error("KspLinearSolver requires a square operator");
     }
     if (rhs.size() != op.numRows())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver received inconsistent rhs size");
     }
 
@@ -245,12 +243,12 @@ private:
   {
     if (op.numRows() != op.numCols())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver requires a square PETSc matrix");
     }
     if (rhs.size() != op.numRows())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver received inconsistent rhs size");
     }
 
@@ -292,13 +290,13 @@ private:
   }
 
   void solveSystem(const PETScAssemblyMatrix& op,
-                   const PETScVector&  rhs,
-                   PETScVector&        out,
+                   const PETScVector&         rhs,
+                   PETScVector&               out,
                    bool                       transpose)
   {
     if (op.numRows() != op.numCols())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver requires a square PETSc matrix");
     }
 
@@ -306,7 +304,7 @@ private:
     const Index out_size = transpose ? op.numRows() : op.numCols();
     if (rhs.size() != rhs_size || out.size() != out_size)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver received incompatible PETSc vectors");
     }
 
@@ -444,7 +442,7 @@ private:
   {
     if (ierr != PETSC_SUCCESS)
     {
-      throw runtime_error(string(operation) + " failed");
+      throw std::runtime_error(std::string(operation) + " failed");
     }
   }
 
@@ -452,7 +450,7 @@ private:
   {
     if (ierr != MPI_SUCCESS)
     {
-      throw runtime_error(string(operation) + " failed");
+      throw std::runtime_error(std::string(operation) + " failed");
     }
   }
 
@@ -469,7 +467,7 @@ private:
     for (PetscInt i = 0; i < local_size; ++i)
     {
       const PetscReal value = PetscAbsScalar(data[i]);
-      if (!isfinite(value))
+      if (!std::isfinite(value))
       {
         local_ok = false;
         break;
@@ -490,13 +488,13 @@ private:
     checkMPI(MPI_Allreduce(&ok, &global_ok, 1, MPI_INT, MPI_MIN, comm),
              "MPI_Allreduce");
 
-    if (!global_ok || !isfinite(global_max)
+    if (!global_ok || !std::isfinite(global_max)
         || global_max > std::sqrt(std::numeric_limits<PetscReal>::max()))
     {
       std::ostringstream msg;
       msg << "KspLinearSolver received non-finite or too-large " << object
           << " (max_abs=" << global_max << ")";
-      throw runtime_error(
+      throw std::runtime_error(
           msg.str());
     }
   }
@@ -505,10 +503,10 @@ private:
   {
     PetscReal norm = 0.0;
     check(MatNorm(mat, NORM_FROBENIUS, &norm), "MatNorm");
-    if (!isfinite(norm))
+    if (!std::isfinite(norm))
     {
-      throw runtime_error(
-          string("KspLinearSolver received non-finite ") + object);
+      throw std::runtime_error(
+          std::string("KspLinearSolver received non-finite ") + object);
     }
   }
 
@@ -518,7 +516,7 @@ private:
     check(PetscInitialized(&initialized), "PetscInitialized");
     if (initialized != PETSC_TRUE)
     {
-      throw runtime_error("KspLinearSolver requires initialized PETSc");
+      throw std::runtime_error("KspLinearSolver requires initialized PETSc");
     }
   }
 
@@ -530,8 +528,8 @@ private:
     if (MPI_Comm_compare(exp, actual, &result) != MPI_SUCCESS
         || (result != MPI_IDENT && result != MPI_CONGRUENT))
     {
-      throw runtime_error(
-          string("KspLinearSolver communicator mismatch for ") + object);
+      throw std::runtime_error(
+          std::string("KspLinearSolver communicator mismatch for ") + object);
     }
   }
 
@@ -589,11 +587,11 @@ private:
   {
     if (static_cast<int>(last_reason_) <= 0)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "KspLinearSolver failed to converge: reason="
-          + to_string(static_cast<int>(last_reason_))
-          + ", iterations=" + to_string(static_cast<long long>(last_its_))
-          + ", residual=" + to_string(last_rnorm_));
+          + std::to_string(static_cast<int>(last_reason_))
+          + ", iterations=" + std::to_string(static_cast<long long>(last_its_))
+          + ", residual=" + std::to_string(last_rnorm_));
     }
   }
 
@@ -607,7 +605,7 @@ private:
 };
 
 KspLinearSolver::KspLinearSolver(MPI_Comm comm)
-  : impl_(make_unique<Impl>(comm))
+  : impl_(std::make_unique<Impl>(comm))
 {
 }
 
@@ -638,15 +636,15 @@ void KspLinearSolver::solveT(const LinearOperator& op,
 }
 
 void KspLinearSolver::solve(const PETScAssemblyMatrix& op,
-                            const PETScVector&  rhs,
-                            PETScVector&        out)
+                            const PETScVector&         rhs,
+                            PETScVector&               out)
 {
   impl_->solve(op, rhs, out);
 }
 
 void KspLinearSolver::solveT(const PETScAssemblyMatrix& op,
-                             const PETScVector&  rhs,
-                             PETScVector&        out)
+                             const PETScVector&         rhs,
+                             PETScVector&               out)
 {
   impl_->solveT(op, rhs, out);
 }

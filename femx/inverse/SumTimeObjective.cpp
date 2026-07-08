@@ -1,8 +1,6 @@
 #include <stdexcept>
 
 #include <femx/inverse/SumTimeObjective.hpp>
-
-using namespace std;
 using namespace femx::state;
 
 namespace femx
@@ -19,7 +17,7 @@ SumTimeObjective::SumTimeObjective(Index num_steps,
 {
   if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
   {
-    throw runtime_error("SumTimeObjective received invalid dimensions");
+    throw std::runtime_error("SumTimeObjective received invalid dimensions");
   }
 }
 
@@ -28,7 +26,7 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
   if (term.numSteps() != numSteps() || term.numStates() != numStates()
       || term.numParams() != numParams())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "SumTimeObjective received term with inconsistent dimensions");
   }
   terms_.push_back(&term);
@@ -103,7 +101,7 @@ void SumTimeObjective::checkSize(const Vector<Real>& value, Index exp)
 {
   if (value.size() != exp)
   {
-    throw runtime_error("SumTimeObjective vector size mismatch");
+    throw std::runtime_error("SumTimeObjective vector size mismatch");
   }
 }
 

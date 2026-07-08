@@ -97,7 +97,7 @@ PoissonOptions parseOptions(int    argc,
                             bool   ignore_unknown);
 
 /** @brief Return the build-local directory for Poisson VTU output. */
-const char* defaultOutputDirectory();
+const char* outputDir();
 
 /** @brief Return the problem-specific output file stem. */
 std::string outputStem(const PoissonOptions& opts);

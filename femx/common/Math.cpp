@@ -3,8 +3,6 @@
 
 #include <femx/common/Math.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -12,7 +10,7 @@ Real dot(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw runtime_error("dot received incompatible vectors");
+    throw std::runtime_error("dot received incompatible vectors");
   }
 
   Real value = 0.0;
@@ -30,14 +28,14 @@ Real squaredNorm(const Vector<Real>& x)
 
 Real norm(const Vector<Real>& x)
 {
-  return sqrt(squaredNorm(x));
+  return std::sqrt(squaredNorm(x));
 }
 
 Real rmse(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw runtime_error("rmse received incompatible vectors");
+    throw std::runtime_error("rmse received incompatible vectors");
   }
 
   Real sum = 0.0;
@@ -46,14 +44,14 @@ Real rmse(const Vector<Real>& x, const Vector<Real>& y)
     const Real diff  = x[i] - y[i];
     sum             += diff * diff;
   }
-  return sqrt(sum / x.size());
+  return std::sqrt(sum / x.size());
 }
 
 Vector<Real> difference(const Vector<Real>& x, const Vector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw runtime_error("difference received incompatible vectors");
+    throw std::runtime_error("difference received incompatible vectors");
   }
 
   Vector<Real> diff(x.size());
@@ -88,7 +86,7 @@ Real squaredNorm(const Point3& x)
 
 Real norm(const Point3& x)
 {
-  return sqrt(squaredNorm(x));
+  return std::sqrt(squaredNorm(x));
 }
 
 Point3 unit(const Point3& x)
@@ -96,7 +94,7 @@ Point3 unit(const Point3& x)
   const Real len = norm(x);
   if (len <= 0.0)
   {
-    throw runtime_error("unit received zero vector");
+    throw std::runtime_error("unit received zero vector");
   }
   return {x[0] / len, x[1] / len, x[2] / len};
 }
@@ -108,7 +106,7 @@ Real sqDist(const Point3& x, const Point3& y)
 
 Real distance(const Point3& x, const Point3& y)
 {
-  return sqrt(sqDist(x, y));
+  return std::sqrt(sqDist(x, y));
 }
 
 Real triArea(const Point3& a, const Point3& b, const Point3& c)

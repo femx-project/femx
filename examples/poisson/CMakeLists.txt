@@ -5,12 +5,12 @@ function(configure_poisson_forward_example target)
   target_compile_definitions(
     ${target}
     PRIVATE FEMX_POISSON_APP_NAME="${target}"
-            FEMX_POISSON_DEFAULT_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/output")
+            FEMX_POISSON_DEFAULT_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/output"
+  )
 endfunction()
 
 if(TARGET femx::linalg_petsc)
-  add_executable(poisson-petsc main-petsc.cpp
-                               ${FEMX_POISSON_FORWARD_SOURCES})
+  add_executable(poisson-petsc main-petsc.cpp ${FEMX_POISSON_FORWARD_SOURCES})
   configure_poisson_forward_example(poisson-petsc)
   target_link_libraries(poisson-petsc PRIVATE femx::linalg_petsc)
 endif()

@@ -3,8 +3,6 @@
 
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -16,11 +14,11 @@ namespace state
 namespace
 {
 
-using Clock = chrono::steady_clock;
+using Clock = std::chrono::steady_clock;
 
 Real elapsedSeconds(const Clock::time_point& begin)
 {
-  return chrono::duration<Real>(Clock::now() - begin).count();
+  return std::chrono::duration<Real>(Clock::now() - begin).count();
 }
 
 void copyStateToView(const Vector<Real>& src,
@@ -28,7 +26,7 @@ void copyStateToView(const Vector<Real>& src,
 {
   if (src.size() != dst.size())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator state view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
@@ -42,7 +40,7 @@ void copyView(VectorView<Real> src,
 {
   if (src.size() != dst.size())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator history view size mismatch");
   }
   for (Index i = 0; i < src.size(); ++i)
@@ -58,7 +56,7 @@ void initializeHistoryWindow(const Vector<Real>& initial,
 {
   if (depth < 0 || num_states < 0 || initial.size() != num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator received invalid history window dimensions");
   }
   hist.resize(depth * num_states);
@@ -77,7 +75,7 @@ void advanceHistoryWindow(Vector<Real>&       hist,
   if (depth < 0 || num_states < 0 || hist.size() != depth * num_states
       || next.size() != num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator history window size mismatch");
   }
   BlockVectorView<Real> hist_view(hist.data(), depth, num_states);
@@ -104,12 +102,12 @@ TimeLinearIntegrator::TimeLinearIntegrator(
 {
   if (dims_.num_residuals != dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator requires square state residual dimensions");
   }
   if (dims_.num_history_states <= 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator requires at least one history state");
   }
 }
@@ -118,7 +116,7 @@ void TimeLinearIntegrator::setInitialState(const Vector<Real>& state)
 {
   if (state.size() != numStates())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator initial state size mismatch");
   }
   init_state_     = state;
@@ -202,7 +200,7 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator parameter size mismatch");
   }
 
@@ -270,14 +268,14 @@ void TimeLinearIntegrator::solveStep(
   problem_.res(ctx, res);
   if (res.size() != dims_.num_residuals)
   {
-    throw runtime_error("TimeLinearIntegrator residual size mismatch");
+    throw std::runtime_error("TimeLinearIntegrator residual size mismatch");
   }
 
   const auto assembly_begin = Clock::now();
   if (!problem_.assembleJac(
           ctx, VariableBlock::NextState, J_next_))
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator requires an assembled next-state Jacobian");
   }
   J_next_.finalize();
@@ -286,7 +284,7 @@ void TimeLinearIntegrator::solveStep(
   J_next_.apply(x_next, rhs);
   if (rhs.size() != res.size())
   {
-    throw runtime_error("TimeLinearIntegrator RHS size mismatch");
+    throw std::runtime_error("TimeLinearIntegrator RHS size mismatch");
   }
   for (Index i = 0; i < res.size(); ++i)
   {
@@ -304,11 +302,11 @@ void TimeLinearIntegrator::solveStep(
 
   last_solve_sec_  = elapsedSeconds(solve_begin);
   solve_sec_      += last_solve_sec_;
-  
+
   ++solve_calls_;
   if (next.size() != numStates())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeLinearIntegrator update size mismatch");
   }
 

@@ -3,8 +3,6 @@
 
 #include <femx/state/EnsembleBasis.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace state
@@ -91,7 +89,7 @@ void EnsembleBasis::checkDims() const
   if (perturbations_.rows() < 0 || perturbations_.cols() < 0
       || perturbations_.rows() != mean_.size())
   {
-    throw runtime_error("EnsembleBasis received inconsistent dimensions");
+    throw std::runtime_error("EnsembleBasis received inconsistent dimensions");
   }
 }
 
@@ -100,7 +98,7 @@ void EnsembleBasis::checkAlpha(const Vector<Real>& alpha) const
   checkDims();
   if (alpha.size() != numCoefficients())
   {
-    throw runtime_error("EnsembleBasis coefficient size mismatch");
+    throw std::runtime_error("EnsembleBasis coefficient size mismatch");
   }
 }
 
@@ -109,7 +107,7 @@ void EnsembleBasis::checkPhysical(const Vector<Real>& value) const
   checkDims();
   if (value.size() != numPhysicalParams())
   {
-    throw runtime_error("EnsembleBasis physical vector size mismatch");
+    throw std::runtime_error("EnsembleBasis physical vector size mismatch");
   }
 }
 

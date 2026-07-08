@@ -1,10 +1,10 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/inverse/Objective.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/state/Linearization.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -23,11 +23,11 @@ namespace inverse
 class ReducedFunctional
 {
 public:
-  ReducedFunctional(const state::Residual&  problem,
-                    const Objective&        obj,
-                    state::StateSolver&     state_solver,
-                    state::Linearization&   lin,
-                    linalg::LinearSolver&     adj_lin_solver);
+  ReducedFunctional(const state::Residual& problem,
+                    const Objective&       obj,
+                    state::StateSolver&    state_solver,
+                    state::Linearization&  lin,
+                    linalg::LinearSolver&  adj_lin_solver);
 
   Index numParams() const;
 
@@ -50,12 +50,12 @@ private:
   static void checkSize(const Vector<Real>& value, Index exp);
 
 private:
-  const state::Residual&  problem_;
-  const Objective&        obj_;
-  state::StateSolver&     state_solver_;
-  state::Linearization&   lin_;
-  linalg::LinearSolver&     adj_lin_solver_;
-  state::Dimensions       dims_;
+  const state::Residual& problem_;
+  const Objective&       obj_;
+  state::StateSolver&    state_solver_;
+  state::Linearization&  lin_;
+  linalg::LinearSolver&  adj_lin_solver_;
+  state::Dimensions      dims_;
 };
 
 } // namespace inverse

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -31,21 +31,21 @@ public:
   void set(Index row, Index col, Real value) override;
   void add(Index row, Index col, Real value) override;
   void addAtomic(Index row, Index col, Real value) override;
-  bool addMappedMat(Index ie,
+  bool addMappedMat(Index              ie,
                     const DenseMatrix& local,
-                    bool atomic) override;
+                    bool               atomic) override;
   void finalize() override;
 
   void apply(const Vector<Real>& dir, Vector<Real>& out) const override;
   void applyT(const Vector<Real>& dir, Vector<Real>& out) const override;
 
-  CsrMatrix& mat();
+  CsrMatrix&       mat();
   const CsrMatrix& mat() const;
 
 private:
-  void checkMappedMat(Index ie, const DenseMatrix& local) const;
-  void addMappedMatSerial(Index ie, const DenseMatrix& local);
-  void addMappedMatAtomic(Index ie, const DenseMatrix& local);
+  void  checkMappedMat(Index ie, const DenseMatrix& local) const;
+  void  addMappedMatSerial(Index ie, const DenseMatrix& local);
+  void  addMappedMatAtomic(Index ie, const DenseMatrix& local);
   Index findEntry(Index row, Index col) const;
 
   CsrMatrix mat_;

@@ -9,8 +9,8 @@ class LagrangeTriangleP1 : public FiniteElement
 {
 public:
   static constexpr Index spatial_dim = 2;
-  static constexpr Index num_nodes      = 3;
-  static constexpr Index num_dofs          = 3;
+  static constexpr Index num_nodes   = 3;
+  static constexpr Index num_dofs    = 3;
   static constexpr Index degree      = 1;
 
   std::string name() const override
@@ -44,7 +44,7 @@ public:
   }
 
   void calcN(const QuadraturePoint& qp,
-                 VectorView<Real>       N) const override
+             VectorView<Real>       N) const override
   {
     const Real r = qp[0];
     const Real s = qp[1];
@@ -55,7 +55,7 @@ public:
   }
 
   void calcdNdr(const QuadraturePoint&,
-                     MatrixView<Real> dNdr) const override
+                MatrixView<Real> dNdr) const override
   {
     dNdr(0, 0) = -1.0;
     dNdr(0, 1) = -1.0;

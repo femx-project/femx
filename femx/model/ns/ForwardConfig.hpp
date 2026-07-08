@@ -10,9 +10,9 @@
 #include <optional>
 #include <string>
 
-#include <femx/model/ns/Config.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/model/ns/Config.hpp>
 
 #ifndef FEMX_NAVIERSTOKES_OUTPUT_DIR
 #define FEMX_NAVIERSTOKES_OUTPUT_DIR "."
@@ -21,12 +21,11 @@
 namespace femx::model::ns
 {
 
-
 struct ConvergenceParams
 {
-  bool  enabled                     = false;
+  bool  enabled     = false;
   Real  vel_rel_tol = 1.0e-8;
-  Index min_steps                   = 1;
+  Index min_steps   = 1;
 };
 
 struct TimeParams

@@ -2,10 +2,10 @@
 
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx

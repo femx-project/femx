@@ -154,7 +154,7 @@ void CsrAssemblyMatrix::addMappedMatSerial(Index              ie,
   checkMappedMat(ie, local);
 
   const CsrPattern& pattern    = mat_.pattern();
-  const Index       num_dofs         = pattern.elemNumDofs(ie);
+  const Index       num_dofs   = pattern.elemNumDofs(ie);
   const Index       coo_offset = pattern.elemCooOffset(ie);
   const Index*      coo_to_csr = pattern.cooToCsrData();
   const Real*       local_vals = local.data();
@@ -178,7 +178,7 @@ void CsrAssemblyMatrix::addMappedMatAtomic(Index              ie,
   checkMappedMat(ie, local);
 
   const CsrPattern& pattern    = mat_.pattern();
-  const Index       num_dofs         = pattern.elemNumDofs(ie);
+  const Index       num_dofs   = pattern.elemNumDofs(ie);
   const Index       coo_offset = pattern.elemCooOffset(ie);
   const Index*      coo_to_csr = pattern.cooToCsrData();
   const Real*       local_vals = local.data();

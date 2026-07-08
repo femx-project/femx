@@ -10,8 +10,8 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/Workspace.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx::examples
 {
@@ -30,21 +30,18 @@ inline const char* workspaceName(WorkspaceType backend)
 }
 
 /**
- * @brief Shared utility for small example executables.
+ * @brief Small helpers for examples.
  *
- * ExampleHelper centralizes common reporting details such as solver/backend
- * labels, residual norms, and build-local visualization output paths.  Each
- * example still owns its problem-specific report text and data writer.
+ * This is header-only implementation of several utility functions
+ * used by femx exampes, such as error norm calculations.
  */
 class ExampleHelper
 {
 public:
   ExampleHelper(std::string   solver_name,
-                std::string   solver_label,
                 WorkspaceType backend,
                 std::string   output_dir)
     : solver_name_(std::move(solver_name)),
-      solver_label_(std::move(solver_label)),
       backend_(backend),
       output_dir_(std::move(output_dir))
   {
@@ -62,7 +59,7 @@ public:
 
   std::string backendName() const
   {
-    return solver_label_ + "/" + hardwareBackend();
+    return solver_name_ + "/" + hardwareBackend();
   }
 
   const std::string& outputDirectory() const noexcept
@@ -108,7 +105,6 @@ public:
 
 private:
   std::string   solver_name_;
-  std::string   solver_label_;
   WorkspaceType backend_;
   std::string   output_dir_;
 };

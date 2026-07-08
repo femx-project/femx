@@ -2,8 +2,6 @@
 
 #include <femx/linalg/DenseMatrix.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -30,7 +28,7 @@ void DenseMatrix::resize(Index rows, Index cols)
 
 void DenseMatrix::setZero()
 {
-  fill(vals_.begin(), vals_.end(), Real{});
+  std::fill(vals_.begin(), vals_.end(), Real{});
 }
 
 Index DenseMatrix::rows() const

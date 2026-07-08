@@ -2,8 +2,6 @@
 
 #include <femx/inverse/SumObjective.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace inverse
@@ -15,7 +13,7 @@ SumObjective::SumObjective(Index num_states, Index num_params)
 {
   if (num_states_ < 0 || num_params_ < 0)
   {
-    throw runtime_error("SumObjective received invalid dimensions");
+    throw std::runtime_error("SumObjective received invalid dimensions");
   }
 }
 
@@ -23,7 +21,7 @@ SumObjective& SumObjective::add(const Objective& term)
 {
   if (term.numStates() != num_states_ || term.numParams() != num_params_)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "SumObjective received term with inconsistent dimensions");
   }
   terms_.push_back(&term);
@@ -85,7 +83,7 @@ void SumObjective::addInto(const Vector<Real>& input,
 {
   if (input.size() != size || out.size() != size)
   {
-    throw runtime_error("SumObjective vector size mismatch");
+    throw std::runtime_error("SumObjective vector size mismatch");
   }
   for (Index i = 0; i < size; ++i)
   {

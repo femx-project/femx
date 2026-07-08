@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Linearization.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
@@ -23,7 +23,7 @@ class LinearStateSolver final : public StateSolver
 public:
   LinearStateSolver(const state::Residual& problem,
                     state::Linearization&  lin,
-                    linalg::LinearSolver&    lin_solver);
+                    linalg::LinearSolver&  lin_solver);
 
   Index numStates() const override;
   Index numParams() const override;
@@ -34,7 +34,7 @@ public:
 private:
   const state::Residual& problem_;
   state::Linearization&  linearization_;
-  linalg::LinearSolver&    lin_solver_;
+  linalg::LinearSolver&  lin_solver_;
   state::Dimensions      dims_;
 };
 

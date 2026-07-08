@@ -2,8 +2,6 @@
 
 #include <femx/fem/DofMap.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -16,10 +14,10 @@ void DofMap::allocate(Index num_elems, Index num_dofs_per_elem)
 {
   if (num_elems < 0 || num_dofs_per_elem <= 0)
   {
-    throw runtime_error("DofMap: invalid size");
+    throw std::runtime_error("DofMap: invalid size");
   }
 
-  num_elems_   = num_elems;
+  num_elems_         = num_elems;
   num_dofs_per_elem_ = num_dofs_per_elem;
   elem_dofs_.resize(num_elems_ * num_dofs_per_elem_);
 }

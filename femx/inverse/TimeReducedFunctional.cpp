@@ -6,10 +6,8 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/linalg/BlockVectorView.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
-
-using namespace std;
+#include <femx/linalg/BlockVectorView.hpp>
 using namespace femx::state;
 using namespace femx::inverse;
 using namespace femx::linalg;
@@ -22,11 +20,11 @@ namespace inverse
 namespace
 {
 
-using Clock = chrono::steady_clock;
+using Clock = std::chrono::steady_clock;
 
 Real elapsedSeconds(const Clock::time_point& begin)
 {
-  return chrono::duration<Real>(Clock::now() - begin).count();
+  return std::chrono::duration<Real>(Clock::now() - begin).count();
 }
 
 Index historyLevel(Index step, Index lag)
@@ -34,27 +32,27 @@ Index historyLevel(Index step, Index lag)
   return step > lag ? step - lag : 0;
 }
 
-void checkFinite(const Vector<Real>& x, const string& name, Index step)
+void checkFinite(const Vector<Real>& x, const std::string& name, Index step)
 {
   Real max_abs = 0.0;
   for (Index i = 0; i < x.size(); ++i)
   {
-    const Real value = abs(x[i]);
-    if (!isfinite(value))
+    const Real value = std::abs(x[i]);
+    if (!std::isfinite(value))
     {
-      throw runtime_error(
+      throw std::runtime_error(
           name + " contains a non-finite value at step "
-          + to_string(static_cast<long long>(step)) + ", index "
-          + to_string(static_cast<long long>(i)));
+          + std::to_string(static_cast<long long>(step)) + ", index "
+          + std::to_string(static_cast<long long>(i)));
     }
-    max_abs = max(max_abs, value);
+    max_abs = std::max(max_abs, value);
   }
-  if (max_abs > sqrt(numeric_limits<Real>::max()))
+  if (max_abs > std::sqrt(std::numeric_limits<Real>::max()))
   {
-    ostringstream msg;
+    std::ostringstream msg;
     msg << name << " is too large at step " << step
         << " (max_abs=" << max_abs << ")";
-    throw runtime_error(msg.str());
+    throw std::runtime_error(msg.str());
   }
 }
 
@@ -66,7 +64,7 @@ void fillHistory(const TimeTrajectory& tr,
   const Index num_states = tr.numStates();
   if (num_history_states < 0 || num_states < 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeReducedFunctional received invalid history dimensions");
   }
   if (hist.size() != num_history_states * num_states)
@@ -93,7 +91,7 @@ TimeContext makeContext(const TimeTrajectory& tr,
                         Vector<Real>&         nxt)
 {
   fillHistory(tr, step, num_history_states, hist);
-  nxt  = tr[step + 1];
+  nxt = tr[step + 1];
 
   TimeContext ctx;
   ctx.step = step;
@@ -106,7 +104,7 @@ TimeContext makeContext(const TimeTrajectory& tr,
 } // namespace
 
 TimeReducedFunctional::TimeReducedFunctional(
-    TimeIntegrator&     integrator,
+    TimeIntegrator&      integrator,
     const TimeResidual&  problem,
     TimeLinearization&   lin,
     AssemblyMatrix&      J_next,
@@ -149,10 +147,10 @@ void TimeReducedFunctional::clearInitialStateParamJacT()
 
 void TimeReducedFunctional::resetTiming()
 {
-  assm_sec_ = 0.0;
-  solve_sec_        = 0.0;
-  assm_calls_       = 0;
-  solve_calls_      = 0;
+  assm_sec_    = 0.0;
+  solve_sec_   = 0.0;
+  assm_calls_  = 0;
+  solve_calls_ = 0;
 }
 
 Real TimeReducedFunctional::assemblySeconds() const
@@ -216,7 +214,7 @@ void TimeReducedFunctional::checkDims() const
       || dims_.num_residuals != dims_.num_states
       || dims_.num_history_states <= 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeReducedFunctional received inconsistent dimensions");
   }
 }
@@ -226,7 +224,7 @@ void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
 {
   if (prm.size() != numParams())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeReducedFunctional parameter size mismatch");
   }
 
@@ -236,7 +234,7 @@ void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
   if (tr.numSteps() != integrator_.numSteps()
       || tr.numStates() != integrator_.numStates())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeReducedFunctional forward trajectory size mismatch");
   }
 }
@@ -381,7 +379,7 @@ void TimeReducedFunctional::assemble(TimeContext     ctx,
   problem_.linearize(ctx, lin_);
   if (!lin_.assembleJac(wrt, out))
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeReducedFunctional requires assembled state Jacobians");
   }
   out.finalize();
@@ -404,7 +402,7 @@ void TimeReducedFunctional::checkSize(const Vector<Real>& value,
 {
   if (value.size() != exp)
   {
-    throw runtime_error("TimeReducedFunctional vector size mismatch");
+    throw std::runtime_error("TimeReducedFunctional vector size mismatch");
   }
 }
 

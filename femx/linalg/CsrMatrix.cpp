@@ -1,9 +1,7 @@
 #include <algorithm>
 
-#include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-
-using namespace std;
+#include <femx/linalg/CsrPattern.hpp>
 
 namespace femx
 {
@@ -16,7 +14,7 @@ CsrMatrix::CsrMatrix(const CsrPattern& pattern)
 
 void CsrMatrix::setZero()
 {
-  fill(vals_.begin(), vals_.end(), Real{});
+  std::fill(vals_.begin(), vals_.end(), Real{});
 }
 
 Index CsrMatrix::rows() const

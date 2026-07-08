@@ -5,16 +5,14 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
+#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
-
-using namespace std;
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -67,9 +65,9 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
        {"PETSc version",
-        to_string(PETSC_VERSION_MAJOR) + "."
-            + to_string(PETSC_VERSION_MINOR) + "."
-            + to_string(PETSC_VERSION_SUBMINOR)}}};
+        std::to_string(PETSC_VERSION_MAJOR) + "."
+            + std::to_string(PETSC_VERSION_MINOR) + "."
+            + std::to_string(PETSC_VERSION_SUBMINOR)}}};
 }
 
 void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
@@ -120,7 +118,7 @@ int run(const Params& prm, bool enable_output)
     writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
 
-  ForwardProblem  fwd(prm);
+  ForwardProblem fwd(prm);
   setElemRange(fwd.fem, fwd.space.mesh().numElems());
 
   PETScVector mat_row(PETSC_COMM_WORLD);
@@ -135,7 +133,7 @@ int run(const Params& prm, bool enable_output)
   TimeLinearIntegrator integ(fwd.problem, A, solver);
   integ.setInitialState(fwd.x0);
 
-  ofstream log_out;
+  std::ofstream log_out;
   if (rank == 0 && enable_output)
   {
     log_out = openOutputFile(prm.output.directory, "run-info.txt");
@@ -148,12 +146,12 @@ int run(const Params& prm, bool enable_output)
                  prm.time,
                  prm.output,
                  rank == 0 && enable_output,
-                 rank == 0 ? &cout : nullptr,
+                 rank == 0 ? &std::cout : nullptr,
                  rank == 0 && enable_output ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
-    throw runtime_error("Linear solve produced non-finite values in x");
+    throw std::runtime_error("Linear solve produced non-finite values in x");
   }
 
   return 0;
@@ -177,7 +175,7 @@ int main(int argc, char* argv[])
         if (isRoot())
         {
           printUsage(
-              cout,
+              std::cout,
               FEMX_NS_FORWARD_APP_NAME,
               " [PETSc options]",
               {"Example PETSc options: -ksp_monitor -ksp_rtol 1e-8 -pc_type lu"});
@@ -193,11 +191,11 @@ int main(int argc, char* argv[])
         status = run(prm, !opts.no_output);
       }
     }
-    catch (const exception& e)
+    catch (const std::exception& e)
     {
       if (isRoot())
       {
-        cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
+        std::cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
       }
       status = 1;
     }
@@ -208,9 +206,9 @@ int main(int argc, char* argv[])
       return 1;
     }
   }
-  catch (const exception& e)
+  catch (const std::exception& e)
   {
-    cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
+    std::cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
     return 1;
   }
   return status;

@@ -3,8 +3,6 @@
 #include <femx/assembly/Assembler.hpp>
 #include <femx/assembly/FEMResidual.hpp>
 #include <femx/state/Linearization.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -83,7 +81,7 @@ void FEMResidual::linearize(const Vector<Real>& state,
   auto* mat_out = dynamic_cast<MatrixLinearization*>(&out);
   if (mat_out == nullptr)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "FEMResidual requires MatrixLinearization output");
   }
 
@@ -160,7 +158,7 @@ void FEMResidual::checkElemCounts() const
   if (res_layout_.numElems() != state_layout_.numElems()
       || (param_layout_ && res_layout_.numElems() != param_layout_->numElems()))
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "FEMResidual layouts have different elem counts");
   }
 }
@@ -171,11 +169,11 @@ void FEMResidual::checkGlobalSizes(const Vector<Real>& state,
   const Dimensions dm = dims();
   if (state.size() != dm.num_states)
   {
-    throw runtime_error("FEMResidual state size mismatch");
+    throw std::runtime_error("FEMResidual state size mismatch");
   }
   if (prm.size() != dm.num_params)
   {
-    throw runtime_error("FEMResidual parameter size mismatch");
+    throw std::runtime_error("FEMResidual parameter size mismatch");
   }
 }
 
@@ -200,7 +198,7 @@ void FEMResidual::gather(const DofLayout&    lyt,
     const Index id = dofs[i];
     if (id < 0 || id >= global.size())
     {
-      throw runtime_error("FEMResidual id is out of range");
+      throw std::runtime_error("FEMResidual id is out of range");
     }
     local[i] = global[id];
   }

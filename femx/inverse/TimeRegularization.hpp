@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/TimeObjective.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx

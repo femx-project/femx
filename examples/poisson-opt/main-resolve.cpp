@@ -8,15 +8,15 @@
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
+#include <femx/state/Linearization.hpp>
 
 using namespace femx;
+using namespace femx::examples;
 using namespace femx::examples::poisson_opt;
 using namespace femx::linalg;
 using namespace femx::state;
 using namespace femx::runtime;
-using namespace std;
 
 #ifndef FEMX_POISSON_OPT_APP_NAME
 #define FEMX_POISSON_OPT_APP_NAME "poisson-opt-resolve"
@@ -27,11 +27,8 @@ namespace
 
 int run(const Options& opts)
 {
-  examples::ExampleHelper helper("resolve",
-                                 "ReSolve",
-                                 opts.backend,
-                                 defaultOutputDirectory());
-  PoissonOptProblem       problem(opts);
+  ExampleHelper     helper("resolve", opts.backend, outputDir());
+  PoissonOptProblem problem(opts);
 
   // Residual Jacobian with respect to the state u and the control m.
   CsrAssemblyMatrix   dRdu(problem.statePattern());
@@ -47,7 +44,7 @@ int run(const Options& opts)
   const Result result = solve(
       problem, lin, fwd_lin_solver, adj_lin_solver);
 
-  printReport(cout,
+  printReport(std::cout,
               helper.backendName(),
               problem,
               result.report,
@@ -56,7 +53,7 @@ int run(const Options& opts)
 
   if (opts.write_output)
   {
-    const string output_base = helper.outputBase(outputStem(opts));
+    const std::string output_base = helper.outputBase(outputStem(opts));
     problem.writeSolution(result.prm, result.state, output_base);
     helper.printVisualizationPath(output_base);
   }
@@ -79,14 +76,14 @@ int main(int argc, char* argv[])
     {
       if (hasPoissonOptHelp(argc, argv))
       {
-        printPoissonOptUsage(cout, FEMX_POISSON_OPT_APP_NAME, true);
+        printPoissonOptUsage(std::cout, FEMX_POISSON_OPT_APP_NAME, true);
       }
       else
       {
         status = run(parseOptions(argc, argv, true));
       }
     }
-    catch (const exception& e)
+    catch (const std::exception& e)
     {
       examples::reportError(FEMX_POISSON_OPT_APP_NAME, e);
       status = 1;
@@ -98,7 +95,7 @@ int main(int argc, char* argv[])
       return 1;
     }
   }
-  catch (const exception& e)
+  catch (const std::exception& e)
   {
     return examples::reportError(FEMX_POISSON_OPT_APP_NAME, e);
   }

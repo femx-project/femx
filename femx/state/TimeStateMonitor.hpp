@@ -10,12 +10,12 @@ namespace state
 
 struct TimeStepStateContext
 {
-  Index               level = 0;
+  Index               level       = 0;
   Index               total_steps = 0;
   const Vector<Real>& previous;
   const Vector<Real>& current;
   Real                assembly_seconds = 0.0;
-  Real                solve_seconds = 0.0;
+  Real                solve_seconds    = 0.0;
 };
 
 /**

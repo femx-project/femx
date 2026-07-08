@@ -4,8 +4,6 @@
 
 #include <femx/linalg/native/DenseLinearSolver.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace linalg
@@ -22,7 +20,7 @@ void DenseLinearSolver::solve(const LinearOperator& op,
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DenseLinearSolver received inconsistent dimensions");
   }
 
@@ -37,7 +35,7 @@ void DenseLinearSolver::solveT(const LinearOperator& op,
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "DenseLinearSolver received inconsistent transpose dimensions");
   }
 
@@ -71,7 +69,7 @@ void DenseLinearSolver::sample(const LinearOperator& op,
 
     if (column.size() != size)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "DenseLinearSolver sampled operator with inconsistent size");
     }
 
@@ -97,11 +95,11 @@ void DenseLinearSolver::solveDense(Vector<Real>        mat,
   for (Index k = 0; k < size; ++k)
   {
     Index pivot = k;
-    Real  best  = abs(mat[entry(k, k, size)]);
+    Real  best  = std::abs(mat[entry(k, k, size)]);
 
     for (Index i = k + 1; i < size; ++i)
     {
-      const Real candidate = abs(mat[entry(i, k, size)]);
+      const Real candidate = std::abs(mat[entry(i, k, size)]);
 
       if (candidate > best)
       {
@@ -112,16 +110,16 @@ void DenseLinearSolver::solveDense(Vector<Real>        mat,
 
     if (best <= pivot_tolerance_)
     {
-      throw runtime_error("DenseLinearSolver detected singular matrix");
+      throw std::runtime_error("DenseLinearSolver detected singular matrix");
     }
 
     if (pivot != k)
     {
       for (Index j = k; j < size; ++j)
       {
-        swap(mat[entry(k, j, size)], mat[entry(pivot, j, size)]);
+        std::swap(mat[entry(k, j, size)], mat[entry(pivot, j, size)]);
       }
-      swap(b[k], b[pivot]);
+      std::swap(b[k], b[pivot]);
     }
 
     for (Index i = k + 1; i < size; ++i)

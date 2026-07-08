@@ -115,12 +115,12 @@ public:
     num_hist_state_dofs_ = num_next_states_;
   }
 
-  void res(Index                    step,
-           Index                    ie,
+  void res(Index                  step,
+           Index                  ie,
            state::TimeHistoryView hist,
-           const Vector<Real>&      nxt,
-           const Vector<Real>&      prm,
-           Vector<Real>&            out) const override
+           const Vector<Real>&    nxt,
+           const Vector<Real>&    prm,
+           Vector<Real>&          out) const override
   {
     checkInputSizes(hist, nxt, prm);
     resizeOrZero(out, num_residuals_);
@@ -146,13 +146,13 @@ public:
              out.data());
   }
 
-  void jacobian(Index                    step,
-                Index                    ie,
+  void jacobian(Index                  step,
+                Index                  ie,
                 state::VariableBlock   wrt,
                 state::TimeHistoryView hist,
-                const Vector<Real>&      nxt,
-                const Vector<Real>&      prm,
-                DenseMatrix&             out) const override
+                const Vector<Real>&    nxt,
+                const Vector<Real>&    prm,
+                DenseMatrix&           out) const override
   {
     checkInputSizes(hist, nxt, prm);
 
@@ -170,13 +170,13 @@ public:
   }
 
 private:
-  void historyStateJac(Index                    step,
-                       Index                    ie,
-                       Index                    lag,
+  void historyStateJac(Index                  step,
+                       Index                  ie,
+                       Index                  lag,
                        state::TimeHistoryView hist,
-                       const Vector<Real>&      nxt,
-                       const Vector<Real>&      prm,
-                       DenseMatrix&             out) const
+                       const Vector<Real>&    nxt,
+                       const Vector<Real>&    prm,
+                       DenseMatrix&           out) const
   {
     if (lag < 0 || lag >= num_hist_states_)
     {
@@ -258,12 +258,12 @@ private:
 #endif
   }
 
-  void nextStateJac(Index                    step,
-                    Index                    ie,
+  void nextStateJac(Index                  step,
+                    Index                  ie,
                     state::TimeHistoryView hist,
-                    const Vector<Real>&      nxt,
-                    const Vector<Real>&      prm,
-                    DenseMatrix&             out) const
+                    const Vector<Real>&    nxt,
+                    const Vector<Real>&    prm,
+                    DenseMatrix&           out) const
   {
     out.resize(num_residuals_, num_next_states_);
     if (num_next_states_ == 0)
@@ -338,12 +338,12 @@ private:
 #endif
   }
 
-  void paramJac(Index                    step,
-                Index                    ie,
+  void paramJac(Index                  step,
+                Index                  ie,
                 state::TimeHistoryView hist,
-                const Vector<Real>&      nxt,
-                const Vector<Real>&      prm,
-                DenseMatrix&             out) const
+                const Vector<Real>&    nxt,
+                const Vector<Real>&    prm,
+                DenseMatrix&           out) const
   {
     out.resize(num_residuals_, num_variable_params_);
     if (num_variable_params_ == 0)
@@ -419,8 +419,8 @@ private:
   }
 
   void checkInputSizes(state::TimeHistoryView hist,
-                       const Vector<Real>&      nxt,
-                       const Vector<Real>&      prm) const
+                       const Vector<Real>&    nxt,
+                       const Vector<Real>&    prm) const
   {
     if (hist.count() != num_hist_states_
         || hist.stateSize() != num_hist_state_dofs_

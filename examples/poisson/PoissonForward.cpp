@@ -19,7 +19,6 @@
 using namespace femx;
 using namespace femx::assembly;
 using namespace femx::linalg;
-using namespace std;
 
 #ifndef FEMX_POISSON_DEFAULT_OUTPUT_DIR
 #define FEMX_POISSON_DEFAULT_OUTPUT_DIR "output"
@@ -32,54 +31,54 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-Index readIndexOption(int& i, int argc, char** argv, const string& name)
+Index readIndexOption(int& i, int argc, char** argv, const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
 
-  const long value = stol(argv[++i]);
-  if (value <= 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(argv[++i]);
+  if (value <= 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a positive integer");
+    throw std::runtime_error(name + " must be a positive integer");
   }
   return static_cast<Index>(value);
 }
 
-bool readIndexAssignment(const string& arg,
-                         const string& name,
-                         Index&        out)
+bool readIndexAssignment(const std::string& arg,
+                         const std::string& name,
+                         Index&             out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
   }
 
-  const long value = stol(arg.substr(prefix.size()));
-  if (value <= 0 || value > numeric_limits<Index>::max())
+  const long value = std::stol(arg.substr(prefix.size()));
+  if (value <= 0 || value > std::numeric_limits<Index>::max())
   {
-    throw runtime_error(name + " must be a positive integer");
+    throw std::runtime_error(name + " must be a positive integer");
   }
   out = static_cast<Index>(value);
   return true;
 }
 
-string readStringOption(int& i, int argc, char** argv, const string& name)
+std::string readStringOption(int& i, int argc, char** argv, const std::string& name)
 {
   if (i + 1 >= argc)
   {
-    throw runtime_error(name + " requires a value");
+    throw std::runtime_error(name + " requires a value");
   }
   return argv[++i];
 }
 
-bool readStringAssignment(const string& arg,
-                          const string& name,
-                          string&       out)
+bool readStringAssignment(const std::string& arg,
+                          const std::string& name,
+                          std::string&       out)
 {
-  const string prefix = name + "=";
+  const std::string prefix = name + "=";
   if (arg.rfind(prefix, 0) != 0)
   {
     return false;
@@ -87,12 +86,12 @@ bool readStringAssignment(const string& arg,
   out = arg.substr(prefix.size());
   if (out.empty())
   {
-    throw runtime_error(name + " must not be empty");
+    throw std::runtime_error(name + " must not be empty");
   }
   return true;
 }
 
-string lowerAscii(string value)
+std::string lowerAscii(std::string value)
 {
   transform(value.begin(),
             value.end(),
@@ -102,9 +101,9 @@ string lowerAscii(string value)
   return value;
 }
 
-WorkspaceType parseWorkspaceType(const string& value)
+WorkspaceType parseWorkspaceType(const std::string& value)
 {
-  const string backend = lowerAscii(value);
+  const std::string backend = lowerAscii(value);
   if (backend == "cpu")
   {
     return WorkspaceType::Cpu;
@@ -113,12 +112,12 @@ WorkspaceType parseWorkspaceType(const string& value)
   {
     return WorkspaceType::Cuda;
   }
-  throw runtime_error("Backend must be 'cpu' or 'cuda'");
+  throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
 }
 
-bool parseOutputValue(const string& value)
+bool parseOutputValue(const std::string& value)
 {
-  const string output = lowerAscii(value);
+  const std::string output = lowerAscii(value);
   if (output == "yes" || output == "true" || output == "on" || output == "1")
   {
     return true;
@@ -127,22 +126,22 @@ bool parseOutputValue(const string& value)
   {
     return false;
   }
-  throw runtime_error("--output expects 'yes' or 'no'");
+  throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-WorkspaceType readBackendOption(int&          i,
-                                int           argc,
-                                char**        argv,
-                                const string& name)
+WorkspaceType readBackendOption(int&               i,
+                                int                argc,
+                                char**             argv,
+                                const std::string& name)
 {
   return parseWorkspaceType(readStringOption(i, argc, argv, name));
 }
 
-bool readBackendAssignment(const string&  arg,
-                           const string&  name,
-                           WorkspaceType& out)
+bool readBackendAssignment(const std::string& arg,
+                           const std::string& name,
+                           WorkspaceType&     out)
 {
-  string value;
+  std::string value;
   if (!readStringAssignment(arg, name, value))
   {
     return false;
@@ -155,14 +154,14 @@ Mesh makePoissonMesh(const PoissonOptions& opts)
 {
   if (opts.num_x_cells <= 0 || opts.num_y_cells <= 0)
   {
-    throw runtime_error("Poisson mesh dimensions must be positive");
+    throw std::runtime_error("Poisson mesh dimensions must be positive");
   }
   return Mesh::makeStructuredQuad(opts.num_x_cells, opts.num_y_cells);
 }
 
-filesystem::path vtuPathFromBase(const string& output_base)
+std::filesystem::path vtuPathFromBase(const std::string& output_base)
 {
-  filesystem::path path(output_base);
+  std::filesystem::path path(output_base);
   if (path.extension() == ".vtu")
   {
     return path;
@@ -180,7 +179,7 @@ PoissonForwardProblem::PoissonForwardProblem(const PoissonOptions& opts)
     quad_(GaussQuadrature::make(fe_.referenceElement(), 2))
 {
   space_.setup();
-  pattern_ = make_unique<CsrPattern>(makeCsrPattern(space_));
+  pattern_ = std::make_unique<CsrPattern>(makeCsrPattern(space_));
 }
 
 const PoissonOptions& PoissonForwardProblem::options() const noexcept
@@ -247,12 +246,12 @@ ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
 {
   if (x.size() != space_.numDofs())
   {
-    throw runtime_error("Poisson solution vector has incompatible size");
+    throw std::runtime_error("Poisson solution vector has incompatible size");
   }
 
   ErrorReport report;
-  report.min_value = numeric_limits<Real>::infinity();
-  report.max_value = -numeric_limits<Real>::infinity();
+  report.min_value = std::numeric_limits<Real>::infinity();
+  report.max_value = -std::numeric_limits<Real>::infinity();
   report.max_err   = 0.0;
 
   Real err2_sum = 0.0;
@@ -261,19 +260,19 @@ ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
     const Real value = x[space_.globalDof(in, 0)];
     const Real err   = value - exactValue(mesh_.node(in));
 
-    report.min_value  = min(report.min_value, value);
-    report.max_value  = max(report.max_value, value);
-    report.max_err    = max(report.max_err, abs(err));
+    report.min_value  = std::min(report.min_value, value);
+    report.max_value  = std::max(report.max_value, value);
+    report.max_err    = std::max(report.max_err, std::abs(err));
     err2_sum         += err * err;
   }
 
-  report.rms_err = sqrt(err2_sum / static_cast<Real>(mesh_.numNodes()));
+  report.rms_err = std::sqrt(err2_sum / static_cast<Real>(mesh_.numNodes()));
 
   return report;
 }
 
 void PoissonForwardProblem::writeSolution(const Vector<Real>& x,
-                                          const string&       output_base) const
+                                          const std::string&  output_base) const
 {
   if (output_base.empty())
   {
@@ -281,13 +280,13 @@ void PoissonForwardProblem::writeSolution(const Vector<Real>& x,
   }
   if (x.size() != space_.numDofs())
   {
-    throw runtime_error("Poisson solution vector has incompatible size");
+    throw std::runtime_error("Poisson solution vector has incompatible size");
   }
 
-  const filesystem::path output_path = vtuPathFromBase(output_base);
+  const std::filesystem::path output_path = vtuPathFromBase(output_base);
   if (output_path.has_parent_path())
   {
-    filesystem::create_directories(output_path.parent_path());
+    std::filesystem::create_directories(output_path.parent_path());
   }
 
   Vector<Real> solution(mesh_.numNodes());
@@ -315,7 +314,7 @@ Real PoissonForwardProblem::exactValue(const Mesh::Node& p)
 
 Real PoissonForwardProblem::boundaryValue(const Mesh::Node& p, Real)
 {
-  if (abs(p[1] - 1.0) < boundary_eps)
+  if (std::abs(p[1] - 1.0) < boundary_eps)
   {
     return sin(constants::PI * p[0]);
   }
@@ -324,9 +323,9 @@ Real PoissonForwardProblem::boundaryValue(const Mesh::Node& p, Real)
 
 bool PoissonForwardProblem::onBoundary(const Mesh::Node& p, Real)
 {
-  return abs(p[0]) < boundary_eps || abs(p[0] - 1.0) < boundary_eps
-         || abs(p[1]) < boundary_eps
-         || abs(p[1] - 1.0) < boundary_eps;
+  return std::abs(p[0]) < boundary_eps || std::abs(p[0] - 1.0) < boundary_eps
+         || std::abs(p[1]) < boundary_eps
+         || std::abs(p[1] - 1.0) < boundary_eps;
 }
 
 PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
@@ -335,7 +334,7 @@ PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
 
   for (int i = 1; i < argc; ++i)
   {
-    const string arg = argv[i];
+    const std::string arg = argv[i];
     if (arg == "--help" || arg == "-h")
     {
       continue;
@@ -352,7 +351,7 @@ PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
     }
     if (arg == "--output")
     {
-      if (i + 1 < argc && string(argv[i + 1]).rfind("-", 0) != 0)
+      if (i + 1 < argc && std::string(argv[i + 1]).rfind("-", 0) != 0)
       {
         opts.write_output = parseOutputValue(argv[++i]);
       }
@@ -374,12 +373,12 @@ PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
     }
     if (arg.rfind("--output=", 0) == 0)
     {
-      opts.write_output = parseOutputValue(arg.substr(string("--output=").size()));
+      opts.write_output = parseOutputValue(arg.substr(std::string("--output=").size()));
       continue;
     }
     if (arg == "-o" || arg.rfind("-o=", 0) == 0)
     {
-      throw runtime_error("Use --output yes or --output no");
+      throw std::runtime_error("Use --output yes or --output no");
     }
     if (readBackendAssignment(arg, "--backend", opts.backend)
         || readBackendAssignment(arg, "-b", opts.backend))
@@ -388,48 +387,48 @@ PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
     }
     if (!ignore_unknown)
     {
-      throw runtime_error("Unknown option: " + arg);
+      throw std::runtime_error("Unknown option: " + arg);
     }
   }
 
   return opts;
 }
 
-const char* defaultOutputDirectory()
+const char* outputDir()
 {
   return FEMX_POISSON_DEFAULT_OUTPUT_DIR;
 }
 
-string outputStem(const PoissonOptions& opts)
+std::string outputStem(const PoissonOptions& opts)
 {
-  return string("poisson-nx")
-         + to_string(opts.num_x_cells)
+  return std::string("poisson-nx")
+         + std::to_string(opts.num_x_cells)
          + "-ny"
-         + to_string(opts.num_y_cells);
+         + std::to_string(opts.num_y_cells);
 }
 
 void printUsage(const char* app_name, bool petsc_options)
 {
-  cout << "Usage: " << app_name
-       << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]";
+  std::cout << "Usage: " << app_name
+            << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]";
   if (petsc_options)
   {
-    cout << " [PETSc options]";
+    std::cout << " [PETSc options]";
   }
-  cout << '\n';
-  cout << "  -b, --backend cpu|cuda selects the device backend";
+  std::cout << '\n';
+  std::cout << "  -b, --backend cpu|cuda selects the device backend";
   if (petsc_options)
   {
-    cout << " (PETSc supports cpu only)";
+    std::cout << " (PETSc supports cpu only)";
   }
-  cout << '\n';
-  cout << "  --output yes writes a VTU file under "
-       << defaultOutputDirectory()
-       << '\n';
+  std::cout << '\n';
+  std::cout << "  --output yes writes a VTU file under "
+            << outputDir()
+            << '\n';
 }
 
-void printReport(ostream&                     out,
-                 const string&                backend,
+void printReport(std::ostream&                out,
+                 const std::string&           backend,
                  const PoissonForwardProblem& problem,
                  const ErrorReport&           error,
                  Real                         residual_norm)

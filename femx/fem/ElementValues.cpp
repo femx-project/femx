@@ -7,8 +7,6 @@
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -141,7 +139,7 @@ void ElementValues::calcPhysicalValues(const Element& elem)
   {
     const auto dNdr_iq = dNdr(iq);
 
-    fill(J_.begin(), J_.end(), 0.0);
+    std::fill(J_.begin(), J_.end(), 0.0);
 
     for (Index in = 0; in < num_nodes_; ++in)
     {
@@ -157,7 +155,7 @@ void ElementValues::calcPhysicalValues(const Element& elem)
     }
 
     const Real detJ = invJacobian(J_, invJ_, dim_);
-    detJ_[iq]       = abs(detJ);
+    detJ_[iq]       = std::abs(detJ);
     JxW_[iq]        = detJ_[iq] * wts_[iq];
 
     MatrixView<Real> dNdx(
@@ -190,9 +188,9 @@ Real ElementValues::invJacobian(const Vector<Real>& J,
   {
     const Real det = J[0];
 
-    if (abs(det) < eps)
+    if (std::abs(det) < eps)
     {
-      throw runtime_error("Singular 1D Jacobian.");
+      throw std::runtime_error("Singular 1D Jacobian.");
     }
 
     invJ[0] = 1.0 / det;
@@ -204,9 +202,9 @@ Real ElementValues::invJacobian(const Vector<Real>& J,
   {
     const Real det = J[0] * J[3] - J[1] * J[2];
 
-    if (abs(det) < eps)
+    if (std::abs(det) < eps)
     {
-      throw runtime_error("Singular 2D Jacobian.");
+      throw std::runtime_error("Singular 2D Jacobian.");
     }
 
     const Real inv_det = 1.0 / det;
@@ -226,9 +224,9 @@ Real ElementValues::invJacobian(const Vector<Real>& J,
         - J[1] * (J[3] * J[8] - J[5] * J[6])
         + J[2] * (J[3] * J[7] - J[4] * J[6]);
 
-    if (abs(det) < eps)
+    if (std::abs(det) < eps)
     {
-      throw runtime_error("Singular 3D Jacobian.");
+      throw std::runtime_error("Singular 3D Jacobian.");
     }
 
     const Real inv_det = 1.0 / det;
@@ -248,7 +246,7 @@ Real ElementValues::invJacobian(const Vector<Real>& J,
     return det;
   }
 
-  throw runtime_error("Unsupported Jacobian dimension.");
+  throw std::runtime_error("Unsupported Jacobian dimension.");
 }
 
 } // namespace femx

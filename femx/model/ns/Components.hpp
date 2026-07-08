@@ -18,9 +18,9 @@ struct KernelFluid
 
 struct LocalElementValues
 {
-  Index       num_qpts   = 0;
-  Index       num_nodes   = 0;
-  Index       dim  = 0;
+  Index       num_qpts  = 0;
+  Index       num_nodes = 0;
+  Index       dim       = 0;
   const Real* N_data    = nullptr;
   const Real* dNdx_data = nullptr;
   const Real* JxW_data  = nullptr;

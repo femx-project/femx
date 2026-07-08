@@ -4,8 +4,6 @@
 
 #include <femx/linalg/CsrPattern.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -16,16 +14,16 @@ CsrPattern::CsrPattern(Index                     rows,
 {
   if (rows < 0 || cols < 0 || num_elems < 0)
   {
-    throw runtime_error("CsrPattern dimensions must be non-negative");
+    throw std::runtime_error("CsrPattern dimensions must be non-negative");
   }
   if (!elem_dofs)
   {
-    throw runtime_error("CsrPattern element dof provider is empty");
+    throw std::runtime_error("CsrPattern element dof provider is empty");
   }
 
-  num_rows_ = rows;
-  num_cols_ = cols;
-  num_elems_       = num_elems;
+  num_rows_  = rows;
+  num_cols_  = cols;
+  num_elems_ = num_elems;
 
   elem_coo_offsets_.assign(num_elems_ + 1, 0);
   elem_num_dofs_.assign(num_elems_, 0);
@@ -62,7 +60,7 @@ void CsrPattern::setupCooArrays(
     Vector<Index>&            coo_cols,
     Vector<Index>&            order)
 {
-  Index counter = 0;
+  Index         counter = 0;
   Vector<Index> dofs;
 
   for (Index ie = 0; ie < num_elems_; ++ie)
@@ -72,7 +70,7 @@ void CsrPattern::setupCooArrays(
     const Index num_dofs = elem_num_dofs_[ie];
     if (dofs.size() != num_dofs)
     {
-      throw runtime_error("CsrPattern elem dof count changed");
+      throw std::runtime_error("CsrPattern elem dof count changed");
     }
 
     elem_coo_offsets_[ie] = counter;
@@ -86,7 +84,7 @@ void CsrPattern::setupCooArrays(
 
         if (row < 0 || row >= num_rows_ || col < 0 || col >= num_cols_)
         {
-          throw runtime_error("CsrPattern elem id is out of range");
+          throw std::runtime_error("CsrPattern elem id is out of range");
         }
         coo_rows[counter] = row;
         coo_cols[counter] = col;
@@ -104,16 +102,16 @@ void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
                                 const Vector<Index>& coo_cols,
                                 Vector<Index>&       order)
 {
-  sort(order.begin(),
-       order.end(),
-       [&coo_rows, &coo_cols](Index a, Index b)
-       {
-         if (coo_rows[a] != coo_rows[b])
-         {
-           return coo_rows[a] < coo_rows[b];
-         }
-         return coo_cols[a] < coo_cols[b];
-       });
+  std::sort(order.begin(),
+            order.end(),
+            [&coo_rows, &coo_cols](Index a, Index b)
+            {
+              if (coo_rows[a] != coo_rows[b])
+              {
+                return coo_rows[a] < coo_rows[b];
+              }
+              return coo_cols[a] < coo_cols[b];
+            });
 
   row_ptr_.assign(num_rows_ + 1, 0);
   map_to_csr_.assign(num_coo_entries_, 0);

@@ -2,8 +2,8 @@
 
 #include <femx/common/Math.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

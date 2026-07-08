@@ -1,11 +1,11 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
+#include <femx/inverse/Objective.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/state/Linearization.hpp>
-#include <femx/inverse/Objective.hpp>
 #include <femx/state/Residual.hpp>
-#include <femx/inverse/ReducedFunctional.hpp>
 
 namespace femx
 {
@@ -39,38 +39,38 @@ public:
                                            const Vector<Real>&       dir) const;
 
   DerivativeCheckResult reducedGrad(inverse::ReducedFunctional& fn,
-                                    const Vector<Real>&       prm,
-                                    const Vector<Real>&       dir) const;
+                                    const Vector<Real>&         prm,
+                                    const Vector<Real>&         dir) const;
 
   DerivativeCheckResult residualStateJacobian(
       const state::Residual& problem,
       state::Linearization&  lin,
-      const Vector<Real>&      state,
-      const Vector<Real>&      prm,
-      const Vector<Real>&      dir) const;
+      const Vector<Real>&    state,
+      const Vector<Real>&    prm,
+      const Vector<Real>&    dir) const;
 
   DerivativeCheckResult residualParamJacobian(
       const state::Residual& problem,
       state::Linearization&  lin,
-      const Vector<Real>&      state,
-      const Vector<Real>&      prm,
-      const Vector<Real>&      dir) const;
+      const Vector<Real>&    state,
+      const Vector<Real>&    prm,
+      const Vector<Real>&    dir) const;
 
   DerivativeCheckResult stateJacTranspose(
       const state::Residual& problem,
       state::Linearization&  lin,
-      const Vector<Real>&      state,
-      const Vector<Real>&      prm,
-      const Vector<Real>&      dir,
-      const Vector<Real>&      lambda) const;
+      const Vector<Real>&    state,
+      const Vector<Real>&    prm,
+      const Vector<Real>&    dir,
+      const Vector<Real>&    lambda) const;
 
   DerivativeCheckResult paramJacTranspose(
       const state::Residual& problem,
       state::Linearization&  lin,
-      const Vector<Real>&      state,
-      const Vector<Real>&      prm,
-      const Vector<Real>&      dir,
-      const Vector<Real>&      lambda) const;
+      const Vector<Real>&    state,
+      const Vector<Real>&    prm,
+      const Vector<Real>&    dir,
+      const Vector<Real>&    lambda) const;
 
 private:
   Vector<Real> shifted(const Vector<Real>& base,

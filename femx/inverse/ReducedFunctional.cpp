@@ -1,8 +1,6 @@
 #include <stdexcept>
 
 #include <femx/inverse/ReducedFunctional.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::inverse;
 using namespace femx::linalg;
@@ -67,7 +65,7 @@ void ReducedFunctional::checkDims() const
       || dims_.num_params != obj_.numParams()
       || dims_.num_residuals != dims_.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "ReducedFunctional received inconsistent dimensions");
   }
 }
@@ -106,7 +104,7 @@ void ReducedFunctional::checkSize(const Vector<Real>& value, Index exp)
 {
   if (value.size() != exp)
   {
-    throw runtime_error("ReducedFunctional vector size mismatch");
+    throw std::runtime_error("ReducedFunctional vector size mismatch");
   }
 }
 

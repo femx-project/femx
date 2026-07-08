@@ -5,8 +5,6 @@
 
 #include <femx/fem/VelocityProfile.hpp>
 
-using namespace std;
-
 namespace femx::fem
 {
 
@@ -17,7 +15,7 @@ void requireValidComponent(Index comp)
 {
   if (comp < 0 || comp >= 3)
   {
-    throw runtime_error("Velocity profile component is out of range");
+    throw std::runtime_error("Velocity profile component is out of range");
   }
 }
 
@@ -25,7 +23,7 @@ void requirePositiveRadius(Real rad)
 {
   if (rad <= 0.0)
   {
-    throw runtime_error("Poiseuille velocity profile radius must be positive");
+    throw std::runtime_error("Poiseuille velocity profile radius must be positive");
   }
 }
 
@@ -67,7 +65,7 @@ Real facetWeight(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 
 Point3 boundaryCenter(const Mesh&                  mesh,
                       const BoundaryFacetSelector& sel,
-                      const string&                label)
+                      const std::string&           label)
 {
   Point3 cen          = {0.0, 0.0, 0.0};
   Real   total_weight = 0.0;
@@ -90,7 +88,7 @@ Point3 boundaryCenter(const Mesh&                  mesh,
 
   if (total_weight <= 0.0)
   {
-    throw runtime_error("No boundary facets found for " + label);
+    throw std::runtime_error("No boundary facets found for " + label);
   }
 
   for (Index d = 0; d < 3; ++d)
@@ -108,10 +106,10 @@ Point3 boundaryCenter(const Mesh& mesh, Index ptag)
       {
         return facet.ptag == ptag;
       },
-      "physical tag " + to_string(ptag));
+      "physical tag " + std::to_string(ptag));
 }
 
-Point3 boundaryCenter(const Mesh& mesh, const string& pname)
+Point3 boundaryCenter(const Mesh& mesh, const std::string& pname)
 {
   return boundaryCenter(
       mesh,
@@ -153,14 +151,14 @@ Real profileFactor(const AxialVelocityProfile& prof,
   }
   if (prof.type != "poiseuille")
   {
-    throw runtime_error("Unsupported velocity profile type: "
-                        + prof.type);
+    throw std::runtime_error("Unsupported velocity profile type: "
+                             + prof.type);
   }
 
   requirePositiveRadius(prof.rad);
 
   const Real radius2 = prof.rad * prof.rad;
-  return max<Real>(
+  return std::max<Real>(
       0.0, 1.0 - radialSq(point, prof.cen, prof.nrm) / radius2);
 }
 
@@ -174,11 +172,11 @@ Real velocityComponent(const AxialVelocityProfile& prof,
   return peak_speed * profileFactor(prof, point) * nrm[comp];
 }
 
-Real peakSpeed(const string& qty,
-               const string& profile_type,
-               Real          value,
-               Real          area,
-               Real          mean_to_peak)
+Real peakSpeed(const std::string& qty,
+               const std::string& profile_type,
+               Real               value,
+               Real               area,
+               Real               mean_to_peak)
 {
   if (profile_type == "uniform")
   {
@@ -186,7 +184,7 @@ Real peakSpeed(const string& qty,
     {
       if (area <= 0.0)
       {
-        throw runtime_error("Flowrate velocity area must be positive");
+        throw std::runtime_error("Flowrate velocity area must be positive");
       }
       return value / area;
     }
@@ -202,7 +200,7 @@ Real peakSpeed(const string& qty,
     {
       if (area <= 0.0)
       {
-        throw runtime_error("Flowrate velocity area must be positive");
+        throw std::runtime_error("Flowrate velocity area must be positive");
       }
       return mean_to_peak * value / area;
     }
@@ -217,18 +215,18 @@ Real peakSpeed(const string& qty,
   }
   else
   {
-    throw runtime_error("Unsupported velocity profile type: "
-                        + profile_type);
+    throw std::runtime_error("Unsupported velocity profile type: "
+                             + profile_type);
   }
 
-  throw runtime_error("Unsupported velocity quantity: " + qty);
+  throw std::runtime_error("Unsupported velocity quantity: " + qty);
 }
 
 Real sinePulseFactor(Real time, Real amplitude, Real per)
 {
   if (per <= 0.0)
   {
-    throw runtime_error("Sine pulse period must be positive");
+    throw std::runtime_error("Sine pulse period must be positive");
   }
   return 1.0 + amplitude * sin(2.0 * constants::PI * time / per);
 }

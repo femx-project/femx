@@ -26,8 +26,8 @@ public:
 
   ~PETScVector();
 
-  Index size() const;
-  Vec vec() const;
+  Index    size() const;
+  Vec      vec() const;
   MPI_Comm comm() const;
 
   PetscInt ownershipBegin() const;

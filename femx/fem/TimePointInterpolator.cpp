@@ -10,8 +10,6 @@
 #include <femx/linalg/MatrixView.hpp>
 #include <femx/linalg/VectorView.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace fem
@@ -39,8 +37,8 @@ bool insideBox(const Element& elem,
     Real upper = elem.node(0)[a];
     for (Index in = 1; in < elem.numNodes(); ++in)
     {
-      lower = min(lower, elem.node(in)[a]);
-      upper = max(upper, elem.node(in)[a]);
+      lower = std::min(lower, elem.node(in)[a]);
+      upper = std::max(upper, elem.node(in)[a]);
     }
     if (point[a] < lower - point_tol || point[a] > upper + point_tol)
     {
@@ -61,7 +59,7 @@ bool insideSimplex(const Vector<Real>& wts)
     }
     sum += wt;
   }
-  return abs(sum - 1.0) <= 10.0 * point_tol;
+  return std::abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
 Vector<Real> shapeWeights(const FiniteElement&   fe,
@@ -83,7 +81,7 @@ bool triWeights(const FiniteElement& fe,
   const Point3 rhs = difference(point, a);
 
   const Real det = e1[0] * e2[1] - e1[1] * e2[0];
-  if (abs(det) < det_tol)
+  if (std::abs(det) < det_tol)
   {
     return false;
   }
@@ -107,7 +105,7 @@ bool tetWeights(const FiniteElement& fe,
   const Point3 rhs = difference(point, a);
 
   const Real det = dot(e1, cross(e2, e3));
-  if (abs(det) < det_tol)
+  if (std::abs(det) < det_tol)
   {
     return false;
   }
@@ -171,7 +169,7 @@ bool quadSolveStep(const Element&       elem,
   const Real   res0 = phys[0] - point[0];
   const Real   res1 = phys[1] - point[1];
   const Real   det  = j00 * j11 - j01 * j10;
-  if (abs(det) < det_tol)
+  if (std::abs(det) < det_tol)
   {
     return false;
   }
@@ -201,7 +199,7 @@ bool quadWeights(const FiniteElement& fe,
     r -= dr;
     s -= ds;
 
-    if (abs(dr) + abs(ds) <= point_tol)
+    if (std::abs(dr) + std::abs(ds) <= point_tol)
     {
       break;
     }
@@ -238,7 +236,7 @@ bool elemWeights(const FiniteElement& fe,
     break;
   }
 
-  throw runtime_error(
+  throw std::runtime_error(
       "TimePointInterpolator does not support this reference element");
 }
 
@@ -250,7 +248,7 @@ bool tryFindScalarStencil(const FESpace& space,
   const FiniteElement& fe   = space.finiteElement();
   if (mesh.dim() != fe.dim())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimePointInterpolator mesh dimension does not match finite element");
   }
 
@@ -259,7 +257,7 @@ bool tryFindScalarStencil(const FESpace& space,
     const Element& elem = mesh.elem(ie);
     if (elem.numNodes() != fe.numNodes())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimePointInterpolator elem node count does not match finite element");
     }
     if (!insideBox(elem, point, mesh.dim()))
@@ -286,7 +284,7 @@ ScalarStencil findScalarStencil(const FESpace& space,
   {
     return stencil;
   }
-  throw runtime_error("TimePointInterpolator point is outside the mesh");
+  throw std::runtime_error("TimePointInterpolator point is outside the mesh");
 }
 
 } // namespace
@@ -305,7 +303,7 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
 {
   if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
   {
-    throw runtime_error("TimePointInterpolator received invalid dimensions");
+    throw std::runtime_error("TimePointInterpolator received invalid dimensions");
   }
 
   const MixedFieldView field = space.field(fid);
@@ -321,7 +319,7 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
   {
     if (comp < 0 || comp >= field.numComponents())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimePointInterpolator component is out of range");
     }
   }
@@ -378,7 +376,7 @@ void TimePointInterpolator::applyStateJac(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numStates())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimePointInterpolator state direction size mismatch");
   }
 
@@ -403,7 +401,7 @@ void TimePointInterpolator::applyStateJacT(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numObservations())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimePointInterpolator observation direction size mismatch");
   }
 
@@ -428,7 +426,7 @@ void TimePointInterpolator::applyParamJac(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numParams())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimePointInterpolator parameter direction size mismatch");
   }
 
@@ -445,7 +443,7 @@ void TimePointInterpolator::applyParamJacT(Index               level,
   checkInputs(state, prm);
   if (dir.size() != numObservations())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimePointInterpolator observation direction size mismatch");
   }
 
@@ -492,7 +490,7 @@ void TimePointInterpolator::checkLevel(Index level) const
 {
   if (level < 0 || level > numSteps())
   {
-    throw runtime_error("TimePointInterpolator time level is out of range");
+    throw std::runtime_error("TimePointInterpolator time level is out of range");
   }
 }
 
@@ -502,7 +500,7 @@ void TimePointInterpolator::checkInputs(
 {
   if (state.size() != numStates() || prm.size() != numParams())
   {
-    throw runtime_error("TimePointInterpolator input size mismatch");
+    throw std::runtime_error("TimePointInterpolator input size mismatch");
   }
 }
 

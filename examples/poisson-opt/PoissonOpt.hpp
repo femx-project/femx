@@ -12,12 +12,12 @@
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/Objective.hpp>
-#include <femx/state/Residual.hpp>
 #include <femx/inverse/SumObjective.hpp>
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx::state
 {
@@ -101,7 +101,7 @@ public:
 
   const Options&            options() const noexcept;
   const CsrPattern&         statePattern() const;
-  const state::Residual&  residual() const;
+  const state::Residual&    residual() const;
   const inverse::Objective& objective() const;
 
   Index numNodes() const noexcept;
@@ -158,23 +158,23 @@ private:
   Vector<Point3> obs_points_;
 
   std::unique_ptr<assembly::ElementKernel> residual_kernel_;
-  std::unique_ptr<state::Residual>       base_residual_;
-  std::unique_ptr<state::Residual>       residual_;
+  std::unique_ptr<state::Residual>         base_residual_;
+  std::unique_ptr<state::Residual>         residual_;
 
-  std::unique_ptr<inverse::LeastSquaresObjective> tracking_obj_;
+  std::unique_ptr<inverse::LeastSquaresObjective> misfit_;
   std::unique_ptr<inverse::LeastSquaresObjective> reg_;
   std::unique_ptr<inverse::SumObjective>          obj_;
 
-  friend Result solve(PoissonOptProblem&      problem,
+  friend Result solve(PoissonOptProblem&    problem,
                       state::Linearization& linearization,
-                      linalg::LinearSolver&   fwd_lin_solver,
-                      linalg::LinearSolver&   adj_lin_solver);
+                      linalg::LinearSolver& fwd_lin_solver,
+                      linalg::LinearSolver& adj_lin_solver);
 };
 
-Result solve(PoissonOptProblem&      problem,
+Result solve(PoissonOptProblem&    problem,
              state::Linearization& linearization,
-             linalg::LinearSolver&   fwd_lin_solver,
-             linalg::LinearSolver&   adj_lin_solver);
+             linalg::LinearSolver& fwd_lin_solver,
+             linalg::LinearSolver& adj_lin_solver);
 
 Options parseOptions(int    argc,
                      char** argv,
@@ -186,7 +186,7 @@ void printPoissonOptUsage(std::ostream& out,
                           const char*   app_name,
                           bool          petsc_options);
 
-const char* defaultOutputDirectory();
+const char* outputDir();
 
 /** @brief Return the problem-specific output file stem. */
 std::string outputStem(const Options& opts);

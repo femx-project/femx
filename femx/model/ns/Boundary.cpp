@@ -7,8 +7,6 @@
 
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/VelocityProfile.hpp>
-
-using namespace std;
 using namespace femx;
 using namespace femx::fem;
 
@@ -19,7 +17,7 @@ Index lowerInterval(const Vector<Real>& pts,
                     Real                x)
 {
   using std::distance;
-  const auto upper = upper_bound(pts.begin(), pts.end(), x);
+  const auto upper = std::upper_bound(pts.begin(), pts.end(), x);
   return static_cast<Index>(
       distance(pts.begin(), upper) - 1);
 }
@@ -167,8 +165,8 @@ Real sampleVelocityValue(const VelocityParams& velocity,
   {
     return sampleVelocityCubic(velocity, sample_time);
   }
-  throw runtime_error("Unsupported velocity interpolation: "
-                      + velocity.interp);
+  throw std::runtime_error("Unsupported velocity interpolation: "
+                           + velocity.interp);
 }
 
 struct VelocityEvalContext
@@ -231,9 +229,9 @@ DirichletCondition makeBoundaryCondition(
                                                cond.tag,
                                                time);
       if (u_dof.numComponents() < 3
-          && abs(ctx.prof.nrm[2]) > 1.0e-14)
+          && std::abs(ctx.prof.nrm[2]) > 1.0e-14)
       {
-        throw runtime_error("3D velocity normal requires a 3D mesh");
+        throw std::runtime_error("3D velocity normal requires a 3D mesh");
       }
 
       for (Index d = 0; d < u_dof.numComponents(); ++d)
@@ -252,7 +250,7 @@ DirichletCondition makeBoundaryCondition(
     {
       if (u_dof.numComponents() < 2)
       {
-        throw runtime_error("uy boundary condition requires a 2D or 3D mesh");
+        throw std::runtime_error("uy boundary condition requires a 2D or 3D mesh");
       }
       bc.addBoundary(u_dof, cond.tag, *cond.uy, time, 1);
     }
@@ -260,7 +258,7 @@ DirichletCondition makeBoundaryCondition(
     {
       if (u_dof.numComponents() < 3)
       {
-        throw runtime_error("uz boundary condition requires a 3D mesh");
+        throw std::runtime_error("uz boundary condition requires a 3D mesh");
       }
       bc.addBoundary(u_dof, cond.tag, *cond.uz, time, 2);
     }

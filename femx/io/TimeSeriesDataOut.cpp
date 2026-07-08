@@ -10,16 +10,14 @@
 #include <hdf5.h>
 #endif
 
-using namespace std;
-
 namespace femx
 {
 namespace
 {
 
-string stripKnownExtension(string path)
+std::string stripKnownExtension(std::string path)
 {
-  const auto strip = [&path](const string& ext)
+  const auto strip = [&path](const std::string& ext)
   {
     if (path.size() >= ext.size() && path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
     {
@@ -33,19 +31,19 @@ string stripKnownExtension(string path)
   return path;
 }
 
-string filenameOnly(const string& path)
+std::string filenameOnly(const std::string& path)
 {
   const size_t pos = path.find_last_of("/\\");
-  if (pos == string::npos)
+  if (pos == std::string::npos)
   {
     return path;
   }
   return path.substr(pos + 1);
 }
 
-string stepName(Index step)
+std::string stepName(Index step)
 {
-  string tag = to_string(step);
+  std::string tag = std::to_string(step);
   while (tag.size() < 5)
   {
     tag = "0" + tag;
@@ -57,19 +55,19 @@ void checkMesh(const Mesh& mesh)
 {
   if (mesh.dim() != 2 && mesh.dim() != 3)
   {
-    throw runtime_error("TimeSeriesDataOut supports 2D and 3D meshes");
+    throw std::runtime_error("TimeSeriesDataOut supports 2D and 3D meshes");
   }
 
   if (mesh.numElems() == 0)
   {
-    throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+    throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
   const Index          cn    = mesh.elems().front().numNodes();
   const Element::Shape shape = mesh.elems().front().shape();
   if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
   }
 
@@ -78,7 +76,7 @@ void checkMesh(const Mesh& mesh)
     const auto& elem = mesh.elem(ie);
     if (elem.numNodes() != cn || elem.shape() != shape)
     {
-      throw runtime_error("TimeSeriesDataOut supports one elem type per mesh");
+      throw std::runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
   }
 }
@@ -87,31 +85,31 @@ void checkFieldSize(const Mesh& mesh, const Vector<Real>& vals)
 {
   if (vals.size() != mesh.numNodes())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeSeriesDataOut expects one field value per mesh node");
   }
 }
 
 #ifdef FEMX_HAS_HDF5
 
-void checkHdf5(herr_t status, const string& msg)
+void checkHdf5(herr_t status, const std::string& msg)
 {
   if (status < 0)
   {
-    throw runtime_error(msg);
+    throw std::runtime_error(msg);
   }
 }
 
-void checkHdf5Id(hid_t id, const string& msg)
+void checkHdf5Id(hid_t id, const std::string& msg)
 {
   if (id < 0)
   {
-    throw runtime_error(msg);
+    throw std::runtime_error(msg);
   }
 }
 
 void writeDoubleDataset(hid_t                  file,
-                        const string&          path,
+                        const std::string&     path,
                         const Vector<double>&  data,
                         const Vector<hsize_t>& dims)
 {
@@ -141,7 +139,7 @@ void writeDoubleDataset(hid_t                  file,
 }
 
 void writeIntDataset(hid_t                  file,
-                     const string&          path,
+                     const std::string&     path,
                      const Vector<Index>&   data,
                      const Vector<hsize_t>& dims)
 {
@@ -171,7 +169,7 @@ void writeIntDataset(hid_t                  file,
 }
 
 void writeScalarDataset(hid_t               file,
-                        const string&       path,
+                        const std::string&  path,
                         const Vector<Real>& vals)
 {
   Vector<double> data(vals.size());
@@ -186,9 +184,9 @@ void writeScalarDataset(hid_t               file,
                      {static_cast<hsize_t>(vals.size())});
 }
 
-void writeVectorDataset(hid_t                         file,
-                        const string&                 path,
-                        const array<Vector<Real>, 3>& vals)
+void writeVectorDataset(hid_t                              file,
+                        const std::string&                 path,
+                        const std::array<Vector<Real>, 3>& vals)
 {
   const Index    num_nodes = vals[0].size();
   Vector<double> data(num_nodes * 3);
@@ -230,14 +228,14 @@ void writeMesh(hid_t file, const Mesh& mesh)
 
   if (mesh.numElems() == 0)
   {
-    throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+    throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
   const Index          cn    = mesh.elems().front().numNodes();
   const Element::Shape shape = mesh.elems().front().shape();
   if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
   }
 
@@ -247,7 +245,7 @@ void writeMesh(hid_t file, const Mesh& mesh)
     const auto& elem = mesh.elem(ie);
     if (elem.numNodes() != cn || elem.shape() != shape)
     {
-      throw runtime_error("TimeSeriesDataOut supports one elem type per mesh");
+      throw std::runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
     const Index* nids = mesh.elemNodeIds(ie);
     for (Index i = 0; i < cn; ++i)
@@ -267,7 +265,7 @@ void writeMesh(hid_t file, const Mesh& mesh)
                    static_cast<hsize_t>(cn)});
 }
 
-void writeHdf5(const string&                          fname,
+void writeHdf5(const std::string&                     fname,
                const Mesh&                            mesh,
                const Vector<TimeSeriesDataOut::Step>& steps)
 {
@@ -279,8 +277,8 @@ void writeHdf5(const string&                          fname,
 
   for (Index s = 0; s < steps.size(); ++s)
   {
-    const string group_path = "/Data/" + stepName(s);
-    hid_t        step_group =
+    const std::string group_path = "/Data/" + stepName(s);
+    hid_t             step_group =
         H5Gcreate2(file,
                    group_path.c_str(),
                    H5P_DEFAULT,
@@ -304,18 +302,18 @@ void writeHdf5(const string&                          fname,
 
 #endif
 
-void writeXdmf(const string&                          fname,
-               const string&                          hdf5_filename,
+void writeXdmf(const std::string&                     fname,
+               const std::string&                     hdf5_filename,
                const Mesh&                            mesh,
                const Vector<TimeSeriesDataOut::Step>& steps)
 {
-  ofstream out(fname);
+  std::ofstream out(fname);
   if (!out)
   {
-    throw runtime_error("Failed to open XDMF file for writing: " + fname);
+    throw std::runtime_error("Failed to open XDMF file for writing: " + fname);
   }
 
-  const string h5_ref = filenameOnly(hdf5_filename);
+  const std::string h5_ref = filenameOnly(hdf5_filename);
 
   out << R"(<?xml version="1.0" ?>)" << '\n';
   out << R"(<Xdmf Version="3.0">)" << '\n';
@@ -324,12 +322,12 @@ void writeXdmf(const string&                          fname,
 
   for (Index s = 0; s < steps.size(); ++s)
   {
-    const string step = stepName(s);
+    const std::string step = stepName(s);
     out << R"(      <Grid Name=")" << step << R"(" GridType="Uniform">)" << '\n';
     out << R"(        <Time Value=")" << steps[s].time << R"("/>)" << '\n';
     if (mesh.numElems() == 0)
     {
-      throw runtime_error("TimeSeriesDataOut needs a non-empty mesh");
+      throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
     }
     const Index          cn            = mesh.elems().front().numNodes();
     const Element::Shape shape         = mesh.elems().front().shape();
@@ -399,17 +397,17 @@ void TimeSeriesDataOut::beginStep(Real time)
   steps_.back().time = time;
 }
 
-void TimeSeriesDataOut::addNodalScalarField(const string&       name,
+void TimeSeriesDataOut::addNodalScalarField(const std::string&  name,
                                             const Vector<Real>& vals)
 {
   if (name.empty())
   {
-    throw runtime_error("TimeSeriesDataOut field name must not be empty");
+    throw std::runtime_error("TimeSeriesDataOut field name must not be empty");
   }
   currentStep().scalars.push_back({name, vals});
 }
 
-void TimeSeriesDataOut::addNodalVectorField(const string&       name,
+void TimeSeriesDataOut::addNodalVectorField(const std::string&  name,
                                             const Vector<Real>& x,
                                             const Vector<Real>& y)
 {
@@ -418,14 +416,14 @@ void TimeSeriesDataOut::addNodalVectorField(const string&       name,
   addNodalVectorField(name, x, y, z);
 }
 
-void TimeSeriesDataOut::addNodalVectorField(const string&       name,
+void TimeSeriesDataOut::addNodalVectorField(const std::string&  name,
                                             const Vector<Real>& x,
                                             const Vector<Real>& y,
                                             const Vector<Real>& z)
 {
   if (name.empty())
   {
-    throw runtime_error("TimeSeriesDataOut field name must not be empty");
+    throw std::runtime_error("TimeSeriesDataOut field name must not be empty");
   }
   currentStep().vecs.push_back({name, {x, y, z}});
 }
@@ -435,18 +433,18 @@ void TimeSeriesDataOut::clear()
   steps_.clear();
 }
 
-void TimeSeriesDataOut::write(const string& base) const
+void TimeSeriesDataOut::write(const std::string& base) const
 {
   checkReady();
 
-  const string root          = stripKnownExtension(base);
-  const string hdf5_filename = root + ".h5";
-  const string xdmf_filename = root + ".xdmf";
+  const std::string root          = stripKnownExtension(base);
+  const std::string hdf5_filename = root + ".h5";
+  const std::string xdmf_filename = root + ".xdmf";
 
 #ifdef FEMX_HAS_HDF5
   writeHdf5(hdf5_filename, *mesh_, steps_);
 #else
-  throw runtime_error(
+  throw std::runtime_error(
       "HDF5 support is not enabled. Configure with FEMX_ENABLE_HDF5=ON "
       "and an available HDF5 C library.");
 #endif
@@ -458,7 +456,7 @@ TimeSeriesDataOut::Step& TimeSeriesDataOut::currentStep()
 {
   if (steps_.empty())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeSeriesDataOut::beginStep() must be called before adding fields");
   }
   return steps_.back();
@@ -468,12 +466,12 @@ void TimeSeriesDataOut::checkReady() const
 {
   if (mesh_ == nullptr)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeSeriesDataOut needs an attached mesh before writing");
   }
   if (steps_.empty())
   {
-    throw runtime_error("TimeSeriesDataOut has no steps to write");
+    throw std::runtime_error("TimeSeriesDataOut has no steps to write");
   }
 
   checkMesh(*mesh_);

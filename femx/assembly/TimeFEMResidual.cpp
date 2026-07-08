@@ -7,8 +7,6 @@
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
 #endif
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -31,7 +29,7 @@ void allreduce(Vector<Real>& out)
                                  PETSC_COMM_WORLD);
   if (ierr != MPI_SUCCESS)
   {
-    throw runtime_error("TimeFEMResidual MPI_Allreduce failed");
+    throw std::runtime_error("TimeFEMResidual MPI_Allreduce failed");
   }
 }
 #endif
@@ -123,12 +121,12 @@ void TimeFEMResidual::setElemRange(Index begin, Index end)
 {
   if (begin < 0 || end < begin || end > numElems())
   {
-    throw runtime_error("TimeFEMResidual received invalid elem range");
+    throw std::runtime_error("TimeFEMResidual received invalid elem range");
   }
 #if !defined(FEMX_HAS_PETSC)
   if (begin != 0 || end != numElems())
   {
-    throw runtime_error("TimeFEMResidual elem ranges require PETSc");
+    throw std::runtime_error("TimeFEMResidual elem ranges require PETSc");
   }
 #endif
   elem_begin_ = begin;
@@ -247,7 +245,7 @@ void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
   checkContext(ctx);
   if (adj.size() != dims().num_residuals)
   {
-    throw runtime_error("TimeFEMResidual adjoint size mismatch");
+    throw std::runtime_error("TimeFEMResidual adjoint size mismatch");
   }
 
   const DofLayout* col_layout = layoutFor(wrt);
@@ -364,7 +362,7 @@ const DofLayout* TimeFEMResidual::layoutFor(VariableBlock wrt) const
     const Index lag = wrt.historyLag();
     if (lag < 0 || lag >= numHistoryStates())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeFEMResidual history lag is out of range");
     }
     return &history_state_layouts_[lag];
@@ -380,34 +378,34 @@ void TimeFEMResidual::checkLayouts() const
 {
   if (num_steps_ < 0)
   {
-    throw runtime_error("TimeFEMResidual received negative step count");
+    throw std::runtime_error("TimeFEMResidual received negative step count");
   }
   if (history_state_layouts_.empty())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeFEMResidual requires at least one history state layout");
   }
   if (res_layout_.numElems() != next_state_layout_.numElems()
       || (param_layout_ && res_layout_.numElems() != param_layout_->numElems()))
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeFEMResidual layouts have different elem counts");
   }
   for (const DofLayout& lyt : history_state_layouts_)
   {
     if (res_layout_.numElems() != lyt.numElems())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeFEMResidual layouts have different elem counts");
     }
     if (lyt.numDofs() != next_state_layout_.numDofs())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeFEMResidual history and next state sizes differ");
     }
     if (lyt.numDofsPerElem() != next_state_layout_.numDofsPerElem())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeFEMResidual history and next state local sizes differ");
     }
   }
@@ -418,13 +416,13 @@ void TimeFEMResidual::checkContext(const TimeContext& ctx) const
   const TimeDims dm = dims();
   if (ctx.step < 0 || ctx.step >= dm.num_steps)
   {
-    throw runtime_error("TimeFEMResidual step is out of range");
+    throw std::runtime_error("TimeFEMResidual step is out of range");
   }
   const TimeHistoryView hist = ctx.hist;
   if (hist.count() < dm.num_history_states
       || hist.stateSize() != dm.num_states)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeFEMResidual history state size mismatch");
   }
   checkVector(ctx.nxt, dm.num_states);
@@ -436,7 +434,7 @@ void TimeFEMResidual::checkVector(const Vector<Real>* value,
 {
   if (value == nullptr || value->size() != size)
   {
-    throw runtime_error("TimeFEMResidual vector size mismatch");
+    throw std::runtime_error("TimeFEMResidual vector size mismatch");
   }
 }
 
@@ -464,7 +462,7 @@ void TimeFEMResidual::checkDirection(VariableBlock       wrt,
   const Index      exp = lyt == nullptr ? numParams() : lyt->numDofs();
   if (dir.size() != exp)
   {
-    throw runtime_error("TimeFEMResidual direction size mismatch");
+    throw std::runtime_error("TimeFEMResidual direction size mismatch");
   }
 }
 
@@ -514,7 +512,7 @@ void TimeFEMResidual::gather(const DofLayout&       lyt,
   lyt.elemDofs(ie, dofs);
   if (local.size() != dofs.size())
   {
-    throw runtime_error("TimeFEMResidual local vector size mismatch");
+    throw std::runtime_error("TimeFEMResidual local vector size mismatch");
   }
 
   for (Index i = 0; i < local.size(); ++i)
@@ -531,7 +529,7 @@ void TimeFEMResidual::matVec(const DenseMatrix&  mat,
 {
   if (mat.cols() != x.size())
   {
-    throw runtime_error("TimeFEMResidual local matrix size mismatch");
+    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
   }
   resizeOrZero(out, mat.rows());
   for (Index i = 0; i < mat.rows(); ++i)
@@ -551,7 +549,7 @@ void TimeFEMResidual::matTVec(const DenseMatrix&  mat,
 {
   if (mat.rows() != x.size())
   {
-    throw runtime_error("TimeFEMResidual local matrix size mismatch");
+    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
   }
   resizeOrZero(out, mat.cols());
   for (Index j = 0; j < mat.cols(); ++j)
@@ -569,7 +567,7 @@ void TimeFEMResidual::checkDof(Index id, Index size)
 {
   if (id < 0 || id >= size)
   {
-    throw runtime_error("TimeFEMResidual id is out of range");
+    throw std::runtime_error("TimeFEMResidual id is out of range");
   }
 }
 

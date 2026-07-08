@@ -8,16 +8,14 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
 
-using namespace std;
-
 namespace femx
 {
 namespace
 {
 
-string escapeXml(const string& text)
+std::string escapeXml(const std::string& text)
 {
-  string out;
+  std::string out;
   out.reserve(text.size());
   for (char ch : text)
   {
@@ -63,38 +61,38 @@ int vtkCellType(Element::Shape shape)
   case Element::Shape::Unknown:
     break;
   }
-  throw runtime_error("VtuWriter received unsupported elem shape");
+  throw std::runtime_error("VtuWriter received unsupported elem shape");
 }
 
 void checkField(const Mesh& mesh, const VtuWriter::PointField& field)
 {
   if (field.name.empty())
   {
-    throw runtime_error("VtuWriter point field name must not be empty");
+    throw std::runtime_error("VtuWriter point field name must not be empty");
   }
   if (field.num_components <= 0)
   {
-    throw runtime_error("VtuWriter point field component count must be positive");
+    throw std::runtime_error("VtuWriter point field component count must be positive");
   }
   if (field.vals == nullptr)
   {
-    throw runtime_error("VtuWriter point field has null values");
+    throw std::runtime_error("VtuWriter point field has null values");
   }
   if (field.vals->size() != mesh.numNodes() * field.num_components)
   {
-    throw runtime_error("VtuWriter point field size does not match mesh nodes");
+    throw std::runtime_error("VtuWriter point field size does not match mesh nodes");
   }
 }
 
 } // namespace
 
-void VtuWriter::writePointData(const string&             fname,
+void VtuWriter::writePointData(const std::string&        fname,
                                const Mesh&               mesh,
                                const Vector<PointField>& fields) const
 {
   if (mesh.numNodes() == 0 || mesh.numElems() == 0)
   {
-    throw runtime_error("VtuWriter needs a non-empty mesh");
+    throw std::runtime_error("VtuWriter needs a non-empty mesh");
   }
 
   for (const auto& field : fields)
@@ -102,10 +100,10 @@ void VtuWriter::writePointData(const string&             fname,
     checkField(mesh, field);
   }
 
-  ofstream out(fname);
+  std::ofstream out(fname);
   if (!out)
   {
-    throw runtime_error("Failed to open VTU file: " + fname);
+    throw std::runtime_error("Failed to open VTU file: " + fname);
   }
 
   out << "<?xml version=\"1.0\"?>\n";
@@ -118,7 +116,7 @@ void VtuWriter::writePointData(const string&             fname,
   out << "      <Points>\n";
   out << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
          "format=\"ascii\">\n";
-  out << setprecision(numeric_limits<Real>::max_digits10);
+  out << std::setprecision(std::numeric_limits<Real>::max_digits10);
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     const auto& node = mesh.node(in);

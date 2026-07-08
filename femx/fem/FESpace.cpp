@@ -2,8 +2,6 @@
 
 #include <femx/fem/FESpace.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -16,19 +14,19 @@ FESpace::FESpace(const Mesh*          mesh,
 {
   if (!mesh_ || !fe_)
   {
-    throw runtime_error("FESpace: null mesh or finite elem");
+    throw std::runtime_error("FESpace: null mesh or finite elem");
   }
   if (comps_ <= 0)
   {
-    throw runtime_error("FESpace: invalid component count");
+    throw std::runtime_error("FESpace: invalid component count");
   }
 }
 
 void FESpace::setup()
 {
-  const Index num_elem = mesh_->numElems();
-  num_shapes_per_elem_ = fe_->numDofsPerElement();
-  const Index num_elem_dofs   = comps_ * num_shapes_per_elem_;
+  const Index num_elem      = mesh_->numElems();
+  num_shapes_per_elem_      = fe_->numDofsPerElement();
+  const Index num_elem_dofs = comps_ * num_shapes_per_elem_;
 
   dof_map_.allocate(num_elem, num_elem_dofs);
   num_dofs_ = comps_ * mesh_->numNodes();
@@ -38,7 +36,7 @@ void FESpace::setup()
     const auto& elem = mesh_->elem(ie);
     if (elem.numNodes() != fe_->numNodes())
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "FESpace: finite elem node count does not match mesh elem");
     }
 

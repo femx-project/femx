@@ -20,8 +20,6 @@
 #include <femx/model/ns/Helper.hpp>
 #include <femx/runtime/Cli.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
-
-using namespace std;
 using namespace femx::state;
 using namespace femx::assembly;
 
@@ -55,11 +53,11 @@ void requireForwardParams(const Params& prm)
 {
   if (prm.mesh_file.empty())
   {
-    throw runtime_error("mesh file is required");
+    throw std::runtime_error("mesh file is required");
   }
   if (prm.time.steps <= 0 || prm.time.dt <= 0.0)
   {
-    throw runtime_error("time steps and dt must be positive");
+    throw std::runtime_error("time steps and dt must be positive");
   }
 }
 
@@ -74,7 +72,7 @@ void assignBoundaryValues(Vector<Real>&             state,
 {
   if (bc.dofs().size() != bc.vals().size())
   {
-    throw runtime_error("DirichletCondition has inconsistent data");
+    throw std::runtime_error("DirichletCondition has inconsistent data");
   }
 
   for (Index i = 0; i < bc.dofs().size(); ++i)
@@ -82,7 +80,7 @@ void assignBoundaryValues(Vector<Real>&             state,
     const Index id = bc.dofs()[i];
     if (id < 0 || id >= state.size())
     {
-      throw runtime_error("Dirichlet id is out of range");
+      throw std::runtime_error("Dirichlet id is out of range");
     }
     state[id] = bc.vals()[i];
   }
@@ -98,8 +96,8 @@ Vector<Real> makeInitialState(const MixedFESpace&      space,
 }
 
 FixedBoundaryValues toFixedBoundaryValues(
-    const map<Index, Vector<Real>>& vals,
-    Index                           steps)
+    const std::map<Index, Vector<Real>>& vals,
+    Index                                steps)
 {
   FixedBoundaryValues out;
   for (const auto& entry : vals)
@@ -114,9 +112,9 @@ FixedBoundaryValues toFixedBoundaryValues(
   {
     for (Index step = 0; step < steps; ++step)
     {
-      if (isnan(entry.second[step]))
+      if (std::isnan(entry.second[step]))
       {
-        throw runtime_error(
+        throw std::runtime_error(
             "fixed boundary value was not assigned for every time step");
       }
       values(step, i) = entry.second[step];
@@ -134,11 +132,11 @@ FixedBoundaryValues makeFixedBoundaryValues(
 {
   if (steps <= 0)
   {
-    throw runtime_error("fixed boundary values require positive steps");
+    throw std::runtime_error("fixed boundary values require positive steps");
   }
 
-  const Real               unset = numeric_limits<Real>::quiet_NaN();
-  map<Index, Vector<Real>> vals;
+  const Real                    unset = std::numeric_limits<Real>::quiet_NaN();
+  std::map<Index, Vector<Real>> vals;
 
   for (Index step = 0; step < steps; ++step)
   {
@@ -146,7 +144,7 @@ FixedBoundaryValues makeFixedBoundaryValues(
     const auto bc   = makeBoundaryCondition(space, bcs, time);
     if (bc.dofs().size() != bc.vals().size())
     {
-      throw runtime_error("DirichletCondition has inconsistent data");
+      throw std::runtime_error("DirichletCondition has inconsistent data");
     }
 
     for (Index i = 0; i < bc.dofs().size(); ++i)
@@ -198,7 +196,7 @@ AppOptions parseAppOptions(int   argc,
 
   for (int i = 1; i < argc; ++i)
   {
-    const string key(argv[i]);
+    const std::string key(argv[i]);
     if (key == "-h" || key == "--help")
     {
       opts.help = true;
@@ -212,10 +210,10 @@ AppOptions parseAppOptions(int   argc,
     if (key == "--steps")
     {
       opts.steps = static_cast<Index>(
-          stoi(runtime::requireValue(argc, argv, i, key)));
+          std::stoi(runtime::requireValue(argc, argv, i, key)));
       if (*opts.steps <= 0)
       {
-        throw runtime_error("--steps must be positive");
+        throw std::runtime_error("--steps must be positive");
       }
       continue;
     }
@@ -226,43 +224,43 @@ AppOptions parseAppOptions(int   argc,
     }
     if (!allow_unknown_options)
     {
-      throw runtime_error("Unknown option: " + key);
+      throw std::runtime_error("Unknown option: " + key);
     }
   }
 
   if (opts.config_file.empty())
   {
-    throw runtime_error("Missing required option: --config FILE");
+    throw std::runtime_error("Missing required option: --config FILE");
   }
 
   return opts;
 }
 
-void printUsage(ostream&              out,
-                const string&         executable,
-                const string&         option_suffix,
-                const Vector<string>& extra_lines)
+void printUsage(std::ostream&              out,
+                const std::string&         executable,
+                const std::string&         option_suffix,
+                const Vector<std::string>& extra_lines)
 {
   out << "Usage: " << executable << " --config FILE" << option_suffix << '\n'
       << "       " << executable
       << " --config FILE --steps N --no-output" << option_suffix << '\n';
-  for (const string& line : extra_lines)
+  for (const std::string& line : extra_lines)
   {
     out << line << '\n';
   }
 }
 
-unique_ptr<FiniteElement> makeElem(const Mesh&   mesh,
-                                   const string& executable)
+std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
+                                        const std::string& executable)
 {
   (void) executable;
   try
   {
     return makeElement(mesh);
   }
-  catch (const runtime_error& e)
+  catch (const std::runtime_error& e)
   {
-    throw runtime_error(string(e.what()) + " (" + executable + ")");
+    throw std::runtime_error(std::string(e.what()) + " (" + executable + ")");
   }
 }
 
@@ -270,7 +268,7 @@ bool isFinite(const Vector<Real>& x)
 {
   for (Index i = 0; i < x.size(); ++i)
   {
-    if (!isfinite(x[i]))
+    if (!std::isfinite(x[i]))
     {
       return false;
     }
@@ -283,8 +281,8 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                          const TimeParams&     time,
                          const OutputParams&   prm,
                          bool                  collect_output,
-                         ostream*              terminal,
-                         ostream*              log_out)
+                         std::ostream*         terminal,
+                         std::ostream*         log_out)
 {
   ForwardSolveMonitor monitor(problem.space, problem.dt, problem.steps);
   if (collect_output)

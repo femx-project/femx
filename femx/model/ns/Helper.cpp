@@ -8,35 +8,33 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-
-using namespace std;
 using namespace femx;
 using namespace femx::fem;
 
 namespace femx::model::ns
 {
 
-unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
+std::unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
-    throw runtime_error("Mesh has no elems");
+    throw std::runtime_error("Mesh has no elems");
   }
 
   const Element::Shape shape = mesh.elems().front().shape();
   if (shape == Element::Shape::Quadrilateral)
   {
-    return make_unique<LagrangeQuadQ1>();
+    return std::make_unique<LagrangeQuadQ1>();
   }
   if (shape == Element::Shape::Triangle)
   {
-    return make_unique<LagrangeTriangleP1>();
+    return std::make_unique<LagrangeTriangleP1>();
   }
   if (shape == Element::Shape::Tetrahedron)
   {
-    return make_unique<LagrangeTetrahedronP1>();
+    return std::make_unique<LagrangeTetrahedronP1>();
   }
-  throw runtime_error("Unsupported mesh elem type for Navier app");
+  throw std::runtime_error("Unsupported mesh elem type for Navier app");
 }
 
 MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem)

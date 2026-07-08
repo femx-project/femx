@@ -15,8 +15,6 @@
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
-
-using namespace std;
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -124,7 +122,7 @@ int run(const Params& prm, bool enable_output)
   TimeLinearIntegrator integ(fwd.problem, A, solver);
   integ.setInitialState(fwd.x0);
 
-  ofstream log_out;
+  std::ofstream log_out;
   if (enable_output)
   {
     log_out = openOutputFile(prm.output.directory, "run-info.txt");
@@ -137,12 +135,12 @@ int run(const Params& prm, bool enable_output)
                  prm.time,
                  prm.output,
                  enable_output,
-                 &cout,
+                 &std::cout,
                  enable_output ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
-    throw runtime_error("Linear solve produced non-finite values in x");
+    throw std::runtime_error("Linear solve produced non-finite values in x");
   }
 
   return 0;
@@ -157,7 +155,7 @@ int main(int argc, char* argv[])
     const AppOptions opts = parseAppOptions(argc, argv, false);
     if (opts.help)
     {
-      printUsage(cout, FEMX_NS_FORWARD_APP_NAME);
+      printUsage(std::cout, FEMX_NS_FORWARD_APP_NAME);
       return 0;
     }
 
@@ -168,9 +166,9 @@ int main(int argc, char* argv[])
     }
     return run(prm, !opts.no_output);
   }
-  catch (const exception& e)
+  catch (const std::exception& e)
   {
-    cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
+    std::cerr << FEMX_NS_FORWARD_APP_NAME << ": " << e.what() << '\n';
     return 1;
   }
 }

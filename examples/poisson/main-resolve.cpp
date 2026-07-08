@@ -9,9 +9,9 @@
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 using namespace femx;
+using namespace femx::examples;
 using namespace femx::examples::poisson;
 using namespace femx::linalg;
-using namespace std;
 
 #ifndef FEMX_POISSON_APP_NAME
 #define FEMX_POISSON_APP_NAME "poisson-resolve"
@@ -22,11 +22,8 @@ namespace
 
 int run(const PoissonOptions& opts)
 {
-  examples::ExampleHelper helper("resolve",
-                                 "ReSolve",
-                                 opts.backend,
-                                 defaultOutputDirectory());
-  PoissonForwardProblem   problem(opts);
+  ExampleHelper         helper("resolve", opts.backend, outputDir());
+  PoissonForwardProblem problem(opts);
 
   CsrAssemblyMatrix A(problem.pattern());
   Vector<Real>      rhs;
@@ -37,7 +34,7 @@ int run(const PoissonOptions& opts)
   Vector<Real> x;
   solver.solve(A, rhs, x);
 
-  printReport(cout,
+  printReport(std::cout,
               helper.backendName(),
               problem,
               problem.errorReport(x),
@@ -45,7 +42,7 @@ int run(const PoissonOptions& opts)
 
   if (opts.write_output)
   {
-    const string base = helper.outputBase(outputStem(opts));
+    const std::string base = helper.outputBase(outputStem(opts));
     problem.writeSolution(x, base);
     helper.printVisualizationPath(base);
   }
@@ -57,7 +54,7 @@ bool hasHelp(int argc, char** argv)
 {
   for (int i = 1; i < argc; ++i)
   {
-    const string arg = argv[i];
+    const std::string arg = argv[i];
     if (arg == "--help" || arg == "-h")
     {
       return true;
@@ -79,7 +76,7 @@ int main(int argc, char* argv[])
     }
     return run(parseOptions(argc, argv, false));
   }
-  catch (const exception& e)
+  catch (const std::exception& e)
   {
     return examples::reportError(FEMX_POISSON_APP_NAME, e);
   }

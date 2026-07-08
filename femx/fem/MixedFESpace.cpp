@@ -3,8 +3,6 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 
-using namespace std;
-
 namespace femx
 {
 
@@ -58,13 +56,13 @@ void MixedFESpace::setup()
 {
   if (fields_.empty())
   {
-    throw runtime_error("MixedFESpace: no fields");
+    throw std::runtime_error("MixedFESpace: no fields");
   }
 
   local_offsets_.resize(numFields());
   global_offsets_.resize(numFields());
   num_dofs_per_elem_ = 0;
-  num_dofs_   = 0;
+  num_dofs_          = 0;
 
   const Mesh* mesh = &fields_[0].mesh();
   for (Index fid = 0; fid < numFields(); ++fid)
@@ -72,14 +70,14 @@ void MixedFESpace::setup()
     FESpace& field = fields_[fid];
     if (&field.mesh() != mesh)
     {
-      throw runtime_error("MixedFESpace: fields must share a mesh");
+      throw std::runtime_error("MixedFESpace: fields must share a mesh");
     }
 
     field.setup();
     local_offsets_[fid]   = num_dofs_per_elem_;
     global_offsets_[fid]  = num_dofs_;
-    num_dofs_per_elem_                += field.numDofsPerElem();
-    num_dofs_                  += field.numDofs();
+    num_dofs_per_elem_   += field.numDofsPerElem();
+    num_dofs_            += field.numDofs();
   }
 }
 
@@ -87,7 +85,7 @@ MixedFieldView MixedFESpace::field(Index fid) const
 {
   if (fid < 0 || fid >= fields_.size())
   {
-    throw runtime_error("MixedFESpace: field id out of range");
+    throw std::runtime_error("MixedFESpace: field id out of range");
   }
 
   return MixedFieldView(&fields_[fid], local_offsets_[fid], global_offsets_[fid]);

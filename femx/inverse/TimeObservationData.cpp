@@ -7,8 +7,6 @@
 #include <utility>
 
 #include <femx/inverse/TimeObservationData.hpp>
-
-using namespace std;
 using namespace femx::state;
 
 namespace femx
@@ -26,10 +24,10 @@ void TimeObservationData::resize(Index num_levels, Index num_observations)
 {
   if (num_levels < 0 || num_observations < 0)
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeObservationData received invalid dimensions");
   }
-  num_levels_      = num_levels;
+  num_levels_       = num_levels;
   num_observations_ = num_observations;
   data_.resize(num_levels_ * num_observations_);
   sampler_.clear();
@@ -69,7 +67,7 @@ bool TimeObservationData::hasTimeValues() const
   return !time_values_.empty();
 }
 
-const string& TimeObservationData::sampler() const
+const std::string& TimeObservationData::sampler() const
 {
   return sampler_;
 }
@@ -114,7 +112,7 @@ Real TimeObservationData::timeValue(Index row) const
   return time_values_[row];
 }
 
-void TimeObservationData::setLayout(string         sampler,
+void TimeObservationData::setLayout(std::string    sampler,
                                     Vector<Point3> pts,
                                     Vector<Index>  comps)
 {
@@ -159,7 +157,7 @@ void TimeObservationData::checkLevel(Index level) const
 {
   if (level < 0 || level >= numLevels())
   {
-    throw runtime_error("TimeObservationData level is out of range");
+    throw std::runtime_error("TimeObservationData level is out of range");
   }
 }
 
@@ -171,13 +169,13 @@ void TimeObservationData::checkLayout() const
   }
   if (pts_.empty() || comps_.empty())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeObservationData point layout is incomplete");
   }
   const Index exp = pts_.size() * comps_.size();
   if (exp != numObservations())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeObservationData layout does not match observation count");
   }
 }
@@ -190,7 +188,7 @@ void TimeObservationData::checkTimeLevels() const
   }
   if (time_levels_.size() != numLevels())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeObservationData time level count does not match data");
   }
   for (Index i = 0; i < time_levels_.size(); ++i)
@@ -198,7 +196,7 @@ void TimeObservationData::checkTimeLevels() const
     if (time_levels_[i] < 0
         || (i > 0 && time_levels_[i] <= time_levels_[i - 1]))
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeObservationData time levels must be strictly increasing");
     }
   }
@@ -212,15 +210,15 @@ void TimeObservationData::checkTimeValues() const
   }
   if (time_values_.size() != numLevels())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "TimeObservationData time value count does not match data");
   }
   for (Index i = 0; i < time_values_.size(); ++i)
   {
-    if (!isfinite(time_values_[i]) || time_values_[i] < 0.0
+    if (!std::isfinite(time_values_[i]) || time_values_[i] < 0.0
         || (i > 0 && time_values_[i] <= time_values_[i - 1]))
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "TimeObservationData time values must be finite and increasing");
     }
   }
@@ -233,7 +231,7 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   if (tr.numSteps() != obs.numSteps() || tr.numStates() != obs.numStates()
       || prm.size() != obs.numParams())
   {
-    throw runtime_error("sampleTimeObs received inconsistent inputs");
+    throw std::runtime_error("sampleTimeObs received inconsistent inputs");
   }
 
   TimeObservationData data(obs.numSteps() + 1, obs.numObservations());
@@ -246,22 +244,22 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   return data;
 }
 
-void writeTimeObsData(const string& path, const TimeObservationData& data)
+void writeTimeObsData(const std::string& path, const TimeObservationData& data)
 {
   if (!data.hasLayout())
   {
-    throw runtime_error(
+    throw std::runtime_error(
         "Cannot write time observation data without point layout");
   }
 
-  ofstream out(path);
+  std::ofstream out(path);
   if (!out)
   {
-    throw runtime_error("Failed to open time observation data file: "
-                        + path);
+    throw std::runtime_error("Failed to open time observation data file: "
+                             + path);
   }
 
-  out << setprecision(numeric_limits<Real>::max_digits10);
+  out << std::setprecision(std::numeric_limits<Real>::max_digits10);
   out << "femx_time_obs_data\n\n";
   out << "num_levels " << data.numLevels() << "\n\n";
   if (data.hasTimeValues())
@@ -298,8 +296,8 @@ void writeTimeObsData(const string& path, const TimeObservationData& data)
   }
 
   out << "\nvalues\n";
-  const Index num_components         = data.comps().size();
-  const Index num_points = data.pts().size();
+  const Index num_components = data.comps().size();
+  const Index num_points     = data.pts().size();
   for (Index level = 0; level < data.numLevels(); ++level)
   {
     const Vector<Real> vals = data[level];
@@ -327,27 +325,27 @@ void writeTimeObsData(const string& path, const TimeObservationData& data)
 namespace
 {
 
-void requireKey(const string& got,
-                const string& exp)
+void requireKey(const std::string& got,
+                const std::string& exp)
 {
   if (got != exp)
   {
-    throw runtime_error("Time observation data missing " + exp);
+    throw std::runtime_error("Time observation data missing " + exp);
   }
 }
 
 } // namespace
 
-TimeObservationData readTimeObsData(const string& path)
+TimeObservationData readTimeObsData(const std::string& path)
 {
-  ifstream in(path);
+  std::ifstream in(path);
   if (!in)
   {
-    throw runtime_error("Failed to open time observation data file: "
-                        + path);
+    throw std::runtime_error("Failed to open time observation data file: "
+                             + path);
   }
 
-  string key;
+  std::string key;
   in >> key;
   requireKey(key, "femx_time_obs_data");
 
@@ -425,7 +423,7 @@ TimeObservationData readTimeObsData(const string& path)
     requireKey(key, "level");
     if (label != level)
     {
-      throw runtime_error(
+      throw std::runtime_error(
           "Time observation data has unexpected level label");
     }
 
@@ -434,7 +432,7 @@ TimeObservationData readTimeObsData(const string& path)
     {
       if (!(in >> vals[i]))
       {
-        throw runtime_error(
+        throw std::runtime_error(
             "Time observation data ended before all values were read");
       }
     }

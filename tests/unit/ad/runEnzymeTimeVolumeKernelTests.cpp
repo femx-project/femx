@@ -76,7 +76,7 @@ bool near(Real actual, Real exp)
   return std::abs(actual - exp) < 1.0e-10;
 }
 
-void fill(Vector<Real>& vals, std::initializer_list<Real> input)
+void fillValues(Vector<Real>& vals, std::initializer_list<Real> input)
 {
   vals = input;
 }
@@ -110,9 +110,9 @@ public:
     Vector<Real> prev(4);
     Vector<Real> next(4);
     Vector<Real> prm(4);
-    fill(prev, {1.0, 2.0, -1.0, 0.5});
-    fill(next, {0.25, -0.5, 1.0, 0.75});
-    fill(prm, {0.1, 0.2, -0.3, 0.4});
+    fillValues(prev, {1.0, 2.0, -1.0, 0.5});
+    fillValues(next, {0.25, -0.5, 1.0, 0.75});
+    fillValues(prm, {0.1, 0.2, -0.3, 0.4});
 
     state::TimeContext ctx;
     ctx.step = 1;
