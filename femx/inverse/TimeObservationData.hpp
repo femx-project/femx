@@ -6,12 +6,12 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
-#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 class TimeObservationData
@@ -76,5 +76,5 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data);
 
 TimeObservationData readTimeObsData(const std::string& path);
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

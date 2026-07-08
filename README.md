@@ -73,8 +73,8 @@ Individual component targets are also available:
 - `femx::ad`: Enzyme declarations and small AD helpers.
 - `femx::fem`: mesh-facing FEM data structures, spaces, quadrature, and elements.
 - `femx::assembly`: FEM kernels, assemblers, sparsity builders, and residual adapters.
-- `femx::problem`: residual, objective, observation, and time-residual interfaces.
-- `femx::state`: Newton, time-stepping, and reduced-functional utilities.
+- `femx::state`: residual, linearization, Newton, and time-stepping utilities.
+- `femx::inverse`: objective, observation, regularization, and reduced-functional utilities.
 - `femx::opt`: PETSc/TAO optimization adapters, when PETSc is enabled.
 - `femx::io`: output and data readers.
 
@@ -83,7 +83,7 @@ Preferred include paths use the new public component layout:
 ```cpp
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Residual.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
 ```
 

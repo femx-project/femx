@@ -3,7 +3,7 @@
 #include <femx/state/LinearStateSolver.hpp>
 
 using namespace std;
-using namespace femx::problem;
+using namespace femx::state;
 using namespace femx::linalg;
 
 namespace femx

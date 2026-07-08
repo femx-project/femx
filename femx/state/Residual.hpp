@@ -2,11 +2,11 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/Linearization.hpp>
+#include <femx/state/Linearization.hpp>
 
 namespace femx
 {
-namespace problem
+namespace state
 {
 
 /**
@@ -48,5 +48,5 @@ public:
                          Linearization&      out) const = 0;
 };
 
-} // namespace problem
+} // namespace state
 } // namespace femx

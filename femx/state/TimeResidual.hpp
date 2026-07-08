@@ -10,7 +10,7 @@
 
 namespace femx
 {
-namespace problem
+namespace state
 {
 
 /**
@@ -348,5 +348,5 @@ inline void TimeLinearization::checkReady() const
   }
 }
 
-} // namespace problem
+} // namespace state
 } // namespace femx

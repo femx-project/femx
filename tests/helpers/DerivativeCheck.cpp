@@ -6,7 +6,8 @@
 
 using namespace std;
 using namespace femx;
-using namespace femx::problem;
+using namespace femx::state;
+using namespace femx::inverse;
 using namespace femx::tests;
 
 namespace femx
@@ -65,7 +66,7 @@ DerivativeCheckResult DerivativeCheck::objectiveParamGrad(
 }
 
 DerivativeCheckResult DerivativeCheck::reducedGrad(
-    state::ReducedFunctional& fn,
+    inverse::ReducedFunctional& fn,
     const Vector<Real>&       prm,
     const Vector<Real>&       dir) const
 {

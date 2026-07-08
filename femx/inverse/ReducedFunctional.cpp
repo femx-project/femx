@@ -1,14 +1,15 @@
 #include <stdexcept>
 
-#include <femx/state/ReducedFunctional.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
 
 using namespace std;
-using namespace femx::problem;
+using namespace femx::state;
+using namespace femx::inverse;
 using namespace femx::linalg;
 
 namespace femx
 {
-namespace state
+namespace inverse
 {
 
 ReducedFunctional::ReducedFunctional(
@@ -109,5 +110,5 @@ void ReducedFunctional::checkSize(const Vector<Real>& value, Index exp)
   }
 }
 
-} // namespace state
+} // namespace inverse
 } // namespace femx

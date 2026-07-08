@@ -4,14 +4,14 @@
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeObjective.hpp>
-#include <femx/problem/TimeResidual.hpp>
+#include <femx/inverse/TimeObjective.hpp>
+#include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace state
+namespace inverse
 {
 
 class TimeReducedProgressMonitor
@@ -37,13 +37,13 @@ public:
 class TimeReducedFunctional final
 {
 public:
-  TimeReducedFunctional(TimeIntegrator&               integrator,
-                        const problem::TimeResidual&  problem,
-                        problem::TimeLinearization&   lin,
+  TimeReducedFunctional(state::TimeIntegrator&        integrator,
+                        const state::TimeResidual&  problem,
+                        state::TimeLinearization&   lin,
                         linalg::AssemblyMatrix&       J_next,
                         linalg::AssemblyMatrix&       J_hist,
                         linalg::LinearSolver&         adj_solver,
-                        const problem::TimeObjective& obj);
+                        const inverse::TimeObjective& obj);
 
   void setMonitor(TimeReducedProgressMonitor* monitor);
   void clearMonitor();
@@ -64,27 +64,27 @@ public:
 
 private:
   void checkDims() const;
-  void solveFwd(const Vector<Real>& prm, TimeTrajectory& tr);
-  void gradAt(const TimeTrajectory& tr,
+  void solveFwd(const Vector<Real>& prm, state::TimeTrajectory& tr);
+  void gradAt(const state::TimeTrajectory& tr,
               const Vector<Real>&   prm,
               Vector<Real>&         out);
 
-  void assemble(problem::TimeContext    ctx,
-                problem::VariableBlock  wrt,
+  void assemble(state::TimeContext    ctx,
+                state::VariableBlock  wrt,
                 linalg::AssemblyMatrix& out);
 
   void        notify(const char* phase, Index step, Index total_steps);
   static void checkSize(const Vector<Real>& value, Index exp);
 
 private:
-  TimeIntegrator&               integrator_;
-  const problem::TimeResidual&  problem_;
-  problem::TimeLinearization&   lin_;
+  state::TimeIntegrator&        integrator_;
+  const state::TimeResidual&  problem_;
+  state::TimeLinearization&   lin_;
   linalg::AssemblyMatrix&       J_next_;
   linalg::AssemblyMatrix&       J_hist_;
   linalg::LinearSolver&         adj_solver_;
-  const problem::TimeObjective& obj_;
-  problem::TimeDims             dims_;
+  const inverse::TimeObjective& obj_;
+  state::TimeDims             dims_;
   TimeReducedProgressMonitor*   progress_monitor_{nullptr};
   InitialStateGradientMap*      init_grad_map_{nullptr};
   Real                          assm_sec_{0.0};
@@ -93,5 +93,5 @@ private:
   Index                         solve_calls_{0};
 };
 
-} // namespace state
+} // namespace inverse
 } // namespace femx

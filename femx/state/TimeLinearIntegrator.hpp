@@ -4,7 +4,7 @@
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeResidual.hpp>
+#include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -22,7 +22,7 @@ namespace state
 class TimeLinearIntegrator final : public TimeIntegrator
 {
 public:
-  TimeLinearIntegrator(const problem::TimeResidual& problem,
+  TimeLinearIntegrator(const state::TimeResidual& problem,
                        linalg::AssemblyMatrix&      J_next,
                        linalg::LinearSolver&        lin_solver);
 
@@ -58,10 +58,10 @@ private:
   void initializeInitialState(Vector<Real>& state) const;
 
 private:
-  const problem::TimeResidual& problem_;
+  const state::TimeResidual& problem_;
   linalg::AssemblyMatrix&      J_next_;
   linalg::LinearSolver&        lin_solver_;
-  problem::TimeDims            dims_;
+  state::TimeDims            dims_;
   Vector<Real>                 init_state_;
   Real                         assm_sec_{0.0};
   Real                         solve_sec_{0.0};

@@ -8,13 +8,13 @@
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/problem/Linearization.hpp>
+#include <femx/state/Linearization.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
 using namespace femx::examples::poisson_opt;
 using namespace femx::linalg;
-using namespace femx::problem;
+using namespace femx::state;
 using namespace femx::runtime;
 using namespace std;
 

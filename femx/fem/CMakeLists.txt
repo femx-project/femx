@@ -38,4 +38,4 @@ target_sources(
          elements/LagrangeTriangleP1.hpp)
 
 target_link_libraries(femx_fem PUBLIC femx_config femx_common femx_linalg
-                                      femx_problem)
+                                      femx_inverse)

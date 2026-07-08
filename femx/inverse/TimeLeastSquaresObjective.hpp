@@ -3,14 +3,14 @@
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeObjective.hpp>
-#include <femx/problem/TimeObservationData.hpp>
-#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/inverse/TimeObjective.hpp>
+#include <femx/inverse/TimeObservationData.hpp>
+#include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 /**
@@ -87,5 +87,5 @@ private:
   Real                           time_offset_{0.0};
 };
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

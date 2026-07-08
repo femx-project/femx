@@ -7,7 +7,7 @@
 #include <femx/fem/DofLayout.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx
 {
@@ -15,13 +15,13 @@ namespace assembly
 {
 
 /**
- * @brief problem::Residual assembled from element-local FEM kernels.
+ * @brief state::Residual assembled from element-local FEM kernels.
  *
  * FEMResidual gathers global state/parameter values to each element, evaluates
  * an ElementKernel, and scatters residual and Jacobian contributions back into
  * global vectors and matrices.
  */
-class FEMResidual final : public problem::Residual
+class FEMResidual final : public state::Residual
 {
 public:
   FEMResidual(DofLayout            res_layout,
@@ -36,7 +36,7 @@ public:
   FEMResidual(DofLayout            state_layout,
               const ElementKernel& ker);
 
-  problem::Dimensions dims() const override;
+  state::Dimensions dims() const override;
 
   void res(const Vector<Real>& state,
            const Vector<Real>& prm,
@@ -44,7 +44,7 @@ public:
 
   void linearize(const Vector<Real>&     state,
                  const Vector<Real>&     prm,
-                 problem::Linearization& out) const override;
+                 state::Linearization& out) const override;
 
 private:
   Index numElems() const;

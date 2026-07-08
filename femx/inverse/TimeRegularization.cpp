@@ -1,13 +1,13 @@
 #include <stdexcept>
 
-#include <femx/problem/TimeRegularization.hpp>
+#include <femx/inverse/TimeRegularization.hpp>
 
 using namespace std;
 using namespace femx::state;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 TimeRegularization::TimeRegularization(Index               num_steps,
@@ -136,5 +136,5 @@ void TimeRegularization::checkParamSize(const Vector<Real>& prm) const
   }
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

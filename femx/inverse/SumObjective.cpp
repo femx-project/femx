@@ -1,12 +1,12 @@
 #include <stdexcept>
 
-#include <femx/problem/SumObjective.hpp>
+#include <femx/inverse/SumObjective.hpp>
 
 using namespace std;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 SumObjective::SumObjective(Index num_states, Index num_params)
@@ -93,5 +93,5 @@ void SumObjective::addInto(const Vector<Real>& input,
   }
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

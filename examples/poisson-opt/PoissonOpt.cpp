@@ -29,20 +29,21 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
-#include <femx/problem/LeastSquaresObjective.hpp>
-#include <femx/problem/Linearization.hpp>
-#include <femx/problem/Objective.hpp>
-#include <femx/problem/Residual.hpp>
-#include <femx/problem/SumObjective.hpp>
+#include <femx/inverse/LeastSquaresObjective.hpp>
+#include <femx/state/Linearization.hpp>
+#include <femx/inverse/Objective.hpp>
+#include <femx/state/Residual.hpp>
+#include <femx/inverse/SumObjective.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/LinearStateSolver.hpp>
-#include <femx/state/ReducedFunctional.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/state/StateSolver.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
 using namespace femx::linalg;
-using namespace femx::problem;
+using namespace femx::state;
+using namespace femx::inverse;
 using namespace std;
 
 #ifndef FEMX_POISSON_OPT_DEFAULT_OUTPUT_DIR
@@ -684,7 +685,7 @@ bool PoissonOptProblem::isControlNode(const Mesh::Node& p) const
 }
 
 Result solve(PoissonOptProblem&      problem,
-             problem::Linearization& lin,
+             state::Linearization& lin,
              linalg::LinearSolver&   fwd_lin_solver,
              linalg::LinearSolver&   adj_lin_solver)
 {
@@ -694,7 +695,7 @@ Result solve(PoissonOptProblem&      problem,
 
   problem.prepareObjective(state_solver);
 
-  state::ReducedFunctional fn(problem.residual(),
+  inverse::ReducedFunctional fn(problem.residual(),
                               problem.objective(),
                               state_solver,
                               lin,

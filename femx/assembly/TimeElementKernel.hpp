@@ -3,7 +3,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeResidual.hpp>
+#include <femx/state/TimeResidual.hpp>
 
 namespace femx
 {
@@ -23,15 +23,15 @@ public:
 
   virtual void res(Index                    step,
                    Index                    ie,
-                   problem::TimeHistoryView hist,
+                   state::TimeHistoryView hist,
                    const Vector<Real>&      nxt,
                    const Vector<Real>&      prm,
                    Vector<Real>&            out) const = 0;
 
   virtual void jacobian(Index                    step,
                         Index                    ie,
-                        problem::VariableBlock   wrt,
-                        problem::TimeHistoryView hist,
+                        state::VariableBlock   wrt,
+                        state::TimeHistoryView hist,
                         const Vector<Real>&      nxt,
                         const Vector<Real>&      prm,
                         DenseMatrix&             out) const = 0;

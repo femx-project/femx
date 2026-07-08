@@ -48,22 +48,22 @@ public:
 
   void res(Index                    step,
            Index                    ie,
-           problem::TimeHistoryView hist,
+           state::TimeHistoryView hist,
            const Vector<Real>&      nxt,
            const Vector<Real>&      prm,
            Vector<Real>&            out) const override;
 
   void jacobian(Index                    step,
                 Index                    ie,
-                problem::VariableBlock   wrt,
-                problem::TimeHistoryView hist,
+                state::VariableBlock   wrt,
+                state::TimeHistoryView hist,
                 const Vector<Real>&      nxt,
                 const Vector<Real>&      prm,
                 DenseMatrix&             out) const override;
 
 private:
   void checkDimensions();
-  void checkInputSizes(problem::TimeHistoryView hist,
+  void checkInputSizes(state::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm) const;
 

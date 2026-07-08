@@ -3,14 +3,14 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/problem/TimeLeastSquaresObjective.hpp>
+#include <femx/inverse/TimeLeastSquaresObjective.hpp>
 
 using namespace std;
 using namespace femx::state;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
@@ -371,5 +371,5 @@ void TimeLeastSquaresObjective::scale(Vector<Real>& out, Real factor)
   }
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

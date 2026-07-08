@@ -2,13 +2,13 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/problem/LeastSquaresObjective.hpp>
+#include <femx/inverse/LeastSquaresObjective.hpp>
 
 using namespace std;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 LeastSquaresObjective::LeastSquaresObjective(Index num_states,
@@ -193,5 +193,5 @@ void LeastSquaresObjective::checkTerm(const Vector<Real>& target,
   }
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

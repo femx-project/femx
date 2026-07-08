@@ -114,7 +114,7 @@ public:
     fill(next, {0.25, -0.5, 1.0, 0.75});
     fill(prm, {0.1, 0.2, -0.3, 0.4});
 
-    problem::TimeContext ctx;
+    state::TimeContext ctx;
     ctx.step = 1;
     ctx.prev = &prev;
     ctx.nxt  = &next;
@@ -140,11 +140,11 @@ public:
     linalg::DenseAssemblyMatrix J_next;
     linalg::DenseAssemblyMatrix J_param;
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::PrevState, J_prev);
+        ctx, state::VariableBlock::PrevState, J_prev);
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::NextState, J_next);
+        ctx, state::VariableBlock::NextState, J_next);
     status *= res.assembleJac(
-        ctx, problem::VariableBlock::Param, J_param);
+        ctx, state::VariableBlock::Param, J_param);
 
     const Real expected_previous = 0.25 * 2.0 * 0.25;
     const Real expected_next     = 0.25 * 2.0 * next_q * 0.25;

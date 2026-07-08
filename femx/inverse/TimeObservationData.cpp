@@ -6,14 +6,14 @@
 #include <string>
 #include <utility>
 
-#include <femx/problem/TimeObservationData.hpp>
+#include <femx/inverse/TimeObservationData.hpp>
 
 using namespace std;
 using namespace femx::state;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 TimeObservationData::TimeObservationData(Index num_levels,
@@ -442,5 +442,5 @@ TimeObservationData readTimeObsData(const string& path)
   return data;
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

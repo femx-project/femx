@@ -6,18 +6,17 @@ target_sources(
   PRIVATE EnsembleBasis.cpp
           LinearStateSolver.cpp
           NewtonStateSolver.cpp
-          ReducedFunctional.cpp
           TimeLinearIntegrator.cpp
-          TimeReducedFunctional.cpp
   PUBLIC EnsembleBasis.hpp
+         Linearization.hpp
          LinearStateSolver.hpp
          NewtonStateSolver.hpp
-         ReducedFunctional.hpp
+         Residual.hpp
          StateSolver.hpp
          TimeLinearIntegrator.hpp
-         TimeReducedFunctional.hpp
+         TimeResidual.hpp
          TimeStateMonitor.hpp
          TimeIntegrator.hpp
          TimeTrajectory.hpp)
 
-target_link_libraries(femx_state PUBLIC femx_problem femx_linalg)
+target_link_libraries(femx_state PUBLIC femx_config femx_common femx_linalg)

@@ -14,12 +14,12 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/LeastSquaresObjective.hpp>
-#include <femx/problem/Objective.hpp>
-#include <femx/problem/Residual.hpp>
-#include <femx/problem/SumObjective.hpp>
+#include <femx/inverse/LeastSquaresObjective.hpp>
+#include <femx/inverse/Objective.hpp>
+#include <femx/state/Residual.hpp>
+#include <femx/inverse/SumObjective.hpp>
 
-namespace femx::problem
+namespace femx::state
 {
 class Linearization;
 }
@@ -101,8 +101,8 @@ public:
 
   const Options&            options() const noexcept;
   const CsrPattern&         statePattern() const;
-  const problem::Residual&  residual() const;
-  const problem::Objective& objective() const;
+  const state::Residual&  residual() const;
+  const inverse::Objective& objective() const;
 
   Index numNodes() const noexcept;
   Index numStates() const noexcept;
@@ -158,21 +158,21 @@ private:
   Vector<Point3> obs_points_;
 
   std::unique_ptr<assembly::ElementKernel> residual_kernel_;
-  std::unique_ptr<problem::Residual>       base_residual_;
-  std::unique_ptr<problem::Residual>       residual_;
+  std::unique_ptr<state::Residual>       base_residual_;
+  std::unique_ptr<state::Residual>       residual_;
 
-  std::unique_ptr<problem::LeastSquaresObjective> tracking_obj_;
-  std::unique_ptr<problem::LeastSquaresObjective> reg_;
-  std::unique_ptr<problem::SumObjective>          obj_;
+  std::unique_ptr<inverse::LeastSquaresObjective> tracking_obj_;
+  std::unique_ptr<inverse::LeastSquaresObjective> reg_;
+  std::unique_ptr<inverse::SumObjective>          obj_;
 
   friend Result solve(PoissonOptProblem&      problem,
-                      problem::Linearization& linearization,
+                      state::Linearization& linearization,
                       linalg::LinearSolver&   fwd_lin_solver,
                       linalg::LinearSolver&   adj_lin_solver);
 };
 
 Result solve(PoissonOptProblem&      problem,
-             problem::Linearization& linearization,
+             state::Linearization& linearization,
              linalg::LinearSolver&   fwd_lin_solver,
              linalg::LinearSolver&   adj_lin_solver);
 

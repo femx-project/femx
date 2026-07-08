@@ -3,7 +3,7 @@
 
 #include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Residual.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
 #include <tests/TestBase.hpp>
 
@@ -14,10 +14,10 @@ namespace tests
 namespace
 {
 
-class QuadraticResidual final : public problem::Residual
+class QuadraticResidual final : public state::Residual
 {
 public:
-  problem::Dimensions dims() const override
+  state::Dimensions dims() const override
   {
     return {1, 1, 1};
   }
@@ -32,10 +32,10 @@ public:
 
   void linearize(const Vector<Real>&     state,
                  const Vector<Real>&     prm,
-                 problem::Linearization& out) const override
+                 state::Linearization& out) const override
   {
     (void) prm;
-    auto* mat_out = dynamic_cast<problem::MatrixLinearization*>(&out);
+    auto* mat_out = dynamic_cast<state::MatrixLinearization*>(&out);
     if (mat_out == nullptr)
     {
       throw std::runtime_error(
@@ -72,7 +72,7 @@ public:
     QuadraticResidual            problem;
     linalg::DenseAssemblyMatrix  J_state;
     linalg::DenseAssemblyMatrix  J_param;
-    problem::MatrixLinearization lin(J_state, J_param);
+    state::MatrixLinearization lin(J_state, J_param);
     linalg::DenseLinearSolver    lin_solver;
     state::NewtonStateSolver     solver(problem, lin, lin_solver);
     solver.opts().residual_tolerance = 1.0e-13;

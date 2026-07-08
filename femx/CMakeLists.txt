@@ -1,12 +1,12 @@
 add_subdirectory(common)
 add_subdirectory(linalg)
 add_subdirectory(ad)
-add_subdirectory(problem)
+add_subdirectory(state)
+add_subdirectory(inverse)
 add_subdirectory(fem)
 if(FEMX_HAS_PETSC)
   add_subdirectory(linalg/petsc)
 endif()
-add_subdirectory(state)
 add_subdirectory(assembly)
 if(FEMX_HAS_PETSC)
   add_subdirectory(opt)
@@ -24,7 +24,7 @@ target_link_libraries(
             femx_fem
             femx_io
             femx_model_ns
-            femx_problem
+            femx_inverse
             femx_runtime
             femx_state)
 

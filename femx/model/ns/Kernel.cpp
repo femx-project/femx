@@ -195,7 +195,7 @@ NavierKernel::NavierKernel(const FESpace&         space,
 
 void NavierKernel::res(Index                    step,
                        Index                    ie,
-                       problem::TimeHistoryView hist,
+                       state::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm,
                        Vector<Real>&            out) const
@@ -244,8 +244,8 @@ void NavierKernel::res(Index                    step,
 
 void NavierKernel::jacobian(Index                    step,
                             Index                    ie,
-                            problem::VariableBlock   wrt,
-                            problem::TimeHistoryView hist,
+                            state::VariableBlock   wrt,
+                            state::TimeHistoryView hist,
                             const Vector<Real>&      nxt,
                             const Vector<Real>&      prm,
                             DenseMatrix&             out) const
@@ -325,7 +325,7 @@ void NavierKernel::checkDimensions()
   }
 }
 
-void NavierKernel::checkInputSizes(problem::TimeHistoryView hist,
+void NavierKernel::checkInputSizes(state::TimeHistoryView hist,
                                    const Vector<Real>&      nxt,
                                    const Vector<Real>&      prm) const
 {

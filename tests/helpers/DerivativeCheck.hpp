@@ -2,10 +2,10 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/Linearization.hpp>
-#include <femx/problem/Objective.hpp>
-#include <femx/problem/Residual.hpp>
-#include <femx/state/ReducedFunctional.hpp>
+#include <femx/state/Linearization.hpp>
+#include <femx/inverse/Objective.hpp>
+#include <femx/state/Residual.hpp>
+#include <femx/inverse/ReducedFunctional.hpp>
 
 namespace femx
 {
@@ -28,45 +28,45 @@ class DerivativeCheck
 public:
   explicit DerivativeCheck(Real step = 1.0e-6);
 
-  DerivativeCheckResult objectiveStateGrad(const problem::Objective& obj,
+  DerivativeCheckResult objectiveStateGrad(const inverse::Objective& obj,
                                            const Vector<Real>&       state,
                                            const Vector<Real>&       prm,
                                            const Vector<Real>&       dir) const;
 
-  DerivativeCheckResult objectiveParamGrad(const problem::Objective& obj,
+  DerivativeCheckResult objectiveParamGrad(const inverse::Objective& obj,
                                            const Vector<Real>&       state,
                                            const Vector<Real>&       prm,
                                            const Vector<Real>&       dir) const;
 
-  DerivativeCheckResult reducedGrad(state::ReducedFunctional& fn,
+  DerivativeCheckResult reducedGrad(inverse::ReducedFunctional& fn,
                                     const Vector<Real>&       prm,
                                     const Vector<Real>&       dir) const;
 
   DerivativeCheckResult residualStateJacobian(
-      const problem::Residual& problem,
-      problem::Linearization&  lin,
+      const state::Residual& problem,
+      state::Linearization&  lin,
       const Vector<Real>&      state,
       const Vector<Real>&      prm,
       const Vector<Real>&      dir) const;
 
   DerivativeCheckResult residualParamJacobian(
-      const problem::Residual& problem,
-      problem::Linearization&  lin,
+      const state::Residual& problem,
+      state::Linearization&  lin,
       const Vector<Real>&      state,
       const Vector<Real>&      prm,
       const Vector<Real>&      dir) const;
 
   DerivativeCheckResult stateJacTranspose(
-      const problem::Residual& problem,
-      problem::Linearization&  lin,
+      const state::Residual& problem,
+      state::Linearization&  lin,
       const Vector<Real>&      state,
       const Vector<Real>&      prm,
       const Vector<Real>&      dir,
       const Vector<Real>&      lambda) const;
 
   DerivativeCheckResult paramJacTranspose(
-      const problem::Residual& problem,
-      problem::Linearization&  lin,
+      const state::Residual& problem,
+      state::Linearization&  lin,
       const Vector<Real>&      state,
       const Vector<Real>&      prm,
       const Vector<Real>&      dir,

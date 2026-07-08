@@ -1,13 +1,13 @@
 #include <stdexcept>
 
-#include <femx/problem/SumTimeObjective.hpp>
+#include <femx/inverse/SumTimeObjective.hpp>
 
 using namespace std;
 using namespace femx::state;
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 SumTimeObjective::SumTimeObjective(Index num_steps,
@@ -107,5 +107,5 @@ void SumTimeObjective::checkSize(const Vector<Real>& value, Index exp)
   }
 }
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

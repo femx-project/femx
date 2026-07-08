@@ -4,7 +4,7 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx
 {
@@ -18,17 +18,17 @@ namespace assembly
  * values or parameter-controlled values, and updates the state/parameter
  * Jacobians consistently.
  */
-class DirichletControlResidual final : public problem::Residual
+class DirichletControlResidual final : public state::Residual
 {
 public:
-  DirichletControlResidual(const problem::Residual& base,
+  DirichletControlResidual(const state::Residual& base,
                            DirichletControl         ctr,
                            Vector<Index>            fdofs            = {},
                            Index                    ctr_param_offset = 0,
                            Index                    num_params       = -1,
                            Vector<Real>             fvals            = {});
 
-  problem::Dimensions dims() const override;
+  state::Dimensions dims() const override;
 
   const DirichletControl& control() const;
 
@@ -38,7 +38,7 @@ public:
 
   void linearize(const Vector<Real>&     state,
                  const Vector<Real>&     prm,
-                 problem::Linearization& out) const override;
+                 state::Linearization& out) const override;
 
 private:
   void checkVectorSizes(const Vector<Real>& state,
@@ -53,13 +53,13 @@ private:
   Vector<Index> constrainedRows() const;
 
 private:
-  const problem::Residual& base_;
+  const state::Residual& base_;
   DirichletControl         ctr_;
   Vector<Index>            fdofs_;
   Vector<Real>             fvals_;
   Vector<Real>             base_prm_;
-  problem::Dimensions      base_dims_;
-  problem::Dimensions      dims_;
+  state::Dimensions      base_dims_;
+  state::Dimensions      dims_;
   Index                    ctr_param_offset_{0};
 };
 

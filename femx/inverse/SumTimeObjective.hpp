@@ -2,12 +2,12 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeObjective.hpp>
+#include <femx/inverse/TimeObjective.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 /**
@@ -50,5 +50,5 @@ private:
   Vector<const TimeObjective*> terms_;
 };
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

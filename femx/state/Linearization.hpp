@@ -5,7 +5,7 @@
 
 namespace femx
 {
-namespace problem
+namespace state
 {
 
 /**
@@ -67,5 +67,5 @@ private:
   linalg::AssemblyMatrix& J_param_;
 };
 
-} // namespace problem
+} // namespace state
 } // namespace femx

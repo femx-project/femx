@@ -3,8 +3,8 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/problem/Linearization.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Linearization.hpp>
+#include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx
@@ -21,8 +21,8 @@ namespace state
 class LinearStateSolver final : public StateSolver
 {
 public:
-  LinearStateSolver(const problem::Residual& problem,
-                    problem::Linearization&  lin,
+  LinearStateSolver(const state::Residual& problem,
+                    state::Linearization&  lin,
                     linalg::LinearSolver&    lin_solver);
 
   Index numStates() const override;
@@ -32,10 +32,10 @@ public:
   void solve(const Vector<Real>& prm, Vector<Real>& state) override;
 
 private:
-  const problem::Residual& problem_;
-  problem::Linearization&  linearization_;
+  const state::Residual& problem_;
+  state::Linearization&  linearization_;
   linalg::LinearSolver&    lin_solver_;
-  problem::Dimensions      dims_;
+  state::Dimensions      dims_;
 };
 
 } // namespace state

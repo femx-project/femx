@@ -2,11 +2,11 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/Objective.hpp>
+#include <femx/inverse/Objective.hpp>
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 /**
@@ -47,5 +47,5 @@ private:
   Vector<const Objective*> terms_;
 };
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

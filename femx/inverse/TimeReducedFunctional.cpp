@@ -7,15 +7,16 @@
 #include <string>
 
 #include <femx/linalg/BlockVectorView.hpp>
-#include <femx/state/TimeReducedFunctional.hpp>
+#include <femx/inverse/TimeReducedFunctional.hpp>
 
 using namespace std;
-using namespace femx::problem;
+using namespace femx::state;
+using namespace femx::inverse;
 using namespace femx::linalg;
 
 namespace femx
 {
-namespace state
+namespace inverse
 {
 
 namespace
@@ -407,5 +408,5 @@ void TimeReducedFunctional::checkSize(const Vector<Real>& value,
   }
 }
 
-} // namespace state
+} // namespace inverse
 } // namespace femx

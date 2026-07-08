@@ -2,12 +2,12 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeObjective.hpp>
+#include <femx/inverse/TimeObjective.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 class TimeRegularization final : public TimeObjective
@@ -52,5 +52,5 @@ private:
   Vector<Real> reference_;
 };
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx

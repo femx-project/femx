@@ -3,7 +3,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/Residual.hpp>
+#include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx
@@ -19,7 +19,7 @@ struct NewtonStateOptions
 };
 
 /**
- * @brief State solver using Newton iterations over problem::Residual.
+ * @brief State solver using Newton iterations over state::Residual.
  *
  * NewtonStateSolver linearizes at the current state, solves Newton
  * corrections, and stops according to NewtonStateOptions.
@@ -27,8 +27,8 @@ struct NewtonStateOptions
 class NewtonStateSolver final : public StateSolver
 {
 public:
-  NewtonStateSolver(const problem::Residual& problem,
-                    problem::Linearization&  lin,
+  NewtonStateSolver(const state::Residual& problem,
+                    state::Linearization&  lin,
                     linalg::LinearSolver&    lin_solver);
 
   NewtonStateOptions& opts();
@@ -51,10 +51,10 @@ private:
   void initializeState(Vector<Real>& state) const;
 
 private:
-  const problem::Residual& problem_;
-  problem::Linearization&  linearization_;
+  const state::Residual& problem_;
+  state::Linearization&  linearization_;
   linalg::LinearSolver&    lin_solver_;
-  problem::Dimensions      dims_;
+  state::Dimensions      dims_;
   NewtonStateOptions       opts_;
   Vector<Real>             init_state_;
   bool                     has_init_state_{false};

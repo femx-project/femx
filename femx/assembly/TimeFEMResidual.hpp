@@ -9,7 +9,7 @@
 #include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
-#include <femx/problem/TimeResidual.hpp>
+#include <femx/state/TimeResidual.hpp>
 
 namespace femx
 {
@@ -17,12 +17,12 @@ namespace assembly
 {
 
 /**
- * @brief problem::TimeResidual assembled from elem-local FEM time kernels.
+ * @brief state::TimeResidual assembled from elem-local FEM time kernels.
  *
  * TimeFEMResidual gathers local state histories, calls element kernels, and
  * scatters residual or Jacobian contributions into global objects.
  */
-class TimeFEMResidual final : public problem::TimeResidual
+class TimeFEMResidual final : public state::TimeResidual
 {
 public:
   TimeFEMResidual(Index                    num_steps,
@@ -58,23 +58,23 @@ public:
 
   void setElemRange(Index begin, Index end);
 
-  problem::TimeDims dims() const override;
+  state::TimeDims dims() const override;
 
-  void res(const problem::TimeContext& ctx,
+  void res(const state::TimeContext& ctx,
            Vector<Real>&               out) const override;
 
-  void applyJac(const problem::TimeContext& ctx,
-                problem::VariableBlock      wrt,
+  void applyJac(const state::TimeContext& ctx,
+                state::VariableBlock      wrt,
                 const Vector<Real>&         dir,
                 Vector<Real>&               out) const override;
 
-  void applyJacT(const problem::TimeContext& ctx,
-                 problem::VariableBlock      wrt,
+  void applyJacT(const state::TimeContext& ctx,
+                 state::VariableBlock      wrt,
                  const Vector<Real>&         adj,
                  Vector<Real>&               out) const override;
 
-  bool assembleJac(const problem::TimeContext& ctx,
-                   problem::VariableBlock      wrt,
+  bool assembleJac(const state::TimeContext& ctx,
+                   state::VariableBlock      wrt,
                    linalg::MatrixBuilder&      out) const override;
 
 private:
@@ -82,15 +82,15 @@ private:
   Index numParams() const;
   Index numHistoryStates() const;
 
-  const DofLayout* layoutFor(problem::VariableBlock wrt) const;
+  const DofLayout* layoutFor(state::VariableBlock wrt) const;
 
   void checkLayouts() const;
-  void checkContext(const problem::TimeContext& ctx) const;
+  void checkContext(const state::TimeContext& ctx) const;
   void checkVector(const Vector<Real>* value, Index size) const;
-  void checkDirection(problem::VariableBlock wrt,
+  void checkDirection(state::VariableBlock wrt,
                       const Vector<Real>&    dir) const;
 
-  void gatherHistory(const problem::TimeContext& ctx,
+  void gatherHistory(const state::TimeContext& ctx,
                      Index                       ie,
                      Vector<Real>&               local) const;
 

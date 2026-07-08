@@ -3,14 +3,14 @@
 #include <femx/common/Math.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/problem/TimeObservationOperator.hpp>
+#include <femx/inverse/TimeObservationOperator.hpp>
 
 namespace femx
 {
 namespace fem
 {
 
-using problem::TimeObservationOperator;
+using inverse::TimeObservationOperator;
 
 /**
  * @brief Interpolates field components at physical points on each time level.

@@ -117,7 +117,7 @@ public:
 
   void res(Index                    step,
            Index                    ie,
-           problem::TimeHistoryView hist,
+           state::TimeHistoryView hist,
            const Vector<Real>&      nxt,
            const Vector<Real>&      prm,
            Vector<Real>&            out) const override
@@ -148,8 +148,8 @@ public:
 
   void jacobian(Index                    step,
                 Index                    ie,
-                problem::VariableBlock   wrt,
-                problem::TimeHistoryView hist,
+                state::VariableBlock   wrt,
+                state::TimeHistoryView hist,
                 const Vector<Real>&      nxt,
                 const Vector<Real>&      prm,
                 DenseMatrix&             out) const override
@@ -173,7 +173,7 @@ private:
   void historyStateJac(Index                    step,
                        Index                    ie,
                        Index                    lag,
-                       problem::TimeHistoryView hist,
+                       state::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm,
                        DenseMatrix&             out) const
@@ -260,7 +260,7 @@ private:
 
   void nextStateJac(Index                    step,
                     Index                    ie,
-                    problem::TimeHistoryView hist,
+                    state::TimeHistoryView hist,
                     const Vector<Real>&      nxt,
                     const Vector<Real>&      prm,
                     DenseMatrix&             out) const
@@ -340,7 +340,7 @@ private:
 
   void paramJac(Index                    step,
                 Index                    ie,
-                problem::TimeHistoryView hist,
+                state::TimeHistoryView hist,
                 const Vector<Real>&      nxt,
                 const Vector<Real>&      prm,
                 DenseMatrix&             out) const
@@ -418,7 +418,7 @@ private:
 #endif
   }
 
-  void checkInputSizes(problem::TimeHistoryView hist,
+  void checkInputSizes(state::TimeHistoryView hist,
                        const Vector<Real>&      nxt,
                        const Vector<Real>&      prm) const
   {

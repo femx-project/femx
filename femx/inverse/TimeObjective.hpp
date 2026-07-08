@@ -6,7 +6,7 @@
 
 namespace femx
 {
-namespace problem
+namespace inverse
 {
 
 /**
@@ -37,5 +37,5 @@ public:
                          Vector<Real>&                out) const = 0;
 };
 
-} // namespace problem
+} // namespace inverse
 } // namespace femx
