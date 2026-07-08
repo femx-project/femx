@@ -11,10 +11,10 @@ class DofMap
 public:
   DofMap() = default;
   /** @brief Create a id map with storage for all elem dofs. */
-  DofMap(Index ne, Index ndpe);
+  DofMap(Index num_elems, Index num_dofs_per_elem);
 
   /** @brief Allocate and reset the elem-to-global-id table. */
-  void allocate(Index ne, Index ndpe);
+  void allocate(Index num_elems, Index num_dofs_per_elem);
 
   // Accessors
   Index numElements() const noexcept;
@@ -33,8 +33,8 @@ private:
   /** @brief Return the flat storage offset for an elem-local id pair. */
   Index offset(Index ie, Index il) const noexcept;
 
-  Index         ne_   = 0;
-  Index         ndpe_ = 0;
+  Index         num_elems_   = 0;
+  Index         num_dofs_per_elem_ = 0;
   Vector<Index> elem_dofs_;
 };
 

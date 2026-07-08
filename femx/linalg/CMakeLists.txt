@@ -9,10 +9,10 @@ target_sources(
          CsrPattern.hpp
          DenseMatrix.hpp
          MatrixView.hpp
-         operator/LinearOperator.hpp
-         operator/LinearSolver.hpp
-         operator/MatrixBuilder.hpp
-         operator/MatrixOperator.hpp
+         LinearOperator.hpp
+         LinearSolver.hpp
+         MatrixBuilder.hpp
+         AssemblyMatrix.hpp
          Vector.hpp
          VectorView.hpp)
 

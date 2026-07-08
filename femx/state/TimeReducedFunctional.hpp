@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
-#include <femx/linalg/operator/MatrixOperator.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeObjective.hpp>
 #include <femx/problem/TimeResidual.hpp>
@@ -40,8 +40,8 @@ public:
   TimeReducedFunctional(TimeIntegrator&               integrator,
                         const problem::TimeResidual&  problem,
                         problem::TimeLinearization&   lin,
-                        linalg::MatrixOperator&       J_next,
-                        linalg::MatrixOperator&       J_hist,
+                        linalg::AssemblyMatrix&       J_next,
+                        linalg::AssemblyMatrix&       J_hist,
                         linalg::LinearSolver&         adj_solver,
                         const problem::TimeObjective& obj);
 
@@ -71,7 +71,7 @@ private:
 
   void assemble(problem::TimeContext    ctx,
                 problem::VariableBlock  wrt,
-                linalg::MatrixOperator& out);
+                linalg::AssemblyMatrix& out);
 
   void        notify(const char* phase, Index step, Index total_steps);
   static void checkSize(const Vector<Real>& value, Index exp);
@@ -80,8 +80,8 @@ private:
   TimeIntegrator&               integrator_;
   const problem::TimeResidual&  problem_;
   problem::TimeLinearization&   lin_;
-  linalg::MatrixOperator&       J_next_;
-  linalg::MatrixOperator&       J_hist_;
+  linalg::AssemblyMatrix&       J_next_;
+  linalg::AssemblyMatrix&       J_hist_;
   linalg::LinearSolver&         adj_solver_;
   const problem::TimeObjective& obj_;
   problem::TimeDims             dims_;

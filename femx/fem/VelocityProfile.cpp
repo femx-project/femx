@@ -13,8 +13,6 @@ namespace femx::fem
 namespace
 {
 
-constexpr Real kPi = 3.141592653589793238462643383279502884;
-
 void requireValidComponent(Index comp)
 {
   if (comp < 0 || comp >= 3)
@@ -232,7 +230,7 @@ Real sinePulseFactor(Real time, Real amplitude, Real per)
   {
     throw runtime_error("Sine pulse period must be positive");
   }
-  return 1.0 + amplitude * sin(2.0 * kPi * time / per);
+  return 1.0 + amplitude * sin(2.0 * constants::PI * time / per);
 }
 
 } // namespace femx::fem

@@ -125,40 +125,4 @@ Real radialSq(const Point3& point, const Point3& origin, const Point3& axis)
   return radial > 0.0 ? radial : 0.0;
 }
 
-bool contains(const Vector<Index>& vals, Index target)
-{
-  for (Index value : vals)
-  {
-    if (value == target)
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
-void appendUnique(Vector<Index>& out, const Vector<Index>& vals)
-{
-  for (Index value : vals)
-  {
-    if (!contains(out, value))
-    {
-      out.push_back(value);
-    }
-  }
-}
-
-void appendUniqueExcept(Vector<Index>&       out,
-                        const Vector<Index>& vals,
-                        const Vector<Index>& skip)
-{
-  for (Index value : vals)
-  {
-    if (!contains(skip, value) && !contains(out, value))
-    {
-      out.push_back(value);
-    }
-  }
-}
-
 } // namespace femx

@@ -10,7 +10,12 @@ namespace femx
 namespace linalg
 {
 
-/** @brief PETSc-backed mutable vector assembly target. */
+/**
+ * @brief PETSc-backed mutable vector assembly target.
+ *
+ * PETScVector owns a PETSc Vec and provides assembly, ownership, and copy
+ * helpers used by PETSc matrix assembly and solvers.
+ */
 class PETScVector final
 {
 public:

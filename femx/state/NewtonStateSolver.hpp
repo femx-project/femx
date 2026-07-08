@@ -1,7 +1,7 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
@@ -18,7 +18,12 @@ struct NewtonStateOptions
   Real  step_tolerance     = 0.0;
 };
 
-/** @brief State solver using Newton iterations over problem::Residual. */
+/**
+ * @brief State solver using Newton iterations over problem::Residual.
+ *
+ * NewtonStateSolver linearizes at the current state, solves Newton
+ * corrections, and stops according to NewtonStateOptions.
+ */
 class NewtonStateSolver final : public StateSolver
 {
 public:
@@ -44,8 +49,6 @@ public:
 
 private:
   void initializeState(Vector<Real>& state) const;
-
-  static Real squaredNorm(const Vector<Real>& x);
 
 private:
   const problem::Residual& problem_;

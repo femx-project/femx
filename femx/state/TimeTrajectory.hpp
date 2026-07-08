@@ -11,29 +11,34 @@ namespace femx
 namespace state
 {
 
-/** @brief State values on all time levels of a time-marching solve. */
+/**
+ * @brief State values on all time levels of a time-marching solve.
+ *
+ * TimeTrajectory stores contiguous state blocks so each time level can be
+ * accessed as a VectorView.
+ */
 class TimeTrajectory
 {
 public:
   TimeTrajectory() = default;
 
-  TimeTrajectory(Index nt,
-                 Index nst)
+  TimeTrajectory(Index num_steps,
+                 Index num_states)
   {
-    resize(nt, nst);
+    resize(num_steps, num_states);
   }
 
-  void resize(Index nt,
-              Index nst)
+  void resize(Index num_steps,
+              Index num_states)
   {
-    if (nt < 0 || nst < 0)
+    if (num_steps < 0 || num_states < 0)
     {
       throw std::runtime_error("TimeTrajectory received invalid dimensions");
     }
 
-    nt_  = nt;
-    nst_ = nst;
-    data_.resize((nt_ + 1) * nst_);
+    num_steps_  = num_steps;
+    num_states_ = num_states;
+    data_.resize((num_steps_ + 1) * num_states_);
   }
 
   bool empty() const
@@ -43,12 +48,12 @@ public:
 
   Index numSteps() const
   {
-    return empty() ? 0 : nt_;
+    return empty() ? 0 : num_steps_;
   }
 
   Index numTimeLevels() const
   {
-    return empty() ? 0 : nt_ + 1;
+    return empty() ? 0 : num_steps_ + 1;
   }
 
   Index numLevels() const
@@ -58,19 +63,19 @@ public:
 
   Index numStates() const
   {
-    return empty() ? 0 : nst_;
+    return empty() ? 0 : num_states_;
   }
 
   VectorView<Real> operator[](Index level)
   {
     checkLevel(level);
-    return VectorView<Real>(data_.data() + level * nst_, nst_);
+    return VectorView<Real>(data_.data() + level * num_states_, num_states_);
   }
 
   VectorView<const Real> operator[](Index level) const
   {
     checkLevel(level);
-    return VectorView<const Real>(data_.data() + level * nst_, nst_);
+    return VectorView<const Real>(data_.data() + level * num_states_, num_states_);
   }
 
   void setZero()
@@ -89,8 +94,8 @@ private:
 
 private:
   Vector<Real> data_;
-  Index        nt_{0};
-  Index        nst_{0};
+  Index        num_steps_{0};
+  Index        num_states_{0};
 };
 
 } // namespace state

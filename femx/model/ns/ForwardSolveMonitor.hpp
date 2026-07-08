@@ -74,6 +74,8 @@ private:
   bool fieldOutputEnabled() const;
   bool diagnosticsEnabled() const;
   bool detailedLogEnabled() const;
+  bool shouldWriteDetailedLog(Index step,
+                              Index total) const;
 
   void writeFieldOutput(Index               level,
                         const Vector<Real>& state,
@@ -95,7 +97,7 @@ private:
 private:
   const MixedFESpace*            space_{nullptr};
   Real                           dt_{0.0};
-  Index                          nt_{0};
+  Index                          num_steps_{0};
   ForwardSolveResult             result_;
   ForwardConvergenceParams       conv_;
   std::unique_ptr<FieldOutput>   field_out_;

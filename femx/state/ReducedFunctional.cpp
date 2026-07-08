@@ -29,7 +29,7 @@ ReducedFunctional::ReducedFunctional(
 
 Index ReducedFunctional::numParams() const
 {
-  return dims_.nprm;
+  return dims_.num_params;
 }
 
 Real ReducedFunctional::value(const Vector<Real>& prm)
@@ -59,12 +59,12 @@ Real ReducedFunctional::valueGrad(const Vector<Real>& prm,
 
 void ReducedFunctional::checkDims() const
 {
-  if (dims_.nst != state_solver_.numStates()
-      || dims_.nprm != state_solver_.numParams()
-      || dims_.nres != state_solver_.numResiduals()
-      || dims_.nst != obj_.numStates()
-      || dims_.nprm != obj_.numParams()
-      || dims_.nres != dims_.nst)
+  if (dims_.num_states != state_solver_.numStates()
+      || dims_.num_params != state_solver_.numParams()
+      || dims_.num_residuals != state_solver_.numResiduals()
+      || dims_.num_states != obj_.numStates()
+      || dims_.num_params != obj_.numParams()
+      || dims_.num_residuals != dims_.num_states)
   {
     throw runtime_error(
         "ReducedFunctional received inconsistent dimensions");
@@ -77,13 +77,13 @@ void ReducedFunctional::gradAt(const Vector<Real>& state,
 {
   Vector<Real> state_grad;
   obj_.stateGrad(state, prm, state_grad);
-  checkSize(state_grad, dims_.nst);
+  checkSize(state_grad, dims_.num_states);
 
   problem_.linearize(state, prm, lin_);
 
   Vector<Real> adj;
   adj_lin_solver_.solveT(lin_.stateJac(), state_grad, adj);
-  checkSize(adj, dims_.nres);
+  checkSize(adj, dims_.num_residuals);
 
   Vector<Real> param_grad;
   obj_.paramGrad(state, prm, param_grad);

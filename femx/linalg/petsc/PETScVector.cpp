@@ -82,11 +82,11 @@ void PETScVector::resize(Index size)
   size_                 = size;
   PetscMPIInt comm_size = 1;
   checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
-  const PetscInt nloc =
+  const PetscInt num_local_dofs =
       comm_size == 1 ? static_cast<PetscInt>(size_) : PETSC_DECIDE;
 
   check(VecCreate(comm_, &vec_), "VecCreate");
-  check(VecSetSizes(vec_, nloc, static_cast<PetscInt>(size_)),
+  check(VecSetSizes(vec_, num_local_dofs, static_cast<PetscInt>(size_)),
         "VecSetSizes");
   check(VecSetFromOptions(vec_), "VecSetFromOptions");
   setZero();

@@ -104,10 +104,7 @@ Real catmullRom(Real y0,
 {
   const Real a2 = a * a;
   const Real a3 = a2 * a;
-  return 0.5
-         * ((2.0 * y1) + (-y0 + y2) * a
-            + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2
-            + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
+  return 0.5 * ((2.0 * y1) + (-y0 + y2) * a + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2 + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
 }
 
 Real sampleVelocityCubic(const VelocityParams& velocity,

@@ -49,18 +49,18 @@ void splitFields(const Vector<Real>& x,
   const Mesh& mesh  = space.mesh();
   const auto  u_dof = space.field(0);
   const auto  p_dof = space.field(1);
-  const Index nc    = u_dof.numComponents();
+  const Index num_components    = u_dof.numComponents();
 
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     ux[in] = x[u_dof.globalDof(in, 0)];
     uy[in] = 0.0;
     uz[in] = 0.0;
-    if (nc > 1)
+    if (num_components > 1)
     {
       uy[in] = x[u_dof.globalDof(in, 1)];
     }
-    if (nc > 2)
+    if (num_components > 2)
     {
       uz[in] = x[u_dof.globalDof(in, 2)];
     }
@@ -132,7 +132,7 @@ ForwardSolveMonitor::ForwardSolveMonitor(const MixedFESpace& space,
                                          Index               steps)
   : space_(&space),
     dt_(dt),
-    nt_(steps)
+    num_steps_(steps)
 {
 }
 
@@ -217,9 +217,9 @@ void ForwardSolveMonitor::start(Index num_steps,
 {
   (void) num_states;
 
-  if (nt_ <= 0)
+  if (num_steps_ <= 0)
   {
-    nt_ = num_steps;
+    num_steps_ = num_steps;
   }
   result_            = ForwardSolveResult{};
   result_.vel_change = numeric_limits<Real>::quiet_NaN();
@@ -255,7 +255,7 @@ void ForwardSolveMonitor::observe(Index               level,
     result_.final_time  = static_cast<Real>(level) * dt_;
     result_.final_state = state;
     if (fieldOutputEnabled()
-        && shouldWriteForwardOutput(level, nt_, field_interval_))
+        && shouldWriteForwardOutput(level, num_steps_, field_interval_))
     {
       writeFieldOutput(level, state, result_.final_time);
     }
@@ -265,29 +265,23 @@ void ForwardSolveMonitor::observe(Index               level,
                       static_cast<Real>(level) * dt_);
 }
 
-bool ForwardSolveMonitor::observeStep(
-    const state::TimeStepStateContext& ctx)
+bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
 {
   result_.final_step  = ctx.level;
   result_.final_time  = static_cast<Real>(ctx.level) * dt_;
   result_.final_state = ctx.current;
 
-  const bool need_velocity_change =
-      conv_.enabled || show_vel_change_;
+  const bool need_velocity_change = conv_.enabled || show_vel_change_;
   if (need_velocity_change)
   {
-    result_.vel_change =
-        velocityRelativeChange(*space_, ctx.previous, ctx.current);
+    result_.vel_change = velocityRelativeChange(*space_, ctx.previous, ctx.current);
   }
 
-  result_.converged =
-      conv_.enabled
-      && ctx.level >= conv_.min_steps
-      && result_.vel_change
-             < conv_.vel_rel_tol;
+  result_.converged = conv_.enabled
+                      && ctx.level >= conv_.min_steps
+                      && result_.vel_change < conv_.vel_rel_tol;
 
-  if (fieldOutputEnabled()
-      && shouldWriteForwardOutput(ctx.level, nt_, field_interval_))
+  if (fieldOutputEnabled() && shouldWriteForwardOutput(ctx.level, num_steps_, field_interval_))
   {
     writeFieldOutput(ctx.level, ctx.current, result_.final_time);
   }
@@ -295,7 +289,8 @@ bool ForwardSolveMonitor::observeStep(
   writeDiagnosticsRow(ctx.level, ctx.current, result_.final_time);
   writeProgress(ctx.level, ctx.total_steps);
 
-  if (detailedLogEnabled())
+  if (detailedLogEnabled()
+      && shouldWriteDetailedLog(ctx.level, ctx.total_steps))
   {
     const Real max_cfl = maxVelocityCfl(*space_, ctx.previous, dt_);
     if (!isfinite(max_cfl))
@@ -337,6 +332,16 @@ bool ForwardSolveMonitor::diagnosticsEnabled() const
 bool ForwardSolveMonitor::detailedLogEnabled() const
 {
   return log_terminal_ != nullptr || log_out_ != nullptr;
+}
+
+bool ForwardSolveMonitor::shouldWriteDetailedLog(Index step,
+                                                 Index total) const
+{
+  if (fieldOutputEnabled())
+  {
+    return shouldWriteForwardOutput(step, total, field_interval_);
+  }
+  return true;
 }
 
 void ForwardSolveMonitor::writeFieldOutput(Index               level,
@@ -401,9 +406,8 @@ void ForwardSolveMonitor::writeDiagnosticsRow(Index               level,
   }
 
   const auto prec = diag_out_->precision();
-  *diag_out_
-      << setprecision(numeric_limits<Real>::digits10 + 1)
-      << level << ',' << time << ',' << norm(state) << '\n';
+  *diag_out_ << setprecision(numeric_limits<Real>::digits10 + 1)
+             << level << ',' << time << ',' << norm(state) << '\n';
   diag_out_->precision(prec);
 }
 
@@ -462,12 +466,12 @@ Real velocityRelativeChange(const MixedFESpace& space,
   }
 
   const auto  velocity = space.field(0);
-  const Index nodes    = velocity.space().mesh().numNodes();
+  const Index num_nodes    = velocity.space().mesh().numNodes();
   const Index comps    = velocity.numComponents();
 
   Real diff2 = 0.0;
   Real ref2  = 0.0;
-  for (Index in = 0; in < nodes; ++in)
+  for (Index in = 0; in < num_nodes; ++in)
   {
     for (Index d = 0; d < comps; ++d)
     {

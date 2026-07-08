@@ -4,7 +4,6 @@ add_library(femx::fem ALIAS femx_fem)
 target_sources(
   femx_fem
   PRIVATE BoundaryCondition.cpp
-          BoundaryElementValues.cpp
           Element.cpp
           DirichletControl.cpp
           DofLayout.cpp
@@ -18,7 +17,6 @@ target_sources(
           TimePointInterpolator.cpp
           VelocityProfile.cpp
   PUBLIC BoundaryCondition.hpp
-         BoundaryElementValues.hpp
          Element.hpp
          DirichletControl.hpp
          DofLayout.hpp

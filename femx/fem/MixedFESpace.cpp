@@ -63,8 +63,8 @@ void MixedFESpace::setup()
 
   local_offsets_.resize(numFields());
   global_offsets_.resize(numFields());
-  ndpe_ = 0;
-  nd_   = 0;
+  num_dofs_per_elem_ = 0;
+  num_dofs_   = 0;
 
   const Mesh* mesh = &fields_[0].mesh();
   for (Index fid = 0; fid < numFields(); ++fid)
@@ -76,10 +76,10 @@ void MixedFESpace::setup()
     }
 
     field.setup();
-    local_offsets_[fid]   = ndpe_;
-    global_offsets_[fid]  = nd_;
-    ndpe_                += field.numDofsPerElem();
-    nd_                  += field.numDofs();
+    local_offsets_[fid]   = num_dofs_per_elem_;
+    global_offsets_[fid]  = num_dofs_;
+    num_dofs_per_elem_                += field.numDofsPerElem();
+    num_dofs_                  += field.numDofs();
   }
 }
 
@@ -110,18 +110,18 @@ Index MixedFESpace::numElems() const noexcept
 
 Index MixedFESpace::numDofs() const noexcept
 {
-  return nd_;
+  return num_dofs_;
 }
 
 Index MixedFESpace::numDofsPerElem() const noexcept
 {
-  return ndpe_;
+  return num_dofs_per_elem_;
 }
 
 void MixedFESpace::elemDofs(Index          ie,
                             Vector<Index>& dofs) const
 {
-  dofs.resize(ndpe_);
+  dofs.resize(num_dofs_per_elem_);
 
   Index offset = 0;
   for (Index fid = 0; fid < numFields(); ++fid)

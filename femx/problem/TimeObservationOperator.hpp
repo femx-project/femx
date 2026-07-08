@@ -8,7 +8,12 @@ namespace femx
 namespace problem
 {
 
-/** @brief Observation map y_l = H_l(u_l, m) for time objectives. */
+/**
+ * @brief Observation map y_l = H_l(u_l, m) for time objectives.
+ *
+ * Implementations evaluate observations and provide Jacobian and
+ * transpose-Jacobian products with respect to state and parameter variables.
+ */
 class TimeObservationOperator
 {
 public:

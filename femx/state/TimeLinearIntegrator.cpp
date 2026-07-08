@@ -23,20 +23,6 @@ Real elapsedSeconds(const Clock::time_point& begin)
   return chrono::duration<Real>(Clock::now() - begin).count();
 }
 
-void copyHistoryState(const Vector<Real>& hist,
-                      Index               nst,
-                      Vector<Real>&       out)
-{
-  if (out.size() != nst)
-  {
-    out.resize(nst);
-  }
-  for (Index i = 0; i < nst; ++i)
-  {
-    out[i] = hist[i];
-  }
-}
-
 void copyStateToView(const Vector<Real>& src,
                      VectorView<Real>    dst)
 {
@@ -67,16 +53,16 @@ void copyView(VectorView<Real> src,
 
 void initializeHistoryWindow(const Vector<Real>& initial,
                              Index               depth,
-                             Index               nst,
+                             Index               num_states,
                              Vector<Real>&       hist)
 {
-  if (depth < 0 || nst < 0 || initial.size() != nst)
+  if (depth < 0 || num_states < 0 || initial.size() != num_states)
   {
     throw runtime_error(
         "TimeLinearIntegrator received invalid history window dimensions");
   }
-  hist.resize(depth * nst);
-  BlockVectorView<Real> hist_view(hist.data(), depth, nst);
+  hist.resize(depth * num_states);
+  BlockVectorView<Real> hist_view(hist.data(), depth, num_states);
   for (Index lag = 0; lag < depth; ++lag)
   {
     copyStateToView(initial, hist_view.block(lag));
@@ -85,16 +71,16 @@ void initializeHistoryWindow(const Vector<Real>& initial,
 
 void advanceHistoryWindow(Vector<Real>&       hist,
                           Index               depth,
-                          Index               nst,
+                          Index               num_states,
                           const Vector<Real>& next)
 {
-  if (depth < 0 || nst < 0 || hist.size() != depth * nst
-      || next.size() != nst)
+  if (depth < 0 || num_states < 0 || hist.size() != depth * num_states
+      || next.size() != num_states)
   {
     throw runtime_error(
         "TimeLinearIntegrator history window size mismatch");
   }
-  BlockVectorView<Real> hist_view(hist.data(), depth, nst);
+  BlockVectorView<Real> hist_view(hist.data(), depth, num_states);
   for (Index lag = depth - 1; lag > 0; --lag)
   {
     copyView(hist_view.block(lag - 1), hist_view.block(lag));
@@ -109,19 +95,19 @@ void advanceHistoryWindow(Vector<Real>&       hist,
 
 TimeLinearIntegrator::TimeLinearIntegrator(
     const TimeResidual& problem,
-    MatrixOperator&     J_next,
+    AssemblyMatrix&     J_next,
     LinearSolver&       lin_solver)
   : problem_(problem),
     J_next_(J_next),
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
-  if (dims_.nres != dims_.nst)
+  if (dims_.num_residuals != dims_.num_states)
   {
     throw runtime_error(
         "TimeLinearIntegrator requires square state residual dimensions");
   }
-  if (dims_.nhst <= 0)
+  if (dims_.num_history_states <= 0)
   {
     throw runtime_error(
         "TimeLinearIntegrator requires at least one history state");
@@ -187,17 +173,17 @@ Index TimeLinearIntegrator::solveCalls() const
 
 Index TimeLinearIntegrator::numSteps() const
 {
-  return dims_.nt;
+  return dims_.num_steps;
 }
 
 Index TimeLinearIntegrator::numStates() const
 {
-  return dims_.nst;
+  return dims_.num_states;
 }
 
 Index TimeLinearIntegrator::numParams() const
 {
-  return dims_.nprm;
+  return dims_.num_params;
 }
 
 void TimeLinearIntegrator::solve(const Vector<Real>& prm,
@@ -236,7 +222,7 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
   observeState(0, init);
 
   Vector<Real> hist;
-  initializeHistoryWindow(init, dims_.nhst, numStates(), hist);
+  initializeHistoryWindow(init, dims_.num_history_states, numStates(), hist);
   for (Index step = 0; step < numSteps(); ++step)
   {
     Vector<Real> cur_state = VectorView<Real>(hist.data(), numStates());
@@ -257,7 +243,7 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
         last_solve_sec_};
 
     const bool stop = observeStep(ctx);
-    advanceHistoryWindow(hist, dims_.nhst, numStates(), x_next);
+    advanceHistoryWindow(hist, dims_.num_history_states, numStates(), x_next);
     if (stop)
     {
       break;
@@ -274,19 +260,15 @@ void TimeLinearIntegrator::solveStep(
   last_assm_sec_  = 0.0;
   last_solve_sec_ = 0.0;
 
-  Vector<Real> prev;
-  copyHistoryState(hist, numStates(), prev);
-
   TimeContext ctx;
   ctx.step = step;
-  ctx.prev = &prev;
   ctx.nxt  = &x_next;
   ctx.prm  = &prm;
-  ctx.hist = TimeHistoryView(hist.data(), dims_.nhst, numStates());
+  ctx.hist = TimeHistoryView(hist.data(), dims_.num_history_states, numStates());
 
   Vector<Real> res;
   problem_.res(ctx, res);
-  if (res.size() != dims_.nres)
+  if (res.size() != dims_.num_residuals)
   {
     throw runtime_error("TimeLinearIntegrator residual size mismatch");
   }

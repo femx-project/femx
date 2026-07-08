@@ -8,9 +8,9 @@ using namespace std;
 namespace femx
 {
 
-CsrMatrix::CsrMatrix(const CsrPattern& pettern)
-  : pattern_(&pettern),
-    vals_(pettern.nnz(), Real{})
+CsrMatrix::CsrMatrix(const CsrPattern& pattern)
+  : pattern_(&pattern),
+    vals_(pattern.nnz(), Real{})
 {
 }
 
@@ -34,7 +34,7 @@ Index CsrMatrix::nnz() const
   return pattern_->nnz();
 }
 
-const CsrPattern& CsrMatrix::pettern() const
+const CsrPattern& CsrMatrix::pattern() const
 {
   return *pattern_;
 }

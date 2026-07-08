@@ -71,6 +71,27 @@ Assembler::Assembler(const MixedFESpace& row_space,
 {
 }
 
+CsrPattern makeCsrPattern(const FESpace& space)
+{
+  return makeCsrPattern(DofLayout(space));
+}
+
+CsrPattern makeCsrPattern(const MixedFESpace& space)
+{
+  return makeCsrPattern(DofLayout(space));
+}
+
+CsrPattern makeCsrPattern(DofLayout layout)
+{
+  return CsrPattern(layout.numDofs(),
+                    layout.numDofs(),
+                    layout.numElems(),
+                    [layout](Index ie, Vector<Index>& dofs)
+                    {
+                      layout.elemDofs(ie, dofs);
+                    });
+}
+
 Index Assembler::numElems() const
 {
   return row_layout_.numElems();

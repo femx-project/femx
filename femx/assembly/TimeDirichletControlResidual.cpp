@@ -6,10 +6,10 @@
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/native/CsrMatrixOperator.hpp>
+#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 
 #if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 #endif
 
 using namespace std;
@@ -24,9 +24,9 @@ namespace assembly
 namespace
 {
 
-void replaceSparseRow(CsrMatrixOperator& mat,
-                      Index                 row,
-                      Real                  diag)
+void replaceSparseRow(CsrAssemblyMatrix& mat,
+                      Index              row,
+                      Real               diag)
 {
   CsrMatrix& sparse = mat.mat();
   if (row < 0 || row >= sparse.rows())
@@ -63,7 +63,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
     DirichletControl            ctr,
     Vector<Index>               fdofs,
     Index                       ctr_param_offset,
-    Index                       nprm,
+    Index                       num_params,
     Vector<Real>                fvals,
     Vector<LinearInterpolation> ctr_time_stencils)
   : base_(base),
@@ -74,12 +74,12 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
     dims_(base_dims_),
     ctr_param_offset_(ctr_param_offset)
 {
-  if (base_dims_.nres != base_dims_.nst)
+  if (base_dims_.num_residuals != base_dims_.num_states)
   {
     throw runtime_error(
         "TimeDirichletControlResidual requires square state residuals");
   }
-  if (base_dims_.nprm != 0)
+  if (base_dims_.num_params != 0)
   {
     throw runtime_error(
         "TimeDirichletControlResidual requires a parameter-free base residual");
@@ -92,16 +92,16 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
   initializeControlTimeStencils(std::move(ctr_time_stencils));
 
   const Index required_ctr_params = ctr_param_levels_ * ctr_.numDofs();
-  dims_.nprm =
-      nprm < 0
+  dims_.num_params =
+      num_params < 0
           ? ctr_param_offset_ + required_ctr_params
-          : nprm;
-  if (dims_.nprm < ctr_param_offset_ + required_ctr_params)
+          : num_params;
+  if (dims_.num_params < ctr_param_offset_ + required_ctr_params)
   {
     throw runtime_error(
         "TimeDirichletControlResidual parameter count is too small");
   }
-  base_prm_.resize(base_dims_.nprm);
+  base_prm_.resize(base_dims_.num_params);
 
   if (fvals_.empty())
   {
@@ -109,7 +109,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
   }
   else if (fvals_.size() != fdofs_.size()
            && fvals_.size()
-                  != base_dims_.nt * fdofs_.size())
+                  != base_dims_.num_steps * fdofs_.size())
   {
     throw runtime_error(
         "TimeDirichletControlResidual fixed value size mismatch");
@@ -117,7 +117,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
 
   for (Index id : ctr_.stateDofs())
   {
-    if (id < 0 || id >= base_dims_.nst)
+    if (id < 0 || id >= base_dims_.num_states)
     {
       throw runtime_error(
           "TimeDirichletControlResidual control id is out of range");
@@ -125,7 +125,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
   }
   for (Index id : fdofs_)
   {
-    if (id < 0 || id >= base_dims_.nst)
+    if (id < 0 || id >= base_dims_.num_states)
     {
       throw runtime_error(
           "TimeDirichletControlResidual fixed id is out of range");
@@ -148,22 +148,22 @@ TimeDims TimeDirichletControlResidual::dims() const
 
 Index TimeDirichletControlResidual::numSteps() const
 {
-  return dims_.nt;
+  return dims_.num_steps;
 }
 
 Index TimeDirichletControlResidual::numStates() const
 {
-  return dims_.nst;
+  return dims_.num_states;
 }
 
 Index TimeDirichletControlResidual::numParams() const
 {
-  return dims_.nprm;
+  return dims_.num_params;
 }
 
 Index TimeDirichletControlResidual::numRes() const
 {
-  return dims_.nres;
+  return dims_.num_residuals;
 }
 
 void TimeDirichletControlResidual::res(
@@ -175,7 +175,7 @@ void TimeDirichletControlResidual::res(
   TimeContext base_ctx = ctx;
   base_ctx.prm         = &base_prm_;
   base_.res(base_ctx, out);
-  if (out.size() != dims_.nres)
+  if (out.size() != dims_.num_residuals)
   {
     throw runtime_error(
         "TimeDirichletControlResidual base residual size mismatch");
@@ -209,7 +209,7 @@ void TimeDirichletControlResidual::applyJac(
   TimeContext base_ctx = ctx;
   base_ctx.prm         = &base_prm_;
   base_.applyJac(base_ctx, wrt, dir, out);
-  if (out.size() != dims_.nres)
+  if (out.size() != dims_.num_residuals)
   {
     throw runtime_error(
         "TimeDirichletControlResidual Jacobian apply size mismatch");
@@ -247,7 +247,7 @@ bool TimeDirichletControlResidual::assembleJac(
   checkContext(ctx);
   if (wrt.isParam())
   {
-    out.resize(dims_.nres, dims_.nprm);
+    out.resize(dims_.num_residuals, dims_.num_params);
     out.setZero();
     const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
     for (Index i = 0; i < ctr_.numDofs(); ++i)
@@ -295,20 +295,20 @@ const DirichletControl& TimeDirichletControlResidual::control() const
 void TimeDirichletControlResidual::checkContext(
     const TimeContext& ctx) const
 {
-  if (ctx.step < 0 || ctx.step >= dims_.nt)
+  if (ctx.step < 0 || ctx.step >= dims_.num_steps)
   {
     throw runtime_error(
         "TimeDirichletControlResidual step is out of range");
   }
-  const TimeHistoryView hist = ctx.historyView();
-  if (hist.count() < dims_.nhst
-      || hist.stateSize() != dims_.nst)
+  const TimeHistoryView hist = ctx.hist;
+  if (hist.count() < dims_.num_history_states
+      || hist.stateSize() != dims_.num_states)
   {
     throw runtime_error(
         "TimeDirichletControlResidual history state size mismatch");
   }
-  checkVector(ctx.nxt, dims_.nst);
-  checkVector(ctx.prm, dims_.nprm);
+  checkVector(ctx.nxt, dims_.num_states);
+  checkVector(ctx.prm, dims_.num_params);
 }
 
 void TimeDirichletControlResidual::checkVector(const Vector<Real>* value,
@@ -325,15 +325,15 @@ void TimeDirichletControlResidual::replaceStateRows(
     MatrixBuilder& out,
     Real           diag) const
 {
-  if (out.numRows() != dims_.nres
-      || out.numCols() != dims_.nst)
+  if (out.numRows() != dims_.num_residuals
+      || out.numCols() != dims_.num_states)
   {
     throw runtime_error(
         "TimeDirichletControlResidual matrix size mismatch");
   }
 
   const Vector<Index> rows = constrainedRows();
-  if (auto* sparse = dynamic_cast<CsrMatrixOperator*>(&out))
+  if (auto* sparse = dynamic_cast<CsrAssemblyMatrix*>(&out))
   {
     for (Index row : rows)
     {
@@ -343,7 +343,7 @@ void TimeDirichletControlResidual::replaceStateRows(
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (auto* petsc = dynamic_cast<PETScMatrix*>(&out))
+  if (auto* petsc = dynamic_cast<PETScAssemblyMatrix*>(&out))
   {
     out.finalize();
     petsc->zeroRows(rows, diag);
@@ -368,22 +368,22 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     MatrixBuilder& J,
     Vector<Real>&  rhs) const
 {
-  if (rhs.size() != dims_.nres)
+  if (rhs.size() != dims_.num_residuals)
   {
     throw runtime_error(
         "TimeDirichletControlResidual RHS size mismatch");
   }
-  if (J.numRows() != dims_.nres || J.numCols() != dims_.nst)
+  if (J.numRows() != dims_.num_residuals || J.numCols() != dims_.num_states)
   {
     throw runtime_error(
         "TimeDirichletControlResidual matrix size mismatch");
   }
 
   const Vector<Index> rows = constrainedRows();
-  Vector<char>        is_constrained(dims_.nst, 0);
+  Vector<char>        is_constrained(dims_.num_states, 0);
   for (Index row : rows)
   {
-    if (row < 0 || row >= dims_.nst)
+    if (row < 0 || row >= dims_.num_states)
     {
       throw runtime_error(
           "TimeDirichletControlResidual constrained row is out of range");
@@ -391,16 +391,16 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     is_constrained[row] = 1;
   }
 
-  auto* sparse = dynamic_cast<CsrMatrixOperator*>(&J);
+  auto* sparse = dynamic_cast<CsrAssemblyMatrix*>(&J);
   if (sparse == nullptr)
   {
     return;
   }
 
-  CsrMatrix& mat  = sparse->mat();
-  const Index*  rp   = mat.rowPtrData();
-  const Index*  ci   = mat.colIndData();
-  Real*         vals = mat.valuesData();
+  CsrMatrix&   mat  = sparse->mat();
+  const Index* rp   = mat.rowPtrData();
+  const Index* ci   = mat.colIndData();
+  Real*        vals = mat.valuesData();
 
   for (Index row = 0; row < mat.rows(); ++row)
   {
@@ -425,12 +425,12 @@ void TimeDirichletControlResidual::applyControlParamJac(
     const Vector<Real>& dir,
     Vector<Real>&       out) const
 {
-  if (dir.size() != dims_.nprm)
+  if (dir.size() != dims_.num_params)
   {
     throw runtime_error(
         "TimeDirichletControlResidual parameter direction size mismatch");
   }
-  resizeOrZero(out, dims_.nres);
+  resizeOrZero(out, dims_.num_residuals);
   const LinearInterpolation&  interp = ctr_time_stencils_[ctx.step];
   BlockVectorView<const Real> params(
       dir.data() + ctr_param_offset_,
@@ -453,12 +453,12 @@ void TimeDirichletControlResidual::applyControlParamJacT(
     const Vector<Real>& adj,
     Vector<Real>&       out) const
 {
-  if (adj.size() != dims_.nres)
+  if (adj.size() != dims_.num_residuals)
   {
     throw runtime_error(
         "TimeDirichletControlResidual adjoint vector size mismatch");
   }
-  resizeOrZero(out, dims_.nprm);
+  resizeOrZero(out, dims_.num_params);
   const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
   BlockVectorView<Real>      params(
       out.data() + ctr_param_offset_,
@@ -480,15 +480,15 @@ void TimeDirichletControlResidual::initializeControlTimeStencils(
 {
   if (ctr_time_stencils.empty())
   {
-    ctr_time_stencils_.resize(base_dims_.nt);
-    for (Index step = 0; step < base_dims_.nt; ++step)
+    ctr_time_stencils_.resize(base_dims_.num_steps);
+    for (Index step = 0; step < base_dims_.num_steps; ++step)
     {
       ctr_time_stencils_[step] = {step, step, 0.0};
     }
-    ctr_param_levels_ = base_dims_.nt;
+    ctr_param_levels_ = base_dims_.num_steps;
     return;
   }
-  if (ctr_time_stencils.size() != base_dims_.nt)
+  if (ctr_time_stencils.size() != base_dims_.num_steps)
   {
     throw runtime_error(
         "TimeDirichletControlResidual control time stencil count mismatch");
@@ -544,7 +544,7 @@ Real TimeDirichletControlResidual::fixedValue(Index step, Index i) const
     return fvals_[i];
   }
   BlockVectorView<const Real> values(
-      fvals_.data(), base_dims_.nt, fdofs_.size());
+      fvals_.data(), base_dims_.num_steps, fdofs_.size());
   return values(step, i);
 }
 

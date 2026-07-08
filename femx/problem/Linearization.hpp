@@ -1,38 +1,53 @@
 #pragma once
 
-#include <femx/linalg/operator/LinearOperator.hpp>
-#include <femx/linalg/operator/MatrixOperator.hpp>
+#include <femx/linalg/AssemblyMatrix.hpp>
+#include <femx/linalg/LinearOperator.hpp>
 
 namespace femx
 {
 namespace problem
 {
 
+/**
+ * @brief Pair of Jacobian operators for a residual linearization.
+ *
+ * Linearization exposes state and parameter Jacobians without prescribing the
+ * concrete matrix or operator implementation.
+ */
 class Linearization
 {
 public:
   virtual ~Linearization() = default;
 
+  /** @brief Jacobian with respect to the state variable. */
   virtual const linalg::LinearOperator& stateJac() const = 0;
+
+  /** @brief Jacobian with respect to the parameter/control variable. */
   virtual const linalg::LinearOperator& paramJac() const = 0;
 };
 
+/**
+ * @brief Linearization backed by mutable assembly matrices.
+ *
+ * MatrixLinearization exposes concrete assembly matrices to residual
+ * implementations while presenting read-only linear operators to solvers.
+ */
 class MatrixLinearization final : public Linearization
 {
 public:
-  MatrixLinearization(linalg::MatrixOperator& J_state,
-                      linalg::MatrixOperator& J_param)
+  MatrixLinearization(linalg::AssemblyMatrix& J_state,
+                      linalg::AssemblyMatrix& J_param)
     : J_state_(J_state),
       J_param_(J_param)
   {
   }
 
-  linalg::MatrixOperator& stateMatrix()
+  linalg::AssemblyMatrix& stateMat()
   {
     return J_state_;
   }
 
-  linalg::MatrixOperator& paramMatrix()
+  linalg::AssemblyMatrix& paramMat()
   {
     return J_param_;
   }
@@ -48,8 +63,8 @@ public:
   }
 
 private:
-  linalg::MatrixOperator& J_state_;
-  linalg::MatrixOperator& J_param_;
+  linalg::AssemblyMatrix& J_state_;
+  linalg::AssemblyMatrix& J_param_;
 };
 
 } // namespace problem

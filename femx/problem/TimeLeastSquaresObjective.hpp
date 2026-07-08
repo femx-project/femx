@@ -13,7 +13,12 @@ namespace femx
 namespace problem
 {
 
-/** @brief Objective 0.5 * sum_l weight_l ||H_l(u_l,m) - data_l||^2. */
+/**
+ * @brief Objective 0.5 * sum_l weight_l ||H_l(u_l,m) - data_l||^2.
+ *
+ * TimeLeastSquaresObjective compares operator predictions against observation
+ * data and accumulates gradients through the observation Jacobians.
+ */
 class TimeLeastSquaresObjective final : public TimeObjective
 {
 public:

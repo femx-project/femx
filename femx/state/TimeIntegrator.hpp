@@ -10,7 +10,12 @@ namespace femx
 namespace state
 {
 
-/** @brief Integrates a parameter-dependent state history in time. */
+/**
+ * @brief Integrates a parameter-dependent state history in time.
+ *
+ * Derived integrators fill a TimeTrajectory and can notify an optional monitor
+ * during the solve.
+ */
 class TimeIntegrator
 {
 public:

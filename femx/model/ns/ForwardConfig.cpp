@@ -722,9 +722,9 @@ Params loadConfig(const string& path)
     {
       prm.solver.solve = solver.at("solve").get<string>();
     }
-    else if (solver.contains("linear_solver"))
+    else if (solver.contains("lin_solver"))
     {
-      prm.solver.solve = solver.at("linear_solver").get<string>();
+      prm.solver.solve = solver.at("lin_solver").get<string>();
     }
     else if (solver.contains("krylov"))
     {

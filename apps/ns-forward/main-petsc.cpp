@@ -7,7 +7,7 @@
 
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
@@ -126,21 +126,14 @@ int run(const Params& prm, bool enable_output)
   PETScVector mat_row(PETSC_COMM_WORLD);
   mat_row.resize(fwd.space.numDofs());
 
-  PETScMatrix A(PETSC_COMM_WORLD);
-  A.resize(fwd.pettern, mat_row);
+  PETScAssemblyMatrix A(PETSC_COMM_WORLD);
+  A.resize(fwd.pattern, mat_row);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  TimeLinearIntegrator integrator(fwd.problem, A, solver);
-  integrator.setInitialState(fwd.x0);
-
-  if (rank == 0)
-  {
-    cout << FEMX_NS_FORWARD_APP_NAME << ": ranks = " << size
-         << ", dofs = " << fwd.space.numDofs()
-         << ", elems = " << fwd.space.mesh().numElems() << '\n';
-  }
+  TimeLinearIntegrator integ(fwd.problem, A, solver);
+  integ.setInitialState(fwd.x0);
 
   ofstream log_out;
   if (rank == 0 && enable_output)
@@ -149,8 +142,8 @@ int run(const Params& prm, bool enable_output)
   }
 
   ForwardSolveResult result;
-  integrator.resetTiming();
-  result = solve(integrator,
+  integ.resetTiming();
+  result = solve(integ,
                  fwd,
                  prm.time,
                  prm.output,

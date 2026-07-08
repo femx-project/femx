@@ -13,7 +13,8 @@ class MixedFieldView;
 class FESpace;
 class CsrMatrix;
 
-/** @brief Stores and applies Dirichlet boundary constraints.
+/** 
+ * @brief Stores and applies Dirichlet boundary constraints.
  *
  * Constraints can be added directly by degree of freedom, by physical boundary
  * tag, or by a user-provided boundary marker.

@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
@@ -16,6 +17,12 @@ namespace femx
 namespace opt
 {
 
+/**
+ * @brief PETSc/TAO algorithm and convergence options.
+ *
+ * TaoOptions holds the solver type and stopping criteria configured before a
+ * TAO solve is launched.
+ */
 struct TaoOptions
 {
   std::string type = TAOLMVM;
@@ -27,6 +34,12 @@ struct TaoOptions
   Index max_its = 100;
 };
 
+/**
+ * @brief Result returned by TaoOptimizer::solve.
+ *
+ * TaoResult stores the final parameter, gradient, objective value, iteration
+ * count, and PETSc convergence reason.
+ */
 struct TaoResult
 {
   Vector<Real>       prm;
@@ -42,12 +55,24 @@ struct TaoResult
   }
 };
 
+/**
+ * @brief Lower and upper bounds for bound-constrained optimization.
+ *
+ * TaoBounds stores one lower and one upper value for each optimization
+ * parameter when bounds are enabled.
+ */
 struct TaoBounds
 {
   Vector<Real> lower;
   Vector<Real> upper;
 };
 
+/**
+ * @brief Per-iteration information passed to TaoProgressMonitor.
+ *
+ * TaoIterationInfo captures the scalar convergence diagnostics and gradient
+ * available at a TAO monitor callback.
+ */
 struct TaoIterationInfo
 {
   Index              its             = 0;
@@ -59,6 +84,12 @@ struct TaoIterationInfo
   Vector<Real>       grad;
 };
 
+/**
+ * @brief Observer interface for PETSc/TAO progress reporting.
+ *
+ * Implementations receive iteration diagnostics and the current parameter
+ * vector during optimization.
+ */
 class TaoProgressMonitor
 {
 public:
@@ -68,7 +99,12 @@ public:
                        const Vector<Real>&     current_prm) = 0;
 };
 
-/** @brief PETSc/TAO optimizer for reduced functionals. */
+/**
+ * @brief PETSc/TAO optimizer for reduced functionals.
+ *
+ * TaoOptimizer adapts femx value-gradient callbacks to PETSc/TAO, while
+ * keeping vectors in the lightweight femx Vector container at the public API.
+ */
 class TaoOptimizer
 {
 private:
@@ -123,10 +159,10 @@ private:
   };
 
 public:
-  TaoOptimizer(TaoNumParamsCallback nprm,
+  TaoOptimizer(TaoNumParamsCallback num_params,
                TaoValueGradCallback value_grad,
                MPI_Comm             comm = PETSC_COMM_SELF)
-    : nprm_(std::move(nprm)),
+    : num_params_(std::move(num_params)),
       value_grad_(std::move(value_grad)),
       comm_(comm)
   {
@@ -205,7 +241,7 @@ public:
 
   PetscErrorCode solve(const Vector<Real>& init, TaoResult& result)
   {
-    if (!nprm_ || !value_grad_)
+    if (!num_params_ || !value_grad_)
     {
       return PETSC_ERR_ARG_NULL;
     }
@@ -243,7 +279,7 @@ public:
       PetscCall(::femx::linalg::detail::copyToPETSc(opt_init, prm.get()));
 
       TaoReducedFunctionalAdapter adapter(
-          nprm_,
+          num_params_,
           [this](const Vector<Real>& opt_prm, Vector<Real>& opt_grad)
           {
             return valueGradInOptimizerCoordinates(opt_prm, opt_grad);
@@ -365,7 +401,7 @@ private:
 
   Index numParams() const
   {
-    return nprm_();
+    return num_params_();
   }
 
   const char* taoType() const
@@ -490,26 +526,16 @@ private:
   {
     PetscMPIInt comm_size = 1;
     PetscCallMPI(MPI_Comm_size(comm, &comm_size));
-    const PetscInt nloc = comm_size == 1 ? size : PETSC_DECIDE;
+    const PetscInt num_local_dofs = comm_size == 1 ? size : PETSC_DECIDE;
 
     PetscCall(VecCreate(comm, vec.put()));
-    PetscCall(VecSetSizes(vec.get(), nloc, size));
+    PetscCall(VecSetSizes(vec.get(), num_local_dofs, size));
     PetscCall(VecSetFromOptions(vec.get()));
     return PETSC_SUCCESS;
   }
 
-  static Real squaredNorm(const Vector<Real>& x)
-  {
-    Real value = 0.0;
-    for (Index i = 0; i < x.size(); ++i)
-    {
-      value += x[i] * x[i];
-    }
-    return value;
-  }
-
 private:
-  TaoNumParamsCallback nprm_;
+  TaoNumParamsCallback num_params_;
   TaoValueGradCallback value_grad_;
   MPI_Comm             comm_{PETSC_COMM_SELF};
   TaoOptions           opts_;

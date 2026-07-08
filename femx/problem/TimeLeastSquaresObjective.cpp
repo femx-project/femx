@@ -297,8 +297,7 @@ TimeLeastSquaresObjective::interpolation(Index row) const
   return {level, level, 0.0};
 }
 
-Real TimeLeastSquaresObjective::observationWeight(
-    const LinearInterpolation& interp) const
+Real TimeLeastSquaresObjective::observationWeight(const LinearInterpolation& interp) const
 {
   Real out = 0.0;
   interp.forEachWeight(

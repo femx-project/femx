@@ -10,7 +10,12 @@ namespace femx
 namespace assembly
 {
 
-/** @brief Elem-local residual and Jacobian kernel for one time step. */
+/**
+ * @brief Elem-local residual and Jacobian kernel for one time step.
+ *
+ * Implementations operate on local history, next-state, and parameter values
+ * gathered for a single element.
+ */
 class TimeElementKernel
 {
 public:

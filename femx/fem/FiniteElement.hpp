@@ -11,7 +11,13 @@
 namespace femx
 {
 
-/** @brief Interface for a finite elem on a reference elem. */
+/**
+ * @brief Interface for interpolation on a reference element.
+ *
+ * Concrete finite elements provide shape-function values and reference
+ * gradients at quadrature points.  The physical mapping is handled separately
+ * by ElementValues.
+ */
 class FiniteElement
 {
 public:
@@ -35,13 +41,24 @@ public:
   /** @brief Return the reference elem shape used by this elem. */
   virtual ReferenceElement referenceElement() const = 0;
 
-  /** @brief Evaluate shape functions at a reference quad point. */
-  virtual void calcShape(const QuadraturePoint& qp,
-                         VectorView<Real>       N) const = 0;
+  /**
+   * @brief Evaluate shape functions at a reference quadrature point.
+   *
+   * @param[in] qp - Reference quadrature point.
+   * @param[out] N - Output vector of length numDofsPerElement().
+   */
+  virtual void calcN(const QuadraturePoint& qp,
+                     VectorView<Real>       N) const = 0;
 
-  /** @brief Evaluate shape function gradients in reference coordinates. */
-  virtual void calcShapeGrad(const QuadraturePoint& qp,
-                             MatrixView<Real>       dNdxi) const = 0;
+  /**
+   * @brief Evaluate shape-function gradients in reference coordinates.
+   *
+   * @param[in] qp - Reference quadrature point.
+   * @param[out] dNdxi - Matrix with one row per shape and one column per
+   * reference coordinate.
+   */
+  virtual void calcdNdr(const QuadraturePoint& qp,
+                        MatrixView<Real>       dNdxi) const = 0;
 };
 
 } // namespace femx

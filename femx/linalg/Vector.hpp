@@ -24,12 +24,12 @@ public:
   }
 
   explicit Vector(Index size)
-    : vals_(static_cast<std::size_t>(size), T{})
+    : vals_(checkedSize(size), T{})
   {
   }
 
   Vector(Index size, const T& value)
-    : vals_(static_cast<std::size_t>(size), value)
+    : vals_(checkedSize(size), value)
   {
   }
 
@@ -39,33 +39,15 @@ public:
     assign(view);
   }
 
-  Vector(const Vector& other)
-    : vals_(other.begin(), other.end())
-  {
-  }
+  Vector(const Vector&) = default;
+  Vector(Vector&&) noexcept = default;
 
-  Vector(Vector&& other) noexcept
-    : vals_(std::move(other.vals_))
-  {
-  }
-
-  Vector& operator=(const Vector& other)
-  {
-    assign(other.begin(), other.end(), other.size());
-    return *this;
-  }
-
-  Vector& operator=(Vector&& other)
-  {
-    vals_ = std::move(other.vals_);
-    return *this;
-  }
+  Vector& operator=(const Vector&) = default;
+  Vector& operator=(Vector&&) noexcept = default;
 
   Vector& operator=(std::initializer_list<T> vals)
   {
-    assign(vals.begin(),
-           vals.end(),
-           static_cast<Index>(vals.size()));
+    vals_.assign(vals.begin(), vals.end());
     return *this;
   }
 
@@ -78,20 +60,12 @@ public:
 
   void resize(Index size)
   {
-    if (size < 0)
-    {
-      throw std::runtime_error("Vector size must be non-negative");
-    }
-    vals_.assign(static_cast<std::size_t>(size), T{});
+    vals_.assign(checkedSize(size), T{});
   }
 
   void assign(Index size, const T& value)
   {
-    if (size < 0)
-    {
-      throw std::runtime_error("Vector size must be non-negative");
-    }
-    vals_.assign(static_cast<std::size_t>(size), value);
+    vals_.assign(checkedSize(size), value);
   }
 
   Index size() const
@@ -111,7 +85,7 @@ public:
 
   void reserve(Index size)
   {
-    vals_.reserve(static_cast<std::size_t>(size));
+    vals_.reserve(checkedSize(size));
   }
 
   void push_back(const T& value)
@@ -196,20 +170,21 @@ public:
   }
 
 private:
-  template <typename It>
-  void assign(It    begin_it,
-              It    end_it,
-              Index input_size)
+  static std::size_t checkedSize(Index size)
   {
-    (void) input_size;
-    vals_.assign(begin_it, end_it);
+    if (size < 0)
+    {
+      throw std::runtime_error("Vector size must be non-negative");
+    }
+    return static_cast<std::size_t>(size);
   }
 
   template <class U>
   void assign(VectorView<U> view)
   {
-    vals_.resize(static_cast<std::size_t>(view.size()));
-    for (Index i = 0; i < view.size(); ++i)
+    const Index size = view.size();
+    vals_.resize(checkedSize(size));
+    for (Index i = 0; i < size; ++i)
     {
       vals_[static_cast<std::size_t>(i)] = view[i];
     }

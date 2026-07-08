@@ -50,12 +50,12 @@ void DenseLinearSolver::sample(const LinearOperator& op,
                                bool                  transpose,
                                Vector<Real>&         mat) const
 {
-  const Index n = transpose ? op.numRows() : op.numCols();
-  mat.assign(n * n, 0.0);
+  const Index size = transpose ? op.numRows() : op.numCols();
+  mat.assign(size * size, 0.0);
 
-  Vector<Real> basis(n);
+  Vector<Real> basis(size);
   Vector<Real> column;
-  for (Index j = 0; j < n; ++j)
+  for (Index j = 0; j < size; ++j)
   {
     basis.setZero();
     basis[j] = 1.0;
@@ -69,15 +69,15 @@ void DenseLinearSolver::sample(const LinearOperator& op,
       op.apply(basis, column);
     }
 
-    if (column.size() != n)
+    if (column.size() != size)
     {
       throw runtime_error(
           "DenseLinearSolver sampled operator with inconsistent size");
     }
 
-    for (Index i = 0; i < n; ++i)
+    for (Index i = 0; i < size; ++i)
     {
-      mat[entry(i, j, n)] = column[i];
+      mat[entry(i, j, size)] = column[i];
     }
   }
 }

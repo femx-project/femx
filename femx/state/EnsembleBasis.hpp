@@ -9,7 +9,12 @@ namespace femx
 namespace state
 {
 
-/** @brief Low-rank parameter basis prm = mean + perturbations * alpha. */
+/**
+ * @brief Low-rank parameter basis prm = mean + perturbations * alpha.
+ *
+ * EnsembleBasis maps ensemble coefficients into physical parameters and
+ * projects gradients back to coefficient space.
+ */
 class EnsembleBasis final
 {
 public:

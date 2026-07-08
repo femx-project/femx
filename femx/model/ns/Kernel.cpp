@@ -13,75 +13,75 @@ namespace femx::model::ns
 namespace
 {
 
-bool supportedLocalSize(Index nq,
-                        Index nn,
+bool supportedLocalSize(Index num_qpts,
+                        Index num_nodes,
                         Index dim,
-                        Index nloc)
+                        Index num_local_dofs)
 {
   return dim > 0 && dim <= kMaxDim
-         && nn > 0 && nn <= kMaxNn
-         && nq > 0 && nq <= kMaxNq
-         && nloc > 0 && nloc <= kMaxNd
-         && nloc == numLocalDofs(nn, dim);
+         && num_nodes > 0 && num_nodes <= kMaxNn
+         && num_qpts > 0 && num_qpts <= kMaxNq
+         && num_local_dofs > 0 && num_local_dofs <= kMaxNd
+         && num_local_dofs == numLocalDofs(num_nodes, dim);
 }
 
-Index historyDepth(Index num_prev_states, Index nloc)
+Index historyDepth(Index num_history_dofs, Index num_local_dofs)
 {
-  if (nloc <= 0 || num_prev_states < nloc
-      || num_prev_states % nloc != 0)
+  if (num_local_dofs <= 0 || num_history_dofs < num_local_dofs
+      || num_history_dofs % num_local_dofs != 0)
   {
     return 0;
   }
-  return num_prev_states / nloc;
+  return num_history_dofs / num_local_dofs;
 }
 
 bool assembleLocalSystem(Index       step,
-                         Index       nq,
-                         Index       nn,
+                         Index       num_qpts,
+                         Index       num_nodes,
                          Index       dim,
-                         Index       nres,
-                         Index       num_prev_states,
+                         Index       num_residuals,
+                         Index       num_history_dofs,
                          Index       num_next_states,
-                         Index       nprm,
+                         Index       num_params,
                          const Real* N,
                          const Real* dNdx,
                          const Real* JxW,
-                         const Real* prev,
+                         const Real* hist,
                          const Real* prm,
                          LocalMatrix Ke,
                          LocalVector Fe)
 {
-  if (!supportedLocalSize(nq, nn, dim, nres)
-      || num_next_states != nres
-      || historyDepth(num_prev_states, nres) <= 0 || nprm < 3)
+  if (!supportedLocalSize(num_qpts, num_nodes, dim, num_residuals)
+      || num_next_states != num_residuals
+      || historyDepth(num_history_dofs, num_residuals) <= 0 || num_params < 3)
   {
     return false;
   }
 
-  const Index       nd = numLocalDofs(nn, dim);
+  const Index       num_dofs = numLocalDofs(num_nodes, dim);
   const KernelFluid fluid{prm[0], prm[1]};
   const Real        dt = prm[2];
 
-  LocalElementValues ev{nq, nn, dim, N, dNdx, JxW};
+  LocalElementValues ev{num_qpts, num_nodes, dim, N, dNdx, JxW};
   QPState            qps[kMaxNq]{};
   Real               adv[kMaxNd];
 
-  const Real* cur = prev;
-  const Real* old = prev + nd;
-  for (Index i = 0; i < nd; ++i)
+  const Real* cur = hist;
+  const Real* old = hist + num_dofs;
+  for (Index i = 0; i < num_dofs; ++i)
   {
     adv[i] = cur[i];
   }
-  if (step > 0 && historyDepth(num_prev_states, nd) >= 2)
+  if (step > 0 && historyDepth(num_history_dofs, num_dofs) >= 2)
   {
-    for (Index i = 0; i < nd; ++i)
+    for (Index i = 0; i < num_dofs; ++i)
     {
       adv[i] = 1.5 * cur[i] - 0.5 * old[i];
     }
   }
 
   updateQpStates(ev, fluid, dt, cur, adv, qps);
-  zeroLocalSystem(nd, Ke, Fe);
+  zeroLocalSystem(num_dofs, Ke, Fe);
 
   assembleMassLHS(ev, fluid, dt, Ke);
   assembleAdvectionLHS(ev, qps, fluid, Ke);
@@ -100,47 +100,47 @@ bool assembleLocalSystem(Index       step,
 
 void NavierResidual(Index       step,
                     Index       elem,
-                    Index       nq,
-                    Index       nn,
+                    Index       num_qpts,
+                    Index       num_nodes,
                     Index       dim,
-                    Index       nres,
-                    Index       num_prev_states,
+                    Index       num_residuals,
+                    Index       num_history_dofs,
                     Index       num_next_states,
-                    Index       nprm,
+                    Index       num_params,
                     const Real* N,
                     const Real* dNdx,
                     const Real* JxW,
-                    const Real* prev,
+                    const Real* hist,
                     const Real* nxt,
                     const Real* prm,
                     Real*       out)
 {
   (void) elem;
 
-  for (Index i = 0; i < nres; ++i)
+  for (Index i = 0; i < num_residuals; ++i)
   {
     out[i] = 0.0;
   }
 
-  (void) nprm;
-  const Index nd = numLocalDofs(nn, dim);
+  (void) num_params;
+  const Index num_dofs = numLocalDofs(num_nodes, dim);
   Real        s1[kMaxNd * kMaxNd];
   Real        s2[kMaxNd];
-  LocalMatrix Ke{nd, s1};
-  LocalVector Fe{nd, s2};
+  LocalMatrix Ke{num_dofs, s1};
+  LocalVector Fe{num_dofs, s2};
 
   if (!assembleLocalSystem(step,
-                           nq,
-                           nn,
+                           num_qpts,
+                           num_nodes,
                            dim,
-                           nres,
-                           num_prev_states,
+                           num_residuals,
+                           num_history_dofs,
                            num_next_states,
-                           nprm,
+                           num_params,
                            N,
                            dNdx,
                            JxW,
-                           prev,
+                           hist,
                            prm,
                            Ke,
                            Fe))
@@ -148,45 +148,45 @@ void NavierResidual(Index       step,
     return;
   }
 
-  finishLocalResidual(nd, nxt, Ke, Fe, out);
+  finishLocalResidual(num_dofs, nxt, Ke, Fe, out);
 }
 
 NavierKernel::NavierKernel(const FESpace&         space,
                            const GaussQuadrature& quadrature,
-                           Index                  nres,
-                           Index                  num_prev_states,
+                           Index                  num_residuals,
+                           Index                  num_history_dofs,
                            Index                  num_next_states,
-                           Index                  num_variable_prm,
+                           Index                  num_variable_params,
                            Vector<Real>           fixed_prm)
   : space_(space),
     quad_(quadrature),
-    nres_(nres),
-    num_prev_states_(num_prev_states),
+    num_residuals_(num_residuals),
+    num_hist_dofs_(num_history_dofs),
     num_next_states_(num_next_states),
-    num_variable_prm_(num_variable_prm),
-    nprm_(num_variable_prm + fixed_prm.size()),
+    num_variable_params_(num_variable_params),
+    num_params_(num_variable_params + fixed_prm.size()),
     fixed_prm_(fixed_prm),
-    fallback_(space,
-              quadrature,
-              nres,
-              num_prev_states,
-              num_next_states,
-              num_variable_prm,
-              std::move(fixed_prm))
+    enzyme_kernel_(space,
+                   quadrature,
+                   num_residuals,
+                   num_history_dofs,
+                   num_next_states,
+                   num_variable_params,
+                   std::move(fixed_prm))
 {
   checkDimensions();
 }
 
 NavierKernel::NavierKernel(const FESpace&         space,
                            const GaussQuadrature& quadrature,
-                           Index                  nres,
-                           Index                  num_prev_states,
+                           Index                  num_residuals,
+                           Index                  num_history_dofs,
                            Index                  num_next_states,
                            Vector<Real>           fixed_prm)
   : NavierKernel(space,
                  quadrature,
-                 nres,
-                 num_prev_states,
+                 num_residuals,
+                 num_history_dofs,
                  num_next_states,
                  0,
                  std::move(fixed_prm))
@@ -201,20 +201,20 @@ void NavierKernel::res(Index                    step,
                        Vector<Real>&            out) const
 {
   checkInputSizes(hist, nxt, prm);
-  resizeOrZero(out, nres_);
+  resizeOrZero(out, num_residuals_);
 
   ElementValues vals(space_.finiteElement(), quad_);
   vals.reinit(space_.mesh().elem(ie));
 
-  const Index nd = num_next_states_;
+  const Index num_dofs = num_next_states_;
   Real        s1[kMaxNd * kMaxNd];
   Real        s2[kMaxNd];
-  LocalMatrix Ke{nd, s1};
-  LocalVector Fe{nd, s2};
+  LocalMatrix Ke{num_dofs, s1};
+  LocalVector Fe{num_dofs, s2};
 
   Vector<Real> residual_prm;
   const Real*  residual_prm_data = fixed_prm_.data();
-  if (num_variable_prm_ > 0)
+  if (num_variable_params_ > 0)
   {
     residual_prm      = makeResidualPrm(prm);
     residual_prm_data = residual_prm.data();
@@ -224,10 +224,10 @@ void NavierKernel::res(Index                    step,
                            vals.numQuadraturePoints(),
                            vals.numNodes(),
                            vals.dim(),
-                           nres_,
-                           num_prev_states_,
+                           num_residuals_,
+                           num_hist_dofs_,
                            num_next_states_,
-                           nprm_,
+                           num_params_,
                            vals.NData(),
                            vals.dNdxData(),
                            vals.JxWData(),
@@ -239,7 +239,7 @@ void NavierKernel::res(Index                    step,
     return;
   }
 
-  finishLocalResidual(nd, nxt.data(), Ke, Fe, out.data());
+  finishLocalResidual(num_dofs, nxt.data(), Ke, Fe, out.data());
 }
 
 void NavierKernel::jacobian(Index                    step,
@@ -253,24 +253,24 @@ void NavierKernel::jacobian(Index                    step,
   checkInputSizes(hist, nxt, prm);
   if (!wrt.isNextState())
   {
-    fallback_.jacobian(step, ie, wrt, hist, nxt, prm, out);
+    enzyme_kernel_.jacobian(step, ie, wrt, hist, nxt, prm, out);
     return;
   }
 
-  out.resize(nres_, num_next_states_);
+  out.resize(num_residuals_, num_next_states_);
 
   ElementValues vals(space_.finiteElement(), quad_);
   vals.reinit(space_.mesh().elem(ie));
 
-  const Index nd = num_next_states_;
+  const Index num_dofs = num_next_states_;
   Real        s1[kMaxNd * kMaxNd];
   Real        s2[kMaxNd];
-  LocalMatrix Ke{nd, s1};
-  LocalVector Fe{nd, s2};
+  LocalMatrix Ke{num_dofs, s1};
+  LocalVector Fe{num_dofs, s2};
 
   Vector<Real> residual_prm;
   const Real*  residual_prm_data = fixed_prm_.data();
-  if (num_variable_prm_ > 0)
+  if (num_variable_params_ > 0)
   {
     residual_prm      = makeResidualPrm(prm);
     residual_prm_data = residual_prm.data();
@@ -280,10 +280,10 @@ void NavierKernel::jacobian(Index                    step,
                            vals.numQuadraturePoints(),
                            vals.numNodes(),
                            vals.dim(),
-                           nres_,
-                           num_prev_states_,
+                           num_residuals_,
+                           num_hist_dofs_,
                            num_next_states_,
-                           nprm_,
+                           num_params_,
                            vals.NData(),
                            vals.dNdxData(),
                            vals.JxWData(),
@@ -296,7 +296,7 @@ void NavierKernel::jacobian(Index                    step,
     return;
   }
 
-  for (Index i = 0; i < nres_; ++i)
+  for (Index i = 0; i < num_residuals_; ++i)
   {
     for (Index j = 0; j < num_next_states_; ++j)
     {
@@ -307,19 +307,19 @@ void NavierKernel::jacobian(Index                    step,
 
 void NavierKernel::checkDimensions()
 {
-  if (nres_ < 0 || num_prev_states_ < 0
-      || num_next_states_ < 0 || num_variable_prm_ < 0 || nprm_ < 0)
+  if (num_residuals_ < 0 || num_hist_dofs_ < 0
+      || num_next_states_ < 0 || num_variable_params_ < 0 || num_params_ < 0)
   {
     throw runtime_error("NavierKernel received invalid dimensions");
   }
-  if (num_next_states_ <= 0 || num_prev_states_ % num_next_states_ != 0)
+  if (num_next_states_ <= 0 || num_hist_dofs_ % num_next_states_ != 0)
   {
     throw runtime_error(
         "NavierKernel history size must be a multiple of next-state size");
   }
-  num_hist_states_     = num_prev_states_ / num_next_states_;
+  num_hist_states_     = num_hist_dofs_ / num_next_states_;
   num_hist_state_dofs_ = num_next_states_;
-  if (nres_ != num_next_states_ || nprm_ < 3)
+  if (num_residuals_ != num_next_states_ || num_params_ < 3)
   {
     throw runtime_error("NavierKernel received unsupported dimensions");
   }
@@ -332,7 +332,7 @@ void NavierKernel::checkInputSizes(problem::TimeHistoryView hist,
   if (hist.count() != num_hist_states_
       || hist.stateSize() != num_hist_state_dofs_
       || nxt.size() != num_next_states_
-      || prm.size() != num_variable_prm_)
+      || prm.size() != num_variable_params_)
   {
     throw runtime_error("NavierKernel input size mismatch");
   }
@@ -345,14 +345,14 @@ Vector<Real> NavierKernel::makeResidualPrm(const Vector<Real>& variable_prm) con
     return variable_prm;
   }
 
-  Vector<Real> out(nprm_);
-  for (Index i = 0; i < num_variable_prm_; ++i)
+  Vector<Real> out(num_params_);
+  for (Index i = 0; i < num_variable_params_; ++i)
   {
     out[i] = variable_prm[i];
   }
   for (Index i = 0; i < fixed_prm_.size(); ++i)
   {
-    out[num_variable_prm_ + i] = fixed_prm_[i];
+    out[num_variable_params_ + i] = fixed_prm_[i];
   }
   return out;
 }
@@ -373,7 +373,7 @@ Vector<Real> physicalParams(Real rho, Real mu, Real dt)
 
 NavierKernel makeNavierKernel(const FESpace&         vel_space,
                               const GaussQuadrature& quad,
-                              Index                  nloc,
+                              Index                  num_local_dofs,
                               Real                   rho,
                               Real                   mu,
                               Real                   dt)
@@ -381,16 +381,16 @@ NavierKernel makeNavierKernel(const FESpace&         vel_space,
   if (!supportedLocalSize(quad.size(),
                           vel_space.numShapesPerElem(),
                           vel_space.numComponents(),
-                          nloc))
+                          num_local_dofs))
   {
     throw runtime_error("NavierKernel received unsupported element size");
   }
 
   return NavierKernel(vel_space,
                       quad,
-                      nloc,
-                      2 * nloc,
-                      nloc,
+                      num_local_dofs,
+                      2 * num_local_dofs,
+                      num_local_dofs,
                       physicalParams(rho, mu, dt));
 }
 

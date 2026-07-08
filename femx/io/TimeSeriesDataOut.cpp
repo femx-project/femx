@@ -190,10 +190,10 @@ void writeVectorDataset(hid_t                         file,
                         const string&                 path,
                         const array<Vector<Real>, 3>& vals)
 {
-  const Index    nodes = vals[0].size();
-  Vector<double> data(nodes * 3);
+  const Index    num_nodes = vals[0].size();
+  Vector<double> data(num_nodes * 3);
 
-  for (Index in = 0; in < nodes; ++in)
+  for (Index in = 0; in < num_nodes; ++in)
   {
     for (Index d = 0; d < 3; ++d)
     {
@@ -204,7 +204,7 @@ void writeVectorDataset(hid_t                         file,
   writeDoubleDataset(file,
                      path,
                      data,
-                     {static_cast<hsize_t>(nodes), 3});
+                     {static_cast<hsize_t>(num_nodes), 3});
 }
 
 void writeMesh(hid_t file, const Mesh& mesh)

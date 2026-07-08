@@ -9,8 +9,8 @@ class LagrangeTetrahedronP1 : public FiniteElement
 {
 public:
   static constexpr Index spatial_dim = 3;
-  static constexpr Index nnodes      = 4;
-  static constexpr Index nd          = 4;
+  static constexpr Index num_nodes   = 4;
+  static constexpr Index num_dofs    = 4;
   static constexpr Index degree      = 1;
 
   std::string name() const override
@@ -25,12 +25,12 @@ public:
 
   Index numNodes() const override
   {
-    return nnodes;
+    return num_nodes;
   }
 
   Index numDofsPerElement() const override
   {
-    return nd;
+    return num_dofs;
   }
 
   Index order() const override
@@ -43,8 +43,8 @@ public:
     return ReferenceElement::Tetrahedron;
   }
 
-  void calcShape(const QuadraturePoint& qp,
-                 VectorView<Real>       N) const override
+  void calcN(const QuadraturePoint& qp,
+             VectorView<Real>       N) const override
   {
     const Real r = qp[0];
     const Real s = qp[1];
@@ -56,8 +56,8 @@ public:
     N[3] = t;
   }
 
-  void calcShapeGrad(const QuadraturePoint&,
-                     MatrixView<Real> dNdr) const override
+  void calcdNdr(const QuadraturePoint&,
+                MatrixView<Real> dNdr) const override
   {
     dNdr(0, 0) = -1.0;
     dNdr(0, 1) = -1.0;

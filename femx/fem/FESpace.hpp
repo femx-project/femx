@@ -9,15 +9,33 @@
 namespace femx
 {
 
+/**
+ * @brief Scalar or vector-valued finite-element space on one mesh.
+ *
+ * FESpace combines a mesh, a finite element, and a component count into a
+ * global degree-of-freedom layout.  Call setup() after construction and before
+ * assembly so element-local dofs can be mapped to global ids.
+ */
 class FESpace
 {
 public:
-  /** @brief Create a finite elem space on a mesh with the given component count. */
+  /**
+   * @brief Create a finite-element space on a mesh.
+   *
+   * @param[in] mesh - Mesh that owns the element topology and coordinates.
+   * @param[in] finite_element - Reference finite element used by every cell.
+   * @param[in] comps - Number of field components per mesh node.
+   */
   FESpace(const Mesh*          mesh,
           const FiniteElement* finite_element,
           Index                comps = 1);
 
-  /** @brief Build the elem-to-global-id map for the space. */
+  /**
+   * @brief Build the element-to-global-dof map.
+   *
+   * @pre The mesh and finite element pointers passed to the constructor are
+   * valid for the lifetime of this space.
+   */
   void setup();
 
   // Accessors
@@ -38,11 +56,11 @@ public:
   Index globalDof(Index in,
                   Index comp) const noexcept;
 
-  /** @brief Fill the global id indices used by one elem. */
+  /** @brief Fill the global dof ids used by one element. */
   void elemDofs(Index          ie,
                 Vector<Index>& dofs) const;
 
-  /** @brief Return the global id indices used by one elem. */
+  /** @brief Return the global dof ids used by one element. */
   Vector<Index> elemDofs(Index ie) const;
 
 private:
@@ -51,7 +69,7 @@ private:
   DofMap               dof_map_;
   Index                comps_{1};
   Index                num_shapes_per_elem_{0};
-  Index                nd_{0};
+  Index                num_dofs_{0};
 };
 
 } // namespace femx

@@ -299,7 +299,7 @@ Mesh readMesh(hid_t file, Element::Shape shape)
     throw runtime_error("TimeSeriesDataIn expects /Mesh/Topology as E x K");
   }
 
-  const Index nodes = static_cast<Index>(geom_dims[0]);
+  const Index num_nodes = static_cast<Index>(geom_dims[0]);
   const Index elems = static_cast<Index>(topo_dims[0]);
   const Index cn    = static_cast<Index>(topo_dims[1]);
   const Index dim   = meshDim(geometry, shape);
@@ -309,7 +309,7 @@ Mesh readMesh(hid_t file, Element::Shape shape)
   }
 
   Mesh mesh(dim);
-  for (Index in = 0; in < nodes; ++in)
+  for (Index in = 0; in < num_nodes; ++in)
   {
     mesh.addNode({geometry[3 * in],
                   geometry[3 * in + 1],
@@ -331,11 +331,11 @@ Mesh readMesh(hid_t file, Element::Shape shape)
 
 array<Vector<Real>, 3> readVectorField(hid_t         file,
                                        const string& path,
-                                       Index         nodes)
+                                       Index         num_nodes)
 {
   Vector<hsize_t> dims;
   const auto      data = readDoubleDataset(file, path, dims);
-  if (dims.size() != 2 || dims[0] != static_cast<hsize_t>(nodes)
+  if (dims.size() != 2 || dims[0] != static_cast<hsize_t>(num_nodes)
       || dims[1] != 3)
   {
     throw runtime_error(
@@ -343,8 +343,8 @@ array<Vector<Real>, 3> readVectorField(hid_t         file,
   }
 
   array<Vector<Real>, 3> out{
-      Vector<Real>(nodes), Vector<Real>(nodes), Vector<Real>(nodes)};
-  for (Index in = 0; in < nodes; ++in)
+      Vector<Real>(num_nodes), Vector<Real>(num_nodes), Vector<Real>(num_nodes)};
+  for (Index in = 0; in < num_nodes; ++in)
   {
     for (Index d = 0; d < 3; ++d)
     {

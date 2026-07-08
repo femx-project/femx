@@ -12,16 +12,21 @@ namespace fem
 
 using problem::TimeObservationOperator;
 
-/** @brief Interpolates field components at physical points on each time level. */
+/**
+ * @brief Interpolates field components at physical points on each time level.
+ *
+ * TimePointInterpolator precomputes point stencils and applies observation
+ * Jacobian products for time-dependent inverse problems.
+ */
 class TimePointInterpolator final : public TimeObservationOperator
 {
 public:
-  TimePointInterpolator(Index               nt,
+  TimePointInterpolator(Index               num_steps,
                         const MixedFESpace& space,
                         Index               fid,
                         Vector<Point3>      pts,
                         Vector<Index>       comps,
-                        Index               nprm);
+                        Index               num_params);
 
   Index numSteps() const override;
 
@@ -91,9 +96,9 @@ private:
       const Vector<Index>&  comps);
 
 private:
-  Index           nt_{0};
-  Index           nst_{0};
-  Index           nprm_{0};
+  Index           num_steps_{0};
+  Index           num_states_{0};
+  Index           num_params_{0};
   Vector<Point3>  pts_;
   Vector<Index>   comps_;
   Vector<Stencil> stencils_;

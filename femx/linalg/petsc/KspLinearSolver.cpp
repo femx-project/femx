@@ -4,10 +4,10 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/linalg/operator/LinearOperator.hpp>
+#include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
@@ -141,14 +141,14 @@ public:
     solveLinearOperator(op, rhs, out, true);
   }
 
-  void solve(const PETScMatrix& op,
+  void solve(const PETScAssemblyMatrix& op,
              const PETScVector&  rhs,
              PETScVector&        out)
   {
     solveSystem(op, rhs, out, false);
   }
 
-  void solveT(const PETScMatrix& op,
+  void solveT(const PETScAssemblyMatrix& op,
               const PETScVector&  rhs,
               PETScVector&        out)
   {
@@ -177,7 +177,7 @@ private:
                            bool                  transpose)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScMatrix*>(&op))
+            dynamic_cast<const PETScAssemblyMatrix*>(&op))
     {
       solveSystem(*petsc_mat, rhs, out, transpose);
       return;
@@ -238,7 +238,7 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScMatrix& op,
+  void solveSystem(const PETScAssemblyMatrix& op,
                    const Vector<Real>&        rhs,
                    Vector<Real>&              out,
                    bool                       transpose)
@@ -291,7 +291,7 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScMatrix& op,
+  void solveSystem(const PETScAssemblyMatrix& op,
                    const PETScVector&  rhs,
                    PETScVector&        out,
                    bool                       transpose)
@@ -344,7 +344,7 @@ private:
                                PetscInt              size)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScMatrix*>(&op))
+            dynamic_cast<const PETScAssemblyMatrix*>(&op))
     {
       return petsc_mat->mat();
     }
@@ -375,10 +375,10 @@ private:
   {
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
-    const PetscInt nloc = comm_size == 1 ? size : PETSC_DECIDE;
+    const PetscInt num_local_dofs = comm_size == 1 ? size : PETSC_DECIDE;
 
     check(VecCreate(comm, vec.put()), "VecCreate");
-    check(VecSetSizes(vec.get(), nloc, size), "VecSetSizes");
+    check(VecSetSizes(vec.get(), num_local_dofs, size), "VecSetSizes");
     check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
   }
 
@@ -637,14 +637,14 @@ void KspLinearSolver::solveT(const LinearOperator& op,
   impl_->solveT(op, rhs, out);
 }
 
-void KspLinearSolver::solve(const PETScMatrix& op,
+void KspLinearSolver::solve(const PETScAssemblyMatrix& op,
                             const PETScVector&  rhs,
                             PETScVector&        out)
 {
   impl_->solve(op, rhs, out);
 }
 
-void KspLinearSolver::solveT(const PETScMatrix& op,
+void KspLinearSolver::solveT(const PETScAssemblyMatrix& op,
                              const PETScVector&  rhs,
                              PETScVector&        out)
 {

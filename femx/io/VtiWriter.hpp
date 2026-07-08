@@ -27,7 +27,7 @@ public:
   struct ElemField
   {
     std::string         name;
-    Index               nc = 1;
+    Index               num_components = 1;
     const Vector<Real>* vals{nullptr};
   };
 

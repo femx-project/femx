@@ -48,9 +48,9 @@ private:
 private:
   Index num_rows_{0};
   Index num_cols_{0};
-  Index nnz_{0};
+  Index num_nonzeros_{0};
 
-  Index ne_{0};
+  Index num_elems_{0};
   Index num_coo_entries_{0};
 
   Vector<Index> row_ptr_;

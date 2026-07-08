@@ -10,11 +10,16 @@ namespace femx
 namespace problem
 {
 
-/** @brief Non-owning sum of time-dependent objective terms. */
+/**
+ * @brief Non-owning sum of time-dependent objective terms.
+ *
+ * SumTimeObjective stores references to compatible terms and accumulates
+ * their values and gradients without owning the terms.
+ */
 class SumTimeObjective final : public TimeObjective
 {
 public:
-  SumTimeObjective(Index nt, Index nst, Index nprm);
+  SumTimeObjective(Index num_steps, Index num_states, Index num_params);
 
   SumTimeObjective& add(const TimeObjective& term);
 
@@ -39,9 +44,9 @@ private:
   static void addInto(const Vector<Real>& input, Vector<Real>& out, Index size);
 
 private:
-  Index                        nt_{0};
-  Index                        nst_{0};
-  Index                        nprm_{0};
+  Index                        num_steps_{0};
+  Index                        num_states_{0};
+  Index                        num_params_{0};
   Vector<const TimeObjective*> terms_;
 };
 

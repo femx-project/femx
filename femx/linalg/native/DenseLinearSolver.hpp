@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearOperator.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
+#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -10,7 +10,12 @@ namespace femx
 namespace linalg
 {
 
-/** @brief Dense fallback solver that samples a LinearOperator into a matrix. */
+/**
+ * @brief Dense fallback solver that samples a LinearOperator into a matrix.
+ *
+ * DenseLinearSolver is intended for small problems and tests where a direct
+ * dense solve is useful as a portable fallback.
+ */
 class DenseLinearSolver final : public LinearSolver
 {
 public:

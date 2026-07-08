@@ -20,13 +20,18 @@ using TaoNumParamsCallback = std::function<Index()>;
 using TaoValueGradCallback =
     std::function<Real(const Vector<Real>&, Vector<Real>&)>;
 
-/** @brief Adapter from PETSc TAO callbacks to a reduced functional. */
+/**
+ * @brief Adapter from PETSc TAO callbacks to a reduced functional.
+ *
+ * TaoReducedFunctionalAdapter converts PETSc Vec inputs to femx vectors and
+ * forwards value-gradient evaluations to the user callback.
+ */
 class TaoReducedFunctionalAdapter
 {
 public:
-  TaoReducedFunctionalAdapter(TaoNumParamsCallback nprm,
+  TaoReducedFunctionalAdapter(TaoNumParamsCallback num_params,
                               TaoValueGradCallback value_grad)
-    : nprm_(std::move(nprm)),
+    : num_params_(std::move(num_params)),
       value_grad_(std::move(value_grad))
   {
   }
@@ -102,16 +107,16 @@ public:
 private:
   Index numParams() const
   {
-    if (!nprm_)
+    if (!num_params_)
     {
       throw std::runtime_error(
           "TAO reduced functional adapter has no size callback");
     }
-    return nprm_();
+    return num_params_();
   }
 
 private:
-  TaoNumParamsCallback nprm_;
+  TaoNumParamsCallback num_params_;
   TaoValueGradCallback value_grad_;
   Vector<Real>         prm_;
   Vector<Real>         grad_;

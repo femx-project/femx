@@ -8,10 +8,17 @@ namespace femx
 
 class CsrPattern;
 
+/**
+ * @brief Numeric values for a fixed compressed sparse row pattern.
+ *
+ * CsrMatrix owns only the values array; row pointers and column indices are
+ * supplied by an immutable CsrPattern.  This split lets multiple matrices share
+ * sparsity discovered from finite-element assembly.
+ */
 class CsrMatrix
 {
 public:
-  explicit CsrMatrix(const CsrPattern& pettern);
+  explicit CsrMatrix(const CsrPattern& pattern);
 
   void setZero();
 
@@ -19,7 +26,7 @@ public:
   Index cols() const;
   Index nnz() const;
 
-  const CsrPattern& pettern() const;
+  const CsrPattern& pattern() const;
 
   const Index* rowPtrData() const;
   const Index* colIndData() const;

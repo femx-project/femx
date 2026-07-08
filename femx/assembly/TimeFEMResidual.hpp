@@ -6,7 +6,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/operator/MatrixBuilder.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
 #include <femx/problem/TimeResidual.hpp>
@@ -16,35 +16,40 @@ namespace femx
 namespace assembly
 {
 
-/** @brief problem::TimeResidual assembled from elem-local FEM time kernels. */
+/**
+ * @brief problem::TimeResidual assembled from elem-local FEM time kernels.
+ *
+ * TimeFEMResidual gathers local state histories, calls element kernels, and
+ * scatters residual or Jacobian contributions into global objects.
+ */
 class TimeFEMResidual final : public problem::TimeResidual
 {
 public:
-  TimeFEMResidual(Index                    nt,
+  TimeFEMResidual(Index                    num_steps,
                   DofLayout                res_layout,
                   DofLayout                state_layout,
                   const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    nt,
+  TimeFEMResidual(Index                    num_steps,
                   DofLayout                res_layout,
-                  DofLayout                prev_state_layout,
+                  DofLayout                history_state_layout,
                   DofLayout                next_state_layout,
                   const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    nt,
+  TimeFEMResidual(Index                    num_steps,
                   DofLayout                res_layout,
                   Vector<DofLayout>        history_state_layouts,
                   DofLayout                next_state_layout,
                   const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    nt,
+  TimeFEMResidual(Index                    num_steps,
                   DofLayout                res_layout,
-                  DofLayout                prev_state_layout,
+                  DofLayout                history_state_layout,
                   DofLayout                next_state_layout,
                   DofLayout                param_layout,
                   const TimeElementKernel& ker);
 
-  TimeFEMResidual(Index                    nt,
+  TimeFEMResidual(Index                    num_steps,
                   DofLayout                res_layout,
                   Vector<DofLayout>        history_state_layouts,
                   DofLayout                next_state_layout,
@@ -117,7 +122,7 @@ private:
   static void checkDof(Index id, Index size);
 
 private:
-  Index                    nt_{0};
+  Index                    num_steps_{0};
   DofLayout                res_layout_;
   Vector<DofLayout>        history_state_layouts_;
   DofLayout                next_state_layout_;

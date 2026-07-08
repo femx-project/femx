@@ -12,7 +12,7 @@ project(
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(FEMX_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
-option(FEMX_ENABLE_HDF5 "Enable HDF5/XDMF output support" ON)
+option(FEMX_ENABLE_HDF5 "Enable HDF5 output support" ON)
 option(FEMX_ENABLE_OPENMP "Enable OpenMP parallel assembly" ON)
 option(FEMX_ENABLE_PETSC "Enable PETSc applications" ON)
 option(FEMX_BUILD_APPS "Build femx apps" ON)

@@ -29,7 +29,7 @@ function(configure_ns_forward_app target)
             FEMX_NS_FORWARD_APP_NAME="${target}")
 endfunction()
 
-if(FEMX_HAS_RESOLVE)
+if(TARGET femx::linalg_resolve)
   add_executable(ns-forward main-resolve.cpp)
   configure_ns_forward_app(ns-forward)
   target_link_libraries(ns-forward PRIVATE femx::linalg_resolve)

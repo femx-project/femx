@@ -45,11 +45,11 @@ Vector<DofLayout> singleHistoryLayout(DofLayout lyt)
 
 } // namespace
 
-TimeFEMResidual::TimeFEMResidual(Index                    nt,
+TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
                                  DofLayout                res_layout,
                                  DofLayout                state_layout,
                                  const TimeElementKernel& ker)
-  : TimeFEMResidual(nt,
+  : TimeFEMResidual(num_steps,
                     std::move(res_layout),
                     singleHistoryLayout(state_layout),
                     std::move(state_layout),
@@ -57,26 +57,26 @@ TimeFEMResidual::TimeFEMResidual(Index                    nt,
 {
 }
 
-TimeFEMResidual::TimeFEMResidual(Index                    nt,
+TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
                                  DofLayout                res_layout,
-                                 DofLayout                prev_state_layout,
+                                 DofLayout                history_state_layout,
                                  DofLayout                next_state_layout,
                                  const TimeElementKernel& ker)
-  : TimeFEMResidual(nt,
+  : TimeFEMResidual(num_steps,
                     std::move(res_layout),
-                    singleHistoryLayout(std::move(prev_state_layout)),
+                    singleHistoryLayout(std::move(history_state_layout)),
                     std::move(next_state_layout),
                     ker)
 {
 }
 
 TimeFEMResidual::TimeFEMResidual(
-    Index                    nt,
+    Index                    num_steps,
     DofLayout                res_layout,
     Vector<DofLayout>        history_state_layouts,
     DofLayout                next_state_layout,
     const TimeElementKernel& ker)
-  : nt_(nt),
+  : num_steps_(num_steps),
     res_layout_(std::move(res_layout)),
     history_state_layouts_(std::move(history_state_layouts)),
     next_state_layout_(std::move(next_state_layout)),
@@ -86,15 +86,15 @@ TimeFEMResidual::TimeFEMResidual(
   checkLayouts();
 }
 
-TimeFEMResidual::TimeFEMResidual(Index                    nt,
+TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
                                  DofLayout                res_layout,
-                                 DofLayout                prev_state_layout,
+                                 DofLayout                history_state_layout,
                                  DofLayout                next_state_layout,
                                  DofLayout                param_layout,
                                  const TimeElementKernel& ker)
-  : TimeFEMResidual(nt,
+  : TimeFEMResidual(num_steps,
                     std::move(res_layout),
-                    singleHistoryLayout(std::move(prev_state_layout)),
+                    singleHistoryLayout(std::move(history_state_layout)),
                     std::move(next_state_layout),
                     std::move(param_layout),
                     ker)
@@ -102,13 +102,13 @@ TimeFEMResidual::TimeFEMResidual(Index                    nt,
 }
 
 TimeFEMResidual::TimeFEMResidual(
-    Index                    nt,
+    Index                    num_steps,
     DofLayout                res_layout,
     Vector<DofLayout>        history_state_layouts,
     DofLayout                next_state_layout,
     DofLayout                param_layout,
     const TimeElementKernel& ker)
-  : nt_(nt),
+  : num_steps_(num_steps),
     res_layout_(std::move(res_layout)),
     history_state_layouts_(std::move(history_state_layouts)),
     next_state_layout_(std::move(next_state_layout)),
@@ -137,7 +137,7 @@ void TimeFEMResidual::setElemRange(Index begin, Index end)
 
 TimeDims TimeFEMResidual::dims() const
 {
-  return {nt_,
+  return {num_steps_,
           next_state_layout_.numDofs(),
           numParams(),
           res_layout_.numDofs(),
@@ -192,7 +192,7 @@ void TimeFEMResidual::applyJac(const TimeContext&  ctx,
 {
   checkContext(ctx);
   checkDirection(wrt, dir);
-  resizeOrZero(out, dims().nres);
+  resizeOrZero(out, dims().num_residuals);
 
   const DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
@@ -245,7 +245,7 @@ void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
                                 Vector<Real>&       out) const
 {
   checkContext(ctx);
-  if (adj.size() != dims().nres)
+  if (adj.size() != dims().num_residuals)
   {
     throw runtime_error("TimeFEMResidual adjoint size mismatch");
   }
@@ -306,7 +306,7 @@ bool TimeFEMResidual::assembleJac(const TimeContext& ctx,
   const DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
-    out.resize(dims().nres, numParams());
+    out.resize(dims().num_residuals, numParams());
     out.setZero();
     return true;
   }
@@ -378,7 +378,7 @@ const DofLayout* TimeFEMResidual::layoutFor(VariableBlock wrt) const
 
 void TimeFEMResidual::checkLayouts() const
 {
-  if (nt_ < 0)
+  if (num_steps_ < 0)
   {
     throw runtime_error("TimeFEMResidual received negative step count");
   }
@@ -416,19 +416,19 @@ void TimeFEMResidual::checkLayouts() const
 void TimeFEMResidual::checkContext(const TimeContext& ctx) const
 {
   const TimeDims dm = dims();
-  if (ctx.step < 0 || ctx.step >= dm.nt)
+  if (ctx.step < 0 || ctx.step >= dm.num_steps)
   {
     throw runtime_error("TimeFEMResidual step is out of range");
   }
-  const TimeHistoryView hist = ctx.historyView();
-  if (hist.count() < dm.nhst
-      || hist.stateSize() != dm.nst)
+  const TimeHistoryView hist = ctx.hist;
+  if (hist.count() < dm.num_history_states
+      || hist.stateSize() != dm.num_states)
   {
     throw runtime_error(
         "TimeFEMResidual history state size mismatch");
   }
-  checkVector(ctx.nxt, dm.nst);
-  checkVector(ctx.prm, dm.nprm);
+  checkVector(ctx.nxt, dm.num_states);
+  checkVector(ctx.prm, dm.num_params);
 }
 
 void TimeFEMResidual::checkVector(const Vector<Real>* value,
@@ -444,12 +444,12 @@ void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
                                     Index              ie,
                                     Vector<Real>&      local) const
 {
-  const Index nloc = next_state_layout_.numDofsPerElem();
-  resizeOrZero(local, numHistoryStates() * nloc);
-  const TimeHistoryView hist = ctx.historyView();
+  const Index num_local_dofs = next_state_layout_.numDofsPerElem();
+  resizeOrZero(local, numHistoryStates() * num_local_dofs);
+  const TimeHistoryView hist = ctx.hist;
   for (Index lag = 0; lag < numHistoryStates(); ++lag)
   {
-    VectorView<Real> state(local.data() + lag * nloc, nloc);
+    VectorView<Real> state(local.data() + lag * num_local_dofs, num_local_dofs);
     gather(history_state_layouts_[lag],
            hist.state(lag),
            ie,

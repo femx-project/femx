@@ -59,25 +59,25 @@ void checkFinite(const Vector<Real>& x, const string& name, Index step)
 
 void fillHistory(const TimeTrajectory& tr,
                  Index                 step,
-                 Index                 nhst,
+                 Index                 num_history_states,
                  Vector<Real>&         hist)
 {
-  const Index nst = tr.numStates();
-  if (nhst < 0 || nst < 0)
+  const Index num_states = tr.numStates();
+  if (num_history_states < 0 || num_states < 0)
   {
     throw runtime_error(
         "TimeReducedFunctional received invalid history dimensions");
   }
-  if (hist.size() != nhst * nst)
+  if (hist.size() != num_history_states * num_states)
   {
-    hist.resize(nhst * nst);
+    hist.resize(num_history_states * num_states);
   }
-  BlockVectorView<Real> hist_view(hist.data(), nhst, nst);
-  for (Index i = 0; i < nhst; ++i)
+  BlockVectorView<Real> hist_view(hist.data(), num_history_states, num_states);
+  for (Index i = 0; i < num_history_states; ++i)
   {
     const Vector<Real>& st = tr[historyLevel(step, i)];
     VectorView<Real>    h  = hist_view.block(i);
-    for (Index j = 0; j < nst; ++j)
+    for (Index j = 0; j < num_states; ++j)
     {
       h[j] = st[j];
     }
@@ -86,22 +86,19 @@ void fillHistory(const TimeTrajectory& tr,
 
 TimeContext makeContext(const TimeTrajectory& tr,
                         Index                 step,
-                        Index                 nhst,
+                        Index                 num_history_states,
                         const Vector<Real>&   prm,
                         Vector<Real>&         hist,
-                        Vector<Real>&         prev,
                         Vector<Real>&         nxt)
 {
-  fillHistory(tr, step, nhst, hist);
-  prev = tr[step];
+  fillHistory(tr, step, num_history_states, hist);
   nxt  = tr[step + 1];
 
   TimeContext ctx;
   ctx.step = step;
-  ctx.prev = &prev;
   ctx.nxt  = &nxt;
   ctx.prm  = &prm;
-  ctx.hist = TimeHistoryView(hist.data(), nhst, tr.numStates());
+  ctx.hist = TimeHistoryView(hist.data(), num_history_states, tr.numStates());
   return ctx;
 }
 
@@ -111,8 +108,8 @@ TimeReducedFunctional::TimeReducedFunctional(
     TimeIntegrator&     integrator,
     const TimeResidual&  problem,
     TimeLinearization&   lin,
-    MatrixOperator&      J_next,
-    MatrixOperator&      J_hist,
+    AssemblyMatrix&      J_next,
+    AssemblyMatrix&      J_hist,
     LinearSolver&        adj_solver,
     const TimeObjective& obj)
   : integrator_(integrator),
@@ -209,14 +206,14 @@ Real TimeReducedFunctional::valueGrad(const Vector<Real>& prm,
 
 void TimeReducedFunctional::checkDims() const
 {
-  if (integrator_.numSteps() != dims_.nt
+  if (integrator_.numSteps() != dims_.num_steps
       || integrator_.numSteps() != obj_.numSteps()
-      || integrator_.numStates() != dims_.nst
+      || integrator_.numStates() != dims_.num_states
       || integrator_.numStates() != obj_.numStates()
-      || integrator_.numParams() != dims_.nprm
+      || integrator_.numParams() != dims_.num_params
       || integrator_.numParams() != obj_.numParams()
-      || dims_.nres != dims_.nst
-      || dims_.nhst <= 0)
+      || dims_.num_residuals != dims_.num_states
+      || dims_.num_history_states <= 0)
   {
     throw runtime_error(
         "TimeReducedFunctional received inconsistent dimensions");
@@ -259,9 +256,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
   Vector<Real> ctx_next_state;
   Vector<Real> carry_next_state;
   Vector<Real> hist;
-  Vector<Real> prev;
   Vector<Real> carry_history;
-  Vector<Real> carry_prev_state;
 
   Vector<Vector<Real>> adjoints(steps);
 
@@ -270,11 +265,11 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
   {
     notify("adjoint-step", steps - t, steps);
     obj_.stateGrad(t + 1, tr, prm, rhs);
-    checkSize(rhs, dims_.nst);
+    checkSize(rhs, dims_.num_states);
     checkFinite(rhs, "adjoint objective gradient", t);
 
     const Index level = t + 1;
-    for (Index i = 0; i < dims_.nhst; ++i)
+    for (Index i = 0; i < dims_.num_history_states; ++i)
     {
       const Index ft = level + i;
       if (ft >= steps)
@@ -284,16 +279,15 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
       TimeContext carry_ctx = makeContext(tr,
                                           ft,
-                                          dims_.nhst,
+                                          dims_.num_history_states,
                                           prm,
                                           carry_history,
-                                          carry_prev_state,
                                           carry_next_state);
 
       assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
       J_hist_.applyT(adjoints[ft], carry);
 
-      checkSize(carry, dims_.nst);
+      checkSize(carry, dims_.num_states);
       checkFinite(carry, "adjoint history carry", t);
 
       for (Index j = 0; j < rhs.size(); ++j)
@@ -305,10 +299,9 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
     TimeContext ctx = makeContext(tr,
                                   t,
-                                  dims_.nhst,
+                                  dims_.num_history_states,
                                   prm,
                                   hist,
-                                  prev,
                                   ctx_next_state);
 
     assemble(ctx, VariableBlock::NextState, J_next_);
@@ -318,7 +311,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
     solve_sec_ += elapsedSeconds(solve_begin);
 
     ++solve_calls_;
-    checkSize(adj, dims_.nres);
+    checkSize(adj, dims_.num_residuals);
     checkFinite(adj, "adjoint solution", t);
 
     problem_.linearize(ctx, lin_);
@@ -335,11 +328,11 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
   if (init_grad_map_ != nullptr)
   {
     obj_.stateGrad(0, tr, prm, init_state_grad);
-    checkSize(init_state_grad, dims_.nst);
+    checkSize(init_state_grad, dims_.num_states);
 
     for (Index t = 0; t < steps; ++t)
     {
-      for (Index i = 0; i < dims_.nhst; ++i)
+      for (Index i = 0; i < dims_.num_history_states; ++i)
       {
         if (historyLevel(t, i) != 0)
         {
@@ -349,16 +342,15 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
         TimeContext carry_ctx =
             makeContext(tr,
                         t,
-                        dims_.nhst,
+                        dims_.num_history_states,
                         prm,
                         carry_history,
-                        carry_prev_state,
                         carry_next_state);
 
         assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
         J_hist_.applyT(adjoints[t], carry);
 
-        checkSize(carry, dims_.nst);
+        checkSize(carry, dims_.num_states);
 
         for (Index j = 0; j < init_state_grad.size(); ++j)
         {
@@ -382,7 +374,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
 void TimeReducedFunctional::assemble(TimeContext     ctx,
                                      VariableBlock   wrt,
-                                     MatrixOperator& out)
+                                     AssemblyMatrix& out)
 {
   const auto assembly_begin = Clock::now();
   problem_.linearize(ctx, lin_);

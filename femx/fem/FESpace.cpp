@@ -28,10 +28,10 @@ void FESpace::setup()
 {
   const Index num_elem = mesh_->numElems();
   num_shapes_per_elem_ = fe_->numDofsPerElement();
-  const Index ndof_e   = comps_ * num_shapes_per_elem_;
+  const Index num_elem_dofs   = comps_ * num_shapes_per_elem_;
 
-  dof_map_.allocate(num_elem, ndof_e);
-  nd_ = comps_ * mesh_->numNodes();
+  dof_map_.allocate(num_elem, num_elem_dofs);
+  num_dofs_ = comps_ * mesh_->numNodes();
 
   for (Index ie = 0; ie < num_elem; ++ie)
   {
@@ -75,7 +75,7 @@ Index FESpace::numElems() const noexcept
 
 Index FESpace::numDofs() const noexcept
 {
-  return nd_;
+  return num_dofs_;
 }
 
 Index FESpace::numComponents() const noexcept

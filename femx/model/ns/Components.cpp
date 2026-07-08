@@ -47,7 +47,7 @@ void evalQp(const LocalElementValues& ev,
             QPState&                  qp)
 {
   qp = {};
-  for (Index in = 0; in < ev.nn; ++in)
+  for (Index in = 0; in < ev.num_nodes; ++in)
   {
     for (Index c = 0; c < ev.dim; ++c)
     {
@@ -60,7 +60,7 @@ void evalQp(const LocalElementValues& ev,
     }
   }
 
-  for (Index in = 0; in < ev.nn; ++in)
+  for (Index in = 0; in < ev.num_nodes; ++in)
   {
     for (Index d = 0; d < ev.dim; ++d)
     {
@@ -105,7 +105,7 @@ Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
   }
 
   Real sum = 0.0;
-  for (Index in = 0; in < ev.nn; ++in)
+  for (Index in = 0; in < ev.num_nodes; ++in)
   {
     Real grad_dir = 0.0;
     for (Index d = 0; d < ev.dim; ++d)
@@ -156,22 +156,22 @@ Index vdof(Index in, Index comp, Index dim)
   return dim * in + comp;
 }
 
-Index pdof(Index in, Index nn, Index dim)
+Index pdof(Index in, Index num_nodes, Index dim)
 {
-  return dim * nn + in;
+  return dim * num_nodes + in;
 }
 
-Index numLocalDofs(Index nn, Index dim)
+Index numLocalDofs(Index num_nodes, Index dim)
 {
-  return dim * nn + nn;
+  return dim * num_nodes + num_nodes;
 }
 
-void zeroLocalSystem(Index nd, LocalMatrix Ke, LocalVector Fe)
+void zeroLocalSystem(Index num_dofs, LocalMatrix Ke, LocalVector Fe)
 {
-  for (Index i = 0; i < nd; ++i)
+  for (Index i = 0; i < num_dofs; ++i)
   {
     Fe[i] = 0.0;
-    for (Index j = 0; j < nd; ++j)
+    for (Index j = 0; j < num_dofs; ++j)
     {
       Ke(i, j) = 0.0;
     }
@@ -185,7 +185,7 @@ void updateQpStates(const LocalElementValues& ev,
                     const Real*               adv_state,
                     QPState*                  qps)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     QPState& qp = qps[iq];
     evalQp(ev, iq, state, adv_state, qp);
@@ -199,13 +199,13 @@ void assembleMassLHS(const LocalElementValues& ev,
                      LocalMatrix               Ke)
 {
   const Real coeff = fluid.rho / dt;
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
       const Real row = coeff * ev.N(iq, i) * Jw;
-      for (Index j = 0; j < ev.nn; ++j)
+      for (Index j = 0; j < ev.num_nodes; ++j)
       {
         const Real value = row * ev.N(iq, j);
         for (Index d = 0; d < ev.dim; ++d)
@@ -223,11 +223,11 @@ void assembleMassRHS(const LocalElementValues& ev,
                      Real                      dt,
                      LocalVector               Fe)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
       for (Index d = 0; d < ev.dim; ++d)
       {
@@ -242,14 +242,14 @@ void assembleAdvectionLHS(const LocalElementValues& ev,
                           const KernelFluid&        fluid,
                           LocalMatrix               Ke)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
       const Real test = 0.5 * fluid.rho * ev.N(iq, i) * Jw;
-      for (Index j = 0; j < ev.nn; ++j)
+      for (Index j = 0; j < ev.num_nodes; ++j)
       {
         const Real grad  = advectionDerivative(ev, qp, iq, j);
         const Real value = test * grad;
@@ -267,11 +267,11 @@ void assembleAdvectionRHS(const LocalElementValues& ev,
                           const KernelFluid&        fluid,
                           LocalVector               Fe)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
       for (Index d = 0; d < ev.dim; ++d)
       {
@@ -285,12 +285,12 @@ void assembleDiffusionLHS(const LocalElementValues& ev,
                           const KernelFluid&        fluid,
                           LocalMatrix               Ke)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
-      for (Index j = 0; j < ev.nn; ++j)
+      for (Index j = 0; j < ev.num_nodes; ++j)
       {
         const Real value = 0.5 * fluid.mu * shapeGradientDot(ev, iq, i, j) * Jw;
         for (Index d = 0; d < ev.dim; ++d)
@@ -307,11 +307,11 @@ void assembleDiffusionRHS(const LocalElementValues& ev,
                           const KernelFluid&        fluid,
                           LocalVector               Fe)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
       for (Index c = 0; c < ev.dim; ++c)
       {
@@ -329,15 +329,15 @@ void assembleDiffusionRHS(const LocalElementValues& ev,
 void assemblePreVelCouplingLHS(const LocalElementValues& ev,
                                LocalMatrix               Ke)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
-      const Index ip = pdof(i, ev.nn, ev.dim);
-      for (Index j = 0; j < ev.nn; ++j)
+      const Index ip = pdof(i, ev.num_nodes, ev.dim);
+      for (Index j = 0; j < ev.num_nodes; ++j)
       {
-        const Index jp = pdof(j, ev.nn, ev.dim);
+        const Index jp = pdof(j, ev.num_nodes, ev.dim);
         for (Index d = 0; d < ev.dim; ++d)
         {
           Ke(vdof(i, d, ev.dim), jp) -= ev.dNdx(iq, i, d) * ev.N(iq, j) * Jw;
@@ -354,18 +354,18 @@ void assembleStabilizationLHS(const LocalElementValues& ev,
                               Real                      dt,
                               LocalMatrix               Ke)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
-      const Index ip    = pdof(i, ev.nn, ev.dim);
+      const Index ip    = pdof(i, ev.num_nodes, ev.dim);
       const Real  dvidx = advectionDerivative(ev, qp, iq, i);
 
-      for (Index j = 0; j < ev.nn; ++j)
+      for (Index j = 0; j < ev.num_nodes; ++j)
       {
-        const Index jp    = pdof(j, ev.nn, ev.dim);
+        const Index jp    = pdof(j, ev.num_nodes, ev.dim);
         const Real  dvjdx = advectionDerivative(ev, qp, iq, j);
 
         for (Index d = 0; d < ev.dim; ++d)
@@ -392,13 +392,13 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
                               Real                      dt,
                               LocalVector               Fe)
 {
-  for (Index iq = 0; iq < ev.nq; ++iq)
+  for (Index iq = 0; iq < ev.num_qpts; ++iq)
   {
     const QPState& qp = qps[iq];
     const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.nn; ++i)
+    for (Index i = 0; i < ev.num_nodes; ++i)
     {
-      const Index ip             = pdof(i, ev.nn, ev.dim);
+      const Index ip             = pdof(i, ev.num_nodes, ev.dim);
       const Real  dvidx          = advectionDerivative(ev, qp, iq, i);
       Real        div_u          = 0.0;
       Real        div_adv_grad_u = 0.0;
@@ -419,16 +419,16 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
   }
 }
 
-void finishLocalResidual(Index       nd,
+void finishLocalResidual(Index       num_dofs,
                          const Real* nxt,
                          LocalMatrix Ke,
                          LocalVector Fe,
                          Real*       out)
 {
-  for (Index i = 0; i < nd; ++i)
+  for (Index i = 0; i < num_dofs; ++i)
   {
     Real value = -Fe[i];
-    for (Index j = 0; j < nd; ++j)
+    for (Index j = 0; j < num_dofs; ++j)
     {
       value += Ke(i, j) * nxt[j];
     }

@@ -18,15 +18,13 @@ class TimeObservationData
 {
 public:
   TimeObservationData() = default;
+  TimeObservationData(Index num_levels, Index num_observations);
 
-  TimeObservationData(Index nl, Index num_observations);
-
-  void resize(Index nl, Index num_observations);
+  void resize(Index num_levels, Index num_observations);
 
   bool  empty() const;
   Index numLevels() const;
   Index numObservations() const;
-  Index size() const;
 
   bool hasLayout() const;
   bool hasTimeLevels() const;
@@ -61,8 +59,8 @@ private:
 
 private:
   Vector<Real>   data_;
-  Index          nl_{0};
-  Index          num_obs_{0};
+  Index          num_levels_{0};
+  Index          num_observations_{0};
   std::string    sampler_;
   Vector<Point3> pts_;
   Vector<Index>  comps_;

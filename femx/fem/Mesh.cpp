@@ -7,8 +7,8 @@ using namespace std;
 namespace femx
 {
 
-Mesh Mesh::makeStructuredQuad(Index nx,
-                              Index ny,
+Mesh Mesh::makeStructuredQuad(Index num_x_cells,
+                              Index num_y_cells,
                               Real  x_min,
                               Real  x_max,
                               Real  y_min,
@@ -16,23 +16,23 @@ Mesh Mesh::makeStructuredQuad(Index nx,
 {
   Mesh mesh(2);
 
-  const Real dx = (x_max - x_min) / static_cast<Real>(nx);
-  const Real dy = (y_max - y_min) / static_cast<Real>(ny);
+  const Real dx = (x_max - x_min) / static_cast<Real>(num_x_cells);
+  const Real dy = (y_max - y_min) / static_cast<Real>(num_y_cells);
 
-  for (Index j = 0; j <= ny; ++j)
+  for (Index j = 0; j <= num_y_cells; ++j)
   {
     const Real y = y_min + static_cast<Real>(j) * dy;
-    for (Index i = 0; i <= nx; ++i)
+    for (Index i = 0; i <= num_x_cells; ++i)
     {
       const Real x = x_min + static_cast<Real>(i) * dx;
       mesh.addNode({x, y, 0.0});
     }
   }
 
-  const Index nodes_per_row = nx + 1;
-  for (Index j = 0; j < ny; ++j)
+  const Index nodes_per_row = num_x_cells + 1;
+  for (Index j = 0; j < num_y_cells; ++j)
   {
-    for (Index i = 0; i < nx; ++i)
+    for (Index i = 0; i < num_x_cells; ++i)
     {
       const Index n0 = j * nodes_per_row + i;
       const Index n1 = n0 + 1;

@@ -5,10 +5,10 @@
 #include <string>
 #include <utility>
 
-#include <femx/linalg/operator/LinearOperator.hpp>
+#include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/CsrMatrixOperator.hpp>
+#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -145,7 +145,7 @@ public:
 
   void solve(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const CsrMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
+    const CsrAssemblyMatrix& sparse_op = requireSparseAssemblyMatrix(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
     {
       throw runtime_error(
@@ -158,7 +158,7 @@ public:
 
   void solveT(const LinearOperator& op, const Vector<Real>& rhs, Vector<Real>& out)
   {
-    const CsrMatrixOperator& sparse_op = requireSparseMatrixOperator(op);
+    const CsrAssemblyMatrix& sparse_op = requireSparseAssemblyMatrix(op);
     if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
     {
       throw runtime_error(
@@ -181,14 +181,14 @@ private:
     Vector<Real>  vals;
   };
 
-  static const CsrMatrixOperator& requireSparseMatrixOperator(
+  static const CsrAssemblyMatrix& requireSparseAssemblyMatrix(
       const LinearOperator& op)
   {
-    const auto* sparse_op = dynamic_cast<const CsrMatrixOperator*>(&op);
+    const auto* sparse_op = dynamic_cast<const CsrAssemblyMatrix*>(&op);
     if (sparse_op == nullptr)
     {
       throw runtime_error(
-          "ReSolveLinearSolver currently supports CsrMatrixOperator only");
+          "ReSolveLinearSolver currently supports CsrAssemblyMatrix only");
     }
     return *sparse_op;
   }

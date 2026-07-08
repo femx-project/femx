@@ -8,10 +8,10 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/CsrMatrixOperator.hpp>
+#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
@@ -118,15 +118,11 @@ int run(const Params& prm, bool enable_output)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  CsrMatrixOperator A(fwd.pettern);
-  ReSolveLinearSolver  solver(workspaceType(prm.solver), opts);
+  CsrAssemblyMatrix   A(fwd.pattern);
+  ReSolveLinearSolver solver(workspaceType(prm.solver), opts);
 
-  TimeLinearIntegrator integrator(fwd.problem, A, solver);
-  integrator.setInitialState(fwd.x0);
-
-  cout << FEMX_NS_FORWARD_APP_NAME << ": ranks = 1"
-       << ", dofs = " << fwd.space.numDofs()
-       << ", elems = " << fwd.space.mesh().numElems() << '\n';
+  TimeLinearIntegrator integ(fwd.problem, A, solver);
+  integ.setInitialState(fwd.x0);
 
   ofstream log_out;
   if (enable_output)
@@ -135,8 +131,8 @@ int run(const Params& prm, bool enable_output)
   }
 
   ForwardSolveResult result;
-  integrator.resetTiming();
-  result = solve(integrator,
+  integ.resetTiming();
+  result = solve(integ,
                  fwd,
                  prm.time,
                  prm.output,

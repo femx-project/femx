@@ -16,18 +16,18 @@ ElementValues::ElementValues(const FiniteElement&   fe,
                              const GaussQuadrature& quad)
   : fe_(&fe),
     quad_(&quad),
-    nn_(fe.numNodes()),
-    nd_(fe.numDofsPerElement()),
+    num_nodes_(fe.numNodes()),
+    num_dofs_(fe.numDofsPerElement()),
     dim_(fe.dim()),
-    nq_(quad.size())
+    num_qpts_(quad.size())
 {
-  N_.resize(nq_ * nd_);
-  dNdr_.resize(nq_ * nd_ * dim_);
-  dNdx_.resize(nq_ * nd_ * dim_);
+  N_.resize(num_qpts_ * num_dofs_);
+  dNdr_.resize(num_qpts_ * num_dofs_ * dim_);
+  dNdx_.resize(num_qpts_ * num_dofs_ * dim_);
 
-  detJ_.resize(nq_);
-  wts_.resize(nq_);
-  JxW_.resize(nq_);
+  detJ_.resize(num_qpts_);
+  wts_.resize(num_qpts_);
+  JxW_.resize(num_qpts_);
 
   J_.resize(dim_ * dim_);
   invJ_.resize(dim_ * dim_);
@@ -42,12 +42,12 @@ void ElementValues::reinit(const Element& elem)
 
 Index ElementValues::numNodes() const
 {
-  return nn_;
+  return num_nodes_;
 }
 
 Index ElementValues::numDofs() const
 {
-  return nd_;
+  return num_dofs_;
 }
 
 Index ElementValues::dim() const
@@ -57,29 +57,29 @@ Index ElementValues::dim() const
 
 Index ElementValues::numQuadraturePoints() const
 {
-  return nq_;
+  return num_qpts_;
 }
 
 VectorView<const Real> ElementValues::N(Index iq) const
 {
   return VectorView<const Real>(
-      N_.data() + iq * nd_,
-      nd_);
+      N_.data() + iq * num_dofs_,
+      num_dofs_);
 }
 
 MatrixView<const Real> ElementValues::dNdr(Index iq) const
 {
   return MatrixView<const Real>(
-      dNdr_.data() + iq * nd_ * dim_,
-      nd_,
+      dNdr_.data() + iq * num_dofs_ * dim_,
+      num_dofs_,
       dim_);
 }
 
 MatrixView<const Real> ElementValues::dNdx(Index iq) const
 {
   return MatrixView<const Real>(
-      dNdx_.data() + iq * nd_ * dim_,
-      nd_,
+      dNdx_.data() + iq * num_dofs_ * dim_,
+      num_dofs_,
       dim_);
 }
 
@@ -115,21 +115,21 @@ const Real* ElementValues::JxWData() const
 
 void ElementValues::calcReferenceValues()
 {
-  for (Index iq = 0; iq < nq_; ++iq)
+  for (Index iq = 0; iq < num_qpts_; ++iq)
   {
     const QuadraturePoint& qp = (*quad_)[iq];
 
     VectorView<Real> N(
-        N_.data() + iq * nd_,
-        nd_);
+        N_.data() + iq * num_dofs_,
+        num_dofs_);
 
     MatrixView<Real> dNdr(
-        dNdr_.data() + iq * nd_ * dim_,
-        nd_,
+        dNdr_.data() + iq * num_dofs_ * dim_,
+        num_dofs_,
         dim_);
 
-    fe_->calcShape(qp, N);
-    fe_->calcShapeGrad(qp, dNdr);
+    fe_->calcN(qp, N);
+    fe_->calcdNdr(qp, dNdr);
 
     wts_[iq] = qp.wt;
   }
@@ -137,13 +137,13 @@ void ElementValues::calcReferenceValues()
 
 void ElementValues::calcPhysicalValues(const Element& elem)
 {
-  for (Index iq = 0; iq < nq_; ++iq)
+  for (Index iq = 0; iq < num_qpts_; ++iq)
   {
     const auto dNdr_iq = dNdr(iq);
 
     fill(J_.begin(), J_.end(), 0.0);
 
-    for (Index in = 0; in < nn_; ++in)
+    for (Index in = 0; in < num_nodes_; ++in)
     {
       for (Index a = 0; a < dim_; ++a)
       {
@@ -161,11 +161,11 @@ void ElementValues::calcPhysicalValues(const Element& elem)
     JxW_[iq]        = detJ_[iq] * wts_[iq];
 
     MatrixView<Real> dNdx(
-        dNdx_.data() + iq * nd_ * dim_,
-        nd_,
+        dNdx_.data() + iq * num_dofs_ * dim_,
+        num_dofs_,
         dim_);
 
-    for (Index i = 0; i < nd_; ++i)
+    for (Index i = 0; i < num_dofs_; ++i)
     {
       for (Index a = 0; a < dim_; ++a)
       {

@@ -13,17 +13,17 @@ namespace femx::model::ns
 
 void NavierResidual(Index       step,
                     Index       elem,
-                    Index       nq,
-                    Index       nn,
+                    Index       num_qpts,
+                    Index       num_nodes,
                     Index       dim,
-                    Index       nres,
-                    Index       num_prev_states,
+                    Index       num_residuals,
+                    Index       num_history_dofs,
                     Index       num_next_states,
-                    Index       nprm,
+                    Index       num_params,
                     const Real* N,
                     const Real* dNdx,
                     const Real* JxW,
-                    const Real* prev,
+                    const Real* hist,
                     const Real* nxt,
                     const Real* prm,
                     Real*       out);
@@ -33,16 +33,16 @@ class NavierKernel final : public assembly::TimeElementKernel
 public:
   NavierKernel(const FESpace&         space,
                const GaussQuadrature& quadrature,
-               Index                  nres,
-               Index                  num_prev_states,
+               Index                  num_residuals,
+               Index                  num_history_dofs,
                Index                  num_next_states,
-               Index                  num_variable_prm,
+               Index                  num_variable_params,
                Vector<Real>           fixed_prm);
 
   NavierKernel(const FESpace&         space,
                const GaussQuadrature& quadrature,
-               Index                  nres,
-               Index                  num_prev_states,
+               Index                  num_residuals,
+               Index                  num_history_dofs,
                Index                  num_next_states,
                Vector<Real>           fixed_prm);
 
@@ -72,22 +72,22 @@ private:
 private:
   const FESpace&                                   space_;
   const GaussQuadrature&                           quad_;
-  Index                                            nres_{0};
-  Index                                            num_prev_states_{0};
+  Index                                            num_residuals_{0};
+  Index                                            num_hist_dofs_{0};
   Index                                            num_next_states_{0};
   Index                                            num_hist_states_{1};
   Index                                            num_hist_state_dofs_{0};
-  Index                                            num_variable_prm_{0};
-  Index                                            nprm_{0};
+  Index                                            num_variable_params_{0};
+  Index                                            num_params_{0};
   Vector<Real>                                     fixed_prm_;
-  assembly::EnzymeTimeVolumeKernel<NavierResidual> fallback_;
+  assembly::EnzymeTimeVolumeKernel<NavierResidual> enzyme_kernel_;
 };
 
 Vector<Real> physicalParams(Real rho, Real mu, Real dt);
 
 NavierKernel makeNavierKernel(const FESpace&         vel_space,
                               const GaussQuadrature& quadrature,
-                              Index                  nloc,
+                              Index                  num_local_dofs,
                               Real                   rho,
                               Real                   mu,
                               Real                   dt);

@@ -68,7 +68,7 @@ Vector<Real> shapeWeights(const FiniteElement&   fe,
                           const QuadraturePoint& qp)
 {
   Vector<Real> wts(fe.numDofsPerElement());
-  fe.calcShape(qp, VectorView<Real>(wts.data(), wts.size()));
+  fe.calcN(qp, VectorView<Real>(wts.data(), wts.size()));
   return wts;
 }
 
@@ -148,7 +148,7 @@ bool quadSolveStep(const Element&       elem,
   wts = shapeWeights(fe, qp);
 
   Vector<Real> grad(fe.numDofsPerElement() * fe.dim());
-  fe.calcShapeGrad(
+  fe.calcdNdr(
       qp,
       MatrixView<Real>(
           grad.data(), fe.numDofsPerElement(), fe.dim()));
@@ -291,19 +291,19 @@ ScalarStencil findScalarStencil(const FESpace& space,
 
 } // namespace
 
-TimePointInterpolator::TimePointInterpolator(Index               nt,
+TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              const MixedFESpace& space,
                                              Index               fid,
                                              Vector<Point3>      pts,
                                              Vector<Index>       comps,
-                                             Index               nprm)
-  : nt_(nt),
-    nst_(space.numDofs()),
-    nprm_(nprm),
+                                             Index               num_params)
+  : num_steps_(num_steps),
+    num_states_(space.numDofs()),
+    num_params_(num_params),
     pts_(std::move(pts)),
     comps_(std::move(comps))
 {
-  if (nt_ < 0 || nst_ < 0 || nprm_ < 0)
+  if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
   {
     throw runtime_error("TimePointInterpolator received invalid dimensions");
   }
@@ -331,17 +331,17 @@ TimePointInterpolator::TimePointInterpolator(Index               nt,
 
 Index TimePointInterpolator::numSteps() const
 {
-  return nt_;
+  return num_steps_;
 }
 
 Index TimePointInterpolator::numStates() const
 {
-  return nst_;
+  return num_states_;
 }
 
 Index TimePointInterpolator::numParams() const
 {
-  return nprm_;
+  return num_params_;
 }
 
 Index TimePointInterpolator::numObservations() const

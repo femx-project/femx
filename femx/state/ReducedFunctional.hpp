@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/problem/Linearization.hpp>
 #include <femx/problem/Objective.hpp>
 #include <femx/problem/Residual.hpp>
@@ -13,7 +13,13 @@ namespace femx
 namespace state
 {
 
-/** @brief Reduced objective F(m) = J(u(m), m) using an adjoint gradient. */
+/**
+ * @brief Reduced objective F(m) = J(u(m), m) using an adjoint gradient.
+ *
+ * ReducedFunctional owns the high-level optimization operation: solve the
+ * state equation for a parameter vector, evaluate the objective, and compute
+ * the reduced gradient through an adjoint solve.
+ */
 class ReducedFunctional
 {
 public:
@@ -25,10 +31,13 @@ public:
 
   Index numParams() const;
 
+  /** @brief Evaluate F(prm). */
   Real value(const Vector<Real>& prm);
 
+  /** @brief Compute the reduced gradient dF/dm. */
   void grad(const Vector<Real>& prm, Vector<Real>& out);
 
+  /** @brief Evaluate F(prm) and dF/dm in one state/adjoint pass. */
   Real valueGrad(const Vector<Real>& prm, Vector<Real>& grad_out);
 
 private:

@@ -63,8 +63,8 @@ private:
   Vector<FESpace> fields_;
   Vector<Index>   local_offsets_;
   Vector<Index>   global_offsets_;
-  Index           ndpe_{0};
-  Index           nd_{0};
+  Index           num_dofs_per_elem_{0};
+  Index           num_dofs_{0};
 };
 
 } // namespace femx

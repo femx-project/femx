@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include <femx/common/Math.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
 
 using namespace std;
@@ -19,7 +20,7 @@ NewtonStateSolver::NewtonStateSolver(const Residual& problem,
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
-  if (dims_.nres != dims_.nst)
+  if (dims_.num_residuals != dims_.num_states)
   {
     throw runtime_error(
         "NewtonStateSolver requires square state residual dimensions");
@@ -54,17 +55,17 @@ void NewtonStateSolver::clearInitialState()
 
 Index NewtonStateSolver::numStates() const
 {
-  return dims_.nst;
+  return dims_.num_states;
 }
 
 Index NewtonStateSolver::numParams() const
 {
-  return dims_.nprm;
+  return dims_.num_params;
 }
 
 Index NewtonStateSolver::numResiduals() const
 {
-  return dims_.nres;
+  return dims_.num_residuals;
 }
 
 void NewtonStateSolver::solve(const Vector<Real>& prm,
@@ -133,16 +134,6 @@ void NewtonStateSolver::initializeState(Vector<Real>& state) const
     return;
   }
   resizeOrZero(state, numStates());
-}
-
-Real NewtonStateSolver::squaredNorm(const Vector<Real>& x)
-{
-  Real value = 0.0;
-  for (Index i = 0; i < x.size(); ++i)
-  {
-    value += x[i] * x[i];
-  }
-  return value;
 }
 
 } // namespace state

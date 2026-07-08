@@ -20,57 +20,63 @@ namespace assembly
 using LocalTimeVolumeResidualFunction =
     void (*)(Index       step,
              Index       elem,
-             Index       nq,
-             Index       nn,
+             Index       num_qpts,
+             Index       num_nodes,
              Index       dim,
-             Index       nres,
-             Index       num_prev_states,
+             Index       num_residuals,
+             Index       num_history_dofs,
              Index       num_next_states,
-             Index       nprm,
+             Index       num_params,
              const Real* N,
              const Real* dNdx,
              const Real* JxW,
-             const Real* prev,
+             const Real* hist,
              const Real* nxt,
              const Real* prm,
              Real*       out);
 
-/** @brief Enzyme time element kernel with volume element values. */
+/**
+ * @brief Enzyme time element kernel with volume element values.
+ *
+ * The template parameter is a local time-residual callback.  The kernel
+ * evaluates the residual directly and uses Enzyme to form history, next-state,
+ * and parameter Jacobian blocks when automatic differentiation is enabled.
+ */
 template <LocalTimeVolumeResidualFunction Residual>
 class EnzymeTimeVolumeKernel final : public TimeElementKernel
 {
 public:
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  nres,
-                         Index                  num_prev_states,
+                         Index                  num_residuals,
+                         Index                  num_history_dofs,
                          Index                  num_next_states,
-                         Index                  nprm)
+                         Index                  num_params)
     : space_(space),
       quad_(quadrature),
-      nres_(nres),
-      num_prev_states_(num_prev_states),
+      num_residuals_(num_residuals),
+      num_hist_dofs_(num_history_dofs),
       num_next_states_(num_next_states),
-      num_variable_prm_(nprm),
-      nprm_(nprm)
+      num_variable_params_(num_params),
+      num_params_(num_params)
   {
     checkDimensions();
   }
 
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  nres,
-                         Index                  num_prev_states,
+                         Index                  num_residuals,
+                         Index                  num_history_dofs,
                          Index                  num_next_states,
-                         Index                  num_variable_prm,
+                         Index                  num_variable_params,
                          Vector<Real>           fixed_prm)
     : space_(space),
       quad_(quadrature),
-      nres_(nres),
-      num_prev_states_(num_prev_states),
+      num_residuals_(num_residuals),
+      num_hist_dofs_(num_history_dofs),
       num_next_states_(num_next_states),
-      num_variable_prm_(num_variable_prm),
-      nprm_(num_variable_prm + fixed_prm.size()),
+      num_variable_params_(num_variable_params),
+      num_params_(num_variable_params + fixed_prm.size()),
       fixed_prm_(std::move(fixed_prm))
   {
     checkDimensions();
@@ -78,14 +84,14 @@ public:
 
   EnzymeTimeVolumeKernel(const FESpace&         space,
                          const GaussQuadrature& quadrature,
-                         Index                  nres,
-                         Index                  num_prev_states,
+                         Index                  num_residuals,
+                         Index                  num_history_dofs,
                          Index                  num_next_states,
                          Vector<Real>           fixed_prm)
     : EnzymeTimeVolumeKernel(space,
                              quadrature,
-                             nres,
-                             num_prev_states,
+                             num_residuals,
+                             num_history_dofs,
                              num_next_states,
                              0,
                              std::move(fixed_prm))
@@ -94,18 +100,18 @@ public:
 
   void checkDimensions()
   {
-    if (nres_ < 0 || num_prev_states_ < 0
-        || num_next_states_ < 0 || num_variable_prm_ < 0 || nprm_ < 0)
+    if (num_residuals_ < 0 || num_hist_dofs_ < 0
+        || num_next_states_ < 0 || num_variable_params_ < 0 || num_params_ < 0)
     {
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel received invalid dimensions");
     }
-    if (num_next_states_ <= 0 || num_prev_states_ % num_next_states_ != 0)
+    if (num_next_states_ <= 0 || num_hist_dofs_ % num_next_states_ != 0)
     {
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel history size must be a multiple of next-state size");
     }
-    num_hist_states_     = num_prev_states_ / num_next_states_;
+    num_hist_states_     = num_hist_dofs_ / num_next_states_;
     num_hist_state_dofs_ = num_next_states_;
   }
 
@@ -117,7 +123,7 @@ public:
            Vector<Real>&            out) const override
   {
     checkInputSizes(hist, nxt, prm);
-    resizeOrZero(out, nres_);
+    resizeOrZero(out, num_residuals_);
     const Vector<Real> residual_prm = makeResidualPrm(prm);
 
     ElementValues vals(space_.finiteElement(), quad_);
@@ -127,10 +133,10 @@ public:
              vals.numQuadraturePoints(),
              vals.numNodes(),
              vals.dim(),
-             nres_,
-             num_prev_states_,
+             num_residuals_,
+             num_hist_dofs_,
              num_next_states_,
-             nprm_,
+             num_params_,
              vals.NData(),
              vals.dNdxData(),
              vals.JxWData(),
@@ -152,8 +158,7 @@ public:
 
     if (wrt.isHistoryState())
     {
-      historyStateJac(
-          step, ie, wrt.historyLag(), hist, nxt, prm, out);
+      historyStateJac(step, ie, wrt.historyLag(), hist, nxt, prm, out);
       return;
     }
     if (wrt.isNextState())
@@ -179,7 +184,7 @@ private:
           "EnzymeTimeVolumeKernel history lag is out of range");
     }
 
-    out.resize(nres_, num_hist_state_dofs_);
+    out.resize(num_residuals_, num_hist_state_dofs_);
     if (num_hist_state_dofs_ == 0)
     {
       return;
@@ -190,15 +195,15 @@ private:
     ElementValues      vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
-    Vector<Real> primal_out(nres_);
-    Vector<Real> out_adj(nres_);
-    Vector<Real> previous_adj(num_prev_states_);
+    Vector<Real> primal_out(num_residuals_);
+    Vector<Real> out_adj(num_residuals_);
+    Vector<Real> history_adj(num_hist_dofs_);
 
-    for (Index row = 0; row < nres_; ++row)
+    for (Index row = 0; row < num_residuals_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
-      previous_adj.setZero();
+      history_adj.setZero();
       out_adj[row] = 1.0;
 
       __enzyme_autodiff<void>(reinterpret_cast<void*>(Residual),
@@ -213,13 +218,13 @@ private:
                               enzyme_const,
                               vals.dim(),
                               enzyme_const,
-                              nres_,
+                              num_residuals_,
                               enzyme_const,
-                              num_prev_states_,
+                              num_hist_dofs_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              nprm_,
+                              num_params_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -228,7 +233,7 @@ private:
                               vals.JxWData(),
                               enzyme_dup,
                               hist.data(),
-                              previous_adj.data(),
+                              history_adj.data(),
                               enzyme_const,
                               nxt.data(),
                               enzyme_const,
@@ -240,7 +245,7 @@ private:
       const Index offset = lag * num_hist_state_dofs_;
       for (Index col = 0; col < num_hist_state_dofs_; ++col)
       {
-        out(row, col) = previous_adj[offset + col];
+        out(row, col) = history_adj[offset + col];
       }
     }
 #else
@@ -260,7 +265,7 @@ private:
                     const Vector<Real>&      prm,
                     DenseMatrix&             out) const
   {
-    out.resize(nres_, num_next_states_);
+    out.resize(num_residuals_, num_next_states_);
     if (num_next_states_ == 0)
     {
       return;
@@ -271,11 +276,11 @@ private:
     ElementValues      vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
-    Vector<Real> primal_out(nres_);
-    Vector<Real> out_adj(nres_);
+    Vector<Real> primal_out(num_residuals_);
+    Vector<Real> out_adj(num_residuals_);
     Vector<Real> next_adj(num_next_states_);
 
-    for (Index row = 0; row < nres_; ++row)
+    for (Index row = 0; row < num_residuals_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -294,13 +299,13 @@ private:
                               enzyme_const,
                               vals.dim(),
                               enzyme_const,
-                              nres_,
+                              num_residuals_,
                               enzyme_const,
-                              num_prev_states_,
+                              num_hist_dofs_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              nprm_,
+                              num_params_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -340,8 +345,8 @@ private:
                 const Vector<Real>&      prm,
                 DenseMatrix&             out) const
   {
-    out.resize(nres_, num_variable_prm_);
-    if (num_variable_prm_ == 0)
+    out.resize(num_residuals_, num_variable_params_);
+    if (num_variable_params_ == 0)
     {
       return;
     }
@@ -351,11 +356,11 @@ private:
     ElementValues      vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
-    Vector<Real> primal_out(nres_);
-    Vector<Real> out_adj(nres_);
-    Vector<Real> param_adj(nprm_);
+    Vector<Real> primal_out(num_residuals_);
+    Vector<Real> out_adj(num_residuals_);
+    Vector<Real> param_adj(num_params_);
 
-    for (Index row = 0; row < nres_; ++row)
+    for (Index row = 0; row < num_residuals_; ++row)
     {
       primal_out.setZero();
       out_adj.setZero();
@@ -374,13 +379,13 @@ private:
                               enzyme_const,
                               vals.dim(),
                               enzyme_const,
-                              nres_,
+                              num_residuals_,
                               enzyme_const,
-                              num_prev_states_,
+                              num_hist_dofs_,
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              nprm_,
+                              num_params_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -398,7 +403,7 @@ private:
                               primal_out.data(),
                               out_adj.data());
 
-      for (Index col = 0; col < num_variable_prm_; ++col)
+      for (Index col = 0; col < num_variable_params_; ++col)
       {
         out(row, col) = param_adj[col];
       }
@@ -420,7 +425,7 @@ private:
     if (hist.count() != num_hist_states_
         || hist.stateSize() != num_hist_state_dofs_
         || nxt.size() != num_next_states_
-        || prm.size() != num_variable_prm_)
+        || prm.size() != num_variable_params_)
     {
       throw std::runtime_error("EnzymeTimeVolumeKernel input size mismatch");
     }
@@ -433,14 +438,14 @@ private:
       return variable_prm;
     }
 
-    Vector<Real> out(nprm_);
-    for (Index i = 0; i < num_variable_prm_; ++i)
+    Vector<Real> out(num_params_);
+    for (Index i = 0; i < num_variable_params_; ++i)
     {
       out[i] = variable_prm[i];
     }
     for (Index i = 0; i < fixed_prm_.size(); ++i)
     {
-      out[num_variable_prm_ + i] = fixed_prm_[i];
+      out[num_variable_params_ + i] = fixed_prm_[i];
     }
     return out;
   }
@@ -454,13 +459,13 @@ private:
 private:
   const FESpace&         space_;
   const GaussQuadrature& quad_;
-  Index                  nres_{0};
-  Index                  num_prev_states_{0};
+  Index                  num_residuals_{0};
+  Index                  num_hist_dofs_{0};
   Index                  num_next_states_{0};
   Index                  num_hist_states_{1};
   Index                  num_hist_state_dofs_{0};
-  Index                  num_variable_prm_{0};
-  Index                  nprm_{0};
+  Index                  num_variable_params_{0};
+  Index                  num_params_{0};
   Vector<Real>           fixed_prm_;
 };
 

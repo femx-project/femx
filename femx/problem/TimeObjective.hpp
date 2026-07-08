@@ -9,7 +9,12 @@ namespace femx
 namespace problem
 {
 
-/** @brief Objective functional J(u_0, ..., u_N, m) for time trajectories. */
+/**
+ * @brief Objective functional J(u_0, ..., u_N, m) for time trajectories.
+ *
+ * Implementations provide the scalar value plus gradients with respect to
+ * each time level and the shared parameter vector.
+ */
 class TimeObjective
 {
 public:

@@ -16,6 +16,7 @@ constexpr Real ONE       = 1.0;
 constexpr Real TWO       = 2.0;
 constexpr Real HALF      = 0.5;
 constexpr Real MINUS_ONE = -1.0;
+constexpr Real PI        = 3.141592653589793238462643383279502884;
 
 constexpr Real MACHINE_EPSILON = std::numeric_limits<Real>::epsilon();
 } // namespace constants

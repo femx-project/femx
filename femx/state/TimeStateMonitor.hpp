@@ -18,7 +18,12 @@ struct TimeStepStateContext
   Real                solve_seconds = 0.0;
 };
 
-/** @brief Non-owning sink for states produced by a time-marching solve. */
+/**
+ * @brief Non-owning sink for states produced by a time-marching solve.
+ *
+ * Implementations can record states or request early stopping after observing
+ * timing and state context for each integration step.
+ */
 class TimeStateMonitor
 {
 public:

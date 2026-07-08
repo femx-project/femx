@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
-#include <femx/linalg/operator/MatrixOperator.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -13,12 +13,17 @@ namespace femx
 namespace state
 {
 
-/** @brief Time integrator using the assembled next-state Jacobian. */
+/**
+ * @brief Time integrator using the assembled next-state Jacobian.
+ *
+ * TimeLinearIntegrator assembles the next-state Jacobian at each step and
+ * solves for the next state with a linear solver.
+ */
 class TimeLinearIntegrator final : public TimeIntegrator
 {
 public:
   TimeLinearIntegrator(const problem::TimeResidual& problem,
-                       linalg::MatrixOperator&      J_next,
+                       linalg::AssemblyMatrix&      J_next,
                        linalg::LinearSolver&        lin_solver);
 
   void setInitialState(const Vector<Real>& state);
@@ -54,7 +59,7 @@ private:
 
 private:
   const problem::TimeResidual& problem_;
-  linalg::MatrixOperator&      J_next_;
+  linalg::AssemblyMatrix&      J_next_;
   linalg::LinearSolver&        lin_solver_;
   problem::TimeDims            dims_;
   Vector<Real>                 init_state_;

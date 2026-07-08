@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include "Boundary.hpp"
-#include <femx/assembly/CsrBuilder.hpp>
+#include <femx/assembly/Assembler.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
@@ -185,7 +185,7 @@ ForwardProblem::ForwardProblem(const Params& prm)
     fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
     problem(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
     x0(makeInitialState(space, prm.bcs)),
-    pettern(CsrBuilder::build(space)),
+    pattern(makeCsrPattern(space)),
     prm0(0)
 {
 }
@@ -297,10 +297,9 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                            log_out,
                            time.convergence.enabled);
   }
-  monitor.setConvergence(
-      {time.convergence.enabled,
-       time.convergence.vel_rel_tol,
-       time.convergence.min_steps});
+  monitor.setConvergence({time.convergence.enabled,
+                          time.convergence.vel_rel_tol,
+                          time.convergence.min_steps});
 
   integrator.setMonitor(&monitor);
   integrator.solve(problem.prm0);

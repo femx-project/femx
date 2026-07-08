@@ -3,7 +3,7 @@
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/operator/MatrixBuilder.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/problem/TimeResidual.hpp>
 
@@ -12,7 +12,12 @@ namespace femx
 namespace assembly
 {
 
-/** @brief Applies time-dependent Dirichlet control rows to a TimeResidual. */
+/**
+ * @brief Applies time-dependent Dirichlet control rows to a TimeResidual.
+ *
+ * This wrapper replaces constrained state rows and exposes time-varying
+ * Dirichlet values through additional control parameters.
+ */
 class TimeDirichletControlResidual final : public problem::TimeResidual
 {
 public:
@@ -20,7 +25,7 @@ public:
                                DirichletControl             ctr,
                                Vector<Index>                fdofs             = {},
                                Index                        ctr_param_offset  = 0,
-                               Index                        nprm              = -1,
+                               Index                        num_params              = -1,
                                Vector<Real>                 fvals             = {},
                                Vector<LinearInterpolation>  ctr_time_stencils = {});
 

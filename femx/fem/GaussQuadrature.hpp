@@ -76,9 +76,9 @@ public:
     throw std::runtime_error("Unsupported reference elem");
   }
 
-  static GaussQuadrature segment(Index n)
+  static GaussQuadrature segment(Index num_points)
   {
-    switch (n)
+    switch (num_points)
     {
     case 1:
     {
@@ -118,9 +118,9 @@ public:
     }
   }
 
-  static GaussQuadrature quadrilateral(Index n)
+  static GaussQuadrature quadrilateral(Index num_points)
   {
-    switch (n)
+    switch (num_points)
     {
     case 1:
     {

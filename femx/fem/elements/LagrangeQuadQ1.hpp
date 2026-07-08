@@ -9,8 +9,8 @@ class LagrangeQuadQ1 : public FiniteElement
 {
 public:
   static constexpr Index spatial_dim = 2;
-  static constexpr Index nnodes      = 4;
-  static constexpr Index nd          = 4;
+  static constexpr Index num_nodes      = 4;
+  static constexpr Index num_dofs          = 4;
   static constexpr Index degree      = 1;
 
   std::string name() const override
@@ -25,12 +25,12 @@ public:
 
   Index numNodes() const override
   {
-    return nnodes;
+    return num_nodes;
   }
 
   Index numDofsPerElement() const override
   {
-    return nd;
+    return num_dofs;
   }
 
   Index order() const override
@@ -43,7 +43,7 @@ public:
     return ReferenceElement::Quadrilateral;
   }
 
-  void calcShape(const QuadraturePoint& qp,
+  void calcN(const QuadraturePoint& qp,
                  VectorView<Real>       N) const override
   {
     const Real r = qp[0];
@@ -55,7 +55,7 @@ public:
     N[3] = 0.25 * (1.0 - r) * (1.0 + s);
   }
 
-  void calcShapeGrad(const QuadraturePoint& qp,
+  void calcdNdr(const QuadraturePoint& qp,
                      MatrixView<Real>       dNdr) const override
   {
     const Real r = qp[0];

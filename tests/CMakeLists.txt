@@ -8,27 +8,19 @@ function(femx_add_test_if_exists target test_name)
   endforeach()
 
   add_executable(${target} ${sources})
-  target_link_libraries(${target} PRIVATE femx::femx)
+  target_link_libraries(${target} PRIVATE femx::femx femx_test_helpers)
   add_test(NAME ${test_name} COMMAND ${target})
 endfunction()
+
+add_library(femx_test_helpers helpers/DerivativeCheck.cpp)
+target_include_directories(femx_test_helpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(femx_test_helpers PUBLIC femx::femx)
 
 femx_add_test_if_exists(runNewtonStateSolverTests NewtonStateSolverTests
                         unit/state/runNewtonStateSolverTests.cpp)
 
-femx_add_test_if_exists(
-  runTimeNewtonIntegratorTests TimeNewtonIntegratorTests
-  unit/state/runTimeNewtonIntegratorTests.cpp)
-
 femx_add_test_if_exists(runEnsembleBasisTests EnsembleBasisTests
                         unit/state/runEnsembleBasisTests.cpp)
-
-femx_add_test_if_exists(
-  runEnsembleReducedFunctionalTests EnsembleReducedFunctionalTests
-  unit/state/runEnsembleReducedFunctionalTests.cpp)
-
-femx_add_test_if_exists(
-  runAB2TimeReducedFunctionalTests AB2TimeReducedFunctionalTests
-  unit/state/runAB2TimeReducedFunctionalTests.cpp)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/navier/runNavierConfigTests.cpp")
   add_executable(runNavierConfigTests

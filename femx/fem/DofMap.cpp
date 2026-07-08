@@ -7,31 +7,31 @@ using namespace std;
 namespace femx
 {
 
-DofMap::DofMap(Index ne, Index ndpe)
+DofMap::DofMap(Index num_elems, Index num_dofs_per_elem)
 {
-  allocate(ne, ndpe);
+  allocate(num_elems, num_dofs_per_elem);
 }
 
-void DofMap::allocate(Index ne, Index ndpe)
+void DofMap::allocate(Index num_elems, Index num_dofs_per_elem)
 {
-  if (ne < 0 || ndpe <= 0)
+  if (num_elems < 0 || num_dofs_per_elem <= 0)
   {
     throw runtime_error("DofMap: invalid size");
   }
 
-  ne_   = ne;
-  ndpe_ = ndpe;
-  elem_dofs_.resize(ne_ * ndpe_);
+  num_elems_   = num_elems;
+  num_dofs_per_elem_ = num_dofs_per_elem;
+  elem_dofs_.resize(num_elems_ * num_dofs_per_elem_);
 }
 
 Index DofMap::numElements() const noexcept
 {
-  return ne_;
+  return num_elems_;
 }
 
 Index DofMap::numElementDofs() const noexcept
 {
-  return ndpe_;
+  return num_dofs_per_elem_;
 }
 
 Index DofMap::elementDof(Index ie, Index il) const noexcept
@@ -46,12 +46,12 @@ void DofMap::setElementDof(Index ie, Index il, Index gdof) noexcept
 
 const Index* DofMap::elementDofsData(Index ie) const noexcept
 {
-  return elem_dofs_.data() + ie * ndpe_;
+  return elem_dofs_.data() + ie * num_dofs_per_elem_;
 }
 
 Index DofMap::offset(Index ie, Index il) const noexcept
 {
-  return ie * ndpe_ + il;
+  return ie * num_dofs_per_elem_ + il;
 }
 
 } // namespace femx

@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 #include <femx/linalg/native/DenseLinearSolver.hpp>
-#include <femx/linalg/native/DenseMatrixOperator.hpp>
+#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/problem/Residual.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
 #include <tests/TestBase.hpp>
@@ -35,22 +35,22 @@ public:
                  problem::Linearization& out) const override
   {
     (void) prm;
-    auto* matrix_out = dynamic_cast<problem::MatrixLinearization*>(&out);
-    if (matrix_out == nullptr)
+    auto* mat_out = dynamic_cast<problem::MatrixLinearization*>(&out);
+    if (mat_out == nullptr)
     {
       throw std::runtime_error(
           "QuadraticResidual requires MatrixLinearization");
     }
 
-    matrix_out->stateMatrix().resize(1, 1);
-    matrix_out->stateMatrix().setZero();
-    matrix_out->stateMatrix().set(0, 0, 2.0 * state[0]);
-    matrix_out->stateMatrix().finalize();
+    mat_out->stateMat().resize(1, 1);
+    mat_out->stateMat().setZero();
+    mat_out->stateMat().set(0, 0, 2.0 * state[0]);
+    mat_out->stateMat().finalize();
 
-    matrix_out->paramMatrix().resize(1, 1);
-    matrix_out->paramMatrix().setZero();
-    matrix_out->paramMatrix().set(0, 0, -1.0);
-    matrix_out->paramMatrix().finalize();
+    mat_out->paramMat().resize(1, 1);
+    mat_out->paramMat().setZero();
+    mat_out->paramMat().set(0, 0, -1.0);
+    mat_out->paramMat().finalize();
   }
 };
 
@@ -70,8 +70,8 @@ public:
     status = true;
 
     QuadraticResidual            problem;
-    linalg::DenseMatrixOperator  J_state;
-    linalg::DenseMatrixOperator  J_param;
+    linalg::DenseAssemblyMatrix  J_state;
+    linalg::DenseAssemblyMatrix  J_param;
     problem::MatrixLinearization lin(J_state, J_param);
     linalg::DenseLinearSolver    lin_solver;
     state::NewtonStateSolver     solver(problem, lin, lin_solver);

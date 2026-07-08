@@ -25,10 +25,10 @@ CsrPattern::CsrPattern(Index                     rows,
 
   num_rows_ = rows;
   num_cols_ = cols;
-  ne_       = num_elems;
+  num_elems_       = num_elems;
 
-  elem_coo_offsets_.assign(ne_ + 1, 0);
-  elem_num_dofs_.assign(ne_, 0);
+  elem_coo_offsets_.assign(num_elems_ + 1, 0);
+  elem_num_dofs_.assign(num_elems_, 0);
 
   countCooEntries(elem_dofs);
 
@@ -45,14 +45,14 @@ void CsrPattern::countCooEntries(const ElementDofProvider& elem_dofs)
   num_coo_entries_ = 0;
 
   Vector<Index> dofs;
-  for (Index ie = 0; ie < ne_; ++ie)
+  for (Index ie = 0; ie < num_elems_; ++ie)
   {
     dofs.clear();
     elem_dofs(ie, dofs);
-    const Index nd = dofs.size();
+    const Index num_dofs = dofs.size();
 
-    elem_num_dofs_[ie]  = nd;
-    num_coo_entries_   += nd * nd;
+    elem_num_dofs_[ie]  = num_dofs;
+    num_coo_entries_   += num_dofs * num_dofs;
   }
 }
 
@@ -65,21 +65,21 @@ void CsrPattern::setupCooArrays(
   Index counter = 0;
   Vector<Index> dofs;
 
-  for (Index ie = 0; ie < ne_; ++ie)
+  for (Index ie = 0; ie < num_elems_; ++ie)
   {
     dofs.clear();
     elem_dofs(ie, dofs);
-    const Index nd = elem_num_dofs_[ie];
-    if (dofs.size() != nd)
+    const Index num_dofs = elem_num_dofs_[ie];
+    if (dofs.size() != num_dofs)
     {
       throw runtime_error("CsrPattern elem dof count changed");
     }
 
     elem_coo_offsets_[ie] = counter;
 
-    for (Index i = 0; i < nd; ++i)
+    for (Index i = 0; i < num_dofs; ++i)
     {
-      for (Index j = 0; j < nd; ++j)
+      for (Index j = 0; j < num_dofs; ++j)
       {
         const Index row = dofs[i];
         const Index col = dofs[j];
@@ -97,7 +97,7 @@ void CsrPattern::setupCooArrays(
     }
   }
 
-  elem_coo_offsets_[ne_] = num_coo_entries_;
+  elem_coo_offsets_[num_elems_] = num_coo_entries_;
 }
 
 void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
@@ -120,7 +120,7 @@ void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
 
   Vector<Index> col_tmp;
   col_tmp.reserve(num_coo_entries_);
-  nnz_ = 0;
+  num_nonzeros_ = 0;
 
   for (Index k = 0; k < num_coo_entries_; ++k)
   {
@@ -138,10 +138,10 @@ void CsrPattern::setupCsrArrays(const Vector<Index>& coo_rows,
       const Index row = coo_rows[current];
       ++row_ptr_[row + 1];
 
-      ++nnz_;
+      ++num_nonzeros_;
     }
 
-    map_to_csr_[current] = nnz_ - 1;
+    map_to_csr_[current] = num_nonzeros_ - 1;
   }
 
   for (Index r = 0; r < num_rows_; ++r)
@@ -164,12 +164,12 @@ Index CsrPattern::cols() const
 
 Index CsrPattern::nnz() const
 {
-  return nnz_;
+  return num_nonzeros_;
 }
 
 Index CsrPattern::numElems() const
 {
-  return ne_;
+  return num_elems_;
 }
 
 Index CsrPattern::numCooEntries() const

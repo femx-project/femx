@@ -64,7 +64,7 @@ struct ForwardProblem
   FixedBoundaryValues                    fixed;
   assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pettern;
+  CsrPattern                             pattern;
   Vector<Real>                           prm0;
 };
 

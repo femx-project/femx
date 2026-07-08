@@ -8,7 +8,7 @@
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/native/DenseMatrixOperator.hpp>
+#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <tests/TestBase.hpp>
 
 namespace femx
@@ -21,13 +21,13 @@ namespace
 
 void localTimeVolumeResidual(Index       step,
                              Index       elem,
-                             Index       nq,
-                             Index       nn,
+                             Index       num_qpts,
+                             Index       num_nodes,
                              Index       dim,
-                             Index       nres,
+                             Index       num_residuals,
                              Index       num_prev_states,
                              Index       num_next_states,
-                             Index       nprm,
+                             Index       num_params,
                              const Real* N,
                              const Real* dNdx,
                              const Real* JxW,
@@ -40,22 +40,22 @@ void localTimeVolumeResidual(Index       step,
   (void) dim;
   (void) num_prev_states;
   (void) num_next_states;
-  (void) nprm;
+  (void) num_params;
   (void) dNdx;
 
-  for (Index i = 0; i < nres; ++i)
+  for (Index i = 0; i < num_residuals; ++i)
   {
     out[i] = 0.0;
   }
 
-  for (Index iq = 0; iq < nq; ++iq)
+  for (Index iq = 0; iq < num_qpts; ++iq)
   {
-    const Real* Nq = N + iq * nn;
+    const Real* Nq = N + iq * num_nodes;
 
     Real previous_q = 0.0;
     Real next_q     = 0.0;
     Real prm_q      = 0.0;
-    for (Index a = 0; a < nn; ++a)
+    for (Index a = 0; a < num_nodes; ++a)
     {
       previous_q += Nq[a] * prev[a];
       next_q     += Nq[a] * nxt[a];
@@ -64,7 +64,7 @@ void localTimeVolumeResidual(Index       step,
 
     const Real source = static_cast<Real>(step + 1) * previous_q
                         + next_q * next_q + 2.0 * prm_q;
-    for (Index a = 0; a < nn; ++a)
+    for (Index a = 0; a < num_nodes; ++a)
     {
       out[a] += Nq[a] * source * JxW[iq];
     }
@@ -136,9 +136,9 @@ public:
       status *= near(out[i], 0.25 * source);
     }
 
-    linalg::DenseMatrixOperator J_prev;
-    linalg::DenseMatrixOperator J_next;
-    linalg::DenseMatrixOperator J_param;
+    linalg::DenseAssemblyMatrix J_prev;
+    linalg::DenseAssemblyMatrix J_next;
+    linalg::DenseAssemblyMatrix J_param;
     status *= res.assembleJac(
         ctx, problem::VariableBlock::PrevState, J_prev);
     status *= res.assembleJac(

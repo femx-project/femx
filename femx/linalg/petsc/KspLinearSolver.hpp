@@ -6,16 +6,22 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/operator/LinearSolver.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 
 namespace femx
 {
 namespace linalg
 {
 
-class PETScMatrix;
+class PETScAssemblyMatrix;
 class PETScVector;
 
+/**
+ * @brief User-facing PETSc KSP options used by KspLinearSolver.
+ *
+ * KspOptions collects solver, preconditioner, tolerance, and options-database
+ * controls before they are applied to a PETSc KSP.
+ */
 struct KspOptions
 {
   std::string type    = KSPGMRES;
@@ -32,7 +38,13 @@ struct KspOptions
   bool check_finite  = false;
 };
 
-/** @brief PETSc KSP adapter for linalg::LinearSolver. */
+/**
+ * @brief PETSc KSP adapter for linalg::LinearSolver.
+ *
+ * KspLinearSolver accepts femx linear operators and PETSc-native assembly
+ * matrices. The solver options can be set programmatically and optionally
+ * overridden by PETSc's options database.
+ */
 class KspLinearSolver final : public LinearSolver
 {
 public:
@@ -55,13 +67,13 @@ public:
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;
 
-  void solve(const PETScMatrix& op,
-             const PETScVector&  rhs,
-             PETScVector&        out);
+  void solve(const PETScAssemblyMatrix& op,
+             const PETScVector&         rhs,
+             PETScVector&               out);
 
-  void solveT(const PETScMatrix& op,
-              const PETScVector&  rhs,
-              PETScVector&        out);
+  void solveT(const PETScAssemblyMatrix& op,
+              const PETScVector&         rhs,
+              PETScVector&               out);
 
   KSPConvergedReason convergedReason() const;
 

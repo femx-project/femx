@@ -10,14 +10,14 @@ namespace femx
 namespace problem
 {
 
-SumTimeObjective::SumTimeObjective(Index nt,
-                                   Index nst,
-                                   Index nprm)
-  : nt_(nt),
-    nst_(nst),
-    nprm_(nprm)
+SumTimeObjective::SumTimeObjective(Index num_steps,
+                                   Index num_states,
+                                   Index num_params)
+  : num_steps_(num_steps),
+    num_states_(num_states),
+    num_params_(num_params)
 {
-  if (nt_ < 0 || nst_ < 0 || nprm_ < 0)
+  if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
   {
     throw runtime_error("SumTimeObjective received invalid dimensions");
   }
@@ -37,17 +37,17 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
 
 Index SumTimeObjective::numSteps() const
 {
-  return nt_;
+  return num_steps_;
 }
 
 Index SumTimeObjective::numStates() const
 {
-  return nst_;
+  return num_states_;
 }
 
 Index SumTimeObjective::numParams() const
 {
-  return nprm_;
+  return num_params_;
 }
 
 Real SumTimeObjective::value(const TimeTrajectory& tr,

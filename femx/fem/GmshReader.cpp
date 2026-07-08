@@ -225,10 +225,10 @@ void readNodesV2(istream&           in,
                  Mesh&              mesh,
                  map<Index, Index>& nid_by_tag)
 {
-  Index nn = 0;
-  in >> nn;
+  Index num_nodes = 0;
+  in >> num_nodes;
 
-  for (Index i = 0; i < nn; ++i)
+  for (Index i = 0; i < num_nodes; ++i)
   {
     Index      ntag = 0;
     Mesh::Node node{};
@@ -247,26 +247,26 @@ void readNodesV4(istream&           in,
                  map<Index, Index>& nid_by_tag)
 {
   Index num_blocks = 0;
-  Index nn         = 0;
+  Index num_nodes         = 0;
   Index min_ntag   = 0;
   Index max_ntag   = 0;
-  in >> num_blocks >> nn >> min_ntag >> max_ntag;
+  in >> num_blocks >> num_nodes >> min_ntag >> max_ntag;
 
   for (Index block = 0; block < num_blocks; ++block)
   {
     Index edim       = 0;
     Index etag       = 0;
     Index parametric = 0;
-    Index nn_block   = 0;
-    in >> edim >> etag >> parametric >> nn_block;
+    Index num_nodes_block   = 0;
+    in >> edim >> etag >> parametric >> num_nodes_block;
 
-    Vector<Index> ntags(nn_block);
-    for (Index i = 0; i < nn_block; ++i)
+    Vector<Index> ntags(num_nodes_block);
+    for (Index i = 0; i < num_nodes_block; ++i)
     {
       in >> ntags[i];
     }
 
-    for (Index i = 0; i < nn_block; ++i)
+    for (Index i = 0; i < num_nodes_block; ++i)
     {
       Mesh::Node node{};
       in >> node[0] >> node[1] >> node[2];
@@ -292,11 +292,11 @@ void readElemsV2(istream&                 in,
                  const map<Index, Index>& nid_by_tag,
                  Vector<ElemRecord>&      elems)
 {
-  Index ne = 0;
-  in >> ne;
-  elems.reserve(elems.size() + ne);
+  Index num_elems = 0;
+  in >> num_elems;
+  elems.reserve(elems.size() + num_elems);
 
-  for (Index i = 0; i < ne; ++i)
+  for (Index i = 0; i < num_elems; ++i)
   {
     Index elem_tag  = 0;
     Index elem_type = 0;
@@ -309,7 +309,7 @@ void readElemsV2(istream&                 in,
       in >> tags[j];
     }
 
-    const Index          nn    = gmshNumNodes(elem_type);
+    const Index          num_nodes    = gmshNumNodes(elem_type);
     const Element::Shape shape = gmshShape(elem_type);
 
     ElemRecord rec;
@@ -317,9 +317,9 @@ void readElemsV2(istream&                 in,
     rec.ptag  = num_tags > 0 ? tags[0] : 0;
     rec.etag  = num_tags > 1 ? tags[1] : 0;
     rec.shape = shape;
-    rec.nids.reserve(nn);
+    rec.nids.reserve(num_nodes);
 
-    for (Index j = 0; j < nn; ++j)
+    for (Index j = 0; j < num_nodes; ++j)
     {
       Index ntag = 0;
       in >> ntag;
@@ -345,24 +345,24 @@ void readElemsV4(istream&                 in,
                  Vector<ElemRecord>&      elems)
 {
   Index num_blocks   = 0;
-  Index ne           = 0;
+  Index num_elems           = 0;
   Index min_elem_tag = 0;
   Index max_elem_tag = 0;
-  in >> num_blocks >> ne >> min_elem_tag >> max_elem_tag;
+  in >> num_blocks >> num_elems >> min_elem_tag >> max_elem_tag;
 
-  elems.reserve(ne);
+  elems.reserve(num_elems);
   for (Index block = 0; block < num_blocks; ++block)
   {
     Index edim      = 0;
     Index etag      = 0;
     Index elem_type = 0;
-    Index ne_block  = 0;
-    in >> edim >> etag >> elem_type >> ne_block;
+    Index num_elems_block  = 0;
+    in >> edim >> etag >> elem_type >> num_elems_block;
 
-    const Index          nn    = gmshNumNodes(elem_type);
+    const Index          num_nodes    = gmshNumNodes(elem_type);
     const Element::Shape shape = gmshShape(elem_type);
 
-    for (Index i = 0; i < ne_block; ++i)
+    for (Index i = 0; i < num_elems_block; ++i)
     {
       Index elem_tag = 0;
       in >> elem_tag;
@@ -372,9 +372,9 @@ void readElemsV4(istream&                 in,
       rec.etag  = etag;
       rec.ptag  = 0;
       rec.shape = shape;
-      rec.nids.reserve(nn);
+      rec.nids.reserve(num_nodes);
 
-      for (Index j = 0; j < nn; ++j)
+      for (Index j = 0; j < num_nodes; ++j)
       {
         Index ntag = 0;
         in >> ntag;

@@ -18,8 +18,8 @@ struct KernelFluid
 
 struct LocalElementValues
 {
-  Index       nq   = 0;
-  Index       nn   = 0;
+  Index       num_qpts   = 0;
+  Index       num_nodes   = 0;
   Index       dim  = 0;
   const Real* N_data    = nullptr;
   const Real* dNdx_data = nullptr;
@@ -27,12 +27,12 @@ struct LocalElementValues
 
   Real N(Index qp, Index in) const
   {
-    return N_data[qp * nn + in];
+    return N_data[qp * num_nodes + in];
   }
 
   Real dNdx(Index qp, Index in, Index comp) const
   {
-    return dNdx_data[(qp * nn + in) * dim + comp];
+    return dNdx_data[(qp * num_nodes + in) * dim + comp];
   }
 
   Real JxW(Index qp) const
@@ -73,10 +73,10 @@ struct QPState
 };
 
 Index vdof(Index in, Index comp, Index dim);
-Index pdof(Index in, Index nn, Index dim);
-Index numLocalDofs(Index nn, Index dim);
+Index pdof(Index in, Index num_nodes, Index dim);
+Index numLocalDofs(Index num_nodes, Index dim);
 
-void zeroLocalSystem(Index nd, LocalMatrix Ke, LocalVector Fe);
+void zeroLocalSystem(Index num_dofs, LocalMatrix Ke, LocalVector Fe);
 
 void updateQpStates(const LocalElementValues& ev,
                     const KernelFluid&        fluid,
@@ -130,7 +130,7 @@ void assembleStabilizationRHS(const LocalElementValues& ev,
                               Real                      dt,
                               LocalVector               Fe);
 
-void finishLocalResidual(Index       nd,
+void finishLocalResidual(Index       num_dofs,
                          const Real* nxt,
                          LocalMatrix Ke,
                          LocalVector Fe,

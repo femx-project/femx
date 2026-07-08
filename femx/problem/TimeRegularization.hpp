@@ -13,9 +13,9 @@ namespace problem
 class TimeRegularization final : public TimeObjective
 {
 public:
-  TimeRegularization(Index               nt,
-                     Index               nst,
-                     Index               nl,
+  TimeRegularization(Index               num_steps,
+                     Index               num_states,
+                     Index               num_levels,
                      Index               block_size,
                      Real                beta_difference,
                      Real                beta_value = 0.0,
@@ -43,9 +43,9 @@ private:
   void  checkParamSize(const Vector<Real>& prm) const;
 
 private:
-  Index        nt_{0};
-  Index        nst_{0};
-  Index        nl_{0};
+  Index        num_steps_{0};
+  Index        num_states_{0};
+  Index        num_levels_{0};
   Index        block_size_{0};
   Real         beta_difference_{0.0};
   Real         beta_value_{0.0};

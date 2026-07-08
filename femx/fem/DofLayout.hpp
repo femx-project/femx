@@ -9,7 +9,12 @@ namespace femx
 class FESpace;
 class MixedFESpace;
 
-/** @brief Non-owning view of elem-to-global id connectivity. */
+/**
+ * @brief Non-owning view of elem-to-global id connectivity.
+ *
+ * DofLayout provides a uniform element-dof traversal interface for scalar and
+ * mixed finite-element spaces.
+ */
 class DofLayout
 {
 public:
