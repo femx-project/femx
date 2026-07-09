@@ -1,5 +1,8 @@
 #include <stdexcept>
 
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 
 namespace femx

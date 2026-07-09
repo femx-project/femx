@@ -1,17 +1,28 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/inverse/Objective.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/state/Residual.hpp>
-#include <femx/state/StateSolver.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
+namespace linalg
+{
+class LinearSolver;
+} // namespace linalg
+
+namespace state
+{
+class Linearization;
+class StateSolver;
+} // namespace state
+
 namespace inverse
 {
+
+class Objective;
 
 /**
  * @brief Reduced objective F(m) = J(u(m), m) using an adjoint gradient.

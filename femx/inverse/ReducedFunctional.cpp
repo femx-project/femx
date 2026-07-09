@@ -1,6 +1,11 @@
 #include <stdexcept>
 
+#include <femx/inverse/Objective.hpp>
 #include <femx/inverse/ReducedFunctional.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/state/Linearization.hpp>
+#include <femx/state/StateSolver.hpp>
 using namespace femx::state;
 using namespace femx::inverse;
 using namespace femx::linalg;

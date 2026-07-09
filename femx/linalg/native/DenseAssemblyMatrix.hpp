@@ -3,7 +3,6 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

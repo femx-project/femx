@@ -3,12 +3,14 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 
 class Mesh;
+
+template <typename T>
+class Vector;
 
 /**
  * @brief Write unstructured meshes and point data in VTK XML VTU format.

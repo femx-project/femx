@@ -5,15 +5,19 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
 
 namespace femx
 {
+class CsrPattern;
+class DenseMatrix;
+
+template <typename T>
+class Vector;
+
 namespace linalg
 {
+
+class PETScVector;
 
 /**
  * @brief PETSc-backed assembly matrix.

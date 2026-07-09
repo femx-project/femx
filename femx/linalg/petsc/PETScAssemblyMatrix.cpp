@@ -1,7 +1,11 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
 namespace femx

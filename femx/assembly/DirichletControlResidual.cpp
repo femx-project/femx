@@ -4,7 +4,9 @@
 
 #include <femx/assembly/DirichletControlResidual.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/state/Linearization.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>

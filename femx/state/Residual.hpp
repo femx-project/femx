@@ -1,13 +1,16 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/Linearization.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
 namespace state
 {
+
+class Linearization;
 
 /**
  * @brief Sizes for a parameter-dependent residual problem.

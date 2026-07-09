@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/DenseLinearSolver.hpp>
 
 namespace femx

@@ -91,8 +91,8 @@ private:
                             Real  time,
                             Real  max_cfl,
                             Real  vel_change,
-                            Real  assembly_seconds,
-                            Real  solve_seconds);
+                            Real  assembly_sec,
+                            Real  solve_sec);
 
 private:
   const MixedFESpace*            space_{nullptr};

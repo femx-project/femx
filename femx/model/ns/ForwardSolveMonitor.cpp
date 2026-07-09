@@ -71,8 +71,8 @@ std::string stepLogLine(Index step,
                         Real  max_cfl,
                         bool  show_velocity_change,
                         Real  vel_change,
-                        Real  assembly_seconds,
-                        Real  solve_seconds,
+                        Real  assembly_sec,
+                        Real  solve_sec,
                         Real  total_seconds)
 {
   std::ostringstream line;
@@ -82,8 +82,8 @@ std::string stepLogLine(Index step,
   {
     line << ", rel du = " << std::setw(11) << vel_change;
   }
-  line << ", assembly = " << std::setw(11) << assembly_seconds << " s"
-       << ", solve = " << std::setw(11) << solve_seconds << " s"
+  line << ", assembly = " << std::setw(11) << assembly_sec << " s"
+       << ", solve = " << std::setw(11) << solve_sec << " s"
        << ", total = " << std::setw(11) << total_seconds << " s";
   return line.str();
 }
@@ -299,8 +299,8 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
                          result_.final_time,
                          max_cfl,
                          result_.vel_change,
-                         ctx.assembly_seconds,
-                         ctx.solve_seconds);
+                         ctx.assembly_sec,
+                         ctx.solve_sec);
   }
 
   return result_.converged;
@@ -436,8 +436,8 @@ void ForwardSolveMonitor::writeDetailedStepLog(Index step,
                                                Real  time,
                                                Real  max_cfl,
                                                Real  vel_change,
-                                               Real  assembly_seconds,
-                                               Real  solve_seconds)
+                                               Real  assembly_sec,
+                                               Real  solve_sec)
 {
   const Real total_seconds = elapsedSeconds(step_begin_, Clock::now());
   writeLine(stepLogLine(step,
@@ -445,8 +445,8 @@ void ForwardSolveMonitor::writeDetailedStepLog(Index step,
                         max_cfl,
                         show_vel_change_,
                         vel_change,
-                        assembly_seconds,
-                        solve_seconds,
+                        assembly_sec,
+                        solve_sec,
                         total_seconds),
             log_terminal_,
             log_out_);

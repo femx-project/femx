@@ -1,8 +1,11 @@
 #include <chrono>
 #include <stdexcept>
 
+#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
 using namespace femx::linalg;
 
@@ -281,7 +284,7 @@ void TimeLinearIntegrator::solveStep(
   J_next_.finalize();
 
   Vector<Real> rhs;
-  J_next_.apply(x_next, rhs);
+  J_next_.matvec(x_next, rhs);
   if (rhs.size() != res.size())
   {
     throw std::runtime_error("TimeLinearIntegrator RHS size mismatch");

@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <femx/inverse/TimeObservationData.hpp>
+#include <femx/inverse/TimeObservationOperator.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
 
 namespace femx
@@ -28,8 +30,8 @@ void TimeObservationData::resize(Index num_levels, Index num_observations)
         "TimeObservationData received invalid dimensions");
   }
   num_levels_       = num_levels;
-  num_observations_ = num_observations;
-  data_.resize(num_levels_ * num_observations_);
+  num_obs_ = num_observations;
+  data_.resize(num_levels_ * num_obs_);
   sampler_.clear();
   pts_         = Vector<Point3>{};
   comps_       = Vector<Index>{};
@@ -49,7 +51,7 @@ Index TimeObservationData::numLevels() const
 
 Index TimeObservationData::numObservations() const
 {
-  return num_observations_;
+  return num_obs_;
 }
 
 bool TimeObservationData::hasLayout() const
@@ -139,13 +141,13 @@ void TimeObservationData::setTimeValues(Vector<Real> vals)
 VectorView<Real> TimeObservationData::operator[](Index level)
 {
   checkLevel(level);
-  return VectorView<Real>(data_.data() + level * num_observations_, num_observations_);
+  return VectorView<Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
 VectorView<const Real> TimeObservationData::operator[](Index level) const
 {
   checkLevel(level);
-  return VectorView<const Real>(data_.data() + level * num_observations_, num_observations_);
+  return VectorView<const Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
 void TimeObservationData::setZero()

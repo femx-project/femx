@@ -2,7 +2,11 @@
 #include <utility>
 
 #include <femx/assembly/Assembler.hpp>
+#include <femx/assembly/TimeElementKernel.hpp>
 #include <femx/assembly/TimeFEMResidual.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/VectorView.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
@@ -163,14 +167,7 @@ void TimeFEMResidual::res(const TimeContext& ctx,
       gatherHistory(ctx, ie, hst_e);
       gather(next_state_layout_, *ctx.nxt, ie, next_e);
       prm_e = gatherParam(ie, *ctx.prm);
-      kernel_.res(ctx.step,
-                  ie,
-                  TimeHistoryView(hst_e.data(),
-                                  numHistoryStates(),
-                                  next_state_layout_.numDofsPerElem()),
-                  next_e,
-                  prm_e,
-                  res_e);
+      kernel_.res(ctx.step, ie, historyView(hst_e), next_e, prm_e, res_e);
       assembler.addVec(ie, res_e, out);
     }
   }
@@ -218,13 +215,11 @@ void TimeFEMResidual::applyJac(const TimeContext&  ctx,
       kernel_.jacobian(ctx.step,
                        ie,
                        wrt,
-                       TimeHistoryView(hst_e.data(),
-                                       numHistoryStates(),
-                                       next_state_layout_.numDofsPerElem()),
+                       historyView(hst_e),
                        next_e,
                        prm_e,
                        J_e);
-      matVec(J_e, dir_e, res_e);
+      J_e.matvec(dir_e, res_e);
       assembler.addVec(ie, res_e, out);
     }
   }
@@ -277,13 +272,11 @@ void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
       kernel_.jacobian(ctx.step,
                        ie,
                        wrt,
-                       TimeHistoryView(hst_e.data(),
-                                       numHistoryStates(),
-                                       next_state_layout_.numDofsPerElem()),
+                       historyView(hst_e),
                        next_e,
                        prm_e,
                        J_e);
-      matTVec(J_e, adj_e, col_e);
+      J_e.matvecT(adj_e, col_e);
       assembler.addVec(ie, col_e, out);
     }
   }
@@ -328,9 +321,7 @@ bool TimeFEMResidual::assembleJac(const TimeContext& ctx,
       kernel_.jacobian(ctx.step,
                        ie,
                        wrt,
-                       TimeHistoryView(hst_e.data(),
-                                       numHistoryStates(),
-                                       next_state_layout_.numDofsPerElem()),
+                       historyView(hst_e),
                        next_e,
                        prm_e,
                        J_e);
@@ -455,6 +446,13 @@ void TimeFEMResidual::gatherHistory(const TimeContext& ctx,
   }
 }
 
+TimeHistoryView TimeFEMResidual::historyView(const Vector<Real>& local) const
+{
+  return TimeHistoryView(local.data(),
+                         numHistoryStates(),
+                         next_state_layout_.numDofsPerElem());
+}
+
 void TimeFEMResidual::checkDirection(VariableBlock       wrt,
                                      const Vector<Real>& dir) const
 {
@@ -520,46 +518,6 @@ void TimeFEMResidual::gather(const DofLayout&       lyt,
     const Index id = dofs[i];
     checkDof(id, global.size());
     local[i] = global[id];
-  }
-}
-
-void TimeFEMResidual::matVec(const DenseMatrix&  mat,
-                             const Vector<Real>& x,
-                             Vector<Real>&       out)
-{
-  if (mat.cols() != x.size())
-  {
-    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
-  }
-  resizeOrZero(out, mat.rows());
-  for (Index i = 0; i < mat.rows(); ++i)
-  {
-    Real sum = 0.0;
-    for (Index j = 0; j < mat.cols(); ++j)
-    {
-      sum += mat(i, j) * x[j];
-    }
-    out[i] = sum;
-  }
-}
-
-void TimeFEMResidual::matTVec(const DenseMatrix&  mat,
-                              const Vector<Real>& x,
-                              Vector<Real>&       out)
-{
-  if (mat.rows() != x.size())
-  {
-    throw std::runtime_error("TimeFEMResidual local matrix size mismatch");
-  }
-  resizeOrZero(out, mat.cols());
-  for (Index j = 0; j < mat.cols(); ++j)
-  {
-    Real sum = 0.0;
-    for (Index i = 0; i < mat.rows(); ++i)
-    {
-      sum += mat(i, j) * x[i];
-    }
-    out[j] = sum;
   }
 }
 

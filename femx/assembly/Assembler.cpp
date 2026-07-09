@@ -5,6 +5,10 @@
 #include <femx/assembly/Assembler.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 using namespace femx::linalg;
 
 namespace femx

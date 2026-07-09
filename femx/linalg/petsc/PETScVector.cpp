@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 

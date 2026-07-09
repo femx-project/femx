@@ -2,12 +2,16 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx
 {
+namespace linalg
+{
+class MatrixBuilder;
+} // namespace linalg
+
 namespace assembly
 {
 

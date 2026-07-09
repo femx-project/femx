@@ -1,11 +1,17 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
+namespace state
+{
+class TimeTrajectory;
+} // namespace state
+
 namespace inverse
 {
 

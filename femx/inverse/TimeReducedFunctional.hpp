@@ -1,18 +1,29 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/inverse/TimeObjective.hpp>
-#include <femx/linalg/AssemblyMatrix.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
-#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
+namespace linalg
+{
+class AssemblyMatrix;
+class LinearSolver;
+} // namespace linalg
+
+namespace state
+{
+class TimeIntegrator;
+class TimeTrajectory;
+} // namespace state
+
 namespace inverse
 {
+
+class TimeObjective;
 
 class TimeReducedProgressMonitor
 {

@@ -1,7 +1,10 @@
 #include <stdexcept>
 
 #include <femx/assembly/Assembler.hpp>
+#include <femx/assembly/ElementKernel.hpp>
 #include <femx/assembly/FEMResidual.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Linearization.hpp>
 using namespace femx::state;
 using namespace femx::linalg;

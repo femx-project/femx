@@ -2,19 +2,27 @@
 
 #include <optional>
 
-#include <femx/assembly/TimeElementKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
 #include <femx/state/TimeResidual.hpp>
 
 namespace femx
 {
+class DenseMatrix;
+
+template <typename T>
+class VectorView;
+
+namespace linalg
+{
+class MatrixBuilder;
+} // namespace linalg
+
 namespace assembly
 {
+
+class TimeElementKernel;
 
 /**
  * @brief state::TimeResidual assembled from elem-local FEM time kernels.
@@ -94,6 +102,8 @@ private:
                      Index                     ie,
                      Vector<Real>&             local) const;
 
+  state::TimeHistoryView historyView(const Vector<Real>& local) const;
+
   Vector<Real> gatherParam(Index ie, const Vector<Real>& global) const;
 
   static void gather(const DofLayout&    lyt,
@@ -110,14 +120,6 @@ private:
                      VectorView<const Real> global,
                      Index                  ie,
                      VectorView<Real>       local);
-
-  static void matVec(const DenseMatrix&  mat,
-                     const Vector<Real>& x,
-                     Vector<Real>&       out);
-
-  static void matTVec(const DenseMatrix&  mat,
-                      const Vector<Real>& x,
-                      Vector<Real>&       out);
 
   static void checkDof(Index id, Index size);
 

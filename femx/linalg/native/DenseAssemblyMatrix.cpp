@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 
 namespace femx

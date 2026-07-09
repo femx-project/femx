@@ -1,10 +1,12 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
 namespace linalg
 {
 

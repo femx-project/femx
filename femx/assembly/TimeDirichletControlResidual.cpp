@@ -6,6 +6,7 @@
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/MatrixBuilder.hpp>
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 
 #if defined(FEMX_HAS_PETSC)

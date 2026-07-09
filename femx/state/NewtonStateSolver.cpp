@@ -1,6 +1,8 @@
 #include <stdexcept>
 
 #include <femx/common/Math.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/state/Linearization.hpp>
 #include <femx/state/NewtonStateSolver.hpp>
 using namespace femx::state;
 using namespace femx::linalg;

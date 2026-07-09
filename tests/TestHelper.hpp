@@ -1,6 +1,6 @@
 /**
- * @file TestBase.hpp
- * @author Slaven Peles <peless@ornl.gov>, ORNL
+ * @file TestHelper.hpp
+ * @ref https://github.com/ORNL/ReSolve
  *
  */
 
@@ -236,11 +236,11 @@ static const Real three   = 3.0;
 /// @brief eps = 2.2e-15 for double type
 static const Real eps = 10 * std::numeric_limits<Real>::epsilon();
 
-class TestBase
+class TestHelper
 {
 public:
-  TestBase()          = default;
-  virtual ~TestBase() = default;
+  TestHelper()          = default;
+  virtual ~TestHelper() = default;
 
 protected:
   /// Returns true if two real numbers are equal within tolerance

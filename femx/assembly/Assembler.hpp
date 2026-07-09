@@ -2,15 +2,21 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
+class CsrPattern;
+class DenseMatrix;
 class FESpace;
 class MixedFESpace;
+
+template <typename T>
+class Vector;
+
+namespace linalg
+{
+class MatrixBuilder;
+} // namespace linalg
 
 namespace assembly
 {

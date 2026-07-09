@@ -6,8 +6,14 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
+#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
+#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
+#include <femx/state/TimeIntegrator.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
 using namespace femx::inverse;
 using namespace femx::linalg;
@@ -284,7 +290,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
                                           carry_next_state);
 
       assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
-      J_hist_.applyT(adjoints[ft], carry);
+      J_hist_.matvecT(adjoints[ft], carry);
 
       checkSize(carry, dims_.num_states);
       checkFinite(carry, "adjoint history carry", t);
@@ -347,7 +353,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
                         carry_next_state);
 
         assemble(carry_ctx, VariableBlock::hist(i), J_hist_);
-        J_hist_.applyT(adjoints[t], carry);
+        J_hist_.matvecT(adjoints[t], carry);
 
         checkSize(carry, dims_.num_states);
 

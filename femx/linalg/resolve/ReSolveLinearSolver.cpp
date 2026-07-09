@@ -550,9 +550,7 @@ private:
       solver.setGramSchmidtMethod(opts_.gram_schmidt);
       solver.getIterativeSolver().setMaxit(opts_.max_its);
       solver.getIterativeSolver().setTol(opts_.rtol);
-      solver.getIterativeSolver().setCliParam(
-          "restart",
-          std::to_string(opts_.restart));
+      solver.getIterativeSolver().setCliParam("restart", std::to_string(opts_.restart));
       std::string flexible = "no";
       if (opts_.flexible)
       {

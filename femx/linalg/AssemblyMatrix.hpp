@@ -21,6 +21,16 @@ public:
 
   Index numRows() const override = 0;
   Index numCols() const override = 0;
+
+  void matvec(const Vector<Real>& x, Vector<Real>& out) const
+  {
+    apply(x, out);
+  }
+
+  void matvecT(const Vector<Real>& x, Vector<Real>& out) const
+  {
+    applyT(x, out);
+  }
 };
 
 } // namespace linalg

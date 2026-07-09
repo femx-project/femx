@@ -4,15 +4,20 @@
 
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
-#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
+namespace state
+{
+class TimeTrajectory;
+} // namespace state
+
 namespace inverse
 {
+
+class TimeObservationOperator;
 
 class TimeObservationData
 {
@@ -60,7 +65,7 @@ private:
 private:
   Vector<Real>   data_;
   Index          num_levels_{0};
-  Index          num_observations_{0};
+  Index          num_obs_{0};
   std::string    sampler_;
   Vector<Point3> pts_;
   Vector<Index>  comps_;

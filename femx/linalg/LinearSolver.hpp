@@ -1,12 +1,16 @@
 #pragma once
 
-#include <femx/linalg/LinearOperator.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Types.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
 namespace linalg
 {
+
+class LinearOperator;
 
 /**
  * @brief Solver for A x = b and A^T x = b.

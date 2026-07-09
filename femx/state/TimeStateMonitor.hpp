@@ -1,10 +1,12 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
 namespace state
 {
 
@@ -14,8 +16,8 @@ struct TimeStepStateContext
   Index               total_steps = 0;
   const Vector<Real>& previous;
   const Vector<Real>& current;
-  Real                assembly_seconds = 0.0;
-  Real                solve_seconds    = 0.0;
+  Real                assembly_sec = 0.0;
+  Real                solve_sec    = 0.0;
 };
 
 /**

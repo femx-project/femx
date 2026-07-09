@@ -2,17 +2,24 @@
 
 #include <optional>
 
-#include <femx/assembly/ElementKernel.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
+namespace linalg
+{
+class MatrixBuilder;
+} // namespace linalg
+
 namespace assembly
 {
+
+class ElementKernel;
 
 /**
  * @brief state::Residual assembled from element-local FEM kernels.

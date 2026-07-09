@@ -1,16 +1,23 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx
 {
+template <typename T>
+class Vector;
+
+namespace linalg
+{
+class LinearSolver;
+} // namespace linalg
+
 namespace state
 {
+
+class Linearization;
 
 /**
  * @brief State solver for affine-linear stationary residuals.

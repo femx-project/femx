@@ -48,10 +48,13 @@ int run(const Options& opts)
   ExampleHelper     helper("petsc", opts.backend, outputDir());
   PoissonOptProblem problem(opts);
 
+  // Residual Jacobian with respect to the state u and the control m.
   PETScAssemblyMatrix dRdu(PETSC_COMM_SELF);
   DenseAssemblyMatrix dRdm;
+  
   MatrixLinearization lin(dRdu, dRdm);
 
+  // Linear solvers for forward/adjoint systems.
   KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
   KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);
   setLinearSolverOptions(fwd_lin_solver);

@@ -24,6 +24,9 @@ public:
   Real& operator()(Index i, Index j);
   Real  operator()(Index i, Index j) const;
 
+  void matvec(const Vector<Real>& x, Vector<Real>& out) const;
+  void matvecT(const Vector<Real>& x, Vector<Real>& out) const;
+
   Real*       data();
   const Real* data() const;
 
