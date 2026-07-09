@@ -55,7 +55,7 @@ void copyToPETSc(const CsrMatrix& src, PETScAssemblyMatrix& dst)
   }
 }
 
-int run(const PoissonOptions& opts)
+int run(const Options& opts)
 {
   if (opts.backend != WorkspaceType::Cpu)
   {
@@ -65,26 +65,26 @@ int run(const PoissonOptions& opts)
   ExampleHelper         helper("petsc", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  CsrAssemblyMatrix A_csr(problem.pattern());
+  CsrAssemblyMatrix A(problem.pattern());
   Vector<Real>      rhs;
-  problem.assemble(A_csr, rhs);
+  problem.assemble(A, rhs);
 
   PETScVector layout(PETSC_COMM_WORLD);
   layout.resize(problem.numDofs());
 
-  PETScAssemblyMatrix A(PETSC_COMM_WORLD);
-  A.resize(problem.pattern(), layout);
+  PETScAssemblyMatrix A_petsc(PETSC_COMM_WORLD);
+  A_petsc.resize(problem.pattern(), layout);
   if (isRoot())
   {
-    copyToPETSc(A_csr.mat(), A);
+    copyToPETSc(A.mat(), A_petsc);
   }
-  A.finalize();
+  A_petsc.finalize();
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setSolverOptions(solver);
 
   Vector<Real> x;
-  solver.solve(A, rhs, x);
+  solver.solve(A_petsc, rhs, x);
 
   if (isRoot())
   {
@@ -92,7 +92,7 @@ int run(const PoissonOptions& opts)
                 helper.backendName(),
                 problem,
                 problem.errorReport(x),
-                helper.residualNorm(A, rhs, x));
+                helper.residualNorm(A_petsc, rhs, x));
 
     if (opts.write_output)
     {

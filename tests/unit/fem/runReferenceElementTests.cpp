@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "TestHelper.hpp"
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
@@ -11,8 +12,6 @@
 #include <femx/linalg/MatrixView.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
-
-#include "TestHelper.hpp"
 
 namespace femx
 {
@@ -27,7 +26,7 @@ bool near(Real a, Real b)
 }
 
 template <std::size_t N>
-bool valuesNear(const Vector<Real>& actual,
+bool valuesNear(const Vector<Real>&        actual,
                 const std::array<Real, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
@@ -44,7 +43,7 @@ bool valuesNear(const Vector<Real>& actual,
   return true;
 }
 
-Vector<Real> shapeValues(const FiniteElement& elem,
+Vector<Real> shapeValues(const FiniteElement&   elem,
                          const QuadraturePoint& qp)
 {
   Vector<Real> values(elem.numDofsPerElement());
@@ -52,7 +51,7 @@ Vector<Real> shapeValues(const FiniteElement& elem,
   return values;
 }
 
-DenseMatrix shapeGradients(const FiniteElement& elem,
+DenseMatrix shapeGradients(const FiniteElement&   elem,
                            const QuadraturePoint& qp)
 {
   DenseMatrix gradients(elem.numDofsPerElement(), elem.dim());
@@ -72,7 +71,7 @@ Real sum(const Vector<Real>& values)
   return total;
 }
 
-bool gradientColumnsSumToZero(const FiniteElement& elem,
+bool gradientColumnsSumToZero(const FiniteElement&   elem,
                               const QuadraturePoint& qp)
 {
   const DenseMatrix gradients = shapeGradients(elem, qp);
@@ -136,9 +135,9 @@ TestOutcome triangleP1ShapeFunctions()
 {
   TestStatus status(__func__);
 
-  LagrangeTriangleP1 tri;
+  LagrangeTriangleP1    tri;
   const QuadraturePoint interior{{0.2, 0.3, 0.0}, 0.0};
-  const Vector<Real> N = shapeValues(tri, interior);
+  const Vector<Real>    N = shapeValues(tri, interior);
 
   status *= valuesNear(N, std::array<Real, 3>{{0.5, 0.2, 0.3}});
   status *= near(sum(N), 1.0);
@@ -166,9 +165,9 @@ TestOutcome quadQ1ShapeFunctions()
 {
   TestStatus status(__func__);
 
-  LagrangeQuadQ1 quad;
+  LagrangeQuadQ1        quad;
   const QuadraturePoint interior{{0.2, -0.4, 0.0}, 0.0};
-  const Vector<Real> N = shapeValues(quad, interior);
+  const Vector<Real>    N = shapeValues(quad, interior);
 
   status *= valuesNear(N, std::array<Real, 4>{{0.28, 0.42, 0.18, 0.12}});
   status *= near(sum(N), 1.0);
@@ -199,7 +198,7 @@ TestOutcome tetrahedronP1ShapeFunctions()
 
   LagrangeTetrahedronP1 tet;
   const QuadraturePoint interior{{0.2, 0.3, 0.1}, 0.0};
-  const Vector<Real> N = shapeValues(tet, interior);
+  const Vector<Real>    N = shapeValues(tet, interior);
 
   status *= valuesNear(N, std::array<Real, 4>{{0.4, 0.2, 0.3, 0.1}});
   status *= near(sum(N), 1.0);
@@ -228,29 +227,29 @@ TestOutcome quadratureIntegratesConstants()
 {
   TestStatus status(__func__);
 
-  const GaussQuadrature segment = GaussQuadrature::make(ReferenceElement::Segment, 3);
-  status *= segment.referenceElement() == ReferenceElement::Segment;
-  status *= segment.dim() == 1;
-  status *= segment.size() == 3;
-  status *= near(quadratureWeightSum(segment), 2.0);
+  const GaussQuadrature segment  = GaussQuadrature::make(ReferenceElement::Segment, 3);
+  status                        *= segment.referenceElement() == ReferenceElement::Segment;
+  status                        *= segment.dim() == 1;
+  status                        *= segment.size() == 3;
+  status                        *= near(quadratureWeightSum(segment), 2.0);
 
-  const GaussQuadrature triangle = GaussQuadrature::make(ReferenceElement::Triangle, 2);
-  status *= triangle.referenceElement() == ReferenceElement::Triangle;
-  status *= triangle.dim() == 2;
-  status *= triangle.size() == 3;
-  status *= near(quadratureWeightSum(triangle), 0.5);
+  const GaussQuadrature triangle  = GaussQuadrature::make(ReferenceElement::Triangle, 2);
+  status                         *= triangle.referenceElement() == ReferenceElement::Triangle;
+  status                         *= triangle.dim() == 2;
+  status                         *= triangle.size() == 3;
+  status                         *= near(quadratureWeightSum(triangle), 0.5);
 
-  const GaussQuadrature quad = GaussQuadrature::make(ReferenceElement::Quadrilateral, 2);
-  status *= quad.referenceElement() == ReferenceElement::Quadrilateral;
-  status *= quad.dim() == 2;
-  status *= quad.size() == 4;
-  status *= near(quadratureWeightSum(quad), 4.0);
+  const GaussQuadrature quad  = GaussQuadrature::make(ReferenceElement::Quadrilateral, 2);
+  status                     *= quad.referenceElement() == ReferenceElement::Quadrilateral;
+  status                     *= quad.dim() == 2;
+  status                     *= quad.size() == 4;
+  status                     *= near(quadratureWeightSum(quad), 4.0);
 
-  const GaussQuadrature tet = GaussQuadrature::make(ReferenceElement::Tetrahedron, 2);
-  status *= tet.referenceElement() == ReferenceElement::Tetrahedron;
-  status *= tet.dim() == 3;
-  status *= tet.size() == 4;
-  status *= near(quadratureWeightSum(tet), 1.0 / 6.0);
+  const GaussQuadrature tet  = GaussQuadrature::make(ReferenceElement::Tetrahedron, 2);
+  status                    *= tet.referenceElement() == ReferenceElement::Tetrahedron;
+  status                    *= tet.dim() == 3;
+  status                    *= tet.size() == 4;
+  status                    *= near(quadratureWeightSum(tet), 1.0 / 6.0);
 
   bool threw = false;
   try

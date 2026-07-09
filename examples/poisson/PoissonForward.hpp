@@ -24,7 +24,7 @@ class CsrAssemblyMatrix;
 namespace femx::examples::poisson
 {
 
-struct PoissonOptions
+struct Options
 {
   Index         num_x_cells  = 32;
   Index         num_y_cells  = 32;
@@ -56,10 +56,10 @@ struct ErrorReport
 class PoissonForwardProblem
 {
 public:
-  explicit PoissonForwardProblem(const PoissonOptions& opts);
+  explicit PoissonForwardProblem(const Options& opts);
 
-  const PoissonOptions& options() const noexcept;
-  const CsrPattern&     pattern() const;
+  const Options&    options() const noexcept;
+  const CsrPattern& pattern() const;
 
   Index numNodes() const noexcept;
   Index numDofs() const noexcept;
@@ -84,7 +84,7 @@ private:
   static bool onBoundary(const Mesh::Node& p, Real time);
 
 private:
-  PoissonOptions              opts_;
+  Options                     opts_;
   Mesh                        mesh_;
   LagrangeQuadQ1              fe_;
   FESpace                     space_;
@@ -92,15 +92,15 @@ private:
   std::unique_ptr<CsrPattern> pattern_;
 };
 
-PoissonOptions parseOptions(int    argc,
-                            char** argv,
-                            bool   ignore_unknown);
+Options parseOptions(int    argc,
+                     char** argv,
+                     bool   ignore_unknown);
 
 /** @brief Return the build-local directory for Poisson VTU output. */
 const char* outputDir();
 
 /** @brief Return the problem-specific output file stem. */
-std::string outputStem(const PoissonOptions& opts);
+std::string outputStem(const Options& opts);
 
 void printUsage(const char* app_name,
                 bool        petsc_options);

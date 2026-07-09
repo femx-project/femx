@@ -1,9 +1,11 @@
 add_executable(runLinalgTests unit/linalg/runCoreLinalgTests.cpp)
-target_include_directories(runCoreLinalgTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runCoreLinalgTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runCoreLinalgTests PRIVATE femx::femx)
 add_test(NAME CoreLinalgTests COMMAND runCoreLinalgTests)
 
 add_executable(runReferenceElementTests unit/fem/runReferenceElementTests.cpp)
-target_include_directories(runReferenceElementTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runReferenceElementTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runReferenceElementTests PRIVATE femx::femx)
 add_test(NAME ReferenceElementTests COMMAND runReferenceElementTests)

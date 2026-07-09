@@ -33,7 +33,7 @@ int run(const Options& opts)
   // Residual Jacobian with respect to the state u and the control m.
   CsrAssemblyMatrix   dRdu(problem.statePattern());
   DenseAssemblyMatrix dRdm;
-  
+
   MatrixLinearization lin(dRdu, dRdm);
 
   // Linear solvers for forward/adjoint systems.

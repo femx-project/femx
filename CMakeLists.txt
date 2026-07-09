@@ -18,8 +18,7 @@ option(FEMX_ENABLE_PETSC "Enable PETSc applications" ON)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
 option(FEMX_BUILD_TESTS "Build femx tests" ON)
-option(FEMX_BUILD_PYTHON_EXPERIMENTAL
-       "Build experimental Python bindings" OFF)
+option(FEMX_BUILD_PYTHON_EXPERIMENTAL "Build experimental Python bindings" OFF)
 option(FEMX_REQUIRE_RESOLVE "Fail if ReSolve is enabled but not found" OFF)
 set(FEMX_OPENMP_ROOT
     ""

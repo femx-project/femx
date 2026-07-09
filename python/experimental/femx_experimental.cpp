@@ -6,12 +6,11 @@
 #include <string>
 #include <tuple>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-
 #include <femx/fem/GmshReader.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/VelocityProfile.hpp>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 

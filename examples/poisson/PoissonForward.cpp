@@ -150,7 +150,7 @@ bool readBackendAssignment(const std::string& arg,
   return true;
 }
 
-Mesh makePoissonMesh(const PoissonOptions& opts)
+Mesh makePoissonMesh(const Options& opts)
 {
   if (opts.num_x_cells <= 0 || opts.num_y_cells <= 0)
   {
@@ -172,7 +172,7 @@ std::filesystem::path vtuPathFromBase(const std::string& output_base)
 
 } // namespace
 
-PoissonForwardProblem::PoissonForwardProblem(const PoissonOptions& opts)
+PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
   : opts_(opts),
     mesh_(makePoissonMesh(opts)),
     space_(&mesh_, &fe_),
@@ -182,7 +182,7 @@ PoissonForwardProblem::PoissonForwardProblem(const PoissonOptions& opts)
   pattern_ = std::make_unique<CsrPattern>(makeCsrPattern(space_));
 }
 
-const PoissonOptions& PoissonForwardProblem::options() const noexcept
+const Options& PoissonForwardProblem::options() const noexcept
 {
   return opts_;
 }
@@ -209,24 +209,24 @@ void PoissonForwardProblem::assemble(CsrAssemblyMatrix& A,
   assembler.initMat(A);
   assembler.initVec(rhs);
 
-  ElementValues elem_values(fe_, quad_);
+  ElementValues ev(fe_, quad_);
   DenseMatrix   Ae(space_.numDofsPerElem(), space_.numDofsPerElem());
 
   for (Index ie = 0; ie < mesh_.numElems(); ++ie)
   {
-    elem_values.reinit(mesh_.elem(ie));
+    ev.reinit(mesh_.elem(ie));
     Ae.setZero();
 
-    for (Index iq = 0; iq < elem_values.numQuadraturePoints(); ++iq)
+    for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
     {
-      const auto dNdx = elem_values.dNdx(iq);
-      const Real JxW  = elem_values.JxW(iq);
+      const auto dNdx = ev.dNdx(iq);
+      const Real JxW  = ev.JxW(iq);
 
       for (Index i = 0; i < Ae.rows(); ++i)
       {
         for (Index j = 0; j < Ae.cols(); ++j)
         {
-          for (Index d = 0; d < elem_values.dim(); ++d)
+          for (Index d = 0; d < ev.dim(); ++d)
           {
             Ae(i, j) += dNdx(i, d) * dNdx(j, d) * JxW;
           }
@@ -328,9 +328,9 @@ bool PoissonForwardProblem::onBoundary(const Mesh::Node& p, Real)
          || std::abs(p[1] - 1.0) < boundary_eps;
 }
 
-PoissonOptions parseOptions(int argc, char** argv, bool ignore_unknown)
+Options parseOptions(int argc, char** argv, bool ignore_unknown)
 {
-  PoissonOptions opts;
+  Options opts;
 
   for (int i = 1; i < argc; ++i)
   {
@@ -399,7 +399,7 @@ const char* outputDir()
   return FEMX_POISSON_DEFAULT_OUTPUT_DIR;
 }
 
-std::string outputStem(const PoissonOptions& opts)
+std::string outputStem(const Options& opts)
 {
   return std::string("poisson-nx")
          + std::to_string(opts.num_x_cells)
@@ -433,7 +433,7 @@ void printReport(std::ostream&                out,
                  const ErrorReport&           error,
                  Real                         residual_norm)
 {
-  const PoissonOptions& opts = problem.options();
+  const Options& opts = problem.options();
   out << "Poisson forward (" << backend << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';

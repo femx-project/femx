@@ -407,7 +407,7 @@ Index PoissonOptProblem::numStates() const noexcept
 
 Index PoissonOptProblem::numParams() const noexcept
 {
-  return control_dofs_.size();
+  return ctr_dofs_.size();
 }
 
 Index PoissonOptProblem::numObservations() const noexcept
@@ -437,16 +437,16 @@ Report PoissonOptProblem::report(const Vector<Real>& prm,
     state_err2        += err * err;
     out.state_max_err  = std::max(out.state_max_err, std::abs(err));
   }
-  out.state_rms_error = std::sqrt(state_err2 / static_cast<Real>(state.size()));
+  out.state_rms_err = std::sqrt(state_err2 / static_cast<Real>(state.size()));
 
-  Real control_err2 = 0.0;
+  Real ctr_err2 = 0.0;
   for (Index i = 0; i < prm.size(); ++i)
   {
-    const Real err         = prm[i] - target_ctr_[i];
-    control_err2          += err * err;
-    out.control_max_error  = std::max(out.control_max_error, std::abs(err));
+    const Real err   = prm[i] - target_ctr_[i];
+    ctr_err2        += err * err;
+    out.ctr_max_err  = std::max(out.ctr_max_err, std::abs(err));
   }
-  out.ctr_rms_error = prm.empty() ? 0.0 : std::sqrt(control_err2 / static_cast<Real>(prm.size()));
+  out.ctr_rms_err = prm.empty() ? 0.0 : std::sqrt(ctr_err2 / static_cast<Real>(prm.size()));
 
   return out;
 }
@@ -476,36 +476,36 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
 
   Vector<Real> state_field(mesh_.numNodes());
   Vector<Real> target_state_field(mesh_.numNodes());
-  Vector<Real> state_error(mesh_.numNodes());
+  Vector<Real> state_err(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     const Index dof        = space_.globalDof(in, 0);
     state_field[in]        = state[dof];
     target_state_field[in] = target_state_[dof];
-    state_error[in]        = state_field[in] - target_state_field[in];
+    state_err[in]          = state_field[in] - target_state_field[in];
   }
 
-  Vector<Real> control(mesh_.numNodes(), 0.0);
-  Vector<Real> target_control(mesh_.numNodes(), 0.0);
-  Vector<Real> control_error(mesh_.numNodes(), 0.0);
-  Vector<Real> control_mask(mesh_.numNodes(), 0.0);
-  for (Index i = 0; i < control_dofs_.size(); ++i)
+  Vector<Real> ctr(mesh_.numNodes(), 0.0);
+  Vector<Real> target_ctr(mesh_.numNodes(), 0.0);
+  Vector<Real> ctr_err(mesh_.numNodes(), 0.0);
+  Vector<Real> ctr_mask(mesh_.numNodes(), 0.0);
+  for (Index i = 0; i < ctr_dofs_.size(); ++i)
   {
-    const Index node = control_dofs_[i];
+    const Index node = ctr_dofs_[i];
     if (node < 0 || node >= mesh_.numNodes())
     {
       throw std::runtime_error("Poisson optimization control dof is not a mesh node");
     }
-    control[node]        = prm[i];
-    target_control[node] = target_ctr_[i];
-    control_error[node]  = prm[i] - target_ctr_[i];
-    control_mask[node]   = 1.0;
+    ctr[node]        = prm[i];
+    target_ctr[node] = target_ctr_[i];
+    ctr_err[node]    = prm[i] - target_ctr_[i];
+    ctr_mask[node]   = 1.0;
   }
 
-  Vector<Real> observation_mask(mesh_.numNodes(), 0.0);
-  Vector<Real> observation_value(mesh_.numNodes(), 0.0);
-  Vector<Real> observation_prediction(mesh_.numNodes(), 0.0);
-  Vector<Real> observation_misfit(mesh_.numNodes(), 0.0);
+  Vector<Real> obs_mask(mesh_.numNodes(), 0.0);
+  Vector<Real> obs_value(mesh_.numNodes(), 0.0);
+  Vector<Real> obs_pred(mesh_.numNodes(), 0.0);
+  Vector<Real> obs_misfit(mesh_.numNodes(), 0.0);
   const Index  comps = space_.numComponents();
   for (Index dof : obs_dofs_)
   {
@@ -518,10 +518,10 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     {
       throw std::runtime_error("Poisson optimization observation node is out of range");
     }
-    observation_mask[node]       = 1.0;
-    observation_value[node]      = target_state_[dof];
-    observation_prediction[node] = state[dof];
-    observation_misfit[node]     = state[dof] - target_state_[dof];
+    obs_mask[node]   = 1.0;
+    obs_value[node]  = target_state_[dof];
+    obs_pred[node]   = state[dof];
+    obs_misfit[node] = state[dof] - target_state_[dof];
   }
 
   VtuWriter out;
@@ -529,15 +529,15 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
                      mesh_,
                      {{"state", 1, &state_field},
                       {"target_state", 1, &target_state_field},
-                      {"state_error", 1, &state_error},
-                      {"observation_mask", 1, &observation_mask},
-                      {"observation_value", 1, &observation_value},
-                      {"observation_prediction", 1, &observation_prediction},
-                      {"observation_misfit", 1, &observation_misfit},
-                      {"control", 1, &control},
-                      {"target_control", 1, &target_control},
-                      {"control_error", 1, &control_error},
-                      {"control_mask", 1, &control_mask}});
+                      {"state_err", 1, &state_err},
+                      {"obs_mask", 1, &obs_mask},
+                      {"obs_value", 1, &obs_value},
+                      {"obs_pred", 1, &obs_pred},
+                      {"obs_misfit", 1, &obs_misfit},
+                      {"ctr", 1, &ctr},
+                      {"target_ctr", 1, &target_ctr},
+                      {"ctr_error", 1, &ctr_err},
+                      {"ctr_mask", 1, &ctr_mask}});
 }
 
 Real PoissonOptProblem::exactValue(const Mesh::Node& p)
@@ -549,7 +549,7 @@ Real PoissonOptProblem::exactValue(const Mesh::Node& p)
 
 void PoissonOptProblem::initializeBoundaryDofs()
 {
-  std::set<Index> control;
+  std::set<Index> ctr;
   std::set<Index> fixed;
 
   for (Index in = 0; in < mesh_.numNodes(); ++in)
@@ -558,7 +558,7 @@ void PoissonOptProblem::initializeBoundaryDofs()
     const Index       dof   = space_.globalDof(in, 0);
     if (isControlNode(point))
     {
-      control.insert(dof);
+      ctr.insert(dof);
     }
     else if (isBoundaryNode(point))
     {
@@ -566,14 +566,14 @@ void PoissonOptProblem::initializeBoundaryDofs()
     }
   }
 
-  if (control.empty())
+  if (ctr.empty())
   {
     throw std::runtime_error("Poisson optimization found no control dofs");
   }
 
-  for (Index dof : control)
+  for (Index dof : ctr)
   {
-    control_dofs_.push_back(dof);
+    ctr_dofs_.push_back(dof);
   }
   for (Index dof : fixed)
   {
@@ -581,19 +581,19 @@ void PoissonOptProblem::initializeBoundaryDofs()
   }
 
   const Real dx = 1.0 / static_cast<Real>(opts_.num_x_cells);
-  control_weights_.resize(control_dofs_.size());
-  for (Index i = 0; i < control_weights_.size(); ++i)
+  ctr_weights_.resize(ctr_dofs_.size());
+  for (Index i = 0; i < ctr_weights_.size(); ++i)
   {
-    control_weights_[i] = dx;
+    ctr_weights_[i] = dx;
   }
 }
 
 void PoissonOptProblem::initializeTrueControl()
 {
   target_ctr_.resize(numParams());
-  for (Index i = 0; i < control_dofs_.size(); ++i)
+  for (Index i = 0; i < ctr_dofs_.size(); ++i)
   {
-    target_ctr_[i] = exactValue(mesh_.node(control_dofs_[i]));
+    target_ctr_[i] = exactValue(mesh_.node(ctr_dofs_[i]));
   }
 }
 
@@ -637,7 +637,7 @@ void PoissonOptProblem::initializeResidual()
   Vector<Real> fixed_values(fixed_dofs_.size(), 0.0);
   residual_ = std::make_unique<DirichletControlResidual>(
       *base_residual_,
-      DirichletControl(control_dofs_),
+      DirichletControl(ctr_dofs_),
       fixed_dofs_,
       0,
       numParams(),
@@ -682,7 +682,7 @@ void PoissonOptProblem::prepareObjective(state::StateSolver& state_solver)
   Vector<Real> reg_weights(numParams(), 0.0);
   for (Index i = 0; i < reg_weights.size(); ++i)
   {
-    reg_weights[i] = opts_.alpha * control_weights_[i];
+    reg_weights[i] = opts_.alpha * ctr_weights_[i];
   }
 
   misfit_ = std::make_unique<LeastSquaresObjective>(numStates(), numParams());
@@ -927,10 +927,10 @@ void printReport(std::ostream&            out,
   out << "  tao reason: " << tao_reason << '\n';
   out << "  final value: " << report.value << '\n';
   out << "  gradient norm: " << report.grad_norm << '\n';
-  out << "  state rms error: " << report.state_rms_error << '\n';
+  out << "  state rms error: " << report.state_rms_err << '\n';
   out << "  state max error: " << report.state_max_err << '\n';
-  out << "  control rms error: " << report.ctr_rms_error << '\n';
-  out << "  control max error: " << report.control_max_error << '\n';
+  out << "  control rms error: " << report.ctr_rms_err << '\n';
+  out << "  control max error: " << report.ctr_max_err << '\n';
 }
 
 } // namespace femx::examples::poisson_opt

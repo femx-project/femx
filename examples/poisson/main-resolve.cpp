@@ -20,7 +20,7 @@ using namespace femx::linalg;
 namespace
 {
 
-int run(const PoissonOptions& opts)
+int run(const Options& opts)
 {
   ExampleHelper         helper("resolve", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);

@@ -13,10 +13,8 @@ if(NOT pybind11_FOUND)
     COMMAND "${Python3_EXECUTABLE}" -m pybind11 --cmakedir
     OUTPUT_VARIABLE _FEMX_PYBIND11_CMAKE_DIR
     RESULT_VARIABLE _FEMX_PYBIND11_CMAKE_DIR_RESULT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET)
-  if(_FEMX_PYBIND11_CMAKE_DIR_RESULT EQUAL 0
-     AND _FEMX_PYBIND11_CMAKE_DIR)
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(_FEMX_PYBIND11_CMAKE_DIR_RESULT EQUAL 0 AND _FEMX_PYBIND11_CMAKE_DIR)
     set(pybind11_DIR "${_FEMX_PYBIND11_CMAKE_DIR}")
     find_package(pybind11 CONFIG QUIET)
   endif()
@@ -48,8 +46,7 @@ endforeach()
 target_link_libraries(femx_experimental PRIVATE femx::fem)
 
 set_target_properties(
-  femx_experimental
-  PROPERTIES LIBRARY_OUTPUT_DIRECTORY
-             "${PROJECT_BINARY_DIR}/python/experimental")
+  femx_experimental PROPERTIES LIBRARY_OUTPUT_DIRECTORY
+                               "${PROJECT_BINARY_DIR}/python/experimental")
 
 install(TARGETS femx_experimental LIBRARY DESTINATION ".")

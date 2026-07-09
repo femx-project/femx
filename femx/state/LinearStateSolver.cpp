@@ -2,8 +2,8 @@
 
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/state/LinearStateSolver.hpp>
+#include <femx/state/Linearization.hpp>
 using namespace femx::state;
 using namespace femx::linalg;
 

@@ -2,6 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "TestHelper.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
@@ -9,8 +10,6 @@
 #include <femx/linalg/VectorView.hpp>
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
-
-#include "TestHelper.hpp"
 
 namespace femx
 {
@@ -65,7 +64,7 @@ CsrPattern makeSharedElementPattern()
                       {
                         dofs = {1, 2};
                       }
-	                    });
+                    });
 }
 
 DenseMatrix makeLocalMatrix(Real a00, Real a01, Real a10, Real a11)
@@ -86,7 +85,7 @@ TestOutcome vectorBasics()
   status *= v.size() == 3;
   status *= near(v[0], 2.0) && near(v[1], 2.0) && near(v[2], 2.0);
 
-  v = {1.0, 2.0, 3.0};
+  v       = {1.0, 2.0, 3.0};
   status *= v.size() == 3;
   status *= near(v.front(), 1.0) && near(v.back(), 3.0);
 
@@ -127,7 +126,7 @@ TestOutcome vectorViewCopiesAndAssigns()
   status *= valuesNear(copied.data(), std::array<Real, 3>{{1.0, 2.0, 3.0}});
 
   Vector<Real> source{4.0, 5.0, 6.0};
-  view = source;
+  view    = source;
   status *= valuesNear(raw, std::array<Real, 3>{{4.0, 5.0, 6.0}});
 
   view.setZero();
@@ -315,10 +314,10 @@ TestOutcome csrMatrixOwnsValuesForPattern()
   status *= valuesNear(matrix.valuesData(),
                        std::array<Real, 7>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
-  matrix.valuesData()[0] = 1.0;
-  matrix.valuesData()[3] = 2.0;
-  matrix.valuesData()[6] = 3.0;
-  status *= valuesNear(matrix.valuesData(),
+  matrix.valuesData()[0]  = 1.0;
+  matrix.valuesData()[3]  = 2.0;
+  matrix.valuesData()[6]  = 3.0;
+  status                 *= valuesNear(matrix.valuesData(),
                        std::array<Real, 7>{{1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0}});
 
   matrix.setZero();

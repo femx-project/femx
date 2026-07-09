@@ -29,8 +29,8 @@ void TimeObservationData::resize(Index num_levels, Index num_observations)
     throw std::runtime_error(
         "TimeObservationData received invalid dimensions");
   }
-  num_levels_       = num_levels;
-  num_obs_ = num_observations;
+  num_levels_ = num_levels;
+  num_obs_    = num_observations;
   data_.resize(num_levels_ * num_obs_);
   sampler_.clear();
   pts_         = Vector<Point3>{};
