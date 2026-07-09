@@ -4,7 +4,7 @@ This solver uses a Galerkin/least-squares (GLS) stabilized finite element formul
 
 The governing equations are written as
 
-```math
+$$
 \begin{aligned}
 \rho \frac{\partial \mathbf{u}}{\partial t}
 +
@@ -22,7 +22,7 @@ The governing equations are written as
 0
 && \quad \text{in } \Omega \times (0,T].
 \end{aligned}
-```
+$$
 
 where $\mathbf{u}$ is the velocity, $p$ is the pressure, $\rho$ is the density, and $\mu$ is the dynamic viscosity.
 
@@ -31,28 +31,28 @@ respectively.
 
 For time integration, the transient term is discretized by
 
-```math
+$$
 \frac{\partial \mathbf{u}}{\partial t}
 \approx
 \frac{\mathbf{u}^{n+1} - \mathbf{u}^{n}}{\Delta t}.
-```
+$$
 
 The nonlinear advection term is treated by separating the convecting
 velocity from the transported velocity. The convecting velocity is
 extrapolated with Adams-Bashforth,
 
-```math
+$$
 \mathbf{u}_{\mathrm{adv}}^{n+1/2}
 =
 \frac{3}{2}\mathbf{u}^{n}
 -
 \frac{1}{2}\mathbf{u}^{n-1},
-```
+$$
 
 while the transported velocity in the advection term and the diffusion
 term are evaluated by Crank-Nicolson,
 
-```math
+$$
 \mathbf{u}^{n+1/2}
 =
 \frac{1}{2}
@@ -61,11 +61,11 @@ term are evaluated by Crank-Nicolson,
 +
 \mathbf{u}^{n}
 \right).
-```
+$$
 
 The time-discrete Galerkin contribution is
 
-```math
+$$
 \begin{aligned}
 F_{\mathrm{G}}^{n+1/2}
 =&
@@ -102,11 +102,11 @@ q
 \nabla \cdot \mathbf{u}^{n+1}
 \right] d\Omega .
 \end{aligned}
-```
+$$
 
 The GLS stabilization contribution is
 
-```math
+$$
 \begin{aligned}
 F_{\mathrm{GLS}}^{n+1/2}
 =&
@@ -144,7 +144,7 @@ F_{\mathrm{GLS}}^{n+1/2}
 \, d\Omega
 .
 \end{aligned}
-```
+$$
 
 The terms multiplied by $\tau_m$ and $\tau_p$ are the SUPG and PSPG
 contributions, respectively. The factor $1/\rho$ follows the scaling used by
@@ -155,7 +155,7 @@ $(\tau_p/\rho)\nabla q$ dotted with the same residual. The diffusion part and
 body-force term are not included in the bracketed momentum expression. The full
 discrete weak form is
 
-```math
+$$
 F^{n+1/2}
 =
 F_{\mathrm{G}}^{n+1/2}
@@ -163,11 +163,11 @@ F_{\mathrm{G}}^{n+1/2}
 F_{\mathrm{GLS}}^{n+1/2}
 =
 0.
-```
+$$
 
 The stabilization parameter is computed element-wise as
 
-```math
+$$
 \tau_m
 =
 \tau_p
@@ -181,7 +181,7 @@ The stabilization parameter is computed element-wise as
 \right]^{-1/2},
 \qquad
 \nu = \frac{\mu}{\rho}.
-```
+$$
 
 This is a local length-scale approximation of the SUPG/PSPG stabilization
 parameter calculations described by Tezduyar [1], with $\tau_m=\tau_p$ and

@@ -145,10 +145,10 @@ Vector<Real> pointValues(const Mesh& mesh)
   Vector<Real> values(mesh.numNodes() * 3);
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    const auto& node        = mesh.node(in);
-    values[3 * in]         = node[0];
-    values[3 * in + 1]     = node[1];
-    values[3 * in + 2]     = node[2];
+    const auto& node   = mesh.node(in);
+    values[3 * in]     = node[0];
+    values[3 * in + 1] = node[1];
+    values[3 * in + 2] = node[2];
   }
   return values;
 }
@@ -181,7 +181,7 @@ Vector<int64_t> offsetValues(const Mesh& mesh)
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     offset     += static_cast<int64_t>(mesh.elem(ie).numNodes());
-    values[ie] = offset;
+    values[ie]  = offset;
   }
   return values;
 }
