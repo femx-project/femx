@@ -89,3 +89,7 @@ Preferred include paths use the new public component layout:
 
 The pre-refactor component targets and include paths have been removed. Update
 old code to the public component layout above before linking against femx.
+
+## License
+
+femx is distributed under the BSD 3-Clause License. See [LICENSE](LICENSE).
