@@ -124,6 +124,15 @@ CMake options</h1>
 <li><code>FEMX_RESOLVE_BACKEND=AUTO</code>: requested ReSolve backend, one of <code>AUTO</code>, <code>CPU</code>, or <code>CUDA</code>.</li>
 </ul>
 <h1><a class="anchor" id="autotoc_md3"></a>
+Documentation</h1>
+<p>To generate the local API reference:</p>
+<div class="fragment"><div class="line">$ doxygen docs/doxygen/Doxyfile.in</div>
+</div><!-- fragment --><p>The generated HTML is written to <code>docs/doxygen/html/</code>. Open <code>docs/doxygen/html/index.html</code> in a browser, or serve it from the repository root:</p>
+<div class="fragment"><div class="line">$ python3 -m http.server 8000 --directory docs/doxygen/html</div>
+</div><!-- fragment --><p>Then open <a href="http://localhost:8000/">http://localhost:8000/</a> in a browser.</p>
+<p>For a one-command local preview:</p>
+<div class="fragment"><div class="line">$ ./docs/preview-doxygen.sh</div>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md4"></a>
 Coding conventions</h1>
 <ul>
 <li>Loop index variables in <code>for</code> statements should be at most two characters long, such as <code>i</code>, <code>j</code>, <code>t</code>, or <code>ft</code>.</li>
@@ -131,7 +140,7 @@ Coding conventions</h1>
 </ul>
 <p>If ReSolve is installed in a custom location, pass its install prefix:</p>
 <div class="fragment"><div class="line">$ cmake -S . -B build -DReSolve_ROOT=/path/to/resolve</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md4"></a>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md5"></a>
 Using femx in CMake</h1>
 <p>Inside this repository, link against the aggregate <code>femx::femx</code> target:</p>
 <div class="fragment"><div class="line">add_executable(my_solver main.cpp)</div>
@@ -143,17 +152,20 @@ Using femx in CMake</h1>
 <li><code>femx::ad</code>: Enzyme declarations and small AD helpers.</li>
 <li><code>femx::fem</code>: mesh-facing FEM data structures, spaces, quadrature, and elements.</li>
 <li><code>femx::assembly</code>: FEM kernels, assemblers, sparsity builders, and residual adapters.</li>
-<li><code>femx::problem</code>: residual, objective, observation, and time-residual interfaces.</li>
-<li><code>femx::state</code>: Newton, time-stepping, and reduced-functional utilities.</li>
+<li><code>femx::state</code>: residual, linearization, Newton, and time-stepping utilities.</li>
+<li><code>femx::inverse</code>: objective, observation, regularization, and reduced-functional utilities.</li>
 <li><code>femx::opt</code>: PETSc/TAO optimization adapters, when PETSc is enabled.</li>
 <li><code>femx::io</code>: output and data readers.</li>
 </ul>
 <p>Preferred include paths use the new public component layout:</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;femx/common/Types.hpp&gt;</span></div>
 <div class="line"><span class="preprocessor">#include &lt;femx/linalg/Vector.hpp&gt;</span></div>
-<div class="line"><span class="preprocessor">#include &lt;femx/problem/Residual.hpp&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;femx/state/Residual.hpp&gt;</span></div>
 <div class="line"><span class="preprocessor">#include &lt;femx/state/NewtonStateSolver.hpp&gt;</span></div>
-</div><!-- fragment --><p>The pre-refactor component targets and include paths have been removed. Update old code to the public component layout above before linking against femx. </p>
+</div><!-- fragment --><p>The pre-refactor component targets and include paths have been removed. Update old code to the public component layout above before linking against femx.</p>
+<h1><a class="anchor" id="autotoc_md6"></a>
+License</h1>
+<p>femx is distributed under the BSD 3-Clause License. See [LICENSE](LICENSE). </p>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->

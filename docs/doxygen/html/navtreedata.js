@@ -29,8 +29,10 @@ var NAVTREE =
     [ "femx", "md_README.html", [
       [ "Getting started", "md_README.html#autotoc_md1", null ],
       [ "CMake options", "md_README.html#autotoc_md2", null ],
-      [ "Coding conventions", "md_README.html#autotoc_md3", null ],
-      [ "Using femx in CMake", "md_README.html#autotoc_md4", null ]
+      [ "Documentation", "md_README.html#autotoc_md3", null ],
+      [ "Coding conventions", "md_README.html#autotoc_md4", null ],
+      [ "Using femx in CMake", "md_README.html#autotoc_md5", null ],
+      [ "License", "md_README.html#autotoc_md6", null ]
     ] ]
   ] ]
 ];

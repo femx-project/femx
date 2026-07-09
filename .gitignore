@@ -9,3 +9,6 @@ private/
 runs/
 output/
 outputs/
+
+docs/_build/
+docs/doxygen/html/

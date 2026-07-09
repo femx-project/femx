@@ -42,6 +42,30 @@ Common configuration options are:
 - `FEMX_RESOLVE_BACKEND=AUTO`: requested ReSolve backend, one of `AUTO`, `CPU`,
   or `CUDA`.
 
+## Documentation
+
+To generate the local API reference:
+
+```shell
+$ doxygen docs/doxygen/Doxyfile.in
+```
+
+The generated HTML is written to `docs/doxygen/html/`. Open
+`docs/doxygen/html/index.html` in a browser, or serve it from the repository
+root:
+
+```shell
+$ python3 -m http.server 8000 --directory docs/doxygen/html
+```
+
+Then open <http://localhost:8000/> in a browser.
+
+For a one-command local preview:
+
+```shell
+$ ./docs/preview-doxygen.sh
+```
+
 ## Coding conventions
 
 - Loop index variables in `for` statements should be at most two characters

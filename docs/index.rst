@@ -11,7 +11,8 @@ Documentation
 
 Start with the Poisson examples to see the current command-line interface and
 VTU visualization output. Source code documentation generated with Doxygen is
-available under ``doxygen/html/index.html`` after building the docs.
+generated under ``doxygen/html/index.html`` when building the docs. Generated
+HTML is not tracked in git.
 
 Building The Docs
 -----------------
@@ -21,6 +22,21 @@ From the repository root:
 .. code-block:: bash
 
    doxygen docs/doxygen/Doxyfile.in
+
+Open ``docs/doxygen/html/index.html`` in a browser. On remote or minimal Linux
+systems without a desktop browser, serve the generated HTML instead:
+
+.. code-block:: bash
+
+   python3 -m http.server 8000 --directory docs/doxygen/html
+
+Then open ``http://localhost:8000/`` in a browser.
+
+For a one-command local preview:
+
+.. code-block:: bash
+
+   ./docs/preview-doxygen.sh
 
 If Sphinx is installed, the landing page can also be built with:
 

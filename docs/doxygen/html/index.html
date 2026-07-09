@@ -97,8 +97,8 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <ul>
 <li><code>femx::Mesh</code>, <code>femx::FESpace</code>, and finite elements describe the discrete geometry and degrees of freedom.</li>
 <li><code>femx::assembly</code> classes assemble residuals, objectives, and sparse matrices from element-local kernels.</li>
-<li><code>femx::problem</code> defines residual and objective interfaces for optimization and state solves.</li>
-<li><code>femx::state</code> provides state solvers and reduced functionals.</li>
+<li><code>femx::state</code> defines residual interfaces and provides state solvers.</li>
+<li><code>femx::inverse</code> provides objective, observation, regularization, and reduced-functional utilities.</li>
 <li><code>femx::linalg</code> adapts PETSc, ReSolve, and native linear algebra backends.</li>
 <li><code>femx::io::VtuWriter</code> writes lightweight VTU visualization files.</li>
 </ul>
