@@ -1,0 +1,24 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "femx-experimental"
+version = "0.1.0"
+description = "Experimental Python bridge for femx."
+readme = "python/experimental/README.md"
+requires-python = ">=3.9"
+
+[tool.scikit-build]
+build-dir = "build/python-wheel"
+cmake.build-type = "Release"
+
+[tool.scikit-build.cmake.define]
+FEMX_BUILD_APPS = "OFF"
+FEMX_BUILD_EXAMPLES = "OFF"
+FEMX_BUILD_TESTS = "OFF"
+FEMX_ENABLE_HDF5 = "OFF"
+FEMX_ENABLE_OPENMP = "OFF"
+FEMX_ENABLE_RESOLVE = "OFF"
+FEMX_ENABLE_PETSC = "OFF"
+FEMX_BUILD_PYTHON_EXPERIMENTAL = "ON"

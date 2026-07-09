@@ -88,6 +88,23 @@
       "cacheVariables": {
         "FEMX_ENABLE_ENZYME": "ON"
       }
+    },
+    {
+      "name": "python-experimental",
+      "displayName": "Python Experimental",
+      "description": "Build only the experimental Python bindings.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/python-experimental",
+      "cacheVariables": {
+        "FEMX_BUILD_APPS": "OFF",
+        "FEMX_BUILD_EXAMPLES": "OFF",
+        "FEMX_BUILD_TESTS": "OFF",
+        "FEMX_ENABLE_HDF5": "OFF",
+        "FEMX_ENABLE_OPENMP": "OFF",
+        "FEMX_ENABLE_RESOLVE": "OFF",
+        "FEMX_ENABLE_PETSC": "OFF",
+        "FEMX_BUILD_PYTHON_EXPERIMENTAL": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -110,6 +127,11 @@
     {
       "name": "petsc-enzyme",
       "configurePreset": "petsc-enzyme"
+    },
+    {
+      "name": "python-experimental",
+      "configurePreset": "python-experimental",
+      "targets": ["femx_experimental"]
     }
   ],
   "testPresets": [
