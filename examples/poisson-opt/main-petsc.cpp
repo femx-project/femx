@@ -75,6 +75,7 @@ int run(const Options& opts)
     const std::string output_base = helper.outputBase(outputStem(opts));
     problem.writeSolution(result.prm, result.state, output_base);
     helper.printVisualizationPath(output_base);
+    helper.printVisualizationPath(output_base + ".observations");
   }
 
   return result.converged ? 0 : 1;

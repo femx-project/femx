@@ -153,6 +153,18 @@ Vector<Real> pointValues(const Mesh& mesh)
   return values;
 }
 
+Vector<Real> pointValues(const Vector<Point3>& points)
+{
+  Vector<Real> values(points.size() * 3);
+  for (Index in = 0; in < points.size(); ++in)
+  {
+    values[3 * in]     = points[in][0];
+    values[3 * in + 1] = points[in][1];
+    values[3 * in + 2] = points[in][2];
+  }
+  return values;
+}
+
 Vector<int64_t> connectivityValues(const Mesh& mesh)
 {
   Index num_node_ids = 0;
@@ -174,6 +186,16 @@ Vector<int64_t> connectivityValues(const Mesh& mesh)
   return values;
 }
 
+Vector<int64_t> vertexConnectivityValues(Index num_points)
+{
+  Vector<int64_t> values(num_points);
+  for (Index i = 0; i < num_points; ++i)
+  {
+    values[i] = static_cast<int64_t>(i);
+  }
+  return values;
+}
+
 Vector<int64_t> offsetValues(const Mesh& mesh)
 {
   Vector<int64_t> values(mesh.numElems());
@@ -182,6 +204,16 @@ Vector<int64_t> offsetValues(const Mesh& mesh)
   {
     offset     += static_cast<int64_t>(mesh.elem(ie).numNodes());
     values[ie]  = offset;
+  }
+  return values;
+}
+
+Vector<int64_t> vertexOffsetValues(Index num_points)
+{
+  Vector<int64_t> values(num_points);
+  for (Index i = 0; i < num_points; ++i)
+  {
+    values[i] = static_cast<int64_t>(i + 1);
   }
   return values;
 }
@@ -196,7 +228,12 @@ Vector<uint8_t> cellTypeValues(const Mesh& mesh)
   return values;
 }
 
-void checkField(const Mesh& mesh, const VtuWriter::PointField& field)
+Vector<uint8_t> vertexCellTypeValues(Index num_points)
+{
+  return Vector<uint8_t>(num_points, 1);
+}
+
+void checkField(Index num_points, const VtuWriter::PointField& field)
 {
   if (field.name.empty())
   {
@@ -210,38 +247,21 @@ void checkField(const Mesh& mesh, const VtuWriter::PointField& field)
   {
     throw std::runtime_error("VtuWriter point field has null values");
   }
-  if (field.vals->size() != mesh.numNodes() * field.num_components)
+  if (field.vals->size() != num_points * field.num_components)
   {
-    throw std::runtime_error("VtuWriter point field size does not match mesh nodes");
+    throw std::runtime_error("VtuWriter point field size does not match points");
   }
 }
 
-} // namespace
-
-void VtuWriter::writePointData(const std::string&        fname,
-                               const Mesh&               mesh,
-                               const Vector<PointField>& fields) const
+void writeUnstructuredGrid(const std::string&        fname,
+                           const Vector<Real>&       points,
+                           const Vector<int64_t>&    connectivity,
+                           const Vector<int64_t>&    offsets,
+                           const Vector<uint8_t>&    cell_types,
+                           Index                     num_points,
+                           Index                     num_cells,
+                           const Vector<VtuWriter::PointField>& fields)
 {
-  if (!isLittleEndian())
-  {
-    throw std::runtime_error(
-        "VtuWriter currently writes little-endian VTU files only");
-  }
-  if (mesh.numNodes() == 0 || mesh.numElems() == 0)
-  {
-    throw std::runtime_error("VtuWriter needs a non-empty mesh");
-  }
-
-  for (const auto& field : fields)
-  {
-    checkField(mesh, field);
-  }
-
-  const Vector<Real>    points       = pointValues(mesh);
-  const Vector<int64_t> connectivity = connectivityValues(mesh);
-  const Vector<int64_t> offsets      = offsetValues(mesh);
-  const Vector<uint8_t> cell_types   = cellTypeValues(mesh);
-
   std::ofstream out(fname, std::ios::binary);
   if (!out)
   {
@@ -252,8 +272,8 @@ void VtuWriter::writePointData(const std::string&        fname,
   out << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" "
          "byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
   out << "  <UnstructuredGrid>\n";
-  out << "    <Piece NumberOfPoints=\"" << mesh.numNodes()
-      << "\" NumberOfCells=\"" << mesh.numElems() << "\">\n";
+  out << "    <Piece NumberOfPoints=\"" << num_points
+      << "\" NumberOfCells=\"" << num_cells << "\">\n";
 
   out << "      <Points>\n";
   out << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
@@ -300,6 +320,76 @@ void VtuWriter::writePointData(const std::string&        fname,
   out << "    </Piece>\n";
   out << "  </UnstructuredGrid>\n";
   out << "</VTKFile>\n";
+}
+
+} // namespace
+
+void VtuWriter::writePointData(const std::string&        fname,
+                               const Mesh&               mesh,
+                               const Vector<PointField>& fields) const
+{
+  if (!isLittleEndian())
+  {
+    throw std::runtime_error(
+        "VtuWriter currently writes little-endian VTU files only");
+  }
+  if (mesh.numNodes() == 0 || mesh.numElems() == 0)
+  {
+    throw std::runtime_error("VtuWriter needs a non-empty mesh");
+  }
+
+  for (const auto& field : fields)
+  {
+    checkField(mesh.numNodes(), field);
+  }
+
+  const Vector<Real>    points       = pointValues(mesh);
+  const Vector<int64_t> connectivity = connectivityValues(mesh);
+  const Vector<int64_t> offsets      = offsetValues(mesh);
+  const Vector<uint8_t> cell_types   = cellTypeValues(mesh);
+
+  writeUnstructuredGrid(fname,
+                        points,
+                        connectivity,
+                        offsets,
+                        cell_types,
+                        mesh.numNodes(),
+                        mesh.numElems(),
+                        fields);
+}
+
+void VtuWriter::writePointCloud(const std::string&        fname,
+                                const Vector<Point3>&     points,
+                                const Vector<PointField>& fields) const
+{
+  if (!isLittleEndian())
+  {
+    throw std::runtime_error(
+        "VtuWriter currently writes little-endian VTU files only");
+  }
+  if (points.empty())
+  {
+    throw std::runtime_error("VtuWriter point cloud needs at least one point");
+  }
+
+  for (const auto& field : fields)
+  {
+    checkField(points.size(), field);
+  }
+
+  const Vector<Real>    point_data   = pointValues(points);
+  const Vector<int64_t> connectivity = vertexConnectivityValues(points.size());
+  const Vector<int64_t> offsets      = vertexOffsetValues(points.size());
+  const Vector<uint8_t> cell_types   = vertexCellTypeValues(points.size());
+
+  writeUnstructuredGrid(fname,
+                        point_data,
+                        connectivity,
+                        offsets,
+                        cell_types,
+                        points.size(),
+                        points.size(),
+                        fields);
 }
 
 } // namespace femx

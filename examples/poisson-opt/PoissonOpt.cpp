@@ -355,6 +355,13 @@ std::filesystem::path vtuPathFromBase(const std::string& output_base)
   return path;
 }
 
+std::filesystem::path observationVtuPath(std::filesystem::path solution_path)
+{
+  solution_path.replace_filename(solution_path.stem().string()
+                                 + ".observations.vtu");
+  return solution_path;
+}
+
 } // namespace
 
 PoissonOptProblem::PoissonOptProblem(const Options& opts)
@@ -538,6 +545,51 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
                       {"target_ctr", 1, &target_ctr},
                       {"ctr_error", 1, &ctr_err},
                       {"ctr_mask", 1, &ctr_mask}});
+
+  if (obs_points_.size() != obs_dofs_.size())
+  {
+    throw std::runtime_error("Poisson optimization observation layout is inconsistent");
+  }
+
+  Vector<Real> obs_index(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_node_id(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_dof_id(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_point_value(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_point_pred(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_point_misfit(obs_dofs_.size(), 0.0);
+  Vector<Real> obs_weight(obs_dofs_.size(), 0.0);
+  const Real   weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  for (Index i = 0; i < obs_dofs_.size(); ++i)
+  {
+    const Index dof = obs_dofs_[i];
+    if (dof < 0 || dof >= numStates() || dof % comps != 0)
+    {
+      throw std::runtime_error("Poisson optimization observation dof is not a mesh node");
+    }
+    const Index node = dof / comps;
+    if (node < 0 || node >= mesh_.numNodes())
+    {
+      throw std::runtime_error("Poisson optimization observation node is out of range");
+    }
+
+    obs_index[i]        = static_cast<Real>(i);
+    obs_node_id[i]      = static_cast<Real>(node);
+    obs_dof_id[i]       = static_cast<Real>(dof);
+    obs_point_value[i]  = target_state_[dof];
+    obs_point_pred[i]   = state[dof];
+    obs_point_misfit[i] = state[dof] - target_state_[dof];
+    obs_weight[i]       = weight;
+  }
+
+  out.writePointCloud(observationVtuPath(output_path).string(),
+                      obs_points_,
+                      {{"obs_index", 1, &obs_index},
+                       {"node_id", 1, &obs_node_id},
+                       {"dof_id", 1, &obs_dof_id},
+                       {"obs_value", 1, &obs_point_value},
+                       {"obs_pred", 1, &obs_point_pred},
+                       {"obs_misfit", 1, &obs_point_misfit},
+                       {"obs_weight", 1, &obs_weight}});
 }
 
 Real PoissonOptProblem::exactValue(const Mesh::Node& p)
@@ -879,7 +931,7 @@ void printPoissonOptUsage(std::ostream& out,
     out << " (PETSc supports cpu only)";
   }
   out << '\n';
-  out << "  --output yes writes a VTU file under "
+  out << "  --output yes writes VTU files under "
       << outputDir()
       << '\n';
 }

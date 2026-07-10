@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 
 namespace femx
@@ -22,10 +23,10 @@ class VtuWriter
 {
 public:
   /**
-   * @brief Scalar or vector point field to write with the mesh.
+   * @brief Scalar or vector point field to write with points.
    *
-   * PointField references external data laid out as one value per mesh point
-   * and component.
+   * PointField references external data laid out as one value per point and
+   * component.
    */
   struct PointField
   {
@@ -45,6 +46,18 @@ public:
   void writePointData(const std::string&        fname,
                       const Mesh&               mesh,
                       const Vector<PointField>& fields) const;
+
+  /**
+   * @brief Write a point cloud as vertex cells with optional point fields.
+   *
+   * @param[in] fname - Output `.vtu` file name.
+   * @param[in] points - Point coordinates.
+   * @param[in] fields - Point data fields with points.size() entries per
+   * component.
+   */
+  void writePointCloud(const std::string&        fname,
+                       const Vector<Point3>&     points,
+                       const Vector<PointField>& fields) const;
 };
 
 } // namespace femx

@@ -58,10 +58,10 @@ struct Report
 {
   Real value             = 0.0;
   Real grad_norm         = 0.0;
-  Real state_rms_error   = 0.0;
+  Real state_rms_err     = 0.0;
   Real state_max_err     = 0.0;
-  Real ctr_rms_error     = 0.0;
-  Real control_max_error = 0.0;
+  Real ctr_rms_err       = 0.0;
+  Real ctr_max_err       = 0.0;
 };
 
 /**
@@ -149,10 +149,10 @@ private:
   GaussQuadrature             quad_;
   std::unique_ptr<CsrPattern> state_pattern_;
 
-  Vector<Index>  control_dofs_;
+  Vector<Index>  ctr_dofs_;
   Vector<Index>  fixed_dofs_;
   Vector<Index>  obs_dofs_;
-  Vector<Real>   control_weights_;
+  Vector<Real>   ctr_weights_;
   Vector<Real>   target_state_;
   Vector<Real>   target_ctr_;
   Vector<Point3> obs_points_;
