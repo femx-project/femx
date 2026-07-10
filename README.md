@@ -22,13 +22,15 @@ Optional dependencies:
 ```shell
 mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/femx
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/femx
 make
 ```
 
 Enable optional dependencies explicitly. If an enabled dependency is not found,
 CMake fails during configuration. Add these flags to the `cmake ..` command
 above when needed.
+
+Use `-DCMAKE_BUILD_TYPE=Debug` for a debug build.
 
 For HDF5 output:
 
