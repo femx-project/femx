@@ -4,10 +4,6 @@ femx is a small C++ finite element library for forward and inverse analysis.
 
 The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and optimization utilities are still experimental, and the current optimization examples use PETSc/TAO.
 
-## Example Result
-
-![Poisson optimization result](docs/figs/poisson-opt.png)
-
 ## Requirements
 
 - CMake >= 3.22
@@ -53,15 +49,32 @@ cmake -S . -B build -DFEMX_ENABLE_PETSC=ON -DPETSC_DIR=/path/to/petsc
 
 Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
 
-## Examples and Apps
+## Run Examples
 
-Examples and applications are backend-specific:
+The default Poisson example uses the native dense solver and does not require
+optional solver packages:
 
-- `*-resolve` targets use ReSolve.
-- `*-petsc` targets use PETSc and MPI.
-- Optimization examples use PETSc/TAO, even when the linear solves use ReSolve.
-- A build without enabled solver backends does not provide runnable backend
-  examples.
+```shell
+./build/examples/poisson/poisson --output yes
+```
+
+Backend-specific examples are available when their dependencies are enabled:
+
+```shell
+./build/examples/poisson/poisson-resolve --nx 48 --ny 48 -b cpu --output yes
+```
+
+Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
+
+```shell
+./build/examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
+```
+
+### Poisson Optimization Example
+
+<p align="center">
+  <img src="docs/figs/poisson-opt.png" alt="Poisson optimization result" width="720">
+</p>
 
 ## CMake Options
 

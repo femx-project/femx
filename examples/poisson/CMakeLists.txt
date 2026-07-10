@@ -9,6 +9,9 @@ function(configure_poisson_forward_example target)
   )
 endfunction()
 
+add_executable(poisson main.cpp ${FEMX_POISSON_FORWARD_SOURCES})
+configure_poisson_forward_example(poisson)
+
 if(TARGET femx::linalg_petsc)
   add_executable(poisson-petsc main-petsc.cpp ${FEMX_POISSON_FORWARD_SOURCES})
   configure_poisson_forward_example(poisson-petsc)

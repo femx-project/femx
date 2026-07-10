@@ -48,7 +48,14 @@ Examples
 --------
 
 The forward Poisson examples accept mesh dimensions, solver backend, and VTU
-output selection:
+output selection. The ``poisson`` target uses the native dense solver for
+small dependency-free checks:
+
+.. code-block:: bash
+
+   poisson --output yes
+
+Optional solver backends are exposed through backend-specific targets:
 
 .. code-block:: bash
 

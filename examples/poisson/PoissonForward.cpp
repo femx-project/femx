@@ -13,8 +13,10 @@
 #include <femx/fem/BoundaryCondition.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -170,6 +172,80 @@ std::filesystem::path vtuPathFromBase(const std::string& output_base)
   return path;
 }
 
+void applyDenseBoundary(const BoundaryCondition& bc,
+                        DenseAssemblyMatrix&     A,
+                        Vector<Real>&            rhs)
+{
+  DenseMatrix& mat = A.mat();
+  if (mat.rows() != mat.cols() || rhs.size() != mat.rows())
+  {
+    throw std::runtime_error(
+        "Poisson dense boundary condition received inconsistent dimensions");
+  }
+  if (bc.dofs().size() != bc.vals().size())
+  {
+    throw std::runtime_error("DirichletCondition has inconsistent data");
+  }
+
+  const Index size = mat.rows();
+  Vector<char> is_dirichlet(size, 0);
+  Vector<Real> dirichlet_values(size);
+
+  for (Index c = 0; c < bc.dofs().size(); ++c)
+  {
+    const Index id = bc.dofs()[c];
+    if (id < 0 || id >= size)
+    {
+      throw std::runtime_error("Dirichlet id is out of range");
+    }
+
+    is_dirichlet[id]     = 1;
+    dirichlet_values[id] = bc.vals()[c];
+  }
+
+  for (Index row = 0; row < size; ++row)
+  {
+    const bool row_is_dirichlet = is_dirichlet[row] != 0;
+
+    for (Index col = 0; col < size; ++col)
+    {
+      if (row_is_dirichlet)
+      {
+        mat(row, col) = row == col ? 1.0 : 0.0;
+      }
+      else if (is_dirichlet[col] != 0)
+      {
+        rhs[row]     -= mat(row, col) * dirichlet_values[col];
+        mat(row, col) = 0.0;
+      }
+    }
+
+    if (row_is_dirichlet)
+    {
+      rhs[row] = dirichlet_values[row];
+    }
+  }
+}
+
+void applyBoundary(const BoundaryCondition& bc,
+                   AssemblyMatrix&          A,
+                   Vector<Real>&            rhs)
+{
+  if (auto* csr = dynamic_cast<CsrAssemblyMatrix*>(&A))
+  {
+    bc.apply(csr->mat(), rhs);
+    return;
+  }
+
+  if (auto* dense = dynamic_cast<DenseAssemblyMatrix*>(&A))
+  {
+    applyDenseBoundary(bc, *dense, rhs);
+    return;
+  }
+
+  throw std::runtime_error("Poisson example received unsupported matrix type");
+}
+
 } // namespace
 
 PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
@@ -202,8 +278,8 @@ Index PoissonForwardProblem::numDofs() const noexcept
   return space_.numDofs();
 }
 
-void PoissonForwardProblem::assemble(CsrAssemblyMatrix& A,
-                                     Vector<Real>&      rhs) const
+void PoissonForwardProblem::assemble(AssemblyMatrix& A,
+                                     Vector<Real>&   rhs) const
 {
   Assembler assembler(space_);
   assembler.initMat(A);
@@ -239,7 +315,7 @@ void PoissonForwardProblem::assemble(CsrAssemblyMatrix& A,
 
   BoundaryCondition bc;
   bc.addBoundary(space_, onBoundary, boundaryValue);
-  bc.apply(A.mat(), rhs);
+  applyBoundary(bc, A, rhs);
 }
 
 ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
@@ -407,7 +483,9 @@ std::string outputStem(const Options& opts)
          + std::to_string(opts.num_y_cells);
 }
 
-void printUsage(const char* app_name, bool petsc_options)
+void printUsage(const char* app_name,
+                bool        petsc_options,
+                const char* backend_note)
 {
   std::cout << "Usage: " << app_name
             << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]";
@@ -417,7 +495,11 @@ void printUsage(const char* app_name, bool petsc_options)
   }
   std::cout << '\n';
   std::cout << "  -b, --backend cpu|cuda selects the device backend";
-  if (petsc_options)
+  if (backend_note)
+  {
+    std::cout << " (" << backend_note << ")";
+  }
+  else if (petsc_options)
   {
     std::cout << " (PETSc supports cpu only)";
   }

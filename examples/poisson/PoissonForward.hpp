@@ -17,7 +17,7 @@ namespace femx
 {
 namespace linalg
 {
-class CsrAssemblyMatrix;
+class AssemblyMatrix;
 }
 } // namespace femx
 
@@ -64,8 +64,8 @@ public:
   Index numNodes() const noexcept;
   Index numDofs() const noexcept;
 
-  void assemble(linalg::CsrAssemblyMatrix& A,
-                Vector<Real>&              rhs) const;
+  void assemble(linalg::AssemblyMatrix& A,
+                Vector<Real>&           rhs) const;
 
   ErrorReport errorReport(const Vector<Real>& x) const;
 
@@ -103,7 +103,8 @@ const char* outputDir();
 std::string outputStem(const Options& opts);
 
 void printUsage(const char* app_name,
-                bool        petsc_options);
+                bool        petsc_options,
+                const char* backend_note = nullptr);
 
 void printReport(std::ostream&                out,
                  const std::string&           backend,
