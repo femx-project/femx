@@ -31,16 +31,16 @@ namespace femx::model::ns
 
 struct AppOptions
 {
-  std::string          config_file;
-  std::optional<Index> steps;
-  bool                 help      = false;
-  bool                 no_output = false;
+  std::string          config_file;       ///< Input JSON config file.
+  std::optional<Index> steps;             ///< Optional step-count override.
+  bool                 help      = false; ///< Print help and exit.
+  bool                 no_output = false; ///< Disable field output.
 };
 
 struct FixedBoundaryValues
 {
-  Vector<Index> dofs;
-  Vector<Real>  vals;
+  Vector<Index> dofs; ///< Fixed state dofs.
+  Vector<Real>  vals; ///< Fixed state values.
 };
 
 struct ForwardProblem

@@ -53,12 +53,12 @@ private:
   Index num_elems_{0};
   Index num_coo_entries_{0};
 
-  Vector<Index> row_ptr_;
-  Vector<Index> col_ind_;
-  Vector<Index> map_to_csr_;
+  Vector<Index> row_ptr_;    ///< CSR row offsets.
+  Vector<Index> col_ind_;    ///< CSR column indices.
+  Vector<Index> map_to_csr_; ///< Map from element COO entries to CSR entries.
 
-  Vector<Index> elem_coo_offsets_;
-  Vector<Index> elem_num_dofs_;
+  Vector<Index> elem_coo_offsets_; ///< First COO entry for each element.
+  Vector<Index> elem_num_dofs_;    ///< Number of dofs on each element.
 };
 
 } // namespace femx

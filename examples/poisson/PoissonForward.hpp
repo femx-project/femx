@@ -26,32 +26,25 @@ namespace femx::examples::poisson
 
 struct Options
 {
-  Index         num_x_cells  = 32;
-  Index         num_y_cells  = 32;
-  WorkspaceType backend      = WorkspaceType::Cpu;
-  bool          write_output = false;
+  Index         num_x_cells  = 32;                 ///< Number of cells in x.
+  Index         num_y_cells  = 32;                 ///< Number of cells in y.
+  WorkspaceType backend      = WorkspaceType::Cpu; ///< Device backend.
+  bool          write_output = false;              ///< Write VTU output.
 };
 
 /**
  * @brief Error and range metrics reported by the forward Poisson example.
- *
- * ErrorReport summarizes solution extrema and pointwise error against the
- * analytic reference solution.
  */
 struct ErrorReport
 {
-  Real min_value = 0.0;
-  Real max_value = 0.0;
-  Real rms_err   = 0.0;
-  Real max_err   = 0.0;
+  Real min_value = 0.0; ///< Minimum numerical solution value.
+  Real max_value = 0.0; ///< Maximum numerical solution value.
+  Real rms_err   = 0.0; ///< RMS nodal error against the exact solution.
+  Real max_err   = 0.0; ///< Maximum nodal error against the exact solution.
 };
 
 /**
  * @brief Forward Poisson example on a structured quadrilateral mesh.
- *
- * The problem solves a scalar Laplace equation with analytic boundary data,
- * reports nodal error against the exact solution, and can write VTU
- * visualization fields.
  */
 class PoissonForwardProblem
 {

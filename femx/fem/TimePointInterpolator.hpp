@@ -81,8 +81,8 @@ public:
 private:
   struct Stencil
   {
-    Vector<Index> indices;
-    Vector<Real>  wts;
+    Vector<Index> indices; ///< State dofs used by one observation.
+    Vector<Real>  wts;     ///< Interpolation weights for those dofs.
   };
 
   void checkLevel(Index level) const;
@@ -99,9 +99,9 @@ private:
   Index           num_steps_{0};
   Index           num_states_{0};
   Index           num_params_{0};
-  Vector<Point3>  pts_;
-  Vector<Index>   comps_;
-  Vector<Stencil> stencils_;
+  Vector<Point3>  pts_;      ///< Observation point coordinates.
+  Vector<Index>   comps_;    ///< Observed component at each point.
+  Vector<Stencil> stencils_; ///< Interpolation stencil for each point.
 };
 
 } // namespace fem

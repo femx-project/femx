@@ -24,26 +24,23 @@ namespace linalg
 
 /**
  * @brief ReSolve solver configuration used by ReSolveLinearSolver.
- *
- * ReSolveOptions names the factorization, preconditioning, Krylov, and
- * tolerance choices passed to the ReSolve backend.
  */
 struct ReSolveOptions
 {
-  std::string factor   = "klu";
-  std::string refactor = "none";
-  std::string solve    = "klu";
-  std::string precond  = "none";
-  std::string ir       = "none";
+  std::string factor   = "klu";  ///< Factorization method.
+  std::string refactor = "none"; ///< Refactorization method.
+  std::string solve    = "klu";  ///< Linear solve method.
+  std::string precond  = "none"; ///< Preconditioner method.
+  std::string ir       = "none"; ///< Iterative-refinement method.
 
-  std::string gram_schmidt        = "cgs2";
-  std::string sketching           = "count";
-  std::string preconditioner_side = "right";
+  std::string gram_schmidt        = "cgs2";  ///< Krylov orthogonalization method.
+  std::string sketching           = "count"; ///< Sketching method for LSQR variants.
+  std::string preconditioner_side = "right"; ///< Side on which to apply preconditioning.
 
-  Index max_its  = 1000;
-  Index restart  = 200;
-  Real  rtol     = 1.0e-12;
-  bool  flexible = true;
+  Index max_its  = 1000;    ///< Maximum Krylov iterations.
+  Index restart  = 200;     ///< Krylov restart length.
+  Real  rtol     = 1.0e-12; ///< Relative residual tolerance.
+  bool  flexible = true;    ///< Enable flexible Krylov methods.
 };
 
 /**

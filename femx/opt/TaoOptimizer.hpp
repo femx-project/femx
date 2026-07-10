@@ -19,35 +19,29 @@ namespace opt
 
 /**
  * @brief PETSc/TAO algorithm and convergence options.
- *
- * TaoOptions holds the solver type and stopping criteria configured before a
- * TAO solve is launched.
  */
 struct TaoOptions
 {
-  std::string type = TAOLMVM;
+  std::string type = TAOLMVM; ///< PETSc/TAO solver type.
 
-  Real abs_tol  = 1.0e-8;
-  Real rel_tol  = 1.0e-8;
-  Real step_tol = 0.0;
+  Real abs_tol  = 1.0e-8; ///< Absolute gradient tolerance.
+  Real rel_tol  = 1.0e-8; ///< Relative gradient tolerance.
+  Real step_tol = 0.0;    ///< Step-size tolerance.
 
-  Index max_its = 100;
+  Index max_its = 100; ///< Maximum TAO iterations.
 };
 
 /**
  * @brief Result returned by TaoOptimizer::solve.
- *
- * TaoResult stores the final parameter, gradient, objective value, iteration
- * count, and PETSc convergence reason.
  */
 struct TaoResult
 {
-  Vector<Real>       prm;
-  Vector<Real>       grad;
-  Real               value             = 0.0;
-  Real               grad_norm_squared = 0.0;
-  Index              its               = 0;
-  TaoConvergedReason reason            = TAO_CONTINUE_ITERATING;
+  Vector<Real>       prm;                         ///< Final parameter vector.
+  Vector<Real>       grad;                        ///< Final reduced gradient.
+  Real               value             = 0.0;     ///< Final objective value.
+  Real               grad_norm_squared = 0.0;     ///< Squared final gradient norm.
+  Index              its               = 0;       ///< Number of TAO iterations.
+  TaoConvergedReason reason            = TAO_CONTINUE_ITERATING; ///< TAO reason.
 
   bool converged() const
   {
@@ -57,31 +51,25 @@ struct TaoResult
 
 /**
  * @brief Lower and upper bounds for bound-constrained optimization.
- *
- * TaoBounds stores one lower and one upper value for each optimization
- * parameter when bounds are enabled.
  */
 struct TaoBounds
 {
-  Vector<Real> lower;
-  Vector<Real> upper;
+  Vector<Real> lower; ///< Lower bound for each parameter.
+  Vector<Real> upper; ///< Upper bound for each parameter.
 };
 
 /**
  * @brief Per-iteration information passed to TaoProgressMonitor.
- *
- * TaoIterationInfo captures the scalar convergence diagnostics and gradient
- * available at a TAO monitor callback.
  */
 struct TaoIterationInfo
 {
-  Index              its             = 0;
-  Real               value           = 0.0;
-  Real               grad_norm       = 0.0;
-  Real               constraint_norm = 0.0;
-  Real               step_norm       = 0.0;
-  TaoConvergedReason reason          = TAO_CONTINUE_ITERATING;
-  Vector<Real>       grad;
+  Index              its             = 0;   ///< Current TAO iteration.
+  Real               value           = 0.0; ///< Current objective value.
+  Real               grad_norm       = 0.0; ///< Current gradient norm.
+  Real               constraint_norm = 0.0; ///< Current constraint norm.
+  Real               step_norm       = 0.0; ///< Current step norm.
+  TaoConvergedReason reason          = TAO_CONTINUE_ITERATING; ///< TAO reason.
+  Vector<Real>       grad;                  ///< Current reduced gradient.
 };
 
 /**
@@ -102,8 +90,8 @@ public:
 /**
  * @brief PETSc/TAO optimizer for reduced functionals.
  *
- * TaoOptimizer adapts femx value-gradient callbacks to PETSc/TAO, while
- * keeping vectors in the lightweight femx Vector container at the public API.
+ * TaoOptimizer adapts femx value-and-gradient callbacks for PETSc/TAO while
+ * exposing vectors through the lightweight femx Vector container in its public API.
  */
 class TaoOptimizer
 {

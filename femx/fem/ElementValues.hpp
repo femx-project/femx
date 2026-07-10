@@ -69,16 +69,16 @@ private:
   Index dim_{0};
   Index num_qpts_{0};
 
-  Vector<Real> N_;
-  Vector<Real> dNdr_;
-  Vector<Real> dNdx_;
+  Vector<Real> N_;    ///< Shape values at quadrature points.
+  Vector<Real> dNdr_; ///< Reference gradients at quadrature points.
+  Vector<Real> dNdx_; ///< Physical gradients at quadrature points.
 
-  Vector<Real> detJ_;
-  Vector<Real> wts_;
-  Vector<Real> JxW_;
+  Vector<Real> detJ_; ///< Jacobian determinants.
+  Vector<Real> wts_;  ///< Quadrature weights.
+  Vector<Real> JxW_;  ///< Weighted Jacobian determinants.
 
-  Vector<Real> J_;
-  Vector<Real> invJ_;
+  Vector<Real> J_;    ///< Element Jacobian workspace.
+  Vector<Real> invJ_; ///< Inverse Jacobian workspace.
 };
 
 } // namespace femx

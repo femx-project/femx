@@ -11,9 +11,9 @@ namespace femx
 
 struct LinearInterpolation
 {
-  Index lower        = 0;
-  Index upper        = 0;
-  Real  upper_weight = 0.0;
+  Index lower        = 0;   ///< Lower sample index.
+  Index upper        = 0;   ///< Upper sample index.
+  Real  upper_weight = 0.0; ///< Interpolation weight for the upper sample.
 
   Real lowerWeight() const
   {

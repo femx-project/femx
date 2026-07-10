@@ -18,18 +18,18 @@ using Clock = std::chrono::high_resolution_clock;
 
 struct ForwardSolveResult
 {
-  Vector<Real> final_state;
-  Index        final_step{0};
-  Real         final_time{0.0};
-  Real         vel_change{0.0};
-  bool         converged{false};
+  Vector<Real> final_state;          ///< Last accepted state vector.
+  Index        final_step{0};        ///< Last completed time step.
+  Real         final_time{0.0};      ///< Physical time at final_step.
+  Real         vel_change{0.0};      ///< Last relative velocity change.
+  bool         converged{false};     ///< True when convergence stopped the run.
 };
 
 struct ForwardConvergenceParams
 {
-  bool  enabled     = false;
-  Real  vel_rel_tol = 1.0e-8;
-  Index min_steps   = 1;
+  bool  enabled     = false;  ///< Enable steady-state convergence check.
+  Real  vel_rel_tol = 1.0e-8; ///< Relative velocity-change tolerance.
+  Index min_steps   = 1;      ///< Minimum steps before convergence can stop.
 };
 
 class ForwardSolveMonitor final : public state::TimeStateMonitor

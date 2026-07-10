@@ -6,11 +6,15 @@
 namespace femx
 {
 
+/**
+ * @brief Element-local to global degree-of-freedom map.
+ */
 class DofMap
 {
 public:
   DofMap() = default;
-  /** @brief Create a id map with storage for all elem dofs. */
+
+  /** @brief Create an id map with storage for all elem dofs. */
   DofMap(Index num_elems, Index num_dofs_per_elem);
 
   /** @brief Allocate and reset the elem-to-global-id table. */

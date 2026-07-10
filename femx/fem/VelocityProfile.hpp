@@ -15,10 +15,10 @@ using BoundaryFacetSelector =
 
 struct AxialVelocityProfile
 {
-  std::string type = "uniform";
-  Real        rad  = 0.0;
-  Point3      cen  = {0.0, 0.0, 0.0};
-  Point3      nrm  = {1.0, 0.0, 0.0};
+  std::string type = "uniform";       ///< Profile type.
+  Real        rad  = 0.0;             ///< Profile radius.
+  Point3      cen  = {0.0, 0.0, 0.0}; ///< Profile center.
+  Point3      nrm  = {1.0, 0.0, 0.0}; ///< Axial direction.
 };
 
 Point3 boundaryCenter(const Mesh&                  mesh,

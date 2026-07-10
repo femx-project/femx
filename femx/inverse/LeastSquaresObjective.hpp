@@ -71,10 +71,10 @@ private:
   Index num_states_{0};
   Index num_params_{0};
 
-  Vector<Real> state_target_;
-  Vector<Real> state_weights_;
-  Vector<Real> param_target_;
-  Vector<Real> param_weights_;
+  Vector<Real> state_target_;  ///< Target state values.
+  Vector<Real> state_weights_; ///< Weights for state tracking.
+  Vector<Real> param_target_;  ///< Target parameter values.
+  Vector<Real> param_weights_; ///< Weights for parameter tracking.
 };
 
 } // namespace inverse

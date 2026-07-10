@@ -8,15 +8,12 @@ namespace femx
 {
 
 /**
- * @brief Reader for Gmsh `.msh` files.
- *
- * GmshReader converts supported mesh entities and physical tags into a femx
- * Mesh.
+ * @brief Reader for Gmsh mesh files.
  */
 class GmshReader
 {
 public:
-  /** @brief Read a mesh from disk and return a femx Mesh. */
+  /** @brief Read a Gmsh `.msh` file into a Mesh object. */
   static Mesh read(const std::string& path);
 };
 

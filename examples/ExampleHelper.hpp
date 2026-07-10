@@ -30,10 +30,7 @@ inline const char* workspaceName(WorkspaceType backend)
 }
 
 /**
- * @brief Small helpers for examples.
- *
- * This is header-only implementation of several utility functions
- * used by femx exampes, such as error norm calculations.
+ * @brief Small helpers for femx examples.
  */
 class ExampleHelper
 {

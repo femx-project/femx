@@ -33,12 +33,12 @@ public:
    */
   struct BoundaryFacet
   {
-    Index          dim  = 0;
-    Index          etag = 0;
-    Index          ptag = 0;
-    std::string    pname;
-    Element::Shape shape = Element::Shape::Unknown;
-    Vector<Index>  nids;
+    Index          dim  = 0;                        ///< Topological dimension of the facet.
+    Index          etag = 0;                        ///< Element tag from the mesh file.
+    Index          ptag = 0;                        ///< Physical boundary tag.
+    std::string    pname;                           ///< Physical boundary name.
+    Element::Shape shape = Element::Shape::Unknown; ///< Facet element shape.
+    Vector<Index>  nids;                            ///< Mesh-node ids on the facet.
   };
 
   Mesh() = default;

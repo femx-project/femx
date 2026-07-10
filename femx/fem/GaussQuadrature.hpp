@@ -13,8 +13,8 @@ namespace femx
 
 struct QuadraturePoint
 {
-  Real x[3] = {0.0, 0.0, 0.0};
-  Real wt   = 0.0;
+  Real x[3] = {0.0, 0.0, 0.0}; ///< Reference coordinates.
+  Real wt   = 0.0;             ///< Quadrature weight.
 
   Real operator[](Index i) const
   {

@@ -17,17 +17,17 @@ class VtiWriter
 public:
   struct Image
   {
-    std::array<Index, 3> elem_counts = {1, 1, 1};
-    std::array<Real, 3>  origin      = {0.0, 0.0, 0.0};
-    std::array<Real, 3>  spacing     = {1.0, 1.0, 1.0};
-    std::optional<Real>  time;
+    std::array<Index, 3> elem_counts = {1, 1, 1};       ///< Cell counts.
+    std::array<Real, 3>  origin      = {0.0, 0.0, 0.0}; ///< Grid origin.
+    std::array<Real, 3>  spacing     = {1.0, 1.0, 1.0}; ///< Cell spacing.
+    std::optional<Real>  time;                          ///< Optional time value.
   };
 
   struct ElemField
   {
-    std::string         name;
-    Index               num_components = 1;
-    const Vector<Real>* vals{nullptr};
+    std::string         name;               ///< VTK field name.
+    Index               num_components = 1; ///< Number of components per cell.
+    const Vector<Real>* vals{nullptr};      ///< Field values.
   };
 
   void writeElemData(const std::string&       fname,

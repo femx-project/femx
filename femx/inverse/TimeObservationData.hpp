@@ -63,14 +63,14 @@ private:
   void checkTimeValues() const;
 
 private:
-  Vector<Real>   data_;
+  Vector<Real>   data_; ///< Observation values stored by time level.
   Index          num_levels_{0};
   Index          num_obs_{0};
-  std::string    sampler_;
-  Vector<Point3> pts_;
-  Vector<Index>  comps_;
-  Vector<Index>  time_levels_;
-  Vector<Real>   time_values_;
+  std::string    sampler_;     ///< Name of the sampler that produced the layout.
+  Vector<Point3> pts_;         ///< Observation point coordinates.
+  Vector<Index>  comps_;       ///< Observed component at each point.
+  Vector<Index>  time_levels_; ///< Source time level for each row.
+  Vector<Real>   time_values_; ///< Physical time value for each row.
 };
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,

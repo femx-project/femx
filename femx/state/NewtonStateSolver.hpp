@@ -19,9 +19,9 @@ class Linearization;
 
 struct NewtonStateOptions
 {
-  Index max_its            = 20;
-  Real  residual_tolerance = 1.0e-10;
-  Real  step_tolerance     = 0.0;
+  Index max_its            = 20;      ///< Maximum Newton iterations.
+  Real  residual_tolerance = 1.0e-10; ///< Stop when residual norm is below this.
+  Real  step_tolerance     = 0.0;     ///< Stop when step norm is below this.
 };
 
 /**

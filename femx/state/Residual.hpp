@@ -14,15 +14,12 @@ class Linearization;
 
 /**
  * @brief Sizes for a parameter-dependent residual problem.
- *
- * Dimensions records the state, parameter, and residual vector sizes expected
- * by residual evaluators and state solvers.
  */
 struct Dimensions
 {
-  Index num_states    = 0;
-  Index num_params    = 0;
-  Index num_residuals = 0;
+  Index num_states    = 0; ///< Size of the state vector.
+  Index num_params    = 0; ///< Size of the parameter/control vector.
+  Index num_residuals = 0; ///< Size of the residual vector.
 };
 
 /**

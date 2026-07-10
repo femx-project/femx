@@ -14,8 +14,8 @@ namespace femx::runtime
 
 struct IndexRange
 {
-  Index begin = 0;
-  Index end   = 0;
+  Index begin = 0; ///< First index in the half-open range.
+  Index end   = 0; ///< One-past-the-last index.
 };
 
 inline void setSerialOpenMp()

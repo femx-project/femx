@@ -57,14 +57,14 @@ private:
   Vector<Index> constrainedRows() const;
 
 private:
-  const state::Residual& base_;
-  DirichletControl       ctr_;
-  Vector<Index>          fdofs_;
-  Vector<Real>           fvals_;
-  Vector<Real>           base_prm_;
-  state::Dimensions      base_dims_;
-  state::Dimensions      dims_;
-  Index                  ctr_param_offset_{0};
+  const state::Residual& base_;     ///< Wrapped residual before row replacement.
+  DirichletControl       ctr_;      ///< Parameter-controlled Dirichlet dofs.
+  Vector<Index>          fdofs_;    ///< Fixed Dirichlet dofs.
+  Vector<Real>           fvals_;    ///< Fixed Dirichlet values.
+  Vector<Real>           base_prm_; ///< Parameter vector passed to the base residual.
+  state::Dimensions      base_dims_; ///< Dimensions of the wrapped residual.
+  state::Dimensions      dims_;      ///< Dimensions exposed by this wrapper.
+  Index                  ctr_param_offset_{0}; ///< Offset of control parameters.
 };
 
 } // namespace assembly

@@ -10,7 +10,7 @@ namespace femx::runtime
 
 struct BuildInfo
 {
-  std::vector<std::pair<std::string, std::string>> entries;
+  std::vector<std::pair<std::string, std::string>> entries; ///< Key-value entries.
 };
 
 void writeBuildInfo(const std::filesystem::path& directory,

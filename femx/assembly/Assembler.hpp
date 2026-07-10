@@ -70,6 +70,7 @@ public:
             const MixedFESpace& col_space,
             AssemblyMode        mode = AssemblyMode::Serial);
 
+  // Accessors
   Index numElems() const;
   Index numRows() const;
   Index numCols() const;
@@ -94,10 +95,10 @@ private:
   static void checkDof(Index id, Index size, const char* name);
 
 private:
-  DofLayout    row_layout_;
-  DofLayout    col_layout_;
-  bool         same_layout_{true};
-  AssemblyMode mode_{AssemblyMode::Serial};
+  DofLayout    row_layout_;                 ///< Element-to-global ids for assembled rows.
+  DofLayout    col_layout_;                 ///< Element-to-global ids for assembled columns.
+  bool         same_layout_{true};          ///< True when row and column layouts are identical.
+  AssemblyMode mode_{AssemblyMode::Serial}; ///< Scatter mode used during assembly.
 };
 
 } // namespace assembly

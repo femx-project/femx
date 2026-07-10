@@ -84,6 +84,9 @@ optional solver packages:
 ./examples/poisson/poisson --output yes
 ```
 
+See [examples/poisson](examples/poisson) for the problem definition and
+available solver variants.
+
 Backend-specific examples are available when their dependencies are enabled:
 
 ```shell
@@ -96,11 +99,14 @@ Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 ./examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
 ```
 
-### Poisson Optimization Example
+### Example Result
 
 <p align="center">
-  <img src="docs/figs/poisson-opt.png" alt="Poisson optimization result" width="720">
+  <img src="docs/figs/poisson-opt.png" alt="Poisson optimization result" width="560">
 </p>
+
+See [examples/poisson-opt](examples/poisson-opt) for the optimization problem
+definition.
 
 ## CMake Options
 

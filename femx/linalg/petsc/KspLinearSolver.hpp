@@ -18,24 +18,21 @@ class PETScVector;
 
 /**
  * @brief User-facing PETSc KSP options used by KspLinearSolver.
- *
- * KspOptions collects solver, preconditioner, tolerance, and options-database
- * controls before they are applied to a PETSc KSP.
  */
 struct KspOptions
 {
-  std::string type    = KSPGMRES;
-  std::string pc_type = PCNONE;
+  std::string type    = KSPGMRES; ///< PETSc KSP type.
+  std::string pc_type = PCNONE;   ///< PETSc PC type.
 
-  Real  rtol    = 1.0e-10;
-  Real  atol    = 1.0e-50;
-  Real  dtol    = 1.0e5;
-  Index max_its = 1000;
-  Index restart = 0;
+  Real  rtol    = 1.0e-10; ///< Relative residual tolerance.
+  Real  atol    = 1.0e-50; ///< Absolute residual tolerance.
+  Real  dtol    = 1.0e5;   ///< Divergence tolerance.
+  Index max_its = 1000;    ///< Maximum KSP iterations.
+  Index restart = 0;       ///< GMRES restart length.
 
-  bool nonzero_guess = false;
-  bool use_opts_db   = true;
-  bool check_finite  = false;
+  bool nonzero_guess = false; ///< Use the input vector as an initial guess.
+  bool use_opts_db   = true;  ///< Allow PETSc options-database overrides.
+  bool check_finite  = false; ///< Check matrix/vector values before solving.
 };
 
 /**

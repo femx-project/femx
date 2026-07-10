@@ -39,54 +39,43 @@ namespace femx::examples::poisson_opt
 
 struct Options
 {
-  Index         num_x_cells  = 32;
-  Index         num_y_cells  = 32;
-  WorkspaceType backend      = WorkspaceType::Cpu;
-  bool          write_output = false;
-  Real          alpha        = 1.0e-6;
-  Index         obs_stride   = 0;
-  Index         max_its      = 50;
+  Index         num_x_cells  = 32;                 ///< Number of cells in x.
+  Index         num_y_cells  = 32;                 ///< Number of cells in y.
+  WorkspaceType backend      = WorkspaceType::Cpu; ///< Linear-solver backend.
+  bool          write_output = false;              ///< Write VTU output.
+  Real          alpha        = 1.0e-6;             ///< Control regularization weight.
+  Index         obs_stride   = 0;                  ///< Observation spacing in mesh cells.
+  Index         max_its      = 50;                 ///< Maximum TAO iterations.
 };
 
 /**
  * @brief Final metrics reported by the Poisson optimization example.
- *
- * Report combines objective, gradient, state-error, and control-error metrics
- * for the optimized solution.
  */
 struct Report
 {
-  Real value             = 0.0;
-  Real grad_norm         = 0.0;
-  Real state_rms_err     = 0.0;
-  Real state_max_err     = 0.0;
-  Real ctr_rms_err       = 0.0;
-  Real ctr_max_err       = 0.0;
+  Real value             = 0.0; ///< Final objective value.
+  Real grad_norm         = 0.0; ///< Final reduced-gradient norm.
+  Real state_rms_err     = 0.0; ///< RMS state error against the target.
+  Real state_max_err     = 0.0; ///< Maximum state error against the target.
+  Real ctr_rms_err       = 0.0; ///< RMS control error against the target.
+  Real ctr_max_err       = 0.0; ///< Maximum control error against the target.
 };
 
 /**
  * @brief Optimizer result together with final control and state vectors.
- *
- * Result carries the final optimization state plus the TAO iteration count and
- * convergence status returned by the driver.
  */
 struct Result
 {
-  Report       report;
-  Vector<Real> prm;
-  Vector<Real> state;
-  Index        tao_itr    = 0;
-  int          tao_reason = 0;
-  bool         converged  = false;
+  Report       report;                 ///< Final diagnostic metrics.
+  Vector<Real> prm;                    ///< Optimized control vector.
+  Vector<Real> state;                  ///< State vector at the optimized control.
+  Index        tao_itr    = 0;         ///< Number of TAO iterations.
+  int          tao_reason = 0;         ///< PETSc/TAO convergence reason.
+  bool         converged  = false;     ///< True when TAO reports convergence.
 };
 
 /**
  * @brief Poisson boundary-control optimization example.
- *
- * The problem identifies an upper-boundary Dirichlet control that matches
- * interior observations of an analytic Poisson state.  It exposes residual,
- * objective, report, and VTU output helpers used by both PETSc and ReSolve
- * example drivers.
  */
 class PoissonOptProblem
 {
