@@ -12,3 +12,6 @@ outputs/
 
 docs/_build/
 docs/doxygen/html/
+
+build/
+build-*/
