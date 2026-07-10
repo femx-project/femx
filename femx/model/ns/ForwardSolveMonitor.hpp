@@ -18,11 +18,11 @@ using Clock = std::chrono::high_resolution_clock;
 
 struct ForwardSolveResult
 {
-  Vector<Real> final_state;          ///< Last accepted state vector.
-  Index        final_step{0};        ///< Last completed time step.
-  Real         final_time{0.0};      ///< Physical time at final_step.
-  Real         vel_change{0.0};      ///< Last relative velocity change.
-  bool         converged{false};     ///< True when convergence stopped the run.
+  Vector<Real> final_state;      ///< Last accepted state vector.
+  Index        final_step{0};    ///< Last completed time step.
+  Real         final_time{0.0};  ///< Physical time at final_step.
+  Real         vel_change{0.0};  ///< Last relative velocity change.
+  bool         converged{false}; ///< True when convergence stopped the run.
 };
 
 struct ForwardConvergenceParams

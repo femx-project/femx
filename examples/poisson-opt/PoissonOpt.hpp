@@ -53,12 +53,12 @@ struct Options
  */
 struct Report
 {
-  Real value             = 0.0; ///< Final objective value.
-  Real grad_norm         = 0.0; ///< Final reduced-gradient norm.
-  Real state_rms_err     = 0.0; ///< RMS state error against the target.
-  Real state_max_err     = 0.0; ///< Maximum state error against the target.
-  Real ctr_rms_err       = 0.0; ///< RMS control error against the target.
-  Real ctr_max_err       = 0.0; ///< Maximum control error against the target.
+  Real value         = 0.0; ///< Final objective value.
+  Real grad_norm     = 0.0; ///< Final reduced-gradient norm.
+  Real state_rms_err = 0.0; ///< RMS state error against the target.
+  Real state_max_err = 0.0; ///< Maximum state error against the target.
+  Real ctr_rms_err   = 0.0; ///< RMS control error against the target.
+  Real ctr_max_err   = 0.0; ///< Maximum control error against the target.
 };
 
 /**
@@ -66,12 +66,12 @@ struct Report
  */
 struct Result
 {
-  Report       report;                 ///< Final diagnostic metrics.
-  Vector<Real> prm;                    ///< Optimized control vector.
-  Vector<Real> state;                  ///< State vector at the optimized control.
-  Index        tao_itr    = 0;         ///< Number of TAO iterations.
-  int          tao_reason = 0;         ///< PETSc/TAO convergence reason.
-  bool         converged  = false;     ///< True when TAO reports convergence.
+  Report       report;             ///< Final diagnostic metrics.
+  Vector<Real> prm;                ///< Optimized control vector.
+  Vector<Real> state;              ///< State vector at the optimized control.
+  Index        tao_itr    = 0;     ///< Number of TAO iterations.
+  int          tao_reason = 0;     ///< PETSc/TAO convergence reason.
+  bool         converged  = false; ///< True when TAO reports convergence.
 };
 
 /**

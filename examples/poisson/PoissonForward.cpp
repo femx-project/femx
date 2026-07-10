@@ -187,7 +187,7 @@ void applyDenseBoundary(const BoundaryCondition& bc,
     throw std::runtime_error("DirichletCondition has inconsistent data");
   }
 
-  const Index size = mat.rows();
+  const Index  size = mat.rows();
   Vector<char> is_dirichlet(size, 0);
   Vector<Real> dirichlet_values(size);
 
@@ -215,8 +215,8 @@ void applyDenseBoundary(const BoundaryCondition& bc,
       }
       else if (is_dirichlet[col] != 0)
       {
-        rhs[row]     -= mat(row, col) * dirichlet_values[col];
-        mat(row, col) = 0.0;
+        rhs[row]      -= mat(row, col) * dirichlet_values[col];
+        mat(row, col)  = 0.0;
       }
     }
 

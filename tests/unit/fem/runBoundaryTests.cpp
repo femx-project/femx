@@ -87,11 +87,11 @@ TestOutcome boundaryFacetLookup()
   status *= mesh.physicalName(1, 8) == "right";
   status *= mesh.physicalName(1, 99).empty();
 
-  const Vector<Mesh::BoundaryFacet> left = mesh.boundaryFacets("left");
-  status *= left.size() == 1;
-  status *= left[0].ptag == 7;
-  status *= left[0].pname == "left";
-  status *= valuesEqual(left[0].nids, std::array<Index, 2>{{0, 2}});
+  const Vector<Mesh::BoundaryFacet> left  = mesh.boundaryFacets("left");
+  status                                 *= left.size() == 1;
+  status                                 *= left[0].ptag == 7;
+  status                                 *= left[0].pname == "left";
+  status                                 *= valuesEqual(left[0].nids, std::array<Index, 2>{{0, 2}});
 
   return status.report();
 }

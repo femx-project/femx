@@ -509,7 +509,7 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     ctr_mask[node]   = 1.0;
   }
 
-  const Index  comps = space_.numComponents();
+  const Index comps = space_.numComponents();
 
   VtuWriter out;
   out.writePointData(output_path.string(),

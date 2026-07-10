@@ -36,11 +36,11 @@ struct TaoOptions
  */
 struct TaoResult
 {
-  Vector<Real>       prm;                         ///< Final parameter vector.
-  Vector<Real>       grad;                        ///< Final reduced gradient.
-  Real               value             = 0.0;     ///< Final objective value.
-  Real               grad_norm_squared = 0.0;     ///< Squared final gradient norm.
-  Index              its               = 0;       ///< Number of TAO iterations.
+  Vector<Real>       prm;                                        ///< Final parameter vector.
+  Vector<Real>       grad;                                       ///< Final reduced gradient.
+  Real               value             = 0.0;                    ///< Final objective value.
+  Real               grad_norm_squared = 0.0;                    ///< Squared final gradient norm.
+  Index              its               = 0;                      ///< Number of TAO iterations.
   TaoConvergedReason reason            = TAO_CONTINUE_ITERATING; ///< TAO reason.
 
   bool converged() const
@@ -63,13 +63,13 @@ struct TaoBounds
  */
 struct TaoIterationInfo
 {
-  Index              its             = 0;   ///< Current TAO iteration.
-  Real               value           = 0.0; ///< Current objective value.
-  Real               grad_norm       = 0.0; ///< Current gradient norm.
-  Real               constraint_norm = 0.0; ///< Current constraint norm.
-  Real               step_norm       = 0.0; ///< Current step norm.
+  Index              its             = 0;                      ///< Current TAO iteration.
+  Real               value           = 0.0;                    ///< Current objective value.
+  Real               grad_norm       = 0.0;                    ///< Current gradient norm.
+  Real               constraint_norm = 0.0;                    ///< Current constraint norm.
+  Real               step_norm       = 0.0;                    ///< Current step norm.
   TaoConvergedReason reason          = TAO_CONTINUE_ITERATING; ///< TAO reason.
-  Vector<Real>       grad;                  ///< Current reduced gradient.
+  Vector<Real>       grad;                                     ///< Current reduced gradient.
 };
 
 /**

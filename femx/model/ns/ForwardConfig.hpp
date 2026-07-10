@@ -30,7 +30,7 @@ struct ConvergenceParams
 
 struct TimeParams
 {
-  Index             steps = 100; ///< Number of time steps.
+  Index             steps = 100;  ///< Number of time steps.
   Real              dt    = 0.01; ///< Time-step size.
   ConvergenceParams convergence;  ///< Optional convergence stopping criteria.
 };
@@ -52,7 +52,7 @@ struct SolverParams
 
 struct OutputParams
 {
-  Index       interval  = 10; ///< Field-output interval in time steps.
+  Index       interval  = 10;                           ///< Field-output interval in time steps.
   std::string directory = FEMX_NAVIERSTOKES_OUTPUT_DIR; ///< Output directory.
 };
 
@@ -65,25 +65,25 @@ struct VelocityProfileParams
 
 struct VelocityParams
 {
-  Vector<Real>          time;              ///< Time samples.
-  Vector<Real>          value;             ///< Velocity or flow-rate samples.
-  Real                  area   = 1.0;      ///< Boundary area for flow-rate input.
-  Real                  per    = 0.0;      ///< Period for pulse inputs.
+  Vector<Real>          time;                     ///< Time samples.
+  Vector<Real>          value;                    ///< Velocity or flow-rate samples.
+  Real                  area   = 1.0;             ///< Boundary area for flow-rate input.
+  Real                  per    = 0.0;             ///< Period for pulse inputs.
   std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0}; ///< Boundary normal.
-  std::string           interp = "linear"; ///< Time interpolation method.
-  std::string           qty    = "flowrate"; ///< Input quantity type.
-  VelocityProfileParams prof;              ///< Spatial velocity profile.
+  std::string           interp = "linear";        ///< Time interpolation method.
+  std::string           qty    = "flowrate";      ///< Input quantity type.
+  VelocityProfileParams prof;                     ///< Spatial velocity profile.
 };
 
 struct BCsParams
 {
   Index                         tag  = 0;           ///< Physical boundary tag.
   std::string                   type = "dirichlet"; ///< Boundary-condition type.
-  std::optional<Real>           ux;                  ///< Prescribed x velocity.
-  std::optional<Real>           uy;                  ///< Prescribed y velocity.
-  std::optional<Real>           uz;                  ///< Prescribed z velocity.
-  std::optional<Real>           p;                   ///< Prescribed pressure.
-  std::optional<VelocityParams> velocity;            ///< Time-dependent velocity input.
+  std::optional<Real>           ux;                 ///< Prescribed x velocity.
+  std::optional<Real>           uy;                 ///< Prescribed y velocity.
+  std::optional<Real>           uz;                 ///< Prescribed z velocity.
+  std::optional<Real>           p;                  ///< Prescribed pressure.
+  std::optional<VelocityParams> velocity;           ///< Time-dependent velocity input.
 };
 
 struct Params

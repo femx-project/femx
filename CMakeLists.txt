@@ -315,8 +315,7 @@ if(FEMX_ENABLE_PETSC)
     endif()
 
     foreach(_petsc_dir IN LISTS _FEMX_PETSC_DIR_HINTS)
-      list(APPEND _FEMX_PETSC_PKG_CONFIG_DIRS
-           "${_petsc_dir}/lib/pkgconfig")
+      list(APPEND _FEMX_PETSC_PKG_CONFIG_DIRS "${_petsc_dir}/lib/pkgconfig")
       foreach(_petsc_arch IN LISTS _FEMX_PETSC_ARCH_HINTS)
         list(APPEND _FEMX_PETSC_PKG_CONFIG_DIRS
              "${_petsc_dir}/${_petsc_arch}/lib/pkgconfig")
@@ -330,13 +329,10 @@ if(FEMX_ENABLE_PETSC)
       else()
         set(_FEMX_PKG_CONFIG_PATH_SEPARATOR ":")
       endif()
-      list(
-        JOIN
-        _FEMX_PETSC_PKG_CONFIG_DIRS
-        "${_FEMX_PKG_CONFIG_PATH_SEPARATOR}"
-        _FEMX_PETSC_PKG_CONFIG_PATH)
-      if(DEFINED ENV{PKG_CONFIG_PATH}
-         AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+      list(JOIN _FEMX_PETSC_PKG_CONFIG_DIRS
+           "${_FEMX_PKG_CONFIG_PATH_SEPARATOR}" _FEMX_PETSC_PKG_CONFIG_PATH)
+      if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL
+                                          "")
         set(ENV{PKG_CONFIG_PATH}
             "${_FEMX_PETSC_PKG_CONFIG_PATH}${_FEMX_PKG_CONFIG_PATH_SEPARATOR}$ENV{PKG_CONFIG_PATH}"
         )
@@ -502,8 +498,7 @@ install(
 set(FEMX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/femx")
 
 configure_package_config_file(
-  cmake/femxConfig.cmake.in
-  "${CMAKE_CURRENT_BINARY_DIR}/femxConfig.cmake"
+  cmake/femxConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/femxConfig.cmake"
   INSTALL_DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
 
 write_basic_package_version_file(
@@ -542,9 +537,8 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E rm -rf "${FEMX_INSTALL_TEST_DIR}"
   COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix
           "${FEMX_INSTALL_TEST_PREFIX}"
-  COMMAND
-    ${CMAKE_COMMAND} -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/install" -B
-    "${FEMX_INSTALL_TEST_BUILD_DIR}" ${FEMX_INSTALL_TEST_CONFIGURE_ARGS}
+  COMMAND ${CMAKE_COMMAND} -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/install" -B
+          "${FEMX_INSTALL_TEST_BUILD_DIR}" ${FEMX_INSTALL_TEST_CONFIGURE_ARGS}
   COMMAND ${CMAKE_COMMAND} -E env MAKEFLAGS=--no-print-directory
           ${CMAKE_COMMAND} --build "${FEMX_INSTALL_TEST_BUILD_DIR}"
   COMMAND ${CMAKE_CTEST_COMMAND} --test-dir "${FEMX_INSTALL_TEST_BUILD_DIR}"

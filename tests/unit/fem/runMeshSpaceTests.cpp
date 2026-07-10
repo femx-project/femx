@@ -82,9 +82,9 @@ TestOutcome scalarFESpaceDofMap()
 {
   TestStatus status(__func__);
 
-  const Mesh        mesh = Mesh::makeStructuredQuad(2, 1);
-  LagrangeQuadQ1    element;
-  FESpace           space(&mesh, &element);
+  const Mesh     mesh = Mesh::makeStructuredQuad(2, 1);
+  LagrangeQuadQ1 element;
+  FESpace        space(&mesh, &element);
   space.setup();
 
   status *= space.numElems() == 2;
@@ -107,9 +107,9 @@ TestOutcome vectorFESpaceDofMap()
 {
   TestStatus status(__func__);
 
-  const Mesh        mesh = Mesh::makeStructuredQuad(1, 1);
-  LagrangeQuadQ1    element;
-  FESpace           space(&mesh, &element, 2);
+  const Mesh     mesh = Mesh::makeStructuredQuad(1, 1);
+  LagrangeQuadQ1 element;
+  FESpace        space(&mesh, &element, 2);
   space.setup();
 
   status *= space.numElems() == 1;

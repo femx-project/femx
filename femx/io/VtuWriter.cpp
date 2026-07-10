@@ -253,13 +253,13 @@ void checkField(Index num_points, const VtuWriter::PointField& field)
   }
 }
 
-void writeUnstructuredGrid(const std::string&        fname,
-                           const Vector<Real>&       points,
-                           const Vector<int64_t>&    connectivity,
-                           const Vector<int64_t>&    offsets,
-                           const Vector<uint8_t>&    cell_types,
-                           Index                     num_points,
-                           Index                     num_cells,
+void writeUnstructuredGrid(const std::string&                   fname,
+                           const Vector<Real>&                  points,
+                           const Vector<int64_t>&               connectivity,
+                           const Vector<int64_t>&               offsets,
+                           const Vector<uint8_t>&               cell_types,
+                           Index                                num_points,
+                           Index                                num_cells,
                            const Vector<VtuWriter::PointField>& fields)
 {
   std::ofstream out(fname, std::ios::binary);

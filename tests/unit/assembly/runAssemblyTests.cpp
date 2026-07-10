@@ -180,12 +180,12 @@ TestOutcome femResidualAssemblesResidualAndJacobian()
   FESpace        space = makeSpace(mesh, element);
 
   const AffineElementKernel kernel;
-  assembly::FEMResidual residual(DofLayout(space), kernel);
+  assembly::FEMResidual     residual(DofLayout(space), kernel);
 
-  const state::Dimensions dims = residual.dims();
-  status *= dims.num_states == 4;
-  status *= dims.num_params == 0;
-  status *= dims.num_residuals == 4;
+  const state::Dimensions dims  = residual.dims();
+  status                       *= dims.num_states == 4;
+  status                       *= dims.num_params == 0;
+  status                       *= dims.num_residuals == 4;
 
   Vector<Real> out;
   residual.res(Vector<Real>{10.0, 20.0, 30.0, 40.0}, Vector<Real>{}, out);

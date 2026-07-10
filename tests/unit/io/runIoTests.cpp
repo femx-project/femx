@@ -51,13 +51,13 @@ TestOutcome vtuWriterWritesMeshPointData()
                         Vector<VtuWriter::PointField>{
                             {"u&v", 1, &values}});
 
-  const std::string text = readFile(fname);
-  status *= contains(text, "<VTKFile type=\"UnstructuredGrid\"");
-  status *= contains(text, "NumberOfPoints=\"4\"");
-  status *= contains(text, "NumberOfCells=\"1\"");
-  status *= contains(text, "Name=\"u&amp;v\"");
-  status *= contains(text, "Name=\"connectivity\"");
-  status *= std::remove(fname.c_str()) == 0;
+  const std::string text  = readFile(fname);
+  status                 *= contains(text, "<VTKFile type=\"UnstructuredGrid\"");
+  status                 *= contains(text, "NumberOfPoints=\"4\"");
+  status                 *= contains(text, "NumberOfCells=\"1\"");
+  status                 *= contains(text, "Name=\"u&amp;v\"");
+  status                 *= contains(text, "Name=\"connectivity\"");
+  status                 *= std::remove(fname.c_str()) == 0;
 
   bool threw = false;
   try
@@ -98,14 +98,14 @@ TestOutcome vtiWriterWritesImageCellData()
                        Vector<VtiWriter::ElemField>{
                            {"cell<value>", 1, &vals}});
 
-  const std::string text = readFile(fname);
-  status *= contains(text, "<VTKFile type=\"ImageData\"");
-  status *= contains(text, "WholeExtent=\"0 2 0 0 0 0\"");
-  status *= contains(text, "Origin=\"1 2 3\"");
-  status *= contains(text, "Spacing=\"0.5 0.25 1\"");
-  status *= contains(text, "Name=\"TimeValue\"");
-  status *= contains(text, "Name=\"cell&lt;value&gt;\"");
-  status *= std::remove(fname.c_str()) == 0;
+  const std::string text  = readFile(fname);
+  status                 *= contains(text, "<VTKFile type=\"ImageData\"");
+  status                 *= contains(text, "WholeExtent=\"0 2 0 0 0 0\"");
+  status                 *= contains(text, "Origin=\"1 2 3\"");
+  status                 *= contains(text, "Spacing=\"0.5 0.25 1\"");
+  status                 *= contains(text, "Name=\"TimeValue\"");
+  status                 *= contains(text, "Name=\"cell&lt;value&gt;\"");
+  status                 *= std::remove(fname.c_str()) == 0;
 
   bool threw = false;
   try
