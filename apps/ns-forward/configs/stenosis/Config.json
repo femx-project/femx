@@ -1,10 +1,10 @@
 {
   "mesh": {
-    "file": "../../../../../data/meshes/3d_stenosis.msh"
+    "file": "../../../../data/meshes/3d_stenosis.msh"
   },
   "time": {
-    "steps": 10000,
-    "dt": 0.002
+  "end_time": 20.0,
+  "dt": 0.002
   },
   "fluid": {
     "rho": 1.0,
@@ -33,7 +33,7 @@
   ],
   "output": {
     "interval": 10,
-    "directory": "../../../../../runs/work/forward/ns-forward/stenosis"
+    "directory": "../../../../runs/work/forward/ns-forward/stenosis"
   },
   "solver": {
     "backend": "cuda"

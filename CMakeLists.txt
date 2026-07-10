@@ -233,18 +233,38 @@ if(FEMX_ENABLE_HDF5)
     COMPONENTS C
     QUIET)
 
-  if(HDF5_FOUND)
-    message(STATUS "Found HDF5: ${HDF5_VERSION}")
-    if(HDF5_IS_PARALLEL)
-      find_package(
-        MPI
-        COMPONENTS CXX
-        QUIET)
-    endif()
-    find_path(FEMX_MPI_INCLUDE_DIR mpi.h
-              HINTS /usr/lib/x86_64-linux-gnu/openmpi/include
-                    /usr/include/openmpi /usr/local/include)
+  if(NOT HDF5_FOUND AND NOT DEFINED HDF5_PREFER_PARALLEL)
+    set(HDF5_PREFER_PARALLEL TRUE)
+    unset(HDF5_C_COMPILER_EXECUTABLE CACHE)
+    unset(HDF5_C_INCLUDE_DIR CACHE)
+    unset(HDF5_hdf5_LIBRARY_DEBUG CACHE)
+    unset(HDF5_hdf5_LIBRARY_RELEASE CACHE)
+    find_package(
+      HDF5
+      COMPONENTS C
+      QUIET)
   endif()
+
+  if(NOT HDF5_FOUND)
+    message(
+      FATAL_ERROR
+        "FEMX_ENABLE_HDF5=ON but HDF5 was not found. Install HDF5 "
+        "development files, pass -DHDF5_ROOT=/path/to/hdf5, or configure "
+        "with -DFEMX_ENABLE_HDF5=OFF. If using conda HDF5, make sure the "
+        "conda compiler wrappers are installed or pass HDF5_C_INCLUDE_DIR "
+        "and HDF5_hdf5_LIBRARY_RELEASE explicitly.")
+  endif()
+
+  message(STATUS "Found HDF5: ${HDF5_VERSION}")
+  if(HDF5_IS_PARALLEL)
+    find_package(
+      MPI
+      COMPONENTS CXX
+      QUIET)
+  endif()
+  find_path(FEMX_MPI_INCLUDE_DIR mpi.h
+            HINTS /usr/lib/x86_64-linux-gnu/openmpi/include
+                  /usr/include/openmpi /usr/local/include)
 endif()
 
 if(FEMX_ENABLE_PETSC)

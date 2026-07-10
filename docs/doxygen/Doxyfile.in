@@ -37,9 +37,14 @@ WARN_AS_ERROR          = NO
 
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
+HTML_COLORSTYLE        = LIGHT
 HTML_DYNAMIC_SECTIONS  = YES
 GENERATE_TREEVIEW      = YES
-DISABLE_INDEX          = NO
+TREEVIEW_WIDTH         = 335
+FULL_SIDEBAR           = YES
+DISABLE_INDEX          = YES
+HTML_EXTRA_STYLESHEET  = docs/doxygen/theme/doxygen-awesome.css \
+                         docs/doxygen/theme/femx-doxygen.css
 
 GENERATE_LATEX         = NO
 GENERATE_XML           = NO

@@ -6,7 +6,7 @@ build-backend = "scikit_build_core.build"
 name = "femx-experimental"
 version = "0.1.0"
 description = "Experimental Python bridge for femx."
-readme = "python/experimental/README.md"
+readme = "python/README.md"
 requires-python = ">=3.9"
 
 [tool.scikit-build]

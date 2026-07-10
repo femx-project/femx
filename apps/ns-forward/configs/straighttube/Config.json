@@ -1,6 +1,6 @@
 {
   "mesh": {
-    "file": "../../../../../data/meshes/2d_straighttube.msh"
+    "file": "../../../../data/meshes/2d_straighttube.msh"
   },
   "time": {
     "dt": 0.01,
@@ -58,6 +58,6 @@
   ],
   "output": {
     "interval": 1,
-    "directory": "../../../../../runs/work/forward/ns-forward/straighttube"
+    "directory": "../../../../runs/work/forward/ns-forward/straighttube"
   }
 }

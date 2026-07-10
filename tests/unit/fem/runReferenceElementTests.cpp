@@ -227,23 +227,26 @@ TestOutcome quadratureIntegratesConstants()
 {
   TestStatus status(__func__);
 
-  const GaussQuadrature segment  = GaussQuadrature::make(ReferenceElement::Segment, 3);
-  status                        *= segment.referenceElement() == ReferenceElement::Segment;
-  status                        *= segment.dim() == 1;
-  status                        *= segment.size() == 3;
-  status                        *= near(quadratureWeightSum(segment), 2.0);
+  const GaussQuadrature segment = GaussQuadrature::make(ReferenceElement::Segment, 3);
 
-  const GaussQuadrature triangle  = GaussQuadrature::make(ReferenceElement::Triangle, 2);
-  status                         *= triangle.referenceElement() == ReferenceElement::Triangle;
-  status                         *= triangle.dim() == 2;
-  status                         *= triangle.size() == 3;
-  status                         *= near(quadratureWeightSum(triangle), 0.5);
+  status *= segment.referenceElement() == ReferenceElement::Segment;
+  status *= segment.dim() == 1;
+  status *= segment.size() == 3;
+  status *= near(quadratureWeightSum(segment), 2.0);
 
-  const GaussQuadrature quad  = GaussQuadrature::make(ReferenceElement::Quadrilateral, 2);
-  status                     *= quad.referenceElement() == ReferenceElement::Quadrilateral;
-  status                     *= quad.dim() == 2;
-  status                     *= quad.size() == 4;
-  status                     *= near(quadratureWeightSum(quad), 4.0);
+  const GaussQuadrature triangle = GaussQuadrature::make(ReferenceElement::Triangle, 2);
+
+  status *= triangle.referenceElement() == ReferenceElement::Triangle;
+  status *= triangle.dim() == 2;
+  status *= triangle.size() == 3;
+  status *= near(quadratureWeightSum(triangle), 0.5);
+
+  const GaussQuadrature quad = GaussQuadrature::make(ReferenceElement::Quadrilateral, 2);
+
+  status *= quad.referenceElement() == ReferenceElement::Quadrilateral;
+  status *= quad.dim() == 2;
+  status *= quad.size() == 4;
+  status *= near(quadratureWeightSum(quad), 4.0);
 
   const GaussQuadrature tet  = GaussQuadrature::make(ReferenceElement::Tetrahedron, 2);
   status                    *= tet.referenceElement() == ReferenceElement::Tetrahedron;
