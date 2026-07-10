@@ -509,27 +509,7 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     ctr_mask[node]   = 1.0;
   }
 
-  Vector<Real> obs_mask(mesh_.numNodes(), 0.0);
-  Vector<Real> obs_value(mesh_.numNodes(), 0.0);
-  Vector<Real> obs_pred(mesh_.numNodes(), 0.0);
-  Vector<Real> obs_misfit(mesh_.numNodes(), 0.0);
   const Index  comps = space_.numComponents();
-  for (Index dof : obs_dofs_)
-  {
-    if (dof < 0 || dof >= numStates() || dof % comps != 0)
-    {
-      throw std::runtime_error("Poisson optimization observation dof is not a mesh node");
-    }
-    const Index node = dof / comps;
-    if (node < 0 || node >= mesh_.numNodes())
-    {
-      throw std::runtime_error("Poisson optimization observation node is out of range");
-    }
-    obs_mask[node]   = 1.0;
-    obs_value[node]  = target_state_[dof];
-    obs_pred[node]   = state[dof];
-    obs_misfit[node] = state[dof] - target_state_[dof];
-  }
 
   VtuWriter out;
   out.writePointData(output_path.string(),
@@ -537,10 +517,6 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
                      {{"state", 1, &state_field},
                       {"target_state", 1, &target_state_field},
                       {"state_err", 1, &state_err},
-                      {"obs_mask", 1, &obs_mask},
-                      {"obs_value", 1, &obs_value},
-                      {"obs_pred", 1, &obs_pred},
-                      {"obs_misfit", 1, &obs_misfit},
                       {"ctr", 1, &ctr},
                       {"target_ctr", 1, &target_ctr},
                       {"ctr_error", 1, &ctr_err},
@@ -551,9 +527,6 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     throw std::runtime_error("Poisson optimization observation layout is inconsistent");
   }
 
-  Vector<Real> obs_index(obs_dofs_.size(), 0.0);
-  Vector<Real> obs_node_id(obs_dofs_.size(), 0.0);
-  Vector<Real> obs_dof_id(obs_dofs_.size(), 0.0);
   Vector<Real> obs_point_value(obs_dofs_.size(), 0.0);
   Vector<Real> obs_point_pred(obs_dofs_.size(), 0.0);
   Vector<Real> obs_point_misfit(obs_dofs_.size(), 0.0);
@@ -572,9 +545,6 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
       throw std::runtime_error("Poisson optimization observation node is out of range");
     }
 
-    obs_index[i]        = static_cast<Real>(i);
-    obs_node_id[i]      = static_cast<Real>(node);
-    obs_dof_id[i]       = static_cast<Real>(dof);
     obs_point_value[i]  = target_state_[dof];
     obs_point_pred[i]   = state[dof];
     obs_point_misfit[i] = state[dof] - target_state_[dof];
@@ -583,10 +553,7 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
 
   out.writePointCloud(observationVtuPath(output_path).string(),
                       obs_points_,
-                      {{"obs_index", 1, &obs_index},
-                       {"node_id", 1, &obs_node_id},
-                       {"dof_id", 1, &obs_dof_id},
-                       {"obs_value", 1, &obs_point_value},
+                      {{"obs_value", 1, &obs_point_value},
                        {"obs_pred", 1, &obs_point_pred},
                        {"obs_misfit", 1, &obs_point_misfit},
                        {"obs_weight", 1, &obs_weight}});
