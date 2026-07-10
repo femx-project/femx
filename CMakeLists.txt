@@ -9,6 +9,9 @@ project(
   VERSION 0.1.0
   LANGUAGES CXX)
 
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(FEMX_ENABLE_RESOLVE "Require ReSolve linear solver backend" OFF)
@@ -51,6 +54,7 @@ endif()
 
 set(FEMX_HAS_ENZYME OFF)
 set(FEMX_ENZYME_FLAGS_TARGET "")
+set(FEMX_HDF5_USES_MPI OFF)
 set(FEMX_HAS_PETSC OFF)
 set(FEMX_HAS_RESOLVE OFF)
 set(FEMX_HAS_RESOLVE_CUDA OFF)
@@ -275,6 +279,9 @@ if(FEMX_ENABLE_HDF5)
       MPI
       COMPONENTS CXX
       QUIET)
+    if(MPI_CXX_FOUND)
+      set(FEMX_HDF5_USES_MPI ON)
+    endif()
   endif()
   find_path(FEMX_MPI_INCLUDE_DIR mpi.h
             HINTS /usr/lib/x86_64-linux-gnu/openmpi/include
@@ -433,3 +440,116 @@ if(FEMX_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
+
+function(femx_export_name target export_name)
+  if(TARGET "${target}")
+    set_target_properties("${target}" PROPERTIES EXPORT_NAME "${export_name}")
+    set_property(TARGET "${target}" PROPERTY INTERFACE_SOURCES)
+  endif()
+endfunction()
+
+femx_export_name(femx femx)
+femx_export_name(femx_config config)
+femx_export_name(femx_common common)
+femx_export_name(femx_linalg linalg)
+femx_export_name(femx_ad ad)
+femx_export_name(femx_state state)
+femx_export_name(femx_inverse inverse)
+femx_export_name(femx_fem fem)
+femx_export_name(femx_assembly assembly)
+femx_export_name(femx_io io)
+femx_export_name(femx_runtime runtime)
+femx_export_name(femx_model_ns model_ns)
+femx_export_name(femx_linalg_resolve linalg_resolve)
+femx_export_name(femx_linalg_petsc linalg_petsc)
+femx_export_name(femx_opt opt)
+
+set(FEMX_INSTALL_TARGETS
+    femx
+    femx_config
+    femx_common
+    femx_linalg
+    femx_ad
+    femx_state
+    femx_inverse
+    femx_fem
+    femx_assembly
+    femx_io
+    femx_runtime
+    femx_model_ns)
+
+foreach(_femx_optional_target femx_linalg_resolve femx_linalg_petsc femx_opt)
+  if(TARGET "${_femx_optional_target}")
+    list(APPEND FEMX_INSTALL_TARGETS "${_femx_optional_target}")
+  endif()
+endforeach()
+
+install(
+  TARGETS ${FEMX_INSTALL_TARGETS}
+  EXPORT femxTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(
+  DIRECTORY femx
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING
+  PATTERN "*.hpp")
+
+set(FEMX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/femx")
+
+configure_package_config_file(
+  cmake/femxConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/femxConfig.cmake"
+  INSTALL_DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/femxConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
+
+install(
+  EXPORT femxTargets
+  NAMESPACE femx::
+  DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/femxConfig.cmake"
+              "${CMAKE_CURRENT_BINARY_DIR}/femxConfigVersion.cmake"
+        DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
+
+install(FILES cmake/FindEnzyme.cmake cmake/FindReSolve.cmake
+        DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
+
+set(FEMX_INSTALL_TEST_DIR "${CMAKE_CURRENT_BINARY_DIR}/install")
+set(FEMX_INSTALL_TEST_PREFIX "${FEMX_INSTALL_TEST_DIR}/prefix")
+set(FEMX_INSTALL_TEST_BUILD_DIR "${FEMX_INSTALL_TEST_DIR}/consumer-build")
+set(FEMX_INSTALL_TEST_CONFIGURE_ARGS
+    -DCMAKE_PREFIX_PATH="${FEMX_INSTALL_TEST_PREFIX}")
+
+if(FEMX_HAS_RESOLVE AND ReSolve_DIR)
+  list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS -DReSolve_DIR="${ReSolve_DIR}")
+endif()
+
+if(FEMX_HAS_ENZYME AND Enzyme_DIR)
+  list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS -DEnzyme_DIR="${Enzyme_DIR}")
+endif()
+
+add_custom_target(
+  test_install
+  COMMAND ${CMAKE_COMMAND} -E rm -rf "${FEMX_INSTALL_TEST_DIR}"
+  COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix
+          "${FEMX_INSTALL_TEST_PREFIX}"
+  COMMAND
+    ${CMAKE_COMMAND} -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/install" -B
+    "${FEMX_INSTALL_TEST_BUILD_DIR}" ${FEMX_INSTALL_TEST_CONFIGURE_ARGS}
+  COMMAND ${CMAKE_COMMAND} -E env MAKEFLAGS=--no-print-directory
+          ${CMAKE_COMMAND} --build "${FEMX_INSTALL_TEST_BUILD_DIR}"
+  COMMAND ${CMAKE_CTEST_COMMAND} --test-dir "${FEMX_INSTALL_TEST_BUILD_DIR}"
+          --output-on-failure
+  COMMENT "Install femx and run an external CMake consumer test"
+  USES_TERMINAL)
+
+add_dependencies(test_install ${FEMX_INSTALL_TARGETS})

@@ -12,42 +12,66 @@ The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and o
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- ReSolve, for ReSolve linear solver backends. The current backend expects the
-  ReSolve `develop` branch; released ReSolve versions may not work.
-- PETSc and MPI, for PETSc linear solvers and TAO optimization
+- Re::Solve, for CPU/GPU linear solver backends. The current backend expects the ReSolve `develop` branch; released Re::Solve versions may not work.
+- PETSc and MPI, for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
 
 ## Build
 
 ```shell
-cmake -S . -B build
-cmake --build build
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/femx
+make
 ```
 
 Enable optional dependencies explicitly. If an enabled dependency is not found,
-CMake fails during configuration.
+CMake fails during configuration. Add these flags to the `cmake ..` command
+above when needed.
 
 For HDF5 output:
 
 ```shell
-cmake -S . -B build -DFEMX_ENABLE_HDF5=ON
-cmake --build build
+cmake .. -DFEMX_ENABLE_HDF5=ON
+make
 ```
 
 For ReSolve:
 
 ```shell
-cmake -S . -B build -DFEMX_ENABLE_RESOLVE=ON -DReSolve_ROOT=/path/to/resolve
+cmake .. -DFEMX_ENABLE_RESOLVE=ON -DReSolve_ROOT=/path/to/resolve
+make
 ```
 
 For PETSc:
 
 ```shell
-cmake -S . -B build -DFEMX_ENABLE_PETSC=ON -DPETSC_DIR=/path/to/petsc
+cmake .. -DFEMX_ENABLE_PETSC=ON -DPETSC_DIR=/path/to/petsc
+make
 ```
 
 Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
+
+## Install
+
+```shell
+make install
+```
+
+With other CMake generators, use `cmake --build . --target install`.
+
+Then use the install prefix from another CMake project:
+
+```shell
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/femx
+```
+
+Run the install test before packaging a release:
+
+```shell
+make test_install
+```
 
 ## Run Examples
 
@@ -55,19 +79,19 @@ The default Poisson example uses the native dense solver and does not require
 optional solver packages:
 
 ```shell
-./build/examples/poisson/poisson --output yes
+./examples/poisson/poisson --output yes
 ```
 
 Backend-specific examples are available when their dependencies are enabled:
 
 ```shell
-./build/examples/poisson/poisson-resolve --nx 48 --ny 48 -b cpu --output yes
+./examples/poisson/poisson-resolve --nx 48 --ny 48 -b cpu --output yes
 ```
 
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
-./build/examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
 ```
 
 ### Poisson Optimization Example
