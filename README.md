@@ -1,118 +1,98 @@
 # femx
 
-femx is a small C++ finite element library for experimenting with sparse linear solves.
+femx is a small C++ finite element library for forward and inverse analysis.
 
-The public library is organized around core types, algebra, FEM data,
-assembly, generic problem interfaces, solvers, optional optimizer adapters,
-and I/O.
+The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and optimization utilities are still experimental, and the current optimization examples use PETSc/TAO.
 
-## Getting started
-
-Dependencies:
+## Requirements
 
 - CMake >= 3.22
 - C++17 compiler
-- ReSolve (optional, for the linear solver backend)
-- Enzyme + Clang (optional, for automatic differentiation kernels)
-- HDF5 (optional, for HDF5/XDMF output)
-- OpenMP (optional, for parallel assembly)
-- PETSc and MPI (optional, for PETSc backends and TAO optimization)
 
-To build the library, examples and applications:
+Optional dependencies:
 
-```shell
-$ cmake -S . -B build
-$ cmake --build build
-```
+- HDF5, for HDF5/XDMF output
+- ReSolve, for ReSolve linear solver backends. The current backend expects the
+  ReSolve `develop` branch; released ReSolve versions may not work.
+- PETSc and MPI, for PETSc linear solvers and TAO optimization
+- OpenMP, for parallel assembly
+- Enzyme + Clang, for automatic differentiation kernels
 
-## CMake options
-
-Common configuration options are:
-
-- `FEMX_ENABLE_RESOLVE=ON`: enable the ReSolve linear solver backend.
-- `FEMX_ENABLE_HDF5=ON`: enable HDF5/XDMF output support.
-- `FEMX_ENABLE_OPENMP=ON`: enable OpenMP parallel assembly.
-- `FEMX_ENABLE_ENZYME=OFF`: enable Enzyme automatic differentiation support.
-  This requires a Clang toolchain and an Enzyme plugin or CMake package.
-- `FEMX_OPENMP_ROOT=/path/to/libomp-prefix`: optional LLVM OpenMP runtime
-  prefix for Clang builds.
-- `FEMX_ENABLE_PETSC=ON`: enable PETSc backends and optimizer adapters when
-  PETSc and MPI are found.
-- `FEMX_BUILD_APPS=ON`: build applications.
-- `FEMX_RESOLVE_BACKEND=AUTO`: requested ReSolve backend, one of `AUTO`, `CPU`,
-  or `CUDA`.
-
-## Documentation
-
-To generate the local API reference:
+## Build
 
 ```shell
-$ doxygen docs/doxygen/Doxyfile.in
+cmake -S . -B build
+cmake --build build
 ```
 
-The generated HTML is written to `docs/doxygen/html/`. Open
-`docs/doxygen/html/index.html` in a browser, or serve it from the repository
-root:
+Enable optional dependencies explicitly. If an enabled dependency is not found,
+CMake fails during configuration.
+
+For HDF5 output:
 
 ```shell
-$ python3 -m http.server 8000 --directory docs/doxygen/html
+cmake -S . -B build -DFEMX_ENABLE_HDF5=ON
+cmake --build build
 ```
 
-Then open <http://localhost:8000/> in a browser.
-
-For a one-command local preview:
+For ReSolve:
 
 ```shell
-$ ./docs/preview-doxygen.sh
+cmake -S . -B build -DFEMX_ENABLE_RESOLVE=ON -DReSolve_ROOT=/path/to/resolve
 ```
 
-## Coding conventions
-
-- Loop index variables in `for` statements should be at most two characters
-  long, such as `i`, `j`, `t`, or `ft`.
-- Prefer short names for common local variables, parameters, and private
-  members: `prm`, `ctr`, `st`, `tr`, `obj`, `res`, `adj`, `grad`, `lin`,
-  `dims`, `ctx`, `hist`, `lyt`, `bdry`, `sel`, `comp`, `vals`, `wts`, and
-  count names such as `nt`, `nst`, `nprm`, `nres`, `nn`, `ne`, `nd`, and `nq`.
-
-If ReSolve is installed in a custom location, pass its install prefix:
+For PETSc:
 
 ```shell
-$ cmake -S . -B build -DReSolve_ROOT=/path/to/resolve
+cmake -S . -B build -DFEMX_ENABLE_PETSC=ON -DPETSC_DIR=/path/to/petsc
 ```
+
+Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
+
+## Examples and Apps
+
+Examples and applications are backend-specific:
+
+- `*-resolve` targets use ReSolve.
+- `*-petsc` targets use PETSc and MPI.
+- Optimization examples use PETSc/TAO, even when the linear solves use ReSolve.
+- A build without enabled solver backends does not provide runnable backend
+  examples.
+
+## CMake Options
+
+Common options:
+
+- `FEMX_ENABLE_HDF5=ON|OFF`
+- `FEMX_ENABLE_RESOLVE=ON|OFF`
+- `FEMX_RESOLVE_BACKEND=AUTO|CPU|CUDA`
+- `FEMX_ENABLE_PETSC=ON|OFF`
+- `PETSC_DIR=/path/to/petsc`
+- `PETSC_ARCH=...`
+- `FEMX_ENABLE_OPENMP=ON|OFF`
+- `FEMX_ENABLE_ENZYME=ON|OFF`
+- `FEMX_BUILD_EXAMPLES=ON|OFF`
+- `FEMX_BUILD_APPS=ON|OFF`
+- `FEMX_BUILD_TESTS=ON|OFF`
 
 ## Using femx in CMake
 
-Inside this repository, link against the aggregate `femx::femx` target:
+Inside this repository, link against the aggregate target:
 
 ```cmake
 add_executable(my_solver main.cpp)
 target_link_libraries(my_solver PRIVATE femx::femx)
 ```
 
-Individual component targets are also available:
+Component targets such as `femx::linalg`, `femx::fem`, `femx::assembly`,
+`femx::state`, `femx::inverse`, and `femx::io` are also available. `femx::opt`
+is available when PETSc is enabled.
 
-- `femx::common`: shared types and workspace choices.
-- `femx::linalg`: vectors, matrices, linear operators, and solver interfaces.
-- `femx::ad`: Enzyme declarations and small AD helpers.
-- `femx::fem`: mesh-facing FEM data structures, spaces, quadrature, and elements.
-- `femx::assembly`: FEM kernels, assemblers, sparsity builders, and residual adapters.
-- `femx::state`: residual, linearization, Newton, and time-stepping utilities.
-- `femx::inverse`: objective, observation, regularization, and reduced-functional utilities.
-- `femx::opt`: PETSc/TAO optimization adapters, when PETSc is enabled.
-- `femx::io`: output and data readers.
+## Documentation
 
-Preferred include paths use the new public component layout:
-
-```cpp
-#include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/state/Residual.hpp>
-#include <femx/state/NewtonStateSolver.hpp>
+```shell
+./preview-docs.sh
 ```
-
-The pre-refactor component targets and include paths have been removed. Update
-old code to the public component layout above before linking against femx.
 
 ## License
 

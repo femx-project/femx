@@ -11,18 +11,23 @@ project(
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(FEMX_ENABLE_RESOLVE "Enable ReSolve linear solver backend" ON)
-option(FEMX_ENABLE_HDF5 "Enable HDF5 output support" ON)
-option(FEMX_ENABLE_OPENMP "Enable OpenMP parallel assembly" ON)
-option(FEMX_ENABLE_PETSC "Enable PETSc applications" ON)
+option(FEMX_ENABLE_RESOLVE "Require ReSolve linear solver backend" OFF)
+option(FEMX_ENABLE_HDF5 "Require HDF5 output support" OFF)
+option(FEMX_ENABLE_OPENMP "Require OpenMP parallel assembly" OFF)
+option(FEMX_ENABLE_PETSC "Require PETSc applications and backends" OFF)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
 option(FEMX_BUILD_TESTS "Build femx tests" ON)
 option(FEMX_BUILD_PYTHON_EXPERIMENTAL "Build experimental Python bindings" OFF)
-option(FEMX_REQUIRE_RESOLVE "Fail if ReSolve is enabled but not found" OFF)
 set(FEMX_OPENMP_ROOT
     ""
     CACHE PATH "Optional LLVM OpenMP runtime prefix for Clang builds")
+set(PETSC_DIR
+    ""
+    CACHE PATH "Optional PETSc installation root directory")
+set(PETSC_ARCH
+    ""
+    CACHE STRING "Optional PETSc architecture name")
 option(RESOLVE_USE_CUDA "Request a CUDA-enabled ReSolve package" OFF)
 
 set(FEMX_RESOLVE_BACKEND
@@ -192,23 +197,32 @@ if(FEMX_ENABLE_OPENMP)
         STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
     endif()
   endif()
+
+  if(NOT OpenMP_CXX_FOUND)
+    message(
+      FATAL_ERROR
+        "FEMX_ENABLE_OPENMP=ON but OpenMP was not found. Install OpenMP, "
+        "pass -DFEMX_OPENMP_ROOT=/path/to/libomp-prefix for Clang builds, "
+        "or configure with -DFEMX_ENABLE_OPENMP=OFF.")
+  endif()
 endif()
 
 if(FEMX_ENABLE_RESOLVE)
   find_package(ReSolve QUIET)
 
-  if(ReSolve_FOUND)
-    message(STATUS "Found ReSolve: ${ReSolve_DIR}")
-    set(FEMX_HAS_RESOLVE ON)
-    if(TARGET ReSolve::CUDA OR TARGET ReSolve::resolve_backend_cuda)
-      set(FEMX_HAS_RESOLVE_CUDA ON)
-    endif()
-  elseif(FEMX_REQUIRE_RESOLVE)
+  if(NOT ReSolve_FOUND)
     message(
       FATAL_ERROR
-        "FEMX_REQUIRE_RESOLVE=ON, but ReSolve was not found. "
-        "Set ReSolve_ROOT, RESOLVE_ROOT, CMAKE_PREFIX_PATH, or "
-        "ReSolve_DIR to a ReSolve installation.")
+        "FEMX_ENABLE_RESOLVE=ON but ReSolve was not found. Set "
+        "ReSolve_ROOT, RESOLVE_ROOT, CMAKE_PREFIX_PATH, or ReSolve_DIR "
+        "to a ReSolve installation, or configure with "
+        "-DFEMX_ENABLE_RESOLVE=OFF.")
+  endif()
+
+  message(STATUS "Found ReSolve: ${ReSolve_DIR}")
+  set(FEMX_HAS_RESOLVE ON)
+  if(TARGET ReSolve::CUDA OR TARGET ReSolve::resolve_backend_cuda)
+    set(FEMX_HAS_RESOLVE_CUDA ON)
   endif()
 endif()
 
@@ -275,20 +289,87 @@ if(FEMX_ENABLE_PETSC)
     QUIET)
 
   if(PkgConfig_FOUND)
+    set(_FEMX_PETSC_PKG_CONFIG_PATH_SAVE "$ENV{PKG_CONFIG_PATH}")
+    set(_FEMX_PETSC_DIR_HINTS)
+    set(_FEMX_PETSC_ARCH_HINTS)
+    set(_FEMX_PETSC_PKG_CONFIG_DIRS)
+
+    if(PETSC_DIR)
+      list(APPEND _FEMX_PETSC_DIR_HINTS "${PETSC_DIR}")
+    endif()
+    if(DEFINED ENV{PETSC_DIR} AND NOT "$ENV{PETSC_DIR}" STREQUAL "")
+      list(APPEND _FEMX_PETSC_DIR_HINTS "$ENV{PETSC_DIR}")
+    endif()
+    if(PETSC_ARCH)
+      list(APPEND _FEMX_PETSC_ARCH_HINTS "${PETSC_ARCH}")
+    endif()
+    if(DEFINED ENV{PETSC_ARCH} AND NOT "$ENV{PETSC_ARCH}" STREQUAL "")
+      list(APPEND _FEMX_PETSC_ARCH_HINTS "$ENV{PETSC_ARCH}")
+    endif()
+
+    foreach(_petsc_dir IN LISTS _FEMX_PETSC_DIR_HINTS)
+      list(APPEND _FEMX_PETSC_PKG_CONFIG_DIRS
+           "${_petsc_dir}/lib/pkgconfig")
+      foreach(_petsc_arch IN LISTS _FEMX_PETSC_ARCH_HINTS)
+        list(APPEND _FEMX_PETSC_PKG_CONFIG_DIRS
+             "${_petsc_dir}/${_petsc_arch}/lib/pkgconfig")
+      endforeach()
+    endforeach()
+
+    if(_FEMX_PETSC_PKG_CONFIG_DIRS)
+      list(REMOVE_DUPLICATES _FEMX_PETSC_PKG_CONFIG_DIRS)
+      if(WIN32)
+        set(_FEMX_PKG_CONFIG_PATH_SEPARATOR ";")
+      else()
+        set(_FEMX_PKG_CONFIG_PATH_SEPARATOR ":")
+      endif()
+      list(
+        JOIN
+        _FEMX_PETSC_PKG_CONFIG_DIRS
+        "${_FEMX_PKG_CONFIG_PATH_SEPARATOR}"
+        _FEMX_PETSC_PKG_CONFIG_PATH)
+      if(DEFINED ENV{PKG_CONFIG_PATH}
+         AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+        set(ENV{PKG_CONFIG_PATH}
+            "${_FEMX_PETSC_PKG_CONFIG_PATH}${_FEMX_PKG_CONFIG_PATH_SEPARATOR}$ENV{PKG_CONFIG_PATH}"
+        )
+      else()
+        set(ENV{PKG_CONFIG_PATH} "${_FEMX_PETSC_PKG_CONFIG_PATH}")
+      endif()
+    endif()
+
     pkg_check_modules(PETSC QUIET IMPORTED_TARGET PETSc)
     if(NOT PETSC_FOUND)
       pkg_check_modules(PETSC QUIET IMPORTED_TARGET petsc)
     endif()
+    set(ENV{PKG_CONFIG_PATH} "${_FEMX_PETSC_PKG_CONFIG_PATH_SAVE}")
   endif()
 
-  if(PETSC_FOUND AND MPI_CXX_FOUND)
-    set(FEMX_HAS_PETSC ON)
-    message(STATUS "Found PETSc: ${PETSC_VERSION}")
-  elseif(FEMX_ENABLE_PETSC)
+  if(NOT PkgConfig_FOUND)
     message(
-      STATUS
-        "PETSc application support requested but PETSc or MPI was not found")
+      FATAL_ERROR
+        "FEMX_ENABLE_PETSC=ON but pkg-config was not found. Install "
+        "pkg-config and PETSc, or configure with -DFEMX_ENABLE_PETSC=OFF.")
   endif()
+
+  if(NOT PETSC_FOUND)
+    message(
+      FATAL_ERROR
+        "FEMX_ENABLE_PETSC=ON but PETSc was not found. Install PETSc "
+        "development files; set PETSC_DIR, PETSC_ARCH, or PKG_CONFIG_PATH "
+        "so pkg-config can find PETSc; or configure with "
+        "-DFEMX_ENABLE_PETSC=OFF.")
+  endif()
+
+  if(NOT MPI_CXX_FOUND)
+    message(
+      FATAL_ERROR
+        "FEMX_ENABLE_PETSC=ON but MPI C++ support was not found. Install "
+        "MPI development files, or configure with -DFEMX_ENABLE_PETSC=OFF.")
+  endif()
+
+  set(FEMX_HAS_PETSC ON)
+  message(STATUS "Found PETSc: ${PETSC_VERSION}")
 endif()
 
 add_library(femx_config INTERFACE)
