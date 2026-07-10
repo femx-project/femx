@@ -20,10 +20,17 @@ Optional dependencies:
 ## Build
 
 ```shell
-mkdir build
-cd build
+git clone --recursive https://github.com/kakeueda/femx.git
+cd femx
+mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/femx
 make
+```
+
+If you already cloned femx without submodules, initialize them first:
+
+```shell
+git submodule update --init --recursive
 ```
 
 Enable optional dependencies explicitly. If an enabled dependency is not found,

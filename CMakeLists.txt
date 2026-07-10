@@ -33,6 +33,15 @@ set(PETSC_ARCH
     CACHE STRING "Optional PETSc architecture name")
 option(RESOLVE_USE_CUDA "Request a CUDA-enabled ReSolve package" OFF)
 
+set(FEMX_NLOHMANN_JSON_INCLUDE_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/third-party/nlohmann-json/single_include")
+if(NOT EXISTS "${FEMX_NLOHMANN_JSON_INCLUDE_DIR}/nlohmann/json.hpp")
+  message(
+    FATAL_ERROR
+      "Missing nlohmann-json submodule. Run "
+      "`git submodule update --init --recursive` from the femx source tree.")
+endif()
+
 set(FEMX_RESOLVE_BACKEND
     "AUTO"
     CACHE STRING "Requested ReSolve backend: AUTO, CPU, or CUDA")
@@ -474,7 +483,10 @@ set(FEMX_INSTALL_TARGETS
     femx_runtime
     femx_model_ns)
 
-foreach(_femx_optional_target femx_linalg_resolve femx_linalg_petsc femx_opt)
+foreach(_femx_optional_target
+        femx_linalg_resolve
+        femx_linalg_petsc
+        femx_opt)
   if(TARGET "${_femx_optional_target}")
     list(APPEND FEMX_INSTALL_TARGETS "${_femx_optional_target}")
   endif()
