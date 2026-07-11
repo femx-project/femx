@@ -59,14 +59,14 @@ Optional solver backends are exposed through backend-specific targets:
 
 .. code-block:: bash
 
-   poisson-resolve --nx 48 --ny 48 -b cpu --output yes
+   poisson-resolve --nx 32 --ny 32 -b cpu --output yes
 
 The optimization example follows the same shape and also exposes optimization
 parameters:
 
 .. code-block:: bash
 
-   poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
+   poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
 
 .. toctree::
    :maxdepth: 2

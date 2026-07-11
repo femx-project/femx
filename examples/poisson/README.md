@@ -1,4 +1,4 @@
-# Poisson Example
+# Example: Poisson Equation
 
 This example solves a scalar Poisson problem on the unit square:
 
@@ -49,11 +49,11 @@ optional solver packages.
 With Re::Solve enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 48 --ny 48 -b cpu --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cpu --output yes
 ```
 
 With PETSc enabled:
 
 ```shell
-./examples/poisson/poisson-petsc --nx 48 --ny 48 --output yes
+./examples/poisson/poisson-petsc --nx 32 --ny 32 --output yes
 ```

@@ -12,7 +12,7 @@ The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and o
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve, for CPU/GPU linear solver backends. The current backend expects the ReSolve `develop` branch; released Re::Solve versions may not work.
+- Re::Solve 0.99.2, for CPU/GPU linear solver backends.
 - PETSc and MPI, for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
@@ -36,8 +36,6 @@ git submodule update --init --recursive
 Enable optional dependencies explicitly. If an enabled dependency is not found,
 CMake fails during configuration. Add these flags to the `cmake ..` command
 above when needed.
-
-Use `-DCMAKE_BUILD_TYPE=Debug` for a debug build.
 
 For HDF5 output:
 
@@ -68,14 +66,6 @@ Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
 make install
 ```
 
-With other CMake generators, use `cmake --build . --target install`.
-
-Then use the install prefix from another CMake project:
-
-```shell
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/femx
-```
-
 Run the install test before packaging a release:
 
 ```shell
@@ -97,23 +87,34 @@ available solver variants.
 Backend-specific examples are available when their dependencies are enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 48 --ny 48 -b cpu --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cpu --output yes
 ```
 
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
 ```
-
-### Example Result
-
-<p align="center">
-  <img src="docs/figs/poisson-opt.png" alt="Poisson optimization result" width="560">
-</p>
 
 See [examples/poisson-opt](examples/poisson-opt) for the optimization problem
 definition.
+
+## Run Apps
+
+The Navier-Stokes forward app provides separate configuration sets for ReSolve
+and PETSc. From the repository root, replace `build/resolve-cuda-petsc` with
+the build directory you configured:
+
+```shell
+./build/resolve-cuda-petsc/apps/ns-forward/ns-forward \
+  --config apps/ns-forward/configs/resolve/cavity/Config.json
+
+./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-petsc \
+  --config apps/ns-forward/configs/petsc/cavity/Config.json
+```
+
+See [apps/ns-forward](apps/ns-forward) for the formulation and available demo
+configurations.
 
 ## CMake Options
 

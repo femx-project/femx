@@ -1,4 +1,4 @@
-## GLS Formulation for the Unsteady Navier-Stokes Equations
+## App: Navier–Stokes Equations
 
 This solver uses a Galerkin/least-squares (GLS) stabilized finite element formulation for the unsteady incompressible Navier-Stokes equations.
 
@@ -49,8 +49,11 @@ extrapolated with Adams-Bashforth,
 \frac{1}{2}\mathbf{u}^{n-1},
 ```
 
-while the transported velocity in the advection term and the diffusion
-term are evaluated by Crank-Nicolson,
+At the first time step, where no previous step is available, the code uses
+$\mathbf{u}_{\mathrm{adv}}=\mathbf{u}^{n}$.
+
+The transported velocity in the advection term and the diffusion term are
+evaluated by Crank-Nicolson,
 
 ```math
 \mathbf{u}^{n+1/2}
@@ -185,9 +188,30 @@ The stabilization parameter is computed element-wise as
 
 This is a local length-scale approximation of the SUPG/PSPG stabilization
 parameter calculations described by Tezduyar [1], with $\tau_m=\tau_p$ and
-$h$ used as the element length.
+$h$ used as the element length. The velocity norm in this expression is
+evaluated from the current history state used to assemble the time-step
+operator.
 
-The linearized system obtained from this formulation is solved at each time step to update the velocity and pressure fields.
+The implementation assembles the time-step residual in affine form,
+$R(\mathbf{x}^{n+1})=K\mathbf{x}^{n+1}-F$, and solves the resulting linear
+system $K\mathbf{x}^{n+1}=F$ once per time step. It does not perform a Newton
+iteration on the fully nonlinear Navier-Stokes residual.
+
+## Run
+
+From the repository root, replace `build/resolve-cuda-petsc` with the build
+directory you configured.
+
+```shell
+./build/resolve-cuda-petsc/apps/ns-forward/ns-forward \
+  --config apps/ns-forward/configs/resolve/cavity/Config.json
+
+./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-petsc \
+  --config apps/ns-forward/configs/petsc/cavity/Config.json
+```
+
+The ReSolve configurations include the ReSolve workspace backend, for example
+`"backend": "cuda"`.
 
 ## References
 

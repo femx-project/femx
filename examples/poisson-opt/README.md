@@ -1,4 +1,4 @@
-# Poisson Optimization Example
+# Example: Poisson Boundary Control
 
 This example estimates an upper-boundary Dirichlet control for a scalar
 Poisson problem on the unit square:
@@ -18,7 +18,9 @@ u &= 0
 
 Here, $m$ is the unknown boundary control, $\Gamma_{\mathrm{top}}$ denotes the
 top boundary of the unit square, and $\Gamma_{\mathrm{other}}$ denotes the
-other boundaries.
+other boundaries. The control vector contains the Dirichlet values on the top
+boundary, excluding the two corner nodes. All other boundary nodes are fixed to
+zero.
 
 The target state is generated from
 
@@ -43,12 +45,43 @@ w_i
 where $d_i$ are sparse observations and $\alpha$ controls the regularization
 strength.
 
+## Optimization setup
+
+The example uses synthetic data so that the optimized result can be checked
+directly. First, it samples the exact solution on the controllable top boundary
+to define the target control. It then solves the state equation once with that
+control to produce the target state.
+
+Only sparse interior observations are used in the objective. By default,
+`--obs-stride` is chosen automatically as one eighth of the smaller mesh
+dimension. For the documented `32 x 32` run, this gives stride `4`, or
+`7 x 7 = 49` observation points.
+
+The regularization term is assembled on the control variables with boundary
+quadrature weights, so it discretizes
+
+```math
+\frac{\alpha}{2}
+\int_{\Gamma_{\mathrm{top}}} m^2 \, d\Gamma.
+```
+
+The default regularization weight is `--alpha 1e-6`, and the optimization starts
+from the zero control.
+
+The optimizer sees the reduced objective $J(m)$: each trial control is inserted
+into the Dirichlet boundary condition, the Poisson state equation is solved,
+and the reduced gradient is computed with an adjoint solve. The `poisson-opt-petsc`
+executable uses PETSc/TAO for optimization and PETSc linear solvers for the
+state and adjoint equations. The `poisson-opt-resolve` executable still uses
+PETSc/TAO for optimization, but uses Re::Solve for the state and adjoint linear
+solves.
+
 ## Run
 
 From the build directory:
 
 ```shell
-./examples/poisson-opt/poisson-opt-petsc --nx 48 --ny 48 --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-petsc --nx 32 --ny 32 --output yes --max-its 50
 ```
 
 The optimization driver uses PETSc/TAO.
@@ -56,5 +89,11 @@ The optimization driver uses PETSc/TAO.
 With Re::Solve enabled for the forward and adjoint linear solves:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 48 --ny 48 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
 ```
+
+## Result
+
+<p align="center">
+  <img src="../../docs/figs/poisson-opt.png" alt="Poisson boundary-control optimization result" width="560">
+</p>

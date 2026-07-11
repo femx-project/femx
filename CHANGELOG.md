@@ -15,4 +15,4 @@ Initial public release of femx.
 ### Notes
 
 - Inverse-problem and optimization APIs are experimental.
-- ReSolve support currently targets the `develop` branch.
+- ReSolve support targets the ReSolve 0.99.2 release.
