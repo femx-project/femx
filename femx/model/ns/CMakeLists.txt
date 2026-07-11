@@ -20,9 +20,8 @@ target_sources(
          Helper.hpp
          Kernel.hpp)
 
-target_include_directories(
-  femx_model_ns
-  PRIVATE ${FEMX_NLOHMANN_JSON_INCLUDE_DIR})
+target_include_directories(femx_model_ns
+                           PRIVATE ${FEMX_NLOHMANN_JSON_INCLUDE_DIR})
 
 if(FEMX_ENABLE_ENZYME)
   set_target_properties(femx_model_ns PROPERTIES UNITY_BUILD ON)
