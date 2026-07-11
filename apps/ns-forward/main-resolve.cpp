@@ -77,22 +77,26 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
 {
   if (solver.method == "direct")
   {
-    opts = ReSolveOptions{};
+    opts          = ReSolveOptions{};
+    opts.factor   = "klu";
+    opts.refactor = "none";
+    opts.solve    = "klu";
+    opts.precond  = "none";
+    opts.ir       = "none";
     return;
   }
 
-  opts.factor              = "none";
-  opts.refactor            = "none";
-  opts.ir                  = "none";
-  opts.max_its             = solver.max_iterations;
-  opts.restart             = solver.restart;
-  opts.rtol                = solver.relative_tolerance;
-  opts.solve               = solver.solve;
-  opts.precond             = solver.preconditioner;
-  opts.gram_schmidt        = solver.gram_schmidt;
-  opts.sketching           = solver.sketching;
-  opts.preconditioner_side = solver.preconditioner_side;
-  opts.flexible            = solver.flexible;
+  opts.factor       = "none";
+  opts.refactor     = "none";
+  opts.ir           = "none";
+  opts.max_its      = solver.max_iterations;
+  opts.restart      = solver.restart;
+  opts.rtol         = solver.relative_tolerance;
+  opts.solve        = solver.solve;
+  opts.precond      = solver.preconditioner;
+  opts.gram_schmidt = solver.gram_schmidt;
+  opts.sketching    = solver.sketching;
+  opts.flexible     = solver.flexible;
 }
 
 WorkspaceType workspaceType(const SolverParams& solver)
@@ -104,9 +108,11 @@ WorkspaceType workspaceType(const SolverParams& solver)
   return WorkspaceType::Cpu;
 }
 
-int run(const Params& prm, bool enable_output)
+int run(const Params& prm)
 {
-  if (enable_output)
+  const bool output_enabled = prm.output.enabled;
+
+  if (output_enabled)
   {
     writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
@@ -123,7 +129,7 @@ int run(const Params& prm, bool enable_output)
   integ.setInitialState(fwd.x0);
 
   std::ofstream log_out;
-  if (enable_output)
+  if (output_enabled)
   {
     log_out = openOutputFile(prm.output.directory, "run-info.txt");
   }
@@ -134,9 +140,8 @@ int run(const Params& prm, bool enable_output)
                  fwd,
                  prm.time,
                  prm.output,
-                 enable_output,
                  &std::cout,
-                 enable_output ? &log_out : nullptr);
+                 output_enabled ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
@@ -160,11 +165,7 @@ int main(int argc, char* argv[])
     }
 
     Params prm = loadConfig(opts.config_file);
-    if (opts.steps)
-    {
-      prm.time.steps = *opts.steps;
-    }
-    return run(prm, !opts.no_output);
+    return run(prm);
   }
   catch (const std::exception& e)
   {

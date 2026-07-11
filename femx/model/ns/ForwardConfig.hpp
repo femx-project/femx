@@ -37,21 +37,21 @@ struct TimeParams
 
 struct SolverParams
 {
-  std::string backend             = "cpu";       ///< Linear-solver backend.
-  std::string method              = "iterative"; ///< Solver method family.
-  std::string solve               = "fgmres";    ///< Krylov solve method.
-  std::string preconditioner      = "ilu0";      ///< Preconditioner method.
-  std::string gram_schmidt        = "cgs2";      ///< Orthogonalization method.
-  std::string sketching           = "count";     ///< Sketching method.
-  std::string preconditioner_side = "right";     ///< Preconditioner side.
-  Index       max_iterations      = 5000;        ///< Maximum linear iterations.
-  Index       restart             = 200;         ///< Krylov restart length.
-  Real        relative_tolerance  = 1.0e-8;      ///< Linear residual tolerance.
-  bool        flexible            = true;        ///< Enable flexible Krylov methods.
+  std::string backend            = "cpu";       ///< Linear-solver backend.
+  std::string method             = "iterative"; ///< Solver method family.
+  std::string solve              = "fgmres";    ///< Krylov solve method.
+  std::string preconditioner     = "ilu0";      ///< Preconditioner method.
+  std::string gram_schmidt       = "cgs2";      ///< Orthogonalization method.
+  std::string sketching          = "count";     ///< Sketching method.
+  Index       max_iterations     = 5000;        ///< Maximum linear iterations.
+  Index       restart            = 200;         ///< Krylov restart length.
+  Real        relative_tolerance = 1.0e-8;      ///< Linear residual tolerance.
+  bool        flexible           = true;        ///< Enable flexible Krylov methods.
 };
 
 struct OutputParams
 {
+  bool        enabled   = true;                         ///< Enable field and log output.
   Index       interval  = 10;                           ///< Field-output interval in time steps.
   std::string directory = FEMX_NAVIERSTOKES_OUTPUT_DIR; ///< Output directory.
 };

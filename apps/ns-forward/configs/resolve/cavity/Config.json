@@ -3,12 +3,12 @@
     "file": "../../../../../data/meshes/2d_rectangle_res_low.msh"
   },
   "time": {
-    "steps": 300,
-    "dt": 0.02
+    "dt": 0.02,
+    "end_time": 1.0
   },
   "fluid": {
-    "rho": 1000,
-    "mu": 1
+    "rho": 1.0,
+    "mu": 0.01
   },
   "bcs": [
     {
@@ -36,11 +36,18 @@
       "uy": 0.0
     }
   ],
-  "output": {
-    "interval": 5,
-    "directory": "../../../../../runs/work/forward/ns-forward/cavity"
-  },
   "solver": {
-    "backend": "cuda"
+    "backend": "cpu",
+    "method": "iterative",
+    "solve": "fgmres",
+    "preconditioner": "ilu0",
+    "restart": 200,
+    "rel_tol": 1.0e-8,
+    "max_its": 5000
+  },
+  "output": {
+    "enabled": true,
+    "interval": 1,
+    "directory": "../../../../../runs/demo/ns-forward/resolve/cavity"
   }
 }

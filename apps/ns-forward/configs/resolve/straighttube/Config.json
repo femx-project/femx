@@ -1,0 +1,66 @@
+{
+  "mesh": {
+    "file": "../../../../../data/meshes/2d_straighttube.msh"
+  },
+  "time": {
+    "dt": 0.01,
+    "end_time": 1.0
+  },
+  "fluid": {
+    "rho": 1.0,
+    "mu": 0.01
+  },
+  "bcs": [
+    {
+      "name": "inlet",
+      "tag": 4,
+      "type": "dirichlet",
+      "velocity": {
+        "time": {
+          "type": "sine",
+          "value": 1.0,
+          "amplitude": 0.35,
+          "period": 1.0,
+          "quantity": "mean_velocity"
+        },
+        "space": {
+          "type": "poiseuille",
+          "radius": 0.5,
+          "center": "auto",
+          "normal": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "name": "outlet",
+      "tag": 5,
+      "type": "dirichlet",
+      "p": 0.0
+    },
+    {
+      "name": "wall",
+      "tag": 6,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    }
+  ],
+  "solver": {
+    "backend": "cuda",
+    "method": "iterative",
+    "solve": "fgmres",
+    "preconditioner": "ilu0",
+    "restart": 200,
+    "rel_tol": 1.0e-8,
+    "max_its": 5000
+  },
+  "output": {
+    "enabled": true,
+    "interval": 1,
+    "directory": "../../../../../runs/demo/ns-forward/resolve/straighttube"
+  }
+}

@@ -2,7 +2,6 @@
 
 #include <iosfwd>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "ForwardConfig.hpp"
@@ -31,10 +30,8 @@ namespace femx::model::ns
 
 struct AppOptions
 {
-  std::string          config_file;       ///< Input JSON config file.
-  std::optional<Index> steps;             ///< Optional step-count override.
-  bool                 help      = false; ///< Print help and exit.
-  bool                 no_output = false; ///< Disable field output.
+  std::string config_file;  ///< Input JSON config file.
+  bool        help = false; ///< Print help and exit.
 };
 
 struct FixedBoundaryValues
@@ -87,7 +84,6 @@ ForwardSolveResult solve(
     const ForwardProblem&              problem,
     const TimeParams&                  time,
     const OutputParams&                prm,
-    bool                               collect_output,
     std::ostream*                      terminal = nullptr,
     std::ostream*                      log_out  = nullptr);
 

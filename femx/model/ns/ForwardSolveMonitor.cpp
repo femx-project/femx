@@ -1,6 +1,5 @@
 #include "ForwardSolveMonitor.hpp"
 
-#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -12,17 +11,13 @@
 #include <femx/common/Math.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/io/VtuWriter.hpp>
 #include <femx/runtime/Output.hpp>
 
 namespace femx::model::ns
 {
 namespace
 {
-
-double elapsedSeconds(Clock::time_point begin, Clock::time_point end)
-{
-  return std::chrono::duration<double>(end - begin).count();
-}
 
 Real elemMinEdge(const Element& elem)
 {
@@ -72,8 +67,7 @@ std::string stepLogLine(Index step,
                         bool  show_velocity_change,
                         Real  vel_change,
                         Real  assembly_sec,
-                        Real  solve_sec,
-                        Real  total_seconds)
+                        Real  solve_sec)
 {
   std::ostringstream line;
   line << "step " << std::setw(7) << step << ", t = " << std::setw(11) << time
@@ -83,8 +77,7 @@ std::string stepLogLine(Index step,
     line << ", rel du = " << std::setw(11) << vel_change;
   }
   line << ", assembly = " << std::setw(11) << assembly_sec << " s"
-       << ", solve = " << std::setw(11) << solve_sec << " s"
-       << ", total = " << std::setw(11) << total_seconds << " s";
+       << ", solve = " << std::setw(11) << solve_sec << " s";
   return line.str();
 }
 
@@ -103,12 +96,44 @@ void writeLine(const std::string& line,
   }
 }
 
+void packVelocity(const Vector<Real>& ux,
+                  const Vector<Real>& uy,
+                  const Vector<Real>& uz,
+                  Vector<Real>&       velocity)
+{
+  const Index num_nodes = ux.size();
+  if (uy.size() != num_nodes
+      || uz.size() != num_nodes
+      || velocity.size() != 3 * num_nodes)
+  {
+    throw std::runtime_error("Velocity field output received inconsistent sizes");
+  }
+
+  for (Index in = 0; in < num_nodes; ++in)
+  {
+    velocity[3 * in]     = ux[in];
+    velocity[3 * in + 1] = uy[in];
+    velocity[3 * in + 2] = uz[in];
+  }
+}
+
+std::string stepVtuFile(const std::string& directory,
+                        Index              level)
+{
+  std::ostringstream fname;
+  fname << directory << "/fields_"
+        << std::setw(6) << std::setfill('0') << level
+        << ".vtu";
+  return fname.str();
+}
+
 } // namespace
 
 struct ForwardSolveMonitor::FieldOutput
 {
   explicit FieldOutput(const Mesh& mesh)
-    : ux(mesh.numNodes()),
+    : velocity(3 * mesh.numNodes()),
+      ux(mesh.numNodes()),
       uy(mesh.numNodes()),
       uz(mesh.numNodes()),
       p(mesh.numNodes())
@@ -119,6 +144,8 @@ struct ForwardSolveMonitor::FieldOutput
 
   TimeSeriesDataOut vel_out;
   TimeSeriesDataOut pre_out;
+  VtuWriter         vtu_out;
+  Vector<Real>      velocity;
   Vector<Real>      ux;
   Vector<Real>      uy;
   Vector<Real>      uz;
@@ -222,7 +249,6 @@ void ForwardSolveMonitor::start(Index num_steps,
   result_            = ForwardSolveResult{};
   result_.vel_change = std::numeric_limits<Real>::quiet_NaN();
   last_field_step_   = 0;
-  step_begin_        = Clock::now();
 
   if (fieldOutputEnabled())
   {
@@ -358,6 +384,7 @@ void ForwardSolveMonitor::writeFieldOutput(Index               level,
               field_out_->uz,
               field_out_->p);
 
+#ifdef FEMX_HAS_HDF5
   field_out_->vel_out.beginStep(time);
   field_out_->vel_out.addNodalVectorField("velocity",
                                           field_out_->ux,
@@ -370,6 +397,19 @@ void ForwardSolveMonitor::writeFieldOutput(Index               level,
 
   field_out_->vel_out.write(field_dir_ + "/velocity");
   field_out_->pre_out.write(field_dir_ + "/pressure");
+#else
+  (void) time;
+  packVelocity(field_out_->ux,
+               field_out_->uy,
+               field_out_->uz,
+               field_out_->velocity);
+  field_out_->vtu_out.writePointData(
+      stepVtuFile(field_dir_, level),
+      space_->mesh(),
+      Vector<VtuWriter::PointField>{
+          {"velocity", 3, &field_out_->velocity},
+          {"pressure", 1, &field_out_->p}});
+#endif
   last_field_step_ = level;
 }
 
@@ -439,18 +479,15 @@ void ForwardSolveMonitor::writeDetailedStepLog(Index step,
                                                Real  assembly_sec,
                                                Real  solve_sec)
 {
-  const Real total_seconds = elapsedSeconds(step_begin_, Clock::now());
   writeLine(stepLogLine(step,
                         time,
                         max_cfl,
                         show_vel_change_,
                         vel_change,
                         assembly_sec,
-                        solve_sec,
-                        total_seconds),
+                        solve_sec),
             log_terminal_,
             log_out_);
-  step_begin_ = Clock::now();
 }
 
 Real velocityRelativeChange(const MixedFESpace& space,

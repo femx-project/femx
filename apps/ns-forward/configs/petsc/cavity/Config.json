@@ -1,0 +1,50 @@
+{
+  "mesh": {
+    "file": "../../../../../data/meshes/2d_rectangle_res_low.msh"
+  },
+  "time": {
+    "dt": 0.02,
+    "end_time": 1.0
+  },
+  "fluid": {
+    "rho": 1.0,
+    "mu": 0.01
+  },
+  "bcs": [
+    {
+      "physical": 9,
+      "type": "dirichlet",
+      "ux": 1.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 10,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 11,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    },
+    {
+      "physical": 12,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0
+    }
+  ],
+  "solver": {
+    "method": "iterative",
+    "restart": 200,
+    "rel_tol": 1.0e-8,
+    "max_its": 5000
+  },
+  "output": {
+    "enabled": true,
+    "interval": 1,
+    "directory": "../../../../../runs/demo/ns-forward/petsc/cavity"
+  }
+}

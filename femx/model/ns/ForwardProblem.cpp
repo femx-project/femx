@@ -207,21 +207,6 @@ AppOptions parseAppOptions(int   argc,
       opts.config_file = runtime::requireValue(argc, argv, i, key);
       continue;
     }
-    if (key == "--steps")
-    {
-      opts.steps = static_cast<Index>(
-          std::stoi(runtime::requireValue(argc, argv, i, key)));
-      if (*opts.steps <= 0)
-      {
-        throw std::runtime_error("--steps must be positive");
-      }
-      continue;
-    }
-    if (key == "--no-output")
-    {
-      opts.no_output = true;
-      continue;
-    }
     if (!allow_unknown_options)
     {
       throw std::runtime_error("Unknown option: " + key);
@@ -241,9 +226,7 @@ void printUsage(std::ostream&              out,
                 const std::string&         option_suffix,
                 const Vector<std::string>& extra_lines)
 {
-  out << "Usage: " << executable << " --config FILE" << option_suffix << '\n'
-      << "       " << executable
-      << " --config FILE --steps N --no-output" << option_suffix << '\n';
+  out << "Usage: " << executable << " --config FILE" << option_suffix << '\n';
   for (const std::string& line : extra_lines)
   {
     out << line << '\n';
@@ -280,12 +263,11 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                          const ForwardProblem& problem,
                          const TimeParams&     time,
                          const OutputParams&   prm,
-                         bool                  collect_output,
                          std::ostream*         terminal,
                          std::ostream*         log_out)
 {
   ForwardSolveMonitor monitor(problem.space, problem.dt, problem.steps);
-  if (collect_output)
+  if (prm.enabled)
   {
     monitor.setFieldOutput(prm.directory, prm.interval);
   }

@@ -1,0 +1,45 @@
+{
+  "mesh": {
+    "file": "../../../../../data/meshes/3d_stenosis.msh"
+  },
+  "time": {
+    "dt": 0.002,
+    "end_time": 20.0
+  },
+  "fluid": {
+    "rho": 1.0,
+    "mu": 0.001
+  },
+  "bcs": [
+    {
+      "physical": 4,
+      "type": "dirichlet",
+      "ux": 1.0,
+      "uy": 0.0,
+      "uz": 0.0
+    },
+    {
+      "physical": 6,
+      "type": "dirichlet",
+      "ux": 0.0,
+      "uy": 0.0,
+      "uz": 0.0
+    },
+    {
+      "physical": 5,
+      "type": "dirichlet",
+      "p": 0.0
+    }
+  ],
+  "solver": {
+    "method": "iterative",
+    "restart": 200,
+    "rel_tol": 1.0e-8,
+    "max_its": 5000
+  },
+  "output": {
+    "enabled": true,
+    "interval": 10,
+    "directory": "../../../../../runs/work/ns-forward/petsc/stenosis"
+  }
+}

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -13,8 +12,6 @@
 
 namespace femx::model::ns
 {
-
-using Clock = std::chrono::high_resolution_clock;
 
 struct ForwardSolveResult
 {
@@ -112,7 +109,6 @@ private:
   std::ostream*                  log_terminal_{nullptr};
   std::ostream*                  log_out_{nullptr};
   bool                           show_vel_change_{false};
-  Clock::time_point              step_begin_;
 };
 
 Real velocityRelativeChange(const MixedFESpace& space,

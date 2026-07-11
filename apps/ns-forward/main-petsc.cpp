@@ -73,9 +73,9 @@ BuildInfo makeBuildInfo()
 void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
 {
   auto& opts       = solver.opts();
-  opts.restart     = 200;
-  opts.rtol        = 1.0e-8;
-  opts.max_its     = 5000;
+  opts.restart     = prm.restart;
+  opts.rtol        = prm.relative_tolerance;
+  opts.max_its     = prm.max_iterations;
   opts.use_opts_db = true;
 
   const PetscMPIInt comm_size = commSize(PETSC_COMM_WORLD);
@@ -108,14 +108,21 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
   }
 }
 
-int run(const Params& prm, bool enable_output)
+int run(const Params& prm)
 {
-  const PetscMPIInt rank = commRank(PETSC_COMM_WORLD);
-  const PetscMPIInt size = commSize(PETSC_COMM_WORLD);
+  const PetscMPIInt rank   = commRank(PETSC_COMM_WORLD);
+  OutputParams      output = prm.output;
+  output.enabled           = rank == 0 && prm.output.enabled;
 
-  if (rank == 0 && enable_output)
+  if (prm.solver.backend != "cpu")
   {
-    writeBuildInfo(prm.output.directory, makeBuildInfo());
+    throw std::runtime_error(
+        "PETSc Navier-Stokes app supports only solver.backend = 'cpu'");
+  }
+
+  if (output.enabled)
+  {
+    writeBuildInfo(output.directory, makeBuildInfo());
   }
 
   ForwardProblem fwd(prm);
@@ -134,9 +141,9 @@ int run(const Params& prm, bool enable_output)
   integ.setInitialState(fwd.x0);
 
   std::ofstream log_out;
-  if (rank == 0 && enable_output)
+  if (output.enabled)
   {
-    log_out = openOutputFile(prm.output.directory, "run-info.txt");
+    log_out = openOutputFile(output.directory, "run-info.txt");
   }
 
   ForwardSolveResult result;
@@ -144,10 +151,9 @@ int run(const Params& prm, bool enable_output)
   result = solve(integ,
                  fwd,
                  prm.time,
-                 prm.output,
-                 rank == 0 && enable_output,
+                 output,
                  rank == 0 ? &std::cout : nullptr,
-                 rank == 0 && enable_output ? &log_out : nullptr);
+                 output.enabled ? &log_out : nullptr);
 
   if (!isFinite(result.final_state))
   {
@@ -184,11 +190,7 @@ int main(int argc, char* argv[])
       else
       {
         Params prm = loadConfig(opts.config_file);
-        if (opts.steps)
-        {
-          prm.time.steps = *opts.steps;
-        }
-        status = run(prm, !opts.no_output);
+        status     = run(prm);
       }
     }
     catch (const std::exception& e)

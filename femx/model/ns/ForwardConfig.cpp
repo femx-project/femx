@@ -641,17 +641,6 @@ void validate(const Params& prm)
   {
     throw std::runtime_error("Solver sketching must be either 'count' or 'fwht'");
   }
-  if (prm.solver.preconditioner_side != "left"
-      && prm.solver.preconditioner_side != "right")
-  {
-    throw std::runtime_error(
-        "Solver preconditioner_side must be either 'left' or 'right'");
-  }
-  if (prm.solver.flexible && prm.solver.preconditioner_side == "left")
-  {
-    throw std::runtime_error(
-        "ReSolve flexible GMRES requires right preconditioning");
-  }
   if (prm.solver.max_iterations <= 0 || prm.solver.restart <= 0)
   {
     throw std::runtime_error(
@@ -746,16 +735,6 @@ Params loadConfig(const std::string& path)
       prm.solver.gram_schmidt = solver.at("gramSchmidt").get<std::string>();
     }
     assign(solver, "sketching", prm.solver.sketching);
-    if (solver.contains("preconditioner_side"))
-    {
-      prm.solver.preconditioner_side =
-          solver.at("preconditioner_side").get<std::string>();
-    }
-    else if (solver.contains("precond_side"))
-    {
-      prm.solver.preconditioner_side =
-          solver.at("precond_side").get<std::string>();
-    }
     assign(solver, "restart", prm.solver.restart);
     if (solver.contains("max_iterations"))
     {
@@ -788,6 +767,7 @@ Params loadConfig(const std::string& path)
   if (root.contains("output"))
   {
     const auto& output = root.at("output");
+    assign(output, "enabled", prm.output.enabled);
     assign(output, "interval", prm.output.interval);
     const bool has_directory = output.contains("directory");
     assign(output, "directory", prm.output.directory);

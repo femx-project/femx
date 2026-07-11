@@ -1,17 +1,14 @@
 {
   "mesh": {
-    "file": "../../../../data/meshes/2d_straighttube.msh"
+    "file": "../../../../../data/meshes/2d_straighttube.msh"
   },
   "time": {
     "dt": 0.01,
-    "end_time": 2.0
+    "end_time": 1.0
   },
   "fluid": {
     "rho": 1.0,
-    "mu": 4.0e-7
-  },
-  "solver": {
-    "backend": "cuda"
+    "mu": 0.01
   },
   "bcs": [
     {
@@ -21,19 +18,15 @@
       "velocity": {
         "time": {
           "type": "sine",
-          "value": 0.0162,
+          "value": 1.0,
           "amplitude": 0.35,
           "period": 1.0,
           "quantity": "mean_velocity"
         },
         "space": {
           "type": "poiseuille",
-          "radius": 0.002,
-          "center": [
-            0.0,
-            0.0,
-            0.0
-          ],
+          "radius": 0.5,
+          "center": "auto",
           "normal": [
             1.0,
             0.0,
@@ -56,8 +49,15 @@
       "uy": 0.0
     }
   ],
+  "solver": {
+    "method": "iterative",
+    "restart": 200,
+    "rel_tol": 1.0e-8,
+    "max_its": 5000
+  },
   "output": {
+    "enabled": true,
     "interval": 1,
-    "directory": "../../../../runs/work/forward/ns-forward/straighttube"
+    "directory": "../../../../../runs/demo/ns-forward/petsc/straighttube"
   }
 }
