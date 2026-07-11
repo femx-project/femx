@@ -9,7 +9,7 @@ if(@FEMX_ENABLE_OPENMP@)
 endif()
 
 if(@FEMX_HAS_RESOLVE@)
-  find_dependency(ReSolve)
+  find_dependency(ReSolve 0.99.2 EXACT)
 endif()
 
 if(@FEMX_HAS_HDF5@)

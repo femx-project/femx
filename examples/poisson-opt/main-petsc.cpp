@@ -27,17 +27,6 @@ using namespace femx::runtime;
 namespace
 {
 
-void setLinearSolverOptions(KspLinearSolver& solver)
-{
-  auto& opts        = solver.opts();
-  opts.type         = KSPPREONLY;
-  opts.pc_type      = PCLU;
-  opts.rtol         = 1.0e-12;
-  opts.max_its      = 5000;
-  opts.use_opts_db  = true;
-  opts.check_finite = true;
-}
-
 int run(const Options& opts)
 {
   if (opts.backend != WorkspaceType::Cpu)
@@ -57,8 +46,6 @@ int run(const Options& opts)
   // Linear solvers for forward/adjoint systems.
   KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
   KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);
-  setLinearSolverOptions(fwd_lin_solver);
-  setLinearSolverOptions(adj_lin_solver);
 
   const Result result = solve(
       problem, lin, fwd_lin_solver, adj_lin_solver);

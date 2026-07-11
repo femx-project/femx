@@ -29,3 +29,21 @@ add_executable(runIoTests unit/io/runIoTests.cpp)
 target_include_directories(runIoTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runIoTests PRIVATE femx::femx)
 add_test(NAME IoTests COMMAND runIoTests)
+
+if(TARGET femx_linalg_resolve)
+  add_executable(runReSolveSolverTests unit/linalg/runReSolveSolverTests.cpp)
+  target_include_directories(runReSolveSolverTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(runReSolveSolverTests PRIVATE femx::linalg_resolve)
+  add_test(NAME ReSolveSolverTests COMMAND runReSolveSolverTests)
+  set_tests_properties(ReSolveSolverTests PROPERTIES LABELS "resolve;optional")
+endif()
+
+if(TARGET femx_linalg_petsc)
+  add_executable(runPETScSolverTests unit/linalg/runPETScSolverTests.cpp)
+  target_include_directories(runPETScSolverTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(runPETScSolverTests PRIVATE femx::linalg_petsc)
+  add_test(NAME PETScSolverTests COMMAND runPETScSolverTests)
+  set_tests_properties(PETScSolverTests PROPERTIES LABELS "petsc;optional")
+endif()

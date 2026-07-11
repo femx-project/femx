@@ -1,6 +1,14 @@
 include_guard(GLOBAL)
 
 set(_ReSolve_HINTS)
+set(_ReSolve_VERSION_ARGS)
+
+if(ReSolve_FIND_VERSION)
+  list(APPEND _ReSolve_VERSION_ARGS "${ReSolve_FIND_VERSION}")
+  if(ReSolve_FIND_VERSION_EXACT)
+    list(APPEND _ReSolve_VERSION_ARGS EXACT)
+  endif()
+endif()
 
 foreach(_var ReSolve_ROOT RESOLVE_ROOT)
   if(DEFINED ${_var})
@@ -14,6 +22,7 @@ endforeach()
 
 find_package(
   ReSolve
+  ${_ReSolve_VERSION_ARGS}
   CONFIG
   QUIET
   HINTS

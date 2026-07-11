@@ -221,14 +221,14 @@ if(FEMX_ENABLE_OPENMP)
 endif()
 
 if(FEMX_ENABLE_RESOLVE)
-  find_package(ReSolve QUIET)
+  find_package(ReSolve 0.99.2 EXACT QUIET)
 
   if(NOT ReSolve_FOUND)
     message(
       FATAL_ERROR
-        "FEMX_ENABLE_RESOLVE=ON but ReSolve was not found. Set "
+        "FEMX_ENABLE_RESOLVE=ON but ReSolve 0.99.2 was not found. Set "
         "ReSolve_ROOT, RESOLVE_ROOT, CMAKE_PREFIX_PATH, or ReSolve_DIR "
-        "to a ReSolve installation, or configure with "
+        "to a ReSolve 0.99.2 installation, or configure with "
         "-DFEMX_ENABLE_RESOLVE=OFF.")
   endif()
 
@@ -483,10 +483,7 @@ set(FEMX_INSTALL_TARGETS
     femx_runtime
     femx_model_ns)
 
-foreach(_femx_optional_target
-        femx_linalg_resolve
-        femx_linalg_petsc
-        femx_opt)
+foreach(_femx_optional_target femx_linalg_resolve femx_linalg_petsc femx_opt)
   if(TARGET "${_femx_optional_target}")
     list(APPEND FEMX_INSTALL_TARGETS "${_femx_optional_target}")
   endif()

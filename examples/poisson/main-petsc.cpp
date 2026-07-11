@@ -26,17 +26,6 @@ using namespace femx::examples;
 namespace
 {
 
-void setSolverOptions(KspLinearSolver& solver)
-{
-  auto& opts        = solver.opts();
-  opts.type         = KSPCG;
-  opts.pc_type      = PCJACOBI;
-  opts.rtol         = 1.0e-10;
-  opts.max_its      = 5000;
-  opts.use_opts_db  = true;
-  opts.check_finite = true;
-}
-
 void copyToPETSc(const CsrMatrix& src, PETScAssemblyMatrix& dst)
 {
   const Index* rp   = src.rowPtrData();
@@ -81,7 +70,6 @@ int run(const Options& opts)
   A_petsc.finalize();
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
-  setSolverOptions(solver);
 
   Vector<Real> x;
   solver.solve(A_petsc, rhs, x);

@@ -22,12 +22,12 @@ class PETScVector;
 struct KspOptions
 {
   std::string type    = KSPGMRES; ///< PETSc KSP type.
-  std::string pc_type = PCNONE;   ///< PETSc PC type.
+  std::string pc_type = PCJACOBI; ///< PETSc PC type.
 
-  Real  rtol    = 1.0e-10; ///< Relative residual tolerance.
-  Real  atol    = 1.0e-50; ///< Absolute residual tolerance.
+  Real  rtol    = 1.0e-8;  ///< Relative residual tolerance.
+  Real  atol    = 1.0e-50; ///< Absolute residual tolerance; disabled by default.
   Real  dtol    = 1.0e5;   ///< Divergence tolerance.
-  Index max_its = 1000;    ///< Maximum KSP iterations.
+  Index max_its = 5000;    ///< Maximum KSP iterations.
   Index restart = 0;       ///< GMRES restart length.
 
   bool nonzero_guess = false; ///< Use the input vector as an initial guess.

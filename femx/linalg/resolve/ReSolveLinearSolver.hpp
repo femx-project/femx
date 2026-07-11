@@ -1,9 +1,3 @@
-/**
- * @file ReSolveLinearSolver.h
- * @author Kakeru Ueda (ueda.k.2290@m.isct.ac.jp)
- *
- */
-
 #pragma once
 
 #include <memory>
@@ -27,26 +21,25 @@ namespace linalg
  */
 struct ReSolveOptions
 {
-  std::string factor   = "klu";  ///< Factorization method.
-  std::string refactor = "none"; ///< Refactorization method.
-  std::string solve    = "klu";  ///< Linear solve method.
-  std::string precond  = "none"; ///< Preconditioner method.
-  std::string ir       = "none"; ///< Iterative-refinement method.
+  std::string factor   = "none";   ///< Factorization method.
+  std::string refactor = "none";   ///< Refactorization method.
+  std::string solve    = "fgmres"; ///< Linear solve method.
+  std::string precond  = "ilu0";   ///< Preconditioner method.
+  std::string ir       = "none";   ///< Iterative-refinement method.
 
-  std::string gram_schmidt        = "cgs2";  ///< Krylov orthogonalization method.
-  std::string sketching           = "count"; ///< Sketching method for LSQR variants.
-  std::string preconditioner_side = "right"; ///< Side on which to apply preconditioning.
+  std::string gram_schmidt = "cgs2";  ///< Krylov orthogonalization method.
+  std::string sketching    = "count"; ///< Sketching method for randomized Krylov variants.
 
-  Index max_its  = 1000;    ///< Maximum Krylov iterations.
-  Index restart  = 200;     ///< Krylov restart length.
-  Real  rtol     = 1.0e-12; ///< Relative residual tolerance.
-  bool  flexible = true;    ///< Enable flexible Krylov methods.
+  Index max_its  = 1000;   ///< Maximum Krylov iterations.
+  Index restart  = 200;    ///< Krylov restart length.
+  Real  rtol     = 1.0e-8; ///< Relative residual tolerance.
+  bool  flexible = true;   ///< Enable flexible Krylov methods.
 };
 
 /**
  * @brief ReSolve adapter for femx sparse linear solves.
  *
- * The adapter accepts CsrAssemblyMatrix-backed operators and can run on the
+ * The adapter accepts CsrAssemblyMatrix operators and can run on the
  * configured ReSolve CPU or CUDA backend.  It implements both forward and
  * transpose solves for use in state and adjoint workflows.
  */
@@ -63,12 +56,12 @@ public:
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /** @brief Solve op x = rhs for a CsrAssemblyMatrix-backed operator. */
+  /** @brief Solve op x = rhs for a CsrAssemblyMatrix operator. */
   void solve(const LinearOperator& op,
              const Vector<Real>&   rhs,
              Vector<Real>&         out) override;
 
-  /** @brief Solve op^T x = rhs for a CsrAssemblyMatrix-backed operator. */
+  /** @brief Solve op^T x = rhs for a CsrAssemblyMatrix operator. */
   void solveT(const LinearOperator& op,
               const Vector<Real>&   rhs,
               Vector<Real>&         out) override;
