@@ -54,7 +54,7 @@ using namespace femx::runtime;
 #endif
 
 #ifndef FEMX_NS_FORWARD_APP_NAME
-#define FEMX_NS_FORWARD_APP_NAME "ns-forward"
+#define FEMX_NS_FORWARD_APP_NAME "ns-forward-resolve"
 #endif
 
 namespace

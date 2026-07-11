@@ -106,7 +106,7 @@ and PETSc. From the repository root, replace `build/resolve-cuda-petsc` with
 the build directory you configured:
 
 ```shell
-./build/resolve-cuda-petsc/apps/ns-forward/ns-forward \
+./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-resolve \
   --config apps/ns-forward/configs/resolve/cavity/Config.json
 
 ./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-petsc \
