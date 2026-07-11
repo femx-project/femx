@@ -59,7 +59,7 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
 
 TimeDirichletControlResidual::TimeDirichletControlResidual(
     const TimeResidual&         base,
-    DirichletControl            ctr,
+    fem::DirichletControl       ctr,
     Vector<Index>               fdofs,
     Index                       ctr_param_offset,
     Index                       num_params,
@@ -286,7 +286,7 @@ void TimeDirichletControlResidual::prepareLinearSolve(
   eliminateStateColumns(J, rhs);
 }
 
-const DirichletControl& TimeDirichletControlResidual::control() const
+const fem::DirichletControl& TimeDirichletControlResidual::control() const
 {
   return ctr_;
 }

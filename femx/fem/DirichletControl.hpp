@@ -7,6 +7,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class MixedFESpace;
 
@@ -39,4 +41,5 @@ DirichletControl makeVelocityControl(
     const MixedFESpace& space,
     const std::string&  pname);
 
+} // namespace fem
 } // namespace femx

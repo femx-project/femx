@@ -4,9 +4,11 @@
 
 namespace femx
 {
-
 template <typename T>
 class Vector;
+
+namespace fem
+{
 
 class FESpace;
 class MixedFESpace;
@@ -40,4 +42,5 @@ private:
   const MixedFESpace* mixed_space_{nullptr};
 };
 
+} // namespace fem
 } // namespace femx

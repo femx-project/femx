@@ -4,6 +4,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 FESpace::FESpace(const Mesh*          mesh,
                  const FiniteElement* finite_element,
@@ -122,4 +124,5 @@ Vector<Index> FESpace::elemDofs(Index ie) const
   return dofs;
 }
 
+} // namespace fem
 } // namespace femx

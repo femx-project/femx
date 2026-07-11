@@ -10,6 +10,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 void DirichletCondition::addDof(Index id, Real value)
 {
@@ -255,4 +257,5 @@ void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
   }
 }
 
+} // namespace fem
 } // namespace femx

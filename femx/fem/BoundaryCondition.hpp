@@ -8,10 +8,13 @@
 
 namespace femx
 {
+class CsrMatrix;
+
+namespace fem
+{
 
 class MixedFieldView;
 class FESpace;
-class CsrMatrix;
 
 /**
  * @brief Stores and applies Dirichlet boundary constraints.
@@ -102,4 +105,5 @@ private:
 
 using BoundaryCondition = DirichletCondition;
 
+} // namespace fem
 } // namespace femx

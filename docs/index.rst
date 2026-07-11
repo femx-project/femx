@@ -36,7 +36,7 @@ For a one-command local preview:
 
 .. code-block:: bash
 
-   ./docs/preview-doxygen.sh
+   ./preview-docs.sh
 
 If Sphinx is installed, the landing page can also be built with:
 

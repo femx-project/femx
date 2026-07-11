@@ -8,6 +8,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 /**
  * @brief Scalar or vector-valued finite-element space on one mesh.
@@ -72,4 +74,5 @@ private:
   Index                num_dofs_{0};
 };
 
+} // namespace fem
 } // namespace femx

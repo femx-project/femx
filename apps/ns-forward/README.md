@@ -203,10 +203,10 @@ From your build directory, run the executable for the backend you enabled:
 
 ```shell
 ./apps/ns-forward/ns-forward-resolve \
-  --config ../../apps/ns-forward/configs/resolve/cavity/Config.json
+  --config ../apps/ns-forward/configs/resolve/cavity/Config.json
 
 ./apps/ns-forward/ns-forward-petsc \
-  --config ../../apps/ns-forward/configs/petsc/cavity/Config.json
+  --config ../apps/ns-forward/configs/petsc/cavity/Config.json
 ```
 
 The ReSolve configurations include the ReSolve workspace backend, for example

@@ -18,24 +18,24 @@ namespace
 {
 
 using femx::Index;
-using femx::Mesh;
 using femx::Real;
+using femx::fem::Mesh;
 
-std::string shapeName(femx::Element::Shape shape)
+std::string shapeName(femx::fem::Element::Shape shape)
 {
   switch (shape)
   {
-  case femx::Element::Shape::Unknown:
+  case femx::fem::Element::Shape::Unknown:
     return "unknown";
-  case femx::Element::Shape::Segment:
+  case femx::fem::Element::Shape::Segment:
     return "segment";
-  case femx::Element::Shape::Triangle:
+  case femx::fem::Element::Shape::Triangle:
     return "triangle";
-  case femx::Element::Shape::Quadrilateral:
+  case femx::fem::Element::Shape::Quadrilateral:
     return "quadrilateral";
-  case femx::Element::Shape::Tetrahedron:
+  case femx::fem::Element::Shape::Tetrahedron:
     return "tetrahedron";
-  case femx::Element::Shape::Hexahedron:
+  case femx::fem::Element::Shape::Hexahedron:
     return "hexahedron";
   }
   return "unknown";
@@ -149,13 +149,13 @@ py::dict meshInfo(const Mesh& mesh)
 
 py::dict readMeshInfo(const std::string& path)
 {
-  return meshInfo(femx::GmshReader::read(path));
+  return meshInfo(femx::fem::GmshReader::read(path));
 }
 
 py::tuple boundaryCenter(const std::string& path,
                          const py::object&  boundary)
 {
-  const Mesh mesh = femx::GmshReader::read(path);
+  const Mesh mesh = femx::fem::GmshReader::read(path);
 
   if (py::isinstance<py::int_>(boundary)
       && !py::isinstance<py::bool_>(boundary))

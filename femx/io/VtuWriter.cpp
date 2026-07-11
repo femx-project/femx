@@ -12,6 +12,11 @@
 
 namespace femx
 {
+namespace io
+{
+
+using namespace fem;
+
 namespace
 {
 
@@ -392,4 +397,5 @@ void VtuWriter::writePointCloud(const std::string&        fname,
                         fields);
 }
 
+} // namespace io
 } // namespace femx

@@ -7,6 +7,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class Element;
 class FiniteElement;
@@ -81,4 +83,5 @@ private:
   Vector<Real> invJ_; ///< Inverse Jacobian workspace.
 };
 
+} // namespace fem
 } // namespace femx

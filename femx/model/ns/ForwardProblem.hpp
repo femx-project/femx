@@ -52,10 +52,10 @@ struct ForwardProblem
   Index steps = 0;
   Real  dt    = 0.0;
 
-  Mesh                                   mesh;
-  std::unique_ptr<FiniteElement>         elem;
-  MixedFESpace                           space;
-  GaussQuadrature                        quad;
+  fem::Mesh                              mesh;
+  std::unique_ptr<fem::FiniteElement>    elem;
+  fem::MixedFESpace                      space;
+  fem::GaussQuadrature                   quad;
   NavierKernel                           ns;
   assembly::TimeFEMResidual              fem;
   FixedBoundaryValues                    fixed;
@@ -74,8 +74,8 @@ void printUsage(std::ostream&              out,
                 const std::string&         option_suffix = {},
                 const Vector<std::string>& extra_lines   = {});
 
-std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
-                                        const std::string& executable);
+std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
+                                             const std::string& executable);
 
 bool isFinite(const Vector<Real>& x);
 

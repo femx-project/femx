@@ -6,6 +6,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 DofLayout::DofLayout(const FESpace& space)
   : fe_space_(&space)
@@ -67,4 +69,5 @@ const MixedFESpace& DofLayout::mixedSpace() const
   return *mixed_space_;
 }
 
+} // namespace fem
 } // namespace femx

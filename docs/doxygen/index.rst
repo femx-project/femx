@@ -23,4 +23,4 @@ For a one-command local preview:
 
 .. code-block:: bash
 
-   ./docs/preview-doxygen.sh
+   ./preview-docs.sh

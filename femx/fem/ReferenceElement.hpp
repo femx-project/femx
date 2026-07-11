@@ -2,6 +2,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 enum class ReferenceElement
 {
@@ -11,4 +13,5 @@ enum class ReferenceElement
   Tetrahedron
 };
 
+} // namespace fem
 } // namespace femx

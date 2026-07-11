@@ -10,6 +10,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 struct QuadraturePoint
 {
@@ -241,4 +243,5 @@ private:
   Vector<QuadraturePoint> pts_;
 };
 
+} // namespace fem
 } // namespace femx

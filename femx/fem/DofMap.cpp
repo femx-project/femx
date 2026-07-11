@@ -4,6 +4,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 DofMap::DofMap(Index num_elems, Index num_dofs_per_elem)
 {
@@ -52,4 +54,5 @@ Index DofMap::offset(Index ie, Index il) const noexcept
   return ie * num_dofs_per_elem_ + il;
 }
 
+} // namespace fem
 } // namespace femx

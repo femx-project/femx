@@ -74,9 +74,9 @@ int main(int argc, char* argv[])
 
     try
     {
-      if (hasPoissonOptHelp(argc, argv))
+      if (hasOptHelp(argc, argv))
       {
-        printPoissonOptUsage(std::cout, FEMX_POISSON_OPT_APP_NAME, true);
+        printUsage(std::cout, FEMX_POISSON_OPT_APP_NAME, false);
       }
       else
       {

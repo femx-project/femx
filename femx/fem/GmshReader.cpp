@@ -11,6 +11,8 @@
 
 namespace femx
 {
+namespace fem
+{
 namespace
 {
 
@@ -543,4 +545,5 @@ Mesh GmshReader::read(const std::string& path)
   return result;
 }
 
+} // namespace fem
 } // namespace femx

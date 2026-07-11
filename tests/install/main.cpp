@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 
+#include <femx/fem/Mesh.hpp>
+#include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseLinearSolver.hpp>
@@ -24,6 +26,11 @@ int main()
 {
   try
   {
+    femx::fem::Mesh mesh;
+    (void) mesh;
+    femx::io::VtuWriter writer;
+    (void) writer;
+
     femx::linalg::DenseAssemblyMatrix A;
     A.resize(2, 2);
     A.setZero();

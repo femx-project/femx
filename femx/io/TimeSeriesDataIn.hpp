@@ -9,6 +9,8 @@
 
 namespace femx
 {
+namespace io
+{
 
 class TimeSeriesDataIn
 {
@@ -27,7 +29,7 @@ public:
 
   static TimeSeriesDataIn read(const std::string& path);
 
-  const Mesh& mesh() const;
+  const fem::Mesh& mesh() const;
 
   Index numSteps() const;
 
@@ -38,8 +40,9 @@ public:
       const std::string& name) const;
 
 private:
-  Mesh         mesh_;
+  fem::Mesh    mesh_;
   Vector<Step> steps_;
 };
 
+} // namespace io
 } // namespace femx

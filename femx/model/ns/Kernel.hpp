@@ -31,20 +31,20 @@ void NavierResidual(Index       step,
 class NavierKernel final : public assembly::TimeElementKernel
 {
 public:
-  NavierKernel(const FESpace&         space,
-               const GaussQuadrature& quadrature,
-               Index                  num_residuals,
-               Index                  num_history_dofs,
-               Index                  num_next_states,
-               Index                  num_variable_params,
-               Vector<Real>           fixed_prm);
+  NavierKernel(const fem::FESpace&         space,
+               const fem::GaussQuadrature& quadrature,
+               Index                       num_residuals,
+               Index                       num_history_dofs,
+               Index                       num_next_states,
+               Index                       num_variable_params,
+               Vector<Real>                fixed_prm);
 
-  NavierKernel(const FESpace&         space,
-               const GaussQuadrature& quadrature,
-               Index                  num_residuals,
-               Index                  num_history_dofs,
-               Index                  num_next_states,
-               Vector<Real>           fixed_prm);
+  NavierKernel(const fem::FESpace&         space,
+               const fem::GaussQuadrature& quadrature,
+               Index                       num_residuals,
+               Index                       num_history_dofs,
+               Index                       num_next_states,
+               Vector<Real>                fixed_prm);
 
   void res(Index                  step,
            Index                  ie,
@@ -70,8 +70,8 @@ private:
   Vector<Real> makeResidualPrm(const Vector<Real>& variable_prm) const;
 
 private:
-  const FESpace&                                   space_;
-  const GaussQuadrature&                           quad_;
+  const fem::FESpace&                              space_;
+  const fem::GaussQuadrature&                      quad_;
   Index                                            num_residuals_{0};
   Index                                            num_hist_dofs_{0};
   Index                                            num_next_states_{0};
@@ -85,11 +85,11 @@ private:
 
 Vector<Real> physicalParams(Real rho, Real mu, Real dt);
 
-NavierKernel makeNavierKernel(const FESpace&         vel_space,
-                              const GaussQuadrature& quadrature,
-                              Index                  num_local_dofs,
-                              Real                   rho,
-                              Real                   mu,
-                              Real                   dt);
+NavierKernel makeNavierKernel(const fem::FESpace&         vel_space,
+                              const fem::GaussQuadrature& quadrature,
+                              Index                       num_local_dofs,
+                              Real                        rho,
+                              Real                        mu,
+                              Real                        dt);
 
 } // namespace femx::model::ns

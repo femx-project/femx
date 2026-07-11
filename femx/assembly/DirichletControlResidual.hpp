@@ -26,7 +26,7 @@ class DirichletControlResidual final : public state::Residual
 {
 public:
   DirichletControlResidual(const state::Residual& base,
-                           DirichletControl       ctr,
+                           fem::DirichletControl  ctr,
                            Vector<Index>          fdofs            = {},
                            Index                  ctr_param_offset = 0,
                            Index                  num_params       = -1,
@@ -34,7 +34,7 @@ public:
 
   state::Dimensions dims() const override;
 
-  const DirichletControl& control() const;
+  const fem::DirichletControl& control() const;
 
   void res(const Vector<Real>& state,
            const Vector<Real>& prm,
@@ -58,7 +58,7 @@ private:
 
 private:
   const state::Residual& base_;                ///< Wrapped residual before row replacement.
-  DirichletControl       ctr_;                 ///< Parameter-controlled Dirichlet dofs.
+  fem::DirichletControl  ctr_;                 ///< Parameter-controlled Dirichlet dofs.
   Vector<Index>          fdofs_;               ///< Fixed Dirichlet dofs.
   Vector<Real>           fvals_;               ///< Fixed Dirichlet values.
   Vector<Real>           base_prm_;            ///< Parameter vector passed to the base residual.

@@ -26,7 +26,7 @@ class TimeDirichletControlResidual final : public state::TimeResidual
 {
 public:
   TimeDirichletControlResidual(const state::TimeResidual&  base,
-                               DirichletControl            ctr,
+                               fem::DirichletControl       ctr,
                                Vector<Index>               fdofs             = {},
                                Index                       ctr_param_offset  = 0,
                                Index                       num_params        = -1,
@@ -62,7 +62,7 @@ public:
                           linalg::MatrixBuilder&    J,
                           Vector<Real>&             rhs) const override;
 
-  const DirichletControl& control() const;
+  const fem::DirichletControl& control() const;
 
 private:
   void initializeControlTimeStencils(Vector<LinearInterpolation> ctr_time_stencils);
@@ -89,7 +89,7 @@ private:
 
 private:
   const state::TimeResidual&  base_;
-  DirichletControl            ctr_;
+  fem::DirichletControl       ctr_;
   Vector<Index>               fdofs_;
   Vector<Real>                fvals_;
   Vector<Real>                base_prm_;

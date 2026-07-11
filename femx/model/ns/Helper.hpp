@@ -14,17 +14,17 @@
 namespace femx::model::ns
 {
 
-std::unique_ptr<FiniteElement> makeElement(const Mesh& mesh);
+std::unique_ptr<fem::FiniteElement> makeElement(const fem::Mesh& mesh);
 
-MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem);
+fem::MixedFESpace makeSpace(fem::Mesh& mesh, fem::FiniteElement& elem);
 
-Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& sel);
+Point3 selectorCenter(const fem::Mesh& mesh, const BoundarySelector& sel);
 
-Vector<Index> gaugeDofs(const MixedFESpace&     space,
-                        const BoundarySelector& sel);
+Vector<Index> gaugeDofs(const fem::MixedFESpace& space,
+                        const BoundarySelector&  sel);
 
-DirichletControl makeVelocityControl(
-    const MixedFESpace&     space,
-    const BoundarySelector& sel);
+fem::DirichletControl makeVelocityControl(
+    const fem::MixedFESpace& space,
+    const BoundarySelector&  sel);
 
 } // namespace femx::model::ns

@@ -5,7 +5,9 @@
 
 #include <femx/fem/VelocityProfile.hpp>
 
-namespace femx::fem
+namespace femx
+{
+namespace fem
 {
 
 namespace
@@ -231,4 +233,5 @@ Real sinePulseFactor(Real time, Real amplitude, Real per)
   return 1.0 + amplitude * sin(2.0 * constants::PI * time / per);
 }
 
-} // namespace femx::fem
+} // namespace fem
+} // namespace femx

@@ -14,6 +14,11 @@
 
 namespace femx
 {
+namespace io
+{
+
+using namespace fem;
+
 namespace
 {
 
@@ -457,4 +462,5 @@ const std::array<Vector<Real>, 3>& TimeSeriesDataIn::vectorField(
       "TimeSeriesDataIn missing vector field '" + name + "'");
 }
 
+} // namespace io
 } // namespace femx

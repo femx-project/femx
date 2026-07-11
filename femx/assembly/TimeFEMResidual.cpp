@@ -38,9 +38,9 @@ void allreduce(Vector<Real>& out)
 }
 #endif
 
-Vector<DofLayout> singleHistoryLayout(DofLayout lyt)
+Vector<fem::DofLayout> singleHistoryLayout(fem::DofLayout lyt)
 {
-  Vector<DofLayout> out;
+  Vector<fem::DofLayout> out;
   out.push_back(std::move(lyt));
   return out;
 }
@@ -48,8 +48,8 @@ Vector<DofLayout> singleHistoryLayout(DofLayout lyt)
 } // namespace
 
 TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
-                                 DofLayout                res_layout,
-                                 DofLayout                state_layout,
+                                 fem::DofLayout           res_layout,
+                                 fem::DofLayout           state_layout,
                                  const TimeElementKernel& ker)
   : TimeFEMResidual(num_steps,
                     std::move(res_layout),
@@ -60,9 +60,9 @@ TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
 }
 
 TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
-                                 DofLayout                res_layout,
-                                 DofLayout                history_state_layout,
-                                 DofLayout                next_state_layout,
+                                 fem::DofLayout           res_layout,
+                                 fem::DofLayout           history_state_layout,
+                                 fem::DofLayout           next_state_layout,
                                  const TimeElementKernel& ker)
   : TimeFEMResidual(num_steps,
                     std::move(res_layout),
@@ -74,9 +74,9 @@ TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
 
 TimeFEMResidual::TimeFEMResidual(
     Index                    num_steps,
-    DofLayout                res_layout,
-    Vector<DofLayout>        history_state_layouts,
-    DofLayout                next_state_layout,
+    fem::DofLayout           res_layout,
+    Vector<fem::DofLayout>   history_state_layouts,
+    fem::DofLayout           next_state_layout,
     const TimeElementKernel& ker)
   : num_steps_(num_steps),
     res_layout_(std::move(res_layout)),
@@ -89,10 +89,10 @@ TimeFEMResidual::TimeFEMResidual(
 }
 
 TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
-                                 DofLayout                res_layout,
-                                 DofLayout                history_state_layout,
-                                 DofLayout                next_state_layout,
-                                 DofLayout                param_layout,
+                                 fem::DofLayout           res_layout,
+                                 fem::DofLayout           history_state_layout,
+                                 fem::DofLayout           next_state_layout,
+                                 fem::DofLayout           param_layout,
                                  const TimeElementKernel& ker)
   : TimeFEMResidual(num_steps,
                     std::move(res_layout),
@@ -105,10 +105,10 @@ TimeFEMResidual::TimeFEMResidual(Index                    num_steps,
 
 TimeFEMResidual::TimeFEMResidual(
     Index                    num_steps,
-    DofLayout                res_layout,
-    Vector<DofLayout>        history_state_layouts,
-    DofLayout                next_state_layout,
-    DofLayout                param_layout,
+    fem::DofLayout           res_layout,
+    Vector<fem::DofLayout>   history_state_layouts,
+    fem::DofLayout           next_state_layout,
+    fem::DofLayout           param_layout,
     const TimeElementKernel& ker)
   : num_steps_(num_steps),
     res_layout_(std::move(res_layout)),
@@ -189,7 +189,7 @@ void TimeFEMResidual::applyJac(const TimeContext&  ctx,
   checkDirection(wrt, dir);
   resizeOrZero(out, dims().num_residuals);
 
-  const DofLayout* col_layout = layoutFor(wrt);
+  const fem::DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
     return;
@@ -243,7 +243,7 @@ void TimeFEMResidual::applyJacT(const TimeContext&  ctx,
     throw std::runtime_error("TimeFEMResidual adjoint size mismatch");
   }
 
-  const DofLayout* col_layout = layoutFor(wrt);
+  const fem::DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
     resizeOrZero(out, numParams());
@@ -294,7 +294,7 @@ bool TimeFEMResidual::assembleJac(const TimeContext& ctx,
                                   MatrixBuilder&     out) const
 {
   checkContext(ctx);
-  const DofLayout* col_layout = layoutFor(wrt);
+  const fem::DofLayout* col_layout = layoutFor(wrt);
   if (col_layout == nullptr)
   {
     out.resize(dims().num_residuals, numParams());
@@ -346,7 +346,7 @@ Index TimeFEMResidual::numHistoryStates() const
   return history_state_layouts_.size();
 }
 
-const DofLayout* TimeFEMResidual::layoutFor(VariableBlock wrt) const
+const fem::DofLayout* TimeFEMResidual::layoutFor(VariableBlock wrt) const
 {
   if (wrt.isHistoryState())
   {
@@ -382,7 +382,7 @@ void TimeFEMResidual::checkLayouts() const
     throw std::runtime_error(
         "TimeFEMResidual layouts have different elem counts");
   }
-  for (const DofLayout& lyt : history_state_layouts_)
+  for (const fem::DofLayout& lyt : history_state_layouts_)
   {
     if (res_layout_.numElems() != lyt.numElems())
     {
@@ -456,8 +456,8 @@ TimeHistoryView TimeFEMResidual::historyView(const Vector<Real>& local) const
 void TimeFEMResidual::checkDirection(VariableBlock       wrt,
                                      const Vector<Real>& dir) const
 {
-  const DofLayout* lyt = layoutFor(wrt);
-  const Index      exp = lyt == nullptr ? numParams() : lyt->numDofs();
+  const fem::DofLayout* lyt = layoutFor(wrt);
+  const Index           exp = lyt == nullptr ? numParams() : lyt->numDofs();
   if (dir.size() != exp)
   {
     throw std::runtime_error("TimeFEMResidual direction size mismatch");
@@ -475,10 +475,10 @@ Vector<Real> TimeFEMResidual::gatherParam(Index               ie,
   return local;
 }
 
-void TimeFEMResidual::gather(const DofLayout&    lyt,
-                             const Vector<Real>& global,
-                             Index               ie,
-                             Vector<Real>&       local)
+void TimeFEMResidual::gather(const fem::DofLayout& lyt,
+                             const Vector<Real>&   global,
+                             Index                 ie,
+                             Vector<Real>&         local)
 {
   gather(lyt,
          VectorView<const Real>(global.data(), global.size()),
@@ -486,7 +486,7 @@ void TimeFEMResidual::gather(const DofLayout&    lyt,
          local);
 }
 
-void TimeFEMResidual::gather(const DofLayout&       lyt,
+void TimeFEMResidual::gather(const fem::DofLayout&  lyt,
                              VectorView<const Real> global,
                              Index                  ie,
                              Vector<Real>&          local)
@@ -501,7 +501,7 @@ void TimeFEMResidual::gather(const DofLayout&       lyt,
          VectorView<Real>(local.data(), local.size()));
 }
 
-void TimeFEMResidual::gather(const DofLayout&       lyt,
+void TimeFEMResidual::gather(const fem::DofLayout&  lyt,
                              VectorView<const Real> global,
                              Index                  ie,
                              VectorView<Real>       local)

@@ -6,6 +6,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class MixedFieldView
 {
@@ -67,4 +69,5 @@ private:
   Index           num_dofs_{0};
 };
 
+} // namespace fem
 } // namespace femx

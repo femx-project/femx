@@ -13,6 +13,9 @@
 
 namespace femx
 {
+using namespace fem;
+using namespace io;
+
 namespace tests
 {
 namespace

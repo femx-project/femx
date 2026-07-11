@@ -56,12 +56,12 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
 } // namespace
 
 DirichletControlResidual::DirichletControlResidual(
-    const Residual&  base,
-    DirichletControl ctr,
-    Vector<Index>    fdofs,
-    Index            ctr_param_offset,
-    Index            num_params,
-    Vector<Real>     fvals)
+    const Residual&       base,
+    fem::DirichletControl ctr,
+    Vector<Index>         fdofs,
+    Index                 ctr_param_offset,
+    Index                 num_params,
+    Vector<Real>          fvals)
   : base_(base),
     ctr_(std::move(ctr)),
     fdofs_(std::move(fdofs)),
@@ -142,7 +142,7 @@ Dimensions DirichletControlResidual::dims() const
   return dims_;
 }
 
-const DirichletControl& DirichletControlResidual::control() const
+const fem::DirichletControl& DirichletControlResidual::control() const
 {
   return ctr_;
 }

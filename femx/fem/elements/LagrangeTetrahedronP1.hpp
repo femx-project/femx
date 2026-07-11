@@ -4,6 +4,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class LagrangeTetrahedronP1 : public FiniteElement
 {
@@ -77,4 +79,5 @@ public:
   }
 };
 
+} // namespace fem
 } // namespace femx

@@ -16,10 +16,12 @@
 
 namespace femx::model::ns
 {
+using namespace io;
+
 namespace
 {
 
-Real elemMinEdge(const Element& elem)
+Real elemMinEdge(const fem::Element& elem)
 {
   Real h = std::numeric_limits<Real>::infinity();
   for (Index i = 0; i < elem.numNodes(); ++i)
@@ -32,17 +34,17 @@ Real elemMinEdge(const Element& elem)
   return std::isfinite(h) ? h : 0.0;
 }
 
-void splitFields(const Vector<Real>& x,
-                 const MixedFESpace& space,
-                 Vector<Real>&       ux,
-                 Vector<Real>&       uy,
-                 Vector<Real>&       uz,
-                 Vector<Real>&       p)
+void splitFields(const Vector<Real>&      x,
+                 const fem::MixedFESpace& space,
+                 Vector<Real>&            ux,
+                 Vector<Real>&            uy,
+                 Vector<Real>&            uz,
+                 Vector<Real>&            p)
 {
-  const Mesh& mesh           = space.mesh();
-  const auto  u_dof          = space.field(0);
-  const auto  p_dof          = space.field(1);
-  const Index num_components = u_dof.numComponents();
+  const fem::Mesh& mesh           = space.mesh();
+  const auto       u_dof          = space.field(0);
+  const auto       p_dof          = space.field(1);
+  const Index      num_components = u_dof.numComponents();
 
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
@@ -131,7 +133,7 @@ std::string stepVtuFile(const std::string& directory,
 
 struct ForwardSolveMonitor::FieldOutput
 {
-  explicit FieldOutput(const Mesh& mesh)
+  explicit FieldOutput(const fem::Mesh& mesh)
     : velocity(3 * mesh.numNodes()),
       ux(mesh.numNodes()),
       uy(mesh.numNodes()),
@@ -152,9 +154,9 @@ struct ForwardSolveMonitor::FieldOutput
   Vector<Real>      p;
 };
 
-ForwardSolveMonitor::ForwardSolveMonitor(const MixedFESpace& space,
-                                         Real                dt,
-                                         Index               steps)
+ForwardSolveMonitor::ForwardSolveMonitor(const fem::MixedFESpace& space,
+                                         Real                     dt,
+                                         Index                    steps)
   : space_(&space),
     dt_(dt),
     num_steps_(steps)
@@ -490,9 +492,9 @@ void ForwardSolveMonitor::writeDetailedStepLog(Index step,
             log_out_);
 }
 
-Real velocityRelativeChange(const MixedFESpace& space,
-                            const Vector<Real>& previous,
-                            const Vector<Real>& current)
+Real velocityRelativeChange(const fem::MixedFESpace& space,
+                            const Vector<Real>&      previous,
+                            const Vector<Real>&      current)
 {
   if (previous.size() != current.size()
       || previous.size() != space.numDofs())
@@ -528,9 +530,9 @@ Real velocityRelativeChange(const MixedFESpace& space,
   return std::sqrt(diff2 / ref2);
 }
 
-Real maxVelocityCfl(const MixedFESpace& space,
-                    const Vector<Real>& state,
-                    Real                dt)
+Real maxVelocityCfl(const fem::MixedFESpace& space,
+                    const Vector<Real>&      state,
+                    Real                     dt)
 {
   if (state.size() != space.numDofs())
   {
@@ -543,8 +545,8 @@ Real maxVelocityCfl(const MixedFESpace& space,
 
   for (Index ie = 0; ie < space.mesh().numElems(); ++ie)
   {
-    const Element& elem = space.mesh().elem(ie);
-    const Real     h    = elemMinEdge(elem);
+    const fem::Element& elem = space.mesh().elem(ie);
+    const Real          h    = elemMinEdge(elem);
     if (h <= 0.0)
     {
       continue;

@@ -4,7 +4,6 @@ add_library(femx::fem ALIAS femx_fem)
 target_sources(
   femx_fem
   PRIVATE BoundaryCondition.cpp
-          Element.cpp
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp

@@ -7,7 +7,9 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/Mesh.hpp>
 
-namespace femx::fem
+namespace femx
+{
+namespace fem
 {
 
 using BoundaryFacetSelector =
@@ -51,4 +53,5 @@ Real peakSpeed(const std::string& qty,
 
 Real sinePulseFactor(Real time, Real amplitude, Real per);
 
-} // namespace femx::fem
+} // namespace fem
+} // namespace femx

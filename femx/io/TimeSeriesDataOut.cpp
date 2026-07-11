@@ -12,6 +12,11 @@
 
 namespace femx
 {
+namespace io
+{
+
+using namespace fem;
+
 namespace
 {
 
@@ -492,4 +497,5 @@ void TimeSeriesDataOut::checkReady() const
   }
 }
 
+} // namespace io
 } // namespace femx

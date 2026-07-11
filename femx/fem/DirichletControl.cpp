@@ -8,6 +8,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 namespace
 {
@@ -130,4 +132,5 @@ DirichletControl makeVelocityControl(
       });
 }
 
+} // namespace fem
 } // namespace femx

@@ -20,6 +20,8 @@
 
 using namespace femx;
 using namespace femx::assembly;
+using namespace femx::fem;
+using namespace femx::io;
 using namespace femx::linalg;
 
 #ifndef FEMX_POISSON_DEFAULT_OUTPUT_DIR

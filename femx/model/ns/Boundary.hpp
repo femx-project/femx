@@ -5,15 +5,18 @@
 
 namespace femx
 {
+namespace fem
+{
 class MixedFESpace;
+} // namespace fem
 } // namespace femx
 
 namespace femx::model::ns
 {
 
-DirichletCondition makeBoundaryCondition(
-    const femx::MixedFESpace& space,
-    const Vector<BCsParams>&  bcs,
-    Real                      time);
+fem::DirichletCondition makeBoundaryCondition(
+    const fem::MixedFESpace& space,
+    const Vector<BCsParams>& bcs,
+    Real                     time);
 
 } // namespace femx::model::ns

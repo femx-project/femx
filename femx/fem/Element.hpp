@@ -9,6 +9,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class Element
 {
@@ -99,4 +101,5 @@ private:
   std::string   pname_;
 };
 
+} // namespace fem
 } // namespace femx

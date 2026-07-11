@@ -46,12 +46,12 @@ template <LocalTimeVolumeResidualFunction Residual>
 class EnzymeTimeVolumeKernel final : public TimeElementKernel
 {
 public:
-  EnzymeTimeVolumeKernel(const FESpace&         space,
-                         const GaussQuadrature& quadrature,
-                         Index                  num_residuals,
-                         Index                  num_history_dofs,
-                         Index                  num_next_states,
-                         Index                  num_params)
+  EnzymeTimeVolumeKernel(const fem::FESpace&         space,
+                         const fem::GaussQuadrature& quadrature,
+                         Index                       num_residuals,
+                         Index                       num_history_dofs,
+                         Index                       num_next_states,
+                         Index                       num_params)
     : space_(space),
       quad_(quadrature),
       num_residuals_(num_residuals),
@@ -63,13 +63,13 @@ public:
     checkDimensions();
   }
 
-  EnzymeTimeVolumeKernel(const FESpace&         space,
-                         const GaussQuadrature& quadrature,
-                         Index                  num_residuals,
-                         Index                  num_history_dofs,
-                         Index                  num_next_states,
-                         Index                  num_variable_params,
-                         Vector<Real>           fixed_prm)
+  EnzymeTimeVolumeKernel(const fem::FESpace&         space,
+                         const fem::GaussQuadrature& quadrature,
+                         Index                       num_residuals,
+                         Index                       num_history_dofs,
+                         Index                       num_next_states,
+                         Index                       num_variable_params,
+                         Vector<Real>                fixed_prm)
     : space_(space),
       quad_(quadrature),
       num_residuals_(num_residuals),
@@ -82,12 +82,12 @@ public:
     checkDimensions();
   }
 
-  EnzymeTimeVolumeKernel(const FESpace&         space,
-                         const GaussQuadrature& quadrature,
-                         Index                  num_residuals,
-                         Index                  num_history_dofs,
-                         Index                  num_next_states,
-                         Vector<Real>           fixed_prm)
+  EnzymeTimeVolumeKernel(const fem::FESpace&         space,
+                         const fem::GaussQuadrature& quadrature,
+                         Index                       num_residuals,
+                         Index                       num_history_dofs,
+                         Index                       num_next_states,
+                         Vector<Real>                fixed_prm)
     : EnzymeTimeVolumeKernel(space,
                              quadrature,
                              num_residuals,
@@ -126,7 +126,7 @@ public:
     resizeOrZero(out, num_residuals_);
     const Vector<Real> residual_prm = makeResidualPrm(prm);
 
-    ElementValues vals(space_.finiteElement(), quad_);
+    fem::ElementValues vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
     Residual(step,
              ie,
@@ -192,7 +192,7 @@ private:
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      vals(space_.finiteElement(), quad_);
+    fem::ElementValues vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(num_residuals_);
@@ -273,7 +273,7 @@ private:
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      vals(space_.finiteElement(), quad_);
+    fem::ElementValues vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(num_residuals_);
@@ -353,7 +353,7 @@ private:
 
 #if defined(FEMX_HAS_ENZYME)
     const Vector<Real> residual_prm = makeResidualPrm(prm);
-    ElementValues      vals(space_.finiteElement(), quad_);
+    fem::ElementValues vals(space_.finiteElement(), quad_);
     vals.reinit(space_.mesh().elem(ie));
 
     Vector<Real> primal_out(num_residuals_);
@@ -457,16 +457,16 @@ private:
   }
 
 private:
-  const FESpace&         space_;
-  const GaussQuadrature& quad_;
-  Index                  num_residuals_{0};
-  Index                  num_hist_dofs_{0};
-  Index                  num_next_states_{0};
-  Index                  num_hist_states_{1};
-  Index                  num_hist_state_dofs_{0};
-  Index                  num_variable_params_{0};
-  Index                  num_params_{0};
-  Vector<Real>           fixed_prm_;
+  const fem::FESpace&         space_;
+  const fem::GaussQuadrature& quad_;
+  Index                       num_residuals_{0};
+  Index                       num_hist_dofs_{0};
+  Index                       num_next_states_{0};
+  Index                       num_hist_states_{1};
+  Index                       num_hist_state_dofs_{0};
+  Index                       num_variable_params_{0};
+  Index                       num_params_{0};
+  Vector<Real>                fixed_prm_;
 };
 
 } // namespace assembly

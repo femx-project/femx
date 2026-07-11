@@ -10,6 +10,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 /**
  * @brief Interface for interpolation on a reference element.
@@ -61,4 +63,5 @@ public:
                         MatrixView<Real>       dNdxi) const = 0;
 };
 
+} // namespace fem
 } // namespace femx

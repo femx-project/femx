@@ -30,16 +30,16 @@ namespace
 
 constexpr Index kQuadOrder = 2;
 
-GaussQuadrature makeVelocityQuadrature(const MixedFESpace& space)
+fem::GaussQuadrature makeVelocityQuadrature(const fem::MixedFESpace& space)
 {
-  return GaussQuadrature::make(
+  return fem::GaussQuadrature::make(
       space.field(0).space().finiteElement().referenceElement(), kQuadOrder);
 }
 
-NavierKernel makeKernel(const MixedFESpace&    space,
-                        const GaussQuadrature& quad,
-                        const FluidParams&     fluid,
-                        Real                   dt)
+NavierKernel makeKernel(const fem::MixedFESpace&    space,
+                        const fem::GaussQuadrature& quad,
+                        const FluidParams&          fluid,
+                        Real                        dt)
 {
   return makeNavierKernel(space.field(0).space(),
                           quad,
@@ -61,14 +61,14 @@ void requireForwardParams(const Params& prm)
   }
 }
 
-Mesh readProblemMesh(const Params& prm)
+fem::Mesh readProblemMesh(const Params& prm)
 {
   requireForwardParams(prm);
-  return GmshReader::read(prm.mesh_file);
+  return fem::GmshReader::read(prm.mesh_file);
 }
 
-void assignBoundaryValues(Vector<Real>&             state,
-                          const DirichletCondition& bc)
+void assignBoundaryValues(Vector<Real>&                  state,
+                          const fem::DirichletCondition& bc)
 {
   if (bc.dofs().size() != bc.vals().size())
   {
@@ -86,7 +86,7 @@ void assignBoundaryValues(Vector<Real>&             state,
   }
 }
 
-Vector<Real> makeInitialState(const MixedFESpace&      space,
+Vector<Real> makeInitialState(const fem::MixedFESpace& space,
                               const Vector<BCsParams>& bcs)
 {
   Vector<Real> state(space.numDofs());
@@ -125,7 +125,7 @@ FixedBoundaryValues toFixedBoundaryValues(
 }
 
 FixedBoundaryValues makeFixedBoundaryValues(
-    const MixedFESpace&      space,
+    const fem::MixedFESpace& space,
     const Vector<BCsParams>& bcs,
     Index                    steps,
     Real                     dt)
@@ -176,12 +176,12 @@ ForwardProblem::ForwardProblem(const Params& prm)
     quad(makeVelocityQuadrature(space)),
     ns(makeKernel(space, quad, prm.fluid, dt)),
     fem(steps,
-        DofLayout(space),
-        Vector<DofLayout>{DofLayout(space), DofLayout(space)},
-        DofLayout(space),
+        fem::DofLayout(space),
+        Vector<fem::DofLayout>{fem::DofLayout(space), fem::DofLayout(space)},
+        fem::DofLayout(space),
         ns),
     fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
-    problem(fem, DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
+    problem(fem, fem::DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
     x0(makeInitialState(space, prm.bcs)),
     pattern(makeCsrPattern(space)),
     prm0(0)
@@ -233,8 +233,8 @@ void printUsage(std::ostream&              out,
   }
 }
 
-std::unique_ptr<FiniteElement> makeElem(const Mesh&        mesh,
-                                        const std::string& executable)
+std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
+                                             const std::string& executable)
 {
   (void) executable;
   try

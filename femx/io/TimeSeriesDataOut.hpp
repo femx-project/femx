@@ -9,7 +9,13 @@
 namespace femx
 {
 
+namespace fem
+{
 class Mesh;
+} // namespace fem
+
+namespace io
+{
 
 class TimeSeriesDataOut
 {
@@ -33,7 +39,7 @@ public:
     Vector<VectorField> vecs;
   };
 
-  void attachMesh(const Mesh& mesh);
+  void attachMesh(const fem::Mesh& mesh);
 
   void beginStep(Real time);
   void addNodalScalarField(const std::string&  name,
@@ -54,8 +60,9 @@ private:
   void  checkReady() const;
 
 private:
-  const Mesh*  mesh_{nullptr};
-  Vector<Step> steps_;
+  const fem::Mesh* mesh_{nullptr};
+  Vector<Step>     steps_;
 };
 
+} // namespace io
 } // namespace femx

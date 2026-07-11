@@ -17,6 +17,8 @@
 
 namespace femx
 {
+using namespace fem;
+
 namespace tests
 {
 namespace

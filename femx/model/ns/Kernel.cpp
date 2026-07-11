@@ -149,13 +149,13 @@ void NavierResidual(Index       step,
   finishLocalResidual(num_dofs, nxt, Ke, Fe, out);
 }
 
-NavierKernel::NavierKernel(const FESpace&         space,
-                           const GaussQuadrature& quadrature,
-                           Index                  num_residuals,
-                           Index                  num_history_dofs,
-                           Index                  num_next_states,
-                           Index                  num_variable_params,
-                           Vector<Real>           fixed_prm)
+NavierKernel::NavierKernel(const fem::FESpace&         space,
+                           const fem::GaussQuadrature& quadrature,
+                           Index                       num_residuals,
+                           Index                       num_history_dofs,
+                           Index                       num_next_states,
+                           Index                       num_variable_params,
+                           Vector<Real>                fixed_prm)
   : space_(space),
     quad_(quadrature),
     num_residuals_(num_residuals),
@@ -175,12 +175,12 @@ NavierKernel::NavierKernel(const FESpace&         space,
   checkDimensions();
 }
 
-NavierKernel::NavierKernel(const FESpace&         space,
-                           const GaussQuadrature& quadrature,
-                           Index                  num_residuals,
-                           Index                  num_history_dofs,
-                           Index                  num_next_states,
-                           Vector<Real>           fixed_prm)
+NavierKernel::NavierKernel(const fem::FESpace&         space,
+                           const fem::GaussQuadrature& quadrature,
+                           Index                       num_residuals,
+                           Index                       num_history_dofs,
+                           Index                       num_next_states,
+                           Vector<Real>                fixed_prm)
   : NavierKernel(space,
                  quadrature,
                  num_residuals,
@@ -201,7 +201,7 @@ void NavierKernel::res(Index                  step,
   checkInputSizes(hist, nxt, prm);
   resizeOrZero(out, num_residuals_);
 
-  ElementValues vals(space_.finiteElement(), quad_);
+  fem::ElementValues vals(space_.finiteElement(), quad_);
   vals.reinit(space_.mesh().elem(ie));
 
   const Index num_dofs = num_next_states_;
@@ -257,7 +257,7 @@ void NavierKernel::jacobian(Index                  step,
 
   out.resize(num_residuals_, num_next_states_);
 
-  ElementValues vals(space_.finiteElement(), quad_);
+  fem::ElementValues vals(space_.finiteElement(), quad_);
   vals.reinit(space_.mesh().elem(ie));
 
   const Index num_dofs = num_next_states_;
@@ -369,12 +369,12 @@ Vector<Real> physicalParams(Real rho, Real mu, Real dt)
   return prm;
 }
 
-NavierKernel makeNavierKernel(const FESpace&         vel_space,
-                              const GaussQuadrature& quad,
-                              Index                  num_local_dofs,
-                              Real                   rho,
-                              Real                   mu,
-                              Real                   dt)
+NavierKernel makeNavierKernel(const fem::FESpace&         vel_space,
+                              const fem::GaussQuadrature& quad,
+                              Index                       num_local_dofs,
+                              Real                        rho,
+                              Real                        mu,
+                              Real                        dt)
 {
   if (!supportedLocalSize(quad.size(),
                           vel_space.numShapesPerElem(),

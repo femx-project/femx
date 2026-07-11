@@ -5,6 +5,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 /**
  * @brief Element-local to global degree-of-freedom map.
@@ -42,4 +44,5 @@ private:
   Vector<Index> elem_dofs_;
 };
 
+} // namespace fem
 } // namespace femx

@@ -8,10 +8,16 @@
 namespace femx
 {
 
+namespace fem
+{
 class Mesh;
+} // namespace fem
 
 template <typename T>
 class Vector;
+
+namespace io
+{
 
 /**
  * @brief Write unstructured meshes and point data in VTK XML VTU format.
@@ -44,7 +50,7 @@ public:
    * component.
    */
   void writePointData(const std::string&        fname,
-                      const Mesh&               mesh,
+                      const fem::Mesh&          mesh,
                       const Vector<PointField>& fields) const;
 
   /**
@@ -60,4 +66,5 @@ public:
                        const Vector<PointField>& fields) const;
 };
 
+} // namespace io
 } // namespace femx

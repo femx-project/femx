@@ -9,6 +9,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 ElementValues::ElementValues(const FiniteElement&   fe,
                              const GaussQuadrature& quad)
@@ -249,4 +251,5 @@ Real ElementValues::invJacobian(const Vector<Real>& J,
   throw std::runtime_error("Unsupported Jacobian dimension.");
 }
 
+} // namespace fem
 } // namespace femx

@@ -5,6 +5,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 MixedFieldView::MixedFieldView(const FESpace* space,
                                Index          local_offset,
@@ -141,4 +143,5 @@ Vector<Index> MixedFESpace::elemDofs(Index ie) const
   return dofs;
 }
 
+} // namespace fem
 } // namespace femx

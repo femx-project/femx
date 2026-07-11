@@ -171,12 +171,12 @@ Real sampleVelocityValue(const VelocityParams& velocity,
 
 struct VelocityEvalContext
 {
-  AxialVelocityProfile prof;
-  Real                 peak_speed = 0.0;
+  fem::AxialVelocityProfile prof;
+  Real                      peak_speed = 0.0;
 };
 
 VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
-                                            const Mesh&           mesh,
+                                            const fem::Mesh&      mesh,
                                             Index                 ptag,
                                             Real                  time)
 {
@@ -202,23 +202,23 @@ VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
 }
 
 Real velocityComponent(const VelocityEvalContext& ctx,
-                       const Mesh::Node&          point,
+                       const fem::Mesh::Node&     point,
                        Index                      comp)
 {
   return velocityComponent(
       ctx.prof, point, ctx.peak_speed, comp);
 }
 
-DirichletCondition makeBoundaryCondition(
-    const MixedFESpace&      space,
+fem::DirichletCondition makeBoundaryCondition(
+    const fem::MixedFESpace& space,
     const Vector<BCsParams>& bcs,
     Real                     time)
 {
   const auto u_dof = space.field(0);
   const auto p_dof = space.field(1);
 
-  DirichletCondition bc;
-  bool               has_pre_cond = false;
+  fem::DirichletCondition bc;
+  bool                    has_pre_cond = false;
 
   for (const auto& cond : bcs)
   {
@@ -236,7 +236,7 @@ DirichletCondition makeBoundaryCondition(
 
       for (Index d = 0; d < u_dof.numComponents(); ++d)
       {
-        bc.addBoundary(u_dof, cond.tag, [ctx, d](const Mesh::Node& point, Real)
+        bc.addBoundary(u_dof, cond.tag, [ctx, d](const fem::Mesh::Node& point, Real)
                        { return velocityComponent(ctx, point, d); },
                        time,
                        d);

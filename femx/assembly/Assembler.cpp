@@ -16,6 +16,10 @@ namespace femx
 namespace assembly
 {
 
+using fem::DofLayout;
+using fem::FESpace;
+using fem::MixedFESpace;
+
 Assembler::Assembler(DofLayout space, AssemblyMode mode)
   : row_layout_(space),
     col_layout_(space),

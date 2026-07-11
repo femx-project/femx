@@ -7,12 +7,12 @@ The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and o
 ## Requirements
 
 - CMake >= 3.22
-- C++17 compiler
+- C++ standard >= 17
 
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve 0.99.2, for CPU/GPU linear solver backends.
+- Re::Solve 0.99.2, for CPU/CUDA linear solver backends.
 - PETSc and MPI, for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
@@ -107,10 +107,10 @@ enabled:
 
 ```shell
 ./apps/ns-forward/ns-forward-resolve \
-  --config ../../apps/ns-forward/configs/resolve/cavity/Config.json
+  --config ../apps/ns-forward/configs/resolve/cavity/Config.json
 
 ./apps/ns-forward/ns-forward-petsc \
-  --config ../../apps/ns-forward/configs/petsc/cavity/Config.json
+  --config ../apps/ns-forward/configs/petsc/cavity/Config.json
 ```
 
 See [apps/ns-forward](apps/ns-forward) for the formulation and available demo

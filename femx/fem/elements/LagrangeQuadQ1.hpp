@@ -4,6 +4,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 class LagrangeQuadQ1 : public FiniteElement
 {
@@ -75,4 +77,5 @@ public:
   }
 };
 
+} // namespace fem
 } // namespace femx

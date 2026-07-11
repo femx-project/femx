@@ -14,42 +14,42 @@ using namespace femx::fem;
 namespace femx::model::ns
 {
 
-std::unique_ptr<FiniteElement> makeElement(const Mesh& mesh)
+std::unique_ptr<fem::FiniteElement> makeElement(const fem::Mesh& mesh)
 {
   if (mesh.numElems() == 0)
   {
     throw std::runtime_error("Mesh has no elems");
   }
 
-  const Element::Shape shape = mesh.elems().front().shape();
-  if (shape == Element::Shape::Quadrilateral)
+  const fem::Element::Shape shape = mesh.elems().front().shape();
+  if (shape == fem::Element::Shape::Quadrilateral)
   {
-    return std::make_unique<LagrangeQuadQ1>();
+    return std::make_unique<fem::LagrangeQuadQ1>();
   }
-  if (shape == Element::Shape::Triangle)
+  if (shape == fem::Element::Shape::Triangle)
   {
-    return std::make_unique<LagrangeTriangleP1>();
+    return std::make_unique<fem::LagrangeTriangleP1>();
   }
-  if (shape == Element::Shape::Tetrahedron)
+  if (shape == fem::Element::Shape::Tetrahedron)
   {
-    return std::make_unique<LagrangeTetrahedronP1>();
+    return std::make_unique<fem::LagrangeTetrahedronP1>();
   }
   throw std::runtime_error("Unsupported mesh elem type for Navier app");
 }
 
-MixedFESpace makeSpace(Mesh& mesh, FiniteElement& elem)
+fem::MixedFESpace makeSpace(fem::Mesh& mesh, fem::FiniteElement& elem)
 {
-  FESpace u_space(&mesh, &elem, mesh.dim());
-  FESpace p_space(&mesh, &elem);
+  fem::FESpace u_space(&mesh, &elem, mesh.dim());
+  fem::FESpace p_space(&mesh, &elem);
 
-  MixedFESpace space;
+  fem::MixedFESpace space;
   space.addField(u_space);
   space.addField(p_space);
   space.setup();
   return space;
 }
 
-Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& sel)
+Point3 selectorCenter(const fem::Mesh& mesh, const BoundarySelector& sel)
 {
   if (!sel.name.empty())
   {
@@ -58,8 +58,8 @@ Point3 selectorCenter(const Mesh& mesh, const BoundarySelector& sel)
   return boundaryCenter(mesh, sel.physical);
 }
 
-Vector<Index> gaugeDofs(const MixedFESpace&     space,
-                        const BoundarySelector& sel)
+Vector<Index> gaugeDofs(const fem::MixedFESpace& space,
+                        const BoundarySelector&  sel)
 {
   Index      in_out   = 0;
   Real       dist_out = 0.0;
@@ -79,9 +79,9 @@ Vector<Index> gaugeDofs(const MixedFESpace&     space,
   return dofs;
 }
 
-DirichletControl makeVelocityControl(
-    const MixedFESpace&     space,
-    const BoundarySelector& sel)
+fem::DirichletControl makeVelocityControl(
+    const fem::MixedFESpace& space,
+    const BoundarySelector&  sel)
 {
   if (!sel.name.empty())
   {

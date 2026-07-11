@@ -4,6 +4,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 Mesh Mesh::makeStructuredQuad(Index num_x_cells,
                               Index num_y_cells,
@@ -48,4 +50,5 @@ Mesh Mesh::makeStructuredQuad(Index num_x_cells,
   return mesh;
 }
 
+} // namespace fem
 } // namespace femx

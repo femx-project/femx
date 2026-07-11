@@ -6,6 +6,8 @@
 
 namespace femx
 {
+namespace fem
+{
 
 /**
  * @brief Reader for Gmsh mesh files.
@@ -17,4 +19,5 @@ public:
   static Mesh read(const std::string& path);
 };
 
+} // namespace fem
 } // namespace femx

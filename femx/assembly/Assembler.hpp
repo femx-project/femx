@@ -7,11 +7,15 @@ namespace femx
 {
 class CsrPattern;
 class DenseMatrix;
-class FESpace;
-class MixedFESpace;
 
 template <typename T>
 class Vector;
+
+namespace fem
+{
+class FESpace;
+class MixedFESpace;
+} // namespace fem
 
 namespace linalg
 {
@@ -33,9 +37,9 @@ enum class AssemblyMode
  * The pattern contains the nonzero structure implied by element coupling, but
  * does not assign matrix values.
  */
-CsrPattern makeCsrPattern(DofLayout layout);
-CsrPattern makeCsrPattern(const FESpace& space);
-CsrPattern makeCsrPattern(const MixedFESpace& space);
+CsrPattern makeCsrPattern(fem::DofLayout layout);
+CsrPattern makeCsrPattern(const fem::FESpace& space);
+CsrPattern makeCsrPattern(const fem::MixedFESpace& space);
 
 /**
  * @brief Scatter-add local finite-element vectors and matrices into globals.
@@ -47,28 +51,28 @@ CsrPattern makeCsrPattern(const MixedFESpace& space);
 class Assembler
 {
 public:
-  explicit Assembler(DofLayout    space,
-                     AssemblyMode mode = AssemblyMode::Serial);
-  explicit Assembler(const FESpace& space,
+  explicit Assembler(fem::DofLayout space,
                      AssemblyMode   mode = AssemblyMode::Serial);
-  explicit Assembler(const MixedFESpace& space,
+  explicit Assembler(const fem::FESpace& space,
                      AssemblyMode        mode = AssemblyMode::Serial);
+  explicit Assembler(const fem::MixedFESpace& space,
+                     AssemblyMode             mode = AssemblyMode::Serial);
 
-  Assembler(DofLayout    row_layout,
-            DofLayout    col_layout,
-            AssemblyMode mode = AssemblyMode::Serial);
-  Assembler(const FESpace& row_space,
-            const FESpace& col_space,
+  Assembler(fem::DofLayout row_layout,
+            fem::DofLayout col_layout,
             AssemblyMode   mode = AssemblyMode::Serial);
-  Assembler(const FESpace&      row_space,
-            const MixedFESpace& col_space,
+  Assembler(const fem::FESpace& row_space,
+            const fem::FESpace& col_space,
             AssemblyMode        mode = AssemblyMode::Serial);
-  Assembler(const MixedFESpace& row_space,
-            const FESpace&      col_space,
-            AssemblyMode        mode = AssemblyMode::Serial);
-  Assembler(const MixedFESpace& row_space,
-            const MixedFESpace& col_space,
-            AssemblyMode        mode = AssemblyMode::Serial);
+  Assembler(const fem::FESpace&      row_space,
+            const fem::MixedFESpace& col_space,
+            AssemblyMode             mode = AssemblyMode::Serial);
+  Assembler(const fem::MixedFESpace& row_space,
+            const fem::FESpace&      col_space,
+            AssemblyMode             mode = AssemblyMode::Serial);
+  Assembler(const fem::MixedFESpace& row_space,
+            const fem::MixedFESpace& col_space,
+            AssemblyMode             mode = AssemblyMode::Serial);
 
   // Accessors
   Index numElems() const;
@@ -95,10 +99,10 @@ private:
   static void checkDof(Index id, Index size, const char* name);
 
 private:
-  DofLayout    row_layout_;                 ///< Element-to-global ids for assembled rows.
-  DofLayout    col_layout_;                 ///< Element-to-global ids for assembled columns.
-  bool         same_layout_{true};          ///< True when row and column layouts are identical.
-  AssemblyMode mode_{AssemblyMode::Serial}; ///< Scatter mode used during assembly.
+  fem::DofLayout row_layout_;                 ///< Element-to-global ids for assembled rows.
+  fem::DofLayout col_layout_;                 ///< Element-to-global ids for assembled columns.
+  bool           same_layout_{true};          ///< True when row and column layouts are identical.
+  AssemblyMode   mode_{AssemblyMode::Serial}; ///< Scatter mode used during assembly.
 };
 
 } // namespace assembly

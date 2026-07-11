@@ -14,9 +14,9 @@ namespace femx
 namespace assembly
 {
 
-FEMResidual::FEMResidual(DofLayout            res_layout,
-                         DofLayout            state_layout,
-                         DofLayout            param_layout,
+FEMResidual::FEMResidual(fem::DofLayout       res_layout,
+                         fem::DofLayout       state_layout,
+                         fem::DofLayout       param_layout,
                          const ElementKernel& ker)
   : res_layout_(res_layout),
     state_layout_(state_layout),
@@ -26,14 +26,14 @@ FEMResidual::FEMResidual(DofLayout            res_layout,
   checkElemCounts();
 }
 
-FEMResidual::FEMResidual(DofLayout            state_layout,
-                         DofLayout            param_layout,
+FEMResidual::FEMResidual(fem::DofLayout       state_layout,
+                         fem::DofLayout       param_layout,
                          const ElementKernel& ker)
   : FEMResidual(state_layout, state_layout, param_layout, ker)
 {
 }
 
-FEMResidual::FEMResidual(DofLayout            state_layout,
+FEMResidual::FEMResidual(fem::DofLayout       state_layout,
                          const ElementKernel& ker)
   : res_layout_(state_layout),
     state_layout_(state_layout),
@@ -180,10 +180,10 @@ void FEMResidual::checkGlobalSizes(const Vector<Real>& state,
   }
 }
 
-void FEMResidual::gather(const DofLayout&    lyt,
-                         const Vector<Real>& global,
-                         Index               ie,
-                         Vector<Real>&       local)
+void FEMResidual::gather(const fem::DofLayout& lyt,
+                         const Vector<Real>&   global,
+                         Index                 ie,
+                         Vector<Real>&         local)
 {
   Vector<Index> dofs;
   lyt.elemDofs(ie, dofs);

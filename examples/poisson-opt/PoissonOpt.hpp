@@ -117,7 +117,7 @@ public:
 private:
   void prepareObjective(state::StateSolver& state_solver);
 
-  static Real exactValue(const Mesh::Node& p);
+  static Real exactValue(const fem::Mesh::Node& p);
 
   void initializeBoundaryDofs();
   void initializeTrueControl();
@@ -127,15 +127,15 @@ private:
   Index        effectiveObservationStride() const;
   Vector<Real> observationWeights() const;
 
-  bool isBoundaryNode(const Mesh::Node& p) const;
-  bool isControlNode(const Mesh::Node& p) const;
+  bool isBoundaryNode(const fem::Mesh::Node& p) const;
+  bool isControlNode(const fem::Mesh::Node& p) const;
 
 private:
   Options                     opts_;
-  Mesh                        mesh_;
-  LagrangeQuadQ1              fe_;
-  FESpace                     space_;
-  GaussQuadrature             quad_;
+  fem::Mesh                   mesh_;
+  fem::LagrangeQuadQ1         fe_;
+  fem::FESpace                space_;
+  fem::GaussQuadrature        quad_;
   std::unique_ptr<CsrPattern> state_pattern_;
 
   Vector<Index>  ctr_dofs_;
@@ -169,11 +169,11 @@ Options parseOptions(int    argc,
                      char** argv,
                      bool   ignore_unknown);
 
-bool hasPoissonOptHelp(int argc, char** argv);
+bool hasOptHelp(int argc, char** argv);
 
-void printPoissonOptUsage(std::ostream& out,
-                          const char*   app_name,
-                          bool          petsc_options);
+void printUsage(std::ostream& out,
+                const char*   app_name,
+                bool          petsc_options);
 
 const char* outputDir();
 

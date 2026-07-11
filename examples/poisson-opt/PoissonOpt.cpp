@@ -41,6 +41,8 @@
 
 using namespace femx;
 using namespace femx::assembly;
+using namespace femx::fem;
+using namespace femx::io;
 using namespace femx::linalg;
 using namespace femx::state;
 using namespace femx::inverse;
@@ -867,7 +869,7 @@ Options parseOptions(int    argc,
   return opts;
 }
 
-bool hasPoissonOptHelp(int argc, char** argv)
+bool hasOptHelp(int argc, char** argv)
 {
   for (int i = 1; i < argc; ++i)
   {
@@ -880,9 +882,9 @@ bool hasPoissonOptHelp(int argc, char** argv)
   return false;
 }
 
-void printPoissonOptUsage(std::ostream& out,
-                          const char*   app_name,
-                          bool          petsc_options)
+void printUsage(std::ostream& out,
+                const char*   app_name,
+                bool          petsc_options)
 {
   out << "Usage: " << app_name
       << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]"

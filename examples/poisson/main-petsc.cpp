@@ -74,13 +74,15 @@ int run(const Options& opts)
   Vector<Real> x;
   solver.solve(A_petsc, rhs, x);
 
+  const Real residual_norm = helper.residualNorm(A_petsc, rhs, x);
+
   if (isRoot())
   {
     printReport(std::cout,
                 helper.backendName(),
                 problem,
                 problem.errorReport(x),
-                helper.residualNorm(A_petsc, rhs, x));
+                residual_norm);
 
     if (opts.write_output)
     {

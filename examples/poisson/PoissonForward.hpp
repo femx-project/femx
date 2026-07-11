@@ -26,8 +26,8 @@ namespace femx::examples::poisson
 
 struct Options
 {
-  Index         num_x_cells  = 32;                 ///< Number of cells in x.
-  Index         num_y_cells  = 32;                 ///< Number of cells in y.
+  Index         num_x_cells  = 8;                  ///< Number of cells in x.
+  Index         num_y_cells  = 8;                  ///< Number of cells in y.
   WorkspaceType backend      = WorkspaceType::Cpu; ///< Device backend.
   bool          write_output = false;              ///< Write VTU output.
 };
@@ -72,16 +72,16 @@ public:
                      const std::string&  output_base) const;
 
 private:
-  static Real exactValue(const Mesh::Node& p);
-  static Real boundaryValue(const Mesh::Node& p, Real time);
-  static bool onBoundary(const Mesh::Node& p, Real time);
+  static Real exactValue(const fem::Mesh::Node& p);
+  static Real boundaryValue(const fem::Mesh::Node& p, Real time);
+  static bool onBoundary(const fem::Mesh::Node& p, Real time);
 
 private:
   Options                     opts_;
-  Mesh                        mesh_;
-  LagrangeQuadQ1              fe_;
-  FESpace                     space_;
-  GaussQuadrature             quad_;
+  fem::Mesh                   mesh_;
+  fem::LagrangeQuadQ1         fe_;
+  fem::FESpace                space_;
+  fem::GaussQuadrature        quad_;
   std::unique_ptr<CsrPattern> pattern_;
 };
 

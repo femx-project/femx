@@ -31,16 +31,16 @@ class ElementKernel;
 class FEMResidual final : public state::Residual
 {
 public:
-  FEMResidual(DofLayout            res_layout,
-              DofLayout            state_layout,
-              DofLayout            param_layout,
+  FEMResidual(fem::DofLayout       res_layout,
+              fem::DofLayout       state_layout,
+              fem::DofLayout       param_layout,
               const ElementKernel& ker);
 
-  FEMResidual(DofLayout            state_layout,
-              DofLayout            param_layout,
+  FEMResidual(fem::DofLayout       state_layout,
+              fem::DofLayout       param_layout,
               const ElementKernel& ker);
 
-  FEMResidual(DofLayout            state_layout,
+  FEMResidual(fem::DofLayout       state_layout,
               const ElementKernel& ker);
 
   state::Dimensions dims() const override;
@@ -69,16 +69,16 @@ private:
   void checkGlobalSizes(const Vector<Real>& state,
                         const Vector<Real>& prm) const;
 
-  static void gather(const DofLayout&    lyt,
-                     const Vector<Real>& global,
-                     Index               ie,
-                     Vector<Real>&       local);
+  static void gather(const fem::DofLayout& lyt,
+                     const Vector<Real>&   global,
+                     Index                 ie,
+                     Vector<Real>&         local);
 
 private:
-  DofLayout                res_layout_;
-  DofLayout                state_layout_;
-  std::optional<DofLayout> param_layout_;
-  const ElementKernel&     kernel_;
+  fem::DofLayout                res_layout_;
+  fem::DofLayout                state_layout_;
+  std::optional<fem::DofLayout> param_layout_;
+  const ElementKernel&          kernel_;
 };
 
 } // namespace assembly

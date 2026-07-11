@@ -8,9 +8,11 @@
 
 namespace femx
 {
-
 template <typename T>
 class Vector;
+
+namespace io
+{
 
 class VtiWriter
 {
@@ -35,4 +37,5 @@ public:
                      const Vector<ElemField>& fields) const;
 };
 
+} // namespace io
 } // namespace femx

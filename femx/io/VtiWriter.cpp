@@ -13,6 +13,8 @@
 
 namespace femx
 {
+namespace io
+{
 namespace
 {
 
@@ -249,4 +251,5 @@ void VtiWriter::writeElemData(const std::string&       fname,
   out << "</VTKFile>\n";
 }
 
+} // namespace io
 } // namespace femx

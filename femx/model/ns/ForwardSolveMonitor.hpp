@@ -32,9 +32,9 @@ struct ForwardConvergenceParams
 class ForwardSolveMonitor final : public state::TimeStateMonitor
 {
 public:
-  ForwardSolveMonitor(const MixedFESpace& space,
-                      Real                dt,
-                      Index               steps);
+  ForwardSolveMonitor(const fem::MixedFESpace& space,
+                      Real                     dt,
+                      Index                    steps);
   ~ForwardSolveMonitor() override;
 
   void setFieldOutput(std::string directory,
@@ -92,7 +92,7 @@ private:
                             Real  solve_sec);
 
 private:
-  const MixedFESpace*            space_{nullptr};
+  const fem::MixedFESpace*       space_{nullptr};
   Real                           dt_{0.0};
   Index                          num_steps_{0};
   ForwardSolveResult             result_;
@@ -111,13 +111,13 @@ private:
   bool                           show_vel_change_{false};
 };
 
-Real velocityRelativeChange(const MixedFESpace& space,
-                            const Vector<Real>& previous,
-                            const Vector<Real>& current);
+Real velocityRelativeChange(const fem::MixedFESpace& space,
+                            const Vector<Real>&      previous,
+                            const Vector<Real>&      current);
 
-Real maxVelocityCfl(const MixedFESpace& space,
-                    const Vector<Real>& state,
-                    Real                dt);
+Real maxVelocityCfl(const fem::MixedFESpace& space,
+                    const Vector<Real>&      state,
+                    Real                     dt);
 
 bool shouldWriteForwardOutput(Index step,
                               Index total_steps,

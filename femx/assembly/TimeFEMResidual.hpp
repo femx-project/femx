@@ -34,34 +34,34 @@ class TimeFEMResidual final : public state::TimeResidual
 {
 public:
   TimeFEMResidual(Index                    num_steps,
-                  DofLayout                res_layout,
-                  DofLayout                state_layout,
+                  fem::DofLayout           res_layout,
+                  fem::DofLayout           state_layout,
                   const TimeElementKernel& ker);
 
   TimeFEMResidual(Index                    num_steps,
-                  DofLayout                res_layout,
-                  DofLayout                history_state_layout,
-                  DofLayout                next_state_layout,
+                  fem::DofLayout           res_layout,
+                  fem::DofLayout           history_state_layout,
+                  fem::DofLayout           next_state_layout,
                   const TimeElementKernel& ker);
 
   TimeFEMResidual(Index                    num_steps,
-                  DofLayout                res_layout,
-                  Vector<DofLayout>        history_state_layouts,
-                  DofLayout                next_state_layout,
+                  fem::DofLayout           res_layout,
+                  Vector<fem::DofLayout>   history_state_layouts,
+                  fem::DofLayout           next_state_layout,
                   const TimeElementKernel& ker);
 
   TimeFEMResidual(Index                    num_steps,
-                  DofLayout                res_layout,
-                  DofLayout                history_state_layout,
-                  DofLayout                next_state_layout,
-                  DofLayout                param_layout,
+                  fem::DofLayout           res_layout,
+                  fem::DofLayout           history_state_layout,
+                  fem::DofLayout           next_state_layout,
+                  fem::DofLayout           param_layout,
                   const TimeElementKernel& ker);
 
   TimeFEMResidual(Index                    num_steps,
-                  DofLayout                res_layout,
-                  Vector<DofLayout>        history_state_layouts,
-                  DofLayout                next_state_layout,
-                  DofLayout                param_layout,
+                  fem::DofLayout           res_layout,
+                  Vector<fem::DofLayout>   history_state_layouts,
+                  fem::DofLayout           next_state_layout,
+                  fem::DofLayout           param_layout,
                   const TimeElementKernel& ker);
 
   void setElemRange(Index begin, Index end);
@@ -90,7 +90,7 @@ private:
   Index numParams() const;
   Index numHistoryStates() const;
 
-  const DofLayout* layoutFor(state::VariableBlock wrt) const;
+  const fem::DofLayout* layoutFor(state::VariableBlock wrt) const;
 
   void checkLayouts() const;
   void checkContext(const state::TimeContext& ctx) const;
@@ -106,17 +106,17 @@ private:
 
   Vector<Real> gatherParam(Index ie, const Vector<Real>& global) const;
 
-  static void gather(const DofLayout&    lyt,
-                     const Vector<Real>& global,
-                     Index               ie,
-                     Vector<Real>&       local);
+  static void gather(const fem::DofLayout& lyt,
+                     const Vector<Real>&   global,
+                     Index                 ie,
+                     Vector<Real>&         local);
 
-  static void gather(const DofLayout&       lyt,
+  static void gather(const fem::DofLayout&  lyt,
                      VectorView<const Real> global,
                      Index                  ie,
                      Vector<Real>&          local);
 
-  static void gather(const DofLayout&       lyt,
+  static void gather(const fem::DofLayout&  lyt,
                      VectorView<const Real> global,
                      Index                  ie,
                      VectorView<Real>       local);
@@ -124,14 +124,14 @@ private:
   static void checkDof(Index id, Index size);
 
 private:
-  Index                    num_steps_{0};
-  DofLayout                res_layout_;
-  Vector<DofLayout>        history_state_layouts_;
-  DofLayout                next_state_layout_;
-  std::optional<DofLayout> param_layout_;
-  const TimeElementKernel& kernel_;
-  Index                    elem_begin_{0};
-  Index                    elem_end_{0};
+  Index                         num_steps_{0};
+  fem::DofLayout                res_layout_;
+  Vector<fem::DofLayout>        history_state_layouts_;
+  fem::DofLayout                next_state_layout_;
+  std::optional<fem::DofLayout> param_layout_;
+  const TimeElementKernel&      kernel_;
+  Index                         elem_begin_{0};
+  Index                         elem_end_{0};
 };
 
 } // namespace assembly
