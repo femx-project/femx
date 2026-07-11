@@ -199,15 +199,14 @@ iteration on the fully nonlinear Navier-Stokes residual.
 
 ## Run
 
-From the repository root, replace `build/resolve-cuda-petsc` with the build
-directory you configured.
+From your build directory, run the executable for the backend you enabled:
 
 ```shell
-./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-resolve \
-  --config apps/ns-forward/configs/resolve/cavity/Config.json
+./apps/ns-forward/ns-forward-resolve \
+  --config ../../apps/ns-forward/configs/resolve/cavity/Config.json
 
-./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-petsc \
-  --config apps/ns-forward/configs/petsc/cavity/Config.json
+./apps/ns-forward/ns-forward-petsc \
+  --config ../../apps/ns-forward/configs/petsc/cavity/Config.json
 ```
 
 The ReSolve configurations include the ReSolve workspace backend, for example

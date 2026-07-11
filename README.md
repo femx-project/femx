@@ -75,7 +75,7 @@ make test_install
 ## Run Examples
 
 The default Poisson example uses the native dense solver and does not require
-optional solver packages:
+optional solver packages. Run it from your build directory:
 
 ```shell
 ./examples/poisson/poisson --output yes
@@ -102,15 +102,15 @@ definition.
 ## Run Apps
 
 The Navier-Stokes forward app provides separate configuration sets for ReSolve
-and PETSc. From the repository root, replace `build/resolve-cuda-petsc` with
-the build directory you configured:
+and PETSc. From your build directory, run the executable for the backend you
+enabled:
 
 ```shell
-./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-resolve \
-  --config apps/ns-forward/configs/resolve/cavity/Config.json
+./apps/ns-forward/ns-forward-resolve \
+  --config ../../apps/ns-forward/configs/resolve/cavity/Config.json
 
-./build/resolve-cuda-petsc/apps/ns-forward/ns-forward-petsc \
-  --config apps/ns-forward/configs/petsc/cavity/Config.json
+./apps/ns-forward/ns-forward-petsc \
+  --config ../../apps/ns-forward/configs/petsc/cavity/Config.json
 ```
 
 See [apps/ns-forward](apps/ns-forward) for the formulation and available demo
