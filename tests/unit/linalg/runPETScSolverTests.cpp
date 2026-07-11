@@ -1,7 +1,6 @@
-#include "SolverTestFixtures.hpp"
-
 #include <petscksp.h>
 
+#include "SolverTestFixtures.hpp"
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
 
@@ -12,14 +11,14 @@ namespace
 
 void configureKsp(linalg::KspLinearSolver& solver, bool check_finite)
 {
-  auto& opts       = solver.opts();
-  opts.type        = KSPGMRES;
-  opts.pc_type     = PCNONE;
-  opts.rtol        = 1.0e-12;
-  opts.atol        = 1.0e-14;
-  opts.max_its     = 30;
-  opts.restart     = 10;
-  opts.use_opts_db = false;
+  auto& opts        = solver.opts();
+  opts.type         = KSPGMRES;
+  opts.pc_type      = PCNONE;
+  opts.rtol         = 1.0e-12;
+  opts.atol         = 1.0e-14;
+  opts.max_its      = 30;
+  opts.restart      = 10;
+  opts.use_opts_db  = false;
   opts.check_finite = check_finite;
 }
 
@@ -56,9 +55,9 @@ int main(int argc, char** argv)
   }
 
   femx::tests::TestingResults results;
-  results += femx::tests::petscCsrShellSolvesForwardAndTranspose();
-  results += femx::tests::petscAssemblyMatrixSolvesForwardAndTranspose();
-  const int failures = results.summary();
+  results            += femx::tests::petscCsrShellSolvesForwardAndTranspose();
+  results            += femx::tests::petscAssemblyMatrixSolvesForwardAndTranspose();
+  const int failures  = results.summary();
 
   PetscFinalize();
   return failures;

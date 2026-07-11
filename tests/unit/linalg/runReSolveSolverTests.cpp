@@ -1,9 +1,7 @@
 #include "SolverTestFixtures.hpp"
-
-#include <resolve/resolve_defs.hpp>
-
 #include <femx/common/Workspace.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+#include <resolve/resolve_defs.hpp>
 
 namespace femx::tests
 {
@@ -13,11 +11,11 @@ namespace
 linalg::ReSolveOptions kluOptions()
 {
   linalg::ReSolveOptions opts;
-  opts.factor  = "klu";
+  opts.factor   = "klu";
   opts.refactor = "none";
-  opts.solve   = "klu";
-  opts.precond = "none";
-  opts.ir      = "none";
+  opts.solve    = "klu";
+  opts.precond  = "none";
+  opts.ir       = "none";
   return opts;
 }
 

@@ -5,7 +5,6 @@
 #include <stdexcept>
 
 #include "TestHelper.hpp"
-
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
@@ -197,10 +196,10 @@ inline TestOutcome solvesForwardAndTranspose(
   return status.report();
 }
 
-inline TestOutcome solvesForwardAndTranspose(const char*           name,
-                                             linalg::LinearSolver& solver,
+inline TestOutcome solvesForwardAndTranspose(const char*                   name,
+                                             linalg::LinearSolver&         solver,
                                              const linalg::LinearOperator& op,
-                                             Real                  tol = 1.0e-8)
+                                             Real                          tol = 1.0e-8)
 {
   return solvesForwardAndTranspose(
       name, solver, op, expectedSolution(), tol);
