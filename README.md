@@ -13,7 +13,8 @@ Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
 - Re::Solve 0.99.2, for CPU/CUDA linear solver backends.
-- PETSc and MPI, for linear solvers and TAO optimization
+- PETSc 3.19 or later (tested with PETSc 3.19.6)
+- MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
 
