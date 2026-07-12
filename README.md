@@ -1,6 +1,6 @@
 # femx
 
-femx is a small C++ finite element library for forward and inverse analysis.
+femx is a C++ finite element library for forward and inverse analysis.
 
 The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and optimization utilities are still experimental, and the current optimization examples use PETSc/TAO.
 
