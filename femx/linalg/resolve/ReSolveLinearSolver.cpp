@@ -74,8 +74,8 @@ public:
           A.rows(),
           A.cols(),
           A.nnz());
-      checkStatus(mat_->allocateMatrixData(memorySpace()),
-                  "ReSolve Csr::allocateMatrixData failed");
+      checkStatus(mat_->allocateAll(memorySpace()),
+                  "ReSolve Csr::allocateAll failed");
       mat_rows_ = A.rows();
       mat_cols_ = A.cols();
       mat_nnz_  = A.nnz();
@@ -83,12 +83,15 @@ public:
 
     updateMatrixData(A);
 
-    if (reuse_mat && opts_.precond != "none")
+    if (reuse_mat)
     {
-      resetSolver();
+      if (opts_.precond != "none")
+      {
+        checkStatus(solver_->resetPreconditioner(mat_.get()),
+                    "ReSolve SystemSolver::resetPreconditioner failed");
+      }
     }
-
-    if (!reuse_mat || opts_.precond != "none")
+    else
     {
       checkStatus(solver_->setMatrix(mat_.get()),
                   "ReSolve SystemSolver::setMatrix failed");
@@ -273,8 +276,8 @@ private:
           A.cols(),
           A.rows(),
           A.nnz());
-      checkStatus(mat_t_->allocateMatrixData(memorySpace()),
-                  "ReSolve transpose Csr::allocateMatrixData failed");
+      checkStatus(mat_t_->allocateAll(memorySpace()),
+                  "ReSolve transpose Csr::allocateAll failed");
       mat_t_rows_ = A.cols();
       mat_t_cols_ = A.rows();
       mat_t_nnz_  = A.nnz();
@@ -282,12 +285,16 @@ private:
 
     updateMatrixData(transpose_data_, *mat_t_);
 
-    if (reuse_mat && opts_.precond != "none")
+    if (reuse_mat)
     {
-      resetTransposeSolver();
+      if (opts_.precond != "none")
+      {
+        checkStatus(
+            transpose_solver_->resetPreconditioner(mat_t_.get()),
+            "ReSolve transpose SystemSolver::resetPreconditioner failed");
+      }
     }
-
-    if (!reuse_mat || opts_.precond != "none")
+    else
     {
       checkStatus(transpose_solver_->setMatrix(mat_t_.get()),
                   "ReSolve transpose SystemSolver::setMatrix failed");
@@ -314,36 +321,36 @@ private:
     if (workspace_type_ == WorkspaceType::Cpu)
     {
       checkStatus(
-          mat_->copyDataFrom(A.rowPtrData(),
-                             A.colIndData(),
-                             A.valuesData(),
-                             ReSolve::memory::HOST,
-                             ReSolve::memory::HOST),
-          "ReSolve Csr::copyDataFrom to host failed");
+          mat_->copyFromExternal(A.rowPtrData(),
+                                 A.colIndData(),
+                                 A.valuesData(),
+                                 ReSolve::memory::HOST,
+                                 ReSolve::memory::HOST),
+          "ReSolve Csr::copyFromExternal to host failed");
       return;
     }
 
     if (opts_.factor == "klu")
     {
       checkStatus(
-          mat_->copyDataFrom(A.rowPtrData(),
-                             A.colIndData(),
-                             A.valuesData(),
-                             ReSolve::memory::HOST,
-                             ReSolve::memory::HOST),
-          "ReSolve Csr::copyDataFrom to host failed");
+          mat_->copyFromExternal(A.rowPtrData(),
+                                 A.colIndData(),
+                                 A.valuesData(),
+                                 ReSolve::memory::HOST,
+                                 ReSolve::memory::HOST),
+          "ReSolve Csr::copyFromExternal to host failed");
       checkStatus(mat_->syncData(memorySpace()),
                   "ReSolve Csr::syncData failed");
       return;
     }
 
     checkStatus(
-        mat_->copyDataFrom(A.rowPtrData(),
-                           A.colIndData(),
-                           A.valuesData(),
-                           ReSolve::memory::HOST,
-                           memorySpace()),
-        "ReSolve Csr::copyDataFrom failed");
+        mat_->copyFromExternal(A.rowPtrData(),
+                               A.colIndData(),
+                               A.valuesData(),
+                               ReSolve::memory::HOST,
+                               memorySpace()),
+        "ReSolve Csr::copyFromExternal failed");
   }
 
   void updateMatrixData(const HostCsrData& data, ReSolve::matrix::Csr& A)
@@ -351,36 +358,36 @@ private:
     if (workspace_type_ == WorkspaceType::Cpu)
     {
       checkStatus(
-          A.copyDataFrom(data.rp.data(),
-                         data.ci.data(),
-                         data.vals.data(),
-                         ReSolve::memory::HOST,
-                         ReSolve::memory::HOST),
-          "ReSolve transpose Csr::copyDataFrom to host failed");
+          A.copyFromExternal(data.rp.data(),
+                             data.ci.data(),
+                             data.vals.data(),
+                             ReSolve::memory::HOST,
+                             ReSolve::memory::HOST),
+          "ReSolve transpose Csr::copyFromExternal to host failed");
       return;
     }
 
     if (opts_.factor == "klu")
     {
       checkStatus(
-          A.copyDataFrom(data.rp.data(),
-                         data.ci.data(),
-                         data.vals.data(),
-                         ReSolve::memory::HOST,
-                         ReSolve::memory::HOST),
-          "ReSolve transpose Csr::copyDataFrom to host failed");
+          A.copyFromExternal(data.rp.data(),
+                             data.ci.data(),
+                             data.vals.data(),
+                             ReSolve::memory::HOST,
+                             ReSolve::memory::HOST),
+          "ReSolve transpose Csr::copyFromExternal to host failed");
       checkStatus(A.syncData(memorySpace()),
                   "ReSolve transpose Csr::syncData failed");
       return;
     }
 
     checkStatus(
-        A.copyDataFrom(data.rp.data(),
-                       data.ci.data(),
-                       data.vals.data(),
-                       ReSolve::memory::HOST,
-                       memorySpace()),
-        "ReSolve transpose Csr::copyDataFrom failed");
+        A.copyFromExternal(data.rp.data(),
+                           data.ci.data(),
+                           data.vals.data(),
+                           ReSolve::memory::HOST,
+                           memorySpace()),
+        "ReSolve transpose Csr::copyFromExternal failed");
   }
 
   void resetSolver()
@@ -479,7 +486,7 @@ private:
     if (opts_.precond != "none")
     {
       checkStatus(
-          solver.preconditionerSetup(),
+          solver.preconditionerSetup(opts_.preconditioner_side),
           std::string(prefix) + " SystemSolver::preconditionerSetup failed");
     }
   }
@@ -496,8 +503,8 @@ private:
 
     checkStatus(rhs.allocate(memspace),
                 "ReSolve rhs Vector<Real>::allocate failed");
-    checkStatus(rhs.copyDataFrom(b.data(), ReSolve::memory::HOST, memspace),
-                "ReSolve rhs Vector<Real>::copyDataFrom failed");
+    checkStatus(rhs.copyFromExternal(b.data(), ReSolve::memory::HOST, memspace),
+                "ReSolve rhs Vector<Real>::copyFromExternal failed");
 
     checkStatus(sol.allocate(memspace),
                 "ReSolve solution Vector<Real>::allocate failed");
@@ -507,8 +514,10 @@ private:
     checkStatus(solver.solve(&rhs, &sol), operation);
     checkIterativeConvergence(solver);
 
-    checkStatus(sol.copyDataTo(x.data(), ReSolve::memory::HOST),
-                "ReSolve solution Vector<Real>::copyDataTo failed");
+    checkStatus(sol.copyToExternal(x.data(),
+                                   memspace,
+                                   ReSolve::memory::HOST),
+                "ReSolve solution Vector<Real>::copyToExternal failed");
   }
 
   void checkIterativeConvergence(ReSolve::SystemSolver& solver) const

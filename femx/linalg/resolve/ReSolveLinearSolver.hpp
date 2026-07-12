@@ -27,8 +27,9 @@ struct ReSolveOptions
   std::string precond  = "ilu0";   ///< Preconditioner method.
   std::string ir       = "none";   ///< Iterative-refinement method.
 
-  std::string gram_schmidt = "cgs2";  ///< Krylov orthogonalization method.
-  std::string sketching    = "count"; ///< Sketching method for randomized Krylov variants.
+  std::string gram_schmidt        = "cgs2";  ///< Krylov orthogonalization method.
+  std::string sketching           = "count"; ///< Sketching method for randomized Krylov variants.
+  std::string preconditioner_side = "right"; ///< Side on which to apply preconditioning.
 
   Index max_its  = 1000;   ///< Maximum Krylov iterations.
   Index restart  = 200;    ///< Krylov restart length.
