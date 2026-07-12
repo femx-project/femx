@@ -37,7 +37,7 @@
     }
   ],
   "solver": {
-    "backend": "cpu",
+    "backend": "cuda",
     "method": "iterative",
     "solve": "fgmres",
     "preconditioner": "ilu0",
