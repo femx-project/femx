@@ -68,6 +68,14 @@ TestOutcome resolveCpuStoredOperatorSolves()
     Vector<Real> x;
     lin_solver.solve(rhs, x);
     status *= solver::vectorNear(x, expected, 1.0e-7);
+
+    op.setZero();
+    solver::fillGrid5PointMatrix(op, nx, ny);
+    lin_solver.setOperator(op.mat());
+
+    op.apply(expected, rhs);
+    lin_solver.solve(rhs, x);
+    status *= solver::vectorNear(x, expected, 1.0e-7);
   }
   catch (const std::exception& e)
   {

@@ -83,15 +83,12 @@ public:
 
     updateMatrixData(A);
 
-    if (reuse_mat)
+    if (reuse_mat && opts_.precond != "none")
     {
-      if (opts_.precond != "none")
-      {
-        checkStatus(solver_->resetPreconditioner(mat_.get()),
-                    "ReSolve SystemSolver::resetPreconditioner failed");
-      }
+      resetSolver();
     }
-    else
+
+    if (!reuse_mat || opts_.precond != "none")
     {
       checkStatus(solver_->setMatrix(mat_.get()),
                   "ReSolve SystemSolver::setMatrix failed");
@@ -285,16 +282,12 @@ private:
 
     updateMatrixData(transpose_data_, *mat_t_);
 
-    if (reuse_mat)
+    if (reuse_mat && opts_.precond != "none")
     {
-      if (opts_.precond != "none")
-      {
-        checkStatus(
-            transpose_solver_->resetPreconditioner(mat_t_.get()),
-            "ReSolve transpose SystemSolver::resetPreconditioner failed");
-      }
+      resetTransposeSolver();
     }
-    else
+
+    if (!reuse_mat || opts_.precond != "none")
     {
       checkStatus(transpose_solver_->setMatrix(mat_t_.get()),
                   "ReSolve transpose SystemSolver::setMatrix failed");
