@@ -19,7 +19,7 @@ void NavierResidual(Index       step,
                     Index       num_residuals,
                     Index       num_history_dofs,
                     Index       num_next_states,
-                    Index       num_params,
+                    Index       num_param,
                     const Real* N,
                     const Real* dNdx,
                     const Real* JxW,
@@ -28,6 +28,12 @@ void NavierResidual(Index       step,
                     const Real* prm,
                     Real*       out);
 
+/**
+ * @brief Navier-Stokes element residual and Jacobian kernel.
+ *
+ * History and variable-parameter Jacobians use Enzyme when available and an
+ * element-local central-difference fallback otherwise.
+ */
 class NavierKernel final : public assembly::TimeElementKernel
 {
 public:
@@ -62,6 +68,14 @@ public:
                 DenseMatrix&           out) const override;
 
 private:
+  void fdJacobian(Index                  step,
+                                Index                  ie,
+                                state::VariableBlock   wrt,
+                                state::TimeHistoryView hist,
+                                const Vector<Real>&    nxt,
+                                const Vector<Real>&    prm,
+                                DenseMatrix&           out) const;
+
   void checkDimensions();
   void checkInputSizes(state::TimeHistoryView hist,
                        const Vector<Real>&    nxt,
@@ -78,7 +92,7 @@ private:
   Index                                            num_hist_states_{1};
   Index                                            num_hist_state_dofs_{0};
   Index                                            num_variable_params_{0};
-  Index                                            num_params_{0};
+  Index                                            num_param_{0};
   Vector<Real>                                     fixed_prm_;
   assembly::EnzymeTimeVolumeKernel<NavierResidual> enzyme_kernel_;
 };
