@@ -12,11 +12,13 @@ The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and o
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve 0.99.2, for CPU/CUDA linear solver backends.
+- Re::Solve 0.99.2 development API at commit `bd60de0` or later, for CPU/CUDA
+  linear solver backends. The `v0.99.2` tag lacks APIs used by the adapter.
 - PETSc 3.19 or later (tested with PETSc 3.19.6)
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
+- Python >= 3.9, pybind11, NumPy, and SciPy, for the Python API
 
 ## Build
 
@@ -60,6 +62,29 @@ make
 ```
 
 Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
+
+## Python API
+
+Build and install the supported Python package directly from the repository:
+
+```shell
+python3 -m pip install .
+```
+
+The initial API covers mesh inspection and scalar operators on simplicial
+boundary surfaces:
+
+```python
+import femx
+
+mesh = femx.Mesh.read("data/meshes/2d_straighttube.msh")
+inlet = mesh.boundary("inlet")
+K, M, load = inlet.laplacian_matrices()
+profile = inlet.poisson_profile()
+eigenvalues, modes = inlet.laplacian_modes(3)
+```
+
+See [python/README.md](python/README.md) for details.
 
 ## Install
 
@@ -132,6 +157,7 @@ Common options:
 - `FEMX_BUILD_EXAMPLES=ON|OFF`
 - `FEMX_BUILD_APPS=ON|OFF`
 - `FEMX_BUILD_TESTS=ON|OFF`
+- `FEMX_BUILD_PYTHON=ON|OFF`
 
 ## Using femx in CMake
 
