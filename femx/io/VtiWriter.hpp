@@ -28,7 +28,7 @@ public:
   struct ElemField
   {
     std::string         name;               ///< VTK field name.
-    Index               num_components = 1; ///< Number of components per cell.
+    Index               num_comp = 1; ///< Number of components per cell.
     const Vector<Real>* vals{nullptr};      ///< Field values.
   };
 

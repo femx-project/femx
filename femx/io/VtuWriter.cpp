@@ -244,7 +244,7 @@ void checkField(Index num_points, const VtuWriter::PointField& field)
   {
     throw std::runtime_error("VtuWriter point field name must not be empty");
   }
-  if (field.num_components <= 0)
+  if (field.num_comp <= 0)
   {
     throw std::runtime_error("VtuWriter point field component count must be positive");
   }
@@ -252,7 +252,7 @@ void checkField(Index num_points, const VtuWriter::PointField& field)
   {
     throw std::runtime_error("VtuWriter point field has null values");
   }
-  if (field.vals->size() != num_points * field.num_components)
+  if (field.vals->size() != num_points * field.num_comp)
   {
     throw std::runtime_error("VtuWriter point field size does not match points");
   }
@@ -311,9 +311,9 @@ void writeUnstructuredGrid(const std::string&                   fname,
     {
       out << "        <DataArray type=\"Float64\" Name=\""
           << escapeXml(field.name) << "\"";
-      if (field.num_components > 1)
+      if (field.num_comp > 1)
       {
-        out << " NumberOfComponents=\"" << field.num_components << "\"";
+        out << " NumberOfComponents=\"" << field.num_comp << "\"";
       }
       out << " format=\"binary\">"
           << binaryBase64(*field.vals, field.name.c_str())
