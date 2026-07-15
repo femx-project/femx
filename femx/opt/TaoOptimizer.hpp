@@ -24,9 +24,9 @@ struct TaoOptions
 {
   std::string type = TAOLMVM; ///< PETSc/TAO solver type.
 
-  Real abs_tol  = 1.0e-8; ///< Absolute gradient tolerance.
-  Real rel_tol  = 1.0e-8; ///< Relative gradient tolerance.
-  Real step_tol = 0.0;    ///< Step-size tolerance.
+  Real abs_tol            = 1.0e-8; ///< Absolute gradient tolerance.
+  Real rel_tol            = 1.0e-8; ///< Gradient-to-objective tolerance.
+  Real grad_reduction_tol = 0.0;    ///< Gradient reduction tolerance.
 
   Index max_its = 100; ///< Maximum TAO iterations.
 };
@@ -147,10 +147,10 @@ private:
   };
 
 public:
-  TaoOptimizer(TaoNumParamsCallback num_params,
+  TaoOptimizer(TaoNumParamsCallback num_param,
                TaoValueGradCallback value_grad,
                MPI_Comm             comm = PETSC_COMM_SELF)
-    : num_params_(std::move(num_params)),
+    : num_param_(std::move(num_param)),
       value_grad_(std::move(value_grad)),
       comm_(comm)
   {
@@ -229,7 +229,7 @@ public:
 
   PetscErrorCode solve(const Vector<Real>& init, TaoResult& result)
   {
-    if (!num_params_ || !value_grad_)
+    if (!num_param_ || !value_grad_)
     {
       return PETSC_ERR_ARG_NULL;
     }
@@ -267,7 +267,7 @@ public:
       PetscCall(::femx::linalg::detail::copyToPETSc(opt_init, prm.get()));
 
       TaoReducedFunctionalAdapter adapter(
-          num_params_,
+          num_param_,
           [this](const Vector<Real>& opt_prm, Vector<Real>& opt_grad)
           {
             return valueGradInOptimizerCoordinates(opt_prm, opt_grad);
@@ -301,7 +301,7 @@ public:
           tao.get(),
           static_cast<PetscReal>(opts_.abs_tol),
           static_cast<PetscReal>(opts_.rel_tol),
-          static_cast<PetscReal>(opts_.step_tol)));
+          static_cast<PetscReal>(opts_.grad_reduction_tol)));
       PetscCall(TaoSetMaximumIterations(tao.get(), static_cast<PetscInt>(opts_.max_its)));
       PetscCall(TaoSetFromOptions(tao.get()));
       PetscCall(TaoSolve(tao.get()));
@@ -389,7 +389,7 @@ private:
 
   Index numParams() const
   {
-    return num_params_();
+    return num_param_();
   }
 
   const char* taoType() const
@@ -523,7 +523,7 @@ private:
   }
 
 private:
-  TaoNumParamsCallback num_params_;
+  TaoNumParamsCallback num_param_;
   TaoValueGradCallback value_grad_;
   MPI_Comm             comm_{PETSC_COMM_SELF};
   TaoOptions           opts_;

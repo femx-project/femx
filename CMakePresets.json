@@ -86,6 +86,23 @@
       }
     },
     {
+      "name": "python",
+      "displayName": "Python",
+      "description": "Build the supported femx Python extension.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/python",
+      "cacheVariables": {
+        "FEMX_BUILD_APPS": "OFF",
+        "FEMX_BUILD_EXAMPLES": "OFF",
+        "FEMX_BUILD_TESTS": "OFF",
+        "FEMX_ENABLE_HDF5": "ON",
+        "FEMX_ENABLE_OPENMP": "OFF",
+        "FEMX_ENABLE_RESOLVE": "ON",
+        "FEMX_ENABLE_PETSC": "ON",
+        "FEMX_BUILD_PYTHON": "ON"
+      }
+    },
+    {
       "name": "python-experimental",
       "displayName": "Python Experimental",
       "description": "Build only the experimental Python bindings.",
@@ -123,6 +140,11 @@
     {
       "name": "petsc-enzyme",
       "configurePreset": "petsc-enzyme"
+    },
+    {
+      "name": "python",
+      "configurePreset": "python",
+      "targets": ["_core"]
     },
     {
       "name": "python-experimental",

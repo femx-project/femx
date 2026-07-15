@@ -15,3 +15,5 @@ docs/doxygen/html/
 
 build/
 build-*/
+
+__pycache__/

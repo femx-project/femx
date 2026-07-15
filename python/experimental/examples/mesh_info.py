@@ -6,7 +6,7 @@ import pprint
 import femx_experimental as femx
 
 
-def main() -> None:
+def main():
     femx_root = Path(__file__).resolve().parents[3]
 
     parser = argparse.ArgumentParser()
