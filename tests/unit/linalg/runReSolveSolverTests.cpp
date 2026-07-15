@@ -8,6 +8,7 @@ namespace femx::tests
 namespace
 {
 
+#if defined(RESOLVE_USE_KLU)
 linalg::ReSolveOptions kluOptions()
 {
   linalg::ReSolveOptions opts;
@@ -18,6 +19,7 @@ linalg::ReSolveOptions kluOptions()
   opts.ir       = "none";
   return opts;
 }
+#endif
 
 TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
 {
