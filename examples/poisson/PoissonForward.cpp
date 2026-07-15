@@ -10,7 +10,7 @@
 #include <string>
 
 #include <femx/assembly/Assembler.hpp>
-#include <femx/fem/BoundaryCondition.hpp>
+#include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/AssemblyMatrix.hpp>
@@ -174,9 +174,9 @@ std::filesystem::path vtuPathFromBase(const std::string& output_base)
   return path;
 }
 
-void applyDenseBoundary(const BoundaryCondition& bc,
-                        DenseAssemblyMatrix&     A,
-                        Vector<Real>&            rhs)
+void applyDenseBoundary(const DirichletBC&   bc,
+                        DenseAssemblyMatrix& A,
+                        Vector<Real>&        rhs)
 {
   DenseMatrix& mat = A.mat();
   if (mat.rows() != mat.cols() || rhs.size() != mat.rows())
@@ -184,9 +184,9 @@ void applyDenseBoundary(const BoundaryCondition& bc,
     throw std::runtime_error(
         "Poisson dense boundary condition received inconsistent dimensions");
   }
-  if (bc.dofs().size() != bc.vals().size())
+  if (bc.dofs().size() != bc.values().size())
   {
-    throw std::runtime_error("DirichletCondition has inconsistent data");
+    throw std::runtime_error("DirichletBC has inconsistent data");
   }
 
   const Index  size = mat.rows();
@@ -202,7 +202,7 @@ void applyDenseBoundary(const BoundaryCondition& bc,
     }
 
     is_dirichlet[id]     = 1;
-    dirichlet_values[id] = bc.vals()[c];
+    dirichlet_values[id] = bc.values()[c];
   }
 
   for (Index row = 0; row < size; ++row)
@@ -229,9 +229,9 @@ void applyDenseBoundary(const BoundaryCondition& bc,
   }
 }
 
-void applyBoundary(const BoundaryCondition& bc,
-                   AssemblyMatrix&          A,
-                   Vector<Real>&            rhs)
+void applyBoundary(const DirichletBC& bc,
+                   AssemblyMatrix&    A,
+                   Vector<Real>&      rhs)
 {
   if (auto* csr = dynamic_cast<CsrAssemblyMatrix*>(&A))
   {
@@ -315,7 +315,7 @@ void PoissonForwardProblem::assemble(AssemblyMatrix& A,
     assembler.addMat(ie, Ae, A);
   }
 
-  BoundaryCondition bc;
+  DirichletBC bc;
   bc.addBoundary(space_, onBoundary, boundaryValue);
   applyBoundary(bc, A, rhs);
 }

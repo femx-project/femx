@@ -60,7 +60,7 @@ DirichletControlResidual::DirichletControlResidual(
     fem::DirichletControl ctr,
     Vector<Index>         fdofs,
     Index                 ctr_param_offset,
-    Index                 num_params,
+    Index                 num_param,
     Vector<Real>          fvals)
   : base_(base),
     ctr_(std::move(ctr)),
@@ -75,7 +75,7 @@ DirichletControlResidual::DirichletControlResidual(
     throw std::runtime_error(
         "DirichletControlResidual requires square state residuals");
   }
-  if (base_dims_.num_params != 0)
+  if (base_dims_.num_param != 0)
   {
     throw std::runtime_error(
         "DirichletControlResidual requires a parameter-free base residual");
@@ -86,17 +86,17 @@ DirichletControlResidual::DirichletControlResidual(
         "DirichletControlResidual received negative parameter offset");
   }
 
-  const Index required_ctr_params = ctr_.numDofs();
-  dims_.num_params =
-      num_params < 0
+  const Index required_ctr_params = ctr_.numControlParams();
+  dims_.num_param =
+      num_param < 0
           ? ctr_param_offset_ + required_ctr_params
-          : num_params;
-  if (dims_.num_params < ctr_param_offset_ + required_ctr_params)
+          : num_param;
+  if (dims_.num_param < ctr_param_offset_ + required_ctr_params)
   {
     throw std::runtime_error(
         "DirichletControlResidual parameter count is too small");
   }
-  base_prm_.resize(base_dims_.num_params);
+  base_prm_.resize(base_dims_.num_param);
 
   if (fvals_.empty())
   {
@@ -160,10 +160,11 @@ void DirichletControlResidual::res(const Vector<Real>& state,
         "DirichletControlResidual base residual size mismatch");
   }
 
-  for (Index i = 0; i < ctr_.numDofs(); ++i)
+  const Vector<Real> values = controlValues(prm);
+  for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
     const Index row = ctr_.stateDof(i);
-    out[row]        = state[row] - prm[ctrIndex(i)];
+    out[row]        = state[row] - values[i];
   }
   for (Index i = 0; i < fdofs_.size(); ++i)
   {
@@ -198,7 +199,7 @@ void DirichletControlResidual::checkVectorSizes(
     const Vector<Real>& state,
     const Vector<Real>& prm) const
 {
-  if (state.size() != dims_.num_states || prm.size() != dims_.num_params)
+  if (state.size() != dims_.num_states || prm.size() != dims_.num_param)
   {
     throw std::runtime_error(
         "DirichletControlResidual vector size mismatch");
@@ -249,13 +250,29 @@ void DirichletControlResidual::replaceStateRows(MatrixBuilder& out,
 
 void DirichletControlResidual::assembleParamJac(MatrixBuilder& out) const
 {
-  out.resize(dims_.num_residuals, dims_.num_params);
+  out.resize(dims_.num_residuals, dims_.num_param);
   out.setZero();
 
-  for (Index i = 0; i < ctr_.numDofs(); ++i)
+  for (const fem::DirichletControlMapEntry& entry : ctr_.mapEntries())
   {
-    out.set(ctr_.stateDof(i), ctrIndex(i), -1.0);
+    out.set(ctr_.stateDof(entry.state_row),
+            ctrIndex(entry.ctr_col),
+            -entry.weight);
   }
+}
+
+Vector<Real> DirichletControlResidual::controlValues(
+    const Vector<Real>& prm) const
+{
+  Vector<Real> control(ctr_.numControlParams());
+  for (Index i = 0; i < control.size(); ++i)
+  {
+    control[i] = prm[ctrIndex(i)];
+  }
+
+  Vector<Real> values;
+  ctr_.apply(control, values);
+  return values;
 }
 
 Real DirichletControlResidual::fixedValue(Index i) const
@@ -271,7 +288,7 @@ Index DirichletControlResidual::ctrIndex(Index i) const
 Vector<Index> DirichletControlResidual::constrainedRows() const
 {
   Vector<Index> rows;
-  rows.reserve(ctr_.numDofs() + fdofs_.size());
+  rows.reserve(ctr_.numStateDofs() + fdofs_.size());
   for (Index row : ctr_.stateDofs())
   {
     rows.push_back(row);

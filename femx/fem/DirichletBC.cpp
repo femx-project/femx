@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/fem/BoundaryCondition.hpp>
+#include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
@@ -13,17 +13,17 @@ namespace femx
 namespace fem
 {
 
-void DirichletCondition::addDof(Index id, Real value)
+void DirichletBC::addDof(Index id, Real value)
 {
   dofs_.push_back(id);
-  vals_.push_back(value);
+  values_.push_back(value);
 }
 
-void DirichletCondition::addBoundary(const FESpace& space,
-                                     Index          ptag,
-                                     Real           value,
-                                     Real           time,
-                                     Index          comp)
+void DirichletBC::addBoundary(const FESpace& space,
+                              Index          ptag,
+                              Real           value,
+                              Real           time,
+                              Index          comp)
 {
   addBoundary(space, ptag, [value](const Mesh::Node&, Real)
               { return value; },
@@ -31,11 +31,11 @@ void DirichletCondition::addBoundary(const FESpace& space,
               comp);
 }
 
-void DirichletCondition::addBoundary(const FESpace&       space,
-                                     Index                ptag,
-                                     const BoundaryValue& value,
-                                     Real                 time,
-                                     Index                comp)
+void DirichletBC::addBoundary(const FESpace&       space,
+                              Index                ptag,
+                              const BoundaryValue& value,
+                              Real                 time,
+                              Index                comp)
 {
   if (comp < 0 || comp >= space.numComponents())
   {
@@ -65,11 +65,11 @@ void DirichletCondition::addBoundary(const FESpace&       space,
   }
 }
 
-void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     Index                 ptag,
-                                     Real                  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const MixedFieldView& field,
+                              Index                 ptag,
+                              Real                  value,
+                              Real                  time,
+                              Index                 comp)
 {
   addBoundary(field, ptag, [value](const Mesh::Node&, Real)
               { return value; },
@@ -77,11 +77,11 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
               comp);
 }
 
-void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     Index                 ptag,
-                                     const BoundaryValue&  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const MixedFieldView& field,
+                              Index                 ptag,
+                              const BoundaryValue&  value,
+                              Real                  time,
+                              Index                 comp)
 {
   if (comp < 0 || comp >= field.numComponents())
   {
@@ -111,11 +111,11 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
   }
 }
 
-void DirichletCondition::addBoundary(const FESpace&        space,
-                                     const BoundaryMarker& mark,
-                                     Real                  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const FESpace&        space,
+                              const BoundaryMarker& mark,
+                              Real                  value,
+                              Real                  time,
+                              Index                 comp)
 {
   addBoundary(space, mark, [value](const Mesh::Node&, Real)
               { return value; },
@@ -123,11 +123,11 @@ void DirichletCondition::addBoundary(const FESpace&        space,
               comp);
 }
 
-void DirichletCondition::addBoundary(const FESpace&        space,
-                                     const BoundaryMarker& mark,
-                                     const BoundaryValue&  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const FESpace&        space,
+                              const BoundaryMarker& mark,
+                              const BoundaryValue&  value,
+                              Real                  time,
+                              Index                 comp)
 {
   if (comp < 0 || comp >= space.numComponents())
   {
@@ -145,11 +145,11 @@ void DirichletCondition::addBoundary(const FESpace&        space,
   }
 }
 
-void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     const BoundaryMarker& mark,
-                                     Real                  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const MixedFieldView& field,
+                              const BoundaryMarker& mark,
+                              Real                  value,
+                              Real                  time,
+                              Index                 comp)
 {
   addBoundary(field, mark, [value](const Mesh::Node&, Real)
               { return value; },
@@ -157,11 +157,11 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
               comp);
 }
 
-void DirichletCondition::addBoundary(const MixedFieldView& field,
-                                     const BoundaryMarker& mark,
-                                     const BoundaryValue&  value,
-                                     Real                  time,
-                                     Index                 comp)
+void DirichletBC::addBoundary(const MixedFieldView& field,
+                              const BoundaryMarker& mark,
+                              const BoundaryValue&  value,
+                              Real                  time,
+                              Index                 comp)
 {
   if (comp < 0 || comp >= field.numComponents())
   {
@@ -179,21 +179,21 @@ void DirichletCondition::addBoundary(const MixedFieldView& field,
   }
 }
 
-const Vector<Index>& DirichletCondition::dofs() const noexcept
+const Vector<Index>& DirichletBC::dofs() const noexcept
 {
   return dofs_;
 }
 
-const Vector<Real>& DirichletCondition::vals() const noexcept
+const Vector<Real>& DirichletBC::values() const noexcept
 {
-  return vals_;
+  return values_;
 }
 
-void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
+void DirichletBC::apply(CsrMatrix& A, Vector<Real>& b) const
 {
-  if (dofs_.size() != vals_.size())
+  if (dofs_.size() != values_.size())
   {
-    throw std::runtime_error("DirichletCondition has inconsistent data");
+    throw std::runtime_error("DirichletBC has inconsistent data");
   }
 
   const Index* rp   = A.rowPtrData();
@@ -207,7 +207,7 @@ void DirichletCondition::apply(CsrMatrix& A, Vector<Real>& b) const
   for (Index c = 0; c < dofs_.size(); ++c)
   {
     const Index id    = dofs_[c];
-    const Real  value = vals_[c];
+    const Real  value = values_[c];
 
     if (id < 0 || id >= A.rows() || id >= b.size())
     {

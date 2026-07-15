@@ -29,7 +29,7 @@ public:
                            fem::DirichletControl  ctr,
                            Vector<Index>          fdofs            = {},
                            Index                  ctr_param_offset = 0,
-                           Index                  num_params       = -1,
+                           Index                  num_param       = -1,
                            Vector<Real>           fvals            = {});
 
   state::Dimensions dims() const override;
@@ -51,8 +51,9 @@ private:
   void replaceStateRows(linalg::MatrixBuilder& out, Real diag) const;
   void assembleParamJac(linalg::MatrixBuilder& out) const;
 
-  Real  fixedValue(Index i) const;
-  Index ctrIndex(Index i) const;
+  Vector<Real> controlValues(const Vector<Real>& prm) const;
+  Real         fixedValue(Index i) const;
+  Index        ctrIndex(Index i) const;
 
   Vector<Index> constrainedRows() const;
 
