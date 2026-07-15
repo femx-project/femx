@@ -44,9 +44,9 @@ FEMResidual::FEMResidual(fem::DofLayout       state_layout,
 
 Dimensions FEMResidual::dims() const
 {
-  const Index num_params =
+  const Index num_param =
       param_layout_ ? param_layout_->numDofs() : 0;
-  return {state_layout_.numDofs(), num_params, res_layout_.numDofs()};
+  return {state_layout_.numDofs(), num_param, res_layout_.numDofs()};
 }
 
 void FEMResidual::res(const Vector<Real>& state,
@@ -174,7 +174,7 @@ void FEMResidual::checkGlobalSizes(const Vector<Real>& state,
   {
     throw std::runtime_error("FEMResidual state size mismatch");
   }
-  if (prm.size() != dm.num_params)
+  if (prm.size() != dm.num_param)
   {
     throw std::runtime_error("FEMResidual parameter size mismatch");
   }

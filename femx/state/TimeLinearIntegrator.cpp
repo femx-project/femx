@@ -184,7 +184,7 @@ Index TimeLinearIntegrator::numStates() const
 
 Index TimeLinearIntegrator::numParams() const
 {
-  return dims_.num_params;
+  return dims_.num_param;
 }
 
 void TimeLinearIntegrator::solve(const Vector<Real>& prm,
