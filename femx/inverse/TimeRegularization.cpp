@@ -1,3 +1,4 @@
+#include <cmath>
 #include <stdexcept>
 
 #include <femx/inverse/TimeRegularization.hpp>
@@ -23,7 +24,9 @@ TimeRegularization::TimeRegularization(Index               num_steps,
     beta_value_(beta_value)
 {
   if (num_steps_ < 0 || num_states_ < 0 || num_levels_ < 0
-      || block_size_ < 0 || beta_difference_ < 0.0 || beta_value_ < 0.0)
+      || block_size_ < 0 || !std::isfinite(beta_difference_)
+      || !std::isfinite(beta_value_) || beta_difference_ < 0.0
+      || beta_value_ < 0.0)
   {
     throw std::runtime_error("TimeRegularization received invalid inputs");
   }
@@ -33,6 +36,14 @@ TimeRegularization::TimeRegularization(Index               num_steps,
   }
   else if (reference.size() == numParams())
   {
+    for (const Real value : reference)
+    {
+      if (!std::isfinite(value))
+      {
+        throw std::runtime_error(
+            "TimeRegularization reference must be finite");
+      }
+    }
     reference_ = reference;
   }
   else

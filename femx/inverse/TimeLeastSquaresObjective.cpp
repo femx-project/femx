@@ -28,6 +28,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
   {
     wts_[level] = wt;
   }
+  setUniformObservationWeights();
   checkInputs();
 }
 
@@ -39,6 +40,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     data_(std::move(data)),
     wts_(std::move(wts))
 {
+  setUniformObservationWeights();
   checkInputs();
 }
 
@@ -52,6 +54,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     wts_(std::move(wts)),
     dt_(dt)
 {
+  setUniformObservationWeights();
   checkInputs();
 }
 
@@ -64,6 +67,24 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
   : obs_(obs),
     data_(std::move(data)),
     wts_(std::move(wts)),
+    dt_(dt),
+    time_offset_(time_offset)
+{
+  setUniformObservationWeights();
+  checkInputs();
+}
+
+TimeLeastSquaresObjective::TimeLeastSquaresObjective(
+    const TimeObservationOperator& obs,
+    TimeObservationData            data,
+    Vector<Real>                   wts,
+    Vector<Real>                   obs_wts,
+    Real                           dt,
+    Real                           time_offset)
+  : obs_(obs),
+    data_(std::move(data)),
+    wts_(std::move(wts)),
+    obs_wts_(std::move(obs_wts)),
     dt_(dt),
     time_offset_(time_offset)
 {
@@ -97,7 +118,8 @@ Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
     const Real wt = observationWeight(interp);
     for (Index i = 0; i < res.size(); ++i)
     {
-      value_out += 0.5 * wt * res[i] * res[i];
+      value_out += 0.5 * wt * observationEntryWeight(row, i)
+                   * res[i] * res[i];
     }
   }
   return value_out;
@@ -137,7 +159,7 @@ void TimeLeastSquaresObjective::stateGrad(Index                 level,
     }
 
     obsResidual(row, interp, tr, prm, weighted_res);
-    scale(weighted_res, factor * wt);
+    scaleObservationResidual(row, weighted_res, factor * wt);
     obs_.applyStateJacT(level, tr[level], prm, weighted_res, level_grad);
     checkSize(level_grad, numStates());
     for (Index i = 0; i < out.size(); ++i)
@@ -165,7 +187,7 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory& tr,
     }
 
     obsResidual(row, interp, tr, prm, weighted_res);
-    scale(weighted_res, wt);
+    scaleObservationResidual(row, weighted_res, wt);
 
     interp.forEachWeight(
         [&](Index interp_level, Real interp_weight)
@@ -194,7 +216,9 @@ Index TimeLeastSquaresObjective::numLevels() const
 void TimeLeastSquaresObjective::checkInputs() const
 {
   if (data_.numObservations() != obs_.numObservations()
-      || wts_.size() != numLevels())
+      || wts_.size() != numLevels()
+      || obs_wts_.size()
+             != data_.numLevels() * data_.numObservations())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective received inconsistent dimensions");
@@ -216,10 +240,18 @@ void TimeLeastSquaresObjective::checkInputs() const
   }
   for (Index level = 0; level < wts_.size(); ++level)
   {
-    if (wts_[level] < 0.0)
+    if (!std::isfinite(wts_[level]) || wts_[level] < 0.0)
     {
       throw std::runtime_error(
-          "TimeLeastSquaresObjective received negative weight");
+          "TimeLeastSquaresObjective received invalid weight");
+    }
+  }
+  for (Real weight : obs_wts_)
+  {
+    if (!std::isfinite(weight) || weight < 0.0)
+    {
+      throw std::runtime_error(
+          "TimeLeastSquaresObjective received invalid observation weight");
     }
   }
 }
@@ -306,6 +338,19 @@ Real TimeLeastSquaresObjective::observationWeight(const LinearInterpolation& int
   return out;
 }
 
+Real TimeLeastSquaresObjective::observationEntryWeight(
+    Index row,
+    Index observation) const
+{
+  if (row < 0 || row >= data_.numLevels() || observation < 0
+      || observation >= data_.numObservations())
+  {
+    throw std::runtime_error(
+        "TimeLeastSquaresObjective observation weight index is out of range");
+  }
+  return obs_wts_[row * data_.numObservations() + observation];
+}
+
 void TimeLeastSquaresObjective::observeInterpolated(
     Index                      data_row,
     const LinearInterpolation& interp,
@@ -366,6 +411,28 @@ void TimeLeastSquaresObjective::scale(Vector<Real>& out, Real factor)
   for (Index i = 0; i < out.size(); ++i)
   {
     out[i] *= factor;
+  }
+}
+
+void TimeLeastSquaresObjective::scaleObservationResidual(
+    Index         row,
+    Vector<Real>& out,
+    Real          factor) const
+{
+  checkSize(out, data_.numObservations());
+  for (Index i = 0; i < out.size(); ++i)
+  {
+    out[i] *= factor * observationEntryWeight(row, i);
+  }
+}
+
+void TimeLeastSquaresObjective::setUniformObservationWeights()
+{
+  obs_wts_.resize(
+      data_.numLevels() * data_.numObservations());
+  for (Real& weight : obs_wts_)
+  {
+    weight = 1.0;
   }
 }
 

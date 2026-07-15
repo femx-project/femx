@@ -215,7 +215,7 @@ void TimeReducedFunctional::checkDims() const
       || integrator_.numSteps() != obj_.numSteps()
       || integrator_.numStates() != dims_.num_states
       || integrator_.numStates() != obj_.numStates()
-      || integrator_.numParams() != dims_.num_params
+      || integrator_.numParams() != dims_.num_param
       || integrator_.numParams() != obj_.numParams()
       || dims_.num_residuals != dims_.num_states
       || dims_.num_history_states <= 0)

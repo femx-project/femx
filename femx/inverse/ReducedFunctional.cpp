@@ -33,7 +33,7 @@ ReducedFunctional::ReducedFunctional(
 
 Index ReducedFunctional::numParams() const
 {
-  return dims_.num_params;
+  return dims_.num_param;
 }
 
 Real ReducedFunctional::value(const Vector<Real>& prm)
@@ -64,10 +64,10 @@ Real ReducedFunctional::valueGrad(const Vector<Real>& prm,
 void ReducedFunctional::checkDims() const
 {
   if (dims_.num_states != state_solver_.numStates()
-      || dims_.num_params != state_solver_.numParams()
+      || dims_.num_param != state_solver_.numParams()
       || dims_.num_residuals != state_solver_.numResiduals()
       || dims_.num_states != obj_.numStates()
-      || dims_.num_params != obj_.numParams()
+      || dims_.num_param != obj_.numParams()
       || dims_.num_residuals != dims_.num_states)
   {
     throw std::runtime_error(

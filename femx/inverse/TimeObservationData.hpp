@@ -23,9 +23,9 @@ class TimeObservationData
 {
 public:
   TimeObservationData() = default;
-  TimeObservationData(Index num_levels, Index num_observations);
+  TimeObservationData(Index num_levels, Index num_obs);
 
-  void resize(Index num_levels, Index num_observations);
+  void resize(Index num_levels, Index num_obs);
 
   bool  empty() const;
   Index numLevels() const;

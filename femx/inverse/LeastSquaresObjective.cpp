@@ -10,11 +10,11 @@ namespace inverse
 {
 
 LeastSquaresObjective::LeastSquaresObjective(Index num_states,
-                                             Index num_params)
+                                             Index num_param)
   : num_states_(num_states),
-    num_params_(num_params)
+    num_param_(num_param)
 {
-  if (num_states_ < 0 || num_params_ < 0)
+  if (num_states_ < 0 || num_param_ < 0)
   {
     throw std::runtime_error(
         "LeastSquaresObjective received invalid dimensions");
@@ -23,12 +23,12 @@ LeastSquaresObjective::LeastSquaresObjective(Index num_states,
 
 LeastSquaresObjective::LeastSquaresObjective(
     Index        num_states,
-    Index        num_params,
+    Index        num_param,
     Vector<Real> state_target,
     Vector<Real> state_weights,
     Vector<Real> param_target,
     Vector<Real> param_weights)
-  : LeastSquaresObjective(num_states, num_params)
+  : LeastSquaresObjective(num_states, num_param)
 {
   setStateTerm(std::move(state_target), std::move(state_weights));
   setParamTerm(std::move(param_target), std::move(param_weights));
@@ -41,7 +41,7 @@ Index LeastSquaresObjective::numStates() const
 
 Index LeastSquaresObjective::numParams() const
 {
-  return num_params_;
+  return num_param_;
 }
 
 void LeastSquaresObjective::setStateTerm(Vector<Real> target, Real weight)
@@ -59,13 +59,13 @@ void LeastSquaresObjective::setStateTerm(Vector<Real> target,
 
 void LeastSquaresObjective::setParamTerm(Vector<Real> target, Real weight)
 {
-  setParamTerm(std::move(target), uniformWeights(num_params_, weight));
+  setParamTerm(std::move(target), uniformWeights(num_param_, weight));
 }
 
 void LeastSquaresObjective::setParamTerm(Vector<Real> target,
                                          Vector<Real> weights)
 {
-  checkTerm(target, weights, num_params_, "parameter");
+  checkTerm(target, weights, num_param_, "parameter");
   param_target_  = std::move(target);
   param_weights_ = std::move(weights);
 }
@@ -110,7 +110,7 @@ void LeastSquaresObjective::paramGrad(const Vector<Real>& state,
   termGrad(prm, param_target_, param_weights_, out);
   if (out.empty())
   {
-    out.resize(num_params_);
+    out.resize(num_param_);
   }
 }
 
@@ -163,7 +163,7 @@ void LeastSquaresObjective::checkInputSizes(
     const Vector<Real>& state,
     const Vector<Real>& prm) const
 {
-  if (state.size() != num_states_ || prm.size() != num_params_)
+  if (state.size() != num_states_ || prm.size() != num_param_)
   {
     throw std::runtime_error(
         "LeastSquaresObjective received inconsistent vector sizes");
