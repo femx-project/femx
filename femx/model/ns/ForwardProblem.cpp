@@ -1,21 +1,15 @@
 #include "ForwardProblem.hpp"
 
 #include <cmath>
-#include <limits>
-#include <map>
 #include <memory>
 #include <ostream>
 #include <stdexcept>
 
 #include "Boundary.hpp"
-#include <femx/assembly/Assembler.hpp>
-#include <femx/fem/DofLayout.hpp>
-#include <femx/fem/FESpace.hpp>
 #include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/GmshReader.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/BlockVectorView.hpp>
+#include <femx/fem/TimeDirichletData.hpp>
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/runtime/Cli.hpp>
@@ -28,162 +22,37 @@ namespace femx::model::ns
 namespace
 {
 
-constexpr Index kQuadOrder = 2;
-
-fem::GaussQuadrature makeVelocityQuadrature(const fem::MixedFESpace& space)
-{
-  return fem::GaussQuadrature::make(
-      space.field(0).space().finiteElement().referenceElement(), kQuadOrder);
-}
-
-NavierKernel makeKernel(const fem::MixedFESpace&    space,
-                        const fem::GaussQuadrature& quad,
-                        const FluidParams&          fluid,
-                        Real                        dt)
-{
-  return makeNavierKernel(space.field(0).space(),
-                          quad,
-                          space.numDofsPerElem(),
-                          fluid.rho,
-                          fluid.mu,
-                          dt);
-}
-
-void requireForwardParams(const Params& prm)
-{
-  if (prm.mesh_file.empty())
-  {
-    throw std::runtime_error("mesh file is required");
-  }
-  if (prm.time.steps <= 0 || prm.time.dt <= 0.0)
-  {
-    throw std::runtime_error("time steps and dt must be positive");
-  }
-}
-
-fem::Mesh readProblemMesh(const Params& prm)
-{
-  requireForwardParams(prm);
-  return fem::GmshReader::read(prm.mesh_file);
-}
-
-void assignBoundaryValues(Vector<Real>&                  state,
-                          const fem::DirichletCondition& bc)
-{
-  if (bc.dofs().size() != bc.vals().size())
-  {
-    throw std::runtime_error("DirichletCondition has inconsistent data");
-  }
-
-  for (Index i = 0; i < bc.dofs().size(); ++i)
-  {
-    const Index id = bc.dofs()[i];
-    if (id < 0 || id >= state.size())
-    {
-      throw std::runtime_error("Dirichlet id is out of range");
-    }
-    state[id] = bc.vals()[i];
-  }
-}
-
-Vector<Real> makeInitialState(const fem::MixedFESpace& space,
-                              const Vector<BCsParams>& bcs)
-{
-  Vector<Real> state(space.numDofs());
-  state.setZero();
-  assignBoundaryValues(state, makeBoundaryCondition(space, bcs, 0.0));
-  return state;
-}
-
-FixedBoundaryValues toFixedBoundaryValues(
-    const std::map<Index, Vector<Real>>& vals,
-    Index                                steps)
-{
-  FixedBoundaryValues out;
-  for (const auto& entry : vals)
-  {
-    out.dofs.push_back(entry.first);
-  }
-
-  out.vals.resize(steps * out.dofs.size());
-  BlockVectorView<Real> values(out.vals.data(), steps, out.dofs.size());
-  Index                 i = 0;
-  for (const auto& entry : vals)
-  {
-    for (Index step = 0; step < steps; ++step)
-    {
-      if (std::isnan(entry.second[step]))
-      {
-        throw std::runtime_error(
-            "fixed boundary value was not assigned for every time step");
-      }
-      values(step, i) = entry.second[step];
-    }
-    ++i;
-  }
-  return out;
-}
-
-FixedBoundaryValues makeFixedBoundaryValues(
+fem::TimeDirichletData makeFixedDirichletData(
     const fem::MixedFESpace& space,
     const Vector<BCsParams>& bcs,
     Index                    steps,
     Real                     dt)
 {
-  if (steps <= 0)
-  {
-    throw std::runtime_error("fixed boundary values require positive steps");
-  }
-
-  const Real                    unset = std::numeric_limits<Real>::quiet_NaN();
-  std::map<Index, Vector<Real>> vals;
-
-  for (Index step = 0; step < steps; ++step)
-  {
-    const Real time = static_cast<Real>(step + 1) * dt;
-    const auto bc   = makeBoundaryCondition(space, bcs, time);
-    if (bc.dofs().size() != bc.vals().size())
-    {
-      throw std::runtime_error("DirichletCondition has inconsistent data");
-    }
-
-    for (Index i = 0; i < bc.dofs().size(); ++i)
-    {
-      Vector<Real>& series = vals[bc.dofs()[i]];
-      if (series.empty())
+  return fem::makeTimeDirichletData(
+      space.numDofs(),
+      steps,
+      dt,
+      [&space, &bcs](Real time)
       {
-        series.resize(steps);
-        for (Index k = 0; k < steps; ++k)
-        {
-          series[k] = unset;
-        }
-      }
-      series[step] = bc.vals()[i];
-    }
-  }
-
-  return toFixedBoundaryValues(vals, steps);
+        return makeDirichletBC(space, bcs, time);
+      });
 }
 
 } // namespace
 
 ForwardProblem::ForwardProblem(const Params& prm)
-  : steps(prm.time.steps),
-    dt(prm.time.dt),
-    mesh(readProblemMesh(prm)),
-    elem(makeElem(mesh, "ns-forward")),
-    space(makeSpace(mesh, *elem)),
-    quad(makeVelocityQuadrature(space)),
-    ns(makeKernel(space, quad, prm.fluid, dt)),
-    fem(steps,
-        fem::DofLayout(space),
-        Vector<fem::DofLayout>{fem::DofLayout(space), fem::DofLayout(space)},
-        fem::DofLayout(space),
-        ns),
-    fixed(makeFixedBoundaryValues(space, prm.bcs, steps, dt)),
-    problem(fem, fem::DirichletControl{}, fixed.dofs, 0, 0, fixed.vals),
-    x0(makeInitialState(space, prm.bcs)),
-    pattern(makeCsrPattern(space)),
+  : model(prm.mesh_file, prm.time.steps, prm.time.dt, prm.fluid),
+    fixed(makeFixedDirichletData(model.space(),
+                                 prm.bcs,
+                                 model.numSteps(),
+                                 model.dt())),
+    problem(model.residual(),
+            fem::DirichletControl{},
+            fixed.dofs,
+            0,
+            0,
+            fixed.values),
+    x0(fixed.initial_state),
     prm0(0)
 {
 }
@@ -266,7 +135,9 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                          std::ostream*         terminal,
                          std::ostream*         log_out)
 {
-  ForwardSolveMonitor monitor(problem.space, problem.dt, problem.steps);
+  ForwardSolveMonitor monitor(problem.model.space(),
+                              problem.model.dt(),
+                              problem.model.numSteps());
   if (prm.enabled)
   {
     monitor.setFieldOutput(prm.directory, prm.interval);

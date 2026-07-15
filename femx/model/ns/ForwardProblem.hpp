@@ -6,16 +6,11 @@
 
 #include "ForwardConfig.hpp"
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
-#include <femx/assembly/TimeFEMResidual.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/fem/FiniteElement.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
-#include <femx/fem/Mesh.hpp>
-#include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/CsrPattern.hpp>
+#include <femx/fem/TimeDirichletData.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
-#include <femx/model/ns/Kernel.hpp>
+#include <femx/model/ns/NavierStokesModel.hpp>
 
 namespace femx
 {
@@ -34,12 +29,6 @@ struct AppOptions
   bool        help = false; ///< Print help and exit.
 };
 
-struct FixedBoundaryValues
-{
-  Vector<Index> dofs; ///< Fixed state dofs.
-  Vector<Real>  vals; ///< Fixed state values.
-};
-
 struct ForwardProblem
 {
   explicit ForwardProblem(const Params& prm);
@@ -49,19 +38,10 @@ struct ForwardProblem
   ForwardProblem(ForwardProblem&&)                 = delete;
   ForwardProblem& operator=(ForwardProblem&&)      = delete;
 
-  Index steps = 0;
-  Real  dt    = 0.0;
-
-  fem::Mesh                              mesh;
-  std::unique_ptr<fem::FiniteElement>    elem;
-  fem::MixedFESpace                      space;
-  fem::GaussQuadrature                   quad;
-  NavierKernel                           ns;
-  assembly::TimeFEMResidual              fem;
-  FixedBoundaryValues                    fixed;
+  NavierStokesModel                      model;
+  fem::TimeDirichletData                 fixed;
   assembly::TimeDirichletControlResidual problem;
   Vector<Real>                           x0;
-  CsrPattern                             pattern;
   Vector<Real>                           prm0;
 };
 

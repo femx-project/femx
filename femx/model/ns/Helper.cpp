@@ -90,4 +90,41 @@ fem::DirichletControl makeVelocityControl(
   return makeVelocityControl(space, sel.physical);
 }
 
+void splitStateFields(VectorView<const Real>   state,
+                      const fem::MixedFESpace& space,
+                      Vector<Real>&            ux,
+                      Vector<Real>&            uy,
+                      Vector<Real>&            uz,
+                      Vector<Real>&            pressure)
+{
+  const fem::Mesh& mesh      = space.mesh();
+  const Index      num_nodes = mesh.numNodes();
+  if (state.size() != space.numDofs())
+  {
+    throw std::runtime_error(
+        "Navier-Stokes state size does not match the finite-element space");
+  }
+  if (ux.size() != num_nodes || uy.size() != num_nodes
+      || uz.size() != num_nodes || pressure.size() != num_nodes)
+  {
+    throw std::runtime_error(
+        "Navier-Stokes nodal field output size does not match the mesh");
+  }
+
+  const auto  velocity       = space.field(0);
+  const auto  pressure_field = space.field(1);
+  const Index num_comp       = velocity.numComponents();
+  for (Index node = 0; node < num_nodes; ++node)
+  {
+    ux[node]       = state[velocity.globalDof(node, 0)];
+    uy[node]       = num_comp > 1
+                         ? state[velocity.globalDof(node, 1)]
+                         : 0.0;
+    uz[node]       = num_comp > 2
+                         ? state[velocity.globalDof(node, 2)]
+                         : 0.0;
+    pressure[node] = state[pressure_field.globalDof(node)];
+  }
+}
+
 } // namespace femx::model::ns

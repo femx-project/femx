@@ -209,7 +209,7 @@ Real velocityComponent(const VelocityEvalContext& ctx,
       ctx.prof, point, ctx.peak_speed, comp);
 }
 
-fem::DirichletCondition makeBoundaryCondition(
+fem::DirichletBC makeDirichletBC(
     const fem::MixedFESpace& space,
     const Vector<BCsParams>& bcs,
     Real                     time)
@@ -217,8 +217,8 @@ fem::DirichletCondition makeBoundaryCondition(
   const auto u_dof = space.field(0);
   const auto p_dof = space.field(1);
 
-  fem::DirichletCondition bc;
-  bool                    has_pre_cond = false;
+  fem::DirichletBC bc;
+  bool             has_pre_cond = false;
 
   for (const auto& cond : bcs)
   {
