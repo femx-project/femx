@@ -1,5 +1,8 @@
 #include "Kernel.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -33,6 +36,12 @@ Index historyDepth(Index num_history_dofs, Index num_local_dofs)
   return num_history_dofs / num_local_dofs;
 }
 
+Real finiteDifferenceStep(Real value)
+{
+  return std::cbrt(std::numeric_limits<Real>::epsilon())
+         * std::max<Real>(1.0, std::abs(value));
+}
+
 bool assembleLocalSystem(Index       step,
                          Index       num_qpts,
                          Index       num_nodes,
@@ -40,7 +49,7 @@ bool assembleLocalSystem(Index       step,
                          Index       num_residuals,
                          Index       num_history_dofs,
                          Index       num_next_states,
-                         Index       num_params,
+                         Index       num_param,
                          const Real* N,
                          const Real* dNdx,
                          const Real* JxW,
@@ -51,7 +60,7 @@ bool assembleLocalSystem(Index       step,
 {
   if (!supportedLocalSize(num_qpts, num_nodes, dim, num_residuals)
       || num_next_states != num_residuals
-      || historyDepth(num_history_dofs, num_residuals) <= 0 || num_params < 3)
+      || historyDepth(num_history_dofs, num_residuals) <= 0 || num_param < 3)
   {
     return false;
   }
@@ -104,7 +113,7 @@ void NavierResidual(Index       step,
                     Index       num_residuals,
                     Index       num_history_dofs,
                     Index       num_next_states,
-                    Index       num_params,
+                    Index       num_param,
                     const Real* N,
                     const Real* dNdx,
                     const Real* JxW,
@@ -120,7 +129,7 @@ void NavierResidual(Index       step,
     out[i] = 0.0;
   }
 
-  (void) num_params;
+  (void) num_param;
   const Index num_dofs = numLocalDofs(num_nodes, dim);
   Real        s1[kMaxNd * kMaxNd];
   Real        s2[kMaxNd];
@@ -134,7 +143,7 @@ void NavierResidual(Index       step,
                            num_residuals,
                            num_history_dofs,
                            num_next_states,
-                           num_params,
+                           num_param,
                            N,
                            dNdx,
                            JxW,
@@ -162,7 +171,7 @@ NavierKernel::NavierKernel(const fem::FESpace&         space,
     num_hist_dofs_(num_history_dofs),
     num_next_states_(num_next_states),
     num_variable_params_(num_variable_params),
-    num_params_(num_variable_params + fixed_prm.size()),
+    num_param_(num_variable_params + fixed_prm.size()),
     fixed_prm_(fixed_prm),
     enzyme_kernel_(space,
                    quadrature,
@@ -225,7 +234,7 @@ void NavierKernel::res(Index                  step,
                            num_residuals_,
                            num_hist_dofs_,
                            num_next_states_,
-                           num_params_,
+                           num_param_,
                            vals.NData(),
                            vals.dNdxData(),
                            vals.JxWData(),
@@ -251,7 +260,11 @@ void NavierKernel::jacobian(Index                  step,
   checkInputSizes(hist, nxt, prm);
   if (!wrt.isNextState())
   {
+#if defined(FEMX_HAS_ENZYME)
     enzyme_kernel_.jacobian(step, ie, wrt, hist, nxt, prm, out);
+#else
+    fdJacobian(step, ie, wrt, hist, nxt, prm, out);
+#endif
     return;
   }
 
@@ -281,7 +294,7 @@ void NavierKernel::jacobian(Index                  step,
                            num_residuals_,
                            num_hist_dofs_,
                            num_next_states_,
-                           num_params_,
+                           num_param_,
                            vals.NData(),
                            vals.dNdxData(),
                            vals.JxWData(),
@@ -303,10 +316,73 @@ void NavierKernel::jacobian(Index                  step,
   }
 }
 
+void NavierKernel::fdJacobian(
+    Index                  step,
+    Index                  ie,
+    state::VariableBlock   wrt,
+    state::TimeHistoryView hist,
+    const Vector<Real>&    nxt,
+    const Vector<Real>&    prm,
+    DenseMatrix&           out) const
+{
+  const Index columns = wrt.isHistoryState()
+                            ? num_hist_state_dofs_
+                            : num_variable_params_;
+  out.resize(num_residuals_, columns);
+  if (columns == 0)
+  {
+    return;
+  }
+
+  Vector<Real> history_values(num_hist_dofs_);
+  for (Index i = 0; i < history_values.size(); ++i)
+  {
+    history_values[i] = hist.data()[i];
+  }
+  Vector<Real>                 param_values = prm;
+  const state::TimeHistoryView history_view(
+      history_values.data(), num_hist_states_, num_hist_state_dofs_);
+
+  Index history_offset = 0;
+  if (wrt.isHistoryState())
+  {
+    const Index lag = wrt.historyLag();
+    if (lag < 0 || lag >= num_hist_states_)
+    {
+      throw std::runtime_error(
+          "NavierKernel history lag is out of range");
+    }
+    history_offset = lag * num_hist_state_dofs_;
+  }
+
+  for (Index column = 0; column < columns; ++column)
+  {
+    Real&      value    = wrt.isHistoryState()
+                              ? history_values[history_offset + column]
+                              : param_values[column];
+    const Real original = value;
+    const Real delta    = finiteDifferenceStep(original);
+
+    value = original + delta;
+    Vector<Real> plus;
+    res(step, ie, history_view, nxt, param_values, plus);
+
+    value = original - delta;
+    Vector<Real> minus;
+    res(step, ie, history_view, nxt, param_values, minus);
+
+    value = original;
+    for (Index row = 0; row < num_residuals_; ++row)
+    {
+      out(row, column) = (plus[row] - minus[row]) / (2.0 * delta);
+    }
+  }
+}
+
 void NavierKernel::checkDimensions()
 {
   if (num_residuals_ < 0 || num_hist_dofs_ < 0
-      || num_next_states_ < 0 || num_variable_params_ < 0 || num_params_ < 0)
+      || num_next_states_ < 0 || num_variable_params_ < 0 || num_param_ < 0)
   {
     throw std::runtime_error("NavierKernel received invalid dimensions");
   }
@@ -317,7 +393,7 @@ void NavierKernel::checkDimensions()
   }
   num_hist_states_     = num_hist_dofs_ / num_next_states_;
   num_hist_state_dofs_ = num_next_states_;
-  if (num_residuals_ != num_next_states_ || num_params_ < 3)
+  if (num_residuals_ != num_next_states_ || num_param_ < 3)
   {
     throw std::runtime_error("NavierKernel received unsupported dimensions");
   }
@@ -343,7 +419,7 @@ Vector<Real> NavierKernel::makeResidualPrm(const Vector<Real>& variable_prm) con
     return variable_prm;
   }
 
-  Vector<Real> out(num_params_);
+  Vector<Real> out(num_param_);
   for (Index i = 0; i < num_variable_params_; ++i)
   {
     out[i] = variable_prm[i];

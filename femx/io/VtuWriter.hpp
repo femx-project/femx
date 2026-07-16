@@ -37,7 +37,7 @@ public:
   struct PointField
   {
     std::string         name;               ///< VTK field name.
-    Index               num_components = 1; ///< Number of components per point.
+    Index               num_comp = 1; ///< Number of components per point.
     const Vector<Real>* vals{nullptr};      ///< Field values.
   };
 

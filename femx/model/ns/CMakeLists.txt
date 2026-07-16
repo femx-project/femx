@@ -11,6 +11,7 @@ target_sources(
           ForwardSolveMonitor.cpp
           Helper.cpp
           Kernel.cpp
+          NavierStokesModel.cpp
   PUBLIC Boundary.hpp
          Components.hpp
          Config.hpp
@@ -18,7 +19,8 @@ target_sources(
          ForwardProblem.hpp
          ForwardSolveMonitor.hpp
          Helper.hpp
-         Kernel.hpp)
+         Kernel.hpp
+         NavierStokesModel.hpp)
 
 target_include_directories(femx_model_ns
                            PRIVATE ${FEMX_NLOHMANN_JSON_INCLUDE_DIR})

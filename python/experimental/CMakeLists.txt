@@ -35,7 +35,7 @@ if(NOT pybind11_FOUND)
       "-DFEMX_PYBIND11_SOURCE_DIR=/path/to/pybind11.")
 endif()
 
-pybind11_add_module(femx_experimental femx_experimental.cpp)
+pybind11_add_module(femx_experimental Module.cpp)
 
 foreach(_target femx_linalg femx_state femx_inverse femx_fem)
   if(TARGET "${_target}")

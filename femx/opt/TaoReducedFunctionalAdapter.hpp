@@ -29,9 +29,9 @@ using TaoValueGradCallback =
 class TaoReducedFunctionalAdapter
 {
 public:
-  TaoReducedFunctionalAdapter(TaoNumParamsCallback num_params,
+  TaoReducedFunctionalAdapter(TaoNumParamsCallback num_param,
                               TaoValueGradCallback value_grad)
-    : num_params_(std::move(num_params)),
+    : num_param_(std::move(num_param)),
       value_grad_(std::move(value_grad))
   {
   }
@@ -107,16 +107,16 @@ public:
 private:
   Index numParams() const
   {
-    if (!num_params_)
+    if (!num_param_)
     {
       throw std::runtime_error(
           "TAO reduced functional adapter has no size callback");
     }
-    return num_params_();
+    return num_param_();
   }
 
 private:
-  TaoNumParamsCallback num_params_;
+  TaoNumParamsCallback num_param_;
   TaoValueGradCallback value_grad_;
   Vector<Real>         prm_;
   Vector<Real>         grad_;

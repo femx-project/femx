@@ -34,7 +34,7 @@ Index LinearStateSolver::numStates() const
 
 Index LinearStateSolver::numParams() const
 {
-  return dims_.num_params;
+  return dims_.num_param;
 }
 
 Index LinearStateSolver::numResiduals() const

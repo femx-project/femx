@@ -1,15 +1,14 @@
-#include <cmath>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
-#include <regex>
 #include <stdexcept>
 #include <string>
 
 #include <femx/io/TimeSeriesDataIn.hpp>
 
 #ifdef FEMX_HAS_HDF5
+#include <cmath>
+#include <fstream>
 #include <hdf5.h>
+#include <iterator>
+#include <regex>
 #endif
 
 namespace femx
@@ -21,6 +20,8 @@ using namespace fem;
 
 namespace
 {
+
+#ifdef FEMX_HAS_HDF5
 
 std::string stripKnownExtension(std::string path)
 {
@@ -191,8 +192,6 @@ Index meshDim(const Vector<double>& geometry,
   }
   return flat_z ? 2 : 3;
 }
-
-#ifdef FEMX_HAS_HDF5
 
 void checkHdf5(herr_t status, const std::string& msg)
 {

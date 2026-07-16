@@ -461,8 +461,8 @@ VelocityParams parseVelocity(const json&                  node,
   return velocity;
 }
 
-BCsParams parseBoundaryCondition(const json&                  node,
-                                 const std::filesystem::path& cfg_dir)
+BCsParams parseDirichletBC(const json&                  node,
+                           const std::filesystem::path& cfg_dir)
 {
   if (!node.is_object())
   {
@@ -641,10 +641,10 @@ void validate(const Params& prm)
   {
     throw std::runtime_error("Solver sketching must be either 'count' or 'fwht'");
   }
-  if (prm.solver.max_iterations <= 0 || prm.solver.restart <= 0)
+  if (prm.solver.max_itrs <= 0 || prm.solver.restart <= 0)
   {
     throw std::runtime_error(
-        "Solver max_iterations and restart must be positive");
+        "Solver max_itrs and restart must be positive");
   }
   if (!std::isfinite(prm.solver.relative_tolerance)
       || prm.solver.relative_tolerance <= 0.0)
@@ -736,18 +736,18 @@ Params loadConfig(const std::string& path)
     }
     assign(solver, "sketching", prm.solver.sketching);
     assign(solver, "restart", prm.solver.restart);
-    if (solver.contains("max_iterations"))
+    if (solver.contains("max_itrs"))
     {
-      prm.solver.max_iterations =
-          solver.at("max_iterations").get<Index>();
+      prm.solver.max_itrs =
+          solver.at("max_itrs").get<Index>();
     }
     else if (solver.contains("max_its"))
     {
-      prm.solver.max_iterations = solver.at("max_its").get<Index>();
+      prm.solver.max_itrs = solver.at("max_its").get<Index>();
     }
     else if (solver.contains("max_iter"))
     {
-      prm.solver.max_iterations = solver.at("max_iter").get<Index>();
+      prm.solver.max_itrs = solver.at("max_iter").get<Index>();
     }
     if (solver.contains("relative_tolerance"))
     {
@@ -788,7 +788,7 @@ Params loadConfig(const std::string& path)
     }
     for (const auto& item : boundaries)
     {
-      prm.bcs.push_back(parseBoundaryCondition(item, cfg_dir));
+      prm.bcs.push_back(parseDirichletBC(item, cfg_dir));
     }
   }
 

@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "Helper.hpp"
 #include <femx/common/Math.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -32,35 +33,6 @@ Real elemMinEdge(const fem::Element& elem)
     }
   }
   return std::isfinite(h) ? h : 0.0;
-}
-
-void splitFields(const Vector<Real>&      x,
-                 const fem::MixedFESpace& space,
-                 Vector<Real>&            ux,
-                 Vector<Real>&            uy,
-                 Vector<Real>&            uz,
-                 Vector<Real>&            p)
-{
-  const fem::Mesh& mesh           = space.mesh();
-  const auto       u_dof          = space.field(0);
-  const auto       p_dof          = space.field(1);
-  const Index      num_components = u_dof.numComponents();
-
-  for (Index in = 0; in < mesh.numNodes(); ++in)
-  {
-    ux[in] = x[u_dof.globalDof(in, 0)];
-    uy[in] = 0.0;
-    uz[in] = 0.0;
-    if (num_components > 1)
-    {
-      uy[in] = x[u_dof.globalDof(in, 1)];
-    }
-    if (num_components > 2)
-    {
-      uz[in] = x[u_dof.globalDof(in, 2)];
-    }
-    p[in] = x[p_dof.globalDof(in)];
-  }
 }
 
 std::string stepLogLine(Index step,
@@ -98,6 +70,7 @@ void writeLine(const std::string& line,
   }
 }
 
+#ifndef FEMX_HAS_HDF5
 void packVelocity(const Vector<Real>& ux,
                   const Vector<Real>& uy,
                   const Vector<Real>& uz,
@@ -128,6 +101,7 @@ std::string stepVtuFile(const std::string& directory,
         << ".vtu";
   return fname.str();
 }
+#endif
 
 } // namespace
 
@@ -379,12 +353,12 @@ void ForwardSolveMonitor::writeFieldOutput(Index               level,
     return;
   }
 
-  splitFields(state,
-              *space_,
-              field_out_->ux,
-              field_out_->uy,
-              field_out_->uz,
-              field_out_->p);
+  splitStateFields(VectorView<const Real>(state.data(), state.size()),
+                   *space_,
+                   field_out_->ux,
+                   field_out_->uy,
+                   field_out_->uz,
+                   field_out_->p);
 
 #ifdef FEMX_HAS_HDF5
   field_out_->vel_out.beginStep(time);

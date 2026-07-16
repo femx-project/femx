@@ -18,7 +18,7 @@ namespace inverse
 class SumObjective final : public Objective
 {
 public:
-  SumObjective(Index num_states, Index num_params);
+  SumObjective(Index num_states, Index num_param);
 
   SumObjective& add(const Objective& term);
 
@@ -43,7 +43,7 @@ private:
 
 private:
   Index                    num_states_{0};
-  Index                    num_params_{0};
+  Index                    num_param_{0};
   Vector<const Objective*> terms_;
 };
 

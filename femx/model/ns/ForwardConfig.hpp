@@ -43,7 +43,7 @@ struct SolverParams
   std::string preconditioner     = "ilu0";      ///< Preconditioner method.
   std::string gram_schmidt       = "cgs2";      ///< Orthogonalization method.
   std::string sketching          = "count";     ///< Sketching method.
-  Index       max_iterations     = 5000;        ///< Maximum linear iterations.
+  Index       max_itrs     = 5000;        ///< Maximum linear iterations.
   Index       restart            = 200;         ///< Krylov restart length.
   Real        relative_tolerance = 1.0e-8;      ///< Linear residual tolerance.
   bool        flexible           = true;        ///< Enable flexible Krylov methods.

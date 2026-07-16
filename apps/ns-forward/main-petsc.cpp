@@ -75,7 +75,7 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
   auto& opts       = solver.opts();
   opts.restart     = prm.restart;
   opts.rtol        = prm.relative_tolerance;
-  opts.max_its     = prm.max_iterations;
+  opts.max_its     = prm.max_itrs;
   opts.use_opts_db = true;
 
   const PetscMPIInt comm_size = commSize(PETSC_COMM_WORLD);
@@ -126,13 +126,13 @@ int run(const Params& prm)
   }
 
   ForwardProblem fwd(prm);
-  setElemRange(fwd.fem, fwd.space.mesh().numElems());
+  setElemRange(fwd.model.residual(), fwd.model.mesh().numElems());
 
   PETScVector mat_row(PETSC_COMM_WORLD);
-  mat_row.resize(fwd.space.numDofs());
+  mat_row.resize(fwd.model.numStates());
 
   PETScAssemblyMatrix A(PETSC_COMM_WORLD);
-  A.resize(fwd.pattern, mat_row);
+  A.resize(fwd.model.matrixPattern(), mat_row);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);

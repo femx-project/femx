@@ -512,6 +512,15 @@ private:
                 "ReSolve solution Vector<Real>::setToZero failed");
 
     checkStatus(solver.solve(&rhs, &sol), operation);
+    // ReSolve may satisfy its Krylov residual estimate before the reported
+    // true residual reaches the requested tolerance. Restart from the current
+    // solution in that case.
+    for (Index correction = 0;
+         correction < 2 && needsResidualCorrection(solver);
+         ++correction)
+    {
+      checkStatus(solver.solve(&rhs, &sol), operation);
+    }
     checkIterativeConvergence(solver);
 
     checkStatus(sol.copyToExternal(x.data(),
@@ -539,6 +548,20 @@ private:
           << " / " << opts_.max_its;
       throw std::runtime_error(msg.str());
     }
+  }
+
+  bool needsResidualCorrection(ReSolve::SystemSolver& solver) const
+  {
+    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
+    {
+      return false;
+    }
+
+    const auto& iterative = solver.getIterativeSolver();
+    const Real  res       = iterative.getFinalResidualNorm();
+    return std::isfinite(res)
+           && res > 10.0 * opts_.rtol
+           && iterative.getNumIter() < opts_.max_its;
   }
 
   void applyOptions(ReSolve::SystemSolver& solver)

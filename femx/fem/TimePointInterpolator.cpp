@@ -294,14 +294,14 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              Index               fid,
                                              Vector<Point3>      pts,
                                              Vector<Index>       comps,
-                                             Index               num_params)
+                                             Index               num_param)
   : num_steps_(num_steps),
     num_states_(space.numDofs()),
-    num_params_(num_params),
+    num_param_(num_param),
     pts_(std::move(pts)),
     comps_(std::move(comps))
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
+  if (num_steps_ < 0 || num_states_ < 0 || num_param_ < 0)
   {
     throw std::runtime_error("TimePointInterpolator received invalid dimensions");
   }
@@ -339,7 +339,7 @@ Index TimePointInterpolator::numStates() const
 
 Index TimePointInterpolator::numParams() const
 {
-  return num_params_;
+  return num_param_;
 }
 
 Index TimePointInterpolator::numObservations() const

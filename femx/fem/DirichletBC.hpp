@@ -22,7 +22,7 @@ class FESpace;
  * Constraints can be added directly by degree of freedom, by physical boundary
  * tag, or by a user-provided boundary marker.
  */
-class DirichletCondition
+class DirichletBC
 {
 public:
   /** @brief Marks whether a mesh node belongs to the constrained boundary. */
@@ -31,7 +31,7 @@ public:
   /** @brief Evaluates the prescribed boundary value at a mesh node and time. */
   using BoundaryValue = std::function<Real(const Mesh::Node&, Real)>;
 
-  DirichletCondition() = default;
+  DirichletBC() = default;
 
   /** @brief Add one constrained degree of freedom. */
   void addDof(Index id, Real value);
@@ -93,17 +93,15 @@ public:
                    Index                 comp = 0);
 
   const Vector<Index>& dofs() const noexcept;
-  const Vector<Real>&  vals() const noexcept;
+  const Vector<Real>&  values() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
   void apply(CsrMatrix& A, Vector<Real>& b) const;
 
 private:
   Vector<Index> dofs_;
-  Vector<Real>  vals_;
+  Vector<Real>  values_;
 };
-
-using BoundaryCondition = DirichletCondition;
 
 } // namespace fem
 } // namespace femx

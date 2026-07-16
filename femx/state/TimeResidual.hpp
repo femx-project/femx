@@ -23,7 +23,7 @@ struct TimeDims
 {
   Index num_steps          = 0; ///< Number of residual steps.
   Index num_states         = 0; ///< Size of one state vector.
-  Index num_params         = 0; ///< Size of the parameter vector shared by all steps.
+  Index num_param         = 0; ///< Size of the parameter vector shared by all steps.
   Index num_residuals      = 0; ///< Size of one residual vector.
   Index num_history_states = 1; ///< Number of history states required by each step.
 };

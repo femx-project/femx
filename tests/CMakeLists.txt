@@ -47,3 +47,20 @@ if(TARGET femx_linalg_petsc)
   add_test(NAME PETScSolverTests COMMAND runPETScSolverTests)
   set_tests_properties(PETScSolverTests PROPERTIES LABELS "petsc;optional")
 endif()
+
+add_executable(runStateTests unit/state/runStateTests.cpp)
+target_include_directories(runStateTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runStateTests PRIVATE femx::femx)
+add_test(NAME StateTests COMMAND runStateTests)
+
+add_executable(runInverseTests unit/inverse/runInverseTests.cpp)
+target_include_directories(runInverseTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runInverseTests PRIVATE femx::femx)
+add_test(NAME InverseTests COMMAND runInverseTests)
+
+add_executable(runNavierStokesModelTests
+               unit/model/ns/runNavierStokesModelTests.cpp)
+target_include_directories(runNavierStokesModelTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runNavierStokesModelTests PRIVATE femx::femx)
+add_test(NAME NavierStokesModelTests COMMAND runNavierStokesModelTests)

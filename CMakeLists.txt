@@ -21,6 +21,7 @@ option(FEMX_ENABLE_PETSC "Require PETSc applications and backends" OFF)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
 option(FEMX_BUILD_TESTS "Build femx tests" ON)
+option(FEMX_BUILD_PYTHON "Build supported Python bindings" OFF)
 option(FEMX_BUILD_PYTHON_EXPERIMENTAL "Build experimental Python bindings" OFF)
 set(FEMX_OPENMP_ROOT
     ""
@@ -255,6 +256,10 @@ if(ReSolve_FOUND)
 endif()
 
 if(FEMX_ENABLE_HDF5)
+  enable_language(C)
+  if(NOT HDF5_ROOT AND DEFINED ENV{CONDA_PREFIX})
+    set(HDF5_ROOT "$ENV{CONDA_PREFIX}")
+  endif()
   find_package(
     HDF5
     COMPONENTS C
@@ -428,6 +433,10 @@ add_library(femx::femx ALIAS femx)
 target_link_libraries(femx INTERFACE femx_config)
 
 add_subdirectory(femx)
+
+if(FEMX_BUILD_PYTHON)
+  add_subdirectory(python/bindings)
+endif()
 
 if(FEMX_BUILD_PYTHON_EXPERIMENTAL)
   add_subdirectory(python/experimental)

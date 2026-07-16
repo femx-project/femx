@@ -1,6 +1,6 @@
 {
   "mesh": {
-    "file": "../../../../../data/meshes/2d_straighttube.msh"
+    "file": "../../../../../data/meshes/2d_rectangle.msh"
   },
   "time": {
     "dt": 0.01,

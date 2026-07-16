@@ -18,10 +18,10 @@ namespace inverse
 class LeastSquaresObjective final : public Objective
 {
 public:
-  LeastSquaresObjective(Index num_states, Index num_params);
+  LeastSquaresObjective(Index num_states, Index num_param);
 
   LeastSquaresObjective(Index        num_states,
-                        Index        num_params,
+                        Index        num_param,
                         Vector<Real> state_target,
                         Vector<Real> state_weights,
                         Vector<Real> param_target,
@@ -69,7 +69,7 @@ private:
 
 private:
   Index num_states_{0};
-  Index num_params_{0};
+  Index num_param_{0};
 
   Vector<Real> state_target_;  ///< Target state values.
   Vector<Real> state_weights_; ///< Weights for state tracking.

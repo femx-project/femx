@@ -41,6 +41,13 @@ public:
                             Real                           dt,
                             Real                           time_offset);
 
+  TimeLeastSquaresObjective(const TimeObservationOperator& obs,
+                            TimeObservationData            data,
+                            Vector<Real>                   wts,
+                            Vector<Real>                   obs_wts,
+                            Real                           dt,
+                            Real                           time_offset = 0.0);
+
   Index numSteps() const override;
   Index numStates() const override;
   Index numParams() const override;
@@ -63,6 +70,7 @@ private:
   void                checkLevel(Index level) const;
   LinearInterpolation interpolation(Index row) const;
   Real                observationWeight(const LinearInterpolation& interp) const;
+  Real                observationEntryWeight(Index row, Index observation) const;
 
   void observeInterpolated(Index                        data_row,
                            const LinearInterpolation&   interp,
@@ -78,11 +86,16 @@ private:
 
   static void checkSize(const Vector<Real>& value, Index exp);
   static void scale(Vector<Real>& out, Real factor);
+  void        scaleObservationResidual(Index         row,
+                                       Vector<Real>& out,
+                                       Real          factor) const;
+  void        setUniformObservationWeights();
 
 private:
   const TimeObservationOperator& obs_;
   TimeObservationData            data_;
   Vector<Real>                   wts_;
+  Vector<Real>                   obs_wts_;
   Real                           dt_{1.0};
   Real                           time_offset_{0.0};
 };

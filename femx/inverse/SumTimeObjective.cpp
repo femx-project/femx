@@ -10,12 +10,12 @@ namespace inverse
 
 SumTimeObjective::SumTimeObjective(Index num_steps,
                                    Index num_states,
-                                   Index num_params)
+                                   Index num_param)
   : num_steps_(num_steps),
     num_states_(num_states),
-    num_params_(num_params)
+    num_param_(num_param)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_params_ < 0)
+  if (num_steps_ < 0 || num_states_ < 0 || num_param_ < 0)
   {
     throw std::runtime_error("SumTimeObjective received invalid dimensions");
   }
@@ -45,7 +45,7 @@ Index SumTimeObjective::numStates() const
 
 Index SumTimeObjective::numParams() const
 {
-  return num_params_;
+  return num_param_;
 }
 
 Real SumTimeObjective::value(const TimeTrajectory& tr,

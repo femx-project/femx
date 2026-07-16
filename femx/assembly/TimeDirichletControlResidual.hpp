@@ -29,7 +29,7 @@ public:
                                fem::DirichletControl       ctr,
                                Vector<Index>               fdofs             = {},
                                Index                       ctr_param_offset  = 0,
-                               Index                       num_params        = -1,
+                               Index                       num_param        = -1,
                                Vector<Real>                fvals             = {},
                                Vector<LinearInterpolation> ctr_time_stencils = {});
 
@@ -81,7 +81,9 @@ private:
                              const Vector<Real>&       adj,
                              Vector<Real>&             out) const;
 
-  Real  ctrValue(Index step, Index i, const Vector<Real>& prm) const;
+  Vector<Real> interpolatedControl(
+      Index               step,
+      const Vector<Real>& prm) const;
   Index ctrIndex(Index level, Index i) const;
   Real  fixedValue(Index step, Index i) const;
 

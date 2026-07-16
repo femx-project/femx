@@ -62,7 +62,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
     fem::DirichletControl       ctr,
     Vector<Index>               fdofs,
     Index                       ctr_param_offset,
-    Index                       num_params,
+    Index                       num_param,
     Vector<Real>                fvals,
     Vector<LinearInterpolation> ctr_time_stencils)
   : base_(base),
@@ -78,7 +78,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
     throw std::runtime_error(
         "TimeDirichletControlResidual requires square state residuals");
   }
-  if (base_dims_.num_params != 0)
+  if (base_dims_.num_param != 0)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual requires a parameter-free base residual");
@@ -90,17 +90,18 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
   }
   initializeControlTimeStencils(std::move(ctr_time_stencils));
 
-  const Index required_ctr_params = ctr_param_levels_ * ctr_.numDofs();
-  dims_.num_params =
-      num_params < 0
+  const Index required_ctr_params =
+      ctr_param_levels_ * ctr_.numControlParams();
+  dims_.num_param =
+      num_param < 0
           ? ctr_param_offset_ + required_ctr_params
-          : num_params;
-  if (dims_.num_params < ctr_param_offset_ + required_ctr_params)
+          : num_param;
+  if (dims_.num_param < ctr_param_offset_ + required_ctr_params)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual parameter count is too small");
   }
-  base_prm_.resize(base_dims_.num_params);
+  base_prm_.resize(base_dims_.num_param);
 
   if (fvals_.empty())
   {
@@ -157,7 +158,7 @@ Index TimeDirichletControlResidual::numStates() const
 
 Index TimeDirichletControlResidual::numParams() const
 {
-  return dims_.num_params;
+  return dims_.num_param;
 }
 
 Index TimeDirichletControlResidual::numRes() const
@@ -180,10 +181,13 @@ void TimeDirichletControlResidual::res(
         "TimeDirichletControlResidual base residual size mismatch");
   }
 
-  for (Index i = 0; i < ctr_.numDofs(); ++i)
+  const Vector<Real> control = interpolatedControl(ctx.step, *ctx.prm);
+  Vector<Real>       values;
+  ctr_.apply(control, values);
+  for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
     const Index row = ctr_.stateDof(i);
-    out[row]        = (*ctx.nxt)[row] - ctrValue(ctx.step, i, *ctx.prm);
+    out[row]        = (*ctx.nxt)[row] - values[i];
   }
   for (Index i = 0; i < fdofs_.size(); ++i)
   {
@@ -246,16 +250,17 @@ bool TimeDirichletControlResidual::assembleJac(
   checkContext(ctx);
   if (wrt.isParam())
   {
-    out.resize(dims_.num_residuals, dims_.num_params);
+    out.resize(dims_.num_residuals, dims_.num_param);
     out.setZero();
     const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
-    for (Index i = 0; i < ctr_.numDofs(); ++i)
+    for (const fem::DirichletControlMapEntry& entry : ctr_.mapEntries())
     {
-      const Index row = ctr_.stateDof(i);
       interp.forEachWeight(
           [&](Index level, Real wt)
           {
-            out.set(row, ctrIndex(level, i), -wt);
+            out.set(ctr_.stateDof(entry.state_row),
+                    ctrIndex(level, entry.ctr_col),
+                    -wt * entry.weight);
           });
     }
     return true;
@@ -307,7 +312,7 @@ void TimeDirichletControlResidual::checkContext(
         "TimeDirichletControlResidual history state size mismatch");
   }
   checkVector(ctx.nxt, dims_.num_states);
-  checkVector(ctx.prm, dims_.num_params);
+  checkVector(ctx.prm, dims_.num_param);
 }
 
 void TimeDirichletControlResidual::checkVector(const Vector<Real>* value,
@@ -424,26 +429,18 @@ void TimeDirichletControlResidual::applyControlParamJac(
     const Vector<Real>& dir,
     Vector<Real>&       out) const
 {
-  if (dir.size() != dims_.num_params)
+  if (dir.size() != dims_.num_param)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual parameter direction size mismatch");
   }
   resizeOrZero(out, dims_.num_residuals);
-  const LinearInterpolation&  interp = ctr_time_stencils_[ctx.step];
-  BlockVectorView<const Real> params(
-      dir.data() + ctr_param_offset_,
-      ctr_param_levels_,
-      ctr_.numDofs());
-  for (Index i = 0; i < ctr_.numDofs(); ++i)
+  const Vector<Real> control = interpolatedControl(ctx.step, dir);
+  Vector<Real>       mapped;
+  ctr_.apply(control, mapped);
+  for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
-    Real value = 0.0;
-    interp.forEachWeight(
-        [&](Index level, Real wt)
-        {
-          value += wt * params(level, i);
-        });
-    out[ctr_.stateDof(i)] -= value;
+    out[ctr_.stateDof(i)] -= mapped[i];
   }
 }
 
@@ -457,19 +454,22 @@ void TimeDirichletControlResidual::applyControlParamJacT(
     throw std::runtime_error(
         "TimeDirichletControlResidual adjoint vector size mismatch");
   }
-  resizeOrZero(out, dims_.num_params);
+  resizeOrZero(out, dims_.num_param);
   const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
-  BlockVectorView<Real>      params(
-      out.data() + ctr_param_offset_,
-      ctr_param_levels_,
-      ctr_.numDofs());
-  for (Index i = 0; i < ctr_.numDofs(); ++i)
+  Vector<Real>               state_adj(ctr_.numStateDofs());
+  for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
-    const Real value = adj[ctr_.stateDof(i)];
+    state_adj[i] = adj[ctr_.stateDof(i)];
+  }
+
+  Vector<Real> ctr_adj;
+  ctr_.applyTranspose(state_adj, ctr_adj);
+  for (Index i = 0; i < ctr_.numControlParams(); ++i)
+  {
     interp.forEachWeight(
         [&](Index level, Real wt)
         {
-          params(level, i) -= wt * value;
+          out[ctrIndex(level, i)] -= wt * ctr_adj[i];
         });
   }
 }
@@ -505,35 +505,42 @@ void TimeDirichletControlResidual::initializeControlTimeStencils(
     ctr_param_levels_ =
         std::max(ctr_param_levels_, stencil.upper + 1);
   }
-  if (ctr_param_levels_ <= 0 && ctr_.numDofs() > 0)
+  if (ctr_param_levels_ <= 0 && ctr_.numControlParams() > 0)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual has no control time levels");
   }
 }
 
-Real TimeDirichletControlResidual::ctrValue(
+Vector<Real> TimeDirichletControlResidual::interpolatedControl(
     Index               step,
-    Index               i,
     const Vector<Real>& prm) const
 {
+  Vector<Real> out(ctr_.numControlParams());
+  if (out.empty())
+  {
+    return out;
+  }
+
   const LinearInterpolation&  interp = ctr_time_stencils_[step];
-  Real                        value  = 0.0;
   BlockVectorView<const Real> params(
       prm.data() + ctr_param_offset_,
       ctr_param_levels_,
-      ctr_.numDofs());
-  interp.forEachWeight(
-      [&](Index level, Real wt)
-      {
-        value += wt * params(level, i);
-      });
-  return value;
+      ctr_.numControlParams());
+  for (Index i = 0; i < ctr_.numControlParams(); ++i)
+  {
+    interp.forEachWeight(
+        [&](Index level, Real wt)
+        {
+          out[i] += wt * params(level, i);
+        });
+  }
+  return out;
 }
 
 Index TimeDirichletControlResidual::ctrIndex(Index level, Index i) const
 {
-  return ctr_param_offset_ + level * ctr_.numDofs() + i;
+  return ctr_param_offset_ + level * ctr_.numControlParams() + i;
 }
 
 Real TimeDirichletControlResidual::fixedValue(Index step, Index i) const
@@ -550,7 +557,7 @@ Real TimeDirichletControlResidual::fixedValue(Index step, Index i) const
 Vector<Index> TimeDirichletControlResidual::constrainedRows() const
 {
   Vector<Index> rows;
-  rows.reserve(ctr_.numDofs() + fdofs_.size());
+  rows.reserve(ctr_.numStateDofs() + fdofs_.size());
   for (Index row : ctr_.stateDofs())
   {
     rows.push_back(row);

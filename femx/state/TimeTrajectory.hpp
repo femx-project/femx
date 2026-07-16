@@ -66,16 +66,42 @@ public:
     return empty() ? 0 : num_states_;
   }
 
-  VectorView<Real> operator[](Index level)
+  Index size() const
+  {
+    return data_.size();
+  }
+
+  Real* data()
+  {
+    return data_.data();
+  }
+
+  const Real* data() const
+  {
+    return data_.data();
+  }
+
+  VectorView<Real> level(Index level)
   {
     checkLevel(level);
     return VectorView<Real>(data_.data() + level * num_states_, num_states_);
   }
 
-  VectorView<const Real> operator[](Index level) const
+  VectorView<const Real> level(Index level) const
   {
     checkLevel(level);
-    return VectorView<const Real>(data_.data() + level * num_states_, num_states_);
+    return VectorView<const Real>(data_.data() + level * num_states_,
+                                  num_states_);
+  }
+
+  VectorView<Real> operator[](Index level)
+  {
+    return this->level(level);
+  }
+
+  VectorView<const Real> operator[](Index level) const
+  {
+    return this->level(level);
   }
 
   void setZero()

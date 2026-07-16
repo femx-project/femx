@@ -60,7 +60,7 @@ Index NewtonStateSolver::numStates() const
 
 Index NewtonStateSolver::numParams() const
 {
-  return dims_.num_params;
+  return dims_.num_param;
 }
 
 Index NewtonStateSolver::numResiduals() const

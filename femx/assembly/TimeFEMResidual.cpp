@@ -417,7 +417,7 @@ void TimeFEMResidual::checkContext(const TimeContext& ctx) const
         "TimeFEMResidual history state size mismatch");
   }
   checkVector(ctx.nxt, dm.num_states);
-  checkVector(ctx.prm, dm.num_params);
+  checkVector(ctx.prm, dm.num_param);
 }
 
 void TimeFEMResidual::checkVector(const Vector<Real>* value,

@@ -7,6 +7,7 @@ target_sources(
           ReducedFunctional.cpp
           SumObjective.cpp
           SumTimeObjective.cpp
+          TimeBlockRegularization.cpp
           TimeLeastSquaresObjective.cpp
           TimeObservationData.cpp
           TimeReducedFunctional.cpp
@@ -16,6 +17,7 @@ target_sources(
          ReducedFunctional.hpp
          SumObjective.hpp
          SumTimeObjective.hpp
+         TimeBlockRegularization.hpp
          TimeLeastSquaresObjective.hpp
          TimeObjective.hpp
          TimeObservationData.hpp

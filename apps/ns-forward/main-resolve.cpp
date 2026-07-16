@@ -89,7 +89,7 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
   opts.factor       = "none";
   opts.refactor     = "none";
   opts.ir           = "none";
-  opts.max_its      = solver.max_iterations;
+  opts.max_its      = solver.max_itrs;
   opts.restart      = solver.restart;
   opts.rtol         = solver.relative_tolerance;
   opts.solve        = solver.solve;
@@ -122,7 +122,7 @@ int run(const Params& prm)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  CsrAssemblyMatrix   A(fwd.pattern);
+  CsrAssemblyMatrix   A(fwd.model.matrixPattern());
   ReSolveLinearSolver solver(workspaceType(prm.solver), opts);
 
   TimeLinearIntegrator integ(fwd.problem, A, solver);

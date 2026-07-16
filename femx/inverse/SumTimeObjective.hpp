@@ -19,7 +19,7 @@ namespace inverse
 class SumTimeObjective final : public TimeObjective
 {
 public:
-  SumTimeObjective(Index num_steps, Index num_states, Index num_params);
+  SumTimeObjective(Index num_steps, Index num_states, Index num_param);
 
   SumTimeObjective& add(const TimeObjective& term);
 
@@ -46,7 +46,7 @@ private:
 private:
   Index                        num_steps_{0};
   Index                        num_states_{0};
-  Index                        num_params_{0};
+  Index                        num_param_{0};
   Vector<const TimeObjective*> terms_;
 };
 

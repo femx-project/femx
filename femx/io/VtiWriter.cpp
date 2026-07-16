@@ -157,7 +157,7 @@ void checkFields(const Vector<VtiWriter::ElemField>& fields,
     {
       throw std::runtime_error("VtiWriter elem field name must not be empty");
     }
-    if (field.num_components <= 0)
+    if (field.num_comp <= 0)
     {
       throw std::runtime_error(
           "VtiWriter elem field component count must be positive");
@@ -166,7 +166,7 @@ void checkFields(const Vector<VtiWriter::ElemField>& fields,
     {
       throw std::runtime_error("VtiWriter elem field has null values");
     }
-    if (field.vals->size() != elems * field.num_components)
+    if (field.vals->size() != elems * field.num_comp)
     {
       throw std::runtime_error(
           "VtiWriter elem field size does not match image elem count");
@@ -232,14 +232,14 @@ void VtiWriter::writeElemData(const std::string&       fname,
   }
   out << "    <Piece Extent=\"" << extent << "\">\n";
   out << "      <CellData>\n";
-  for (size_t i = 0; i < fields.size(); ++i)
+  for (Index i = 0; i < fields.size(); ++i)
   {
     const auto& field = fields[i];
     out << "        <DataArray type=\"Float64\" Name=\""
         << escapeXml(field.name) << "\"";
-    if (field.num_components > 1)
+    if (field.num_comp > 1)
     {
-      out << " NumberOfComponents=\"" << field.num_components << "\"";
+      out << " NumberOfComponents=\"" << field.num_comp << "\"";
     }
     out << " format=\"binary\">"
         << fieldBinaryBase64(field)

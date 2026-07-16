@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ForwardConfig.hpp"
-#include <femx/fem/BoundaryCondition.hpp>
+#include <femx/fem/DirichletBC.hpp>
 
 namespace femx
 {
@@ -14,7 +14,7 @@ class MixedFESpace;
 namespace femx::model::ns
 {
 
-fem::DirichletCondition makeBoundaryCondition(
+fem::DirichletBC makeDirichletBC(
     const fem::MixedFESpace& space,
     const Vector<BCsParams>& bcs,
     Real                     time);

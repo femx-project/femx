@@ -3,7 +3,9 @@ add_library(femx::fem ALIAS femx_fem)
 
 target_sources(
   femx_fem
-  PRIVATE BoundaryCondition.cpp
+  PRIVATE DirichletBC.cpp
+          TimeDirichletData.cpp
+          BoundarySurface.cpp
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp
@@ -15,7 +17,9 @@ target_sources(
           ObservationGrid.cpp
           TimePointInterpolator.cpp
           VelocityProfile.cpp
-  PUBLIC BoundaryCondition.hpp
+  PUBLIC DirichletBC.hpp
+         TimeDirichletData.hpp
+         BoundarySurface.hpp
          Element.hpp
          DirichletControl.hpp
          DofLayout.hpp

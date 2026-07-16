@@ -555,7 +555,23 @@ private:
 
     PC pc = nullptr;
     check(KSPGetPC(ksp, &pc), "KSPGetPC");
-    check(PCSetType(pc, opts_.pc_type.c_str()), "PCSetType");
+
+    MPI_Comm ksp_comm = MPI_COMM_NULL;
+    check(PetscObjectGetComm(reinterpret_cast<PetscObject>(ksp), &ksp_comm),
+          "PetscObjectGetComm");
+    PetscMPIInt comm_size = 1;
+    checkMPI(MPI_Comm_size(ksp_comm, &comm_size), "MPI_Comm_size");
+
+    const std::string pc_type = opts_.pc_type == PCILU && comm_size > 1
+                                    ? PCBJACOBI
+                                    : opts_.pc_type;
+    check(PCSetType(pc, pc_type.c_str()), "PCSetType");
+    if (pc_type == PCILU)
+    {
+      check(PCFactorSetLevels(
+                pc, static_cast<PetscInt>(opts_.factor_levels)),
+            "PCFactorSetLevels");
+    }
     check(KSPSetTolerances(
               ksp,
               static_cast<PetscReal>(opts_.rtol),

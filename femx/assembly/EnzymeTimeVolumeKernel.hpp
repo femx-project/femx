@@ -26,7 +26,7 @@ using LocalTimeVolumeResidualFunction =
              Index       num_residuals,
              Index       num_history_dofs,
              Index       num_next_states,
-             Index       num_params,
+             Index       num_param,
              const Real* N,
              const Real* dNdx,
              const Real* JxW,
@@ -51,14 +51,14 @@ public:
                          Index                       num_residuals,
                          Index                       num_history_dofs,
                          Index                       num_next_states,
-                         Index                       num_params)
+                         Index                       num_param)
     : space_(space),
       quad_(quadrature),
       num_residuals_(num_residuals),
       num_hist_dofs_(num_history_dofs),
       num_next_states_(num_next_states),
-      num_variable_params_(num_params),
-      num_params_(num_params)
+      num_variable_params_(num_param),
+      num_param_(num_param)
   {
     checkDimensions();
   }
@@ -76,7 +76,7 @@ public:
       num_hist_dofs_(num_history_dofs),
       num_next_states_(num_next_states),
       num_variable_params_(num_variable_params),
-      num_params_(num_variable_params + fixed_prm.size()),
+      num_param_(num_variable_params + fixed_prm.size()),
       fixed_prm_(std::move(fixed_prm))
   {
     checkDimensions();
@@ -101,7 +101,7 @@ public:
   void checkDimensions()
   {
     if (num_residuals_ < 0 || num_hist_dofs_ < 0
-        || num_next_states_ < 0 || num_variable_params_ < 0 || num_params_ < 0)
+        || num_next_states_ < 0 || num_variable_params_ < 0 || num_param_ < 0)
     {
       throw std::runtime_error(
           "EnzymeTimeVolumeKernel received invalid dimensions");
@@ -136,7 +136,7 @@ public:
              num_residuals_,
              num_hist_dofs_,
              num_next_states_,
-             num_params_,
+             num_param_,
              vals.NData(),
              vals.dNdxData(),
              vals.JxWData(),
@@ -224,7 +224,7 @@ private:
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_params_,
+                              num_param_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -305,7 +305,7 @@ private:
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_params_,
+                              num_param_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -358,7 +358,7 @@ private:
 
     Vector<Real> primal_out(num_residuals_);
     Vector<Real> out_adj(num_residuals_);
-    Vector<Real> param_adj(num_params_);
+    Vector<Real> param_adj(num_param_);
 
     for (Index row = 0; row < num_residuals_; ++row)
     {
@@ -385,7 +385,7 @@ private:
                               enzyme_const,
                               num_next_states_,
                               enzyme_const,
-                              num_params_,
+                              num_param_,
                               enzyme_const,
                               vals.NData(),
                               enzyme_const,
@@ -438,7 +438,7 @@ private:
       return variable_prm;
     }
 
-    Vector<Real> out(num_params_);
+    Vector<Real> out(num_param_);
     for (Index i = 0; i < num_variable_params_; ++i)
     {
       out[i] = variable_prm[i];
@@ -465,7 +465,7 @@ private:
   Index                       num_hist_states_{1};
   Index                       num_hist_state_dofs_{0};
   Index                       num_variable_params_{0};
-  Index                       num_params_{0};
+  Index                       num_param_{0};
   Vector<Real>                fixed_prm_;
 };
 

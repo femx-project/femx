@@ -17,20 +17,20 @@ namespace inverse
 {
 
 TimeObservationData::TimeObservationData(Index num_levels,
-                                         Index num_observations)
+                                         Index num_obs)
 {
-  resize(num_levels, num_observations);
+  resize(num_levels, num_obs);
 }
 
-void TimeObservationData::resize(Index num_levels, Index num_observations)
+void TimeObservationData::resize(Index num_levels, Index num_obs)
 {
-  if (num_levels < 0 || num_observations < 0)
+  if (num_levels < 0 || num_obs < 0)
   {
     throw std::runtime_error(
         "TimeObservationData received invalid dimensions");
   }
   num_levels_ = num_levels;
-  num_obs_    = num_observations;
+  num_obs_    = num_obs;
   data_.resize(num_levels_ * num_obs_);
   sampler_.clear();
   pts_         = Vector<Point3>{};
@@ -290,7 +290,7 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
     out << "  " << point[0] << ' ' << point[1] << ' ' << point[2] << '\n';
   }
 
-  out << "\nnum_components " << data.comps().size() << '\n';
+  out << "\nnum_comp " << data.comps().size() << '\n';
   out << "components\n";
   for (Index comp : data.comps())
   {
@@ -298,7 +298,7 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
   }
 
   out << "\nvalues\n";
-  const Index num_components = data.comps().size();
+  const Index num_comp = data.comps().size();
   const Index num_points     = data.pts().size();
   for (Index level = 0; level < data.numLevels(); ++level)
   {
@@ -307,13 +307,13 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
     for (Index point = 0; point < num_points; ++point)
     {
       out << "    ";
-      for (Index comp = 0; comp < num_components; ++comp)
+      for (Index comp = 0; comp < num_comp; ++comp)
       {
         if (comp > 0)
         {
           out << ' ';
         }
-        out << vals[point * num_components + comp];
+        out << vals[point * num_comp + comp];
       }
       out << '\n';
     }
@@ -392,14 +392,14 @@ TimeObservationData readTimeObsData(const std::string& path)
     pts.push_back(point);
   }
 
-  Index num_components = 0;
-  in >> key >> num_components;
-  requireKey(key, "num_components");
+  Index num_comp = 0;
+  in >> key >> num_comp;
+  requireKey(key, "num_comp");
 
   in >> key;
   requireKey(key, "components");
-  Vector<Index> comps(num_components);
-  for (Index i = 0; i < num_components; ++i)
+  Vector<Index> comps(num_comp);
+  for (Index i = 0; i < num_comp; ++i)
   {
     in >> comps[i];
   }
@@ -407,7 +407,7 @@ TimeObservationData readTimeObsData(const std::string& path)
   in >> key;
   requireKey(key, "values");
 
-  TimeObservationData data(num_levels, num_points * num_components);
+  TimeObservationData data(num_levels, num_points * num_comp);
   data.setLayout("point", std::move(pts), std::move(comps));
   if (!time_values.empty())
   {

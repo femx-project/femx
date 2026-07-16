@@ -1,6 +1,6 @@
 {
   "mesh": {
-    "file": "../../../../../data/meshes/2d_rectangle_res_low.msh"
+    "file": "../../../../../data/meshes/2d_square_res_low.msh"
   },
   "time": {
     "dt": 0.02,

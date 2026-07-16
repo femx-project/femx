@@ -26,7 +26,7 @@ public:
                         Index               fid,
                         Vector<Point3>      pts,
                         Vector<Index>       comps,
-                        Index               num_params);
+                        Index               num_param);
 
   Index numSteps() const override;
 
@@ -98,7 +98,7 @@ private:
 private:
   Index           num_steps_{0};
   Index           num_states_{0};
-  Index           num_params_{0};
+  Index           num_param_{0};
   Vector<Point3>  pts_;      ///< Observation point coordinates.
   Vector<Index>   comps_;    ///< Observed component at each point.
   Vector<Stencil> stencils_; ///< Interpolation stencil for each point.
