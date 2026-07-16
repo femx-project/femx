@@ -10,6 +10,9 @@ readme = "python/README.md"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.23", "scipy>=1.9"]
 
+[project.optional-dependencies]
+test = ["h5py>=3.8"]
+
 [tool.scikit-build]
 build-dir = "build/python-wheel"
 cmake.build-type = "Release"
