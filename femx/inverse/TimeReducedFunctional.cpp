@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -32,6 +33,58 @@ Real elapsedSeconds(const Clock::time_point& begin)
 {
   return std::chrono::duration<Real>(Clock::now() - begin).count();
 }
+
+class ForwardProgressMonitor final : public TimeStateMonitor
+{
+public:
+  explicit ForwardProgressMonitor(TimeReducedProgressMonitor& monitor)
+    : monitor_(monitor)
+  {
+  }
+
+  void observe(Index, const Vector<Real>&) override
+  {
+  }
+
+  bool observeStep(const TimeStepStateContext& ctx) override
+  {
+    monitor_.progress("forward-step", ctx.level, ctx.total_steps);
+    return false;
+  }
+
+private:
+  TimeReducedProgressMonitor& monitor_;
+};
+
+class ScopedForwardProgress
+{
+public:
+  ScopedForwardProgress(TimeIntegrator&             integrator,
+                        TimeReducedProgressMonitor* monitor)
+    : integrator_(integrator)
+  {
+    if (monitor != nullptr)
+    {
+      monitor_ = std::make_unique<ForwardProgressMonitor>(*monitor);
+      integrator_.setMonitor(monitor_.get());
+    }
+  }
+
+  ScopedForwardProgress(const ScopedForwardProgress&)            = delete;
+  ScopedForwardProgress& operator=(const ScopedForwardProgress&) = delete;
+
+  ~ScopedForwardProgress()
+  {
+    if (monitor_ != nullptr)
+    {
+      integrator_.clearMonitor();
+    }
+  }
+
+private:
+  TimeIntegrator&                         integrator_;
+  std::unique_ptr<ForwardProgressMonitor> monitor_;
+};
 
 Index historyLevel(Index step, Index lag)
 {
@@ -235,7 +288,10 @@ void TimeReducedFunctional::solveFwd(const Vector<Real>& prm,
   }
 
   notify("forward-begin", 0, integrator_.numSteps());
-  integrator_.solve(prm, tr);
+  {
+    ScopedForwardProgress progress(integrator_, progress_monitor_);
+    integrator_.solve(prm, tr);
+  }
   notify("forward-end", integrator_.numSteps(), integrator_.numSteps());
   if (tr.numSteps() != integrator_.numSteps()
       || tr.numStates() != integrator_.numStates())

@@ -178,6 +178,33 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             atol=1.0e-9,
         )
 
+    def test_reports_each_forward_and_adjoint_step(self):
+        events = []
+
+        self.reduced.value_grad(
+            DENSE_PARAM,
+            progress=lambda event: events.append(dict(event)),
+        )
+
+        self.assertEqual(
+            [
+                (event["phase"], event["step"], event["total"])
+                for event in events
+            ],
+            [
+                ("forward-begin", 0, 3),
+                ("forward-step", 1, 3),
+                ("forward-step", 2, 3),
+                ("forward-step", 3, 3),
+                ("forward-end", 3, 3),
+                ("adjoint-begin", 0, 3),
+                ("adjoint-step", 1, 3),
+                ("adjoint-step", 2, 3),
+                ("adjoint-step", 3, 3),
+                ("adjoint-end", 3, 3),
+            ],
+        )
+
     @unittest.skipUnless(
         "resolve" in femx.solver_backends(),
         "femx was built without ReSolve",
