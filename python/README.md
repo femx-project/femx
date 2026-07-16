@@ -1,6 +1,6 @@
 # femx Python API
 
-Python bindings for the femx finite-element engine.
+Python bindings for the femx C++ implementation.
 
 ## Install
 
@@ -16,27 +16,27 @@ python3 -m pip install .
 import femx
 
 
-def inlet_velocity(point, time):
-    y = point[1] / 0.01
-    return 4.0 * y * (1.0 - y), 0.0
+def lid_velocity(point, time):
+    x = point[0]
+    return 1.0 - 4.0 * x * x, 0.0
 
 
 model = femx.NavierStokesModel(
-    "data/meshes/2d_straighttube.msh",
-    num_steps=100,
-    dt=0.01,
+    "data/meshes/2d_rectangle_res_very_low.msh",
+    num_steps=50,
+    dt=0.02,
     rho=1.0,
-    mu=0.004,
+    mu=0.01,
 )
 
 problem = femx.NavierStokesProblem(model)
-problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
-problem.add_bc(femx.DirichletBC("inlet", "velocity", inlet_velocity))
-problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
+problem.add_bc(femx.DirichletBC("wall_top", "velocity", lid_velocity))
+for wall in ("wall_left", "wall_right", "wall_bottom"):
+    problem.add_bc(femx.DirichletBC(wall, "velocity", (0.0, 0.0)))
 problem.build()
 
-trajectory = problem.solve(backend="dense")
-model.write_xdmf("results/flow.xdmf", trajectory)
+trajectory = problem.solve(backend="petsc")
+model.write_xdmf("cavity.xdmf", trajectory)
 ```
 
 The output can be opened in ParaView.
