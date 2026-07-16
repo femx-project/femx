@@ -7,7 +7,7 @@ import femx
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MESH_FILE = ROOT / "data" / "meshes" / "2d_straighttube.msh"
+MESH_FILE = ROOT / "data" / "meshes" / "2d_rectangle.msh"
 
 
 class NavierStokesModelTest(unittest.TestCase):
@@ -42,7 +42,7 @@ class NavierStokesModelTest(unittest.TestCase):
         inlet_by_name = self.model.velocity_boundary_dofs("inlet")
         inlet_by_tag = self.model.velocity_boundary_dofs(4)
         np.testing.assert_array_equal(inlet_by_name, inlet_by_tag)
-        self.assertEqual(inlet_by_name.size, 2 * 18)
+        self.assertEqual(inlet_by_name.size, 2 * 21)
 
     def test_invalid_boundary_selector(self):
         with self.assertRaises(RuntimeError):

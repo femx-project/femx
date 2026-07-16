@@ -13,7 +13,7 @@ def main():
     parser.add_argument(
         "mesh",
         nargs="?",
-        default=str(femx_root / "data" / "meshes" / "2d_straighttube.msh"))
+        default=str(femx_root / "data" / "meshes" / "2d_rectangle.msh"))
     parser.add_argument("--boundary")
     args = parser.parse_args()
 

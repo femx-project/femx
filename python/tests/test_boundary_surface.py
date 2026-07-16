@@ -7,7 +7,7 @@ import femx
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MESH_FILE = ROOT / "data" / "meshes" / "2d_straighttube.msh"
+MESH_FILE = ROOT / "data" / "meshes" / "2d_rectangle.msh"
 
 
 class BoundarySurfaceTest(unittest.TestCase):
@@ -27,9 +27,9 @@ class BoundarySurfaceTest(unittest.TestCase):
 
     def test_boundary_extraction(self):
         self.assertEqual(self.inlet.dimension, 1)
-        self.assertEqual(self.inlet.num_nodes, 18)
-        self.assertEqual(self.inlet.num_elements, 17)
-        self.assertEqual(self.inlet.elements.shape, (17, 2))
+        self.assertEqual(self.inlet.num_nodes, 21)
+        self.assertEqual(self.inlet.num_elements, 20)
+        self.assertEqual(self.inlet.elements.shape, (20, 2))
         self.assertEqual(self.inlet.rim_node_ids.size, 2)
 
         by_tag = self.mesh.boundary(4)
@@ -37,15 +37,15 @@ class BoundarySurfaceTest(unittest.TestCase):
 
     def test_laplacian_matrices(self):
         stiffness, mass, load = self.inlet.laplacian_matrices()
-        self.assertEqual(stiffness.shape, (18, 18))
-        self.assertEqual(mass.shape, (18, 18))
+        self.assertEqual(stiffness.shape, (21, 21))
+        self.assertEqual(mass.shape, (21, 21))
         np.testing.assert_allclose((stiffness - stiffness.T).data, 0.0)
         np.testing.assert_allclose((mass - mass.T).data, 0.0)
 
         ones = np.ones(self.inlet.num_nodes)
         np.testing.assert_allclose(stiffness @ ones, 0.0, atol=1.0e-10)
-        self.assertAlmostEqual(float(ones @ mass @ ones), 1.0)
-        self.assertAlmostEqual(float(load.sum()), 1.0)
+        self.assertAlmostEqual(float(ones @ mass @ ones), 0.004)
+        self.assertAlmostEqual(float(load.sum()), 0.004)
 
     def test_poisson_profile(self):
         _, _, load = self.inlet.laplacian_matrices()
@@ -58,7 +58,7 @@ class BoundarySurfaceTest(unittest.TestCase):
         _, mass, _ = self.inlet.laplacian_matrices()
         eigenvalues, modes = self.inlet.laplacian_modes(3)
         self.assertEqual(eigenvalues.shape, (3,))
-        self.assertEqual(modes.shape, (18, 3))
+        self.assertEqual(modes.shape, (21, 3))
         self.assertTrue(np.all(eigenvalues > 0.0))
         np.testing.assert_allclose(modes[self.inlet.rim_node_ids], 0.0)
         np.testing.assert_allclose(modes.T @ mass @ modes, np.eye(3), atol=1.0e-10)

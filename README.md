@@ -71,19 +71,6 @@ Build and install the supported Python package directly from the repository:
 python3 -m pip install .
 ```
 
-The initial API covers mesh inspection and scalar operators on simplicial
-boundary surfaces:
-
-```python
-import femx
-
-mesh = femx.Mesh.read("data/meshes/2d_straighttube.msh")
-inlet = mesh.boundary("inlet")
-K, M, load = inlet.laplacian_matrices()
-profile = inlet.poisson_profile()
-eigenvalues, modes = inlet.laplacian_modes(3)
-```
-
 See [python/README.md](python/README.md) for details.
 
 ## Install

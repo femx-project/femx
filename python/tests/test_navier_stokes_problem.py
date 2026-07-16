@@ -8,7 +8,7 @@ import femx.navier_stokes as navier_stokes
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MESH_FILE = ROOT / "data" / "meshes" / "2d_straighttube.msh"
+MESH_FILE = ROOT / "data" / "meshes" / "2d_rectangle.msh"
 TINY_MESH_FILE = Path(__file__).parent / "data" / "2d_tiny_tube.msh"
 
 

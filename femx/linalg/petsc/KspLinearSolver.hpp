@@ -21,14 +21,16 @@ class PETScVector;
  */
 struct KspOptions
 {
-  std::string type    = KSPGMRES; ///< PETSc KSP type.
-  std::string pc_type = PCJACOBI; ///< PETSc PC type.
+  std::string type = KSPGMRES; ///< PETSc KSP type.
+  std::string pc_type =
+      PCILU; ///< PETSc PC type; block Jacobi with ILU in parallel.
 
-  Real  rtol    = 1.0e-8;  ///< Relative residual tolerance.
-  Real  atol    = 1.0e-50; ///< Absolute residual tolerance; disabled by default.
-  Real  dtol    = 1.0e5;   ///< Divergence tolerance.
-  Index max_its = 5000;    ///< Maximum KSP iterations.
-  Index restart = 0;       ///< GMRES restart length.
+  Real  rtol          = 1.0e-8;  ///< Relative residual tolerance.
+  Real  atol          = 1.0e-50; ///< Absolute tolerance; disabled by default.
+  Real  dtol          = 1.0e5;   ///< Divergence tolerance.
+  Index max_its       = 5000;    ///< Maximum KSP iterations.
+  Index restart       = 200;     ///< GMRES restart length.
+  Index factor_levels = 0;       ///< ILU factor fill level.
 
   bool nonzero_guess = false; ///< Use the input vector as an initial guess.
   bool use_opts_db   = true;  ///< Allow PETSc options-database overrides.
