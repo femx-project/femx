@@ -2,7 +2,10 @@
 
 femx is a C++ finite element library for forward and inverse analysis.
 
-The v0.1.0 release focuses primarily on forward workflows. Inverse-problem and optimization utilities are still experimental, and the current optimization examples use PETSc/TAO.
+The v0.2.0 release adds a supported Python API for Navier--Stokes forward and
+inverse workflows, including observations, controls, reduced functionals, and
+optimization. The C++ and Python APIs remain pre-1.0 and may change between
+minor releases.
 
 ## Requirements
 
@@ -23,7 +26,7 @@ Optional dependencies:
 ## Build
 
 ```shell
-git clone --recursive https://github.com/kakeueda/femx.git
+git clone --recursive https://github.com/femx-project/femx.git
 cd femx
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/femx

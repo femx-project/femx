@@ -6,7 +6,7 @@ option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
 
 project(
   femx
-  VERSION 0.1.0
+  VERSION 0.2.0
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
