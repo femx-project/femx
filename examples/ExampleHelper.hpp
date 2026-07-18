@@ -49,6 +49,7 @@ inline const char* memspaceName(MemorySpace memspace)
 class ExampleHelper
 {
 public:
+  /** @brief Bind display names and the output directory for one backend. */
   ExampleHelper(std::string solver,
                 MemorySpace memspace,
                 std::string out_dir)
@@ -58,11 +59,13 @@ public:
   {
   }
 
+  /** @brief Return the `solver/memory-space` display name. */
   std::string name() const
   {
     return solver_ + "/" + memspaceName(memspace_);
   }
 
+  /** @brief Compute `||A x - rhs||_2` through a linear-operator interface. */
   Real resNorm(const linalg::LinearOperator& A,
                const HostVector&             rhs,
                const HostVector&             x) const
@@ -84,6 +87,7 @@ public:
     return std::sqrt(norm2);
   }
 
+  /** @brief Compute `||A x - rhs||_2` directly from a host CSR matrix. */
   Real resNorm(const HostCsrMatrix& A,
                const HostVector&    rhs,
                const HostVector&    x) const
@@ -106,6 +110,7 @@ public:
     return std::sqrt(norm2);
   }
 
+  /** @brief Build an output path containing solver and memory-space names. */
   std::string outputBase(const std::string& stem) const
   {
     const std::filesystem::path dir(out_dir_);

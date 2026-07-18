@@ -8,6 +8,7 @@
 namespace femx
 {
 
+/// @cond INTERNAL
 namespace device
 {
 bool available() noexcept;
@@ -30,6 +31,8 @@ void  synchronize(void* stream);
 void  checkLastError();
 } // namespace device
 
+/// @endcond
+
 /** @brief Tag selecting serial CPU execution. */
 struct CpuContext
 {
@@ -39,11 +42,13 @@ struct CpuContext
 class CudaContext
 {
 public:
+  /** @brief Create a context owning one non-blocking CUDA stream. */
   CudaContext()
     : stream_(device::createStream())
   {
   }
 
+  /** @brief Destroy the owned stream after its queued work completes. */
   ~CudaContext()
   {
     device::destroyStream(stream_);
@@ -52,11 +57,13 @@ public:
   CudaContext(const CudaContext&)            = delete;
   CudaContext& operator=(const CudaContext&) = delete;
 
+  /** @brief Transfer stream ownership from another context. */
   CudaContext(CudaContext&& other) noexcept
     : stream_(std::exchange(other.stream_, nullptr))
   {
   }
 
+  /** @brief Replace this stream with one moved from another context. */
   CudaContext& operator=(CudaContext&& other) noexcept
   {
     if (this != &other)
@@ -67,16 +74,19 @@ public:
     return *this;
   }
 
+  /** @brief Return the opaque native CUDA stream handle. */
   void* stream() const noexcept
   {
     return stream_;
   }
 
+  /** @brief Wait for all work queued on this context. */
   void synchronize() const
   {
     device::synchronize(stream_);
   }
 
+  /** @brief Return whether a usable CUDA device is available. */
   static bool available() noexcept
   {
     return device::available();

@@ -8,6 +8,7 @@ namespace femx::examples::poisson
 /** @brief Q1 Laplace element operator shared by the CPU and CUDA examples. */
 struct PoissonQuadQ1Operator
 {
+  /** @brief Evaluate one local residual row and its Jacobian row. */
   template <MemorySpace Space>
   FEMX_HOST_DEVICE void evalRow(
       const assembly::ElementView<Space>& e,

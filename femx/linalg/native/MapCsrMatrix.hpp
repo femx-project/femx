@@ -42,7 +42,10 @@ public:
   void apply(const HostVector& dir, HostVector& out) const override;
   void applyT(const HostVector& dir, HostVector& out) const override;
 
-  HostCsrMatrix&       mat();
+  /** @brief Return the mutable backend CSR matrix. */
+  HostCsrMatrix& mat();
+
+  /** @brief Return the backend CSR matrix. */
   const HostCsrMatrix& mat() const;
 
 private:

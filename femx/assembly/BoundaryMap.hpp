@@ -18,38 +18,43 @@ namespace assembly
 template <MemorySpace Space>
 struct BoundaryMapView
 {
-  Index num_rows{0};
-  Index num_cols{0};
-  Index nnz{0};
-  Index num_bcs{0};
+  Index num_rows{0}; ///< CSR row count.
+  Index num_cols{0}; ///< CSR column count.
+  Index nnz{0};      ///< Number of CSR entries.
+  Index num_bcs{0};  ///< Number of constrained DOFs.
 
-  const Index* bc_rows{nullptr};
-  const Index* diag_entries{nullptr};
-  const Index* col_offsets{nullptr};
-  const Index* col_entries{nullptr};
-  const Index* col_rows{nullptr};
-  const Index* bc_mask{nullptr};
+  const Index* bc_rows{nullptr};      ///< Constrained rows in input order.
+  const Index* diag_entries{nullptr}; ///< Diagonal CSR index per constraint.
+  const Index* col_offsets{nullptr};  ///< Offsets into constrained columns.
+  const Index* col_entries{nullptr};  ///< CSR entries in constrained columns.
+  const Index* col_rows{nullptr};     ///< Row of each constrained entry.
+  const Index* bc_mask{nullptr};      ///< Nonzero for constrained rows.
 
+  /** @brief Return the constrained row at boundary index `ib`. */
   FEMX_HOST_DEVICE Index bcRow(Index ib) const
   {
     return bc_rows[ib];
   }
 
+  /** @brief Return its diagonal position in the CSR value array. */
   FEMX_HOST_DEVICE Index diag(Index ib) const
   {
     return diag_entries[ib];
   }
 
+  /** @brief Return the first constrained-column entry for boundary `ib`. */
   FEMX_HOST_DEVICE Index colBegin(Index ib) const
   {
     return col_offsets[ib];
   }
 
+  /** @brief Return one-past-last constrained-column entry for boundary `ib`. */
   FEMX_HOST_DEVICE Index colEnd(Index ib) const
   {
     return col_offsets[ib + 1];
   }
 
+  /** @brief Return whether a global row is constrained. */
   FEMX_HOST_DEVICE bool isBc(Index row) const
   {
     return bc_mask[row] != 0;
@@ -67,6 +72,7 @@ template <MemorySpace Space>
 class BoundaryMap
 {
 public:
+  /** @brief Index-vector type in this map's memory space. */
   using IndexVector = Vector<Space, Index>;
 
   BoundaryMap() = default;
@@ -101,39 +107,45 @@ private:
   }
 
   friend BoundaryMap<MemorySpace::Host> makeBoundaryMap(
-      const Array<Index>&,
-      const HostCsrGraph&);
+      const Array<Index>& dofs,
+      const HostCsrGraph& graph);
 
-  friend void copy(const BoundaryMap<MemorySpace::Host>&,
-                   BoundaryMap<MemorySpace::Device>&,
-                   CudaContext&);
+  friend void copy(const BoundaryMap<MemorySpace::Host>& src,
+                   BoundaryMap<MemorySpace::Device>&     dst,
+                   CudaContext&                          ctx);
 
 public:
+  /** @brief Return the mapped CSR row count. */
   Index rows() const noexcept
   {
     return num_rows_;
   }
 
+  /** @brief Return the mapped CSR column count. */
   Index cols() const noexcept
   {
     return num_cols_;
   }
 
+  /** @brief Return the mapped CSR entry count. */
   Index nnz() const noexcept
   {
     return nnz_;
   }
 
+  /** @brief Return the identifier of the compatible CSR layout. */
   std::uint64_t layoutId() const noexcept
   {
     return layout_id_;
   }
 
+  /** @brief Return the number of constrained DOFs. */
   Index numBcs() const noexcept
   {
     return bc_rows_.size();
   }
 
+  /** @brief Return a non-owning kernel view valid while this map is alive. */
   BoundaryMapView<Space> view() const noexcept
   {
     return {num_rows_,
@@ -165,11 +177,20 @@ private:
 using HostBoundaryMap   = BoundaryMap<MemorySpace::Host>;
 using DeviceBoundaryMap = BoundaryMap<MemorySpace::Device>;
 
-/** @brief Build and validate boundary metadata for a host CSR graph. */
+/**
+ * @brief Build and validate boundary metadata for a host CSR graph.
+ * @param dofs Unique constrained DOFs, whose order defines `bc_vals` order.
+ * @param graph Square CSR graph used by all later boundary operations.
+ */
 HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
                                 const HostCsrGraph& graph);
 
-/** @brief Explicitly copy host boundary metadata to device storage. */
+/**
+ * @brief Explicitly copy host boundary metadata to device storage.
+ * @param src Validated host map.
+ * @param dst Device map replaced by the copy.
+ * @param ctx CUDA stream on which copies are enqueued.
+ */
 void copy(const HostBoundaryMap& src,
           DeviceBoundaryMap&     dst,
           CudaContext&           ctx);
@@ -180,21 +201,41 @@ void copy(const HostBoundaryMap& src,
  * Constrained rows are zeroed and their diagonal is set to one. Columns are
  * deliberately left unchanged so the matrix continues to represent the
  * Jacobian of the row-replaced residual and can be used by adjoint solves.
+ * @param map Boundary map matching `jac.graph()`.
+ * @param jac Matrix modified in place.
  */
 void replaceRows(const HostBoundaryMap& map, HostCsrMatrix& jac);
 
-/** @brief Asynchronous CUDA equivalent of replaceRows(). */
+/**
+ * @brief Asynchronous CUDA equivalent of replaceRows().
+ * @param map Device boundary map matching `jac.graph()`.
+ * @param jac Device matrix modified in place.
+ * @param ctx CUDA stream on which work is enqueued.
+ */
 void replaceRows(const DeviceBoundaryMap& map,
                  DeviceCsrMatrix&         jac,
                  CudaContext&             ctx);
 
-/** @brief Replace constrained residual entries with state - prescribed. */
+/**
+ * @brief Replace constrained residual entries with state minus prescribed.
+ * @param map Boundary map defining constrained rows and value order.
+ * @param state Full state vector.
+ * @param bc_vals Prescribed values in map order.
+ * @param res Residual modified at constrained rows.
+ */
 void replaceRes(const HostBoundaryMap& map,
                 const HostVector&      state,
                 const HostVector&      bc_vals,
                 HostVector&            res);
 
-/** @brief Asynchronous CUDA equivalent of replaceRes(). */
+/**
+ * @brief Asynchronous CUDA equivalent of replaceRes().
+ * @param map Device boundary map.
+ * @param state Full device state vector.
+ * @param bc_vals Prescribed device values in map order.
+ * @param res Device residual modified at constrained rows.
+ * @param ctx CUDA stream on which work is enqueued.
+ */
 void replaceRes(const DeviceBoundaryMap& map,
                 const DeviceVector&      state,
                 const DeviceVector&      bc_vals,
@@ -208,13 +249,24 @@ void replaceRes(const DeviceBoundaryMap& map,
  * constrained rows are replaced by identity rows, and constrained RHS entries
  * are set to bc_vals. The input matrix must be a separate solve copy
  * when the authoritative row-replaced Jacobian is still needed.
+ * @param map Boundary map matching `solve_mat.graph()`.
+ * @param solve_mat Matrix modified into the forward system.
+ * @param rhs Right-hand side corrected and constrained in place.
+ * @param bc_vals Prescribed values in map order.
  */
 void prepareForwardSolve(const HostBoundaryMap& map,
                          HostCsrMatrix&         solve_mat,
                          HostVector&            rhs,
                          const HostVector&      bc_vals);
 
-/** @brief Asynchronous CUDA equivalent of prepareForwardSolve(). */
+/**
+ * @brief Asynchronous CUDA equivalent of prepareForwardSolve().
+ * @param map Device boundary map matching `solve_mat.graph()`.
+ * @param solve_mat Device matrix modified into the forward system.
+ * @param rhs Device right-hand side modified in place.
+ * @param bc_vals Prescribed device values in map order.
+ * @param ctx CUDA stream on which work is enqueued.
+ */
 void prepareForwardSolve(const DeviceBoundaryMap& map,
                          DeviceCsrMatrix&         solve_mat,
                          DeviceVector&            rhs,

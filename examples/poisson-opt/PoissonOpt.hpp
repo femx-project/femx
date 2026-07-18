@@ -36,6 +36,7 @@ class StateSolver;
 namespace femx::examples::poisson_opt
 {
 
+/** @brief Command-line configuration for Poisson boundary optimization. */
 struct Options
 {
   Index num_x_cells  = 32;     ///< Number of cells in x.
@@ -78,6 +79,7 @@ struct Result
 class PoissonOptProblem
 {
 public:
+  /** @brief Construct all discretization and objective data. */
   explicit PoissonOptProblem(const Options& opts);
   ~PoissonOptProblem() = default;
 
@@ -86,16 +88,25 @@ public:
   PoissonOptProblem(PoissonOptProblem&&)                 = delete;
   PoissonOptProblem& operator=(PoissonOptProblem&&)      = delete;
 
+  /** @brief Return the validated optimization options. */
   const Options&                   options() const noexcept;
+  /** @brief Return the state Jacobian assembly map. */
   const assembly::HostAssemblyMap& stateMap() const;
+  /** @brief Return the assembled nonlinear residual interface. */
   const state::Residual&           residual() const;
+  /** @brief Return the reduced objective components. */
   const inverse::Objective&        objective() const;
 
+  /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept;
+  /** @brief Return the state-vector size. */
   Index numStates() const noexcept;
+  /** @brief Return the boundary-control size. */
   Index numParams() const noexcept;
+  /** @brief Return the number of observation samples. */
   Index numObservations() const noexcept;
 
+  /** @brief Compute final error and gradient metrics. */
   Report report(const HostVector& prm,
                 const HostVector& state,
                 Real              value,
@@ -163,24 +174,27 @@ private:
                       linalg::LinearSolver& adj_lin_solver);
 };
 
+/** @brief Optimize boundary values using the supplied forward/adjoint solvers. */
 Result solve(PoissonOptProblem&    problem,
              state::Linearization& linearization,
              linalg::LinearSolver& fwd_lin_solver,
              linalg::LinearSolver& adj_lin_solver);
 
-Options parseOptions(int    argc,
-                     char** argv,
-                     bool   ignore_unknown);
+/** @brief Parse Poisson optimization command-line options. */
+Options parseOptions(int argc, char** argv, bool ignore_unknown);
 
+/** @brief Print command-line usage for an optimization executable. */
 void printUsage(std::ostream& out,
                 const char*   app_name,
                 bool          petsc_options);
 
+/** @brief Return the build-local directory for optimization output. */
 const char* outputDir();
 
 /** @brief Return the problem-specific output file stem. */
 std::string outputStem(const Options& opts);
 
+/** @brief Print the standard optimization result summary. */
 void printReport(std::ostream&            out,
                  const std::string&       backend,
                  const PoissonOptProblem& problem,

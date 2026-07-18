@@ -21,41 +21,46 @@ namespace assembly
 template <MemorySpace Space>
 struct AssemblyMapView
 {
-  Index num_elems{0};
-  Index num_res{0};
-  Index num_states{0};
+  Index num_elems{0};  ///< Number of elements.
+  Index num_res{0};    ///< Global residual size.
+  Index num_states{0}; ///< Global state size.
 
-  const Index* res_offsets{nullptr};
-  const Index* res_dofs{nullptr};
-  const Index* state_offsets{nullptr};
-  const Index* state_dofs{nullptr};
-  const Index* jac_offsets{nullptr};
-  const Index* jac_map{nullptr};
+  const Index* res_offsets{nullptr};   ///< Element offsets into res_dofs.
+  const Index* res_dofs{nullptr};      ///< Element residual-to-global DOFs.
+  const Index* state_offsets{nullptr}; ///< Element offsets into state_dofs.
+  const Index* state_dofs{nullptr};    ///< Element state-to-global DOFs.
+  const Index* jac_offsets{nullptr};   ///< Element offsets into jac_map.
+  const Index* jac_map{nullptr};       ///< Local Jacobian-to-CSR entries.
 
-  Index max_res_dofs{0};
-  Index max_state_dofs{0};
-  Index max_jac_entries{0};
+  Index max_res_dofs{0};    ///< Maximum residual DOFs on one element.
+  Index max_state_dofs{0};  ///< Maximum state DOFs on one element.
+  Index max_jac_entries{0}; ///< Maximum local Jacobian entries.
 
+  /** @brief Return the number of residual DOFs on element `ie`. */
   FEMX_HOST_DEVICE Index numResDofs(Index ie) const
   {
     return res_offsets[ie + 1] - res_offsets[ie];
   }
 
+  /** @brief Return the number of state DOFs on element `ie`. */
   FEMX_HOST_DEVICE Index numStateDofs(Index ie) const
   {
     return state_offsets[ie + 1] - state_offsets[ie];
   }
 
+  /** @brief Map an element residual row to a global residual DOF. */
   FEMX_HOST_DEVICE Index resDof(Index ie, Index i) const
   {
     return res_dofs[res_offsets[ie] + i];
   }
 
+  /** @brief Map an element state column to a global state DOF. */
   FEMX_HOST_DEVICE Index stateDof(Index ie, Index i) const
   {
     return state_dofs[state_offsets[ie] + i];
   }
 
+  /** @brief Map a row-major local Jacobian entry to a CSR value index. */
   FEMX_HOST_DEVICE Index jacIndex(Index ie, Index i) const
   {
     return jac_map[jac_offsets[ie] + i];
@@ -72,6 +77,7 @@ template <MemorySpace Space>
 class AssemblyMap
 {
 public:
+  /** @brief Index-vector type in this map's memory space. */
   using IndexVector = Vector<Space, Index>;
 
   AssemblyMap() = default;
@@ -112,51 +118,59 @@ private:
   }
 
   friend AssemblyMap<MemorySpace::Host> makeAssemblyMap(
-      Index,
-      Index,
-      const Array<Array<Index>>&,
-      const Array<Array<Index>>&);
+      Index                      num_res,
+      Index                      num_states,
+      const Array<Array<Index>>& res_dofs,
+      const Array<Array<Index>>& state_dofs);
 
-  friend void copy(const AssemblyMap<MemorySpace::Host>&,
-                   AssemblyMap<MemorySpace::Device>&,
-                   CudaContext&);
+  friend void copy(const AssemblyMap<MemorySpace::Host>& src,
+                   AssemblyMap<MemorySpace::Device>&     dst,
+                   CudaContext&                          ctx);
 
 public:
+  /** @brief Return the number of mapped elements. */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
+  /** @brief Return the global residual size. */
   Index numRes() const noexcept
   {
     return num_res_;
   }
 
+  /** @brief Return the global state size. */
   Index numStates() const noexcept
   {
     return num_states_;
   }
 
+  /** @brief Return the largest element residual workspace size. */
   Index maxResDofs() const noexcept
   {
     return max_res_dofs_;
   }
 
+  /** @brief Return the largest element state workspace size. */
   Index maxStateDofs() const noexcept
   {
     return max_state_dofs_;
   }
 
+  /** @brief Return the largest element Jacobian workspace size. */
   Index maxJacEntries() const noexcept
   {
     return max_jac_entries_;
   }
 
+  /** @brief Return the immutable global Jacobian sparsity graph. */
   const CsrGraph<Space>& graph() const noexcept
   {
     return graph_;
   }
 
+  /** @brief Return a non-owning kernel view valid while this map is alive. */
   AssemblyMapView<Space> view() const noexcept
   {
     return {num_elems_,
@@ -194,18 +208,39 @@ private:
 using HostAssemblyMap   = AssemblyMap<MemorySpace::Host>;
 using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
 
+/**
+ * @brief Build a host assembly map from explicit element DOF tables.
+ *
+ * @param num_res Global residual size.
+ * @param num_states Global state size.
+ * @param res_dofs Residual DOFs for each element.
+ * @param state_dofs State DOFs for each element.
+ * @return Validated map and its immutable CSR graph.
+ */
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     Index                      num_res,
     Index                      num_states,
     const Array<Array<Index>>& res_dofs,
     const Array<Array<Index>>& state_dofs);
 
+/**
+ * @brief Build a rectangular assembly map from residual and state layouts.
+ * @param res_lyt Element layout for residual rows.
+ * @param state_lyt Element layout for state columns.
+ */
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     fem::DofLayout res_lyt,
     fem::DofLayout state_lyt);
 
+/** @brief Build a square assembly map using one layout for rows and columns. */
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(fem::DofLayout layout);
 
+/**
+ * @brief Copy a host assembly map and graph to device-owned storage.
+ *
+ * The copy is enqueued on `ctx`; keep `src` alive until earlier queued reads
+ * have completed.
+ */
 void copy(const AssemblyMap<MemorySpace::Host>& src,
           AssemblyMap<MemorySpace::Device>&     dst,
           CudaContext&                          ctx);

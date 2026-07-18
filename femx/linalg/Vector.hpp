@@ -14,6 +14,12 @@
 namespace femx
 {
 
+/**
+ * @brief Owning contiguous host vector with the femx signed index type.
+ *
+ * Its container interface follows `std::vector`; resizing value-initializes
+ * all entries and host views remain valid only until storage is reallocated.
+ */
 template <class T>
 class Vector<MemorySpace::Host, T>
 {
@@ -204,6 +210,12 @@ private:
   std::vector<T> vals_;
 };
 
+/**
+ * @brief Move-only owner of a contiguous CUDA device allocation.
+ *
+ * Resizing replaces the allocation and invalidates all views and borrowed
+ * pointers. Host access requires an explicit `copy()` operation.
+ */
 template <class T>
 class Vector<MemorySpace::Device, T>
 {
@@ -213,6 +225,7 @@ class Vector<MemorySpace::Device, T>
 public:
   Vector() = default;
 
+  /** @brief Allocate and zero `size` device values. */
   explicit Vector(Index size)
   {
     resize(size);
@@ -244,6 +257,7 @@ public:
     return *this;
   }
 
+  /** @brief Replace storage with a zeroed allocation of `size` values. */
   void resize(Index size)
   {
     if (size < 0)
@@ -273,6 +287,7 @@ public:
     size_ = size;
   }
 
+  /** @brief Release device storage and reset the size to zero. */
   void clear() noexcept
   {
     device::release(data_);
@@ -280,36 +295,43 @@ public:
     size_ = 0;
   }
 
+  /** @brief Return the number of allocated values. */
   Index size() const noexcept
   {
     return size_;
   }
 
+  /** @brief Return whether no values are allocated. */
   bool empty() const noexcept
   {
     return size_ == 0;
   }
 
+  /** @brief Return the mutable device pointer. */
   T* data() noexcept
   {
     return data_;
   }
 
+  /** @brief Return the device pointer. */
   const T* data() const noexcept
   {
     return data_;
   }
 
+  /** @brief Return a mutable non-owning device view. */
   VectorView<MemorySpace::Device, T> view() noexcept
   {
     return {data_, size_};
   }
 
+  /** @brief Return a read-only non-owning device view. */
   VectorView<MemorySpace::Device, const T> view() const noexcept
   {
     return {data_, size_};
   }
 
+  /** @brief Enqueue zeroing of all values on `ctx`. */
   void setZero(CudaContext& ctx)
   {
     if (data_ != nullptr)
@@ -364,7 +386,12 @@ void copy(Vector<MemorySpace::Host, T>&&,
           Vector<MemorySpace::Device, T>&,
           CudaContext&) = delete;
 
-/** @brief Enqueue an explicit device-to-device clone on context's stream. */
+/**
+ * @brief Enqueue an explicit device-to-device clone on context's stream.
+ *
+ * Source and destination storage must remain alive until the queued copy has
+ * completed or later work on the same stream has consumed it.
+ */
 template <class T>
 void copy(const Vector<MemorySpace::Device, T>& src,
           Vector<MemorySpace::Device, T>&       dst,
@@ -420,6 +447,7 @@ void copy(const Vector<MemorySpace::Device, T>& src,
 }
 
 template <class T>
+/** @brief Resize a host vector if needed, otherwise set its values to zero. */
 void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size)
 {
   if (out.size() != size)
@@ -433,6 +461,7 @@ void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size)
 }
 
 template <class T>
+/** @brief Resize a device vector if needed, otherwise enqueue zeroing. */
 void resizeOrZero(Vector<MemorySpace::Device, T>& out,
                   Index                           size,
                   CudaContext&                    ctx)

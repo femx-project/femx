@@ -16,6 +16,7 @@
 namespace femx::examples::poisson
 {
 
+/** @brief Command-line configuration for the forward Poisson example. */
 struct Options
 {
   Index       num_x_cells  = 8;                 ///< Number of cells in x.
@@ -41,20 +42,30 @@ struct ErrorReport
 class PoissonForwardProblem
 {
 public:
+  /** @brief Construct the mesh, FE space, assembly map, and boundary map. */
   explicit PoissonForwardProblem(const Options& opts);
 
+  /** @brief Return the validated problem options. */
   const Options& options() const noexcept;
 
+  /** @brief Return flattened host geometry. */
   const fem::HostGeometry&         geom() const noexcept;
+  /** @brief Return the element assembly map. */
   const assembly::HostAssemblyMap& map() const noexcept;
+  /** @brief Return essential-boundary CSR metadata. */
   const assembly::HostBoundaryMap& bcMap() const noexcept;
+  /** @brief Return prescribed values in boundary-map order. */
   const HostVector&                bcVals() const noexcept;
 
+  /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept;
+  /** @brief Return the number of algebraic unknowns. */
   Index numDofs() const noexcept;
 
+  /** @brief Assemble the constrained host linear system. */
   void assemble(HostCsrMatrix& mat, HostVector& rhs) const;
 
+  /** @brief Compare a solution with the manufactured exact solution. */
   ErrorReport errorReport(const HostVector& x) const;
 
   /**
@@ -82,9 +93,8 @@ private:
   HostVector                bc_vals_;
 };
 
-Options parseOptions(int    argc,
-                     char** argv,
-                     bool   ignore_unknown);
+/** @brief Parse forward Poisson command-line options. */
+Options parseOptions(int argc, char** argv, bool ignore_unknown);
 
 /** @brief Return the build-local directory for Poisson VTU output. */
 const char* outputDir();
@@ -96,6 +106,7 @@ void printUsage(const char* app_name,
                 bool        petsc_options,
                 const char* backend_note = nullptr);
 
+/** @brief Print the standard forward-solve result summary. */
 void printReport(std::ostream&                out,
                  const std::string&           backend,
                  const PoissonForwardProblem& problem,

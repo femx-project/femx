@@ -15,6 +15,7 @@ namespace femx
 {
 namespace assembly
 {
+/// @cond INTERNAL
 namespace detail
 {
 
@@ -161,6 +162,8 @@ int configureAssemblyLaunch(std::size_t smem)
 
 } // namespace detail
 
+/// @endcond
+
 /**
  * @brief Assemble residual and Jacobian with one CUDA block per element.
  *
@@ -168,6 +171,15 @@ int configureAssemblyLaunch(std::size_t smem)
  * row-wise `evalRow` contract as the CPU overload, with device ElementView and
  * VectorView arguments. All zeroing and the assembly launch are enqueued on
  * the CudaContext stream; callers synchronize only at an explicit boundary.
+ *
+ * @tparam ElementOperator Trivially copyable row-wise element evaluator.
+ * @param op Element evaluator copied into the kernel launch.
+ * @param geom Device geometry matching the map's element order.
+ * @param map Device element-to-global assembly map.
+ * @param state Global device state vector.
+ * @param res Device residual replaced by the assembled result.
+ * @param jac Device CSR matrix zeroed and assembled in place.
+ * @param ctx CUDA stream on which all work is enqueued.
  */
 template <class ElementOperator>
 void assemble(const ElementOperator&                  op,

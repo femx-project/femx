@@ -14,8 +14,15 @@ class Mesh;
 template <MemorySpace Space>
 class Geometry;
 
+/** @brief Flatten mesh coordinates and connectivity into host backend storage. */
 Geometry<MemorySpace::Host> makeGeometry(const Mesh& mesh);
 
+/**
+ * @brief Copy host geometry to device-owned storage.
+ * @param src Host geometry kept alive while copies are queued.
+ * @param dst Device geometry replaced by the copy.
+ * @param ctx CUDA stream on which copies are enqueued.
+ */
 void copy(const Geometry<MemorySpace::Host>& src,
           Geometry<MemorySpace::Device>&     dst,
           CudaContext&                       ctx);
@@ -27,6 +34,7 @@ class GeometryView
 public:
   FEMX_HOST_DEVICE GeometryView() = default;
 
+  /** @brief Construct a view over flattened coordinates and connectivity. */
   FEMX_HOST_DEVICE GeometryView(
       Index                          dim,
       Index                          num_nodes,
@@ -45,21 +53,25 @@ public:
   {
   }
 
+  /** @brief Return the spatial dimension. */
   FEMX_HOST_DEVICE Index dim() const
   {
     return dim_;
   }
 
+  /** @brief Return the number of global geometry nodes. */
   FEMX_HOST_DEVICE Index numNodes() const
   {
     return num_nodes_;
   }
 
+  /** @brief Return the number of elements. */
   FEMX_HOST_DEVICE Index numElems() const
   {
     return num_elems_;
   }
 
+  /** @brief Return the largest element node count. */
   FEMX_HOST_DEVICE Index maxElemNodes() const
   {
     return max_elem_nodes_;
@@ -71,11 +83,13 @@ public:
     return coords_[node * dim_ + d];
   }
 
+  /** @brief Return the number of geometry nodes on element `ie`. */
   FEMX_HOST_DEVICE Index elemNumNodes(Index ie) const
   {
     return elem_offsets_[ie + 1] - elem_offsets_[ie];
   }
 
+  /** @brief Map local node `in` of element `ie` to a global node. */
   FEMX_HOST_DEVICE Index elemNode(Index ie, Index in) const
   {
     return conn_[elem_offsets_[ie] + in];
@@ -108,26 +122,31 @@ public:
   Geometry& operator=(const Geometry&)     = default;
   Geometry& operator=(Geometry&&) noexcept = default;
 
+  /** @brief Return the spatial dimension. */
   Index dim() const noexcept
   {
     return dim_;
   }
 
+  /** @brief Return the number of global geometry nodes. */
   Index numNodes() const noexcept
   {
     return num_nodes_;
   }
 
+  /** @brief Return the number of elements. */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
+  /** @brief Return the largest element node count. */
   Index maxElemNodes() const noexcept
   {
     return max_elem_nodes_;
   }
 
+  /** @brief Return a non-owning kernel view valid while this object is alive. */
   GeometryView<Space> view() const noexcept
   {
     return {dim_,
@@ -158,9 +177,9 @@ private:
 using HostGeometry   = Geometry<MemorySpace::Host>;
 using DeviceGeometry = Geometry<MemorySpace::Device>;
 
-inline void copy(const HostGeometry& src,
-                 DeviceGeometry&     dst,
-                 CudaContext&        ctx)
+inline void copy(const Geometry<MemorySpace::Host>& src,
+                 Geometry<MemorySpace::Device>&     dst,
+                 CudaContext&                       ctx)
 {
   dst.dim_            = src.dim_;
   dst.num_nodes_      = src.num_nodes_;

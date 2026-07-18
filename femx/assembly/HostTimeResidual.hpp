@@ -25,6 +25,7 @@ class HostElementOperator
 public:
   virtual ~HostElementOperator() = default;
 
+  /** @brief Evaluate one element residual at a time step. */
   virtual void res(Index                  step,
                    Index                  ie,
                    state::TimeHistoryView hist,
@@ -32,6 +33,7 @@ public:
                    const HostVector&      prm,
                    HostVector&            out) const = 0;
 
+  /** @brief Evaluate one element Jacobian with respect to `wrt`. */
   virtual void jac(Index                  step,
                    Index                  ie,
                    state::VariableBlock   wrt,
@@ -50,23 +52,27 @@ public:
 class HostTimeResidual final : public state::TimeResidual
 {
 public:
+  /** @brief Use one state layout for history and next-state variables. */
   HostTimeResidual(Index                      nstep,
                    fem::DofLayout             res_lyt,
                    fem::DofLayout             state_lyt,
                    const HostElementOperator& op);
 
+  /** @brief Use distinct single-history and next-state layouts. */
   HostTimeResidual(Index                      nstep,
                    fem::DofLayout             res_lyt,
                    fem::DofLayout             hist_lyt,
                    fem::DofLayout             next_lyt,
                    const HostElementOperator& op);
 
+  /** @brief Use distinct layouts for each required history level. */
   HostTimeResidual(Index                      nstep,
                    fem::DofLayout             res_lyt,
                    Array<fem::DofLayout>      hist_lyts,
                    fem::DofLayout             next_lyt,
                    const HostElementOperator& op);
 
+  /** @brief Add an element parameter layout to a single-history residual. */
   HostTimeResidual(Index                      nstep,
                    fem::DofLayout             res_lyt,
                    fem::DofLayout             hist_lyt,
@@ -74,6 +80,7 @@ public:
                    fem::DofLayout             prm_lyt,
                    const HostElementOperator& op);
 
+  /** @brief Add an element parameter layout to a multi-history residual. */
   HostTimeResidual(Index                      nstep,
                    fem::DofLayout             res_lyt,
                    Array<fem::DofLayout>      hist_lyts,
@@ -81,23 +88,29 @@ public:
                    fem::DofLayout             prm_lyt,
                    const HostElementOperator& op);
 
+  /** @brief Restrict assembly to the half-open element range `[begin, end)`. */
   void setElemRange(Index ie_begin, Index ie_end);
 
+  /** @brief Return global time-residual dimensions. */
   state::TimeDims dims() const override;
 
+  /** @brief Assemble the global residual for one time context. */
   void res(const state::TimeContext& ctx,
            HostVector&               out) const override;
 
+  /** @brief Apply a matrix-free element Jacobian to a direction. */
   void applyJac(const state::TimeContext& ctx,
                 state::VariableBlock      wrt,
                 const HostVector&         dir,
                 HostVector&               out) const override;
 
+  /** @brief Apply the transpose element Jacobian to an adjoint vector. */
   void applyJacT(const state::TimeContext& ctx,
                  state::VariableBlock      wrt,
                  const HostVector&         adj,
                  HostVector&               out) const override;
 
+  /** @brief Assemble one variable-block Jacobian when the target supports it. */
   bool assembleJac(const state::TimeContext& ctx,
                    state::VariableBlock      wrt,
                    linalg::MatrixOperator&   out) const override;

@@ -6,13 +6,16 @@
 namespace femx
 {
 
+/** @brief Storage location used by backend-aware containers and views. */
 enum class MemorySpace
 {
-  Host,
-  Device
+  Host,  ///< CPU-addressable memory.
+  Device ///< CUDA device memory.
 };
 
+/** @brief Scalar type used by finite-element and linear-algebra operations. */
 using Real  = double;
+/** @brief Signed index type used by meshes, DOFs, and sparse matrices. */
 using Index = std::int32_t;
 
 template <MemorySpace Space, class T = Real>

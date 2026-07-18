@@ -19,18 +19,22 @@ template <>
 class CsrTransposeMap<MemorySpace::Host>
 {
 public:
+  /** @brief Build the transpose graph and value permutation once. */
   explicit CsrTransposeMap(const HostCsrGraph& src_graph);
 
+  /** @brief Return the retained source graph. */
   const HostCsrGraph& srcGraph() const noexcept
   {
     return src_graph_;
   }
 
+  /** @brief Return the immutable transposed graph. */
   const HostCsrGraph& trGraph() const noexcept
   {
     return tr_graph_;
   }
 
+  /** @brief Map each source value index to its transpose value index. */
   const HostIndexVector& srcToTr() const noexcept
   {
     return src_to_tr_;
@@ -42,7 +46,12 @@ private:
   HostIndexVector src_to_tr_;
 };
 
-/** @brief Transpose host CSR values using a prebuilt map without allocation. */
+/**
+ * @brief Transpose host CSR values using a prebuilt map without allocation.
+ * @param src Source matrix matching `map.srcGraph()`.
+ * @param map Persistent transpose mapping.
+ * @param dst Destination matrix matching `map.trGraph()`.
+ */
 void trVals(const HostCsrMatrix&       src,
             const HostCsrTransposeMap& map,
             HostCsrMatrix&             dst);

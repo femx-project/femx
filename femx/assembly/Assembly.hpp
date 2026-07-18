@@ -17,13 +17,14 @@ namespace assembly
 template <MemorySpace Space>
 struct ElementView
 {
-  Index                         ie{0};
-  Index                         dim{0};
-  Index                         num_nodes{0};
-  VectorView<Space, const Real> state;
-  VectorView<Space, const Real> coords;
+  Index                         ie{0};        ///< Global element index.
+  Index                         dim{0};       ///< Spatial dimension.
+  Index                         num_nodes{0}; ///< Number of geometry nodes on this element.
+  VectorView<Space, const Real> state;        ///< Element state in local DOF order.
+  VectorView<Space, const Real> coords;       ///< Node-major element coordinates.
 };
 
+/// @cond INTERNAL
 namespace detail
 {
 struct CpuWork
@@ -75,12 +76,22 @@ inline void checkAssemblyInputs(const fem::HostGeometry&              geom,
 }
 } // namespace detail
 
+/// @endcond
+
 /**
  * @brief Assemble residual and Jacobian on the CPU reference path.
  *
  * ElementOperator is the only template parameter. It implements
  * `evalRow(ElementView<Host>, local_row, res, jac_row)` and receives
  * runtime element sizes through the views.
+ *
+ * @tparam ElementOperator Row-wise element residual and Jacobian evaluator.
+ * @param op Element evaluator.
+ * @param geom Host geometry matching the map's element order.
+ * @param map Element-to-global assembly map.
+ * @param state Global state vector.
+ * @param res Global residual replaced by the assembled result.
+ * @param jac CSR matrix zeroed and assembled in place.
  */
 template <class ElementOperator>
 void assemble(const ElementOperator&                op,

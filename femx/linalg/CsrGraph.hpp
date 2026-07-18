@@ -25,6 +25,7 @@ template <MemorySpace Space>
 class CsrGraph
 {
 public:
+  /** @brief Index-vector type in this graph's memory space. */
   using IndexVector = Vector<Space, Index>;
 
   CsrGraph()
@@ -39,6 +40,13 @@ public:
 
   template <MemorySpace S                                              = Space,
             typename std::enable_if<S == MemorySpace::Host, int>::type = 0>
+  /**
+   * @brief Construct and validate a host CSR graph.
+   * @param rows Number of rows.
+   * @param cols Number of columns.
+   * @param row_ptr CSR row offsets of size `rows + 1`.
+   * @param col_ind CSR column indices.
+   */
   CsrGraph(Index       rows,
            Index       cols,
            IndexVector row_ptr,
@@ -53,16 +61,19 @@ public:
     initLayoutId();
   }
 
+  /** @brief Return the number of rows. */
   Index rows() const noexcept
   {
     return storage_->rows;
   }
 
+  /** @brief Return the number of columns. */
   Index cols() const noexcept
   {
     return storage_->cols;
   }
 
+  /** @brief Return the number of structural nonzeros. */
   Index nnz() const noexcept
   {
     return storage_->col_ind.size();
@@ -74,21 +85,25 @@ public:
     return storage_->layout_id;
   }
 
+  /** @brief Return the owned CSR row-offset vector. */
   const IndexVector& rowPtr() const noexcept
   {
     return storage_->row_ptr;
   }
 
+  /** @brief Return the owned CSR column-index vector. */
   const IndexVector& colInd() const noexcept
   {
     return storage_->col_ind;
   }
 
+  /** @brief Return a pointer to the CSR row offsets in `Space`. */
   const Index* rowPtrData() const noexcept
   {
     return storage_->row_ptr.data();
   }
 
+  /** @brief Return a pointer to the CSR column indices in `Space`. */
   const Index* colIndData() const noexcept
   {
     return storage_->col_ind.data();
@@ -226,7 +241,12 @@ private:
   std::shared_ptr<Storage> storage_;
 };
 
-/** @brief Explicitly copy a host CSR graph to device-owned storage. */
+/**
+ * @brief Explicitly copy a host CSR graph to device-owned storage.
+ * @param src Validated host graph.
+ * @param dst Device graph replaced by the copy.
+ * @param ctx CUDA stream on which copies are enqueued.
+ */
 inline void copy(const HostCsrGraph& src,
                  DeviceCsrGraph&     dst,
                  CudaContext&        ctx)

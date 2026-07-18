@@ -12,7 +12,7 @@ namespace linalg
 {
 
 /**
- * @brief ReSolve solver configuration used by ReSolveLinearSolver.
+ * @brief ReSolve configuration shared by host and CUDA solver adapters.
  */
 struct ReSolveOptions
 {
@@ -35,9 +35,8 @@ struct ReSolveOptions
 /**
  * @brief ReSolve adapter for femx sparse linear solves.
  *
- * The adapter accepts MapCsrMatrix operators and can run on the
- * configured ReSolve CPU or CUDA backend.  It implements both forward and
- * transpose solves for use in state and adjoint workflows.
+ * The host adapter accepts MapCsrMatrix operators and implements both forward
+ * and transpose solves for use in state and adjoint workflows.
  */
 class ReSolveLinearSolver final : public LinearSolver
 {

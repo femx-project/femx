@@ -26,15 +26,32 @@ namespace linalg
 class ReSolveDeviceSolver
 {
 public:
+  /** @brief Create a device solver with default ReSolve options. */
   ReSolveDeviceSolver();
+
+  /** @brief Create a device solver with explicit ReSolve options. */
   explicit ReSolveDeviceSolver(ReSolveOptions opts);
+
+  /** @brief Release borrowed wrappers and owned ReSolve workspace. */
   ~ReSolveDeviceSolver();
 
   ReSolveDeviceSolver(const ReSolveDeviceSolver&)            = delete;
   ReSolveDeviceSolver& operator=(const ReSolveDeviceSolver&) = delete;
 
+  /**
+   * @brief Bind a device CSR matrix for subsequent solves.
+   *
+   * The matrix, its graph, and their allocations must remain alive and unmoved
+   * until another matrix is bound or this solver is destroyed.
+   */
   void setOperator(const DeviceCsrMatrix& mat);
 
+  /**
+   * @brief Solve the bound device system without host staging.
+   * @param rhs Device right-hand side, which must not alias `sol` or the matrix.
+   * @param sol Device solution resized if necessary.
+   * @param ctx CUDA stream used by the solve.
+   */
   void solve(const DeviceVector& rhs,
              DeviceVector&       sol,
              CudaContext&        ctx);
