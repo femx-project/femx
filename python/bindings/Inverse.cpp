@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "Bindings.hpp"
-#include "InitialStateParameterMap.hpp"
 #include "PETScInit.hpp"
+#include <femx/fem/ControlMap.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
@@ -39,6 +39,7 @@ using femx::DenseMatrix;
 using femx::HostVector;
 using femx::Index;
 using femx::Real;
+using femx::fem::HostInitialStateMap;
 using femx::inverse::SumTimeObjective;
 using femx::inverse::TimeBlockRegularization;
 using femx::inverse::TimeLeastSquaresObjective;
@@ -127,7 +128,7 @@ class AffineInitialStateGradientMap final
   : public femx::inverse::InitialStateGradientMap
 {
 public:
-  explicit AffineInitialStateGradientMap(InitialStateParameterMap& map)
+  explicit AffineInitialStateGradientMap(HostInitialStateMap& map)
     : map_(map)
   {
   }
@@ -136,11 +137,14 @@ public:
              const HostVector& state_grad,
              HostVector&       out) override
   {
-    map_.applyTranspose(state_grad, out);
+    out.resize(map_.numParams());
+    out.setZero();
+    femx::fem::addInitialJacT(
+        map_.view(), state_grad.view(), out.view());
   }
 
 private:
-  InitialStateParameterMap& map_;
+  HostInitialStateMap& map_;
 };
 
 HostVector flattenedVectorFromArray(const RealArray& vals,
@@ -349,39 +353,6 @@ std::unique_ptr<TimeBlockRegularization> timeBlockRegularizationFromArrays(
       weight,
       ref);
 }
-
-class PythonTimeProgressMonitor final
-  : public femx::inverse::TimeReducedProgressMonitor
-{
-public:
-  explicit PythonTimeProgressMonitor(py::object progress)
-    : progress_(std::move(progress))
-  {
-  }
-
-  void progress(const char* phase, Index step, Index total) override
-  {
-    py::gil_scoped_acquire acquire;
-    if (PyErr_CheckSignals() != 0)
-    {
-      throw py::error_already_set();
-    }
-    if (progress_.is_none())
-    {
-      return;
-    }
-
-    py::dict event;
-    event["type"]  = "solve";
-    event["phase"] = phase;
-    event["step"]  = step;
-    event["total"] = total;
-    progress_(std::move(event));
-  }
-
-private:
-  py::object progress_;
-};
 
 #ifdef FEMX_HAS_PETSC
 HostVector boundVectorFromArray(const RealArray& vals,
@@ -842,18 +813,26 @@ void bindInverse(py::module_& module)
             PythonTimeProgressMonitor monitor(progress);
             HostVector                out;
             Real                      value = 0.0;
-            functional.setMonitor(&monitor);
-            try
+            if (progress.is_none())
             {
               py::gil_scoped_release release;
               value = functional.valueGrad(vals, out);
             }
-            catch (...)
+            else
             {
+              functional.setMonitor(&monitor);
+              try
+              {
+                py::gil_scoped_release release;
+                value = functional.valueGrad(vals, out);
+              }
+              catch (...)
+              {
+                functional.clearMonitor();
+                throw;
+              }
               functional.clearMonitor();
-              throw;
             }
-            functional.clearMonitor();
             return py::make_tuple(value, vectorArray(out));
           },
           py::arg("param"),
@@ -861,7 +840,7 @@ void bindInverse(py::module_& module)
 
   py::class_<AffineInitialStateGradientMap>(
       module, "_AffineInitialStateGradientMap")
-      .def(py::init<InitialStateParameterMap&>(),
+      .def(py::init<HostInitialStateMap&>(),
            py::arg("map"),
            py::keep_alive<1, 2>());
 

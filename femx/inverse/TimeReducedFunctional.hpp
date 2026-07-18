@@ -2,6 +2,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/state/TimeResidual.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
@@ -14,7 +15,6 @@ class LinearSolver;
 namespace state
 {
 class TimeIntegrator;
-class TimeTrajectory;
 } // namespace state
 
 namespace inverse

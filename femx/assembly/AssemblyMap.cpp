@@ -80,9 +80,9 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
   HostIndexVector res_dofs;
   HostIndexVector state_dofs;
 
-  Index max_res_dofs    = 0;
-  Index max_state_dofs  = 0;
-  Index max_jac_entries = 0;
+  Index max_res   = 0;
+  Index max_state = 0;
+  Index max_jac   = 0;
 
   for (Index ie = 0; ie < num_elem; ++ie)
   {
@@ -104,9 +104,9 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     res_offsets[ie + 1]   = res_dofs.size();
     state_offsets[ie + 1] = state_dofs.size();
     jac_offsets[ie + 1]   = checkedAdd(jac_offsets[ie], elem_nnz);
-    max_res_dofs          = std::max(max_res_dofs, rows.size());
-    max_state_dofs        = std::max(max_state_dofs, cols.size());
-    max_jac_entries       = std::max(max_jac_entries, elem_nnz);
+    max_res               = std::max(max_res, rows.size());
+    max_state             = std::max(max_state, cols.size());
+    max_jac               = std::max(max_jac, elem_nnz);
   }
 
   const Index     nnz = jac_offsets[num_elem];
@@ -180,9 +180,9 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
           std::move(jac_offsets),
           std::move(jac_map),
           std::move(graph),
-          max_res_dofs,
-          max_state_dofs,
-          max_jac_entries};
+          max_res,
+          max_state,
+          max_jac};
 }
 
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(
@@ -241,9 +241,9 @@ void copy(const AssemblyMap<MemorySpace::Host>& src,
          std::move(jac_offsets),
          std::move(jac_map),
          std::move(graph),
-         src.max_res_dofs_,
-         src.max_state_dofs_,
-         src.max_jac_entries_};
+         src.max_res_,
+         src.max_state_,
+         src.max_jac_};
 }
 
 } // namespace assembly

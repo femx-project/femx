@@ -86,9 +86,15 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
 
   HostCsrMatrix authoritative(graph);
   setMatVals(authoritative);
-  assembly::replaceRows(map, authoritative);
+  assembly::replaceRows(map, authoritative, 1.0);
   status *= valsNear(authoritative.vals(),
                      std::array<Real, 9>{{4.0, 1.0, 2.0, 0.0, 1.0, 0.0, 7.0, 8.0, 9.0}});
+
+  HostCsrMatrix hist_jac(graph);
+  setMatVals(hist_jac);
+  assembly::replaceRows(map, hist_jac, 0.0);
+  status *= valsNear(hist_jac.vals(),
+                     std::array<Real, 9>{{4.0, 1.0, 2.0, 0.0, 0.0, 0.0, 7.0, 8.0, 9.0}});
 
   HostVector res{10.0, 20.0, 30.0};
   assembly::replaceRes(map,
@@ -190,7 +196,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   bool layout_rejected = false;
   try
   {
-    assembly::replaceRows(map, wrong_mat);
+    assembly::replaceRows(map, wrong_mat, 1.0);
   }
   catch (const std::runtime_error&)
   {

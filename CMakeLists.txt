@@ -33,7 +33,6 @@ set(PETSC_DIR
 set(PETSC_ARCH
     ""
     CACHE STRING "Optional PETSc architecture name")
-option(RESOLVE_USE_CUDA "Request a CUDA-enabled ReSolve package" OFF)
 
 set(FEMX_NLOHMANN_JSON_INCLUDE_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/third-party/nlohmann-json/single_include")
@@ -57,15 +56,6 @@ set(FEMX_RESOLVE_REVISION
 
 if(NOT FEMX_RESOLVE_BACKEND_MODE MATCHES "^(AUTO|CPU|CUDA)$")
   message(FATAL_ERROR "FEMX_RESOLVE_BACKEND must be AUTO, CPU, or CUDA.")
-endif()
-
-if(RESOLVE_USE_CUDA AND FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-  message(
-    FATAL_ERROR "RESOLVE_USE_CUDA=ON conflicts with FEMX_RESOLVE_BACKEND=CPU.")
-endif()
-
-if(RESOLVE_USE_CUDA)
-  set(FEMX_RESOLVE_BACKEND_MODE "CUDA")
 endif()
 
 if(FEMX_ENABLE_RESOLVE

@@ -19,7 +19,7 @@ class ScalarRecurrence(femx.TimeResidual):
         dims.num_states = 1
         dims.num_param = 1
         dims.num_res = 1
-        dims.num_history_states = 1
+        dims.num_hist = 1
         return dims
 
     def residual(self, context):

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <stdexcept>
 #include <string>
 
@@ -12,6 +13,26 @@ using namespace femx::fem;
 
 namespace femx::model::ns
 {
+namespace
+{
+
+fem::DirichletBC orderedBC(const fem::DirichletBC& src)
+{
+  std::map<Index, Real> vals;
+  for (Index i = 0; i < src.dofs().size(); ++i)
+  {
+    vals[src.dofs()[i]] = src.vals()[i];
+  }
+
+  fem::DirichletBC out;
+  for (const auto& [dof, val] : vals)
+  {
+    out.addDof(dof, val);
+  }
+  return out;
+}
+
+} // namespace
 
 Index lowerInterval(const HostVector& pts,
                     Real              x)
@@ -273,7 +294,7 @@ fem::DirichletBC makeDirichletBC(
   {
     bc.addDof(p_dof.globalDof(0), 0.0);
   }
-  return bc;
+  return orderedBC(bc);
 }
 
 } // namespace femx::model::ns

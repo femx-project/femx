@@ -10,7 +10,6 @@ target_sources(
           ForwardProblem.cpp
           ForwardSolveMonitor.cpp
           Helper.cpp
-          Kernel.cpp
           NavierStokesModel.cpp
   PUBLIC Boundary.hpp
          Components.hpp
@@ -19,15 +18,10 @@ target_sources(
          ForwardProblem.hpp
          ForwardSolveMonitor.hpp
          Helper.hpp
-         Kernel.hpp
          NavierStokesModel.hpp)
 
 target_include_directories(femx_model_ns
                            PRIVATE ${FEMX_NLOHMANN_JSON_INCLUDE_DIR})
-
-if(FEMX_ENABLE_ENZYME)
-  set_target_properties(femx_model_ns PROPERTIES UNITY_BUILD ON)
-endif()
 
 target_link_libraries(
   femx_model_ns
@@ -39,3 +33,19 @@ target_link_libraries(
          femx_io
          femx_runtime
          femx_state)
+
+if(TARGET femx_linalg_petsc)
+  target_link_libraries(femx_model_ns PRIVATE femx_linalg_petsc)
+endif()
+
+if(FEMX_HAS_CUDA
+   AND FEMX_HAS_RESOLVE_CUDA
+   AND TARGET femx_linalg_resolve
+   AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
+  target_sources(femx_model_ns PRIVATE ResolveTimeIntegrator.cu
+                               PUBLIC ResolveTimeIntegrator.hpp)
+  target_link_libraries(femx_model_ns PUBLIC femx_linalg_resolve
+                                             femx_inverse)
+  set_target_properties(femx_model_ns PROPERTIES CUDA_STANDARD 17
+                                                 CUDA_STANDARD_REQUIRED ON)
+endif()

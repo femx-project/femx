@@ -108,7 +108,7 @@ TimeLinearIntegrator::TimeLinearIntegrator(
     throw std::runtime_error(
         "TimeLinearIntegrator requires square state residual dimensions");
   }
-  if (dims_.num_history_states <= 0)
+  if (dims_.num_hist <= 0)
   {
     throw std::runtime_error(
         "TimeLinearIntegrator requires at least one history state");
@@ -223,7 +223,7 @@ void TimeLinearIntegrator::solveImpl(const HostVector& prm,
   observeState(0, init);
 
   HostVector hist;
-  initializeHistoryWindow(init, dims_.num_history_states, numStates(), hist);
+  initializeHistoryWindow(init, dims_.num_hist, numStates(), hist);
   for (Index step = 0; step < numSteps(); ++step)
   {
     HostVector cur_state = HostVectorView(hist.data(), numStates());
@@ -244,7 +244,7 @@ void TimeLinearIntegrator::solveImpl(const HostVector& prm,
         last_solve_sec_};
 
     const bool stop = observeStep(ctx);
-    advanceHistoryWindow(hist, dims_.num_history_states, numStates(), x_next);
+    advanceHistoryWindow(hist, dims_.num_hist, numStates(), x_next);
     if (stop)
     {
       break;
@@ -265,7 +265,7 @@ void TimeLinearIntegrator::solveStep(
   ctx.step = step;
   ctx.nxt  = &x_next;
   ctx.prm  = &prm;
-  ctx.hist = TimeHistoryView(hist.data(), dims_.num_history_states, numStates());
+  ctx.hist = TimeHistoryView(hist.data(), dims_.num_hist, numStates());
 
   HostVector res;
   problem_.res(ctx, res);

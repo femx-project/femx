@@ -7,6 +7,7 @@
 #include <femx/fem/Geometry.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/state/TimeResidual.hpp>
 
 namespace femx
 {
@@ -24,6 +25,23 @@ struct ElementView
   VectorView<Space, const Real> coords;       ///< Node-major element coordinates.
 };
 
+/** @brief Element-local inputs for one time-dependent residual step. */
+template <MemorySpace Space>
+struct TimeElementView
+{
+  Index                         ie{0};       ///< Global element index.
+  Index                         step{0};     ///< Residual step index.
+  Index                         num_hist{0}; ///< Number of local history states.
+  VectorView<Space, const Real> hist;        ///< History states, lag-major.
+  VectorView<Space, const Real> nxt;         ///< Local next state.
+
+  /** @brief Return one local history state without copying it. */
+  FEMX_HOST_DEVICE VectorView<Space, const Real> histState(Index lag) const
+  {
+    return hist.subview(lag * nxt.size(), nxt.size());
+  }
+};
+
 /// @cond INTERNAL
 namespace detail
 {
@@ -31,6 +49,8 @@ struct CpuWork
 {
   HostVector state;
   HostVector coords;
+  HostVector hist;
+  HostVector nxt;
   HostVector res;
   HostVector jac;
 };
@@ -72,6 +92,47 @@ inline void checkAssemblyInputs(const fem::HostGeometry&              geom,
   {
     throw std::runtime_error(
         "Assembly matrix must use the AssemblyMap CSR layout");
+  }
+}
+
+inline void checkTimeAssemblyInputs(
+    Index                                 num_hist,
+    state::VariableBlock                  wrt,
+    const AssemblyMap<MemorySpace::Host>& map,
+    const HostVector&                     hist,
+    const HostVector&                     nxt,
+    const HostCsrMatrix&                  jac)
+{
+  if (num_hist <= 0 || hist.size() != num_hist * map.numStates()
+      || nxt.size() != map.numStates())
+  {
+    throw std::runtime_error(
+        "Time assembly state dimensions do not match AssemblyMap");
+  }
+  if (wrt.isParam()
+      || (wrt.isHistoryState()
+          && (wrt.historyLag() < 0 || wrt.historyLag() >= num_hist)))
+  {
+    throw std::runtime_error("Time assembly variable block is invalid");
+  }
+  if (jac.graph().layoutId() != map.graph().layoutId())
+  {
+    throw std::runtime_error(
+        "Time assembly matrix must use the AssemblyMap CSR layout");
+  }
+}
+
+template <MemorySpace Space>
+void checkTimeAssemblyAliases(const Vector<Space>& hist,
+                              const Vector<Space>& nxt,
+                              const Vector<Space>& res,
+                              const Vector<Space>& vals)
+{
+  if (&hist == &res || &hist == &vals || &nxt == &res || &nxt == &vals
+      || &res == &vals)
+  {
+    throw std::runtime_error(
+        "Time assembly outputs must not alias inputs or each other");
   }
 }
 } // namespace detail
@@ -117,10 +178,10 @@ void assemble(const ElementOperator&                op,
   HostVector& coords_e = work.coords;
   HostVector& res_e    = work.res;
   HostVector& jac_e    = work.jac;
-  state_e.reserve(map.maxStateDofs());
+  state_e.reserve(map.maxState());
   coords_e.reserve(geom.maxElemNodes() * geom.dim());
-  res_e.reserve(map.maxResDofs());
-  jac_e.reserve(map.maxJacEntries());
+  res_e.reserve(map.maxRes());
+  jac_e.reserve(map.maxJac());
 
   for (Index ie = 0; ie < map.numElems(); ++ie)
   {
@@ -162,6 +223,81 @@ void assemble(const ElementOperator&                op,
     for (Index i = 0; i < num_rows * num_cols; ++i)
     {
       jac.valsData()[map_v.jacIndex(ie, i)] += jac_e[i];
+    }
+  }
+}
+
+/**
+ * @brief Assemble one time residual and state Jacobian on the CPU.
+ *
+ * The operator implements
+ * `evalRow(TimeElementView<Host>, wrt, row, res, jac_row)`. History storage is
+ * lag-major with `map.numStates()` global values per lag.
+ */
+template <class ElementOperator>
+void assemble(const ElementOperator&                op,
+              Index                                 step,
+              Index                                 num_hist,
+              state::VariableBlock                  wrt,
+              const AssemblyMap<MemorySpace::Host>& map,
+              const HostVector&                     hist,
+              const HostVector&                     nxt,
+              HostVector&                           res,
+              HostCsrMatrix&                        jac,
+              CpuContext&)
+{
+  detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt, jac);
+  const HostVector& vals = jac.vals();
+  detail::checkTimeAssemblyAliases(hist, nxt, res, vals);
+
+  resizeOrZero(res, map.numRes());
+  jac.setZero();
+
+  const auto map_v = map.view();
+  auto&      work  = detail::cpuWork();
+  work.hist.reserve(num_hist * map.maxState());
+  work.nxt.reserve(map.maxState());
+  work.res.reserve(map.maxRes());
+  work.jac.reserve(map.maxJac());
+
+  for (Index ie = 0; ie < map.numElems(); ++ie)
+  {
+    const Index nrow = map_v.numResDofs(ie);
+    const Index ncol = map_v.numStateDofs(ie);
+    work.hist.resize(num_hist * ncol);
+    work.nxt.resize(ncol);
+    work.res.resize(nrow);
+    work.jac.resize(nrow * ncol);
+
+    for (Index lag = 0; lag < num_hist; ++lag)
+    {
+      for (Index col = 0; col < ncol; ++col)
+      {
+        const Index dof = map_v.stateDof(ie, col);
+        work.hist[lag * ncol + col] =
+            hist[lag * map.numStates() + dof];
+      }
+    }
+    for (Index col = 0; col < ncol; ++col)
+    {
+      work.nxt[col] = nxt[map_v.stateDof(ie, col)];
+    }
+
+    const TimeElementView<MemorySpace::Host> elem{
+        ie, step, num_hist, work.hist.view(), work.nxt.view()};
+    for (Index row = 0; row < nrow; ++row)
+    {
+      HostVectorView jac_row(work.jac.data() + row * ncol, ncol);
+      op.evalRow(elem, wrt, row, work.res[row], jac_row);
+    }
+
+    for (Index row = 0; row < nrow; ++row)
+    {
+      res[map_v.resDof(ie, row)] += work.res[row];
+    }
+    for (Index i = 0; i < nrow * ncol; ++i)
+    {
+      jac.valsData()[map_v.jacIndex(ie, i)] += work.jac[i];
     }
   }
 }

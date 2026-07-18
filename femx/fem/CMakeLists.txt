@@ -6,6 +6,7 @@ target_sources(
   PRIVATE DirichletBC.cpp
           TimeDirichletData.cpp
           BoundarySurface.cpp
+          ControlMap.cpp
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp
@@ -21,6 +22,7 @@ target_sources(
   PUBLIC DirichletBC.hpp
          TimeDirichletData.hpp
          BoundarySurface.hpp
+         ControlMap.hpp
          Element.hpp
          DirichletControl.hpp
          DofLayout.hpp
@@ -44,3 +46,9 @@ target_sources(
 
 target_link_libraries(femx_fem PUBLIC femx_config femx_common femx_linalg
                                       femx_inverse)
+
+if(FEMX_HAS_CUDA)
+  target_sources(femx_fem PRIVATE ControlMap.cu TimePointInterpolator.cu)
+  set_target_properties(femx_fem PROPERTIES CUDA_STANDARD 17
+                                             CUDA_STANDARD_REQUIRED ON)
+endif()

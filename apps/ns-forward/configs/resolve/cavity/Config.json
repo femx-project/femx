@@ -41,8 +41,8 @@
     "solve": "fgmres",
     "preconditioner": "ilu0",
     "restart": 200,
-    "rel_tol": 1.0e-8,
-    "max_its": 5000
+    "relative_tolerance": 1.0e-8,
+    "max_itrs": 5000
   },
   "output": {
     "enabled": true,

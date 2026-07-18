@@ -13,7 +13,7 @@
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/runtime/Cli.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx::state;
 using namespace femx::assembly;
 
@@ -128,7 +128,7 @@ bool isFinite(const HostVector& x)
   return true;
 }
 
-ForwardSolveResult solve(TimeLinearIntegrator& integrator,
+ForwardSolveResult solve(TimeIntegrator&       integrator,
                          const ForwardProblem& problem,
                          const TimeParams&     time,
                          const OutputParams&   prm,
@@ -153,7 +153,8 @@ ForwardSolveResult solve(TimeLinearIntegrator& integrator,
                           time.convergence.min_steps});
 
   integrator.setMonitor(&monitor);
-  integrator.solve(problem.prm0);
+  state::TimeTrajectory tr;
+  integrator.solve(problem.prm0, tr);
 
   integrator.clearMonitor();
   return monitor.result();

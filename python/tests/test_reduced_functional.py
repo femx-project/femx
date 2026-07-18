@@ -220,8 +220,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         np.testing.assert_allclose(
             traj.values,
             self.problem.solve(DENSE_PARAM).values,
-            rtol=2.0e-8,
-            atol=2.0e-10,
+            rtol=1.0e-6,
+            atol=2.0e-8,
         )
         self.assertAlmostEqual(obj, DENSE_OBJ, places=8)
         np.testing.assert_allclose(

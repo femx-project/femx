@@ -197,11 +197,16 @@ $R(\mathbf{x}^{n+1})=K\mathbf{x}^{n+1}-F$, and solves the resulting linear
 system $K\mathbf{x}^{n+1}=F$ once per time step. It does not perform a Newton
 iteration on the fully nonlinear Navier-Stokes residual.
 
-The model now publishes flattened `Geometry` and an immutable `AssemblyMap`.
-Both app entry points allocate their matrix from the map's CSR graph; PETSc
-uses the graph for exact preallocation, while the Re::Solve entry point uses
-the CPU solver with the map-backed CSR operator. The time residual is evaluated
-by `HostTimeResidual`.
+The model publishes flattened element data and an immutable `AssemblyMap`.
+Both app entry points allocate their matrix from the map's CSR graph. PETSc
+uses Host assembly and exact distributed preallocation. In a CUDA ReSolve
+build, the `resolve` entry point keeps the trajectory, residual, Jacobian,
+boundary work, and linear solve on Device and assembles through
+`CudaAssembly.hpp`. Both paths evaluate the same Navier--Stokes row operator.
+
+Boundary conditions are applied in configuration order. A later condition
+replaces an earlier value at a shared node, so list wall conditions after
+inlets, outlets, or a moving cavity lid when the wall should own the rim.
 
 ## Run
 

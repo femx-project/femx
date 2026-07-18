@@ -15,9 +15,6 @@ class LinearSolver;
 
 namespace state
 {
-
-class TimeTrajectory;
-
 /**
  * @brief Time integrator using the assembled next-state Jacobian.
  *

@@ -33,6 +33,11 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
   return *this;
 }
 
+const Array<const TimeObjective*>& SumTimeObjective::terms() const noexcept
+{
+  return terms_;
+}
+
 Index SumTimeObjective::numSteps() const
 {
   return num_steps_;

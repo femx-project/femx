@@ -117,21 +117,21 @@ void checkFinite(const HostVector& x, const std::string& name, Index step)
 
 void fillHistory(const TimeTrajectory& tr,
                  Index                 step,
-                 Index                 num_history_states,
+                 Index                 num_hist,
                  HostVector&           hist)
 {
   const Index num_states = tr.numStates();
-  if (num_history_states < 0 || num_states < 0)
+  if (num_hist < 0 || num_states < 0)
   {
     throw std::runtime_error(
         "TimeReducedFunctional received invalid history dimensions");
   }
-  if (hist.size() != num_history_states * num_states)
+  if (hist.size() != num_hist * num_states)
   {
-    hist.resize(num_history_states * num_states);
+    hist.resize(num_hist * num_states);
   }
-  BlockVectorView<Real> hist_view(hist.data(), num_history_states, num_states);
-  for (Index i = 0; i < num_history_states; ++i)
+  BlockVectorView<Real> hist_view(hist.data(), num_hist, num_states);
+  for (Index i = 0; i < num_hist; ++i)
   {
     const HostVector& st = tr[historyLevel(step, i)];
     HostVectorView    h  = hist_view.block(i);
@@ -144,19 +144,19 @@ void fillHistory(const TimeTrajectory& tr,
 
 TimeContext makeContext(const TimeTrajectory& tr,
                         Index                 step,
-                        Index                 num_history_states,
+                        Index                 num_hist,
                         const HostVector&     prm,
                         HostVector&           hist,
                         HostVector&           nxt)
 {
-  fillHistory(tr, step, num_history_states, hist);
+  fillHistory(tr, step, num_hist, hist);
   nxt = tr[step + 1];
 
   TimeContext ctx;
   ctx.step = step;
   ctx.nxt  = &nxt;
   ctx.prm  = &prm;
-  ctx.hist = TimeHistoryView(hist.data(), num_history_states, tr.numStates());
+  ctx.hist = TimeHistoryView(hist.data(), num_hist, tr.numStates());
   return ctx;
 }
 
@@ -271,7 +271,7 @@ void TimeReducedFunctional::checkDims() const
       || integrator_.numParams() != dims_.num_param
       || integrator_.numParams() != obj_.numParams()
       || dims_.num_res != dims_.num_states
-      || dims_.num_history_states <= 0)
+      || dims_.num_hist <= 0)
   {
     throw std::runtime_error(
         "TimeReducedFunctional received inconsistent dimensions");
@@ -330,7 +330,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
     checkFinite(rhs, "adjoint objective gradient", t);
 
     const Index level = t + 1;
-    for (Index i = 0; i < dims_.num_history_states; ++i)
+    for (Index i = 0; i < dims_.num_hist; ++i)
     {
       const Index ft = level + i;
       if (ft >= steps)
@@ -340,7 +340,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
       TimeContext carry_ctx = makeContext(tr,
                                           ft,
-                                          dims_.num_history_states,
+                                          dims_.num_hist,
                                           prm,
                                           carry_history,
                                           carry_next_state);
@@ -360,7 +360,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
     TimeContext ctx = makeContext(tr,
                                   t,
-                                  dims_.num_history_states,
+                                  dims_.num_hist,
                                   prm,
                                   hist,
                                   ctx_next_state);
@@ -393,7 +393,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
 
     for (Index t = 0; t < steps; ++t)
     {
-      for (Index i = 0; i < dims_.num_history_states; ++i)
+      for (Index i = 0; i < dims_.num_hist; ++i)
       {
         if (historyLevel(t, i) != 0)
         {
@@ -403,7 +403,7 @@ void TimeReducedFunctional::gradAt(const TimeTrajectory& tr,
         TimeContext carry_ctx =
             makeContext(tr,
                         t,
-                        dims_.num_history_states,
+                        dims_.num_hist,
                         prm,
                         carry_history,
                         carry_next_state);

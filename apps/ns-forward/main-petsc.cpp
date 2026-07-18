@@ -120,7 +120,7 @@ int run(const Params& prm)
   }
 
   ForwardProblem fwd(prm);
-  setElemRange(fwd.model.residual(), fwd.model.mesh().numElems());
+  setElemRange(fwd.model, fwd.model.mesh().numElems());
 
   PETScVector mat_row(PETSC_COMM_WORLD);
   mat_row.resize(fwd.model.numStates());

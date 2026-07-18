@@ -1,14 +1,10 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-namespace state
-{
-class TimeTrajectory;
-} // namespace state
-
 namespace inverse
 {
 

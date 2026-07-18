@@ -12,6 +12,14 @@ from .mesh import Mesh
 
 _BACKENDS = {}
 
+
+@dataclass(frozen=True)
+class _Backend:
+    matrix: object
+    solver: object
+    device_time: bool = False
+
+
 _RESOLVE_STRING_OPTIONS = (
     "factor",
     "refactor",
@@ -20,7 +28,7 @@ _RESOLVE_STRING_OPTIONS = (
     "ir",
     "gram_schmidt",
     "sketching",
-    "preconditioner_side",
+    "pc_side",
 )
 _RESOLVE_INT_OPTIONS = ("max_its", "restart")
 _RESOLVE_REAL_OPTIONS = ("rtol",)
@@ -703,28 +711,47 @@ class NavierStokesSolver:
     def __init__(self, prob, backend, options=None):
         if not isinstance(prob, NavierStokesProblem):
             raise TypeError("prob must be a NavierStokesProblem")
-        matrix, solver = _factories(backend)
+        factories = _factories(backend)
         options = _backend_options(backend, options)
         prob._ensure_built()
 
         self._prob = prob
         self._compiled = prob._compiled
         self._backend = backend
-        self._matrix = matrix(prob)
-        self._linear_solver = solver(prob, options)
-        self._linear_integrator = _core.TimeLinearIntegrator(
-            prob.residual,
-            self._matrix,
-            self._linear_solver,
-        )
-        self._linear_integrator.set_initial_state(prob._initial_state)
-        if prob._initial_map is not None:
-            self._integrator = _core._AffineInitialStateIntegrator(
-                self._linear_integrator,
-                prob._initial_map,
-            )
+        if factories.device_time:
+            if prob._ctr is None:
+                self._integ = _core._ResolveTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                    options,
+                )
+            else:
+                self._integ = _core._ResolveTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                    prob._initial_modes,
+                    options,
+                )
+            self._timer = self._integ
         else:
-            self._integrator = self._linear_integrator
+            mat = factories.matrix(prob)
+            lin = factories.solver(prob, options)
+            time = _core.TimeLinearIntegrator(
+                prob.residual,
+                mat,
+                lin,
+            )
+            time.set_initial_state(prob._initial_state)
+            if prob._initial_map is not None:
+                self._integ = _core._AffineInitialStateIntegrator(
+                    time,
+                    prob._initial_map,
+                )
+            else:
+                self._integ = time
+            self._timer = time
         self._num_solves = 0
 
     @property
@@ -741,11 +768,22 @@ class NavierStokesSolver:
 
     @property
     def assembly_calls(self):
-        return self._linear_integrator.assembly_calls
+        return self._timer.assembly_calls
 
     @property
     def linear_solve_calls(self):
-        return self._linear_integrator.solve_calls
+        return self._timer.solve_calls
+
+    @property
+    def assembly_seconds(self):
+        return self._timer.assembly_seconds
+
+    @property
+    def solve_seconds(self):
+        return self._timer.solve_seconds
+
+    def reset_timing(self):
+        self._timer.reset_timing()
 
     def solve(self, param=None, progress=None):
         if self._prob._compiled is not self._compiled:
@@ -757,7 +795,7 @@ class NavierStokesSolver:
 
         _configure_assembly(self._prob, self._backend)
         param = self._prob._check_param(param)
-        traj = self._integrator.solve(param, progress=progress)
+        traj = self._integ.solve(param, progress=progress)
         self._num_solves += 1
         return traj
 
@@ -770,7 +808,6 @@ class NavierStokesReducedFunctional:
             raise TypeError("prob must be a NavierStokesProblem")
         if not isinstance(obj, _core.TimeObjective):
             raise TypeError("obj must be a TimeObjective")
-        matrix, solver = _factories(backend)
         prob._ensure_built()
         if (
             obj.num_steps != prob.model.num_steps
@@ -783,26 +820,32 @@ class NavierStokesReducedFunctional:
         self._compiled = prob._compiled
         self._obj = obj
         self._backend = backend
-        self._forward_solver = prob.create_solver(backend)
-        self._linearization = _core.TimeLinearization()
-        self._next_state_matrix = matrix(prob)
-        self._history_matrix = matrix(prob)
-        self._adjoint_solver = solver(prob)
-        self._impl = _core.TimeReducedFunctional(
-            self._forward_solver._integrator,
-            prob.residual,
-            self._linearization,
-            self._next_state_matrix,
-            self._history_matrix,
-            self._adjoint_solver,
-            obj,
-        )
-        self._init_grad = None
-        if prob._initial_map is not None:
-            self._init_grad = _core._AffineInitialStateGradientMap(
-                prob._initial_map,
+        self._fwd = prob.create_solver(backend)
+        factories = _factories(backend)
+        if factories.device_time:
+            self._impl = _core._ResolveTimeReducedFunctional(
+                self._fwd._integ,
+                obj,
             )
-            self._impl.set_initial_state_param_jac_t(self._init_grad)
+        else:
+            lin = _core.TimeLinearization()
+            nxt = factories.matrix(prob)
+            hist = factories.matrix(prob)
+            adj = factories.solver(prob)
+            self._impl = _core.TimeReducedFunctional(
+                self._fwd._integ,
+                prob.residual,
+                lin,
+                nxt,
+                hist,
+                adj,
+                obj,
+            )
+            if prob._initial_map is not None:
+                init_grad = _core._AffineInitialStateGradientMap(
+                    prob._initial_map,
+                )
+                self._impl.set_initial_state_param_jac_t(init_grad)
 
     @property
     def prob(self):
@@ -933,8 +976,12 @@ class TaoOptimizer:
         )
 
 
-_BACKENDS["dense"] = (_dense_matrix, _dense_solver)
+_BACKENDS["dense"] = _Backend(_dense_matrix, _dense_solver)
 if hasattr(_core, "_ReSolveLinearSolver"):
-    _BACKENDS["resolve"] = (_resolve_matrix, _resolve_solver)
+    _BACKENDS["resolve"] = _Backend(
+        _resolve_matrix,
+        _resolve_solver,
+        device_time=_core._resolve_uses_cuda,
+    )
 if hasattr(_core, "_KspLinearSolver"):
-    _BACKENDS["petsc"] = (_petsc_matrix, _petsc_solver)
+    _BACKENDS["petsc"] = _Backend(_petsc_matrix, _petsc_solver)

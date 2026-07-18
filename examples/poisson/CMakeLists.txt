@@ -27,9 +27,7 @@ if(FEMX_HAS_RESOLVE)
   if(FEMX_HAS_RESOLVE_CUDA
      AND FEMX_HAS_CUDA
      AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-    target_sources(poisson-resolve PRIVATE PoissonCuda.cu)
-    target_compile_definitions(poisson-resolve
-                               PRIVATE FEMX_POISSON_HAS_DEVICE_SOLVER=1)
+    set_source_files_properties(main-resolve.cpp PROPERTIES LANGUAGE CUDA)
     set_target_properties(poisson-resolve
                           PROPERTIES CUDA_STANDARD 17
                                      CUDA_STANDARD_REQUIRED ON)

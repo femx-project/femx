@@ -32,9 +32,9 @@ struct AssemblyMapView
   const Index* jac_offsets{nullptr};   ///< Element offsets into jac_map.
   const Index* jac_map{nullptr};       ///< Local Jacobian-to-CSR entries.
 
-  Index max_res_dofs{0};    ///< Maximum residual DOFs on one element.
-  Index max_state_dofs{0};  ///< Maximum state DOFs on one element.
-  Index max_jac_entries{0}; ///< Maximum local Jacobian entries.
+  Index max_res{0};   ///< Maximum residual DOFs on one element.
+  Index max_state{0}; ///< Maximum state DOFs on one element.
+  Index max_jac{0};   ///< Maximum local Jacobian entries.
 
   /** @brief Return the number of residual DOFs on element `ie`. */
   FEMX_HOST_DEVICE Index numResDofs(Index ie) const
@@ -98,9 +98,9 @@ private:
               IndexVector     jac_offsets,
               IndexVector     jac_map,
               CsrGraph<Space> graph,
-              Index           max_res_dofs,
-              Index           max_state_dofs,
-              Index           max_jac_entries)
+              Index           max_res,
+              Index           max_state,
+              Index           max_jac)
     : num_elems_(num_elems),
       num_res_(num_res),
       num_states_(num_states),
@@ -111,9 +111,9 @@ private:
       jac_offsets_(std::move(jac_offsets)),
       jac_map_(std::move(jac_map)),
       graph_(std::move(graph)),
-      max_res_dofs_(max_res_dofs),
-      max_state_dofs_(max_state_dofs),
-      max_jac_entries_(max_jac_entries)
+      max_res_(max_res),
+      max_state_(max_state),
+      max_jac_(max_jac)
   {
   }
 
@@ -147,21 +147,21 @@ public:
   }
 
   /** @brief Return the largest element residual workspace size. */
-  Index maxResDofs() const noexcept
+  Index maxRes() const noexcept
   {
-    return max_res_dofs_;
+    return max_res_;
   }
 
   /** @brief Return the largest element state workspace size. */
-  Index maxStateDofs() const noexcept
+  Index maxState() const noexcept
   {
-    return max_state_dofs_;
+    return max_state_;
   }
 
   /** @brief Return the largest element Jacobian workspace size. */
-  Index maxJacEntries() const noexcept
+  Index maxJac() const noexcept
   {
-    return max_jac_entries_;
+    return max_jac_;
   }
 
   /** @brief Return the immutable global Jacobian sparsity graph. */
@@ -182,9 +182,9 @@ public:
             state_dofs_.data(),
             jac_offsets_.data(),
             jac_map_.data(),
-            max_res_dofs_,
-            max_state_dofs_,
-            max_jac_entries_};
+            max_res_,
+            max_state_,
+            max_jac_};
   }
 
 private:
@@ -200,9 +200,9 @@ private:
   IndexVector     jac_map_;
   CsrGraph<Space> graph_;
 
-  Index max_res_dofs_{0};
-  Index max_state_dofs_{0};
-  Index max_jac_entries_{0};
+  Index max_res_{0};
+  Index max_state_{0};
+  Index max_jac_{0};
 };
 
 using HostAssemblyMap   = AssemblyMap<MemorySpace::Host>;

@@ -40,6 +40,29 @@ struct AffineRowOperator
   }
 };
 
+struct TimeRowOperator
+{
+  template <MemorySpace Space>
+  FEMX_HOST_DEVICE void evalRow(
+      const assembly::TimeElementView<Space>& elem,
+      state::VariableBlock                    wrt,
+      Index                                   row,
+      Real&                                   res,
+      VectorView<Space, Real>                 jac) const
+  {
+    res = elem.nxt[row] - 2.0 * elem.histState(0)[row]
+          + 0.5 * elem.histState(1)[row]
+          + static_cast<Real>(elem.ie + elem.step);
+    const Real diag = wrt.isNextState()
+                          ? 1.0
+                          : (wrt.historyLag() == 0 ? -2.0 : 0.5);
+    for (Index col = 0; col < jac.size(); ++col)
+    {
+      jac[col] = row == col ? diag : 0.0;
+    }
+  }
+};
+
 bool vecsNear(const HostVector& lhs,
               const HostVector& rhs,
               Real              tolerance = 1.0e-12)
@@ -262,6 +285,17 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                 vecsNear(actual_rhs, expected_rhs),
                 "CUDA forward RHS matches CPU");
 
+    HostCsrMatrix expected_hist(host_graph);
+    setDenseVals(expected_hist);
+    assembly::replaceRows(host_map, expected_hist, 0.0);
+    femx::copy(host_mat, device_mat, ctx);
+    assembly::replaceRows(device_map, device_mat, 0.0, ctx);
+    femx::copy(device_mat, actual_mat, ctx);
+    ctx.synchronize();
+    recordCheck(status,
+                matsNear(actual_mat, expected_hist),
+                "CUDA history rows match CPU");
+
     const HostVector host_state{4.0, 5.0, 6.0};
     const HostVector host_res{10.0, 20.0, 30.0};
     DeviceVector     device_state;
@@ -364,6 +398,75 @@ TestOutcome cudaBoundaryMatchesCpuReference()
   return status.report();
 }
 
+TestOutcome cudaTimeAssemblyMatchesCpuReference()
+{
+  TestStatus status(__func__);
+  if (!CudaContext::available())
+  {
+    status.skipTest();
+    return status.report();
+  }
+
+  try
+  {
+    const auto map = assembly::makeAssemblyMap(
+        3,
+        3,
+        Array<Array<Index>>{{0, 1}, {1, 2}},
+        Array<Array<Index>>{{0, 1}, {1, 2}});
+    const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    const HostVector nxt{7.0, 8.0, 9.0};
+    HostVector       cpu_res;
+    HostCsrMatrix    cpu_jac(map.graph());
+    CpuContext       cpu_ctx;
+    assembly::assemble(TimeRowOperator{},
+                       3,
+                       2,
+                       state::VariableBlock::hist(1),
+                       map,
+                       hist,
+                       nxt,
+                       cpu_res,
+                       cpu_jac,
+                       cpu_ctx);
+
+    CudaContext                 ctx;
+    assembly::DeviceAssemblyMap dmap;
+    DeviceVector                dhist;
+    DeviceVector                dnxt;
+    DeviceVector                dres;
+    assembly::copy(map, dmap, ctx);
+    femx::copy(hist, dhist, ctx);
+    femx::copy(nxt, dnxt, ctx);
+    DeviceCsrMatrix djac(dmap.graph());
+    assembly::assemble(TimeRowOperator{},
+                       3,
+                       2,
+                       state::VariableBlock::hist(1),
+                       dmap,
+                       dhist,
+                       dnxt,
+                       dres,
+                       djac,
+                       ctx);
+
+    HostVector    gpu_res;
+    HostCsrMatrix gpu_jac(map.graph());
+    femx::copy(dres, gpu_res, ctx);
+    femx::copy(djac, gpu_jac, ctx);
+    ctx.synchronize();
+    recordCheck(status, vecsNear(gpu_res, cpu_res), "CUDA time res");
+    recordCheck(status, matsNear(gpu_jac, cpu_jac), "CUDA time jac");
+  }
+  catch (const std::exception& error)
+  {
+    std::cout << "    exception: " << error.what() << '\n';
+    status *= false;
+  }
+
+  return status.report();
+}
+
 } // namespace
 } // namespace tests
 } // namespace femx
@@ -373,5 +476,6 @@ int main()
   femx::tests::TestingResults results;
   results += femx::tests::cudaAssemblyMatchesCpuReference();
   results += femx::tests::cudaBoundaryMatchesCpuReference();
+  results += femx::tests::cudaTimeAssemblyMatchesCpuReference();
   return results.summary();
 }

@@ -113,7 +113,7 @@ public:
 
     HostVector res;
     assembleRaw(state, res);
-    replaceRows(bc_map_, jac_);
+    replaceRows(bc_map_, jac_, 1.0);
     copyStateJac(mats->stateMat());
     assemblePrmJac(mats->paramMat());
   }

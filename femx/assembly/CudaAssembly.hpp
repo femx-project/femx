@@ -51,15 +51,54 @@ inline void checkAssemblyInputs(
   }
 }
 
+inline void checkTimeAssemblyInputs(
+    Index                                   num_hist,
+    state::VariableBlock                    wrt,
+    const AssemblyMap<MemorySpace::Device>& map,
+    const DeviceVector&                     hist,
+    const DeviceVector&                     nxt,
+    const DeviceCsrMatrix&                  jac)
+{
+  if (num_hist <= 0 || hist.size() != num_hist * map.numStates()
+      || nxt.size() != map.numStates())
+  {
+    throw std::runtime_error(
+        "CUDA time assembly state dimensions do not match AssemblyMap");
+  }
+  if (wrt.isParam()
+      || (wrt.isHistoryState()
+          && (wrt.historyLag() < 0 || wrt.historyLag() >= num_hist)))
+  {
+    throw std::runtime_error("CUDA time assembly variable block is invalid");
+  }
+  if (jac.graph().layoutId() != map.graph().layoutId())
+  {
+    throw std::runtime_error(
+        "CUDA time assembly matrix must use the AssemblyMap CSR layout");
+  }
+}
+
 inline std::size_t assemblySharedBytes(
     const fem::DeviceGeometry&              geom,
     const AssemblyMap<MemorySpace::Device>& map)
 {
-  const auto count = static_cast<std::size_t>(map.maxStateDofs())
+  const auto count = static_cast<std::size_t>(map.maxState())
                      + static_cast<std::size_t>(geom.maxElemNodes())
                            * static_cast<std::size_t>(geom.dim())
-                     + static_cast<std::size_t>(map.maxResDofs())
-                     + static_cast<std::size_t>(map.maxJacEntries());
+                     + static_cast<std::size_t>(map.maxRes())
+                     + static_cast<std::size_t>(map.maxJac());
+  return count * sizeof(Real);
+}
+
+inline std::size_t timeAssemblySharedBytes(
+    Index                                   num_hist,
+    const AssemblyMap<MemorySpace::Device>& map)
+{
+  const auto count =
+      static_cast<std::size_t>(num_hist + 1)
+          * static_cast<std::size_t>(map.maxState())
+      + static_cast<std::size_t>(map.maxRes())
+      + static_cast<std::size_t>(map.maxJac());
   return count * sizeof(Real);
 }
 
@@ -135,6 +174,81 @@ __global__ void assembleKernel(
 }
 
 template <class ElementOperator>
+__global__ void assembleTimeKernel(
+    ElementOperator                      op,
+    Index                                step,
+    Index                                num_hist,
+    state::VariableBlock                 wrt,
+    AssemblyMapView<MemorySpace::Device> map,
+    const Real*                          hist,
+    const Real*                          nxt,
+    Real*                                res,
+    Real*                                jac)
+{
+  const Index ie = static_cast<Index>(blockIdx.x);
+  if (ie >= map.num_elems)
+  {
+    return;
+  }
+
+  const Index nrow   = map.numResDofs(ie);
+  const Index ncol   = map.numStateDofs(ie);
+  const Index njac   = nrow * ncol;
+  const Index tid    = static_cast<Index>(threadIdx.x);
+  const Index stride = static_cast<Index>(blockDim.x);
+
+  extern __shared__ Real work[];
+  Real*                  hist_e = work;
+  Real*                  nxt_e  = hist_e + num_hist * ncol;
+  Real*                  res_e  = nxt_e + ncol;
+  Real*                  jac_e  = res_e + nrow;
+
+  for (Index i = tid; i < num_hist * ncol; i += stride)
+  {
+    const Index lag = i / ncol;
+    const Index col = i - lag * ncol;
+    const Index dof = map.stateDof(ie, col);
+    hist_e[i]       = hist[lag * map.num_states + dof];
+  }
+  for (Index col = tid; col < ncol; col += stride)
+  {
+    nxt_e[col] = nxt[map.stateDof(ie, col)];
+  }
+  for (Index row = tid; row < nrow; row += stride)
+  {
+    res_e[row] = Real{};
+  }
+  for (Index i = tid; i < njac; i += stride)
+  {
+    jac_e[i] = Real{};
+  }
+  __syncthreads();
+
+  const TimeElementView<MemorySpace::Device> elem{
+      ie,
+      step,
+      num_hist,
+      {hist_e, num_hist * ncol},
+      {nxt_e, ncol}};
+  for (Index row = tid; row < nrow; row += stride)
+  {
+    VectorView<MemorySpace::Device, Real> jac_row(
+        jac_e + row * ncol, ncol);
+    op.evalRow(elem, wrt, row, res_e[row], jac_row);
+  }
+  __syncthreads();
+
+  for (Index row = tid; row < nrow; row += stride)
+  {
+    atomicAdd(res + map.resDof(ie, row), res_e[row]);
+  }
+  for (Index i = tid; i < njac; i += stride)
+  {
+    atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+  }
+}
+
+template <class ElementOperator>
 int configureAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
@@ -157,6 +271,31 @@ int configureAssemblyLaunch(std::size_t smem)
         "cudaFuncSetAttribute failed for CUDA assembly");
   }
 
+  return threads;
+}
+
+template <class ElementOperator>
+int configureTimeAssemblyLaunch(std::size_t smem)
+{
+  constexpr int threads = 128;
+  int           dev     = 0;
+  checkCudaStatus(cudaGetDevice(&dev),
+                  "cudaGetDevice failed for CUDA time assembly");
+
+  int default_smem = 0;
+  checkCudaStatus(
+      cudaDeviceGetAttribute(
+          &default_smem, cudaDevAttrMaxSharedMemoryPerBlock, dev),
+      "cudaDeviceGetAttribute(shared memory) failed for CUDA time assembly");
+  if (smem > static_cast<std::size_t>(default_smem))
+  {
+    checkCudaStatus(
+        cudaFuncSetAttribute(
+            assembleTimeKernel<ElementOperator>,
+            cudaFuncAttributeMaxDynamicSharedMemorySize,
+            static_cast<int>(smem)),
+        "cudaFuncSetAttribute failed for CUDA time assembly");
+  }
   return threads;
 }
 
@@ -222,6 +361,56 @@ void assemble(const ElementOperator&                  op,
                    geom.view(),
                    map.view(),
                    state.data(),
+                   res.data(),
+                   jac.valsData());
+  device::checkLastError();
+}
+
+/** @brief Assemble one time residual and state Jacobian on CUDA. */
+template <class ElementOperator>
+void assemble(const ElementOperator&                  op,
+              Index                                   step,
+              Index                                   num_hist,
+              state::VariableBlock                    wrt,
+              const AssemblyMap<MemorySpace::Device>& map,
+              const DeviceVector&                     hist,
+              const DeviceVector&                     nxt,
+              DeviceVector&                           res,
+              DeviceCsrMatrix&                        jac,
+              CudaContext&                            ctx)
+{
+  static_assert(std::is_trivially_copyable<ElementOperator>::value,
+                "CUDA time ElementOperator must be trivially copyable");
+
+  detail::checkTimeAssemblyInputs(
+      num_hist, wrt, map, hist, nxt, jac);
+  const DeviceVector& vals = jac.vals();
+  detail::checkTimeAssemblyAliases(hist, nxt, res, vals);
+
+  resizeOrZero(res, map.numRes(), ctx);
+  jac.setZero(ctx);
+  if (map.numElems() == 0)
+  {
+    return;
+  }
+
+  const std::size_t smem =
+      detail::timeAssemblySharedBytes(num_hist, map);
+  const int threads =
+      detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
+  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+
+  detail::assembleTimeKernel<ElementOperator>
+      <<<static_cast<unsigned int>(map.numElems()),
+         static_cast<unsigned int>(threads),
+         smem,
+         stream>>>(op,
+                   step,
+                   num_hist,
+                   wrt,
+                   map.view(),
+                   hist.data(),
+                   nxt.data(),
                    res.data(),
                    jac.valsData());
   device::checkLastError();

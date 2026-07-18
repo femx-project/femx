@@ -17,6 +17,7 @@ constexpr int kThreads = 256;
 __global__ void replaceRowsKernel(BoundaryMapView<MemorySpace::Device> map,
                                   const Index*                         row_ptr,
                                   Real*                                mat_vals,
+                                  Real                                 diag,
                                   Real*                                rhs,
                                   const Real*                          bc_vals)
 {
@@ -32,7 +33,7 @@ __global__ void replaceRowsKernel(BoundaryMapView<MemorySpace::Device> map,
   {
     mat_vals[k] = 0.0;
   }
-  mat_vals[map.diag(ib)] = 1.0;
+  mat_vals[map.diag(ib)] = diag;
   if (rhs != nullptr)
   {
     rhs[row] = bc_vals[ib];
@@ -121,6 +122,7 @@ cudaStream_t cudaStream(CudaContext& ctx)
 
 void launchRows(const DeviceBoundaryMap& map,
                 DeviceCsrMatrix&         mat,
+                Real                     diag,
                 DeviceVector*            rhs,
                 const DeviceVector*      bc_vals,
                 CudaContext&             ctx)
@@ -135,6 +137,7 @@ void launchRows(const DeviceBoundaryMap& map,
       map.view(),
       mat.rowPtrData(),
       mat.valsData(),
+      diag,
       rhs == nullptr ? nullptr : rhs->data(),
       bc_vals == nullptr ? nullptr : bc_vals->data());
   device::checkLastError();
@@ -144,10 +147,11 @@ void launchRows(const DeviceBoundaryMap& map,
 
 void replaceRows(const DeviceBoundaryMap& map,
                  DeviceCsrMatrix&         jac,
+                 Real                     diag,
                  CudaContext&             ctx)
 {
   checkMat(map, jac);
-  launchRows(map, jac, nullptr, nullptr, ctx);
+  launchRows(map, jac, diag, nullptr, nullptr, ctx);
 }
 
 void replaceRes(const DeviceBoundaryMap& map,
@@ -196,7 +200,7 @@ void prepareForwardSolve(const DeviceBoundaryMap& map,
                         cudaStream(ctx)>>>(
       map.view(), solve_mat.valsData(), rhs.data(), bc_vals.data());
   device::checkLastError();
-  launchRows(map, solve_mat, &rhs, &bc_vals, ctx);
+  launchRows(map, solve_mat, 1.0, &rhs, &bc_vals, ctx);
 }
 
 } // namespace assembly

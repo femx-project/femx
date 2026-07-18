@@ -7,6 +7,19 @@ namespace femx::tests
 namespace
 {
 
+TestOutcome resolveOptionsHaveOneSharedDefault()
+{
+  TestStatus                   status(__func__);
+  const linalg::ReSolveOptions opts;
+
+  status *= opts.solve == "fgmres";
+  status *= opts.precond == "ilu0";
+  status *= opts.max_its == 1000;
+  status *= opts.restart == 200;
+  status *= opts.rtol == 1.0e-8;
+  return status.report();
+}
+
 #if defined(RESOLVE_USE_KLU)
 linalg::ReSolveOptions kluOptions()
 {
@@ -122,6 +135,7 @@ int main(int, char**)
 {
   femx::tests::TestingResults results;
 
+  results += femx::tests::resolveOptionsHaveOneSharedDefault();
   results += femx::tests::resolveCpuDefaultSolvesForwardAndTranspose();
 #if defined(RESOLVE_USE_KLU)
   results += femx::tests::resolveCpuKluSolvesForwardAndTranspose();

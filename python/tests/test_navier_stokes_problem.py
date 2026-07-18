@@ -306,6 +306,11 @@ class NavierStokesProblemTest(unittest.TestCase):
             changed[0][free_velocity[0]],
         )
         self.assertFalse(np.array_equal(trajectory[-1], changed[-1]))
+        self.assertGreaterEqual(solver.assembly_seconds, 0.0)
+        self.assertGreaterEqual(solver.solve_seconds, 0.0)
+        solver.reset_timing()
+        self.assertEqual(solver.assembly_seconds, 0.0)
+        self.assertEqual(solver.solve_seconds, 0.0)
 
     def test_periodic_ctr_shares_first_and_last_time_level(self):
         model = femx.NavierStokesModel(

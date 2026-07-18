@@ -198,22 +198,28 @@ void copy(const HostBoundaryMap& src,
 /**
  * @brief Replace constrained rows in the authoritative Jacobian.
  *
- * Constrained rows are zeroed and their diagonal is set to one. Columns are
- * deliberately left unchanged so the matrix continues to represent the
+ * Constrained rows are zeroed and their diagonal is set to `diag`. Columns
+ * are deliberately left unchanged so the matrix continues to represent the
  * Jacobian of the row-replaced residual and can be used by adjoint solves.
+ * Use one for a next-state Jacobian and zero for a history Jacobian.
  * @param map Boundary map matching `jac.graph()`.
  * @param jac Matrix modified in place.
+ * @param diag Replacement diagonal value.
  */
-void replaceRows(const HostBoundaryMap& map, HostCsrMatrix& jac);
+void replaceRows(const HostBoundaryMap& map,
+                 HostCsrMatrix&         jac,
+                 Real                   diag);
 
 /**
  * @brief Asynchronous CUDA equivalent of replaceRows().
  * @param map Device boundary map matching `jac.graph()`.
  * @param jac Device matrix modified in place.
+ * @param diag Replacement diagonal value.
  * @param ctx CUDA stream on which work is enqueued.
  */
 void replaceRows(const DeviceBoundaryMap& map,
                  DeviceCsrMatrix&         jac,
+                 Real                     diag,
                  CudaContext&             ctx);
 
 /**

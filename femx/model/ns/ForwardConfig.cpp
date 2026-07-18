@@ -4,6 +4,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -13,6 +14,29 @@ using nlohmann::json;
 
 namespace femx::model::ns
 {
+
+void checkKeys(const json&                        node,
+               std::initializer_list<const char*> keys,
+               const char*                        name)
+{
+  for (const auto& item : node.items())
+  {
+    bool known = false;
+    for (const char* key : keys)
+    {
+      if (item.key() == key)
+      {
+        known = true;
+        break;
+      }
+    }
+    if (!known)
+    {
+      throw std::runtime_error(
+          std::string(name) + " contains unknown option '" + item.key() + "'");
+    }
+  }
+}
 
 template <typename T>
 void assign(const json& node,
@@ -106,36 +130,6 @@ Index stepsForEndTime(Real end_time,
   return static_cast<Index>(ceil(scaled - eps));
 }
 
-void assignVelocityRelativeTolerance(const json&        node,
-                                     ConvergenceParams& convergence)
-{
-  if (node.contains("vel_rel_tol"))
-  {
-    convergence.vel_rel_tol =
-        node.at("vel_rel_tol").get<Real>();
-  }
-  else if (node.contains("velocity_rel_tol"))
-  {
-    convergence.vel_rel_tol =
-        node.at("velocity_rel_tol").get<Real>();
-  }
-  else if (node.contains("relative_tolerance"))
-  {
-    convergence.vel_rel_tol =
-        node.at("relative_tolerance").get<Real>();
-  }
-  else if (node.contains("relative_tol"))
-  {
-    convergence.vel_rel_tol =
-        node.at("relative_tol").get<Real>();
-  }
-  else if (node.contains("tol"))
-  {
-    convergence.vel_rel_tol =
-        node.at("tol").get<Real>();
-  }
-}
-
 void parseConvergenceConfig(const json&        node,
                             ConvergenceParams& convergence)
 {
@@ -148,10 +142,13 @@ void parseConvergenceConfig(const json&        node,
   {
     throw std::runtime_error("Config time.convergence must be a boolean or object");
   }
+  checkKeys(node,
+            {"enabled", "vel_rel_tol", "min_steps"},
+            "Config time.convergence");
 
   convergence.enabled = true;
   assign(node, "enabled", convergence.enabled);
-  assignVelocityRelativeTolerance(node, convergence);
+  assign(node, "vel_rel_tol", convergence.vel_rel_tol);
   assign(node, "min_steps", convergence.min_steps);
 }
 
@@ -162,6 +159,9 @@ void parseTimeConfig(const json& node,
   {
     throw std::runtime_error("Config time must be an object");
   }
+  checkKeys(node,
+            {"dt", "steps", "end_time", "convergence"},
+            "Config time");
 
   assign(node, "dt", time.dt);
   assign(node, "steps", time.steps);
@@ -258,57 +258,17 @@ VelocityProfileParams parseVelocityProfile(const json& node)
 void assignVelocityInterpolation(const json&     node,
                                  VelocityParams& velocity)
 {
-  if (node.contains("interpolate"))
-  {
-    velocity.interp = node.at("interpolate").get<std::string>();
-  }
-  else if (node.contains("methodInterpolate"))
-  {
-    velocity.interp = node.at("methodInterpolate").get<std::string>();
-  }
-  else if (node.contains("methodinterpolate"))
-  {
-    velocity.interp = node.at("methodinterpolate").get<std::string>();
-  }
-  else if (node.contains("method"))
-  {
-    velocity.interp = node.at("method").get<std::string>();
-  }
+  assign(node, "interpolate", velocity.interp);
 }
 
-Real parseVelocityScalar(const json&     node,
-                         VelocityParams& velocity)
+Real parseVelocityScalar(const json& node)
 {
   if (node.contains("value"))
   {
     return node.at("value").get<Real>();
   }
-  if (node.contains("baseline"))
-  {
-    return node.at("baseline").get<Real>();
-  }
-  if (node.contains("bulk_speed"))
-  {
-    return node.at("bulk_speed").get<Real>();
-  }
-  if (node.contains("mean_velocity"))
-  {
-    velocity.qty = "mean_velocity";
-    return node.at("mean_velocity").get<Real>();
-  }
-  if (node.contains("max_velocity"))
-  {
-    velocity.qty = "max_velocity";
-    return node.at("max_velocity").get<Real>();
-  }
-  if (node.contains("flowrate"))
-  {
-    velocity.qty = "flowrate";
-    return node.at("flowrate").get<Real>();
-  }
-
   throw std::runtime_error(
-      "Boundary velocity time profile requires value, baseline, bulk_speed, mean_velocity, max_velocity, or flowrate");
+      "Boundary velocity time profile requires value");
 }
 
 void parseVelocityTimeProfile(const json&                  node,
@@ -319,12 +279,21 @@ void parseVelocityTimeProfile(const json&                  node,
   {
     throw std::runtime_error("Boundary velocity time profile must be an object");
   }
+  checkKeys(node,
+            {"quantity",
+             "type",
+             "table",
+             "period",
+             "value",
+             "amplitude",
+             "interpolate"},
+            "Boundary velocity time profile");
 
   assign(node, "quantity", velocity.qty);
 
   std::string type = node.contains("table") ? "table" : "uniform";
   assign(node, "type", type);
-  if (type == "table" || type == "csv")
+  if (type == "table")
   {
     if (!node.contains("table"))
     {
@@ -336,13 +305,13 @@ void parseVelocityTimeProfile(const json&                  node,
     parseVelocityTable(table_path, velocity);
     assign(node, "period", velocity.per);
   }
-  else if (type == "uniform" || type == "constant" || type == "steady")
+  else if (type == "uniform")
   {
     velocity.time  = {0.0};
-    velocity.value = {parseVelocityScalar(node, velocity)};
+    velocity.value = {parseVelocityScalar(node)};
     assign(node, "period", velocity.per);
   }
-  else if (type == "sin" || type == "sine")
+  else if (type == "sine")
   {
     Real per = velocity.per > 0.0 ? velocity.per : 1.0;
     assign(node, "period", per);
@@ -354,9 +323,8 @@ void parseVelocityTimeProfile(const json&                  node,
 
     Real amplitude = 0.35;
     assign(node, "amplitude", amplitude);
-    assign(node, "pulse_amplitude", amplitude);
 
-    const Real base = parseVelocityScalar(node, velocity);
+    const Real base = parseVelocityScalar(node);
     velocity.per    = per;
     velocity.time =
         {0.0, 0.25 * per, 0.5 * per, 0.75 * per, per};
@@ -385,6 +353,9 @@ void parseVelocitySpaceProfile(const json&     node,
   {
     return;
   }
+  checkKeys(node,
+            {"type", "radius", "center", "area", "quantity", "normal"},
+            "Boundary velocity space profile");
 
   assign(node, "area", velocity.area);
   assign(node, "quantity", velocity.qty);
@@ -396,13 +367,24 @@ void parseVelocitySpaceProfile(const json&     node,
 }
 
 VelocityParams parseVelocity(const json&                  node,
-                             const std::filesystem::path& cfg_dir,
-                             const std::string&           name)
+                             const std::filesystem::path& cfg_dir)
 {
   if (!node.is_object())
   {
-    throw std::runtime_error("Boundary " + name + " must be an object");
+    throw std::runtime_error("Boundary velocity must be an object");
   }
+  checkKeys(node,
+            {"area",
+             "period",
+             "quantity",
+             "normal",
+             "profile",
+             "table",
+             "time",
+             "value",
+             "space",
+             "interpolate"},
+            "Boundary velocity");
 
   VelocityParams velocity;
   assign(node, "area", velocity.area);
@@ -439,7 +421,7 @@ VelocityParams parseVelocity(const json&                  node,
   }
   else if (!node.contains("table"))
   {
-    throw std::runtime_error("Boundary " + name + " requires time");
+    throw std::runtime_error("Boundary velocity requires time");
   }
   if (node.contains("value"))
   {
@@ -449,7 +431,7 @@ VelocityParams parseVelocity(const json&                  node,
   else if (!node.contains("table")
            && !(node.contains("time") && node.at("time").is_object()))
   {
-    throw std::runtime_error("Boundary " + name + " requires value");
+    throw std::runtime_error("Boundary velocity requires value");
   }
 
   if (node.contains("space"))
@@ -468,51 +450,32 @@ BCsParams parseDirichletBC(const json&                  node,
   {
     throw std::runtime_error("Boundary condition must be an object");
   }
+  checkKeys(node,
+            {"name", "physical", "type", "ux", "uy", "uz", "p", "velocity"},
+            "Boundary condition");
 
   BCsParams cond;
-  if (node.contains("physical"))
-  {
-    cond.tag = node.at("physical").get<Index>();
-  }
-  else if (node.contains("physical_tag"))
-  {
-    cond.tag = node.at("physical_tag").get<Index>();
-  }
-  else if (node.contains("tag"))
-  {
-    cond.tag = node.at("tag").get<Index>();
-  }
-  else
+  if (!node.contains("physical"))
   {
     throw std::runtime_error(
-        "Each boundary condition needs physical, physical_tag, or tag");
+        "Each boundary condition needs physical");
   }
+  cond.tag = node.at("physical").get<Index>();
 
   assign(node, "type", cond.type);
   cond.ux = optionalReal(node, "ux");
   cond.uy = optionalReal(node, "uy");
   cond.uz = optionalReal(node, "uz");
   cond.p  = optionalReal(node, "p");
-  if (node.contains("velocity") && node.contains("flowrate"))
-  {
-    throw std::runtime_error(
-        "Boundary condition must not contain both velocity and flowrate");
-  }
   if (node.contains("velocity"))
   {
-    cond.velocity = parseVelocity(node.at("velocity"), cfg_dir, "velocity");
-  }
-  else if (node.contains("flowrate"))
-  {
-    cond.velocity =
-        parseVelocity(node.at("flowrate"), cfg_dir, "flowrate");
-    cond.velocity->qty = "flowrate";
+    cond.velocity = parseVelocity(node.at("velocity"), cfg_dir);
   }
 
   if (!cond.ux && !cond.uy && !cond.uz && !cond.p && !cond.velocity)
   {
     throw std::runtime_error(
-        "Boundary condition needs at least one of ux, uy, uz, p, velocity, or flowrate");
+        "Boundary condition needs at least one of ux, uy, uz, p, or velocity");
   }
   return cond;
 }
@@ -681,10 +644,23 @@ Params loadConfig(const std::string& path)
   Params     prm;
   const auto root    = json::parse(input, nullptr, true, true);
   const auto cfg_dir = std::filesystem::path(path).parent_path();
+  if (!root.is_object())
+  {
+    throw std::runtime_error("Config root must be an object");
+  }
+  checkKeys(root,
+            {"mesh", "time", "fluid", "solver", "output", "bcs"},
+            "Config root");
 
   if (root.contains("mesh"))
   {
-    assign(root.at("mesh"), "file", prm.mesh_file);
+    const auto& mesh = root.at("mesh");
+    if (!mesh.is_object())
+    {
+      throw std::runtime_error("Config mesh must be an object");
+    }
+    checkKeys(mesh, {"file"}, "Config mesh");
+    assign(mesh, "file", prm.mesh_file);
   }
   if (root.contains("time"))
   {
@@ -693,75 +669,52 @@ Params loadConfig(const std::string& path)
   if (root.contains("fluid"))
   {
     const auto& fluid = root.at("fluid");
+    if (!fluid.is_object())
+    {
+      throw std::runtime_error("Config fluid must be an object");
+    }
+    checkKeys(fluid, {"rho", "mu"}, "Config fluid");
     assign(fluid, "rho", prm.fluid.rho);
     assign(fluid, "mu", prm.fluid.mu);
   }
   if (root.contains("solver"))
   {
     const auto& solver = root.at("solver");
+    if (!solver.is_object())
+    {
+      throw std::runtime_error("Config solver must be an object");
+    }
+    checkKeys(solver,
+              {"method",
+               "solve",
+               "preconditioner",
+               "gram_schmidt",
+               "sketching",
+               "restart",
+               "max_itrs",
+               "relative_tolerance",
+               "flexible"},
+              "Config solver");
     assign(solver, "method", prm.solver.method);
-    if (solver.contains("solve"))
-    {
-      prm.solver.solve = solver.at("solve").get<std::string>();
-    }
-    else if (solver.contains("lin_solver"))
-    {
-      prm.solver.solve = solver.at("lin_solver").get<std::string>();
-    }
-    else if (solver.contains("krylov"))
-    {
-      prm.solver.solve = solver.at("krylov").get<std::string>();
-    }
-    if (solver.contains("preconditioner"))
-    {
-      prm.solver.preconditioner =
-          solver.at("preconditioner").get<std::string>();
-    }
-    else if (solver.contains("precond"))
-    {
-      prm.solver.preconditioner = solver.at("precond").get<std::string>();
-    }
-    if (solver.contains("gram_schmidt"))
-    {
-      prm.solver.gram_schmidt = solver.at("gram_schmidt").get<std::string>();
-    }
-    else if (solver.contains("gramSchmidt"))
-    {
-      prm.solver.gram_schmidt = solver.at("gramSchmidt").get<std::string>();
-    }
+    assign(solver, "solve", prm.solver.solve);
+    assign(solver, "preconditioner", prm.solver.preconditioner);
+    assign(solver, "gram_schmidt", prm.solver.gram_schmidt);
     assign(solver, "sketching", prm.solver.sketching);
     assign(solver, "restart", prm.solver.restart);
-    if (solver.contains("max_itrs"))
-    {
-      prm.solver.max_itrs =
-          solver.at("max_itrs").get<Index>();
-    }
-    else if (solver.contains("max_its"))
-    {
-      prm.solver.max_itrs = solver.at("max_its").get<Index>();
-    }
-    else if (solver.contains("max_iter"))
-    {
-      prm.solver.max_itrs = solver.at("max_iter").get<Index>();
-    }
-    if (solver.contains("relative_tolerance"))
-    {
-      prm.solver.relative_tolerance =
-          solver.at("relative_tolerance").get<Real>();
-    }
-    else if (solver.contains("rtol"))
-    {
-      prm.solver.relative_tolerance = solver.at("rtol").get<Real>();
-    }
-    else if (solver.contains("rel_tol"))
-    {
-      prm.solver.relative_tolerance = solver.at("rel_tol").get<Real>();
-    }
+    assign(solver, "max_itrs", prm.solver.max_itrs);
+    assign(solver, "relative_tolerance", prm.solver.relative_tolerance);
     assign(solver, "flexible", prm.solver.flexible);
   }
   if (root.contains("output"))
   {
     const auto& output = root.at("output");
+    if (!output.is_object())
+    {
+      throw std::runtime_error("Config output must be an object");
+    }
+    checkKeys(output,
+              {"enabled", "interval", "directory"},
+              "Config output");
     assign(output, "enabled", prm.output.enabled);
     assign(output, "interval", prm.output.interval);
     const bool has_directory = output.contains("directory");

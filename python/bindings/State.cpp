@@ -5,9 +5,9 @@
 #include <utility>
 
 #include "Bindings.hpp"
-#include "InitialStateParameterMap.hpp"
 #include "PETScInit.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
+#include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
@@ -43,6 +43,7 @@ using femx::HostVector;
 using femx::Index;
 using femx::Real;
 using femx::assembly::HostAssemblyMap;
+using femx::fem::HostInitialStateMap;
 using femx::linalg::DenseLinearSolver;
 using femx::linalg::LinearOperator;
 using femx::linalg::LinearSolver;
@@ -140,11 +141,6 @@ public:
   {
     py::gil_scoped_acquire acquire;
     checkSignals();
-    if (progress_.is_none())
-    {
-      return false;
-    }
-
     py::dict event;
     event["type"]                 = "solve";
     event["phase"]                = "forward";
@@ -194,8 +190,8 @@ DenseMatrix denseMatrixFromArray(const RealArray& vals,
 class AffineInitialStateIntegrator final : public TimeIntegrator
 {
 public:
-  AffineInitialStateIntegrator(TimeLinearIntegrator&     integrator,
-                               InitialStateParameterMap& map)
+  AffineInitialStateIntegrator(TimeLinearIntegrator& integrator,
+                               HostInitialStateMap&  map)
     : integrator_(integrator),
       map_(map)
   {
@@ -231,8 +227,9 @@ public:
           "initial-state integrator parameter size mismatch");
     }
 
-    HostVector initial;
-    map_.state(param, initial);
+    HostVector initial(map_.numStates());
+    femx::fem::initialState(
+        map_.view(), param.view(), initial.view());
     integrator_.setInitialState(initial);
     MonitorScope           monitor(*this);
     ForwardMonitor         forward_monitor(*this);
@@ -263,8 +260,8 @@ private:
     AffineInitialStateIntegrator& integrator_;
   };
 
-  TimeLinearIntegrator&     integrator_;
-  InitialStateParameterMap& map_;
+  TimeLinearIntegrator& integrator_;
+  HostInitialStateMap&  map_;
 };
 
 py::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
@@ -675,8 +672,7 @@ void bindState(py::module_& module)
       .def_readwrite("ir", &ReSolveOptions::ir)
       .def_readwrite("gram_schmidt", &ReSolveOptions::gram_schmidt)
       .def_readwrite("sketching", &ReSolveOptions::sketching)
-      .def_readwrite("preconditioner_side",
-                     &ReSolveOptions::preconditioner_side)
+      .def_readwrite("pc_side", &ReSolveOptions::pc_side)
       .def_readwrite("max_its", &ReSolveOptions::max_its)
       .def_readwrite("restart", &ReSolveOptions::restart)
       .def_readwrite("rtol", &ReSolveOptions::rtol)
@@ -743,7 +739,7 @@ void bindState(py::module_& module)
       .def_readwrite("num_states", &TimeDims::num_states)
       .def_readwrite("num_param", &TimeDims::num_param)
       .def_readwrite("num_res", &TimeDims::num_res)
-      .def_readwrite("num_history_states", &TimeDims::num_history_states);
+      .def_readwrite("num_hist", &TimeDims::num_hist);
 
   py::class_<VariableBlock>(module, "VariableBlock")
       .def_static("history", &VariableBlock::hist, py::arg("lag"))
@@ -807,11 +803,17 @@ void bindState(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            HostVector             vals = vectorFromArray(parameters, "parameters");
-            TimeTrajectory         trajectory;
-            PythonTimeStateMonitor monitor(progress);
-            ScopedTimeStateMonitor monitor_scope(integrator, monitor);
+            HostVector     vals = vectorFromArray(parameters, "parameters");
+            TimeTrajectory trajectory;
+            if (progress.is_none())
             {
+              py::gil_scoped_release release;
+              integrator.solve(vals, trajectory);
+            }
+            else
+            {
+              PythonTimeStateMonitor monitor(progress);
+              ScopedTimeStateMonitor monitor_scope(integrator, monitor);
               py::gil_scoped_release release;
               integrator.solve(vals, trajectory);
             }
@@ -853,27 +855,29 @@ void bindState(py::module_& module)
       .def_property_readonly("solve_calls",
                              &TimeLinearIntegrator::solveCalls);
 
-  py::class_<InitialStateParameterMap>(module, "_InitialStateParameterMap")
+  py::class_<HostInitialStateMap>(module, "_InitialStateMap")
       .def_property_readonly(
-          "num_states", &InitialStateParameterMap::numStates)
+          "num_states", &HostInitialStateMap::numStates)
       .def_property_readonly(
-          "num_param", &InitialStateParameterMap::numParams)
+          "num_param", &HostInitialStateMap::numParams)
       .def_property_readonly(
-          "num_modes", &InitialStateParameterMap::numModes)
+          "num_modes", &HostInitialStateMap::numModes)
       .def(
           "evaluate",
-          [](const InitialStateParameterMap& map,
-             const RealArray&                param)
+          [](const HostInitialStateMap& map,
+             const RealArray&           param)
           {
-            HostVector out;
-            map.state(vectorFromArray(param, "param"), out);
+            const HostVector prm = vectorFromArray(param, "param");
+            HostVector       out(map.numStates());
+            femx::fem::initialState(
+                map.view(), prm.view(), out.view());
             return vectorArray(out);
           },
           py::arg("param"));
 
   py::class_<AffineInitialStateIntegrator, TimeIntegrator>(
       module, "_AffineInitialStateIntegrator")
-      .def(py::init<TimeLinearIntegrator&, InitialStateParameterMap&>(),
+      .def(py::init<TimeLinearIntegrator&, HostInitialStateMap&>(),
            py::arg("integrator"),
            py::arg("map"),
            py::keep_alive<1, 2>(),

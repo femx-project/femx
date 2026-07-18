@@ -11,6 +11,9 @@
 #include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
+#if defined(FEMX_RESOLVE_USE_CUDA)
+#include <femx/model/ns/ResolveTimeIntegrator.hpp>
+#endif
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
@@ -112,12 +115,6 @@ int run(const Params& prm)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  MapCsrMatrix        A(fwd.model.map());
-  ReSolveLinearSolver solver(opts);
-
-  TimeLinearIntegrator integ(fwd.problem, A, solver);
-  integ.setInitialState(fwd.x0);
-
   std::ofstream log_out;
   if (output_enabled)
   {
@@ -125,6 +122,10 @@ int run(const Params& prm)
   }
 
   ForwardSolveResult result;
+#if defined(FEMX_RESOLVE_USE_CUDA)
+  ResolveTimeIntegrator integ(
+      fwd.model, fwd.fixed.dofs, fwd.fixed.vals, opts);
+  integ.setInitialState(fwd.x0);
   integ.resetTiming();
   result = solve(integ,
                  fwd,
@@ -132,6 +133,19 @@ int run(const Params& prm)
                  prm.output,
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
+#else
+  MapCsrMatrix         mat(fwd.model.map());
+  ReSolveLinearSolver  solver(opts);
+  TimeLinearIntegrator integ(fwd.problem, mat, solver);
+  integ.setInitialState(fwd.x0);
+  integ.resetTiming();
+  result = solve(integ,
+                 fwd,
+                 prm.time,
+                 prm.output,
+                 &std::cout,
+                 output_enabled ? &log_out : nullptr);
+#endif
 
   if (!isFinite(result.final_state))
   {

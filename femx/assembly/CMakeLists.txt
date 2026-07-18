@@ -5,16 +5,12 @@ target_sources(
   femx_assembly
   PRIVATE AssemblyMap.cpp
           BoundaryMap.cpp
-          DirichletControlResidual.cpp
           TimeDirichletControlResidual.cpp
-          HostTimeResidual.cpp
   PUBLIC Assembly.hpp
          AssemblyMap.hpp
          BoundaryMap.hpp
          CudaAssembly.hpp
-         DirichletControlResidual.hpp
-         TimeDirichletControlResidual.hpp
-         HostTimeResidual.hpp)
+         TimeDirichletControlResidual.hpp)
 
 target_link_libraries(femx_assembly PUBLIC femx_config femx_ad femx_linalg
                                            femx_state femx_fem)

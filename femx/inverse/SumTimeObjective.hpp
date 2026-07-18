@@ -21,7 +21,11 @@ class SumTimeObjective final : public TimeObjective
 public:
   SumTimeObjective(Index num_steps, Index num_states, Index num_param);
 
+  /** @brief Append a compatible non-owning objective term. */
   SumTimeObjective& add(const TimeObjective& term);
+
+  /** @brief Return the objective terms in insertion order. */
+  const Array<const TimeObjective*>& terms() const noexcept;
 
   Index numSteps() const override;
   Index numStates() const override;

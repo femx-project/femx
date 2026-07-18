@@ -15,10 +15,14 @@ TestOutcome trajectoryExposesContiguousDataAndLevels()
   TestStatus status(__func__);
 
   state::TimeTrajectory trajectory(2, 3);
-  status *= trajectory.numSteps() == 2;
-  status *= trajectory.numTimeLevels() == 3;
-  status *= trajectory.numStates() == 3;
-  status *= trajectory.size() == 9;
+  Real* const           storage  = trajectory.data();
+  status                        *= trajectory.numSteps() == 2;
+  status                        *= trajectory.numTimeLevels() == 3;
+  status                        *= trajectory.numStates() == 3;
+  status                        *= trajectory.size() == 9;
+
+  trajectory.resize(2, 3);
+  status *= trajectory.data() == storage;
 
   for (Index i = 0; i < trajectory.size(); ++i)
   {
@@ -30,6 +34,10 @@ TestOutcome trajectoryExposesContiguousDataAndLevels()
   status            *= second[0] == 4.0;
   status            *= second[1] == 5.0;
   status            *= second[2] == 6.0;
+
+  const auto view  = trajectory.view();
+  status          *= view.numTimeLevels() == 3;
+  status          *= view[1].data() == second.data();
 
   trajectory.level(2)[1]  = 42.0;
   status                 *= trajectory.data()[7] == 42.0;

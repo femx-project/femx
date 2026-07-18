@@ -289,19 +289,128 @@ ScalarStencil findScalarStencil(const FESpace& space,
 
 } // namespace
 
+void observe(PointInterpolatorView<MemorySpace::Host> data,
+             HostConstVectorView                      state,
+             HostVectorView                           out)
+{
+  if (state.size() != data.numStates()
+      || out.size() != data.numObservations())
+  {
+    throw std::runtime_error(
+        "PointInterpolator Host observation size mismatch");
+  }
+  if (!out.empty() && state.data() == out.data())
+  {
+    throw std::runtime_error(
+        "PointInterpolator observation output must not alias state");
+  }
+
+  for (Index i = 0; i < data.numObservations(); ++i)
+  {
+    out[i] = data.eval(i, state.data());
+  }
+}
+
+void addStateJacT(PointInterpolatorView<MemorySpace::Host> data,
+                  HostConstVectorView                      dir,
+                  HostVectorView                           out)
+{
+  if (dir.size() != data.numObservations()
+      || out.size() != data.numStates())
+  {
+    throw std::runtime_error(
+        "PointInterpolator Host transpose size mismatch");
+  }
+  if (!out.empty() && dir.data() == out.data())
+  {
+    throw std::runtime_error(
+        "PointInterpolator transpose output must not alias direction");
+  }
+
+  for (Index i = 0; i < data.numObservations(); ++i)
+  {
+    for (Index k = data.begin(i); k < data.end(i); ++k)
+    {
+      out[data.dof(k)] += data.wt(k) * dir[i];
+    }
+  }
+}
+
+#if !defined(FEMX_HAS_CUDA)
+void observe(PointInterpolatorView<MemorySpace::Device>,
+             DeviceConstVectorView,
+             DeviceVectorView,
+             CudaContext&)
+{
+  throw std::runtime_error(
+      "PointInterpolator Device observation requires FEMX_ENABLE_CUDA");
+}
+
+void addStateJacT(PointInterpolatorView<MemorySpace::Device>,
+                  DeviceConstVectorView,
+                  DeviceVectorView,
+                  CudaContext&)
+{
+  throw std::runtime_error(
+      "PointInterpolator Device transpose requires FEMX_ENABLE_CUDA");
+}
+#endif
+
+Index DeviceTimePointInterpolator::numSteps() const
+{
+  return num_steps_;
+}
+
+Index DeviceTimePointInterpolator::numStates() const
+{
+  return data_.numStates();
+}
+
+Index DeviceTimePointInterpolator::numObservations() const
+{
+  return data_.numObservations();
+}
+
+void DeviceTimePointInterpolator::observe(Index                 level,
+                                          DeviceConstVectorView state,
+                                          DeviceVectorView      out,
+                                          CudaContext&          ctx) const
+{
+  checkLevel(level);
+  fem::observe(data_.view(), state, out, ctx);
+}
+
+void DeviceTimePointInterpolator::addStateJacT(
+    Index                 level,
+    DeviceConstVectorView dir,
+    DeviceVectorView      out,
+    CudaContext&          ctx) const
+{
+  checkLevel(level);
+  fem::addStateJacT(data_.view(), dir, out, ctx);
+}
+
+void DeviceTimePointInterpolator::checkLevel(Index level) const
+{
+  if (level < 0 || level > numSteps())
+  {
+    throw std::runtime_error(
+        "DeviceTimePointInterpolator time level is out of range");
+  }
+}
+
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              const MixedFESpace& space,
                                              Index               fid,
                                              Array<Point3>       pts,
                                              Array<Index>        comps,
-                                             Index               num_param)
+                                             Index               num_prm)
   : num_steps_(num_steps),
-    num_states_(space.numDofs()),
-    num_param_(num_param),
+    num_prm_(num_prm),
     pts_(std::move(pts)),
     comps_(std::move(comps))
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_param_ < 0)
+  if (num_steps_ < 0 || space.numDofs() < 0 || num_prm_ < 0)
   {
     throw std::runtime_error("TimePointInterpolator received invalid dimensions");
   }
@@ -324,7 +433,7 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
     }
   }
 
-  stencils_ = buildStencils(field, pts_, comps_);
+  data_ = buildData(field, space.numDofs(), pts_, comps_);
 }
 
 Index TimePointInterpolator::numSteps() const
@@ -334,17 +443,25 @@ Index TimePointInterpolator::numSteps() const
 
 Index TimePointInterpolator::numStates() const
 {
-  return num_states_;
+  return data_.numStates();
 }
 
 Index TimePointInterpolator::numParams() const
 {
-  return num_param_;
+  return num_prm_;
 }
 
 Index TimePointInterpolator::numObservations() const
 {
-  return stencils_.size();
+  return data_.numObservations();
+}
+
+std::unique_ptr<DeviceTimeObservationOperator>
+TimePointInterpolator::copyToDevice(CudaContext& ctx) const
+{
+  auto out = std::make_unique<DeviceTimePointInterpolator>();
+  copy(*this, *out, ctx);
+  return out;
 }
 
 void TimePointInterpolator::observe(Index             level,
@@ -354,16 +471,11 @@ void TimePointInterpolator::observe(Index             level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  resizeOrZero(out, numObservations());
-
-  for (Index i = 0; i < numObservations(); ++i)
+  if (out.size() != numObservations())
   {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[i] += stencil.wts[j] * state[stencil.indices[j]];
-    }
+    out.resize(numObservations());
   }
+  fem::observe(data_.view(), state.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJac(Index             level,
@@ -380,15 +492,11 @@ void TimePointInterpolator::applyStateJac(Index             level,
         "TimePointInterpolator state direction size mismatch");
   }
 
-  resizeOrZero(out, numObservations());
-  for (Index i = 0; i < numObservations(); ++i)
+  if (out.size() != numObservations())
   {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[i] += stencil.wts[j] * dir[stencil.indices[j]];
-    }
+    out.resize(numObservations());
   }
+  fem::observe(data_.view(), dir.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJacT(Index             level,
@@ -406,14 +514,7 @@ void TimePointInterpolator::applyStateJacT(Index             level,
   }
 
   resizeOrZero(out, numStates());
-  for (Index i = 0; i < numObservations(); ++i)
-  {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[stencil.indices[j]] += stencil.wts[j] * dir[i];
-    }
-  }
+  fem::addStateJacT(data_.view(), dir.view(), out.view());
 }
 
 void TimePointInterpolator::applyParamJac(Index             level,
@@ -448,6 +549,11 @@ void TimePointInterpolator::applyParamJacT(Index             level,
   }
 
   resizeOrZero(out, numParams());
+}
+
+const HostPointInterpolatorData& TimePointInterpolator::data() const noexcept
+{
+  return data_;
 }
 
 const Array<Point3>& TimePointInterpolator::pts() const
@@ -504,33 +610,35 @@ void TimePointInterpolator::checkInputs(
   }
 }
 
-Array<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
+HostPointInterpolatorData TimePointInterpolator::buildData(
     const MixedFieldView& field,
+    Index                 num_states,
     const Array<Point3>&  pts,
     const Array<Index>&   comps)
 {
-  Array<Stencil> stencils;
-  stencils.reserve(pts.size() * comps.size());
+  HostPointInterpolatorData data;
+  const Index               num_obs = pts.size() * comps.size();
+  data.num_states_                  = num_states;
+  data.offsets_.reserve(num_obs + 1);
+  data.dofs_.reserve(num_obs * field.numShapesPerElem());
+  data.wts_.reserve(num_obs * field.numShapesPerElem());
+  data.offsets_.push_back(0);
 
   for (const Point3& point : pts)
   {
     const ScalarStencil scalar = findScalarStencil(field.space(), point);
     for (Index comp : comps)
     {
-      Stencil stencil;
-      stencil.indices.reserve(scalar.wts.size());
-      stencil.wts.reserve(scalar.wts.size());
       for (Index i = 0; i < scalar.wts.size(); ++i)
       {
-        stencil.indices.push_back(
-            field.globalDof(scalar.nids[i], comp));
-        stencil.wts.push_back(scalar.wts[i]);
+        data.dofs_.push_back(field.globalDof(scalar.nids[i], comp));
+        data.wts_.push_back(scalar.wts[i]);
       }
-      stencils.push_back(std::move(stencil));
+      data.offsets_.push_back(data.dofs_.size());
     }
   }
 
-  return stencils;
+  return data;
 }
 
 } // namespace fem

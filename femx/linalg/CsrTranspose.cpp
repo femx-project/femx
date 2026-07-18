@@ -62,4 +62,69 @@ void trVals(const HostCsrMatrix&       src,
   }
 }
 
+void copy(const HostCsrTransposeMap& src,
+          const DeviceCsrGraph&      src_graph,
+          DeviceCsrTransposeMap&     dst,
+          CudaContext&               ctx)
+{
+  if (src.srcGraph().rows() != src_graph.rows()
+      || src.srcGraph().cols() != src_graph.cols()
+      || src.srcGraph().nnz() != src_graph.nnz()
+      || src.srcGraph().layoutId() != src_graph.layoutId())
+  {
+    throw std::runtime_error(
+        "CSR transpose source graph does not match its Device copy");
+  }
+
+  DeviceCsrGraph    tr_graph;
+  DeviceIndexVector src_to_tr;
+  copy(src.trGraph(), tr_graph, ctx);
+  copy(src.srcToTr(), src_to_tr, ctx);
+
+  dst.src_graph_ = src_graph;
+  dst.tr_graph_  = std::move(tr_graph);
+  dst.src_to_tr_ = std::move(src_to_tr);
+}
+
+#if !defined(FEMX_HAS_CUDA)
+namespace
+{
+[[noreturn]] void cudaUnavailable()
+{
+  throw std::runtime_error(
+      "femx was built without the CUDA execution backend");
+}
+} // namespace
+
+void copy(DeviceConstVectorView, DeviceVectorView, CudaContext&)
+{
+  cudaUnavailable();
+}
+
+void axpby(Real,
+           DeviceConstVectorView,
+           Real,
+           DeviceVectorView,
+           CudaContext&)
+{
+  cudaUnavailable();
+}
+
+void apply(const DeviceCsrMatrix&,
+           DeviceConstVectorView,
+           DeviceVectorView,
+           CudaContext&)
+{
+  cudaUnavailable();
+}
+
+void trVals(const DeviceCsrMatrix&,
+            const DeviceCsrTransposeMap&,
+            DeviceCsrMatrix&,
+            CudaContext&)
+{
+  cudaUnavailable();
+}
+#endif
+
 } // namespace femx

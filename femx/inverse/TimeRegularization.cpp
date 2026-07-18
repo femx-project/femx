@@ -13,19 +13,19 @@ TimeRegularization::TimeRegularization(Index             num_steps,
                                        Index             num_states,
                                        Index             num_levels,
                                        Index             block_size,
-                                       Real              beta_difference,
+                                       Real              beta_diff,
                                        Real              beta_value,
                                        const HostVector& reference)
   : num_steps_(num_steps),
     num_states_(num_states),
     num_levels_(num_levels),
     block_size_(block_size),
-    beta_difference_(beta_difference),
+    beta_diff_(beta_diff),
     beta_value_(beta_value)
 {
   if (num_steps_ < 0 || num_states_ < 0 || num_levels_ < 0
-      || block_size_ < 0 || !std::isfinite(beta_difference_)
-      || !std::isfinite(beta_value_) || beta_difference_ < 0.0
+      || block_size_ < 0 || !std::isfinite(beta_diff_)
+      || !std::isfinite(beta_value_) || beta_diff_ < 0.0
       || beta_value_ < 0.0)
   {
     throw std::runtime_error("TimeRegularization received invalid inputs");
@@ -84,7 +84,7 @@ Real TimeRegularization::value(const TimeTrajectory& tr,
     for (Index c = 0; c < block_size_; ++c)
     {
       const Real diff  = centered(prm, level, c) - centered(prm, level - 1, c);
-      value_out       += 0.5 * beta_difference_ * diff * diff;
+      value_out       += 0.5 * beta_diff_ * diff * diff;
     }
   }
   return value_out;
@@ -118,8 +118,8 @@ void TimeRegularization::paramGrad(const TimeTrajectory& tr,
     for (Index c = 0; c < block_size_; ++c)
     {
       const Real diff           = centered(prm, level, c) - centered(prm, level - 1, c);
-      out[index(level, c)]     += beta_difference_ * diff;
-      out[index(level - 1, c)] -= beta_difference_ * diff;
+      out[index(level, c)]     += beta_diff_ * diff;
+      out[index(level - 1, c)] -= beta_diff_ * diff;
     }
   }
 }

@@ -1,437 +1,67 @@
 #include "Components.hpp"
 
-#include <cmath>
+#include <algorithm>
+#include <stdexcept>
 
-namespace femx::model::ns
+#include <femx/fem/ElementValues.hpp>
+#include <femx/fem/FESpace.hpp>
+#include <femx/fem/GaussQuadrature.hpp>
+
+namespace femx
 {
-namespace
+namespace model
+{
+namespace ns
 {
 
-Real absoluteValue(Real value)
+HostNavierData makeNavierData(const fem::FESpace&         vel_sp,
+                              const fem::GaussQuadrature& quad)
 {
-  return value >= 0.0 ? value : -value;
+  const Index num_elems = vel_sp.mesh().numElems();
+  const Index num_qpts  = quad.size();
+  const Index num_nodes = vel_sp.numShapesPerElem();
+  const Index dim       = vel_sp.numComponents();
+  const Index num_dofs  = (dim + 1) * num_nodes;
+  if (num_elems <= 0 || num_qpts <= 0 || num_nodes <= 0 || dim <= 0
+      || dim > kMaxDim || num_qpts > kMaxNq || num_nodes > kMaxNn
+      || num_dofs > kMaxNd)
+  {
+    throw std::runtime_error("NavierData received unsupported dimensions");
+  }
+
+  fem::ElementValues vals(vel_sp.finiteElement(), quad);
+  if (vals.numQuadraturePoints() != num_qpts
+      || vals.numNodes() != num_nodes || vals.dim() != dim)
+  {
+    throw std::runtime_error("NavierData element dimensions are inconsistent");
+  }
+
+  HostNavierData data;
+  data.num_elems_ = num_elems;
+  data.num_qpts_  = num_qpts;
+  data.num_nodes_ = num_nodes;
+  data.dim_       = dim;
+  data.N_.resize(num_qpts * num_nodes);
+  data.dNdx_.resize(num_elems * num_qpts * num_nodes * dim);
+  data.JxW_.resize(num_elems * num_qpts);
+
+  std::copy(vals.NData(),
+            vals.NData() + data.N_.size(),
+            data.N_.begin());
+  const Index grad_size = num_qpts * num_nodes * dim;
+  for (Index ie = 0; ie < num_elems; ++ie)
+  {
+    vals.reinit(vel_sp.mesh().elem(ie));
+    std::copy(vals.dNdxData(),
+              vals.dNdxData() + grad_size,
+              data.dNdx_.begin() + ie * grad_size);
+    std::copy(vals.JxWData(),
+              vals.JxWData() + num_qpts,
+              data.JxW_.begin() + ie * num_qpts);
+  }
+  return data;
 }
 
-Real advectionDerivative(const LocalElementValues& ev,
-                         const QPState&            qp,
-                         Index                     iq,
-                         Index                     in)
-{
-  Real value = 0.0;
-  for (Index d = 0; d < ev.dim; ++d)
-  {
-    value += ev.dNdx(iq, in, d) * qp.u_adv[d];
-  }
-  return value;
-}
-
-Real shapeGradientDot(const LocalElementValues& ev,
-                      Index                     iq,
-                      Index                     i,
-                      Index                     j)
-{
-  Real value = 0.0;
-  for (Index d = 0; d < ev.dim; ++d)
-  {
-    value += ev.dNdx(iq, i, d) * ev.dNdx(iq, j, d);
-  }
-  return value;
-}
-
-void evalQp(const LocalElementValues& ev,
-            Index                     iq,
-            const Real*               state,
-            const Real*               adv_state,
-            QPState&                  qp)
-{
-  qp = {};
-  for (Index in = 0; in < ev.num_nodes; ++in)
-  {
-    for (Index c = 0; c < ev.dim; ++c)
-    {
-      const Real value  = state[vdof(in, c, ev.dim)];
-      qp.u[c]          += ev.N(iq, in) * value;
-      for (Index d = 0; d < ev.dim; ++d)
-      {
-        qp.grad_u[c][d] += ev.dNdx(iq, in, d) * value;
-      }
-    }
-  }
-
-  for (Index in = 0; in < ev.num_nodes; ++in)
-  {
-    for (Index d = 0; d < ev.dim; ++d)
-    {
-      qp.u_adv[d] +=
-          ev.N(iq, in) * adv_state[vdof(in, d, ev.dim)];
-    }
-  }
-
-  for (Index c = 0; c < ev.dim; ++c)
-  {
-    for (Index d = 0; d < ev.dim; ++d)
-    {
-      qp.u_adv_grad_u[c] += qp.grad_u[c][d] * qp.u_adv[d];
-    }
-  }
-}
-
-Real elemLength(const LocalElementValues& ev, Index iq, const Real u[3])
-{
-  Real speed2 = 0.0;
-  for (Index d = 0; d < ev.dim; ++d)
-  {
-    speed2 += u[d] * u[d];
-  }
-
-  const Real speed = std::sqrt(speed2);
-  Real       dir[3]{};
-  if (speed > 1.0e-10)
-  {
-    for (Index d = 0; d < ev.dim; ++d)
-    {
-      dir[d] = u[d] / speed;
-    }
-  }
-  else
-  {
-    const Real value = 1.0 / std::sqrt(static_cast<Real>(ev.dim));
-    for (Index d = 0; d < ev.dim; ++d)
-    {
-      dir[d] = value;
-    }
-  }
-
-  Real sum = 0.0;
-  for (Index in = 0; in < ev.num_nodes; ++in)
-  {
-    Real grad_dir = 0.0;
-    for (Index d = 0; d < ev.dim; ++d)
-    {
-      grad_dir += dir[d] * ev.dNdx(iq, in, d);
-    }
-    sum += absoluteValue(grad_dir);
-  }
-
-  return sum > 1.0e-14 ? 2.0 / sum : 0.0;
-}
-
-void stabilization(const QPState&     qp,
-                   const KernelFluid& fluid,
-                   Real               dt,
-                   Real               h,
-                   Index              dim,
-                   Real               tau[3])
-{
-  Real speed2 = 0.0;
-  for (Index d = 0; d < dim; ++d)
-  {
-    speed2 += qp.u[d] * qp.u[d];
-  }
-
-  const Real speed = std::sqrt(speed2);
-  const Real nu    = fluid.mu / fluid.rho;
-  const Real time  = (2.0 / dt) * (2.0 / dt);
-  Real       flow  = 0.0;
-  Real       diff  = 0.0;
-  if (h > 0.0)
-  {
-    flow = (2.0 * speed / h) * (2.0 * speed / h);
-    diff = (4.0 * nu / (h * h)) * (4.0 * nu / (h * h));
-  }
-
-  const Real value = 1.0 / std::sqrt(time + flow + diff);
-  for (Index d = 0; d < 3; ++d)
-  {
-    tau[d] = value;
-  }
-}
-
-} // namespace
-
-Index vdof(Index in, Index comp, Index dim)
-{
-  return dim * in + comp;
-}
-
-Index pdof(Index in, Index num_nodes, Index dim)
-{
-  return dim * num_nodes + in;
-}
-
-Index numLocalDofs(Index num_nodes, Index dim)
-{
-  return dim * num_nodes + num_nodes;
-}
-
-void zeroLocalSystem(Index num_dofs, LocalMatrix Ke, LocalVector Fe)
-{
-  for (Index i = 0; i < num_dofs; ++i)
-  {
-    Fe[i] = 0.0;
-    for (Index j = 0; j < num_dofs; ++j)
-    {
-      Ke(i, j) = 0.0;
-    }
-  }
-}
-
-void updateQpStates(const LocalElementValues& ev,
-                    const KernelFluid&        fluid,
-                    Real                      dt,
-                    const Real*               state,
-                    const Real*               adv_state,
-                    QPState*                  qps)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    QPState& qp = qps[iq];
-    evalQp(ev, iq, state, adv_state, qp);
-    stabilization(qp, fluid, dt, elemLength(ev, iq, qp.u), ev.dim, qp.tau);
-  }
-}
-
-void assembleMassLHS(const LocalElementValues& ev,
-                     const KernelFluid&        fluid,
-                     Real                      dt,
-                     LocalMatrix               Ke)
-{
-  const Real coeff = fluid.rho / dt;
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      const Real row = coeff * ev.N(iq, i) * Jw;
-      for (Index j = 0; j < ev.num_nodes; ++j)
-      {
-        const Real value = row * ev.N(iq, j);
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          Ke(vdof(i, d, ev.dim), vdof(j, d, ev.dim)) += value;
-        }
-      }
-    }
-  }
-}
-
-void assembleMassRHS(const LocalElementValues& ev,
-                     const QPState*            qps,
-                     const KernelFluid&        fluid,
-                     Real                      dt,
-                     LocalVector               Fe)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      for (Index d = 0; d < ev.dim; ++d)
-      {
-        Fe[vdof(i, d, ev.dim)] += fluid.rho / dt * ev.N(iq, i) * qp.u[d] * Jw;
-      }
-    }
-  }
-}
-
-void assembleAdvectionLHS(const LocalElementValues& ev,
-                          const QPState*            qps,
-                          const KernelFluid&        fluid,
-                          LocalMatrix               Ke)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      const Real test = 0.5 * fluid.rho * ev.N(iq, i) * Jw;
-      for (Index j = 0; j < ev.num_nodes; ++j)
-      {
-        const Real grad  = advectionDerivative(ev, qp, iq, j);
-        const Real value = test * grad;
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          Ke(vdof(i, d, ev.dim), vdof(j, d, ev.dim)) += value;
-        }
-      }
-    }
-  }
-}
-
-void assembleAdvectionRHS(const LocalElementValues& ev,
-                          const QPState*            qps,
-                          const KernelFluid&        fluid,
-                          LocalVector               Fe)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      for (Index d = 0; d < ev.dim; ++d)
-      {
-        Fe[vdof(i, d, ev.dim)] -= 0.5 * fluid.rho * ev.N(iq, i) * qp.u_adv_grad_u[d] * Jw;
-      }
-    }
-  }
-}
-
-void assembleDiffusionLHS(const LocalElementValues& ev,
-                          const KernelFluid&        fluid,
-                          LocalMatrix               Ke)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      for (Index j = 0; j < ev.num_nodes; ++j)
-      {
-        const Real value = 0.5 * fluid.mu * shapeGradientDot(ev, iq, i, j) * Jw;
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          Ke(vdof(i, d, ev.dim), vdof(j, d, ev.dim)) += value;
-        }
-      }
-    }
-  }
-}
-
-void assembleDiffusionRHS(const LocalElementValues& ev,
-                          const QPState*            qps,
-                          const KernelFluid&        fluid,
-                          LocalVector               Fe)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      for (Index c = 0; c < ev.dim; ++c)
-      {
-        Real dot = 0.0;
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          dot += ev.dNdx(iq, i, d) * qp.grad_u[c][d];
-        }
-        Fe[vdof(i, c, ev.dim)] -= 0.5 * fluid.mu * dot * Jw;
-      }
-    }
-  }
-}
-
-void assemblePreVelCouplingLHS(const LocalElementValues& ev,
-                               LocalMatrix               Ke)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const Real Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      const Index ip = pdof(i, ev.num_nodes, ev.dim);
-      for (Index j = 0; j < ev.num_nodes; ++j)
-      {
-        const Index jp = pdof(j, ev.num_nodes, ev.dim);
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          Ke(vdof(i, d, ev.dim), jp) -= ev.dNdx(iq, i, d) * ev.N(iq, j) * Jw;
-          Ke(ip, vdof(j, d, ev.dim)) += ev.N(iq, i) * ev.dNdx(iq, j, d) * Jw;
-        }
-      }
-    }
-  }
-}
-
-void assembleStabilizationLHS(const LocalElementValues& ev,
-                              const QPState*            qps,
-                              const KernelFluid&        fluid,
-                              Real                      dt,
-                              LocalMatrix               Ke)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      const Index ip    = pdof(i, ev.num_nodes, ev.dim);
-      const Real  dvidx = advectionDerivative(ev, qp, iq, i);
-
-      for (Index j = 0; j < ev.num_nodes; ++j)
-      {
-        const Index jp    = pdof(j, ev.num_nodes, ev.dim);
-        const Real  dvjdx = advectionDerivative(ev, qp, iq, j);
-
-        for (Index d = 0; d < ev.dim; ++d)
-        {
-          const Index iu = vdof(i, d, ev.dim);
-          const Index ju = vdof(j, d, ev.dim);
-
-          Ke(iu, ju) += qp.tau[0] * fluid.rho / dt * dvidx * ev.N(iq, j) * Jw;
-          Ke(iu, ju) += 0.5 * qp.tau[0] * fluid.rho * dvidx * dvjdx * Jw;
-          Ke(iu, jp) += qp.tau[0] * dvidx * ev.dNdx(iq, j, d) * Jw;
-          Ke(ip, ju) += qp.tau[1] / dt * ev.dNdx(iq, i, d) * ev.N(iq, j) * Jw;
-          Ke(ip, ju) += 0.5 * qp.tau[1] * ev.dNdx(iq, i, d) * dvjdx * Jw;
-        }
-
-        Ke(ip, jp) += qp.tau[1] / fluid.rho * shapeGradientDot(ev, iq, i, j) * Jw;
-      }
-    }
-  }
-}
-
-void assembleStabilizationRHS(const LocalElementValues& ev,
-                              const QPState*            qps,
-                              const KernelFluid&        fluid,
-                              Real                      dt,
-                              LocalVector               Fe)
-{
-  for (Index iq = 0; iq < ev.num_qpts; ++iq)
-  {
-    const QPState& qp = qps[iq];
-    const Real     Jw = ev.JxW(iq);
-    for (Index i = 0; i < ev.num_nodes; ++i)
-    {
-      const Index ip             = pdof(i, ev.num_nodes, ev.dim);
-      const Real  dvidx          = advectionDerivative(ev, qp, iq, i);
-      Real        div_u          = 0.0;
-      Real        div_adv_grad_u = 0.0;
-
-      for (Index d = 0; d < ev.dim; ++d)
-      {
-        const Index iu  = vdof(i, d, ev.dim);
-        Fe[iu]         += qp.tau[0] * fluid.rho / dt * dvidx * qp.u[d] * Jw;
-        Fe[iu]         -= 0.5 * qp.tau[0] * fluid.rho * dvidx * qp.u_adv_grad_u[d] * Jw;
-
-        div_u          += ev.dNdx(iq, i, d) * qp.u[d];
-        div_adv_grad_u += ev.dNdx(iq, i, d) * qp.u_adv_grad_u[d];
-      }
-
-      Fe[ip] += qp.tau[1] / dt * div_u * Jw;
-      Fe[ip] -= 0.5 * qp.tau[1] * div_adv_grad_u * Jw;
-    }
-  }
-}
-
-void finishLocalResidual(Index       num_dofs,
-                         const Real* nxt,
-                         LocalMatrix Ke,
-                         LocalVector Fe,
-                         Real*       out)
-{
-  for (Index i = 0; i < num_dofs; ++i)
-  {
-    Real value = -Fe[i];
-    for (Index j = 0; j < num_dofs; ++j)
-    {
-      value += Ke(i, j) * nxt[j];
-    }
-    out[i] = value;
-  }
-}
-
-} // namespace femx::model::ns
+} // namespace ns
+} // namespace model
+} // namespace femx

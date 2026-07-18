@@ -114,6 +114,18 @@ private:
   Vals  vals_;
 };
 
+/**
+ * @brief Compute `y = mat * x` on Device without changing storage.
+ * @param mat Device CSR matrix.
+ * @param x Read-only input view of size `mat.cols()`.
+ * @param y Output view of size `mat.rows()`; it must not alias the inputs.
+ * @param ctx CUDA stream on which the operation is enqueued.
+ */
+void apply(const DeviceCsrMatrix& mat,
+           DeviceConstVectorView  x,
+           DeviceVectorView       y,
+           CudaContext&           ctx);
+
 namespace detail
 {
 template <MemorySpace SrcSpace, MemorySpace DstSpace>

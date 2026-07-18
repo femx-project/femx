@@ -39,6 +39,11 @@ public:
                      TimeTrajectory&   tr) = 0;
 
 protected:
+  bool hasMonitor() const noexcept
+  {
+    return monitor_ != nullptr;
+  }
+
   class MonitorScope
   {
   public:

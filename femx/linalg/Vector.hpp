@@ -14,6 +14,11 @@
 namespace femx
 {
 
+/** @brief Mutable non-owning view of contiguous Device real values. */
+using DeviceVectorView      = VectorView<MemorySpace::Device, Real>;
+/** @brief Read-only non-owning view of contiguous Device real values. */
+using DeviceConstVectorView = VectorView<MemorySpace::Device, const Real>;
+
 /**
  * @brief Owning contiguous host vector with the femx signed index type.
  *
@@ -354,6 +359,30 @@ private:
   T*    data_{nullptr};
   Index size_{0};
 };
+
+/**
+ * @brief Enqueue a same-sized device-view copy without changing storage.
+ * @param src Read-only source view.
+ * @param dst Destination view; it must not partially overlap `src`.
+ * @param ctx CUDA stream on which the copy is enqueued.
+ */
+void copy(DeviceConstVectorView src,
+          DeviceVectorView      dst,
+          CudaContext&          ctx);
+
+/**
+ * @brief Replace `y` by `a * x + b * y` without changing storage.
+ * @param a Scale applied to `x`.
+ * @param x Read-only input view.
+ * @param b Scale applied to the previous values of `y`.
+ * @param y Input/output view with the same size as `x`.
+ * @param ctx CUDA stream on which the operation is enqueued.
+ */
+void axpby(Real                  a,
+           DeviceConstVectorView x,
+           Real                  b,
+           DeviceVectorView      y,
+           CudaContext&          ctx);
 
 /**
  * @brief Enqueue an explicit host-to-device copy on context's stream.

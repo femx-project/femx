@@ -28,14 +28,13 @@
       }
     },
     {
-      "name": "resolve",
+      "name": "resolve-cpu",
       "displayName": "ReSolve CPU",
       "description": "Build apps/tests with a CPU-only ReSolve package.",
       "inherits": "resolve-base",
-      "binaryDir": "${sourceDir}/build/resolve",
+      "binaryDir": "${sourceDir}/build/resolve-cpu",
       "cacheVariables": {
-        "FEMX_RESOLVE_BACKEND": "CPU",
-        "RESOLVE_USE_CUDA": "OFF"
+        "FEMX_RESOLVE_BACKEND": "CPU"
       }
     },
     {
@@ -54,28 +53,26 @@
       }
     },
     {
-      "name": "resolve-cuda",
+      "name": "resolve",
       "displayName": "ReSolve CUDA",
       "description": "Build apps/tests with the CUDA-enabled ReSolve backend.",
       "inherits": "resolve-base",
-      "binaryDir": "${sourceDir}/build/resolve-cuda",
+      "binaryDir": "${sourceDir}/build/resolve",
       "cacheVariables": {
         "FEMX_RESOLVE_BACKEND": "CUDA",
-        "RESOLVE_USE_CUDA": "ON",
         "CMAKE_CUDA_ARCHITECTURES": "60"
       }
     },
     {
-      "name": "resolve-cuda-petsc",
+      "name": "resolve-petsc",
       "displayName": "ReSolve CUDA + PETSc",
       "description": "Build PETSc/TAO apps with the CUDA-enabled ReSolve backend.",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/build/resolve-cuda-petsc",
+      "binaryDir": "${sourceDir}/build/resolve-petsc",
       "cacheVariables": {
         "FEMX_ENABLE_RESOLVE": "ON",
         "FEMX_ENABLE_PETSC": "ON",
         "FEMX_RESOLVE_BACKEND": "CUDA",
-        "RESOLVE_USE_CUDA": "ON",
         "CMAKE_CUDA_ARCHITECTURES": "60"
       }
     },
@@ -141,16 +138,16 @@
       "configurePreset": "cuda"
     },
     {
+      "name": "resolve-cpu",
+      "configurePreset": "resolve-cpu"
+    },
+    {
       "name": "resolve",
       "configurePreset": "resolve"
     },
     {
-      "name": "resolve-cuda",
-      "configurePreset": "resolve-cuda"
-    },
-    {
-      "name": "resolve-cuda-petsc",
-      "configurePreset": "resolve-cuda-petsc"
+      "name": "resolve-petsc",
+      "configurePreset": "resolve-petsc"
     },
     {
       "name": "petsc",
@@ -180,6 +177,13 @@
       }
     },
     {
+      "name": "resolve-cpu",
+      "configurePreset": "resolve-cpu",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
       "name": "resolve",
       "configurePreset": "resolve",
       "output": {
@@ -187,15 +191,8 @@
       }
     },
     {
-      "name": "resolve-cuda",
-      "configurePreset": "resolve-cuda",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "resolve-cuda-petsc",
-      "configurePreset": "resolve-cuda-petsc",
+      "name": "resolve-petsc",
+      "configurePreset": "resolve-petsc",
       "output": {
         "outputOnFailure": true
       }

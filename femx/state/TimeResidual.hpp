@@ -21,11 +21,11 @@ namespace state
  */
 struct TimeDims
 {
-  Index num_steps          = 0; ///< Number of residual steps.
-  Index num_states         = 0; ///< Size of one state vector.
-  Index num_param          = 0; ///< Size of the parameter vector shared by all steps.
-  Index num_res            = 0; ///< Size of one residual vector.
-  Index num_history_states = 1; ///< Number of history states required by each step.
+  Index num_steps  = 0; ///< Number of residual steps.
+  Index num_states = 0; ///< Size of one state vector.
+  Index num_param  = 0; ///< Size of the parameter vector shared by all steps.
+  Index num_res    = 0; ///< Size of one residual vector.
+  Index num_hist   = 1; ///< Number of history states required by each step.
 };
 
 /**
@@ -124,54 +124,54 @@ public:
     Param
   };
 
-  constexpr VariableBlock(Kind  kind        = Kind::HistoryState,
-                          Index history_lag = 0)
+  FEMX_HOST_DEVICE constexpr VariableBlock(
+      Kind  kind        = Kind::HistoryState,
+      Index history_lag = 0)
     : kind_(kind),
       hist_lag_(history_lag)
   {
   }
 
-  static constexpr VariableBlock hist(Index lag)
+  FEMX_HOST_DEVICE static constexpr VariableBlock hist(Index lag)
   {
     return VariableBlock(Kind::HistoryState, lag);
   }
 
-  bool isHistoryState() const
+  FEMX_HOST_DEVICE constexpr bool isHistoryState() const
   {
     return kind_ == Kind::HistoryState;
   }
 
-  bool isNextState() const
+  FEMX_HOST_DEVICE constexpr bool isNextState() const
   {
     return kind_ == Kind::NextState;
   }
 
-  bool isParam() const
+  FEMX_HOST_DEVICE constexpr bool isParam() const
   {
     return kind_ == Kind::Param;
   }
 
-  Kind kind() const
+  FEMX_HOST_DEVICE constexpr Kind kind() const
   {
     return kind_;
   }
 
-  Index historyLag() const
+  FEMX_HOST_DEVICE constexpr Index historyLag() const
   {
-    if (!isHistoryState())
-    {
-      throw std::runtime_error(
-          "VariableBlock does not refer to a history state");
-    }
     return hist_lag_;
   }
 
-  friend bool operator==(VariableBlock lhs, VariableBlock rhs)
+  FEMX_HOST_DEVICE friend constexpr bool operator==(
+      VariableBlock lhs,
+      VariableBlock rhs)
   {
     return lhs.kind_ == rhs.kind_ && lhs.hist_lag_ == rhs.hist_lag_;
   }
 
-  friend bool operator!=(VariableBlock lhs, VariableBlock rhs)
+  FEMX_HOST_DEVICE friend constexpr bool operator!=(
+      VariableBlock lhs,
+      VariableBlock rhs)
   {
     return !(lhs == rhs);
   }

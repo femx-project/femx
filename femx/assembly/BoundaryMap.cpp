@@ -45,7 +45,9 @@ void checkForward(const HostBoundaryMap& map,
   }
 }
 
-void replaceRowsRaw(const HostBoundaryMap& map, HostCsrMatrix& mat)
+void replaceRowsRaw(const HostBoundaryMap& map,
+                    HostCsrMatrix&         mat,
+                    Real                   diag)
 {
   const auto  view    = map.view();
   const auto& row_ptr = mat.graph().rowPtr();
@@ -58,7 +60,7 @@ void replaceRowsRaw(const HostBoundaryMap& map, HostCsrMatrix& mat)
     {
       vals[k] = 0.0;
     }
-    vals[view.diag(ib)] = 1.0;
+    vals[view.diag(ib)] = diag;
   }
 }
 
@@ -190,10 +192,12 @@ void copy(const HostBoundaryMap& src,
          std::move(bc_mask)};
 }
 
-void replaceRows(const HostBoundaryMap& map, HostCsrMatrix& jac)
+void replaceRows(const HostBoundaryMap& map,
+                 HostCsrMatrix&         jac,
+                 Real                   diag)
 {
   checkMat(map, jac);
-  replaceRowsRaw(map, jac);
+  replaceRowsRaw(map, jac, diag);
 }
 
 void replaceRes(const HostBoundaryMap& map,
@@ -244,7 +248,7 @@ void prepareForwardSolve(const HostBoundaryMap& map,
     }
   }
 
-  replaceRowsRaw(map, solve_mat);
+  replaceRowsRaw(map, solve_mat, 1.0);
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     rhs[view.bcRow(ib)] = bc_vals[ib];
@@ -254,6 +258,7 @@ void prepareForwardSolve(const HostBoundaryMap& map,
 #if !defined(FEMX_HAS_CUDA)
 void replaceRows(const DeviceBoundaryMap&,
                  DeviceCsrMatrix&,
+                 Real,
                  CudaContext&)
 {
   throw std::runtime_error(

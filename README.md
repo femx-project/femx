@@ -109,7 +109,7 @@ Backend-specific examples are available when their dependencies are enabled:
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
 ```
 
 See [examples/poisson-opt](examples/poisson-opt) for the optimization problem

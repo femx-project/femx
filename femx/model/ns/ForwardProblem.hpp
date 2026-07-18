@@ -16,7 +16,7 @@ namespace femx
 {
 namespace state
 {
-class TimeLinearIntegrator;
+class TimeIntegrator;
 } // namespace state
 } // namespace femx
 
@@ -60,11 +60,11 @@ std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
 bool isFinite(const HostVector& x);
 
 ForwardSolveResult solve(
-    femx::state::TimeLinearIntegrator& integrator,
-    const ForwardProblem&              problem,
-    const TimeParams&                  time,
-    const OutputParams&                prm,
-    std::ostream*                      terminal = nullptr,
-    std::ostream*                      log_out  = nullptr);
+    femx::state::TimeIntegrator& integrator,
+    const ForwardProblem&        problem,
+    const TimeParams&            time,
+    const OutputParams&          prm,
+    std::ostream*                terminal = nullptr,
+    std::ostream*                log_out  = nullptr);
 
 } // namespace femx::model::ns
