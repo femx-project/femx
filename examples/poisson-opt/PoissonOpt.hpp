@@ -5,7 +5,7 @@
 #include <string>
 
 #include <femx/assembly/AssemblyMap.hpp>
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>

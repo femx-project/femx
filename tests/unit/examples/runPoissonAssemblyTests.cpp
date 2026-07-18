@@ -31,10 +31,10 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   status *= rhs.size() == problem.numDofs();
   status *= problem.geom().numElems() == 4;
 
-  const auto& plan = problem.bcPlan();
+  const auto& map  = problem.bcMap();
   const auto& vals = problem.bcVals();
-  const auto  view = plan.view();
-  for (Index ib = 0; ib < plan.numBcs(); ++ib)
+  const auto  view = map.view();
+  for (Index ib = 0; ib < map.numBcs(); ++ib)
   {
     const Index row  = view.bcRow(ib);
     status          *= near(rhs[row], vals[ib]);

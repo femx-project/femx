@@ -4,7 +4,7 @@
 #include <string>
 
 #include <femx/assembly/AssemblyMap.hpp>
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Geometry.hpp>
@@ -45,10 +45,10 @@ public:
 
   const Options& options() const noexcept;
 
-  const fem::HostGeometry&          geom() const noexcept;
-  const assembly::HostAssemblyMap&  map() const noexcept;
-  const assembly::HostBoundaryPlan& bcPlan() const noexcept;
-  const HostVector&                 bcVals() const noexcept;
+  const fem::HostGeometry&         geom() const noexcept;
+  const assembly::HostAssemblyMap& map() const noexcept;
+  const assembly::HostBoundaryMap& bcMap() const noexcept;
+  const HostVector&                bcVals() const noexcept;
 
   Index numNodes() const noexcept;
   Index numDofs() const noexcept;
@@ -72,14 +72,14 @@ private:
   static bool onBoundary(const fem::Mesh::Node& p, Real time);
 
 private:
-  Options                    opts_;
-  fem::Mesh                  mesh_;
-  fem::LagrangeQuadQ1        fe_;
-  fem::FESpace               space_;
-  fem::HostGeometry          geom_;
-  assembly::HostAssemblyMap  map_;
-  assembly::HostBoundaryPlan bc_plan_;
-  HostVector                 bc_vals_;
+  Options                   opts_;
+  fem::Mesh                 mesh_;
+  fem::LagrangeQuadQ1       fe_;
+  fem::FESpace              space_;
+  fem::HostGeometry         geom_;
+  assembly::HostAssemblyMap map_;
+  assembly::HostBoundaryMap bc_map_;
+  HostVector                bc_vals_;
 };
 
 Options parseOptions(int    argc,

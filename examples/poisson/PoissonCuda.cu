@@ -34,12 +34,12 @@ CudaSolveResult solveCuda(const PoissonForwardProblem& problem)
 {
   CudaContext ctx;
 
-  fem::DeviceGeometry          geom;
-  assembly::DeviceAssemblyMap  map;
-  assembly::DeviceBoundaryPlan bc_plan;
+  fem::DeviceGeometry         geom;
+  assembly::DeviceAssemblyMap map;
+  assembly::DeviceBoundaryMap bc_map;
   copy(problem.geom(), geom, ctx);
   assembly::copy(problem.map(), map, ctx);
-  assembly::copy(problem.bcPlan(), bc_plan, ctx);
+  assembly::copy(problem.bcMap(), bc_map, ctx);
 
   HostVector   zero_state(problem.numDofs(), 0.0);
   DeviceVector state;
@@ -57,7 +57,7 @@ CudaSolveResult solveCuda(const PoissonForwardProblem& problem)
                      res,
                      mat,
                      ctx);
-  assembly::prepareForwardSolve(bc_plan, mat, rhs, bc_vals, ctx);
+  assembly::prepareForwardSolve(bc_map, mat, rhs, bc_vals, ctx);
 
   linalg::ReSolveOptions opts;
   opts.rtol    = 1.0e-11;

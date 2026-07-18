@@ -13,7 +13,7 @@
 
 #include "../poisson/PoissonOperator.hpp"
 #include <femx/assembly/Assembly.hpp>
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
@@ -80,7 +80,7 @@ public:
     {
       bc_dofs.push_back(dof);
     }
-    bc_plan_ = makeBoundaryPlan(bc_dofs, map.graph());
+    bc_map_ = makeBoundaryMap(bc_dofs, map.graph());
   }
 
   Dimensions dims() const override
@@ -96,7 +96,7 @@ public:
   {
     checkVectors(state, prm);
     assembleRaw(state, out);
-    replaceRes(bc_plan_, state, bcVals(prm), out);
+    replaceRes(bc_map_, state, bcVals(prm), out);
   }
 
   void linearize(const HostVector& state,
@@ -113,7 +113,7 @@ public:
 
     HostVector res;
     assembleRaw(state, res);
-    replaceRows(bc_plan_, jac_);
+    replaceRows(bc_map_, jac_);
     copyStateJac(mats->stateMat());
     assemblePrmJac(mats->paramMat());
   }
@@ -143,7 +143,7 @@ private:
 
   HostVector bcVals(const HostVector& prm) const
   {
-    HostVector vals(bc_plan_.numBcs(), 0.0);
+    HostVector vals(bc_map_.numBcs(), 0.0);
     for (Index i = 0; i < control_dofs_.size(); ++i)
     {
       vals[i] = prm[i];
@@ -203,7 +203,7 @@ private:
   const HostAssemblyMap* map_{nullptr};
   Array<Index>           control_dofs_;
   Array<Index>           fixed_dofs_;
-  HostBoundaryPlan       bc_plan_;
+  HostBoundaryMap        bc_map_;
   mutable HostCsrMatrix  jac_;
 };
 

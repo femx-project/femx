@@ -2,7 +2,7 @@
 #include <string>
 #include <utility>
 
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 
 namespace femx
 {
@@ -12,42 +12,42 @@ namespace
 {
 
 template <MemorySpace Space>
-void checkMat(const BoundaryPlan<Space>& plan, const CsrMatrix<Space>& mat)
+void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
 {
-  if (mat.graph().layoutId() != plan.layoutId())
+  if (mat.graph().layoutId() != map.layoutId())
   {
     throw std::runtime_error(
-        "BoundaryPlan matrix does not match the planned CSR layout");
+        "BoundaryMap matrix does not match the mapped CSR layout");
   }
 }
 
-void checkForward(const HostBoundaryPlan& plan,
-                  const HostCsrMatrix&    mat,
-                  const HostVector&       rhs,
-                  const HostVector&       bc_vals)
+void checkForward(const HostBoundaryMap& map,
+                  const HostCsrMatrix&   mat,
+                  const HostVector&      rhs,
+                  const HostVector&      bc_vals)
 {
-  checkMat(plan, mat);
-  if (rhs.size() != plan.rows() || bc_vals.size() != plan.numBcs())
+  checkMat(map, mat);
+  if (rhs.size() != map.rows() || bc_vals.size() != map.numBcs())
   {
     throw std::runtime_error(
-        "BoundaryPlan forward vectors have incompatible sizes");
+        "BoundaryMap forward vectors have incompatible sizes");
   }
   if (&rhs == &bc_vals)
   {
     throw std::runtime_error(
-        "BoundaryPlan RHS and prescribed values must not alias");
+        "BoundaryMap RHS and prescribed values must not alias");
   }
   const HostVector& mat_vals = mat.vals();
   if (&rhs == &mat_vals || &bc_vals == &mat_vals)
   {
     throw std::runtime_error(
-        "BoundaryPlan vectors must not alias matrix values");
+        "BoundaryMap vectors must not alias matrix values");
   }
 }
 
-void replaceRowsRaw(const HostBoundaryPlan& plan, HostCsrMatrix& mat)
+void replaceRowsRaw(const HostBoundaryMap& map, HostCsrMatrix& mat)
 {
-  const auto  view    = plan.view();
+  const auto  view    = map.view();
   const auto& row_ptr = mat.graph().rowPtr();
   Real*       vals    = mat.valsData();
 
@@ -64,12 +64,12 @@ void replaceRowsRaw(const HostBoundaryPlan& plan, HostCsrMatrix& mat)
 
 } // namespace
 
-HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
-                                  const HostCsrGraph& graph)
+HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
+                                const HostCsrGraph& graph)
 {
   if (graph.rows() != graph.cols())
   {
-    throw std::runtime_error("BoundaryPlan requires a square CSR graph");
+    throw std::runtime_error("BoundaryMap requires a square CSR graph");
   }
 
   const Index     num_bcs = dofs.size();
@@ -85,12 +85,12 @@ HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
     if (dof < 0 || dof >= graph.rows())
     {
       throw std::runtime_error(
-          "BoundaryPlan constrained DOF is out of range");
+          "BoundaryMap constrained DOF is out of range");
     }
     if (bc_mask[dof] != 0)
     {
       throw std::runtime_error(
-          "BoundaryPlan constrained DOFs must be unique");
+          "BoundaryMap constrained DOFs must be unique");
     }
     bc_rows[ib]    = dof;
     bc_mask[dof]   = 1;
@@ -113,7 +113,7 @@ HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
           if (diag[ib] >= 0)
           {
             throw std::runtime_error(
-                "BoundaryPlan constrained row has duplicate diagonal entries");
+                "BoundaryMap constrained row has duplicate diagonal entries");
           }
           diag[ib] = k;
         }
@@ -126,7 +126,7 @@ HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
     if (diag[ib] < 0)
     {
       throw std::runtime_error(
-          "BoundaryPlan constrained row has no diagonal entry");
+          "BoundaryMap constrained row has no diagonal entry");
     }
     col_offsets[ib + 1] += col_offsets[ib];
   }
@@ -160,9 +160,9 @@ HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
           std::move(bc_mask)};
 }
 
-void copy(const HostBoundaryPlan& src,
-          DeviceBoundaryPlan&     dst,
-          CudaContext&            ctx)
+void copy(const HostBoundaryMap& src,
+          DeviceBoundaryMap&     dst,
+          CudaContext&           ctx)
 {
   DeviceIndexVector bc_rows;
   DeviceIndexVector diag;
@@ -190,29 +190,29 @@ void copy(const HostBoundaryPlan& src,
          std::move(bc_mask)};
 }
 
-void replaceRows(const HostBoundaryPlan& plan, HostCsrMatrix& jac)
+void replaceRows(const HostBoundaryMap& map, HostCsrMatrix& jac)
 {
-  checkMat(plan, jac);
-  replaceRowsRaw(plan, jac);
+  checkMat(map, jac);
+  replaceRowsRaw(map, jac);
 }
 
-void replaceRes(const HostBoundaryPlan& plan,
-                const HostVector&       state,
-                const HostVector&       bc_vals,
-                HostVector&             res)
+void replaceRes(const HostBoundaryMap& map,
+                const HostVector&      state,
+                const HostVector&      bc_vals,
+                HostVector&            res)
 {
-  if (state.size() != plan.rows() || res.size() != plan.rows()
-      || bc_vals.size() != plan.numBcs())
+  if (state.size() != map.rows() || res.size() != map.rows()
+      || bc_vals.size() != map.numBcs())
   {
     throw std::runtime_error(
-        "BoundaryPlan residual vectors have incompatible sizes");
+        "BoundaryMap residual vectors have incompatible sizes");
   }
   if (&state == &res || &bc_vals == &res)
   {
     throw std::runtime_error(
-        "BoundaryPlan residual output must not alias its inputs");
+        "BoundaryMap residual output must not alias its inputs");
   }
-  const auto view = plan.view();
+  const auto view = map.view();
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     const Index row = view.bcRow(ib);
@@ -220,14 +220,14 @@ void replaceRes(const HostBoundaryPlan& plan,
   }
 }
 
-void prepareForwardSolve(const HostBoundaryPlan& plan,
-                         HostCsrMatrix&          solve_mat,
-                         HostVector&             rhs,
-                         const HostVector&       bc_vals)
+void prepareForwardSolve(const HostBoundaryMap& map,
+                         HostCsrMatrix&         solve_mat,
+                         HostVector&            rhs,
+                         const HostVector&      bc_vals)
 {
-  checkForward(plan, solve_mat, rhs, bc_vals);
+  checkForward(map, solve_mat, rhs, bc_vals);
 
-  const auto view = plan.view();
+  const auto view = map.view();
   Real*      vals = solve_mat.valsData();
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
@@ -244,7 +244,7 @@ void prepareForwardSolve(const HostBoundaryPlan& plan,
     }
   }
 
-  replaceRowsRaw(plan, solve_mat);
+  replaceRowsRaw(map, solve_mat);
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     rhs[view.bcRow(ib)] = bc_vals[ib];
@@ -252,32 +252,32 @@ void prepareForwardSolve(const HostBoundaryPlan& plan,
 }
 
 #if !defined(FEMX_HAS_CUDA)
-void replaceRows(const DeviceBoundaryPlan&,
+void replaceRows(const DeviceBoundaryMap&,
                  DeviceCsrMatrix&,
                  CudaContext&)
 {
   throw std::runtime_error(
-      "BoundaryPlan CUDA operations require FEMX_ENABLE_CUDA");
+      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
 }
 
-void replaceRes(const DeviceBoundaryPlan&,
+void replaceRes(const DeviceBoundaryMap&,
                 const DeviceVector&,
                 const DeviceVector&,
                 DeviceVector&,
                 CudaContext&)
 {
   throw std::runtime_error(
-      "BoundaryPlan CUDA operations require FEMX_ENABLE_CUDA");
+      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
 }
 
-void prepareForwardSolve(const DeviceBoundaryPlan&,
+void prepareForwardSolve(const DeviceBoundaryMap&,
                          DeviceCsrMatrix&,
                          DeviceVector&,
                          const DeviceVector&,
                          CudaContext&)
 {
   throw std::runtime_error(
-      "BoundaryPlan CUDA operations require FEMX_ENABLE_CUDA");
+      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
 }
 #endif
 

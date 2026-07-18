@@ -6,7 +6,7 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/Assembly.hpp>
 #include <femx/assembly/AssemblyMap.hpp>
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
@@ -218,8 +218,8 @@ TestOutcome cudaBoundaryMatchesCpuReference()
   try
   {
     const HostCsrGraph host_graph = denseThreeByThreeGraph();
-    const auto         host_plan =
-        assembly::makeBoundaryPlan(Array<Index>{0, 2}, host_graph);
+    const auto         host_map =
+        assembly::makeBoundaryMap(Array<Index>{0, 2}, host_graph);
 
     HostCsrMatrix expected_mat(host_graph);
     setDenseVals(expected_mat);
@@ -227,13 +227,13 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     HostVector       expected_rhs = initial_rhs;
     const HostVector bc_vals{2.0, -1.0};
     assembly::prepareForwardSolve(
-        host_plan, expected_mat, expected_rhs, bc_vals);
+        host_map, expected_mat, expected_rhs, bc_vals);
 
-    CudaContext                  ctx;
-    DeviceCsrGraph               device_graph;
-    assembly::DeviceBoundaryPlan device_plan;
+    CudaContext                 ctx;
+    DeviceCsrGraph              device_graph;
+    assembly::DeviceBoundaryMap device_map;
     femx::copy(host_graph, device_graph, ctx);
-    assembly::copy(host_plan, device_plan, ctx);
+    assembly::copy(host_map, device_map, ctx);
 
     HostCsrMatrix host_mat(host_graph);
     setDenseVals(host_mat);
@@ -244,7 +244,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     femx::copy(initial_rhs, device_rhs, ctx);
     femx::copy(bc_vals, device_bc, ctx);
 
-    assembly::prepareForwardSolve(device_plan,
+    assembly::prepareForwardSolve(device_map,
                                   device_mat,
                                   device_rhs,
                                   device_bc,
@@ -268,7 +268,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     DeviceVector     device_res;
     femx::copy(host_state, device_state, ctx);
     femx::copy(host_res, device_res, ctx);
-    assembly::replaceRes(device_plan,
+    assembly::replaceRes(device_map,
                          device_state,
                          device_bc,
                          device_res,
@@ -284,7 +284,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     bool alias_rejected = false;
     try
     {
-      assembly::replaceRes(device_plan,
+      assembly::replaceRes(device_map,
                            device_state,
                            device_bc,
                            device_state,
@@ -324,12 +324,12 @@ TestOutcome cudaBoundaryMatchesCpuReference()
         3,
         HostIndexVector{0, 1, 2, 3},
         HostIndexVector{0, 1, 2}};
-    const auto diagonal_plan =
-        assembly::makeBoundaryPlan(Array<Index>{0}, diagonal_graph);
-    DeviceCsrGraph               diagonal_device_graph;
-    assembly::DeviceBoundaryPlan diagonal_device_plan;
+    const auto diagonal_map =
+        assembly::makeBoundaryMap(Array<Index>{0}, diagonal_graph);
+    DeviceCsrGraph              diagonal_device_graph;
+    assembly::DeviceBoundaryMap diagonal_device_map;
     femx::copy(diagonal_graph, diagonal_device_graph, ctx);
-    assembly::copy(diagonal_plan, diagonal_device_plan, ctx);
+    assembly::copy(diagonal_map, diagonal_device_map, ctx);
     DeviceCsrMatrix  diag_mat(diagonal_device_graph);
     DeviceVector     diagonal_prescribed;
     const HostVector host_diagonal_prescribed{1.0};
@@ -341,7 +341,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     bool mat_alias_rejected = false;
     try
     {
-      assembly::prepareForwardSolve(diagonal_device_plan,
+      assembly::prepareForwardSolve(diagonal_device_map,
                                     diag_mat,
                                     diag_mat.vals(),
                                     diagonal_prescribed,

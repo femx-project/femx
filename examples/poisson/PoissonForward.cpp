@@ -184,8 +184,8 @@ PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
   DirichletBC boundary;
   boundary.addBoundary(space_, onBoundary, boundaryValue);
   bc_vals_ = boundary.vals();
-  bc_plan_ = assembly::makeBoundaryPlan(boundary.dofs(),
-                                        map_.graph());
+  bc_map_  = assembly::makeBoundaryMap(boundary.dofs(),
+                                      map_.graph());
 }
 
 const Options& PoissonForwardProblem::options() const noexcept
@@ -204,10 +204,10 @@ PoissonForwardProblem::map() const noexcept
   return map_;
 }
 
-const assembly::HostBoundaryPlan&
-PoissonForwardProblem::bcPlan() const noexcept
+const assembly::HostBoundaryMap&
+PoissonForwardProblem::bcMap() const noexcept
 {
-  return bc_plan_;
+  return bc_map_;
 }
 
 const HostVector& PoissonForwardProblem::bcVals() const noexcept
@@ -244,7 +244,7 @@ void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
   {
     rhs[row] = -res[row];
   }
-  assembly::prepareForwardSolve(bc_plan_, mat, rhs, bc_vals_);
+  assembly::prepareForwardSolve(bc_map_, mat, rhs, bc_vals_);
 }
 
 ErrorReport PoissonForwardProblem::errorReport(const HostVector& x) const

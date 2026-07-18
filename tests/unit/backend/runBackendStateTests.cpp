@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "TestHelper.hpp"
-#include <femx/assembly/BoundaryPlan.hpp>
+#include <femx/assembly/BoundaryMap.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/CsrTranspose.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -82,17 +82,16 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   TestStatus status(__func__);
 
   const HostCsrGraph graph = denseThreeByThreeGraph();
-  const auto         plan =
-      assembly::makeBoundaryPlan(Array<Index>{1}, graph);
+  const auto         map   = assembly::makeBoundaryMap(Array<Index>{1}, graph);
 
   HostCsrMatrix authoritative(graph);
   setMatVals(authoritative);
-  assembly::replaceRows(plan, authoritative);
+  assembly::replaceRows(map, authoritative);
   status *= valsNear(authoritative.vals(),
                      std::array<Real, 9>{{4.0, 1.0, 2.0, 0.0, 1.0, 0.0, 7.0, 8.0, 9.0}});
 
   HostVector res{10.0, 20.0, 30.0};
-  assembly::replaceRes(plan,
+  assembly::replaceRes(map,
                        HostVector{4.0, 7.0, 9.0},
                        HostVector{2.5},
                        res);
@@ -103,7 +102,7 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   setMatVals(solve_mat);
   HostVector rhs{10.0, 20.0, 30.0};
   assembly::prepareForwardSolve(
-      plan, solve_mat, rhs, HostVector{2.0});
+      map, solve_mat, rhs, HostVector{2.0});
   status *= valsNear(solve_mat.vals(),
                      std::array<Real, 9>{{4.0, 0.0, 2.0, 0.0, 1.0, 0.0, 7.0, 0.0, 9.0}});
   status *= valsNear(rhs, std::array<Real, 3>{{8.0, 2.0, 14.0}});
@@ -180,7 +179,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   TestStatus status(__func__);
 
   const HostCsrGraph graph = denseThreeByThreeGraph();
-  const auto         plan  = assembly::makeBoundaryPlan(Array<Index>{0, 2}, graph);
+  const auto         map   = assembly::makeBoundaryMap(Array<Index>{0, 2}, graph);
   const HostCsrGraph different_layout{
       3,
       3,
@@ -191,7 +190,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   bool layout_rejected = false;
   try
   {
-    assembly::replaceRows(plan, wrong_mat);
+    assembly::replaceRows(map, wrong_mat);
   }
   catch (const std::runtime_error&)
   {
@@ -203,7 +202,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   bool       alias_rejected = false;
   try
   {
-    assembly::replaceRes(plan,
+    assembly::replaceRes(map,
                          alias_vec,
                          HostVector{0.0, 0.0},
                          alias_vec);
@@ -219,15 +218,15 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
       3,
       HostIndexVector{0, 1, 2, 3},
       HostIndexVector{0, 1, 2}};
-  const auto diagonal_plan =
-      assembly::makeBoundaryPlan(Array<Index>{0}, diagonal_graph);
+  const auto diagonal_map =
+      assembly::makeBoundaryMap(Array<Index>{0}, diagonal_graph);
   HostCsrMatrix diag_mat(diagonal_graph);
   diag_mat.vals() = {2.0, 3.0, 4.0};
 
   bool mat_alias_rejected = false;
   try
   {
-    assembly::prepareForwardSolve(diagonal_plan,
+    assembly::prepareForwardSolve(diagonal_map,
                                   diag_mat,
                                   diag_mat.vals(),
                                   HostVector{1.0});

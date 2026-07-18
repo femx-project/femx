@@ -77,8 +77,8 @@ PETSc/TAO for optimization, but uses Re::Solve for the state and adjoint linear
 solves.
 
 The Poisson residual and state Jacobian are assembled with the backend API:
-`Geometry`, `AssemblyMap`, the runtime `ElementView` operator, `BoundaryPlan`,
-and `HostCsrMatrix`. A small `MatrixLinearization` adapter copies that planned
+`Geometry`, `AssemblyMap`, the runtime `ElementView` operator, `BoundaryMap`,
+and `HostCsrMatrix`. A small `MatrixLinearization` adapter copies that mapped
 CSR Jacobian into PETSc or the Re::Solve map-backed matrix used by the
 reduced-functional layer. Both optimization executables assemble and solve on
 the CPU.

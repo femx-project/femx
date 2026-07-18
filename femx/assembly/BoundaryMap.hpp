@@ -16,7 +16,7 @@ namespace assembly
 
 /** @brief Non-owning boundary metadata consumed by host and CUDA kernels. */
 template <MemorySpace Space>
-struct BoundaryPlanView
+struct BoundaryMapView
 {
   Index num_rows{0};
   Index num_cols{0};
@@ -59,34 +59,34 @@ struct BoundaryPlanView
 /**
  * @brief Precomputed CSR locations used to enforce essential boundaries.
  *
- * The plan preserves the constrained-DOF input order. Prescribed values passed
- * to prepareForwardSolve() use the same order. The plan refers to one CSR
+ * The map preserves the constrained-DOF input order. Prescribed values passed
+ * to prepareForwardSolve() use the same order. The map refers to one CSR
  * layout; matrices passed to the operations must use that layout.
  */
 template <MemorySpace Space>
-class BoundaryPlan
+class BoundaryMap
 {
 public:
   using IndexVector = Vector<Space, Index>;
 
-  BoundaryPlan() = default;
+  BoundaryMap() = default;
 
-  BoundaryPlan(const BoundaryPlan&)                = default;
-  BoundaryPlan(BoundaryPlan&&) noexcept            = default;
-  BoundaryPlan& operator=(const BoundaryPlan&)     = default;
-  BoundaryPlan& operator=(BoundaryPlan&&) noexcept = default;
+  BoundaryMap(const BoundaryMap&)                = default;
+  BoundaryMap(BoundaryMap&&) noexcept            = default;
+  BoundaryMap& operator=(const BoundaryMap&)     = default;
+  BoundaryMap& operator=(BoundaryMap&&) noexcept = default;
 
 private:
-  BoundaryPlan(Index         num_rows,
-               Index         num_cols,
-               Index         nnz,
-               std::uint64_t layout_id,
-               IndexVector   bc_rows,
-               IndexVector   diag,
-               IndexVector   col_offsets,
-               IndexVector   col_entries,
-               IndexVector   col_rows,
-               IndexVector   bc_mask)
+  BoundaryMap(Index         num_rows,
+              Index         num_cols,
+              Index         nnz,
+              std::uint64_t layout_id,
+              IndexVector   bc_rows,
+              IndexVector   diag,
+              IndexVector   col_offsets,
+              IndexVector   col_entries,
+              IndexVector   col_rows,
+              IndexVector   bc_mask)
     : num_rows_(num_rows),
       num_cols_(num_cols),
       nnz_(nnz),
@@ -100,12 +100,12 @@ private:
   {
   }
 
-  friend BoundaryPlan<MemorySpace::Host> makeBoundaryPlan(
+  friend BoundaryMap<MemorySpace::Host> makeBoundaryMap(
       const Array<Index>&,
       const HostCsrGraph&);
 
-  friend void copy(const BoundaryPlan<MemorySpace::Host>&,
-                   BoundaryPlan<MemorySpace::Device>&,
+  friend void copy(const BoundaryMap<MemorySpace::Host>&,
+                   BoundaryMap<MemorySpace::Device>&,
                    CudaContext&);
 
 public:
@@ -134,7 +134,7 @@ public:
     return bc_rows_.size();
   }
 
-  BoundaryPlanView<Space> view() const noexcept
+  BoundaryMapView<Space> view() const noexcept
   {
     return {num_rows_,
             num_cols_,
@@ -162,17 +162,17 @@ private:
   IndexVector bc_mask_;
 };
 
-using HostBoundaryPlan   = BoundaryPlan<MemorySpace::Host>;
-using DeviceBoundaryPlan = BoundaryPlan<MemorySpace::Device>;
+using HostBoundaryMap   = BoundaryMap<MemorySpace::Host>;
+using DeviceBoundaryMap = BoundaryMap<MemorySpace::Device>;
 
 /** @brief Build and validate boundary metadata for a host CSR graph. */
-HostBoundaryPlan makeBoundaryPlan(const Array<Index>& dofs,
-                                  const HostCsrGraph& graph);
+HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
+                                const HostCsrGraph& graph);
 
 /** @brief Explicitly copy host boundary metadata to device storage. */
-void copy(const HostBoundaryPlan& src,
-          DeviceBoundaryPlan&     dst,
-          CudaContext&            ctx);
+void copy(const HostBoundaryMap& src,
+          DeviceBoundaryMap&     dst,
+          CudaContext&           ctx);
 
 /**
  * @brief Replace constrained rows in the authoritative Jacobian.
@@ -181,25 +181,25 @@ void copy(const HostBoundaryPlan& src,
  * deliberately left unchanged so the matrix continues to represent the
  * Jacobian of the row-replaced residual and can be used by adjoint solves.
  */
-void replaceRows(const HostBoundaryPlan& plan, HostCsrMatrix& jac);
+void replaceRows(const HostBoundaryMap& map, HostCsrMatrix& jac);
 
 /** @brief Asynchronous CUDA equivalent of replaceRows(). */
-void replaceRows(const DeviceBoundaryPlan& plan,
-                 DeviceCsrMatrix&          jac,
-                 CudaContext&              ctx);
+void replaceRows(const DeviceBoundaryMap& map,
+                 DeviceCsrMatrix&         jac,
+                 CudaContext&             ctx);
 
 /** @brief Replace constrained residual entries with state - prescribed. */
-void replaceRes(const HostBoundaryPlan& plan,
-                const HostVector&       state,
-                const HostVector&       bc_vals,
-                HostVector&             res);
+void replaceRes(const HostBoundaryMap& map,
+                const HostVector&      state,
+                const HostVector&      bc_vals,
+                HostVector&            res);
 
 /** @brief Asynchronous CUDA equivalent of replaceRes(). */
-void replaceRes(const DeviceBoundaryPlan& plan,
-                const DeviceVector&       state,
-                const DeviceVector&       bc_vals,
-                DeviceVector&             res,
-                CudaContext&              ctx);
+void replaceRes(const DeviceBoundaryMap& map,
+                const DeviceVector&      state,
+                const DeviceVector&      bc_vals,
+                DeviceVector&            res,
+                CudaContext&             ctx);
 
 /**
  * @brief Prepare a separate forward-solve matrix and right-hand side.
@@ -209,17 +209,17 @@ void replaceRes(const DeviceBoundaryPlan& plan,
  * are set to bc_vals. The input matrix must be a separate solve copy
  * when the authoritative row-replaced Jacobian is still needed.
  */
-void prepareForwardSolve(const HostBoundaryPlan& plan,
-                         HostCsrMatrix&          solve_mat,
-                         HostVector&             rhs,
-                         const HostVector&       bc_vals);
+void prepareForwardSolve(const HostBoundaryMap& map,
+                         HostCsrMatrix&         solve_mat,
+                         HostVector&            rhs,
+                         const HostVector&      bc_vals);
 
 /** @brief Asynchronous CUDA equivalent of prepareForwardSolve(). */
-void prepareForwardSolve(const DeviceBoundaryPlan& plan,
-                         DeviceCsrMatrix&          solve_mat,
-                         DeviceVector&             rhs,
-                         const DeviceVector&       bc_vals,
-                         CudaContext&              ctx);
+void prepareForwardSolve(const DeviceBoundaryMap& map,
+                         DeviceCsrMatrix&         solve_mat,
+                         DeviceVector&            rhs,
+                         const DeviceVector&      bc_vals,
+                         CudaContext&             ctx);
 
 } // namespace assembly
 } // namespace femx

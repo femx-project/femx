@@ -44,7 +44,7 @@ From the build directory:
 ```
 
 All variants build the finite-element operator through `Geometry`,
-`AssemblyMap`, `BoundaryPlan`, and memory-space-specific CSR storage. The
+`AssemblyMap`, `BoundaryMap`, and memory-space-specific CSR storage. The
 default executable uses the native dense fallback to solve that assembled CSR
 system and does not require optional solver packages.
 
@@ -54,7 +54,7 @@ With Re::Solve enabled:
 ./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cpu --output yes
 ```
 
-With a CUDA-enabled Re::Solve build, `-b cuda` keeps geometry, maps/plans, CSR
+With a CUDA-enabled Re::Solve build, `-b cuda` keeps geometry, maps, CSR
 values, right-hand side, and solution in device memory through assembly and
 the linear solve. Only the final report/output solution is copied to the host:
 
