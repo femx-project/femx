@@ -7,9 +7,8 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
@@ -26,11 +25,11 @@ using namespace femx::examples;
 namespace
 {
 
-void copyToPETSc(const CsrMatrix& src, PETScAssemblyMatrix& dst)
+void copyToPETSc(const HostCsrMatrix& src, PETScOperator& dst)
 {
   const Index* rp   = src.rowPtrData();
   const Index* ci   = src.colIndData();
-  const Real*  vals = src.valuesData();
+  const Real*  vals = src.valsData();
 
   for (Index row = 0; row < src.rows(); ++row)
   {
@@ -46,7 +45,7 @@ void copyToPETSc(const CsrMatrix& src, PETScAssemblyMatrix& dst)
 
 int run(const Options& opts)
 {
-  if (opts.backend != WorkspaceType::Cpu)
+  if (opts.backend != MemorySpace::Host)
   {
     throw std::runtime_error("PETSc Poisson backend supports only 'cpu'");
   }
@@ -54,35 +53,35 @@ int run(const Options& opts)
   ExampleHelper         helper("petsc", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  CsrAssemblyMatrix A(problem.pattern());
-  Vector<Real>      rhs;
+  HostCsrMatrix A(problem.map().graph());
+  HostVector    rhs;
   problem.assemble(A, rhs);
 
   PETScVector layout(PETSC_COMM_WORLD);
   layout.resize(problem.numDofs());
 
-  PETScAssemblyMatrix A_petsc(PETSC_COMM_WORLD);
-  A_petsc.resize(problem.pattern(), layout);
+  PETScOperator A_petsc(PETSC_COMM_WORLD);
+  A_petsc.resize(problem.map().graph(), layout);
   if (isRoot())
   {
-    copyToPETSc(A.mat(), A_petsc);
+    copyToPETSc(A, A_petsc);
   }
   A_petsc.finalize();
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
 
-  Vector<Real> x;
+  HostVector x;
   solver.solve(A_petsc, rhs, x);
 
-  const Real residual_norm = helper.residualNorm(A_petsc, rhs, x);
+  const Real res_norm = helper.resNorm(A_petsc, rhs, x);
 
   if (isRoot())
   {
     printReport(std::cout,
-                helper.backendName(),
+                helper.name(),
                 problem,
                 problem.errorReport(x),
-                residual_norm);
+                res_norm);
 
     if (opts.write_output)
     {
@@ -107,19 +106,7 @@ int main(int argc, char* argv[])
 
     try
     {
-      const bool help = [&]()
-      {
-        for (int i = 1; i < argc; ++i)
-        {
-          if (std::string(argv[i]) == "--help" || std::string(argv[i]) == "-h")
-          {
-            return true;
-          }
-        }
-        return false;
-      }();
-
-      if (help)
+      if (examples::hasHelp(argc, argv))
       {
         if (isRoot())
         {

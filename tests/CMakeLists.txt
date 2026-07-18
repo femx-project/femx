@@ -3,6 +3,60 @@ target_include_directories(runLinalgTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runLinalgTests PRIVATE femx::femx)
 add_test(NAME LinalgTests COMMAND runLinalgTests)
 
+add_executable(runMemorySpaceTests unit/backend/runMemorySpaceTests.cpp)
+target_include_directories(runMemorySpaceTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runMemorySpaceTests PRIVATE femx::femx)
+add_test(NAME MemorySpaceTests COMMAND runMemorySpaceTests)
+
+add_executable(runBackendAssemblyTests
+               unit/backend/runBackendAssemblyTests.cpp)
+target_include_directories(runBackendAssemblyTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runBackendAssemblyTests PRIVATE femx::femx)
+add_test(NAME BackendAssemblyTests COMMAND runBackendAssemblyTests)
+
+add_executable(runBackendStateTests unit/backend/runBackendStateTests.cpp)
+target_include_directories(runBackendStateTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runBackendStateTests PRIVATE femx::femx)
+add_test(NAME BackendStateTests COMMAND runBackendStateTests)
+
+add_executable(
+  runPoissonAssemblyTests
+  unit/examples/runPoissonAssemblyTests.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../examples/poisson/PoissonForward.cpp)
+target_include_directories(
+  runPoissonAssemblyTests
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../examples/poisson)
+target_link_libraries(runPoissonAssemblyTests PRIVATE femx::femx)
+add_test(NAME PoissonAssemblyTests COMMAND runPoissonAssemblyTests)
+
+if(FEMX_HAS_CUDA)
+  add_executable(runCudaAssemblyTests
+                 unit/backend/runCudaAssemblyTests.cu)
+  target_include_directories(runCudaAssemblyTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(runCudaAssemblyTests PRIVATE femx::femx)
+  set_target_properties(runCudaAssemblyTests PROPERTIES CUDA_STANDARD 17
+                                                        CUDA_STANDARD_REQUIRED ON)
+  add_test(NAME CudaAssemblyTests COMMAND runCudaAssemblyTests)
+  set_tests_properties(CudaAssemblyTests PROPERTIES LABELS "cuda;optional")
+endif()
+
+if(FEMX_HAS_CUDA
+   AND FEMX_HAS_RESOLVE_CUDA
+   AND TARGET femx_linalg_resolve
+   AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
+  add_executable(runReSolveDeviceTests
+                 unit/backend/runReSolveDeviceTests.cpp)
+  target_include_directories(runReSolveDeviceTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(runReSolveDeviceTests PRIVATE femx::linalg_resolve)
+  add_test(NAME ReSolveDeviceTests COMMAND runReSolveDeviceTests)
+  set_tests_properties(ReSolveDeviceTests
+                       PROPERTIES LABELS "resolve;cuda;optional")
+endif()
+
 add_executable(runReferenceElementTests unit/fem/runReferenceElementTests.cpp)
 target_include_directories(runReferenceElementTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -34,7 +88,8 @@ if(TARGET femx_linalg_resolve)
   add_executable(runReSolveSolverTests unit/linalg/runReSolveSolverTests.cpp)
   target_include_directories(runReSolveSolverTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runReSolveSolverTests PRIVATE femx::linalg_resolve)
+  target_link_libraries(runReSolveSolverTests
+                        PRIVATE femx::linalg_resolve femx::assembly)
   add_test(NAME ReSolveSolverTests COMMAND runReSolveSolverTests)
   set_tests_properties(ReSolveSolverTests PROPERTIES LABELS "resolve;optional")
 endif()
@@ -43,7 +98,8 @@ if(TARGET femx_linalg_petsc)
   add_executable(runPETScSolverTests unit/linalg/runPETScSolverTests.cpp)
   target_include_directories(runPETScSolverTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runPETScSolverTests PRIVATE femx::linalg_petsc)
+  target_link_libraries(runPETScSolverTests
+                        PRIVATE femx::linalg_petsc femx::assembly)
   add_test(NAME PETScSolverTests COMMAND runPETScSolverTests)
   set_tests_properties(PETScSolverTests PROPERTIES LABELS "petsc;optional")
 endif()

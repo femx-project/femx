@@ -140,7 +140,7 @@ def _resolve_options(values):
 def _backend_options(backend, values):
     if values is None:
         return None
-    if backend not in ("resolve", "resolve-cuda"):
+    if backend != "resolve":
         raise ValueError(
             f"solver options are not supported for backend '{backend}'"
         )
@@ -199,7 +199,7 @@ def _configure_assembly(prob, backend):
 
 def _dense_matrix(prob):
     _configure_assembly(prob, "dense")
-    return _core.DenseAssemblyMatrix()
+    return _core.DenseMatrix()
 
 
 def _dense_solver(_, options=None):
@@ -209,30 +209,18 @@ def _dense_solver(_, options=None):
 
 def _resolve_matrix(prob):
     _configure_assembly(prob, "resolve")
-    return _core._CsrAssemblyMatrix(prob.model._impl._matrix_pattern)
+    return _core._MapCsrMatrix(prob.model._impl._map)
 
 
 def _resolve_solver(_, options=None):
     if options is None:
-        return _core._ReSolveLinearSolver(_core._WorkspaceType.CPU)
-    return _core._ReSolveLinearSolver(
-        _core._WorkspaceType.CPU,
-        options,
-    )
-
-
-def _resolve_cuda_solver(_, options=None):
-    if options is None:
-        return _core._ReSolveLinearSolver(_core._WorkspaceType.CUDA)
-    return _core._ReSolveLinearSolver(
-        _core._WorkspaceType.CUDA,
-        options,
-    )
+        return _core._ReSolveLinearSolver()
+    return _core._ReSolveLinearSolver(options)
 
 
 def _petsc_matrix(prob):
     _configure_assembly(prob, "petsc")
-    return _core._PETScAssemblyMatrix(prob.model._impl._matrix_pattern)
+    return _core._PETScOperator(prob.model._impl._map)
 
 
 def _petsc_solver(_, options=None):
@@ -948,10 +936,5 @@ class TaoOptimizer:
 _BACKENDS["dense"] = (_dense_matrix, _dense_solver)
 if hasattr(_core, "_ReSolveLinearSolver"):
     _BACKENDS["resolve"] = (_resolve_matrix, _resolve_solver)
-    if _core._resolve_has_cuda:
-        _BACKENDS["resolve-cuda"] = (
-            _resolve_matrix,
-            _resolve_cuda_solver,
-        )
 if hasattr(_core, "_KspLinearSolver"):
     _BACKENDS["petsc"] = (_petsc_matrix, _petsc_solver)

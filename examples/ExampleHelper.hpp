@@ -9,21 +9,35 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
-#include <femx/common/Workspace.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx::examples
 {
 
-/** @brief Return a lower-case name for a femx workspace backend. */
-inline const char* workspaceName(WorkspaceType backend)
+/** @brief Return true when the standard help flag is present. */
+inline bool hasHelp(int argc, char* const argv[])
 {
-  switch (backend)
+  for (int i = 1; i < argc; ++i)
   {
-  case WorkspaceType::Cpu:
+    const std::string arg = argv[i];
+    if (arg == "--help" || arg == "-h")
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Return a lower-case name for a femx memory space. */
+inline const char* memspaceName(MemorySpace memspace)
+{
+  switch (memspace)
+  {
+  case MemorySpace::Host:
     return "cpu";
-  case WorkspaceType::Cuda:
+  case MemorySpace::Device:
     return "cuda";
   }
   return "unknown";
@@ -35,45 +49,30 @@ inline const char* workspaceName(WorkspaceType backend)
 class ExampleHelper
 {
 public:
-  ExampleHelper(std::string   solver_name,
-                WorkspaceType backend,
-                std::string   output_dir)
-    : solver_name_(std::move(solver_name)),
-      backend_(backend),
-      output_dir_(std::move(output_dir))
+  ExampleHelper(std::string solver,
+                MemorySpace memspace,
+                std::string out_dir)
+    : solver_(std::move(solver)),
+      memspace_(memspace),
+      out_dir_(std::move(out_dir))
   {
   }
 
-  WorkspaceType backend() const noexcept
+  std::string name() const
   {
-    return backend_;
+    return solver_ + "/" + memspaceName(memspace_);
   }
 
-  std::string hardwareBackend() const
-  {
-    return workspaceName(backend_);
-  }
-
-  std::string backendName() const
-  {
-    return solver_name_ + "/" + hardwareBackend();
-  }
-
-  const std::string& outputDirectory() const noexcept
-  {
-    return output_dir_;
-  }
-
-  Real residualNorm(const linalg::LinearOperator& A,
-                    const Vector<Real>&           rhs,
-                    const Vector<Real>&           x) const
+  Real resNorm(const linalg::LinearOperator& A,
+               const HostVector&             rhs,
+               const HostVector&             x) const
   {
     if (rhs.size() != A.numRows() || x.size() != A.numCols())
     {
       throw std::runtime_error("Residual dimensions are inconsistent");
     }
 
-    Vector<Real> Ax;
+    HostVector Ax;
     A.apply(x, Ax);
 
     Real norm2 = 0.0;
@@ -85,25 +84,46 @@ public:
     return std::sqrt(norm2);
   }
 
-  std::string outputBase(const std::string& output_stem) const
+  Real resNorm(const HostCsrMatrix& A,
+               const HostVector&    rhs,
+               const HostVector&    x) const
   {
-    const std::filesystem::path output_dir(output_dir_);
-    const std::string           filename = output_stem + "-" + solver_name_ + "-"
-                                 + hardwareBackend();
-    return (output_dir / filename).string();
+    if (rhs.size() != A.rows() || x.size() != A.cols())
+    {
+      throw std::runtime_error("Residual dimensions are inconsistent");
+    }
+
+    Real norm2 = 0.0;
+    for (Index row = 0; row < A.rows(); ++row)
+    {
+      Real val = -rhs[row];
+      for (Index k = A.rowPtrData()[row]; k < A.rowPtrData()[row + 1]; ++k)
+      {
+        val += A.valsData()[k] * x[A.colIndData()[k]];
+      }
+      norm2 += val * val;
+    }
+    return std::sqrt(norm2);
+  }
+
+  std::string outputBase(const std::string& stem) const
+  {
+    const std::filesystem::path dir(out_dir_);
+    const std::string           file = stem + "-" + solver_ + "-" + memspaceName(memspace_);
+    return (dir / file).string();
   }
 
   /** @brief Print the path of a visualization file after it has been written. */
-  void printVisualizationPath(const std::string& output_base,
+  void printVisualizationPath(const std::string& base,
                               const std::string& extension = ".vtu") const
   {
-    std::cout << "  wrote visualization: " << output_base << extension << '\n';
+    std::cout << "  wrote visualization: " << base << extension << '\n';
   }
 
 private:
-  std::string   solver_name_;
-  WorkspaceType backend_;
-  std::string   output_dir_;
+  std::string solver_;
+  MemorySpace memspace_;
+  std::string out_dir_;
 };
 
 /** @brief Print a standard example error message and return failure status. */

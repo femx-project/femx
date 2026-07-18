@@ -13,7 +13,7 @@ namespace femx
 namespace linalg
 {
 
-class PETScAssemblyMatrix;
+class PETScOperator;
 class PETScVector;
 
 /**
@@ -34,7 +34,6 @@ struct KspOptions
 
   bool nonzero_guess = false; ///< Use the input vector as an initial guess.
   bool use_opts_db   = true;  ///< Allow PETSc options-database overrides.
-  bool check_finite  = false; ///< Check matrix/vector values before solving.
 };
 
 /**
@@ -59,20 +58,20 @@ public:
   const KspOptions& opts() const;
 
   void solve(const LinearOperator& op,
-             const Vector<Real>&   rhs,
-             Vector<Real>&         out) override;
+             const HostVector&     rhs,
+             HostVector&           out) override;
 
   void solveT(const LinearOperator& op,
-              const Vector<Real>&   rhs,
-              Vector<Real>&         out) override;
+              const HostVector&     rhs,
+              HostVector&           out) override;
 
-  void solve(const PETScAssemblyMatrix& op,
-             const PETScVector&         rhs,
-             PETScVector&               out);
+  void solve(const PETScOperator& op,
+             const PETScVector&   rhs,
+             PETScVector&         out);
 
-  void solveT(const PETScAssemblyMatrix& op,
-              const PETScVector&         rhs,
-              PETScVector&               out);
+  void solveT(const PETScOperator& op,
+              const PETScVector&   rhs,
+              PETScVector&         out);
 
   KSPConvergedReason convergedReason() const;
 

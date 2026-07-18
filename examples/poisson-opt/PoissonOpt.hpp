@@ -4,18 +4,17 @@
 #include <memory>
 #include <string>
 
-#include <femx/assembly/ElementKernel.hpp>
+#include <femx/assembly/AssemblyMap.hpp>
+#include <femx/assembly/BoundaryPlan.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/common/Workspace.hpp>
 #include <femx/fem/FESpace.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/Objective.hpp>
 #include <femx/inverse/SumObjective.hpp>
-#include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
@@ -39,13 +38,12 @@ namespace femx::examples::poisson_opt
 
 struct Options
 {
-  Index         num_x_cells  = 32;                 ///< Number of cells in x.
-  Index         num_y_cells  = 32;                 ///< Number of cells in y.
-  WorkspaceType backend      = WorkspaceType::Cpu; ///< Linear-solver backend.
-  bool          write_output = false;              ///< Write VTU output.
-  Real          alpha        = 1.0e-6;             ///< Control regularization weight.
-  Index         obs_stride   = 0;                  ///< Observation spacing in mesh cells.
-  Index         max_its      = 50;                 ///< Maximum TAO iterations.
+  Index num_x_cells  = 32;     ///< Number of cells in x.
+  Index num_y_cells  = 32;     ///< Number of cells in y.
+  bool  write_output = false;  ///< Write VTU output.
+  Real  alpha        = 1.0e-6; ///< Control regularization weight.
+  Index obs_stride   = 0;      ///< Observation spacing in mesh cells.
+  Index max_its      = 50;     ///< Maximum TAO iterations.
 };
 
 /**
@@ -66,12 +64,12 @@ struct Report
  */
 struct Result
 {
-  Report       report;             ///< Final diagnostic metrics.
-  Vector<Real> prm;                ///< Optimized control vector.
-  Vector<Real> state;              ///< State vector at the optimized control.
-  Index        tao_itr    = 0;     ///< Number of TAO iterations.
-  int          tao_reason = 0;     ///< PETSc/TAO convergence reason.
-  bool         converged  = false; ///< True when TAO reports convergence.
+  Report     report;             ///< Final diagnostic metrics.
+  HostVector prm;                ///< Optimized control vector.
+  HostVector state;              ///< State vector at the optimized control.
+  Index      tao_itr    = 0;     ///< Number of TAO iterations.
+  int        tao_reason = 0;     ///< PETSc/TAO convergence reason.
+  bool       converged  = false; ///< True when TAO reports convergence.
 };
 
 /**
@@ -88,31 +86,31 @@ public:
   PoissonOptProblem(PoissonOptProblem&&)                 = delete;
   PoissonOptProblem& operator=(PoissonOptProblem&&)      = delete;
 
-  const Options&            options() const noexcept;
-  const CsrPattern&         statePattern() const;
-  const state::Residual&    residual() const;
-  const inverse::Objective& objective() const;
+  const Options&                   options() const noexcept;
+  const assembly::HostAssemblyMap& stateMap() const;
+  const state::Residual&           residual() const;
+  const inverse::Objective&        objective() const;
 
   Index numNodes() const noexcept;
   Index numStates() const noexcept;
   Index numParams() const noexcept;
   Index numObservations() const noexcept;
 
-  Report report(const Vector<Real>& prm,
-                const Vector<Real>& state,
-                Real                value,
-                const Vector<Real>& grad) const;
+  Report report(const HostVector& prm,
+                const HostVector& state,
+                Real              value,
+                const HostVector& grad) const;
 
   /**
    * @brief Write final state/control fields to VTU.
    *
    * @param[in] prm - Optimized control vector.
    * @param[in] state - Final state vector.
-   * @param[in] output_base - Output path without extension, or with `.vtu`.
+   * @param[in] base - Output path without extension, or with `.vtu`.
    */
-  void writeSolution(const Vector<Real>& prm,
-                     const Vector<Real>& state,
-                     const std::string&  output_base) const;
+  void writeSolution(const HostVector&  prm,
+                     const HostVector&  state,
+                     const std::string& base) const;
 
 private:
   void prepareObjective(state::StateSolver& state_solver);
@@ -124,31 +122,36 @@ private:
   void initializeObservationLayout();
   void initializeResidual();
 
-  Index        effectiveObservationStride() const;
-  Vector<Real> observationWeights() const;
+  void writeFields(const HostVector&  prm,
+                   const HostVector&  state,
+                   const std::string& path) const;
+
+  void writeObs(const HostVector&  state,
+                const std::string& path) const;
+
+  Index      effectiveObservationStride() const;
+  HostVector observationWeights() const;
 
   bool isBoundaryNode(const fem::Mesh::Node& p) const;
   bool isControlNode(const fem::Mesh::Node& p) const;
 
 private:
-  Options                     opts_;
-  fem::Mesh                   mesh_;
-  fem::LagrangeQuadQ1         fe_;
-  fem::FESpace                space_;
-  fem::GaussQuadrature        quad_;
-  std::unique_ptr<CsrPattern> state_pattern_;
+  Options                   opts_;
+  fem::Mesh                 mesh_;
+  fem::LagrangeQuadQ1       fe_;
+  fem::FESpace              space_;
+  fem::HostGeometry         geom_;
+  assembly::HostAssemblyMap state_map_;
 
-  Vector<Index>  ctr_dofs_;
-  Vector<Index>  fixed_dofs_;
-  Vector<Index>  obs_dofs_;
-  Vector<Real>   ctr_weights_;
-  Vector<Real>   target_state_;
-  Vector<Real>   target_ctr_;
-  Vector<Point3> obs_points_;
+  Array<Index>  ctr_dofs_;
+  Array<Index>  fixed_dofs_;
+  Array<Index>  obs_dofs_;
+  HostVector    ctr_weights_;
+  HostVector    target_state_;
+  HostVector    target_ctr_;
+  Array<Point3> obs_points_;
 
-  std::unique_ptr<assembly::ElementKernel> residual_kernel_;
-  std::unique_ptr<state::Residual>         base_residual_;
-  std::unique_ptr<state::Residual>         residual_;
+  std::unique_ptr<state::Residual> res_;
 
   std::unique_ptr<inverse::LeastSquaresObjective> misfit_;
   std::unique_ptr<inverse::LeastSquaresObjective> reg_;
@@ -168,8 +171,6 @@ Result solve(PoissonOptProblem&    problem,
 Options parseOptions(int    argc,
                      char** argv,
                      bool   ignore_unknown);
-
-bool hasOptHelp(int argc, char** argv);
 
 void printUsage(std::ostream& out,
                 const char*   app_name,

@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace state
 {
 
@@ -22,12 +19,12 @@ class StateSolver
 public:
   virtual ~StateSolver() = default;
 
-  virtual Index numStates() const    = 0;
-  virtual Index numParams() const    = 0;
-  virtual Index numResiduals() const = 0;
+  virtual Index numStates() const = 0;
+  virtual Index numParams() const = 0;
+  virtual Index numRes() const    = 0;
 
   /** @brief Solve the state equation for a parameter vector. */
-  virtual void solve(const Vector<Real>& prm, Vector<Real>& state) = 0;
+  virtual void solve(const HostVector& prm, HostVector& state) = 0;
 };
 
 } // namespace state

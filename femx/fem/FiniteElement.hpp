@@ -50,7 +50,7 @@ public:
    * @param[out] N - Output vector of length numDofsPerElement().
    */
   virtual void calcN(const QuadraturePoint& qp,
-                     VectorView<Real>       N) const = 0;
+                     HostVectorView         N) const = 0;
 
   /**
    * @brief Evaluate shape-function gradients in reference coordinates.

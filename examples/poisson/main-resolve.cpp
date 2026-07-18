@@ -1,11 +1,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "../ExampleHelper.hpp"
+#if defined(FEMX_POISSON_HAS_DEVICE_SOLVER)
+#include "PoissonCuda.hpp"
+#endif
 #include "PoissonForward.hpp"
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 using namespace femx;
@@ -25,20 +28,36 @@ int run(const Options& opts)
   ExampleHelper         helper("resolve", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  CsrAssemblyMatrix A(problem.pattern());
-  Vector<Real>      rhs;
-  problem.assemble(A, rhs);
+  HostVector x;
+  Real       res_norm = 0.0;
+  if (opts.backend == MemorySpace::Host)
+  {
+    HostCsrMatrix A(problem.map().graph());
+    HostVector    rhs;
+    problem.assemble(A, rhs);
 
-  ReSolveLinearSolver solver(opts.backend);
-
-  Vector<Real> x;
-  solver.solve(A, rhs, x);
+    ReSolveLinearSolver solver;
+    solver.setOperator(A);
+    solver.solve(rhs, x);
+    res_norm = helper.resNorm(A, rhs, x);
+  }
+  else
+  {
+#if defined(FEMX_POISSON_HAS_DEVICE_SOLVER)
+    CudaSolveResult result = solveCuda(problem);
+    x                      = std::move(result.sol);
+    res_norm               = result.res_norm;
+#else
+    throw std::runtime_error(
+        "CUDA Poisson backend requires a CUDA-enabled ReSolve build");
+#endif
+  }
 
   printReport(std::cout,
-              helper.backendName(),
+              helper.name(),
               problem,
               problem.errorReport(x),
-              helper.residualNorm(A, rhs, x));
+              res_norm);
 
   if (opts.write_output)
   {
@@ -50,26 +69,13 @@ int run(const Options& opts)
   return 0;
 }
 
-bool hasHelp(int argc, char** argv)
-{
-  for (int i = 1; i < argc; ++i)
-  {
-    const std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h")
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
 } // namespace
 
 int main(int argc, char* argv[])
 {
   try
   {
-    if (hasHelp(argc, argv))
+    if (examples::hasHelp(argc, argv))
     {
       printUsage(FEMX_POISSON_APP_NAME, false);
       return 0;

@@ -32,14 +32,35 @@ void DenseMatrix::setZero()
   std::fill(vals_.begin(), vals_.end(), Real{});
 }
 
-Index DenseMatrix::rows() const
+Index DenseMatrix::numRows() const
 {
   return rows_;
 }
 
-Index DenseMatrix::cols() const
+Index DenseMatrix::numCols() const
 {
   return cols_;
+}
+
+void DenseMatrix::set(Index row, Index col, Real val)
+{
+  (*this)(row, col) = val;
+}
+
+void DenseMatrix::add(Index row, Index col, Real val)
+{
+  (*this)(row, col) += val;
+}
+
+void DenseMatrix::addAtomic(Index row, Index col, Real val)
+{
+  Real& entry = (*this)(row, col);
+#pragma omp atomic update
+  entry += val;
+}
+
+void DenseMatrix::finalize()
+{
 }
 
 Index DenseMatrix::size() const
@@ -57,11 +78,11 @@ Real DenseMatrix::operator()(Index i, Index j) const
   return vals_[i * cols_ + j];
 }
 
-void DenseMatrix::matvec(const Vector<Real>& x, Vector<Real>& out) const
+void DenseMatrix::apply(const HostVector& x, HostVector& out) const
 {
   if (cols_ != x.size())
   {
-    throw std::runtime_error("DenseMatrix matvec received incompatible vector");
+    throw std::runtime_error("DenseMatrix apply received incompatible vector");
   }
 
   resizeOrZero(out, rows_);
@@ -76,12 +97,12 @@ void DenseMatrix::matvec(const Vector<Real>& x, Vector<Real>& out) const
   }
 }
 
-void DenseMatrix::matvecT(const Vector<Real>& x, Vector<Real>& out) const
+void DenseMatrix::applyT(const HostVector& x, HostVector& out) const
 {
   if (rows_ != x.size())
   {
     throw std::runtime_error(
-        "DenseMatrix transpose matvec received incompatible vector");
+        "DenseMatrix transpose apply received incompatible vector");
   }
 
   resizeOrZero(out, cols_);
@@ -104,6 +125,37 @@ Real* DenseMatrix::data()
 const Real* DenseMatrix::data() const
 {
   return vals_.data();
+}
+
+void linalg::MatrixOperator::addElem(Index,
+                                     const Array<Index>& row_dofs,
+                                     const Array<Index>& col_dofs,
+                                     const DenseMatrix&  mat_e,
+                                     bool                atomic)
+{
+  if (mat_e.numRows() != row_dofs.size()
+      || mat_e.numCols() != col_dofs.size())
+  {
+    throw std::runtime_error(
+        "MatrixOperator element matrix size does not match dofs");
+  }
+
+  for (Index i = 0; i < mat_e.numRows(); ++i)
+  {
+    const Index row = row_dofs[i];
+    for (Index j = 0; j < mat_e.numCols(); ++j)
+    {
+      const Index col = col_dofs[j];
+      if (atomic)
+      {
+        addAtomic(row, col, mat_e(i, j));
+      }
+      else
+      {
+        add(row, col, mat_e(i, j));
+      }
+    }
+  }
 }
 
 } // namespace femx

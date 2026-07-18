@@ -6,9 +6,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 
@@ -43,9 +40,9 @@ public:
   void add(Index row, Real value);
   void addAtomic(Index row, Real value);
 
-  void addValues(const PetscInt*     rows,
-                 Index               count,
-                 const Vector<Real>& vals);
+  void addValues(const PetscInt*   rows,
+                 Index             count,
+                 const HostVector& vals);
 
   void addValues(const PetscInt* rows,
                  Index           count,
@@ -53,13 +50,13 @@ public:
 
   void finalize();
 
-  void copyOwnedFrom(const Vector<Real>& vals);
-  void copyToAll(Vector<Real>& vals) const;
+  void copyOwnedFrom(const HostVector& vals);
+  void copyToAll(HostVector& vals) const;
 
 private:
   void setValue(Index row, Real value, InsertMode mode);
 
-  static void checkInitialized();
+  static void checkInit();
   static void check(PetscErrorCode ierr, const char* operation);
   static void checkMPI(int ierr, const char* operation);
 

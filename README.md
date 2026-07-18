@@ -15,8 +15,8 @@ minor releases.
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve 0.99.2 development API at commit `bd60de0` or later, for CPU/CUDA
-  linear solver backends. The `v0.99.2` tag lacks APIs used by the adapter.
+- Re::Solve development install at `/opt/resolve/develop`, for CPU/CUDA linear
+  solver backends. Re::Solve 0.99.2 is not supported.
 - PETSc 3.19 or later (tested with PETSc 3.19.6)
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
@@ -53,7 +53,7 @@ make
 For ReSolve:
 
 ```shell
-cmake .. -DFEMX_ENABLE_RESOLVE=ON -DReSolve_ROOT=/path/to/resolve
+cmake .. -DFEMX_ENABLE_RESOLVE=ON
 make
 ```
 

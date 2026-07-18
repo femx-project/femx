@@ -1,5 +1,4 @@
 #include "SolverTestFixtures.hpp"
-#include <femx/common/Workspace.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <resolve/resolve_defs.hpp>
 
@@ -26,11 +25,11 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
   constexpr Index nx = 16;
   constexpr Index ny = 16;
 
-  CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillGrid5PointMatrix(op, nx, ny);
+  auto                 map = solver::makeGrid5PointMap(nx, ny);
+  linalg::MapCsrMatrix op(map);
+  solver::fillGrid5PointMat(op, nx, ny);
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu);
+  linalg::ReSolveLinearSolver lin_solver;
   return solver::solvesForwardAndTranspose(
       __func__, lin_solver, op, solver::expectedGridSolution(nx, ny), 1.0e-7);
 }
@@ -38,11 +37,11 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
 #if defined(RESOLVE_USE_KLU)
 TestOutcome resolveCpuKluSolvesForwardAndTranspose()
 {
-  CsrPattern                pattern = solver::makeDense3Pattern();
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillTestMatrix(op);
+  auto                 map = solver::makeDense3Map();
+  linalg::MapCsrMatrix op(map);
+  solver::fillTestMat(op);
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu, kluOptions());
+  linalg::ReSolveLinearSolver lin_solver(kluOptions());
   return solver::solvesForwardAndTranspose(__func__, lin_solver, op);
 }
 #endif
@@ -56,28 +55,28 @@ TestOutcome resolveCpuStoredOperatorSolves()
     constexpr Index nx = 16;
     constexpr Index ny = 16;
 
-    CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-    linalg::CsrAssemblyMatrix op(pattern);
-    solver::fillGrid5PointMatrix(op, nx, ny);
+    auto                 map = solver::makeGrid5PointMap(nx, ny);
+    linalg::MapCsrMatrix op(map);
+    solver::fillGrid5PointMat(op, nx, ny);
 
-    linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu);
+    linalg::ReSolveLinearSolver lin_solver;
     lin_solver.setOperator(op.mat());
 
-    const Vector<Real> expected = solver::expectedGridSolution(nx, ny);
-    Vector<Real>       rhs;
+    const HostVector expected = solver::expectedGridSolution(nx, ny);
+    HostVector       rhs;
     op.apply(expected, rhs);
 
-    Vector<Real> x;
+    HostVector x;
     lin_solver.solve(rhs, x);
-    status *= solver::vectorNear(x, expected, 1.0e-7);
+    status *= solver::vecNear(x, expected, 1.0e-7);
 
     op.setZero();
-    solver::fillGrid5PointMatrix(op, nx, ny);
+    solver::fillGrid5PointMat(op, nx, ny);
     lin_solver.setOperator(op.mat());
 
     op.apply(expected, rhs);
     lin_solver.solve(rhs, x);
-    status *= solver::vectorNear(x, expected, 1.0e-7);
+    status *= solver::vecNear(x, expected, 1.0e-7);
   }
   catch (const std::exception& e)
   {
@@ -88,21 +87,33 @@ TestOutcome resolveCpuStoredOperatorSolves()
   return status.report();
 }
 
-#if defined(FEMX_RESOLVE_USE_CUDA)
-TestOutcome resolveCudaDefaultSolvesForwardAndTranspose()
+TestOutcome resolveZeroRhsReturnsZero()
 {
-  constexpr Index nx = 16;
-  constexpr Index ny = 16;
+  TestStatus status(__func__);
 
-  CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillGrid5PointMatrix(op, nx, ny);
+  try
+  {
+    auto                 map = solver::makeDense3Map();
+    linalg::MapCsrMatrix op(map);
+    solver::fillTestMat(op);
+    const HostVector rhs(3, 0.0);
+    HostVector       sol{1.0, 2.0, 3.0};
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cuda);
-  return solver::solvesForwardAndTranspose(
-      __func__, lin_solver, op, solver::expectedGridSolution(nx, ny), 1.0e-7);
+    linalg::ReSolveLinearSolver host_solver;
+    host_solver.solve(op, rhs, sol);
+    status *= solver::vecNear(sol, rhs, 0.0);
+    sol     = {1.0, 2.0, 3.0};
+    host_solver.solveT(op, rhs, sol);
+    status *= solver::vecNear(sol, rhs, 0.0);
+  }
+  catch (const std::exception& e)
+  {
+    std::cout << "    exception: " << e.what() << '\n';
+    status *= false;
+  }
+
+  return status.report();
 }
-#endif
 
 } // namespace
 } // namespace femx::tests
@@ -116,9 +127,6 @@ int main(int, char**)
   results += femx::tests::resolveCpuKluSolvesForwardAndTranspose();
 #endif
   results += femx::tests::resolveCpuStoredOperatorSolves();
-#if defined(FEMX_RESOLVE_USE_CUDA)
-  results += femx::tests::resolveCudaDefaultSolvesForwardAndTranspose();
-#endif
-
+  results += femx::tests::resolveZeroRhsReturnsZero();
   return results.summary();
 }

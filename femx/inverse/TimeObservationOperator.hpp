@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace inverse
 {
 
@@ -26,34 +23,34 @@ public:
   virtual Index numParams() const       = 0;
   virtual Index numObservations() const = 0;
 
-  virtual void observe(Index               level,
-                       const Vector<Real>& state,
-                       const Vector<Real>& prm,
-                       Vector<Real>&       out) const = 0;
+  virtual void observe(Index             level,
+                       const HostVector& state,
+                       const HostVector& prm,
+                       HostVector&       out) const = 0;
 
-  virtual void applyStateJac(Index               level,
-                             const Vector<Real>& state,
-                             const Vector<Real>& prm,
-                             const Vector<Real>& dir,
-                             Vector<Real>&       out) const = 0;
+  virtual void applyStateJac(Index             level,
+                             const HostVector& state,
+                             const HostVector& prm,
+                             const HostVector& dir,
+                             HostVector&       out) const = 0;
 
-  virtual void applyStateJacT(Index               level,
-                              const Vector<Real>& state,
-                              const Vector<Real>& prm,
-                              const Vector<Real>& dir,
-                              Vector<Real>&       out) const = 0;
+  virtual void applyStateJacT(Index             level,
+                              const HostVector& state,
+                              const HostVector& prm,
+                              const HostVector& dir,
+                              HostVector&       out) const = 0;
 
-  virtual void applyParamJac(Index               level,
-                             const Vector<Real>& state,
-                             const Vector<Real>& prm,
-                             const Vector<Real>& dir,
-                             Vector<Real>&       out) const = 0;
+  virtual void applyParamJac(Index             level,
+                             const HostVector& state,
+                             const HostVector& prm,
+                             const HostVector& dir,
+                             HostVector&       out) const = 0;
 
-  virtual void applyParamJacT(Index               level,
-                              const Vector<Real>& state,
-                              const Vector<Real>& prm,
-                              const Vector<Real>& dir,
-                              Vector<Real>&       out) const = 0;
+  virtual void applyParamJacT(Index             level,
+                              const HostVector& state,
+                              const HostVector& prm,
+                              const HostVector& dir,
+                              HostVector&       out) const = 0;
 };
 
 } // namespace inverse

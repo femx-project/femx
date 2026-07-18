@@ -13,8 +13,8 @@ using namespace femx::fem;
 namespace femx::model::ns
 {
 
-Index lowerInterval(const Vector<Real>& pts,
-                    Real                x)
+Index lowerInterval(const HostVector& pts,
+                    Real              x)
 {
   using std::distance;
   const auto upper = std::upper_bound(pts.begin(), pts.end(), x);
@@ -211,7 +211,7 @@ Real velocityComponent(const VelocityEvalContext& ctx,
 
 fem::DirichletBC makeDirichletBC(
     const fem::MixedFESpace& space,
-    const Vector<BCsParams>& bcs,
+    const Array<BCsParams>&  bcs,
     Real                     time)
 {
   const auto u_dof = space.field(0);

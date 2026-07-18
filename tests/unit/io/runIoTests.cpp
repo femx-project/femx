@@ -45,14 +45,14 @@ TestOutcome vtuWriterWritesMeshPointData()
   const std::string fname = "femx_io_unit_mesh.vtu";
   std::remove(fname.c_str());
 
-  const Mesh   mesh = Mesh::makeStructuredQuad(1, 1);
-  Vector<Real> values{0.0, 1.0, 2.0, 3.0};
+  const Mesh mesh = Mesh::makeStructuredQuad(1, 1);
+  HostVector vals{0.0, 1.0, 2.0, 3.0};
 
   VtuWriter writer;
   writer.writePointData(fname,
                         mesh,
-                        Vector<VtuWriter::PointField>{
-                            {"u&v", 1, &values}});
+                        Array<VtuWriter::PointField>{
+                            {"u&v", 1, &vals}});
 
   const std::string text  = readFile(fname);
   status                 *= contains(text, "<VTKFile type=\"UnstructuredGrid\"");
@@ -67,7 +67,7 @@ TestOutcome vtuWriterWritesMeshPointData()
   {
     writer.writePointData("femx_io_unit_bad.vtu",
                           mesh,
-                          Vector<VtuWriter::PointField>{
+                          Array<VtuWriter::PointField>{
                               {"bad", 1, nullptr}});
   }
   catch (const std::runtime_error&)
@@ -93,12 +93,12 @@ TestOutcome vtiWriterWritesImageCellData()
   image.spacing     = {0.5, 0.25, 1.0};
   image.time        = 1.25;
 
-  Vector<Real> vals{4.0, 5.0};
+  HostVector vals{4.0, 5.0};
 
   VtiWriter writer;
   writer.writeElemData(fname,
                        image,
-                       Vector<VtiWriter::ElemField>{
+                       Array<VtiWriter::ElemField>{
                            {"cell<value>", 1, &vals}});
 
   const std::string text  = readFile(fname);
@@ -115,7 +115,7 @@ TestOutcome vtiWriterWritesImageCellData()
   {
     writer.writeElemData("femx_io_unit_bad.vti",
                          image,
-                         Vector<VtiWriter::ElemField>{
+                         Array<VtiWriter::ElemField>{
                              {"bad", 1, nullptr}});
   }
   catch (const std::runtime_error&)
@@ -138,7 +138,7 @@ TestOutcome timeSeriesDataOutValidatesInputs()
   bool              threw = false;
   try
   {
-    out.addNodalScalarField("u", Vector<Real>{1.0});
+    out.addNodalScalarField("u", HostVector{1.0});
   }
   catch (const std::runtime_error&)
   {
@@ -148,7 +148,7 @@ TestOutcome timeSeriesDataOutValidatesInputs()
 
   out.attachMesh(mesh);
   out.beginStep(0.0);
-  out.addNodalScalarField("u", Vector<Real>{1.0, 2.0});
+  out.addNodalScalarField("u", HostVector{1.0, 2.0});
 
   threw = false;
   try

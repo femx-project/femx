@@ -9,7 +9,7 @@ namespace femx
 {
 namespace linalg
 {
-class AssemblyMatrix;
+class MatrixOperator;
 class LinearSolver;
 } // namespace linalg
 
@@ -28,10 +28,10 @@ class TimeLinearIntegrator final : public TimeIntegrator
 {
 public:
   TimeLinearIntegrator(const state::TimeResidual& problem,
-                       linalg::AssemblyMatrix&    J_next,
+                       linalg::MatrixOperator&    J_next,
                        linalg::LinearSolver&      lin_solver);
 
-  void setInitialState(const Vector<Real>& state);
+  void setInitialState(const HostVector& state);
   void clearInitialState();
 
   void  resetTiming();
@@ -46,28 +46,28 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  void solve(const Vector<Real>& prm,
-             TimeTrajectory&     tr) override;
+  void solve(const HostVector& prm,
+             TimeTrajectory&   tr) override;
 
-  void solve(const Vector<Real>& prm);
+  void solve(const HostVector& prm);
 
 private:
-  void solveImpl(const Vector<Real>& prm,
-                 TimeTrajectory*     tr);
+  void solveImpl(const HostVector& prm,
+                 TimeTrajectory*   tr);
 
-  void solveStep(Index               step,
-                 const Vector<Real>& prm,
-                 const Vector<Real>& hist,
-                 Vector<Real>&       x_next);
+  void solveStep(Index             step,
+                 const HostVector& prm,
+                 const HostVector& hist,
+                 HostVector&       x_next);
 
-  void initializeInitialState(Vector<Real>& state) const;
+  void initializeInitialState(HostVector& state) const;
 
 private:
   const state::TimeResidual& problem_;
-  linalg::AssemblyMatrix&    J_next_;
+  linalg::MatrixOperator&    J_next_;
   linalg::LinearSolver&      lin_solver_;
   state::TimeDims            dims_;
-  Vector<Real>               init_state_;
+  HostVector                 init_state_;
   Real                       assm_sec_{0.0};
   Real                       solve_sec_{0.0};
   Real                       last_assm_sec_{0.0};

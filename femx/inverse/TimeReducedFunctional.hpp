@@ -5,12 +5,9 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
-class AssemblyMatrix;
+class MatrixOperator;
 class LinearSolver;
 } // namespace linalg
 
@@ -40,9 +37,9 @@ class InitialStateGradientMap
 public:
   virtual ~InitialStateGradientMap() = default;
 
-  virtual void apply(const Vector<Real>& prm,
-                     const Vector<Real>& state_grad,
-                     Vector<Real>&       out) = 0;
+  virtual void apply(const HostVector& prm,
+                     const HostVector& state_grad,
+                     HostVector&       out) = 0;
 };
 
 class TimeReducedFunctional final
@@ -51,8 +48,8 @@ public:
   TimeReducedFunctional(state::TimeIntegrator&        integrator,
                         const state::TimeResidual&    problem,
                         state::TimeLinearization&     lin,
-                        linalg::AssemblyMatrix&       J_next,
-                        linalg::AssemblyMatrix&       J_hist,
+                        linalg::MatrixOperator&       J_next,
+                        linalg::MatrixOperator&       J_hist,
                         linalg::LinearSolver&         adj_solver,
                         const inverse::TimeObjective& obj);
 
@@ -69,30 +66,30 @@ public:
   Index solveCalls() const;
 
   Index numParams() const;
-  Real  value(const Vector<Real>& prm);
-  void  grad(const Vector<Real>& prm, Vector<Real>& out);
-  Real  valueGrad(const Vector<Real>& prm, Vector<Real>& grad_out);
+  Real  value(const HostVector& prm);
+  void  grad(const HostVector& prm, HostVector& out);
+  Real  valueGrad(const HostVector& prm, HostVector& grad_out);
 
 private:
   void checkDims() const;
-  void solveFwd(const Vector<Real>& prm, state::TimeTrajectory& tr);
+  void solveFwd(const HostVector& prm, state::TimeTrajectory& tr);
   void gradAt(const state::TimeTrajectory& tr,
-              const Vector<Real>&          prm,
-              Vector<Real>&                out);
+              const HostVector&            prm,
+              HostVector&                  out);
 
   void assemble(state::TimeContext      ctx,
                 state::VariableBlock    wrt,
-                linalg::AssemblyMatrix& out);
+                linalg::MatrixOperator& out);
 
   void        notify(const char* phase, Index step, Index total_steps);
-  static void checkSize(const Vector<Real>& value, Index exp);
+  static void checkSize(const HostVector& value, Index exp);
 
 private:
   state::TimeIntegrator&        integrator_;
   const state::TimeResidual&    problem_;
   state::TimeLinearization&     lin_;
-  linalg::AssemblyMatrix&       J_next_;
-  linalg::AssemblyMatrix&       J_hist_;
+  linalg::MatrixOperator&       J_next_;
+  linalg::MatrixOperator&       J_hist_;
   linalg::LinearSolver&         adj_solver_;
   const inverse::TimeObjective& obj_;
   state::TimeDims               dims_;

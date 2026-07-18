@@ -4,20 +4,17 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace state
 {
 
 struct TimeStepStateContext
 {
-  Index               level       = 0;
-  Index               total_steps = 0;
-  const Vector<Real>& previous;
-  const Vector<Real>& current;
-  Real                assembly_sec = 0.0;
-  Real                solve_sec    = 0.0;
+  Index             level       = 0;
+  Index             total_steps = 0;
+  const HostVector& prev;
+  const HostVector& curr;
+  Real              assembly_sec = 0.0;
+  Real              solve_sec    = 0.0;
 };
 
 /**
@@ -38,12 +35,12 @@ public:
     (void) num_states;
   }
 
-  virtual void observe(Index               level,
-                       const Vector<Real>& state) = 0;
+  virtual void observe(Index             level,
+                       const HostVector& state) = 0;
 
   virtual bool observeStep(const TimeStepStateContext& ctx)
   {
-    observe(ctx.level, ctx.current);
+    observe(ctx.level, ctx.curr);
     return false;
   }
 

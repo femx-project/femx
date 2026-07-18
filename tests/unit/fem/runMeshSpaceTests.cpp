@@ -37,7 +37,7 @@ bool pointNear(const Point3& actual, const std::array<Real, N>& expected)
 }
 
 template <std::size_t N>
-bool indexValuesEqual(const Vector<Index>&        actual,
+bool indexValuesEqual(const Array<Index>&         actual,
                       const std::array<Index, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
@@ -175,7 +175,7 @@ TestOutcome observationGridFromBounds()
 {
   TestStatus status(__func__);
 
-  const Vector<Point3> pts = fem::observationGridPoints(
+  const Array<Point3> pts = fem::observationGridPoints(
       Point3{0.0, 10.0, -1.0},
       Point3{2.0, 20.0, 1.0},
       std::array<Index, 3>{{3, 2, 1}});
@@ -187,7 +187,7 @@ TestOutcome observationGridFromBounds()
   status *= pointNear(pts[3], std::array<Real, 3>{{0.0, 20.0, 0.0}});
   status *= pointNear(pts[5], std::array<Real, 3>{{2.0, 20.0, 0.0}});
 
-  const Vector<Point3> center = fem::observationGridPoints(
+  const Array<Point3> center = fem::observationGridPoints(
       Point3{-2.0, 2.0, 10.0},
       Point3{2.0, 6.0, 14.0},
       std::array<Index, 3>{{1, 1, 1}});
@@ -202,7 +202,7 @@ TestOutcome observationGridFromSpacing()
 {
   TestStatus status(__func__);
 
-  const Vector<Point3> pts = fem::observationGridPoints(
+  const Array<Point3> pts = fem::observationGridPoints(
       Point3{1.0, 2.0, 3.0},
       std::array<Index, 3>{{2, 1, 2}},
       Point3{0.5, 10.0, -1.0});

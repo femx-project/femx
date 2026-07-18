@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
+option(FEMX_ENABLE_CUDA "Enable CUDA memory and assembly backends" OFF)
 
 project(
   femx
@@ -49,6 +50,11 @@ set(FEMX_RESOLVE_BACKEND
 set_property(CACHE FEMX_RESOLVE_BACKEND PROPERTY STRINGS AUTO CPU CUDA)
 string(TOUPPER "${FEMX_RESOLVE_BACKEND}" FEMX_RESOLVE_BACKEND_MODE)
 
+set(FEMX_RESOLVE_DEVELOP_PREFIX "/opt/resolve/develop")
+set(FEMX_RESOLVE_REVISION
+    ""
+    CACHE STRING "Optional revision label for the installed ReSolve development tree")
+
 if(NOT FEMX_RESOLVE_BACKEND_MODE MATCHES "^(AUTO|CPU|CUDA)$")
   message(FATAL_ERROR "FEMX_RESOLVE_BACKEND must be AUTO, CPU, or CUDA.")
 endif()
@@ -62,12 +68,32 @@ if(RESOLVE_USE_CUDA)
   set(FEMX_RESOLVE_BACKEND_MODE "CUDA")
 endif()
 
+if(FEMX_ENABLE_RESOLVE
+   AND FEMX_RESOLVE_BACKEND_MODE STREQUAL "CUDA"
+   AND NOT FEMX_ENABLE_CUDA)
+  set(FEMX_ENABLE_CUDA ON CACHE BOOL
+      "Enable CUDA memory and assembly backends" FORCE)
+endif()
+
 set(FEMX_HAS_ENZYME OFF)
+set(FEMX_HAS_CUDA OFF)
 set(FEMX_ENZYME_FLAGS_TARGET "")
 set(FEMX_HDF5_USES_MPI OFF)
 set(FEMX_HAS_PETSC OFF)
 set(FEMX_HAS_RESOLVE OFF)
 set(FEMX_HAS_RESOLVE_CUDA OFF)
+
+if(FEMX_ENABLE_CUDA)
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(NOT CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "FEMX_ENABLE_CUDA=ON but no CUDA compiler was found.")
+  endif()
+  enable_language(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  set(FEMX_HAS_CUDA ON)
+  message(STATUS "CUDA execution backend: ${CMAKE_CUDA_COMPILER_VERSION}")
+endif()
 
 if(FEMX_ENABLE_ENZYME)
   find_package(Enzyme REQUIRED)
@@ -222,18 +248,43 @@ if(FEMX_ENABLE_OPENMP)
 endif()
 
 if(FEMX_ENABLE_RESOLVE)
-  find_package(ReSolve 0.99.2 EXACT QUIET)
+  file(REAL_PATH "${FEMX_RESOLVE_DEVELOP_PREFIX}"
+       FEMX_RESOLVE_DEVELOP_PREFIX_REAL)
+  set(FEMX_RESOLVE_DEVELOP_CONFIG
+      "${FEMX_RESOLVE_DEVELOP_PREFIX_REAL}/share/resolve/cmake")
+
+  if(NOT EXISTS "${FEMX_RESOLVE_DEVELOP_CONFIG}/ReSolveConfig.cmake")
+    message(
+      FATAL_ERROR
+        "FEMX_ENABLE_RESOLVE=ON requires the ReSolve development install at "
+        "${FEMX_RESOLVE_DEVELOP_PREFIX_REAL}; ReSolve 0.99.2 installations "
+        "are not a fallback.")
+  endif()
+
+  set(ReSolve_DIR "${FEMX_RESOLVE_DEVELOP_CONFIG}" CACHE PATH
+      "ReSolve development package directory" FORCE)
+  find_package(ReSolve CONFIG QUIET NO_DEFAULT_PATH)
 
   if(NOT ReSolve_FOUND)
     message(
       FATAL_ERROR
-        "FEMX_ENABLE_RESOLVE=ON but ReSolve 0.99.2 was not found. Set "
-        "ReSolve_ROOT, RESOLVE_ROOT, CMAKE_PREFIX_PATH, or ReSolve_DIR "
-        "to a ReSolve 0.99.2 installation, or configure with "
-        "-DFEMX_ENABLE_RESOLVE=OFF.")
+        "FEMX_ENABLE_RESOLVE=ON but the ReSolve development package was not "
+        "found below ${FEMX_RESOLVE_DEVELOP_PREFIX_REAL}.")
   endif()
 
-  message(STATUS "Found ReSolve: ${ReSolve_DIR}")
+  if(FEMX_RESOLVE_REVISION)
+    set(FEMX_RESOLVE_BUILD_ID "${FEMX_RESOLVE_REVISION}")
+  else()
+    file(SHA256 "${FEMX_RESOLVE_DEVELOP_PREFIX_REAL}/lib/libReSolve.so"
+         FEMX_RESOLVE_LIBRARY_SHA256)
+    string(SUBSTRING "${FEMX_RESOLVE_LIBRARY_SHA256}" 0 16
+           FEMX_RESOLVE_LIBRARY_SHA256_SHORT)
+    set(FEMX_RESOLVE_BUILD_ID
+        "libReSolve-sha256:${FEMX_RESOLVE_LIBRARY_SHA256_SHORT}")
+  endif()
+
+  message(STATUS "Found ReSolve development tree: ${ReSolve_DIR}")
+  message(STATUS "ReSolve development build id: ${FEMX_RESOLVE_BUILD_ID}")
   set(FEMX_HAS_RESOLVE ON)
   if(TARGET ReSolve::CUDA OR TARGET ReSolve::resolve_backend_cuda)
     set(FEMX_HAS_RESOLVE_CUDA ON)
@@ -397,13 +448,21 @@ target_include_directories(
   femx_config INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                         $<INSTALL_INTERFACE:include>)
 
+if(FEMX_HAS_CUDA)
+  target_compile_definitions(femx_config INTERFACE FEMX_HAS_CUDA=1)
+endif()
+
 if(FEMX_ENABLE_RESOLVE)
   target_compile_definitions(femx_config INTERFACE FEMX_ENABLE_RESOLVE=1)
 endif()
 
 if(ReSolve_FOUND)
   target_compile_definitions(femx_config INTERFACE FEMX_HAS_RESOLVE=1)
-  if(FEMX_HAS_RESOLVE_CUDA)
+  target_compile_definitions(
+    femx_config
+    INTERFACE FEMX_RESOLVE_DEVELOP_PREFIX="${FEMX_RESOLVE_DEVELOP_PREFIX_REAL}"
+              FEMX_RESOLVE_BUILD_ID="${FEMX_RESOLVE_BUILD_ID}")
+  if(FEMX_HAS_RESOLVE_CUDA AND FEMX_HAS_CUDA)
     if(NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
       target_compile_definitions(femx_config INTERFACE FEMX_RESOLVE_USE_CUDA=1)
     endif()

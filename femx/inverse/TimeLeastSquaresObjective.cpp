@@ -23,7 +23,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     throw std::runtime_error(
         "TimeLeastSquaresObjective received negative weight");
   }
-  wts_.resize(numLevels());
+  wts_.resize(numTimeLevels());
   for (Index level = 0; level < wts_.size(); ++level)
   {
     wts_[level] = wt;
@@ -35,7 +35,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    Vector<Real>                   wts)
+    HostVector                     wts)
   : obs_(obs),
     data_(std::move(data)),
     wts_(std::move(wts))
@@ -47,7 +47,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    Vector<Real>                   wts,
+    HostVector                     wts,
     Real                           dt)
   : obs_(obs),
     data_(std::move(data)),
@@ -61,7 +61,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    Vector<Real>                   wts,
+    HostVector                     wts,
     Real                           dt,
     Real                           time_offset)
   : obs_(obs),
@@ -77,8 +77,8 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    Vector<Real>                   wts,
-    Vector<Real>                   obs_wts,
+    HostVector                     wts,
+    HostVector                     obs_wts,
     Real                           dt,
     Real                           time_offset)
   : obs_(obs),
@@ -107,11 +107,11 @@ Index TimeLeastSquaresObjective::numParams() const
 }
 
 Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
-                                      const Vector<Real>&   prm) const
+                                      const HostVector&     prm) const
 {
-  Real         value_out = 0.0;
-  Vector<Real> res;
-  for (Index row = 0; row < data_.numLevels(); ++row)
+  Real       value_out = 0.0;
+  HostVector res;
+  for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
     obsResidual(row, interp, tr, prm, res);
@@ -127,15 +127,15 @@ Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
 
 void TimeLeastSquaresObjective::stateGrad(Index                 level,
                                           const TimeTrajectory& tr,
-                                          const Vector<Real>&   prm,
-                                          Vector<Real>&         out) const
+                                          const HostVector&     prm,
+                                          HostVector&           out) const
 {
   checkLevel(level);
   resizeOrZero(out, numStates());
 
-  Vector<Real> weighted_res;
-  Vector<Real> level_grad;
-  for (Index row = 0; row < data_.numLevels(); ++row)
+  HostVector weighted_res;
+  HostVector level_grad;
+  for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
     Real                      factor = 0.0;
@@ -170,14 +170,14 @@ void TimeLeastSquaresObjective::stateGrad(Index                 level,
 }
 
 void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory& tr,
-                                          const Vector<Real>&   prm,
-                                          Vector<Real>&         out) const
+                                          const HostVector&     prm,
+                                          HostVector&           out) const
 {
   resizeOrZero(out, numParams());
 
-  Vector<Real> weighted_res;
-  Vector<Real> level_grad;
-  for (Index row = 0; row < data_.numLevels(); ++row)
+  HostVector weighted_res;
+  HostVector level_grad;
+  for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
     const Real                wt     = observationWeight(interp);
@@ -208,7 +208,7 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory& tr,
   }
 }
 
-Index TimeLeastSquaresObjective::numLevels() const
+Index TimeLeastSquaresObjective::numTimeLevels() const
 {
   return numSteps() + 1;
 }
@@ -216,9 +216,9 @@ Index TimeLeastSquaresObjective::numLevels() const
 void TimeLeastSquaresObjective::checkInputs() const
 {
   if (data_.numObservations() != obs_.numObservations()
-      || wts_.size() != numLevels()
+      || wts_.size() != numTimeLevels()
       || obs_wts_.size()
-             != data_.numLevels() * data_.numObservations())
+             != data_.numTimeLevels() * data_.numObservations())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective received inconsistent dimensions");
@@ -229,12 +229,12 @@ void TimeLeastSquaresObjective::checkInputs() const
         "TimeLeastSquaresObjective received invalid time offset");
   }
   if (!data_.hasTimeLevels() && !data_.hasTimeValues()
-      && data_.numLevels() != numLevels())
+      && data_.numTimeLevels() != numTimeLevels())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective received inconsistent time levels");
   }
-  for (Index row = 0; row < data_.numLevels(); ++row)
+  for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     (void) interpolation(row);
   }
@@ -258,7 +258,7 @@ void TimeLeastSquaresObjective::checkInputs() const
 
 void TimeLeastSquaresObjective::checkLevel(Index level) const
 {
-  if (level < 0 || level >= numLevels())
+  if (level < 0 || level >= numTimeLevels())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective time level is out of range");
@@ -268,7 +268,7 @@ void TimeLeastSquaresObjective::checkLevel(Index level) const
 LinearInterpolation
 TimeLeastSquaresObjective::interpolation(Index row) const
 {
-  if (row < 0 || row >= data_.numLevels())
+  if (row < 0 || row >= data_.numTimeLevels())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective observation row is out of range");
@@ -319,7 +319,7 @@ TimeLeastSquaresObjective::interpolation(Index row) const
     }
     level += level_offset;
   }
-  if (level < 0 || level >= numLevels())
+  if (level < 0 || level >= numTimeLevels())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective observation time level is out of range");
@@ -342,7 +342,7 @@ Real TimeLeastSquaresObjective::observationEntryWeight(
     Index row,
     Index observation) const
 {
-  if (row < 0 || row >= data_.numLevels() || observation < 0
+  if (row < 0 || row >= data_.numTimeLevels() || observation < 0
       || observation >= data_.numObservations())
   {
     throw std::runtime_error(
@@ -355,8 +355,8 @@ void TimeLeastSquaresObjective::observeInterpolated(
     Index                      data_row,
     const LinearInterpolation& interp,
     const TimeTrajectory&      tr,
-    const Vector<Real>&        prm,
-    Vector<Real>&              out) const
+    const HostVector&          prm,
+    HostVector&                out) const
 {
   (void) data_row;
   obs_.observe(interp.lower, tr[interp.lower], prm, out);
@@ -366,7 +366,7 @@ void TimeLeastSquaresObjective::observeInterpolated(
     return;
   }
 
-  Vector<Real> upper;
+  HostVector upper;
   obs_.observe(interp.upper, tr[interp.upper], prm, upper);
   checkSize(upper, obs_.numObservations());
   for (Index i = 0; i < out.size(); ++i)
@@ -379,25 +379,25 @@ void TimeLeastSquaresObjective::obsResidual(
     Index                      data_row,
     const LinearInterpolation& interp,
     const TimeTrajectory&      tr,
-    const Vector<Real>&        prm,
-    Vector<Real>&              out) const
+    const HostVector&          prm,
+    HostVector&                out) const
 {
-  if (tr.numLevels() != numLevels() || tr.numStates() != numStates())
+  if (tr.numTimeLevels() != numTimeLevels() || tr.numStates() != numStates())
   {
     throw std::runtime_error(
         "TimeLeastSquaresObjective trajectory size mismatch");
   }
   observeInterpolated(data_row, interp, tr, prm, out);
 
-  const Vector<Real> data = data_[data_row];
+  const HostVector data = data_[data_row];
   for (Index i = 0; i < out.size(); ++i)
   {
     out[i] -= data[i];
   }
 }
 
-void TimeLeastSquaresObjective::checkSize(const Vector<Real>& value,
-                                          Index               exp)
+void TimeLeastSquaresObjective::checkSize(const HostVector& value,
+                                          Index             exp)
 {
   if (value.size() != exp)
   {
@@ -406,7 +406,7 @@ void TimeLeastSquaresObjective::checkSize(const Vector<Real>& value,
   }
 }
 
-void TimeLeastSquaresObjective::scale(Vector<Real>& out, Real factor)
+void TimeLeastSquaresObjective::scale(HostVector& out, Real factor)
 {
   for (Index i = 0; i < out.size(); ++i)
   {
@@ -415,9 +415,9 @@ void TimeLeastSquaresObjective::scale(Vector<Real>& out, Real factor)
 }
 
 void TimeLeastSquaresObjective::scaleObservationResidual(
-    Index         row,
-    Vector<Real>& out,
-    Real          factor) const
+    Index       row,
+    HostVector& out,
+    Real        factor) const
 {
   checkSize(out, data_.numObservations());
   for (Index i = 0; i < out.size(); ++i)
@@ -429,7 +429,7 @@ void TimeLeastSquaresObjective::scaleObservationResidual(
 void TimeLeastSquaresObjective::setUniformObservationWeights()
 {
   obs_wts_.resize(
-      data_.numLevels() * data_.numObservations());
+      data_.numTimeLevels() * data_.numObservations());
   for (Real& weight : obs_wts_)
   {
     weight = 1.0;

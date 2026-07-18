@@ -5,8 +5,8 @@
 
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseLinearSolver.hpp>
 
 namespace
@@ -31,7 +31,7 @@ int main()
     femx::io::VtuWriter writer;
     (void) writer;
 
-    femx::linalg::DenseAssemblyMatrix A;
+    femx::DenseMatrix A;
     A.resize(2, 2);
     A.setZero();
     A.set(0, 0, 3.0);
@@ -39,18 +39,18 @@ int main()
     A.set(1, 0, 1.0);
     A.set(1, 1, 2.0);
 
-    femx::Vector<femx::Real> rhs(2);
+    femx::HostVector rhs(2);
     rhs[0] = 5.0;
     rhs[1] = 5.0;
 
     femx::linalg::DenseLinearSolver solver;
-    femx::Vector<femx::Real>        x;
+    femx::HostVector                x;
     solver.solve(A, rhs, x);
 
     checkClose(x[0], 1.0, "x[0]");
     checkClose(x[1], 2.0, "x[1]");
 
-    femx::Vector<femx::Real> Ax;
+    femx::HostVector Ax;
     A.apply(x, Ax);
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");

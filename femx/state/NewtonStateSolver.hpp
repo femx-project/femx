@@ -19,9 +19,9 @@ class Linearization;
 
 struct NewtonStateOptions
 {
-  Index max_its            = 20;      ///< Maximum Newton iterations.
-  Real  residual_tolerance = 1.0e-10; ///< Stop when residual norm is below this.
-  Real  step_tolerance     = 0.0;     ///< Stop when step norm is below this.
+  Index max_its        = 20;      ///< Maximum Newton iterations.
+  Real  res_tol        = 1.0e-10; ///< Stop when residual norm is below this.
+  Real  step_tolerance = 0.0;     ///< Stop when step norm is below this.
 };
 
 /**
@@ -41,7 +41,7 @@ public:
 
   const NewtonStateOptions& opts() const;
 
-  void setInitialState(const Vector<Real>& state);
+  void setInitialState(const HostVector& state);
 
   void clearInitialState();
 
@@ -49,12 +49,12 @@ public:
 
   Index numParams() const override;
 
-  Index numResiduals() const override;
+  Index numRes() const override;
 
-  void solve(const Vector<Real>& prm, Vector<Real>& state) override;
+  void solve(const HostVector& prm, HostVector& state) override;
 
 private:
-  void initializeState(Vector<Real>& state) const;
+  void initializeState(HostVector& state) const;
 
 private:
   const state::Residual& problem_;
@@ -62,7 +62,7 @@ private:
   linalg::LinearSolver&  lin_solver_;
   state::Dimensions      dims_;
   NewtonStateOptions     opts_;
-  Vector<Real>           init_state_;
+  HostVector             init_state_;
   bool                   has_init_state_{false};
 };
 

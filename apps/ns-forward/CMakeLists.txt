@@ -11,7 +11,7 @@ if(GIT_FOUND AND EXISTS "${FEMX_APP_SOURCE_DIR}/.git")
     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 endif()
 
-function(configure_ns_forward_app target)
+function(configure_ns_fwd_app target)
   target_link_libraries(${target} PRIVATE femx::model::ns femx::femx)
 
   target_compile_definitions(
@@ -31,12 +31,12 @@ endfunction()
 
 if(TARGET femx::linalg_resolve)
   add_executable(ns-forward-resolve main-resolve.cpp)
-  configure_ns_forward_app(ns-forward-resolve)
+  configure_ns_fwd_app(ns-forward-resolve)
   target_link_libraries(ns-forward-resolve PRIVATE femx::linalg_resolve)
 endif()
 
 if(TARGET femx::linalg_petsc)
   add_executable(ns-forward-petsc main-petsc.cpp)
-  configure_ns_forward_app(ns-forward-petsc)
+  configure_ns_fwd_app(ns-forward-petsc)
   target_link_libraries(ns-forward-petsc PRIVATE femx::linalg_petsc)
 endif()

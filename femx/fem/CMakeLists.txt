@@ -11,6 +11,7 @@ target_sources(
           DofMap.cpp
           ElementValues.cpp
           FESpace.cpp
+          Geometry.cpp
           GmshReader.cpp
           Mesh.cpp
           MixedFESpace.cpp
@@ -29,6 +30,7 @@ target_sources(
          FESpace.hpp
          FiniteElement.hpp
          GaussQuadrature.hpp
+         Geometry.hpp
          GmshReader.hpp
          Mesh.hpp
          ObservationGrid.hpp

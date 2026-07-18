@@ -42,7 +42,7 @@ public:
   Index dim() const;
   Index numQuadraturePoints() const;
 
-  VectorView<const Real> N(Index iq) const;
+  HostConstVectorView    N(Index iq) const;
   MatrixView<const Real> dNdr(Index iq) const;
   MatrixView<const Real> dNdx(Index iq) const;
 
@@ -58,9 +58,9 @@ private:
   void calcReferenceValues();
   void calcPhysicalValues(const Element& elem);
 
-  static Real invJacobian(const Vector<Real>& J,
-                          Vector<Real>&       invJ,
-                          Index               dim);
+  static Real invJacobian(const HostVector& J,
+                          HostVector&       invJ,
+                          Index             dim);
 
 private:
   const FiniteElement*   fe_{nullptr};
@@ -71,16 +71,16 @@ private:
   Index dim_{0};
   Index num_qpts_{0};
 
-  Vector<Real> N_;    ///< Shape values at quadrature points.
-  Vector<Real> dNdr_; ///< Reference gradients at quadrature points.
-  Vector<Real> dNdx_; ///< Physical gradients at quadrature points.
+  HostVector N_;    ///< Shape values at quadrature points.
+  HostVector dNdr_; ///< Reference gradients at quadrature points.
+  HostVector dNdx_; ///< Physical gradients at quadrature points.
 
-  Vector<Real> detJ_; ///< Jacobian determinants.
-  Vector<Real> wts_;  ///< Quadrature weights.
-  Vector<Real> JxW_;  ///< Weighted Jacobian determinants.
+  HostVector detJ_; ///< Jacobian determinants.
+  HostVector wts_;  ///< Quadrature weights.
+  HostVector JxW_;  ///< Weighted Jacobian determinants.
 
-  Vector<Real> J_;    ///< Element Jacobian workspace.
-  Vector<Real> invJ_; ///< Inverse Jacobian workspace.
+  HostVector J_;    ///< Element Jacobian workspace.
+  HostVector invJ_; ///< Inverse Jacobian workspace.
 };
 
 } // namespace fem

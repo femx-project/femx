@@ -35,8 +35,8 @@ public:
     monitor_ = nullptr;
   }
 
-  virtual void solve(const Vector<Real>& prm,
-                     TimeTrajectory&     tr) = 0;
+  virtual void solve(const HostVector& prm,
+                     TimeTrajectory&   tr) = 0;
 
 protected:
   class MonitorScope
@@ -63,8 +63,8 @@ protected:
     TimeIntegrator* integrator_{nullptr};
   };
 
-  void observeState(Index               level,
-                    const Vector<Real>& state)
+  void observeState(Index             level,
+                    const HostVector& state)
   {
     if (monitor_ != nullptr)
     {

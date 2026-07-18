@@ -92,8 +92,9 @@ py::list physicalNamesList(const Mesh& mesh)
 py::dict elementShapeCounts(const Mesh& mesh)
 {
   std::map<std::string, Index> counts;
-  for (const auto& elem : mesh.elems())
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
+    const auto& elem = mesh.elem(ie);
     ++counts[shapeName(elem.shape())];
   }
 

@@ -38,8 +38,8 @@ Index SumObjective::numParams() const
   return num_param_;
 }
 
-Real SumObjective::value(const Vector<Real>& state,
-                         const Vector<Real>& prm) const
+Real SumObjective::value(const HostVector& state,
+                         const HostVector& prm) const
 {
   Real value_out = 0.0;
   for (const Objective* term : terms_)
@@ -49,13 +49,13 @@ Real SumObjective::value(const Vector<Real>& state,
   return value_out;
 }
 
-void SumObjective::stateGrad(const Vector<Real>& state,
-                             const Vector<Real>& prm,
-                             Vector<Real>&       out) const
+void SumObjective::stateGrad(const HostVector& state,
+                             const HostVector& prm,
+                             HostVector&       out) const
 {
   resizeOrZero(out, num_states_);
 
-  Vector<Real> term_grad;
+  HostVector term_grad;
   for (const Objective* term : terms_)
   {
     term->stateGrad(state, prm, term_grad);
@@ -63,13 +63,13 @@ void SumObjective::stateGrad(const Vector<Real>& state,
   }
 }
 
-void SumObjective::paramGrad(const Vector<Real>& state,
-                             const Vector<Real>& prm,
-                             Vector<Real>&       out) const
+void SumObjective::paramGrad(const HostVector& state,
+                             const HostVector& prm,
+                             HostVector&       out) const
 {
   resizeOrZero(out, num_param_);
 
-  Vector<Real> term_grad;
+  HostVector term_grad;
   for (const Objective* term : terms_)
   {
     term->paramGrad(state, prm, term_grad);
@@ -77,9 +77,9 @@ void SumObjective::paramGrad(const Vector<Real>& state,
   }
 }
 
-void SumObjective::addInto(const Vector<Real>& input,
-                           Vector<Real>&       out,
-                           Index               size)
+void SumObjective::addInto(const HostVector& input,
+                           HostVector&       out,
+                           Index             size)
 {
   if (input.size() != size || out.size() != size)
   {

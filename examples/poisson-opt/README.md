@@ -76,6 +76,13 @@ state and adjoint equations. The `poisson-opt-resolve` executable still uses
 PETSc/TAO for optimization, but uses Re::Solve for the state and adjoint linear
 solves.
 
+The Poisson residual and state Jacobian are assembled with the backend API:
+`Geometry`, `AssemblyMap`, the runtime `ElementView` operator, `BoundaryPlan`,
+and `HostCsrMatrix`. A small `MatrixLinearization` adapter copies that planned
+CSR Jacobian into PETSc or the Re::Solve map-backed matrix used by the
+reduced-functional layer. Both optimization executables assemble and solve on
+the CPU.
+
 ## Run
 
 From the build directory:
@@ -89,7 +96,7 @@ The optimization driver uses PETSc/TAO.
 With Re::Solve enabled for the forward and adjoint linear solves:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
 ```
 
 ## Result

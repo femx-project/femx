@@ -22,12 +22,12 @@ LeastSquaresObjective::LeastSquaresObjective(Index num_states,
 }
 
 LeastSquaresObjective::LeastSquaresObjective(
-    Index        num_states,
-    Index        num_param,
-    Vector<Real> state_target,
-    Vector<Real> state_weights,
-    Vector<Real> param_target,
-    Vector<Real> param_weights)
+    Index      num_states,
+    Index      num_param,
+    HostVector state_target,
+    HostVector state_weights,
+    HostVector param_target,
+    HostVector param_weights)
   : LeastSquaresObjective(num_states, num_param)
 {
   setStateTerm(std::move(state_target), std::move(state_weights));
@@ -44,26 +44,26 @@ Index LeastSquaresObjective::numParams() const
   return num_param_;
 }
 
-void LeastSquaresObjective::setStateTerm(Vector<Real> target, Real weight)
+void LeastSquaresObjective::setStateTerm(HostVector target, Real weight)
 {
   setStateTerm(std::move(target), uniformWeights(num_states_, weight));
 }
 
-void LeastSquaresObjective::setStateTerm(Vector<Real> target,
-                                         Vector<Real> weights)
+void LeastSquaresObjective::setStateTerm(HostVector target,
+                                         HostVector weights)
 {
   checkTerm(target, weights, num_states_, "state");
   state_target_  = std::move(target);
   state_weights_ = std::move(weights);
 }
 
-void LeastSquaresObjective::setParamTerm(Vector<Real> target, Real weight)
+void LeastSquaresObjective::setParamTerm(HostVector target, Real weight)
 {
   setParamTerm(std::move(target), uniformWeights(num_param_, weight));
 }
 
-void LeastSquaresObjective::setParamTerm(Vector<Real> target,
-                                         Vector<Real> weights)
+void LeastSquaresObjective::setParamTerm(HostVector target,
+                                         HostVector weights)
 {
   checkTerm(target, weights, num_param_, "parameter");
   param_target_  = std::move(target);
@@ -82,17 +82,17 @@ void LeastSquaresObjective::clearParamTerm()
   param_weights_.clear();
 }
 
-Real LeastSquaresObjective::value(const Vector<Real>& state,
-                                  const Vector<Real>& prm) const
+Real LeastSquaresObjective::value(const HostVector& state,
+                                  const HostVector& prm) const
 {
   checkInputSizes(state, prm);
   return termValue(state, state_target_, state_weights_)
          + termValue(prm, param_target_, param_weights_);
 }
 
-void LeastSquaresObjective::stateGrad(const Vector<Real>& state,
-                                      const Vector<Real>& prm,
-                                      Vector<Real>&       out) const
+void LeastSquaresObjective::stateGrad(const HostVector& state,
+                                      const HostVector& prm,
+                                      HostVector&       out) const
 {
   checkInputSizes(state, prm);
   termGrad(state, state_target_, state_weights_, out);
@@ -102,9 +102,9 @@ void LeastSquaresObjective::stateGrad(const Vector<Real>& state,
   }
 }
 
-void LeastSquaresObjective::paramGrad(const Vector<Real>& state,
-                                      const Vector<Real>& prm,
-                                      Vector<Real>&       out) const
+void LeastSquaresObjective::paramGrad(const HostVector& state,
+                                      const HostVector& prm,
+                                      HostVector&       out) const
 {
   checkInputSizes(state, prm);
   termGrad(prm, param_target_, param_weights_, out);
@@ -114,19 +114,19 @@ void LeastSquaresObjective::paramGrad(const Vector<Real>& state,
   }
 }
 
-Vector<Real> LeastSquaresObjective::uniformWeights(Index size, Real weight)
+HostVector LeastSquaresObjective::uniformWeights(Index size, Real weight)
 {
   if (weight < 0.0 || !std::isfinite(weight))
   {
     throw std::runtime_error(
         "LeastSquaresObjective received invalid weight");
   }
-  return Vector<Real>(size, weight);
+  return HostVector(size, weight);
 }
 
-Real LeastSquaresObjective::termValue(const Vector<Real>& x,
-                                      const Vector<Real>& target,
-                                      const Vector<Real>& weights)
+Real LeastSquaresObjective::termValue(const HostVector& x,
+                                      const HostVector& target,
+                                      const HostVector& weights)
 {
   if (target.empty())
   {
@@ -142,10 +142,10 @@ Real LeastSquaresObjective::termValue(const Vector<Real>& x,
   return value;
 }
 
-void LeastSquaresObjective::termGrad(const Vector<Real>& x,
-                                     const Vector<Real>& target,
-                                     const Vector<Real>& weights,
-                                     Vector<Real>&       out)
+void LeastSquaresObjective::termGrad(const HostVector& x,
+                                     const HostVector& target,
+                                     const HostVector& weights,
+                                     HostVector&       out)
 {
   resizeOrZero(out, x.size());
   if (target.empty())
@@ -160,8 +160,8 @@ void LeastSquaresObjective::termGrad(const Vector<Real>& x,
 }
 
 void LeastSquaresObjective::checkInputSizes(
-    const Vector<Real>& state,
-    const Vector<Real>& prm) const
+    const HostVector& state,
+    const HostVector& prm) const
 {
   if (state.size() != num_states_ || prm.size() != num_param_)
   {
@@ -170,10 +170,10 @@ void LeastSquaresObjective::checkInputSizes(
   }
 }
 
-void LeastSquaresObjective::checkTerm(const Vector<Real>& target,
-                                      const Vector<Real>& weights,
-                                      Index               size,
-                                      const char*         name) const
+void LeastSquaresObjective::checkTerm(const HostVector& target,
+                                      const HostVector& weights,
+                                      Index             size,
+                                      const char*       name) const
 {
   if (target.size() != size || weights.size() != size)
   {

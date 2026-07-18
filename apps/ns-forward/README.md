@@ -197,6 +197,12 @@ $R(\mathbf{x}^{n+1})=K\mathbf{x}^{n+1}-F$, and solves the resulting linear
 system $K\mathbf{x}^{n+1}=F$ once per time step. It does not perform a Newton
 iteration on the fully nonlinear Navier-Stokes residual.
 
+The model now publishes flattened `Geometry` and an immutable `AssemblyMap`.
+Both app entry points allocate their matrix from the map's CSR graph; PETSc
+uses the graph for exact preallocation, while the Re::Solve entry point uses
+the CPU solver with the map-backed CSR operator. The time residual is evaluated
+by `HostTimeResidual`.
+
 ## Run
 
 From your build directory, run the executable for the backend you enabled:
@@ -208,9 +214,6 @@ From your build directory, run the executable for the backend you enabled:
 ./apps/ns-forward/ns-forward-petsc \
   --config ../apps/ns-forward/configs/petsc/cavity/Config.json
 ```
-
-The ReSolve configurations include the ReSolve workspace backend, for example
-`"backend": "cuda"`.
 
 ## References
 

@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace fem
 {
 
@@ -32,7 +29,7 @@ public:
 
   Index numDofsPerElem() const;
 
-  void elemDofs(Index ie, Vector<Index>& dofs) const;
+  void elemDofs(Index ie, Array<Index>& dofs) const;
 
 private:
   const MixedFESpace& mixedSpace() const;

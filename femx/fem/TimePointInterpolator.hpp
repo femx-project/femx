@@ -24,8 +24,8 @@ public:
   TimePointInterpolator(Index               num_steps,
                         const MixedFESpace& space,
                         Index               fid,
-                        Vector<Point3>      pts,
-                        Vector<Index>       comps,
+                        Array<Point3>       pts,
+                        Array<Index>        comps,
                         Index               num_param);
 
   Index numSteps() const override;
@@ -36,72 +36,72 @@ public:
 
   Index numObservations() const override;
 
-  void observe(Index               level,
-               const Vector<Real>& state,
-               const Vector<Real>& prm,
-               Vector<Real>&       out) const override;
+  void observe(Index             level,
+               const HostVector& state,
+               const HostVector& prm,
+               HostVector&       out) const override;
 
-  void applyStateJac(Index               level,
-                     const Vector<Real>& state,
-                     const Vector<Real>& prm,
-                     const Vector<Real>& dir,
-                     Vector<Real>&       out) const override;
+  void applyStateJac(Index             level,
+                     const HostVector& state,
+                     const HostVector& prm,
+                     const HostVector& dir,
+                     HostVector&       out) const override;
 
-  void applyStateJacT(Index               level,
-                      const Vector<Real>& state,
-                      const Vector<Real>& prm,
-                      const Vector<Real>& dir,
-                      Vector<Real>&       out) const override;
+  void applyStateJacT(Index             level,
+                      const HostVector& state,
+                      const HostVector& prm,
+                      const HostVector& dir,
+                      HostVector&       out) const override;
 
-  void applyParamJac(Index               level,
-                     const Vector<Real>& state,
-                     const Vector<Real>& prm,
-                     const Vector<Real>& dir,
-                     Vector<Real>&       out) const override;
+  void applyParamJac(Index             level,
+                     const HostVector& state,
+                     const HostVector& prm,
+                     const HostVector& dir,
+                     HostVector&       out) const override;
 
-  void applyParamJacT(Index               level,
-                      const Vector<Real>& state,
-                      const Vector<Real>& prm,
-                      const Vector<Real>& dir,
-                      Vector<Real>&       out) const override;
+  void applyParamJacT(Index             level,
+                      const HostVector& state,
+                      const HostVector& prm,
+                      const HostVector& dir,
+                      HostVector&       out) const override;
 
-  const Vector<Point3>& pts() const;
+  const Array<Point3>& pts() const;
 
-  const Vector<Index>& comps() const;
+  const Array<Index>& comps() const;
 
   static bool containsPoint(const MixedFESpace& space,
                             Index               fid,
                             const Point3&       point);
 
-  static Vector<Point3> filterPointsInside(
-      const MixedFESpace&   space,
-      Index                 fid,
-      const Vector<Point3>& pts);
+  static Array<Point3> filterPointsInside(
+      const MixedFESpace&  space,
+      Index                fid,
+      const Array<Point3>& pts);
 
 private:
   struct Stencil
   {
-    Vector<Index> indices; ///< State dofs used by one observation.
-    Vector<Real>  wts;     ///< Interpolation weights for those dofs.
+    Array<Index> indices; ///< State dofs used by one observation.
+    HostVector   wts;     ///< Interpolation weights for those dofs.
   };
 
   void checkLevel(Index level) const;
 
-  void checkInputs(const Vector<Real>& state,
-                   const Vector<Real>& prm) const;
+  void checkInputs(const HostVector& state,
+                   const HostVector& prm) const;
 
-  static Vector<Stencil> buildStencils(
+  static Array<Stencil> buildStencils(
       const MixedFieldView& field,
-      const Vector<Point3>& pts,
-      const Vector<Index>&  comps);
+      const Array<Point3>&  pts,
+      const Array<Index>&   comps);
 
 private:
-  Index           num_steps_{0};
-  Index           num_states_{0};
-  Index           num_param_{0};
-  Vector<Point3>  pts_;      ///< Observation point coordinates.
-  Vector<Index>   comps_;    ///< Observed component at each point.
-  Vector<Stencil> stencils_; ///< Interpolation stencil for each point.
+  Index          num_steps_{0};
+  Index          num_states_{0};
+  Index          num_param_{0};
+  Array<Point3>  pts_;      ///< Observation point coordinates.
+  Array<Index>   comps_;    ///< Observed component at each point.
+  Array<Stencil> stencils_; ///< Interpolation stencil for each point.
 };
 
 } // namespace fem

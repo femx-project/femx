@@ -15,9 +15,9 @@ namespace fem
 namespace
 {
 
-Vector<DirichletControlMapEntry> identityEntries(Index size)
+Array<DirichletControlMapEntry> identityEntries(Index size)
 {
-  Vector<DirichletControlMapEntry> entries;
+  Array<DirichletControlMapEntry> entries;
   entries.reserve(size);
   for (Index i = 0; i < size; ++i)
   {
@@ -56,7 +56,7 @@ DirichletControl makeVelocityControlFromPredicate(
         "DirichletControl found no velocity boundary dofs");
   }
 
-  Vector<Index> dofs;
+  Array<Index> dofs;
   for (Index id : dof_set)
   {
     dofs.push_back(id);
@@ -65,8 +65,8 @@ DirichletControl makeVelocityControlFromPredicate(
   return DirichletControl(std::move(dofs));
 }
 
-Vector<Real> normalizedVelocityDirection(const MixedFESpace& space,
-                                         const Vector<Real>& normal)
+HostVector normalizedVelocityDirection(const MixedFESpace& space,
+                                       const HostVector&   normal)
 {
   const Index components = space.field(0).numComponents();
   if (normal.size() != components)
@@ -91,8 +91,8 @@ Vector<Real> normalizedVelocityDirection(const MixedFESpace& space,
         "Normal velocity control direction must be nonzero");
   }
 
-  Vector<Real> direction(components);
-  const Real   inverse_norm = 1.0 / std::sqrt(norm_squared);
+  HostVector direction(components);
+  const Real inverse_norm = 1.0 / std::sqrt(norm_squared);
   for (Index component = 0; component < components; ++component)
   {
     direction[component] = inverse_norm * normal[component];
@@ -104,10 +104,10 @@ template <typename Match>
 DirichletControl makeNormalVelocityControlFromPredicate(
     const MixedFESpace& space,
     Match               match,
-    const Vector<Real>& normal)
+    const HostVector&   normal)
 {
-  const auto         u_dof = space.field(0);
-  const Vector<Real> direction =
+  const auto       u_dof = space.field(0);
+  const HostVector direction =
       normalizedVelocityDirection(space, normal);
   std::set<Index> nodes;
 
@@ -124,8 +124,8 @@ DirichletControl makeNormalVelocityControlFromPredicate(
         "Normal velocity control found no boundary nodes");
   }
 
-  Vector<Index>                    state_dofs;
-  Vector<DirichletControlMapEntry> entries;
+  Array<Index>                    state_dofs;
+  Array<DirichletControlMapEntry> entries;
   state_dofs.reserve(nodes.size() * u_dof.numComponents());
   entries.reserve(nodes.size() * u_dof.numComponents());
   Index column = 0;
@@ -149,7 +149,7 @@ DirichletControl makeNormalVelocityControlFromPredicate(
 
 } // namespace
 
-DirichletControl::DirichletControl(Vector<Index> dofs)
+DirichletControl::DirichletControl(Array<Index> dofs)
   : DirichletControl(dofs,
                      dofs.size(),
                      identityEntries(dofs.size()))
@@ -157,9 +157,9 @@ DirichletControl::DirichletControl(Vector<Index> dofs)
 }
 
 DirichletControl::DirichletControl(
-    Vector<Index>                    state_dofs,
-    Index                            num_ctr_params,
-    Vector<DirichletControlMapEntry> map_entries)
+    Array<Index>                    state_dofs,
+    Index                           num_ctr_params,
+    Array<DirichletControlMapEntry> map_entries)
   : dofs_(std::move(state_dofs)),
     num_ctr_params_(num_ctr_params),
     map_entries_(std::move(map_entries))
@@ -228,23 +228,23 @@ Index DirichletControl::stateDof(Index i) const
   return dofs_[i];
 }
 
-const Vector<Index>& DirichletControl::stateDofs() const
+const Array<Index>& DirichletControl::stateDofs() const
 {
   return dofs_;
 }
 
-const Vector<DirichletControlMapEntry>&
+const Array<DirichletControlMapEntry>&
 DirichletControl::mapEntries() const
 {
   return map_entries_;
 }
 
 DirichletControl DirichletControl::withoutStateDofs(
-    const Vector<Index>& excluded) const
+    const Array<Index>& excluded) const
 {
   std::set<Index> excluded_set(excluded.begin(), excluded.end());
-  Vector<Index>   old_to_new_row(numStateDofs(), -1);
-  Vector<Index>   state_dofs;
+  Array<Index>    old_to_new_row(numStateDofs(), -1);
+  Array<Index>    state_dofs;
   state_dofs.reserve(numStateDofs());
   for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
   {
@@ -255,7 +255,7 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Vector<char> used_columns(numControlParams(), 0);
+  Array<char> used_columns(numControlParams(), 0);
   for (const DirichletControlMapEntry& entry : map_entries_)
   {
     if (old_to_new_row[entry.state_row] >= 0)
@@ -264,8 +264,8 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Vector<Index> old_to_new_column(numControlParams(), -1);
-  Index         num_ctr_params = 0;
+  Array<Index> old_to_new_column(numControlParams(), -1);
+  Index        num_ctr_params = 0;
   for (Index old_column = 0; old_column < numControlParams(); ++old_column)
   {
     if (used_columns[old_column] != 0)
@@ -274,7 +274,7 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Vector<DirichletControlMapEntry> entries;
+  Array<DirichletControlMapEntry> entries;
   entries.reserve(map_entries_.size());
   for (const DirichletControlMapEntry& entry : map_entries_)
   {
@@ -290,8 +290,8 @@ DirichletControl DirichletControl::withoutStateDofs(
       std::move(state_dofs), num_ctr_params, std::move(entries));
 }
 
-void DirichletControl::apply(const Vector<Real>& direction,
-                             Vector<Real>&       out) const
+void DirichletControl::apply(const HostVector& direction,
+                             HostVector&       out) const
 {
   checkControlVector(direction);
   resizeOrZero(out, numStateDofs());
@@ -301,8 +301,8 @@ void DirichletControl::apply(const Vector<Real>& direction,
   }
 }
 
-void DirichletControl::applyTranspose(const Vector<Real>& direction,
-                                      Vector<Real>&       out) const
+void DirichletControl::applyTranspose(const HostVector& direction,
+                                      HostVector&       out) const
 {
   checkStateVector(direction);
   resizeOrZero(out, numControlParams());
@@ -321,7 +321,7 @@ void DirichletControl::checkDofIndex(Index i) const
 }
 
 void DirichletControl::checkControlVector(
-    const Vector<Real>& control) const
+    const HostVector& control) const
 {
   if (control.size() != numControlParams())
   {
@@ -330,7 +330,7 @@ void DirichletControl::checkControlVector(
   }
 }
 
-void DirichletControl::checkStateVector(const Vector<Real>& state) const
+void DirichletControl::checkStateVector(const HostVector& state) const
 {
   if (state.size() != numStateDofs())
   {
@@ -366,7 +366,7 @@ DirichletControl makeVelocityControl(
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     Index               ptag,
-    const Vector<Real>& normal)
+    const HostVector&   normal)
 {
   return makeNormalVelocityControlFromPredicate(
       space,
@@ -380,7 +380,7 @@ DirichletControl makeNormalVelocityControl(
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     const std::string&  pname,
-    const Vector<Real>& normal)
+    const HostVector&   normal)
 {
   return makeNormalVelocityControlFromPredicate(
       space,

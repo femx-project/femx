@@ -41,23 +41,23 @@ struct ForwardProblem
   NavierStokesModel                      model;
   fem::TimeDirichletData                 fixed;
   assembly::TimeDirichletControlResidual problem;
-  Vector<Real>                           x0;
-  Vector<Real>                           prm0;
+  HostVector                             x0;
+  HostVector                             prm0;
 };
 
 AppOptions parseAppOptions(int   argc,
                            char* argv[],
                            bool  allow_unknown_options);
 
-void printUsage(std::ostream&              out,
-                const std::string&         executable,
-                const std::string&         option_suffix = {},
-                const Vector<std::string>& extra_lines   = {});
+void printUsage(std::ostream&             out,
+                const std::string&        executable,
+                const std::string&        option_suffix = {},
+                const Array<std::string>& extra_lines   = {});
 
 std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
                                              const std::string& executable);
 
-bool isFinite(const Vector<Real>& x);
+bool isFinite(const HostVector& x);
 
 ForwardSolveResult solve(
     femx::state::TimeLinearIntegrator& integrator,

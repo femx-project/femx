@@ -18,7 +18,7 @@ class ScalarRecurrence(femx.TimeResidual):
         dims.num_steps = self._num_steps
         dims.num_states = 1
         dims.num_param = 1
-        dims.num_residuals = 1
+        dims.num_res = 1
         dims.num_history_states = 1
         return dims
 
@@ -72,7 +72,7 @@ class TimeLinearIntegratorTest(unittest.TestCase):
     @staticmethod
     def make_integrator():
         problem = ScalarRecurrence(num_steps=3)
-        matrix = femx.DenseAssemblyMatrix()
+        matrix = femx.DenseMatrix()
         linear_solver = femx.DenseLinearSolver()
         integrator = femx.TimeLinearIntegrator(problem, matrix, linear_solver)
         integrator.set_initial_state(np.array([1.0]))

@@ -6,11 +6,11 @@
 #include <femx/assembly/TimeDirichletControlResidual.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
+#include <femx/linalg/native/MapCsrMatrix.hpp>
 
 #if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #endif
 using namespace femx::state;
 using namespace femx::linalg;
@@ -23,11 +23,11 @@ namespace assembly
 namespace
 {
 
-void replaceSparseRow(CsrAssemblyMatrix& mat,
-                      Index              row,
-                      Real               diag)
+void replaceSparseRow(MapCsrMatrix& mat,
+                      Index         row,
+                      Real          diag)
 {
-  CsrMatrix& sparse = mat.mat();
+  HostCsrMatrix& sparse = mat.mat();
   if (row < 0 || row >= sparse.rows())
   {
     throw std::runtime_error(
@@ -36,7 +36,7 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
 
   const Index* rp   = sparse.rowPtrData();
   const Index* ci   = sparse.colIndData();
-  Real*        vals = sparse.valuesData();
+  Real*        vals = sparse.valsData();
 
   bool has_diag = false;
   for (Index k = rp[row]; k < rp[row + 1]; ++k)
@@ -58,13 +58,13 @@ void replaceSparseRow(CsrAssemblyMatrix& mat,
 } // namespace
 
 TimeDirichletControlResidual::TimeDirichletControlResidual(
-    const TimeResidual&         base,
-    fem::DirichletControl       ctr,
-    Vector<Index>               fdofs,
-    Index                       ctr_param_offset,
-    Index                       num_param,
-    Vector<Real>                fvals,
-    Vector<LinearInterpolation> ctr_time_stencils)
+    const TimeResidual&        base,
+    fem::DirichletControl      ctr,
+    Array<Index>               fdofs,
+    Index                      ctr_param_offset,
+    Index                      num_param,
+    HostVector                 fvals,
+    Array<LinearInterpolation> ctr_time_stencils)
   : base_(base),
     ctr_(std::move(ctr)),
     fdofs_(std::move(fdofs)),
@@ -73,7 +73,7 @@ TimeDirichletControlResidual::TimeDirichletControlResidual(
     dims_(base_dims_),
     ctr_param_offset_(ctr_param_offset)
 {
-  if (base_dims_.num_residuals != base_dims_.num_states)
+  if (base_dims_.num_res != base_dims_.num_states)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual requires square state residuals");
@@ -163,31 +163,31 @@ Index TimeDirichletControlResidual::numParams() const
 
 Index TimeDirichletControlResidual::numRes() const
 {
-  return dims_.num_residuals;
+  return dims_.num_res;
 }
 
 void TimeDirichletControlResidual::res(
     const TimeContext& ctx,
-    Vector<Real>&      out) const
+    HostVector&        out) const
 {
   checkContext(ctx);
 
   TimeContext base_ctx = ctx;
   base_ctx.prm         = &base_prm_;
   base_.res(base_ctx, out);
-  if (out.size() != dims_.num_residuals)
+  if (out.size() != dims_.num_res)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual base residual size mismatch");
   }
 
-  const Vector<Real> control = interpolatedControl(ctx.step, *ctx.prm);
-  Vector<Real>       values;
-  ctr_.apply(control, values);
+  const HostVector control = interpolatedControl(ctx.step, *ctx.prm);
+  HostVector       vals;
+  ctr_.apply(control, vals);
   for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
     const Index row = ctr_.stateDof(i);
-    out[row]        = (*ctx.nxt)[row] - values[i];
+    out[row]        = (*ctx.nxt)[row] - vals[i];
   }
   for (Index i = 0; i < fdofs_.size(); ++i)
   {
@@ -197,10 +197,10 @@ void TimeDirichletControlResidual::res(
 }
 
 void TimeDirichletControlResidual::applyJac(
-    const TimeContext&  ctx,
-    VariableBlock       wrt,
-    const Vector<Real>& dir,
-    Vector<Real>&       out) const
+    const TimeContext& ctx,
+    VariableBlock      wrt,
+    const HostVector&  dir,
+    HostVector&        out) const
 {
   checkContext(ctx);
   if (wrt.isParam())
@@ -212,24 +212,24 @@ void TimeDirichletControlResidual::applyJac(
   TimeContext base_ctx = ctx;
   base_ctx.prm         = &base_prm_;
   base_.applyJac(base_ctx, wrt, dir, out);
-  if (out.size() != dims_.num_residuals)
+  if (out.size() != dims_.num_res)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual Jacobian apply size mismatch");
   }
 
   const Real diag = wrt.isNextState() ? 1.0 : 0.0;
-  for (Index row : constrainedRows())
+  for (Index row : bcRows())
   {
     out[row] = diag == 0.0 ? 0.0 : dir[row];
   }
 }
 
 void TimeDirichletControlResidual::applyJacT(
-    const TimeContext&  ctx,
-    VariableBlock       wrt,
-    const Vector<Real>& adj,
-    Vector<Real>&       out) const
+    const TimeContext& ctx,
+    VariableBlock      wrt,
+    const HostVector&  adj,
+    HostVector&        out) const
 {
   checkContext(ctx);
   if (wrt.isParam())
@@ -245,12 +245,12 @@ void TimeDirichletControlResidual::applyJacT(
 bool TimeDirichletControlResidual::assembleJac(
     const TimeContext& ctx,
     VariableBlock      wrt,
-    MatrixBuilder&     out) const
+    MatrixOperator&    out) const
 {
   checkContext(ctx);
   if (wrt.isParam())
   {
-    out.resize(dims_.num_residuals, dims_.num_param);
+    out.resize(dims_.num_res, dims_.num_param);
     out.setZero();
     const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
     for (const fem::DirichletControlMapEntry& entry : ctr_.mapEntries())
@@ -280,8 +280,8 @@ bool TimeDirichletControlResidual::assembleJac(
 void TimeDirichletControlResidual::prepareLinearSolve(
     const TimeContext& ctx,
     VariableBlock      wrt,
-    MatrixBuilder&     J,
-    Vector<Real>&      rhs) const
+    MatrixOperator&    J,
+    HostVector&        rhs) const
 {
   checkContext(ctx);
   if (!wrt.isNextState())
@@ -315,8 +315,8 @@ void TimeDirichletControlResidual::checkContext(
   checkVector(ctx.prm, dims_.num_param);
 }
 
-void TimeDirichletControlResidual::checkVector(const Vector<Real>* value,
-                                               Index               size) const
+void TimeDirichletControlResidual::checkVector(const HostVector* value,
+                                               Index             size) const
 {
   if (value == nullptr || value->size() != size)
   {
@@ -326,18 +326,18 @@ void TimeDirichletControlResidual::checkVector(const Vector<Real>* value,
 }
 
 void TimeDirichletControlResidual::replaceStateRows(
-    MatrixBuilder& out,
-    Real           diag) const
+    MatrixOperator& out,
+    Real            diag) const
 {
-  if (out.numRows() != dims_.num_residuals
+  if (out.numRows() != dims_.num_res
       || out.numCols() != dims_.num_states)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual matrix size mismatch");
   }
 
-  const Vector<Index> rows = constrainedRows();
-  if (auto* sparse = dynamic_cast<CsrAssemblyMatrix*>(&out))
+  const Array<Index> rows = bcRows();
+  if (auto* sparse = dynamic_cast<MapCsrMatrix*>(&out))
   {
     for (Index row : rows)
     {
@@ -347,7 +347,7 @@ void TimeDirichletControlResidual::replaceStateRows(
   }
 
 #if defined(FEMX_HAS_PETSC)
-  if (auto* petsc = dynamic_cast<PETScAssemblyMatrix*>(&out))
+  if (auto* petsc = dynamic_cast<PETScOperator*>(&out))
   {
     out.finalize();
     petsc->zeroRows(rows, diag);
@@ -369,22 +369,22 @@ void TimeDirichletControlResidual::replaceStateRows(
 }
 
 void TimeDirichletControlResidual::eliminateStateColumns(
-    MatrixBuilder& J,
-    Vector<Real>&  rhs) const
+    MatrixOperator& J,
+    HostVector&     rhs) const
 {
-  if (rhs.size() != dims_.num_residuals)
+  if (rhs.size() != dims_.num_res)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual RHS size mismatch");
   }
-  if (J.numRows() != dims_.num_residuals || J.numCols() != dims_.num_states)
+  if (J.numRows() != dims_.num_res || J.numCols() != dims_.num_states)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual matrix size mismatch");
   }
 
-  const Vector<Index> rows = constrainedRows();
-  Vector<char>        is_constrained(dims_.num_states, 0);
+  const Array<Index> rows = bcRows();
+  Array<char>        is_constrained(dims_.num_states, 0);
   for (Index row : rows)
   {
     if (row < 0 || row >= dims_.num_states)
@@ -395,16 +395,16 @@ void TimeDirichletControlResidual::eliminateStateColumns(
     is_constrained[row] = 1;
   }
 
-  auto* sparse = dynamic_cast<CsrAssemblyMatrix*>(&J);
+  auto* sparse = dynamic_cast<MapCsrMatrix*>(&J);
   if (sparse == nullptr)
   {
     return;
   }
 
-  CsrMatrix&   mat  = sparse->mat();
-  const Index* rp   = mat.rowPtrData();
-  const Index* ci   = mat.colIndData();
-  Real*        vals = mat.valuesData();
+  HostCsrMatrix& mat  = sparse->mat();
+  const Index*   rp   = mat.rowPtrData();
+  const Index*   ci   = mat.colIndData();
+  Real*          vals = mat.valsData();
 
   for (Index row = 0; row < mat.rows(); ++row)
   {
@@ -425,18 +425,18 @@ void TimeDirichletControlResidual::eliminateStateColumns(
 }
 
 void TimeDirichletControlResidual::applyControlParamJac(
-    const TimeContext&  ctx,
-    const Vector<Real>& dir,
-    Vector<Real>&       out) const
+    const TimeContext& ctx,
+    const HostVector&  dir,
+    HostVector&        out) const
 {
   if (dir.size() != dims_.num_param)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual parameter direction size mismatch");
   }
-  resizeOrZero(out, dims_.num_residuals);
-  const Vector<Real> control = interpolatedControl(ctx.step, dir);
-  Vector<Real>       mapped;
+  resizeOrZero(out, dims_.num_res);
+  const HostVector control = interpolatedControl(ctx.step, dir);
+  HostVector       mapped;
   ctr_.apply(control, mapped);
   for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
@@ -445,24 +445,24 @@ void TimeDirichletControlResidual::applyControlParamJac(
 }
 
 void TimeDirichletControlResidual::applyControlParamJacT(
-    const TimeContext&  ctx,
-    const Vector<Real>& adj,
-    Vector<Real>&       out) const
+    const TimeContext& ctx,
+    const HostVector&  adj,
+    HostVector&        out) const
 {
-  if (adj.size() != dims_.num_residuals)
+  if (adj.size() != dims_.num_res)
   {
     throw std::runtime_error(
         "TimeDirichletControlResidual adjoint vector size mismatch");
   }
   resizeOrZero(out, dims_.num_param);
   const LinearInterpolation& interp = ctr_time_stencils_[ctx.step];
-  Vector<Real>               state_adj(ctr_.numStateDofs());
+  HostVector                 state_adj(ctr_.numStateDofs());
   for (Index i = 0; i < ctr_.numStateDofs(); ++i)
   {
     state_adj[i] = adj[ctr_.stateDof(i)];
   }
 
-  Vector<Real> ctr_adj;
+  HostVector ctr_adj;
   ctr_.applyTranspose(state_adj, ctr_adj);
   for (Index i = 0; i < ctr_.numControlParams(); ++i)
   {
@@ -475,7 +475,7 @@ void TimeDirichletControlResidual::applyControlParamJacT(
 }
 
 void TimeDirichletControlResidual::initializeControlTimeStencils(
-    Vector<LinearInterpolation> ctr_time_stencils)
+    Array<LinearInterpolation> ctr_time_stencils)
 {
   if (ctr_time_stencils.empty())
   {
@@ -512,11 +512,11 @@ void TimeDirichletControlResidual::initializeControlTimeStencils(
   }
 }
 
-Vector<Real> TimeDirichletControlResidual::interpolatedControl(
-    Index               step,
-    const Vector<Real>& prm) const
+HostVector TimeDirichletControlResidual::interpolatedControl(
+    Index             step,
+    const HostVector& prm) const
 {
-  Vector<Real> out(ctr_.numControlParams());
+  HostVector out(ctr_.numControlParams());
   if (out.empty())
   {
     return out;
@@ -549,14 +549,14 @@ Real TimeDirichletControlResidual::fixedValue(Index step, Index i) const
   {
     return fvals_[i];
   }
-  BlockVectorView<const Real> values(
+  BlockVectorView<const Real> vals(
       fvals_.data(), base_dims_.num_steps, fdofs_.size());
-  return values(step, i);
+  return vals(step, i);
 }
 
-Vector<Index> TimeDirichletControlResidual::constrainedRows() const
+Array<Index> TimeDirichletControlResidual::bcRows() const
 {
-  Vector<Index> rows;
+  Array<Index> rows;
   rows.reserve(ctr_.numStateDofs() + fdofs_.size());
   for (Index row : ctr_.stateDofs())
   {

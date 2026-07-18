@@ -4,12 +4,19 @@ include(CMakeFindDependencyMacro)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
+if(@FEMX_HAS_CUDA@)
+  find_dependency(CUDAToolkit)
+endif()
+
 if(@FEMX_ENABLE_OPENMP@)
   find_dependency(OpenMP)
 endif()
 
 if(@FEMX_HAS_RESOLVE@)
-  find_dependency(ReSolve 0.99.2 EXACT)
+  set(ReSolve_DIR "@FEMX_RESOLVE_DEVELOP_CONFIG@" CACHE PATH
+      "ReSolve development package directory" FORCE)
+  find_dependency(ReSolve CONFIG PATHS "@FEMX_RESOLVE_DEVELOP_PREFIX_REAL@"
+                  NO_DEFAULT_PATH)
 endif()
 
 if(@FEMX_HAS_HDF5@)

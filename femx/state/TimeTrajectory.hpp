@@ -1,105 +1,95 @@
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
 
 namespace femx
 {
 namespace state
 {
 
-/**
- * @brief State values on all time levels of a time-marching solve.
- *
- * TimeTrajectory stores contiguous state blocks so each time level can be
- * accessed as a VectorView.
- */
+/** @brief Contiguous host storage for all time levels of a state. */
 class TimeTrajectory
 {
 public:
   TimeTrajectory() = default;
 
-  TimeTrajectory(Index num_steps,
-                 Index num_states)
+  TimeTrajectory(Index num_steps, Index num_states)
   {
     resize(num_steps, num_states);
   }
 
-  void resize(Index num_steps,
-              Index num_states)
+  void resize(Index num_steps, Index num_states)
   {
     if (num_steps < 0 || num_states < 0)
     {
       throw std::runtime_error("TimeTrajectory received invalid dimensions");
     }
 
+    const std::int64_t size =
+        (static_cast<std::int64_t>(num_steps) + 1) * num_states;
+    if (size > std::numeric_limits<Index>::max())
+    {
+      throw std::runtime_error("TimeTrajectory exceeds the Index range");
+    }
+
+    data_.resize(static_cast<Index>(size));
     num_steps_  = num_steps;
     num_states_ = num_states;
-    data_.resize((num_steps_ + 1) * num_states_);
   }
 
-  bool empty() const
+  Index numSteps() const noexcept
   {
-    return data_.empty();
+    return data_.empty() ? 0 : num_steps_;
   }
 
-  Index numSteps() const
+  Index numTimeLevels() const noexcept
   {
-    return empty() ? 0 : num_steps_;
+    return data_.empty() ? 0 : num_steps_ + 1;
   }
 
-  Index numTimeLevels() const
+  Index numStates() const noexcept
   {
-    return empty() ? 0 : num_steps_ + 1;
+    return data_.empty() ? 0 : num_states_;
   }
 
-  Index numLevels() const
-  {
-    return numTimeLevels();
-  }
-
-  Index numStates() const
-  {
-    return empty() ? 0 : num_states_;
-  }
-
-  Index size() const
+  Index size() const noexcept
   {
     return data_.size();
   }
 
-  Real* data()
+  Real* data() noexcept
   {
     return data_.data();
   }
 
-  const Real* data() const
+  const Real* data() const noexcept
   {
     return data_.data();
   }
 
-  VectorView<Real> level(Index level)
+  HostVectorView level(Index level)
   {
     checkLevel(level);
-    return VectorView<Real>(data_.data() + level * num_states_, num_states_);
+    return {data_.data() + level * num_states_, num_states_};
   }
 
-  VectorView<const Real> level(Index level) const
+  HostConstVectorView level(Index level) const
   {
     checkLevel(level);
-    return VectorView<const Real>(data_.data() + level * num_states_,
-                                  num_states_);
+    return {data_.data() + level * num_states_, num_states_};
   }
 
-  VectorView<Real> operator[](Index level)
+  HostVectorView operator[](Index level)
   {
     return this->level(level);
   }
 
-  VectorView<const Real> operator[](Index level) const
+  HostConstVectorView operator[](Index level) const
   {
     return this->level(level);
   }
@@ -118,10 +108,9 @@ private:
     }
   }
 
-private:
-  Vector<Real> data_;
-  Index        num_steps_{0};
-  Index        num_states_{0};
+  HostVector data_;
+  Index      num_steps_{0};
+  Index      num_states_{0};
 };
 
 } // namespace state

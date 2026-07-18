@@ -23,8 +23,8 @@ constexpr Real det_tol   = 1.0e-14;
 
 struct ScalarStencil
 {
-  Vector<Index> nids;
-  Vector<Real>  wts;
+  Array<Index> nids;
+  HostVector   wts;
 };
 
 bool insideBox(const Element& elem,
@@ -48,7 +48,7 @@ bool insideBox(const Element& elem,
   return true;
 }
 
-bool insideSimplex(const Vector<Real>& wts)
+bool insideSimplex(const HostVector& wts)
 {
   Real sum = 0.0;
   for (Real wt : wts)
@@ -62,18 +62,18 @@ bool insideSimplex(const Vector<Real>& wts)
   return std::abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
-Vector<Real> shapeWeights(const FiniteElement&   fe,
-                          const QuadraturePoint& qp)
+HostVector shapeWeights(const FiniteElement&   fe,
+                        const QuadraturePoint& qp)
 {
-  Vector<Real> wts(fe.numDofsPerElement());
-  fe.calcN(qp, VectorView<Real>(wts.data(), wts.size()));
+  HostVector wts(fe.numDofsPerElement());
+  fe.calcN(qp, HostVectorView(wts.data(), wts.size()));
   return wts;
 }
 
 bool triWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                Vector<Real>&        wts)
+                HostVector&          wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -96,7 +96,7 @@ bool triWeights(const FiniteElement& fe,
 bool tetWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                Vector<Real>&        wts)
+                HostVector&          wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -118,9 +118,9 @@ bool tetWeights(const FiniteElement& fe,
   return insideSimplex(wts);
 }
 
-Point3 mappedPoint(const Element&      elem,
-                   const Vector<Real>& wts,
-                   Index               dim)
+Point3 mappedPoint(const Element&    elem,
+                   const HostVector& wts,
+                   Index             dim)
 {
   Point3 mapped{0.0, 0.0, 0.0};
   for (Index in = 0; in < elem.numNodes(); ++in)
@@ -140,12 +140,12 @@ bool quadSolveStep(const Element&       elem,
                    const Point3&        point,
                    Real&                dr,
                    Real&                ds,
-                   Vector<Real>&        wts)
+                   HostVector&          wts)
 {
   const QuadraturePoint qp{{r, s, 0.0}, 0.0};
   wts = shapeWeights(fe, qp);
 
-  Vector<Real> grad(fe.numDofsPerElement() * fe.dim());
+  HostVector grad(fe.numDofsPerElement() * fe.dim());
   fe.calcdNdr(
       qp,
       MatrixView<Real>(
@@ -182,7 +182,7 @@ bool quadSolveStep(const Element&       elem,
 bool quadWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 Vector<Real>&        wts)
+                 HostVector&          wts)
 {
   Real r = 0.0;
   Real s = 0.0;
@@ -219,7 +219,7 @@ bool quadWeights(const FiniteElement& fe,
 bool elemWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 Vector<Real>&        wts)
+                 HostVector&          wts)
 {
   switch (fe.referenceElement())
   {
@@ -265,7 +265,7 @@ bool tryFindScalarStencil(const FESpace& space,
       continue;
     }
 
-    Vector<Real> wts;
+    HostVector wts;
     if (elemWeights(fe, elem, point, wts))
     {
       out = ScalarStencil{elem.nodeIds(), wts};
@@ -292,8 +292,8 @@ ScalarStencil findScalarStencil(const FESpace& space,
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              const MixedFESpace& space,
                                              Index               fid,
-                                             Vector<Point3>      pts,
-                                             Vector<Index>       comps,
+                                             Array<Point3>       pts,
+                                             Array<Index>        comps,
                                              Index               num_param)
   : num_steps_(num_steps),
     num_states_(space.numDofs()),
@@ -347,10 +347,10 @@ Index TimePointInterpolator::numObservations() const
   return stencils_.size();
 }
 
-void TimePointInterpolator::observe(Index               level,
-                                    const Vector<Real>& state,
-                                    const Vector<Real>& prm,
-                                    Vector<Real>&       out) const
+void TimePointInterpolator::observe(Index             level,
+                                    const HostVector& state,
+                                    const HostVector& prm,
+                                    HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -366,11 +366,11 @@ void TimePointInterpolator::observe(Index               level,
   }
 }
 
-void TimePointInterpolator::applyStateJac(Index               level,
-                                          const Vector<Real>& state,
-                                          const Vector<Real>& prm,
-                                          const Vector<Real>& dir,
-                                          Vector<Real>&       out) const
+void TimePointInterpolator::applyStateJac(Index             level,
+                                          const HostVector& state,
+                                          const HostVector& prm,
+                                          const HostVector& dir,
+                                          HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -391,11 +391,11 @@ void TimePointInterpolator::applyStateJac(Index               level,
   }
 }
 
-void TimePointInterpolator::applyStateJacT(Index               level,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir,
-                                           Vector<Real>&       out) const
+void TimePointInterpolator::applyStateJacT(Index             level,
+                                           const HostVector& state,
+                                           const HostVector& prm,
+                                           const HostVector& dir,
+                                           HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -416,11 +416,11 @@ void TimePointInterpolator::applyStateJacT(Index               level,
   }
 }
 
-void TimePointInterpolator::applyParamJac(Index               level,
-                                          const Vector<Real>& state,
-                                          const Vector<Real>& prm,
-                                          const Vector<Real>& dir,
-                                          Vector<Real>&       out) const
+void TimePointInterpolator::applyParamJac(Index             level,
+                                          const HostVector& state,
+                                          const HostVector& prm,
+                                          const HostVector& dir,
+                                          HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -433,11 +433,11 @@ void TimePointInterpolator::applyParamJac(Index               level,
   resizeOrZero(out, numObservations());
 }
 
-void TimePointInterpolator::applyParamJacT(Index               level,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir,
-                                           Vector<Real>&       out) const
+void TimePointInterpolator::applyParamJacT(Index             level,
+                                           const HostVector& state,
+                                           const HostVector& prm,
+                                           const HostVector& dir,
+                                           HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -450,12 +450,12 @@ void TimePointInterpolator::applyParamJacT(Index               level,
   resizeOrZero(out, numParams());
 }
 
-const Vector<Point3>& TimePointInterpolator::pts() const
+const Array<Point3>& TimePointInterpolator::pts() const
 {
   return pts_;
 }
 
-const Vector<Index>& TimePointInterpolator::comps() const
+const Array<Index>& TimePointInterpolator::comps() const
 {
   return comps_;
 }
@@ -469,12 +469,12 @@ bool TimePointInterpolator::containsPoint(const MixedFESpace& space,
   return tryFindScalarStencil(field.space(), point, stencil);
 }
 
-Vector<Point3> TimePointInterpolator::filterPointsInside(
-    const MixedFESpace&   space,
-    Index                 fid,
-    const Vector<Point3>& pts)
+Array<Point3> TimePointInterpolator::filterPointsInside(
+    const MixedFESpace&  space,
+    Index                fid,
+    const Array<Point3>& pts)
 {
-  Vector<Point3> filtered;
+  Array<Point3> filtered;
   filtered.reserve(pts.size());
   for (const Point3& point : pts)
   {
@@ -495,8 +495,8 @@ void TimePointInterpolator::checkLevel(Index level) const
 }
 
 void TimePointInterpolator::checkInputs(
-    const Vector<Real>& state,
-    const Vector<Real>& prm) const
+    const HostVector& state,
+    const HostVector& prm) const
 {
   if (state.size() != numStates() || prm.size() != numParams())
   {
@@ -504,12 +504,12 @@ void TimePointInterpolator::checkInputs(
   }
 }
 
-Vector<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
+Array<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
     const MixedFieldView& field,
-    const Vector<Point3>& pts,
-    const Vector<Index>&  comps)
+    const Array<Point3>&  pts,
+    const Array<Index>&   comps)
 {
-  Vector<Stencil> stencils;
+  Array<Stencil> stencils;
   stencils.reserve(pts.size() * comps.size());
 
   for (const Point3& point : pts)

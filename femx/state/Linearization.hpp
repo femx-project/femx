@@ -1,7 +1,7 @@
 #pragma once
 
-#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
 
 namespace femx
 {
@@ -35,19 +35,19 @@ public:
 class MatrixLinearization final : public Linearization
 {
 public:
-  MatrixLinearization(linalg::AssemblyMatrix& J_state,
-                      linalg::AssemblyMatrix& J_param)
+  MatrixLinearization(linalg::MatrixOperator& J_state,
+                      linalg::MatrixOperator& J_param)
     : J_state_(J_state),
       J_param_(J_param)
   {
   }
 
-  linalg::AssemblyMatrix& stateMat()
+  linalg::MatrixOperator& stateMat()
   {
     return J_state_;
   }
 
-  linalg::AssemblyMatrix& paramMat()
+  linalg::MatrixOperator& paramMat()
   {
     return J_param_;
   }
@@ -63,8 +63,8 @@ public:
   }
 
 private:
-  linalg::AssemblyMatrix& J_state_;
-  linalg::AssemblyMatrix& J_param_;
+  linalg::MatrixOperator& J_state_;
+  linalg::MatrixOperator& J_param_;
 };
 
 } // namespace state

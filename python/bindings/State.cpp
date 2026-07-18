@@ -7,20 +7,18 @@
 #include "Bindings.hpp"
 #include "InitialStateParameterMap.hpp"
 #include "PETScInit.hpp"
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/AssemblyMatrix.hpp>
-#include <femx/linalg/CsrPattern.hpp>
+#include <femx/assembly/AssemblyMap.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/native/DenseLinearSolver.hpp>
+#include <femx/linalg/native/MapCsrMatrix.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
 #ifdef FEMX_HAS_RESOLVE
@@ -41,20 +39,18 @@ namespace
 {
 
 using femx::DenseMatrix;
+using femx::HostVector;
 using femx::Index;
 using femx::Real;
-using femx::Vector;
-using femx::WorkspaceType;
-using femx::linalg::AssemblyMatrix;
-using femx::linalg::CsrAssemblyMatrix;
-using femx::linalg::DenseAssemblyMatrix;
+using femx::assembly::HostAssemblyMap;
 using femx::linalg::DenseLinearSolver;
 using femx::linalg::LinearOperator;
 using femx::linalg::LinearSolver;
-using femx::linalg::MatrixBuilder;
+using femx::linalg::MapCsrMatrix;
+using femx::linalg::MatrixOperator;
 #ifdef FEMX_HAS_PETSC
 using femx::linalg::KspLinearSolver;
-using femx::linalg::PETScAssemblyMatrix;
+using femx::linalg::PETScOperator;
 #endif
 #ifdef FEMX_HAS_RESOLVE
 using femx::linalg::ReSolveLinearSolver;
@@ -76,16 +72,16 @@ using femx::state::VariableBlock;
 using RealArray = py::array_t<Real,
                               py::array::c_style | py::array::forcecast>;
 
-Vector<Real> vectorFromArray(const RealArray& values,
-                             const char*      name)
+HostVector vectorFromArray(const RealArray& vals,
+                           const char*      name)
 {
-  if (values.ndim() != 1)
+  if (vals.ndim() != 1)
   {
     throw std::runtime_error(std::string(name) + " must be one-dimensional");
   }
 
-  Vector<Real> out(static_cast<Index>(values.shape(0)));
-  const auto   data = values.unchecked<1>();
+  HostVector out(static_cast<Index>(vals.shape(0)));
+  const auto data = vals.unchecked<1>();
   for (Index i = 0; i < out.size(); ++i)
   {
     out[i] = data(i);
@@ -93,13 +89,13 @@ Vector<Real> vectorFromArray(const RealArray& values,
   return out;
 }
 
-py::array_t<Real> vectorArray(const Vector<Real>& values)
+py::array_t<Real> vectorArray(const HostVector& vals)
 {
-  py::array_t<Real> out(values.size());
+  py::array_t<Real> out(vals.size());
   auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < values.size(); ++i)
+  for (Index i = 0; i < vals.size(); ++i)
   {
-    data(i) = values[i];
+    data(i) = vals[i];
   }
   return out;
 }
@@ -134,7 +130,7 @@ public:
   {
   }
 
-  void observe(Index, const Vector<Real>&) override
+  void observe(Index, const HostVector&) override
   {
     py::gil_scoped_acquire acquire;
     checkSignals();
@@ -172,24 +168,24 @@ private:
   py::object progress_;
 };
 
-DenseMatrix denseMatrixFromArray(const RealArray& values,
+DenseMatrix denseMatrixFromArray(const RealArray& vals,
                                  const char*      name)
 {
-  if (values.ndim() != 2)
+  if (vals.ndim() != 2)
   {
     throw std::runtime_error(
         std::string(name) + " must be two-dimensional");
   }
 
-  const Index rows = static_cast<Index>(values.shape(0));
-  const Index cols = static_cast<Index>(values.shape(1));
+  const Index rows = static_cast<Index>(vals.shape(0));
+  const Index cols = static_cast<Index>(vals.shape(1));
   DenseMatrix out(rows, cols);
-  const auto  data = values.unchecked<2>();
+  const auto  data = vals.unchecked<2>();
   for (Index row = 0; row < rows; ++row)
   {
-    for (Index column = 0; column < cols; ++column)
+    for (Index col = 0; col < cols; ++col)
     {
-      out(row, column) = data(row, column);
+      out(row, col) = data(row, col);
     }
   }
   return out;
@@ -226,8 +222,8 @@ public:
     return integrator_.numParams();
   }
 
-  void solve(const Vector<Real>& param,
-             TimeTrajectory&     trajectory) override
+  void solve(const HostVector& param,
+             TimeTrajectory&   trajectory) override
   {
     if (param.size() != numParams())
     {
@@ -235,7 +231,7 @@ public:
           "initial-state integrator parameter size mismatch");
     }
 
-    Vector<Real> initial;
+    HostVector initial;
     map_.state(param, initial);
     integrator_.setInitialState(initial);
     MonitorScope           monitor(*this);
@@ -253,7 +249,7 @@ private:
     {
     }
 
-    void observe(Index level, const Vector<Real>& state) override
+    void observe(Index level, const HostVector& state) override
     {
       integrator_.observeState(level, state);
     }
@@ -271,23 +267,23 @@ private:
   InitialStateParameterMap& map_;
 };
 
-py::array_t<Real> denseMatrixArray(const DenseMatrix& values)
+py::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
 {
-  py::array_t<Real> out({values.rows(), values.cols()});
+  py::array_t<Real> out({vals.numRows(), vals.numCols()});
   auto              data = out.mutable_unchecked<2>();
-  for (Index row = 0; row < values.rows(); ++row)
+  for (Index row = 0; row < vals.numRows(); ++row)
   {
-    for (Index column = 0; column < values.cols(); ++column)
+    for (Index col = 0; col < vals.numCols(); ++col)
     {
-      data(row, column) = values(row, column);
+      data(row, col) = vals(row, col);
     }
   }
   return out;
 }
 
-void checkFinite(const Vector<Real>& values, const char* name)
+void checkFinite(const HostVector& vals, const char* name)
 {
-  for (Real value : values)
+  for (Real value : vals)
   {
     if (!std::isfinite(value))
     {
@@ -296,13 +292,13 @@ void checkFinite(const Vector<Real>& values, const char* name)
   }
 }
 
-void checkFinite(const DenseMatrix& values, const char* name)
+void checkFinite(const DenseMatrix& vals, const char* name)
 {
-  for (Index row = 0; row < values.rows(); ++row)
+  for (Index row = 0; row < vals.numRows(); ++row)
   {
-    for (Index column = 0; column < values.cols(); ++column)
+    for (Index col = 0; col < vals.numCols(); ++col)
     {
-      if (!std::isfinite(values(row, column)))
+      if (!std::isfinite(vals(row, col)))
       {
         throw std::runtime_error(std::string(name) + " must be finite");
       }
@@ -313,35 +309,35 @@ void checkFinite(const DenseMatrix& values, const char* name)
 EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
                                       const RealArray& perturbations)
 {
-  Vector<Real> mean_values = vectorFromArray(mean, "mean");
-  DenseMatrix  perturbation_values =
+  HostVector  mean_vals = vectorFromArray(mean, "mean");
+  DenseMatrix perturb_vals =
       denseMatrixFromArray(perturbations, "perturbations");
-  if (mean_values.empty())
+  if (mean_vals.empty())
   {
     throw std::runtime_error("mean must not be empty");
   }
-  if (perturbation_values.rows() != mean_values.size()
-      || perturbation_values.cols() <= 0)
+  if (perturb_vals.numRows() != mean_vals.size()
+      || perturb_vals.numCols() <= 0)
   {
     throw std::runtime_error(
         "perturbations must have shape (value_size, num_coefficients)");
   }
-  checkFinite(mean_values, "mean");
-  checkFinite(perturbation_values, "perturbations");
+  checkFinite(mean_vals, "mean");
+  checkFinite(perturb_vals, "perturbations");
   return EnsembleBasis(
-      std::move(mean_values), std::move(perturbation_values));
+      std::move(mean_vals), std::move(perturb_vals));
 }
 
 void copyArray(const py::handle& value,
-               Vector<Real>&     out,
+               HostVector&       out,
                const char*       name)
 {
-  const RealArray values = RealArray::ensure(value);
-  if (!values)
+  const RealArray vals = RealArray::ensure(value);
+  if (!vals)
   {
     throw std::runtime_error(std::string(name) + " must be a real NumPy array");
   }
-  out = vectorFromArray(values, name);
+  out = vectorFromArray(vals, name);
 }
 
 py::array_t<Real> historyArray(const TimeHistoryView& history)
@@ -359,18 +355,18 @@ py::array_t<Real> historyArray(const TimeHistoryView& history)
   return out;
 }
 
-py::dict contextData(const TimeContext& context)
+py::dict ctxData(const TimeContext& ctx)
 {
-  if (context.nxt == nullptr || context.prm == nullptr)
+  if (ctx.nxt == nullptr || ctx.prm == nullptr)
   {
     throw std::runtime_error("TimeContext contains null state or parameter data");
   }
 
   py::dict out;
-  out["step"]       = context.step;
-  out["next_state"] = vectorArray(*context.nxt);
-  out["parameters"] = vectorArray(*context.prm);
-  out["history"]    = historyArray(context.hist);
+  out["step"]       = ctx.step;
+  out["next_state"] = vectorArray(*ctx.nxt);
+  out["parameters"] = vectorArray(*ctx.prm);
+  out["history"]    = historyArray(ctx.hist);
   return out;
 }
 
@@ -389,8 +385,8 @@ public:
     PYBIND11_OVERRIDE_PURE(TimeDims, TimeResidual, dims);
   }
 
-  void res(const TimeContext& context,
-           Vector<Real>&      out) const override
+  void res(const TimeContext& ctx,
+           HostVector&        out) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "residual");
@@ -398,13 +394,13 @@ public:
     {
       throw std::runtime_error("TimeResidual.residual() is not implemented");
     }
-    copyArray(override(contextData(context)), out, "residual result");
+    copyArray(override(ctxData(ctx)), out, "residual result");
   }
 
-  void applyJac(const TimeContext&  context,
-                VariableBlock       wrt,
-                const Vector<Real>& direction,
-                Vector<Real>&       out) const override
+  void applyJac(const TimeContext& ctx,
+                VariableBlock      wrt,
+                const HostVector&  dir,
+                HostVector&        out) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "apply_jacobian");
@@ -413,15 +409,15 @@ public:
       throw std::runtime_error(
           "TimeResidual.apply_jacobian() is not implemented");
     }
-    copyArray(override(contextData(context), wrt, vectorArray(direction)),
+    copyArray(override(ctxData(ctx), wrt, vectorArray(dir)),
               out,
               "Jacobian result");
   }
 
-  void applyJacT(const TimeContext&  context,
-                 VariableBlock       wrt,
-                 const Vector<Real>& adjoint,
-                 Vector<Real>&       out) const override
+  void applyJacT(const TimeContext& ctx,
+                 VariableBlock      wrt,
+                 const HostVector&  adj,
+                 HostVector&        out) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -431,41 +427,40 @@ public:
       throw std::runtime_error(
           "TimeResidual.apply_jacobian_transpose() is not implemented");
     }
-    copyArray(override(contextData(context), wrt, vectorArray(adjoint)),
+    copyArray(override(ctxData(ctx), wrt, vectorArray(adj)),
               out,
               "transpose Jacobian result");
   }
 
-  bool assembleJac(const TimeContext& context,
+  bool assembleJac(const TimeContext& ctx,
                    VariableBlock      wrt,
-                   MatrixBuilder&     out) const override
+                   MatrixOperator&    out) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
         py::get_override(this, "assemble_jacobian");
     if (!override)
     {
-      return TimeResidual::assembleJac(context, wrt, out);
+      return TimeResidual::assembleJac(ctx, wrt, out);
     }
 
-    const py::object value = override(contextData(context), wrt);
+    const py::object value = override(ctxData(ctx), wrt);
     if (value.is_none())
     {
       return false;
     }
 
-    const RealArray matrix = RealArray::ensure(value);
-    if (!matrix || matrix.ndim() != 2)
+    const RealArray mat = RealArray::ensure(value);
+    if (!mat || mat.ndim() != 2)
     {
       throw std::runtime_error(
           "TimeResidual.assemble_jacobian() must return a two-dimensional array or None");
     }
 
-    const TimeDims dimensions = dims();
-    const Index    rows       = static_cast<Index>(matrix.shape(0));
-    const Index    cols       = static_cast<Index>(matrix.shape(1));
-    if (rows != dimensions.num_residuals
-        || cols != variableSize(dimensions, wrt))
+    const TimeDims dims = this->dims();
+    const Index    rows = static_cast<Index>(mat.shape(0));
+    const Index    cols = static_cast<Index>(mat.shape(1));
+    if (rows != dims.num_res || cols != variableSize(dims, wrt))
     {
       throw std::runtime_error(
           "TimeResidual.assemble_jacobian() returned an array with invalid shape");
@@ -476,7 +471,7 @@ public:
       out.resize(rows, cols);
     }
     out.setZero();
-    const auto data = matrix.unchecked<2>();
+    const auto data = mat.unchecked<2>();
     for (Index i = 0; i < rows; ++i)
     {
       for (Index j = 0; j < cols; ++j)
@@ -487,25 +482,25 @@ public:
     return true;
   }
 
-  void prepareLinearSolve(const TimeContext& context,
+  void prepareLinearSolve(const TimeContext& ctx,
                           VariableBlock      wrt,
-                          MatrixBuilder&     jacobian,
-                          Vector<Real>&      rhs) const override
+                          MatrixOperator&    jac,
+                          HostVector&        rhs) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
         py::get_override(this, "prepare_linear_solve");
     if (!override)
     {
-      TimeResidual::prepareLinearSolve(context, wrt, jacobian, rhs);
+      TimeResidual::prepareLinearSolve(ctx, wrt, jac, rhs);
       return;
     }
 
     py::array_t<Real> rhs_array = vectorArray(rhs);
     const py::object  result    = override(
-        contextData(context),
+        ctxData(ctx),
         wrt,
-        py::cast(&jacobian, py::return_value_policy::reference),
+        py::cast(&jac, py::return_value_policy::reference),
         rhs_array);
     if (result.is_none())
     {
@@ -536,51 +531,38 @@ py::array trajectoryLevel(TimeTrajectory& trajectory, Index level)
   {
     level += trajectory.numTimeLevels();
   }
-  auto values = trajectory.level(level);
+  auto vals = trajectory.level(level);
   return py::array_t<Real>(
-      {static_cast<py::ssize_t>(values.size())},
+      {static_cast<py::ssize_t>(vals.size())},
       {static_cast<py::ssize_t>(sizeof(Real))},
-      values.data(),
+      vals.data(),
       py::cast(&trajectory, py::return_value_policy::reference));
 }
 
-py::array_t<Real> denseValues(const DenseAssemblyMatrix& matrix)
+py::array_t<Real> denseVals(const DenseMatrix& mat)
 {
-  py::array_t<Real> out({matrix.numRows(), matrix.numCols()});
-  auto              values = out.mutable_unchecked<2>();
-  for (Index i = 0; i < matrix.numRows(); ++i)
+  py::array_t<Real> out({mat.numRows(), mat.numCols()});
+  auto              vals = out.mutable_unchecked<2>();
+  for (Index i = 0; i < mat.numRows(); ++i)
   {
-    for (Index j = 0; j < matrix.numCols(); ++j)
+    for (Index j = 0; j < mat.numCols(); ++j)
     {
-      values(i, j) = matrix.mat()(i, j);
+      vals(i, j) = mat(i, j);
     }
   }
   return out;
 }
 
 #ifdef FEMX_HAS_PETSC
-std::unique_ptr<PETScAssemblyMatrix> petscAssemblyMatrix(
-    const femx::CsrPattern& pattern)
+std::unique_ptr<PETScOperator> petscOperator(const HostAssemblyMap& map)
 {
   femx::python::initializePETSc();
 
-  auto matrix =
-      std::make_unique<PETScAssemblyMatrix>(PETSC_COMM_WORLD);
-  Index max_nonzeros = 0;
-  for (Index row = 0; row < pattern.rows(); ++row)
-  {
-    const Index nonzeros =
-        pattern.rowPtrData()[row + 1] - pattern.rowPtrData()[row];
-    if (nonzeros > max_nonzeros)
-    {
-      max_nonzeros = nonzeros;
-    }
-  }
-  if (max_nonzeros > 0)
-  {
-    matrix->setDefaultNonzerosPerRow(max_nonzeros);
-  }
-  return matrix;
+  auto                      mat = std::make_unique<PETScOperator>(PETSC_COMM_WORLD);
+  femx::linalg::PETScVector lyt(PETSC_COMM_WORLD);
+  lyt.resize(map.numRes());
+  mat->resize(map.graph(), lyt);
+  return mat;
 }
 
 std::unique_ptr<KspLinearSolver> kspLinearSolver()
@@ -620,23 +602,22 @@ void bindState(py::module_& module)
           "evaluate",
           [](const EnsembleBasis& basis, const RealArray& coefficients)
           {
-            Vector<Real> coefficient_values =
+            HostVector coeffs =
                 vectorFromArray(coefficients, "coefficients");
-            checkFinite(coefficient_values, "coefficients");
-            Vector<Real> out;
-            basis.apply(coefficient_values, out);
+            checkFinite(coeffs, "coefficients");
+            HostVector out;
+            basis.apply(coeffs, out);
             return vectorArray(out);
           },
           py::arg("coefficients"))
       .def(
           "apply_transpose",
-          [](const EnsembleBasis& basis, const RealArray& values)
+          [](const EnsembleBasis& basis, const RealArray& vals)
           {
-            Vector<Real> physical_values =
-                vectorFromArray(values, "values");
-            checkFinite(physical_values, "values");
-            Vector<Real> out;
-            basis.applyT(physical_values, out);
+            HostVector phys = vectorFromArray(vals, "values");
+            checkFinite(phys, "values");
+            HostVector out;
+            basis.applyT(phys, out);
             return vectorArray(out);
           },
           py::arg("values"))
@@ -651,51 +632,40 @@ void bindState(py::module_& module)
           py::arg("mean"),
           py::arg("perturbations"));
 
-  py::class_<MatrixBuilder>(module, "MatrixBuilder")
-      .def_property_readonly("num_rows", &MatrixBuilder::numRows)
-      .def_property_readonly("num_cols", &MatrixBuilder::numCols)
-      .def("resize", &MatrixBuilder::resize)
-      .def("set_zero", &MatrixBuilder::setZero)
-      .def("set", &MatrixBuilder::set)
-      .def("add", &MatrixBuilder::add)
-      .def("finalize", &MatrixBuilder::finalize);
-
   py::class_<LinearOperator>(module, "LinearOperator")
       .def_property_readonly("num_rows", &LinearOperator::numRows)
       .def_property_readonly("num_cols", &LinearOperator::numCols);
 
-  py::class_<AssemblyMatrix, LinearOperator, MatrixBuilder>(
-      module, "AssemblyMatrix", py::multiple_inheritance());
+  py::class_<MatrixOperator, LinearOperator>(module, "MatrixOperator")
+      .def("resize", &MatrixOperator::resize)
+      .def("set_zero", &MatrixOperator::setZero)
+      .def("set", &MatrixOperator::set)
+      .def("add", &MatrixOperator::add)
+      .def("finalize", &MatrixOperator::finalize);
 
-  py::class_<femx::CsrPattern>(module, "_CsrPattern");
+  py::class_<HostAssemblyMap>(module, "_AssemblyMap");
 
-  py::class_<CsrAssemblyMatrix, AssemblyMatrix>(module,
-                                                "_CsrAssemblyMatrix")
-      .def(py::init<const femx::CsrPattern&>(),
-           py::arg("pattern"),
-           py::keep_alive<1, 2>());
+  py::class_<MapCsrMatrix, MatrixOperator>(module,
+                                           "_MapCsrMatrix")
+      .def(py::init<const HostAssemblyMap&>(), py::arg("map"));
 
-  py::class_<DenseAssemblyMatrix, AssemblyMatrix>(module,
-                                                  "DenseAssemblyMatrix")
+  py::class_<DenseMatrix, MatrixOperator>(module,
+                                          "DenseMatrix")
       .def(py::init<>())
       .def(py::init([](Index rows, Index cols)
                     {
-                      auto matrix = std::make_unique<DenseAssemblyMatrix>();
-                      matrix->resize(rows, cols);
-                      return matrix; }),
+                      auto mat = std::make_unique<DenseMatrix>();
+                      mat->resize(rows, cols);
+                      return mat; }),
            py::arg("rows"),
            py::arg("cols"))
-      .def_property_readonly("values", &denseValues);
+      .def_property_readonly("values", &denseVals);
 
   py::class_<LinearSolver>(module, "LinearSolver");
   py::class_<DenseLinearSolver, LinearSolver>(module, "DenseLinearSolver")
       .def(py::init<Real>(), py::arg("pivot_tolerance") = 1.0e-14);
 
 #ifdef FEMX_HAS_RESOLVE
-  py::enum_<WorkspaceType>(module, "_WorkspaceType")
-      .value("CPU", WorkspaceType::Cpu)
-      .value("CUDA", WorkspaceType::Cuda);
-
   py::class_<ReSolveOptions>(module, "_ReSolveOptions")
       .def(py::init<>())
       .def_readwrite("factor", &ReSolveOptions::factor)
@@ -714,16 +684,8 @@ void bindState(py::module_& module)
 
   py::class_<ReSolveLinearSolver, LinearSolver>(module,
                                                 "_ReSolveLinearSolver")
-      .def(py::init<WorkspaceType>(), py::arg("workspace"))
-      .def(py::init<WorkspaceType, ReSolveOptions>(),
-           py::arg("workspace"),
-           py::arg("options"));
-
-#ifdef FEMX_RESOLVE_USE_CUDA
-  module.attr("_resolve_has_cuda") = true;
-#else
-  module.attr("_resolve_has_cuda") = false;
-#endif
+      .def(py::init<>())
+      .def(py::init<ReSolveOptions>(), py::arg("options"));
 #endif
 
 #ifdef FEMX_HAS_PETSC
@@ -767,9 +729,9 @@ void bindState(py::module_& module)
         }
       });
 
-  py::class_<PETScAssemblyMatrix, AssemblyMatrix>(module,
-                                                  "_PETScAssemblyMatrix")
-      .def(py::init(&petscAssemblyMatrix), py::arg("pattern"));
+  py::class_<PETScOperator, MatrixOperator>(module,
+                                            "_PETScOperator")
+      .def(py::init(&petscOperator), py::arg("map"));
 
   py::class_<KspLinearSolver, LinearSolver>(module, "_KspLinearSolver")
       .def(py::init(&kspLinearSolver));
@@ -780,7 +742,7 @@ void bindState(py::module_& module)
       .def_readwrite("num_steps", &TimeDims::num_steps)
       .def_readwrite("num_states", &TimeDims::num_states)
       .def_readwrite("num_param", &TimeDims::num_param)
-      .def_readwrite("num_residuals", &TimeDims::num_residuals)
+      .def_readwrite("num_res", &TimeDims::num_res)
       .def_readwrite("num_history_states", &TimeDims::num_history_states);
 
   py::class_<VariableBlock>(module, "VariableBlock")
@@ -845,13 +807,13 @@ void bindState(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            Vector<Real>           values = vectorFromArray(parameters, "parameters");
+            HostVector             vals = vectorFromArray(parameters, "parameters");
             TimeTrajectory         trajectory;
             PythonTimeStateMonitor monitor(progress);
             ScopedTimeStateMonitor monitor_scope(integrator, monitor);
             {
               py::gil_scoped_release release;
-              integrator.solve(values, trajectory);
+              integrator.solve(vals, trajectory);
             }
             return trajectory;
           },
@@ -860,7 +822,7 @@ void bindState(py::module_& module)
 
   py::class_<TimeLinearIntegrator, TimeIntegrator>(
       module, "TimeLinearIntegrator")
-      .def(py::init<const TimeResidual&, AssemblyMatrix&, LinearSolver&>(),
+      .def(py::init<const TimeResidual&, MatrixOperator&, LinearSolver&>(),
            py::arg("problem"),
            py::arg("matrix"),
            py::arg("linear_solver"),
@@ -903,7 +865,7 @@ void bindState(py::module_& module)
           [](const InitialStateParameterMap& map,
              const RealArray&                param)
           {
-            Vector<Real> out;
+            HostVector out;
             map.state(vectorFromArray(param, "param"), out);
             return vectorArray(out);
           },

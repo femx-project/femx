@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace inverse
 {
 
@@ -26,18 +23,18 @@ public:
   virtual Index numParams() const = 0;
 
   /** @brief Evaluate J(state, prm). */
-  virtual Real value(const Vector<Real>& state,
-                     const Vector<Real>& prm) const = 0;
+  virtual Real value(const HostVector& state,
+                     const HostVector& prm) const = 0;
 
   /** @brief Compute dJ/du at (state, prm). */
-  virtual void stateGrad(const Vector<Real>& state,
-                         const Vector<Real>& prm,
-                         Vector<Real>&       out) const = 0;
+  virtual void stateGrad(const HostVector& state,
+                         const HostVector& prm,
+                         HostVector&       out) const = 0;
 
   /** @brief Compute dJ/dm at (state, prm). */
-  virtual void paramGrad(const Vector<Real>& state,
-                         const Vector<Real>& prm,
-                         Vector<Real>&       out) const = 0;
+  virtual void paramGrad(const HostVector& state,
+                         const HostVector& prm,
+                         HostVector&       out) const = 0;
 };
 
 } // namespace inverse

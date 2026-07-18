@@ -8,8 +8,6 @@
 
 namespace femx
 {
-class CsrMatrix;
-
 namespace fem
 {
 
@@ -92,15 +90,15 @@ public:
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  const Vector<Index>& dofs() const noexcept;
-  const Vector<Real>&  values() const noexcept;
+  const Array<Index>& dofs() const noexcept;
+  const HostVector&   vals() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
-  void apply(CsrMatrix& A, Vector<Real>& b) const;
+  void apply(HostCsrMatrix& A, HostVector& b) const;
 
 private:
-  Vector<Index> dofs_;
-  Vector<Real>  values_;
+  Array<Index> dofs_;
+  HostVector   vals_;
 };
 
 } // namespace fem

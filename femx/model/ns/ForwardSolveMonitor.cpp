@@ -71,10 +71,10 @@ void writeLine(const std::string& line,
 }
 
 #ifndef FEMX_HAS_HDF5
-void packVelocity(const Vector<Real>& ux,
-                  const Vector<Real>& uy,
-                  const Vector<Real>& uz,
-                  Vector<Real>&       velocity)
+void packVelocity(const HostVector& ux,
+                  const HostVector& uy,
+                  const HostVector& uz,
+                  HostVector&       velocity)
 {
   const Index num_nodes = ux.size();
   if (uy.size() != num_nodes
@@ -121,11 +121,11 @@ struct ForwardSolveMonitor::FieldOutput
   TimeSeriesDataOut vel_out;
   TimeSeriesDataOut pre_out;
   VtuWriter         vtu_out;
-  Vector<Real>      velocity;
-  Vector<Real>      ux;
-  Vector<Real>      uy;
-  Vector<Real>      uz;
-  Vector<Real>      p;
+  HostVector        velocity;
+  HostVector        ux;
+  HostVector        uy;
+  HostVector        uz;
+  HostVector        p;
 };
 
 ForwardSolveMonitor::ForwardSolveMonitor(const fem::MixedFESpace& space,
@@ -246,8 +246,8 @@ void ForwardSolveMonitor::start(Index num_steps,
   }
 }
 
-void ForwardSolveMonitor::observe(Index               level,
-                                  const Vector<Real>& state)
+void ForwardSolveMonitor::observe(Index             level,
+                                  const HostVector& state)
 {
   if (level > 0)
   {
@@ -269,12 +269,12 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
 {
   result_.final_step  = ctx.level;
   result_.final_time  = static_cast<Real>(ctx.level) * dt_;
-  result_.final_state = ctx.current;
+  result_.final_state = ctx.curr;
 
   const bool need_velocity_change = conv_.enabled || show_vel_change_;
   if (need_velocity_change)
   {
-    result_.vel_change = velocityRelativeChange(*space_, ctx.previous, ctx.current);
+    result_.vel_change = velocityRelativeChange(*space_, ctx.prev, ctx.curr);
   }
 
   result_.converged = conv_.enabled
@@ -283,16 +283,16 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
 
   if (fieldOutputEnabled() && shouldWriteForwardOutput(ctx.level, num_steps_, field_interval_))
   {
-    writeFieldOutput(ctx.level, ctx.current, result_.final_time);
+    writeFieldOutput(ctx.level, ctx.curr, result_.final_time);
   }
 
-  writeDiagnosticsRow(ctx.level, ctx.current, result_.final_time);
+  writeDiagnosticsRow(ctx.level, ctx.curr, result_.final_time);
   writeProgress(ctx.level, ctx.total_steps);
 
   if (detailedLogEnabled()
       && shouldWriteDetailedLog(ctx.level, ctx.total_steps))
   {
-    const Real max_cfl = maxVelocityCfl(*space_, ctx.previous, dt_);
+    const Real max_cfl = maxVelocityCfl(*space_, ctx.prev, dt_);
     if (!std::isfinite(max_cfl))
     {
       throw std::runtime_error("Stopping as CFL became invalid");
@@ -344,16 +344,16 @@ bool ForwardSolveMonitor::shouldWriteDetailedLog(Index step,
   return true;
 }
 
-void ForwardSolveMonitor::writeFieldOutput(Index               level,
-                                           const Vector<Real>& state,
-                                           Real                time)
+void ForwardSolveMonitor::writeFieldOutput(Index             level,
+                                           const HostVector& state,
+                                           Real              time)
 {
   if (field_out_ == nullptr)
   {
     return;
   }
 
-  splitStateFields(VectorView<const Real>(state.data(), state.size()),
+  splitStateFields(HostConstVectorView(state.data(), state.size()),
                    *space_,
                    field_out_->ux,
                    field_out_->uy,
@@ -382,7 +382,7 @@ void ForwardSolveMonitor::writeFieldOutput(Index               level,
   field_out_->vtu_out.writePointData(
       stepVtuFile(field_dir_, level),
       space_->mesh(),
-      Vector<VtuWriter::PointField>{
+      Array<VtuWriter::PointField>{
           {"velocity", 3, &field_out_->velocity},
           {"pressure", 1, &field_out_->p}});
 #endif
@@ -410,9 +410,9 @@ void ForwardSolveMonitor::writeDiagnosticsHeader()
   }
 }
 
-void ForwardSolveMonitor::writeDiagnosticsRow(Index               level,
-                                              const Vector<Real>& state,
-                                              Real                time)
+void ForwardSolveMonitor::writeDiagnosticsRow(Index             level,
+                                              const HostVector& state,
+                                              Real              time)
 {
   if (diag_out_ == nullptr)
   {
@@ -467,11 +467,10 @@ void ForwardSolveMonitor::writeDetailedStepLog(Index step,
 }
 
 Real velocityRelativeChange(const fem::MixedFESpace& space,
-                            const Vector<Real>&      previous,
-                            const Vector<Real>&      current)
+                            const HostVector&        prev,
+                            const HostVector&        curr)
 {
-  if (previous.size() != current.size()
-      || previous.size() != space.numDofs())
+  if (prev.size() != curr.size() || prev.size() != space.numDofs())
   {
     throw std::runtime_error("velocity convergence received incompatible states");
   }
@@ -487,9 +486,9 @@ Real velocityRelativeChange(const fem::MixedFESpace& space,
     for (Index d = 0; d < comps; ++d)
     {
       const Index id    = velocity.globalDof(in, d);
-      const Real  diff  = current[id] - previous[id];
+      const Real  diff  = curr[id] - prev[id];
       diff2            += diff * diff;
-      ref2             += previous[id] * previous[id];
+      ref2             += prev[id] * prev[id];
     }
   }
 
@@ -505,7 +504,7 @@ Real velocityRelativeChange(const fem::MixedFESpace& space,
 }
 
 Real maxVelocityCfl(const fem::MixedFESpace& space,
-                    const Vector<Real>&      state,
+                    const HostVector&        state,
                     Real                     dt)
 {
   if (state.size() != space.numDofs())

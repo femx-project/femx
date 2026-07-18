@@ -13,7 +13,7 @@ public:
   using Index = femx::Index;
   using Real  = femx::Real;
 
-  InitialStateParameterMap(femx::Vector<Real>          mean,
+  InitialStateParameterMap(femx::HostVector            mean,
                            femx::DenseMatrix           modes,
                            femx::fem::DirichletControl control,
                            Index                       init_offset,
@@ -26,13 +26,13 @@ public:
       ctr_offset_(ctr_offset),
       num_param_(num_param)
   {
-    if (mean_.empty() || modes_.rows() != mean_.size())
+    if (mean_.empty() || modes_.numRows() != mean_.size())
     {
       throw std::runtime_error(
           "initial-state mean and modes must match the state size");
     }
     if (init_offset_ < 0 || ctr_offset_ < 0 || num_param_ < 0
-        || init_offset_ + modes_.cols() > num_param_
+        || init_offset_ + modes_.numCols() > num_param_
         || ctr_offset_ + control_.numControlParams() > num_param_)
     {
       throw std::runtime_error(
@@ -45,7 +45,7 @@ public:
         throw std::runtime_error(
             "initial-state control row is out of range");
       }
-      for (Index col = 0; col < modes_.cols(); ++col)
+      for (Index col = 0; col < modes_.numCols(); ++col)
       {
         if (modes_(row, col) != 0.0)
         {
@@ -68,37 +68,37 @@ public:
 
   Index numModes() const
   {
-    return modes_.cols();
+    return modes_.numCols();
   }
 
-  void state(const femx::Vector<Real>& param,
-             femx::Vector<Real>&       out) const
+  void state(const femx::HostVector& param,
+             femx::HostVector&       out) const
   {
     checkParam(param);
     out = mean_;
-    for (Index row = 0; row < modes_.rows(); ++row)
+    for (Index row = 0; row < modes_.numRows(); ++row)
     {
-      for (Index col = 0; col < modes_.cols(); ++col)
+      for (Index col = 0; col < modes_.numCols(); ++col)
       {
         out[row] += modes_(row, col) * param[init_offset_ + col];
       }
     }
 
-    femx::Vector<Real> ctr_param(control_.numControlParams());
+    femx::HostVector ctr_param(control_.numControlParams());
     for (Index i = 0; i < ctr_param.size(); ++i)
     {
       ctr_param[i] = param[ctr_offset_ + i];
     }
-    femx::Vector<Real> values;
-    control_.apply(ctr_param, values);
+    femx::HostVector vals;
+    control_.apply(ctr_param, vals);
     for (Index i = 0; i < control_.numStateDofs(); ++i)
     {
-      out[control_.stateDof(i)] = values[i];
+      out[control_.stateDof(i)] = vals[i];
     }
   }
 
-  void applyTranspose(const femx::Vector<Real>& state_grad,
-                      femx::Vector<Real>&       out) const
+  void applyTranspose(const femx::HostVector& state_grad,
+                      femx::HostVector&       out) const
   {
     if (state_grad.size() != numStates())
     {
@@ -107,20 +107,20 @@ public:
     }
     out.resize(num_param_);
     out.setZero();
-    for (Index col = 0; col < modes_.cols(); ++col)
+    for (Index col = 0; col < modes_.numCols(); ++col)
     {
-      for (Index row = 0; row < modes_.rows(); ++row)
+      for (Index row = 0; row < modes_.numRows(); ++row)
       {
         out[init_offset_ + col] += modes_(row, col) * state_grad[row];
       }
     }
 
-    femx::Vector<Real> control_state_grad(control_.numStateDofs());
+    femx::HostVector control_state_grad(control_.numStateDofs());
     for (Index i = 0; i < control_.numStateDofs(); ++i)
     {
       control_state_grad[i] = state_grad[control_.stateDof(i)];
     }
-    femx::Vector<Real> control_grad;
+    femx::HostVector control_grad;
     control_.applyTranspose(control_state_grad, control_grad);
     for (Index i = 0; i < control_grad.size(); ++i)
     {
@@ -129,7 +129,7 @@ public:
   }
 
 private:
-  void checkParam(const femx::Vector<Real>& param) const
+  void checkParam(const femx::HostVector& param) const
   {
     if (param.size() != num_param_)
     {
@@ -139,7 +139,7 @@ private:
   }
 
 private:
-  femx::Vector<Real>          mean_;
+  femx::HostVector            mean_;
   femx::DenseMatrix           modes_;
   femx::fem::DirichletControl control_;
   Index                       init_offset_{0};

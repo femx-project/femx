@@ -11,16 +11,13 @@
 #include <string>
 #include <utility>
 
-#include <femx/assembly/Assembler.hpp>
-#include <femx/assembly/DirichletControlResidual.hpp>
-#include <femx/assembly/ElementKernel.hpp>
-#include <femx/assembly/FEMResidual.hpp>
+#include "../poisson/PoissonOperator.hpp"
+#include <femx/assembly/Assembly.hpp>
+#include <femx/assembly/BoundaryPlan.hpp>
 #include <femx/common/Math.hpp>
-#include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FESpace.hpp>
-#include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
@@ -29,9 +26,8 @@
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/SumObjective.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/LinearStateSolver.hpp>
@@ -58,82 +54,157 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-class PoissonElementKernel final : public ElementKernel
+/**
+ * @brief AssemblyMap-backed residual for the optimization workflow.
+ *
+ * The finite-element work is performed by Geometry/AssemblyMap/ElementView,
+ * while MatrixLinearization publishes the resulting state and control
+ * operators to ReducedFunctional and TAO.
+ */
+class PoissonMapResidual final : public Residual
 {
 public:
-  PoissonElementKernel(const FESpace&         space,
-                       const GaussQuadrature& quad)
-    : space_(&space),
-      quad_(&quad)
+  PoissonMapResidual(const HostGeometry&    geom,
+                     const HostAssemblyMap& map,
+                     Array<Index>           control_dofs,
+                     Array<Index>           fixed_dofs)
+    : geom_(&geom),
+      map_(&map),
+      control_dofs_(std::move(control_dofs)),
+      fixed_dofs_(std::move(fixed_dofs)),
+      jac_(map.graph())
   {
-  }
-
-  void res(Index               ie,
-           const Vector<Real>& u,
-           const Vector<Real>& m,
-           Vector<Real>&       out) const override
-  {
-    (void) m;
-    DenseMatrix K;
-    stiffness(ie, K);
-    resizeOrZero(out, u.size());
-    for (Index i = 0; i < K.rows(); ++i)
+    Array<Index> bc_dofs = control_dofs_;
+    bc_dofs.reserve(control_dofs_.size() + fixed_dofs_.size());
+    for (Index dof : fixed_dofs_)
     {
-      for (Index j = 0; j < K.cols(); ++j)
-      {
-        out[i] += K(i, j) * u[j];
-      }
+      bc_dofs.push_back(dof);
     }
+    bc_plan_ = makeBoundaryPlan(bc_dofs, map.graph());
   }
 
-  void stateJac(Index               ie,
-                const Vector<Real>& u,
-                const Vector<Real>& m,
-                DenseMatrix&        out) const override
+  Dimensions dims() const override
   {
-    (void) u;
-    (void) m;
-    stiffness(ie, out);
+    return {map_->numStates(),
+            control_dofs_.size(),
+            map_->numRes()};
   }
 
-  void paramJac(Index               ie,
-                const Vector<Real>& u,
-                const Vector<Real>& m,
-                DenseMatrix&        out) const override
+  void res(const HostVector& state,
+           const HostVector& prm,
+           HostVector&       out) const override
   {
-    (void) ie;
-    out.resize(u.size(), m.size());
-    out.setZero();
+    checkVectors(state, prm);
+    assembleRaw(state, out);
+    replaceRes(bc_plan_, state, bcVals(prm), out);
+  }
+
+  void linearize(const HostVector& state,
+                 const HostVector& prm,
+                 Linearization&    out) const override
+  {
+    checkVectors(state, prm);
+    auto* mats = dynamic_cast<MatrixLinearization*>(&out);
+    if (mats == nullptr)
+    {
+      throw std::runtime_error(
+          "PoissonMapResidual requires MatrixLinearization output");
+    }
+
+    HostVector res;
+    assembleRaw(state, res);
+    replaceRows(bc_plan_, jac_);
+    copyStateJac(mats->stateMat());
+    assemblePrmJac(mats->paramMat());
   }
 
 private:
-  void stiffness(Index ie, DenseMatrix& out) const
+  void checkVectors(const HostVector& state,
+                    const HostVector& prm) const
   {
-    ElementValues ev(space_->finiteElement(), *quad_);
-    ev.reinit(space_->mesh().elem(ie));
-
-    out.resize(space_->numDofsPerElem(), space_->numDofsPerElem());
-    for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
+    const Dimensions shape = dims();
+    if (state.size() != shape.num_states || prm.size() != shape.num_param)
     {
-      const auto dNdx = ev.dNdx(iq);
-      const Real JxW  = ev.JxW(iq);
+      throw std::runtime_error("PoissonMapResidual vector size mismatch");
+    }
+  }
 
-      for (Index i = 0; i < out.rows(); ++i)
+  void assembleRaw(const HostVector& state, HostVector& res) const
+  {
+    CpuContext ctx;
+    assembly::assemble(poisson::PoissonQuadQ1Operator{},
+                       *geom_,
+                       *map_,
+                       state,
+                       res,
+                       jac_,
+                       ctx);
+  }
+
+  HostVector bcVals(const HostVector& prm) const
+  {
+    HostVector vals(bc_plan_.numBcs(), 0.0);
+    for (Index i = 0; i < control_dofs_.size(); ++i)
+    {
+      vals[i] = prm[i];
+    }
+    return vals;
+  }
+
+  void copyStateJac(MatrixOperator& out) const
+  {
+    if (out.numRows() != jac_.rows()
+        || out.numCols() != jac_.cols())
+    {
+      throw std::runtime_error(
+          "PoissonMapResidual state matrix size mismatch");
+    }
+
+    if (auto* csr = dynamic_cast<MapCsrMatrix*>(&out))
+    {
+      HostCsrMatrix& dst = csr->mat();
+      if (dst.graph().layoutId() != jac_.graph().layoutId())
       {
-        for (Index j = 0; j < out.cols(); ++j)
+        throw std::runtime_error(
+            "PoissonMapResidual state matrix uses a different CSR graph");
+      }
+      std::copy(jac_.valsData(),
+                jac_.valsData() + jac_.nnz(),
+                dst.valsData());
+    }
+    else
+    {
+      out.setZero();
+      for (Index row = 0; row < jac_.rows(); ++row)
+      {
+        for (Index k = jac_.rowPtrData()[row];
+             k < jac_.rowPtrData()[row + 1];
+             ++k)
         {
-          for (Index d = 0; d < ev.dim(); ++d)
-          {
-            out(i, j) += dNdx(i, d) * dNdx(j, d) * JxW;
-          }
+          out.set(row, jac_.colIndData()[k], jac_.valsData()[k]);
         }
       }
     }
+    out.finalize();
   }
 
-private:
-  const FESpace*         space_{nullptr};
-  const GaussQuadrature* quad_{nullptr};
+  void assemblePrmJac(MatrixOperator& out) const
+  {
+    out.resize(map_->numRes(), control_dofs_.size());
+    out.setZero();
+    for (Index col = 0; col < control_dofs_.size(); ++col)
+    {
+      out.set(control_dofs_[col], col, -1.0);
+    }
+    out.finalize();
+  }
+
+  const HostGeometry*    geom_{nullptr};
+  const HostAssemblyMap* map_{nullptr};
+  Array<Index>           control_dofs_;
+  Array<Index>           fixed_dofs_;
+  HostBoundaryPlan       bc_plan_;
+  mutable HostCsrMatrix  jac_;
 };
 
 Mesh makePoissonMesh(const Options& opts)
@@ -205,15 +276,6 @@ Index readNonnegativeIndexOption(int&               i,
   return static_cast<Index>(value);
 }
 
-std::string readStringOption(int& i, int argc, char** argv, const std::string& name)
-{
-  if (i + 1 >= argc)
-  {
-    throw std::runtime_error(name + " requires a value");
-  }
-  return argv[++i];
-}
-
 bool readIndexAssignment(const std::string& arg,
                          const std::string& name,
                          Index&             out)
@@ -270,23 +332,6 @@ bool readRealAssignment(const std::string& arg,
   return true;
 }
 
-bool readStringAssignment(const std::string& arg,
-                          const std::string& name,
-                          std::string&       out)
-{
-  const std::string prefix = name + "=";
-  if (arg.rfind(prefix, 0) != 0)
-  {
-    return false;
-  }
-  out = arg.substr(prefix.size());
-  if (out.empty())
-  {
-    throw std::runtime_error(name + " must not be empty");
-  }
-  return true;
-}
-
 std::string lowerAscii(std::string value)
 {
   transform(value.begin(),
@@ -295,41 +340,6 @@ std::string lowerAscii(std::string value)
             [](unsigned char ch)
             { return static_cast<char>(tolower(ch)); });
   return value;
-}
-
-WorkspaceType parseWorkspaceType(const std::string& value)
-{
-  const std::string backend = lowerAscii(value);
-  if (backend == "cpu")
-  {
-    return WorkspaceType::Cpu;
-  }
-  if (backend == "cuda" || backend == "gpu")
-  {
-    return WorkspaceType::Cuda;
-  }
-  throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
-}
-
-WorkspaceType readBackendOption(int&               i,
-                                int                argc,
-                                char**             argv,
-                                const std::string& name)
-{
-  return parseWorkspaceType(readStringOption(i, argc, argv, name));
-}
-
-bool readBackendAssignment(const std::string& arg,
-                           const std::string& name,
-                           WorkspaceType&     out)
-{
-  std::string value;
-  if (!readStringAssignment(arg, name, value))
-  {
-    return false;
-  }
-  out = parseWorkspaceType(value);
-  return true;
 }
 
 bool parseOutputValue(const std::string& value)
@@ -346,9 +356,9 @@ bool parseOutputValue(const std::string& value)
   throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-std::filesystem::path vtuPathFromBase(const std::string& output_base)
+std::filesystem::path vtuPathFromBase(const std::string& base)
 {
-  std::filesystem::path path(output_base);
+  std::filesystem::path path(base);
   if (path.extension() == ".vtu")
   {
     return path;
@@ -369,11 +379,11 @@ std::filesystem::path observationVtuPath(std::filesystem::path solution_path)
 PoissonOptProblem::PoissonOptProblem(const Options& opts)
   : opts_(opts),
     mesh_(makePoissonMesh(opts)),
-    space_(&mesh_, &fe_),
-    quad_(GaussQuadrature::make(fe_.referenceElement(), 2))
+    space_(&mesh_, &fe_)
 {
   space_.setup();
-  state_pattern_ = std::make_unique<CsrPattern>(assembly::makeCsrPattern(space_));
+  geom_      = makeGeometry(mesh_);
+  state_map_ = assembly::makeAssemblyMap(DofLayout(space_));
   initializeBoundaryDofs();
   initializeTrueControl();
   initializeObservationLayout();
@@ -385,14 +395,15 @@ const Options& PoissonOptProblem::options() const noexcept
   return opts_;
 }
 
-const CsrPattern& PoissonOptProblem::statePattern() const
+const assembly::HostAssemblyMap&
+PoissonOptProblem::stateMap() const
 {
-  return *state_pattern_;
+  return state_map_;
 }
 
 const Residual& PoissonOptProblem::residual() const
 {
-  return *residual_;
+  return *res_;
 }
 
 const Objective& PoissonOptProblem::objective() const
@@ -424,10 +435,10 @@ Index PoissonOptProblem::numObservations() const noexcept
   return obs_dofs_.size();
 }
 
-Report PoissonOptProblem::report(const Vector<Real>& prm,
-                                 const Vector<Real>& state,
-                                 Real                value,
-                                 const Vector<Real>& grad) const
+Report PoissonOptProblem::report(const HostVector& prm,
+                                 const HostVector& state,
+                                 Real              value,
+                                 const HostVector& grad) const
 {
   if (state.size() != numStates() || prm.size() != numParams()
       || grad.size() != numParams())
@@ -460,11 +471,11 @@ Report PoissonOptProblem::report(const Vector<Real>& prm,
   return out;
 }
 
-void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
-                                      const Vector<Real>& state,
-                                      const std::string&  output_base) const
+void PoissonOptProblem::writeSolution(const HostVector&  prm,
+                                      const HostVector&  state,
+                                      const std::string& base) const
 {
-  if (output_base.empty())
+  if (base.empty())
   {
     return;
   }
@@ -477,15 +488,22 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     throw std::runtime_error("Poisson optimization target vectors are not ready");
   }
 
-  const std::filesystem::path output_path = vtuPathFromBase(output_base);
-  if (output_path.has_parent_path())
+  const std::filesystem::path path = vtuPathFromBase(base);
+  if (path.has_parent_path())
   {
-    std::filesystem::create_directories(output_path.parent_path());
+    std::filesystem::create_directories(path.parent_path());
   }
+  writeFields(prm, state, path.string());
+  writeObs(state, path.string());
+}
 
-  Vector<Real> state_field(mesh_.numNodes());
-  Vector<Real> target_state_field(mesh_.numNodes());
-  Vector<Real> state_err(mesh_.numNodes());
+void PoissonOptProblem::writeFields(const HostVector&  prm,
+                                    const HostVector&  state,
+                                    const std::string& path) const
+{
+  HostVector state_field(mesh_.numNodes());
+  HostVector target_state_field(mesh_.numNodes());
+  HostVector state_err(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     const Index dof        = space_.globalDof(in, 0);
@@ -494,10 +512,10 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     state_err[in]          = state_field[in] - target_state_field[in];
   }
 
-  Vector<Real> ctr(mesh_.numNodes(), 0.0);
-  Vector<Real> target_ctr(mesh_.numNodes(), 0.0);
-  Vector<Real> ctr_err(mesh_.numNodes(), 0.0);
-  Vector<Real> ctr_mask(mesh_.numNodes(), 0.0);
+  HostVector ctr(mesh_.numNodes(), 0.0);
+  HostVector target_ctr(mesh_.numNodes(), 0.0);
+  HostVector ctr_err(mesh_.numNodes(), 0.0);
+  HostVector ctr_mask(mesh_.numNodes(), 0.0);
   for (Index i = 0; i < ctr_dofs_.size(); ++i)
   {
     const Index node = ctr_dofs_[i];
@@ -511,10 +529,8 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     ctr_mask[node]   = 1.0;
   }
 
-  const Index comps = space_.numComponents();
-
   VtuWriter out;
-  out.writePointData(output_path.string(),
+  out.writePointData(path,
                      mesh_,
                      {{"state", 1, &state_field},
                       {"target_state", 1, &target_state_field},
@@ -523,17 +539,22 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
                       {"target_ctr", 1, &target_ctr},
                       {"ctr_error", 1, &ctr_err},
                       {"ctr_mask", 1, &ctr_mask}});
+}
 
+void PoissonOptProblem::writeObs(const HostVector&  state,
+                                 const std::string& path) const
+{
   if (obs_points_.size() != obs_dofs_.size())
   {
     throw std::runtime_error("Poisson optimization observation layout is inconsistent");
   }
 
-  Vector<Real> obs_point_value(obs_dofs_.size(), 0.0);
-  Vector<Real> obs_point_pred(obs_dofs_.size(), 0.0);
-  Vector<Real> obs_point_misfit(obs_dofs_.size(), 0.0);
-  Vector<Real> obs_weight(obs_dofs_.size(), 0.0);
-  const Real   weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  const Index comps = space_.numComponents();
+  HostVector  obs_point_value(obs_dofs_.size(), 0.0);
+  HostVector  obs_point_pred(obs_dofs_.size(), 0.0);
+  HostVector  obs_point_misfit(obs_dofs_.size(), 0.0);
+  HostVector  obs_weight(obs_dofs_.size(), 0.0);
+  const Real  weight = 1.0 / static_cast<Real>(obs_dofs_.size());
   for (Index i = 0; i < obs_dofs_.size(); ++i)
   {
     const Index dof = obs_dofs_[i];
@@ -553,7 +574,8 @@ void PoissonOptProblem::writeSolution(const Vector<Real>& prm,
     obs_weight[i]       = weight;
   }
 
-  out.writePointCloud(observationVtuPath(output_path).string(),
+  VtuWriter out;
+  out.writePointCloud(observationVtuPath(path).string(),
                       obs_points_,
                       {{"obs_value", 1, &obs_point_value},
                        {"obs_pred", 1, &obs_point_pred},
@@ -652,17 +674,10 @@ void PoissonOptProblem::initializeObservationLayout()
 
 void PoissonOptProblem::initializeResidual()
 {
-  residual_kernel_ = std::make_unique<PoissonElementKernel>(space_, quad_);
-  base_residual_   = std::make_unique<FEMResidual>(DofLayout(space_), *residual_kernel_);
-
-  Vector<Real> fixed_values(fixed_dofs_.size(), 0.0);
-  residual_ = std::make_unique<DirichletControlResidual>(
-      *base_residual_,
-      DirichletControl(ctr_dofs_),
-      fixed_dofs_,
-      0,
-      numParams(),
-      fixed_values);
+  res_ = std::make_unique<PoissonMapResidual>(geom_,
+                                              state_map_,
+                                              ctr_dofs_,
+                                              fixed_dofs_);
 }
 
 Index PoissonOptProblem::effectiveObservationStride() const
@@ -674,15 +689,15 @@ Index PoissonOptProblem::effectiveObservationStride() const
   return std::max<Index>(1, std::min(opts_.num_x_cells, opts_.num_y_cells) / 8);
 }
 
-Vector<Real> PoissonOptProblem::observationWeights() const
+HostVector PoissonOptProblem::observationWeights() const
 {
   if (obs_dofs_.empty())
   {
     throw std::runtime_error("Poisson optimization has no observation dofs");
   }
 
-  Vector<Real> weights(numStates(), 0.0);
-  const Real   weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  HostVector weights(numStates(), 0.0);
+  const Real weight = 1.0 / static_cast<Real>(obs_dofs_.size());
   for (Index dof : obs_dofs_)
   {
     weights[dof] = weight;
@@ -699,8 +714,8 @@ void PoissonOptProblem::prepareObjective(state::StateSolver& state_solver)
 
   state_solver.solve(target_ctr_, target_state_);
 
-  Vector<Real> zero_ctr(numParams(), 0.0);
-  Vector<Real> reg_weights(numParams(), 0.0);
+  HostVector zero_ctr(numParams(), 0.0);
+  HostVector reg_weights(numParams(), 0.0);
   for (Index i = 0; i < reg_weights.size(); ++i)
   {
     reg_weights[i] = opts_.alpha * ctr_weights_[i];
@@ -751,11 +766,11 @@ Result solve(PoissonOptProblem&    problem,
   opt::TaoOptimizer tao(fn, PETSC_COMM_SELF);
   tao.opts().max_its = problem.options().max_its;
 
-  opt::TaoResult     result;
-  const Vector<Real> init_ctr(problem.numParams(), 0.0);
+  opt::TaoResult   result;
+  const HostVector init_ctr(problem.numParams(), 0.0);
   runtime::checkPetsc(tao.solve(init_ctr, result), "TaoOptimizer::solve");
 
-  Vector<Real> state;
+  HostVector state;
   state_solver.solve(result.prm, state);
 
   Result out;
@@ -803,11 +818,6 @@ Options parseOptions(int    argc,
       }
       continue;
     }
-    if (arg == "--backend" || arg == "-b")
-    {
-      opts.backend = readBackendOption(i, argc, argv, arg);
-      continue;
-    }
     if (arg == "--alpha")
     {
       opts.alpha = readRealOption(i, argc, argv, arg);
@@ -847,11 +857,6 @@ Options parseOptions(int    argc,
     {
       throw std::runtime_error("Use --output yes or --output no");
     }
-    if (readBackendAssignment(arg, "--backend", opts.backend)
-        || readBackendAssignment(arg, "-b", opts.backend))
-    {
-      continue;
-    }
     if (!ignore_unknown)
     {
       throw std::runtime_error("Unknown option: " + arg);
@@ -869,35 +874,16 @@ Options parseOptions(int    argc,
   return opts;
 }
 
-bool hasOptHelp(int argc, char** argv)
-{
-  for (int i = 1; i < argc; ++i)
-  {
-    const std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h")
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
 void printUsage(std::ostream& out,
                 const char*   app_name,
                 bool          petsc_options)
 {
   out << "Usage: " << app_name
-      << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]"
+      << " [--nx N] [--ny N] [--output yes|no]"
       << " [--alpha A] [--obs-stride N] [--max-its N]";
   if (petsc_options)
   {
     out << " [PETSc/TAO options]";
-  }
-  out << '\n';
-  out << "  -b, --backend cpu|cuda selects the linear solver backend";
-  if (petsc_options)
-  {
-    out << " (PETSc supports cpu only)";
   }
   out << '\n';
   out << "  --output yes writes VTU files under "

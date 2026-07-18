@@ -5,9 +5,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 class LinearSolver;
@@ -43,22 +40,22 @@ public:
   Index numParams() const;
 
   /** @brief Evaluate F(prm). */
-  Real value(const Vector<Real>& prm);
+  Real value(const HostVector& prm);
 
   /** @brief Compute the reduced gradient dF/dm. */
-  void grad(const Vector<Real>& prm, Vector<Real>& out);
+  void grad(const HostVector& prm, HostVector& out);
 
   /** @brief Evaluate F(prm) and dF/dm in one state/adjoint pass. */
-  Real valueGrad(const Vector<Real>& prm, Vector<Real>& grad_out);
+  Real valueGrad(const HostVector& prm, HostVector& grad_out);
 
 private:
   void checkDims() const;
 
-  void gradAt(const Vector<Real>& state,
-              const Vector<Real>& prm,
-              Vector<Real>&       out);
+  void gradAt(const HostVector& state,
+              const HostVector& prm,
+              HostVector&       out);
 
-  static void checkSize(const Vector<Real>& value, Index exp);
+  static void checkSize(const HostVector& value, Index exp);
 
 private:
   const state::Residual& problem_;

@@ -5,9 +5,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 
@@ -25,22 +22,22 @@ public:
   explicit DenseLinearSolver(Real pivot_tolerance = 1.0e-14);
 
   void solve(const LinearOperator& op,
-             const Vector<Real>&   rhs,
-             Vector<Real>&         out) override;
+             const HostVector&     rhs,
+             HostVector&           out) override;
 
   void solveT(const LinearOperator& op,
-              const Vector<Real>&   rhs,
-              Vector<Real>&         out) override;
+              const HostVector&     rhs,
+              HostVector&           out) override;
 
 private:
   void sample(const LinearOperator& op,
-              bool                  transpose,
-              Vector<Real>&         mat) const;
+              bool                  tr,
+              HostVector&           mat) const;
 
-  void solveDense(Vector<Real>        mat,
-                  const Vector<Real>& rhs,
-                  Vector<Real>&       out,
-                  Index               size) const;
+  void solveDense(HostVector        mat,
+                  const HostVector& rhs,
+                  HostVector&       out,
+                  Index             size) const;
 
   static Index entry(Index row, Index col, Index size);
 

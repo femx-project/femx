@@ -10,7 +10,7 @@ namespace femx
 {
 namespace linalg
 {
-class MatrixBuilder;
+class MatrixOperator;
 } // namespace linalg
 
 namespace assembly
@@ -25,13 +25,13 @@ namespace assembly
 class TimeDirichletControlResidual final : public state::TimeResidual
 {
 public:
-  TimeDirichletControlResidual(const state::TimeResidual&  base,
-                               fem::DirichletControl       ctr,
-                               Vector<Index>               fdofs             = {},
-                               Index                       ctr_param_offset  = 0,
-                               Index                       num_param        = -1,
-                               Vector<Real>                fvals             = {},
-                               Vector<LinearInterpolation> ctr_time_stencils = {});
+  TimeDirichletControlResidual(const state::TimeResidual& base,
+                               fem::DirichletControl      ctr,
+                               Array<Index>               fdofs             = {},
+                               Index                      ctr_param_offset  = 0,
+                               Index                      num_param         = -1,
+                               HostVector                 fvals             = {},
+                               Array<LinearInterpolation> ctr_time_stencils = {});
 
   state::TimeDims dims() const override;
 
@@ -41,65 +41,65 @@ public:
   Index numRes() const;
 
   void res(const state::TimeContext& ctx,
-           Vector<Real>&             out) const override;
+           HostVector&               out) const override;
 
   void applyJac(const state::TimeContext& ctx,
                 state::VariableBlock      wrt,
-                const Vector<Real>&       dir,
-                Vector<Real>&             out) const override;
+                const HostVector&         dir,
+                HostVector&               out) const override;
 
   void applyJacT(const state::TimeContext& ctx,
                  state::VariableBlock      wrt,
-                 const Vector<Real>&       adj,
-                 Vector<Real>&             out) const override;
+                 const HostVector&         adj,
+                 HostVector&               out) const override;
 
   bool assembleJac(const state::TimeContext& ctx,
                    state::VariableBlock      wrt,
-                   linalg::MatrixBuilder&    out) const override;
+                   linalg::MatrixOperator&   out) const override;
 
   void prepareLinearSolve(const state::TimeContext& ctx,
                           state::VariableBlock      wrt,
-                          linalg::MatrixBuilder&    J,
-                          Vector<Real>&             rhs) const override;
+                          linalg::MatrixOperator&   J,
+                          HostVector&               rhs) const override;
 
   const fem::DirichletControl& control() const;
 
 private:
-  void initializeControlTimeStencils(Vector<LinearInterpolation> ctr_time_stencils);
+  void initializeControlTimeStencils(Array<LinearInterpolation> ctr_time_stencils);
 
   void checkContext(const state::TimeContext& ctx) const;
-  void checkVector(const Vector<Real>* value, Index size) const;
+  void checkVector(const HostVector* value, Index size) const;
 
-  void replaceStateRows(linalg::MatrixBuilder& out, Real diag) const;
-  void eliminateStateColumns(linalg::MatrixBuilder& J,
-                             Vector<Real>&          rhs) const;
+  void replaceStateRows(linalg::MatrixOperator& out, Real diag) const;
+  void eliminateStateColumns(linalg::MatrixOperator& J,
+                             HostVector&             rhs) const;
 
   void applyControlParamJac(const state::TimeContext& ctx,
-                            const Vector<Real>&       dir,
-                            Vector<Real>&             out) const;
+                            const HostVector&         dir,
+                            HostVector&               out) const;
   void applyControlParamJacT(const state::TimeContext& ctx,
-                             const Vector<Real>&       adj,
-                             Vector<Real>&             out) const;
+                             const HostVector&         adj,
+                             HostVector&               out) const;
 
-  Vector<Real> interpolatedControl(
-      Index               step,
-      const Vector<Real>& prm) const;
+  HostVector interpolatedControl(
+      Index             step,
+      const HostVector& prm) const;
   Index ctrIndex(Index level, Index i) const;
   Real  fixedValue(Index step, Index i) const;
 
-  Vector<Index> constrainedRows() const;
+  Array<Index> bcRows() const;
 
 private:
-  const state::TimeResidual&  base_;
-  fem::DirichletControl       ctr_;
-  Vector<Index>               fdofs_;
-  Vector<Real>                fvals_;
-  Vector<Real>                base_prm_;
-  state::TimeDims             base_dims_;
-  state::TimeDims             dims_;
-  Index                       ctr_param_offset_{0};
-  Vector<LinearInterpolation> ctr_time_stencils_;
-  Index                       ctr_param_levels_{0};
+  const state::TimeResidual& base_;
+  fem::DirichletControl      ctr_;
+  Array<Index>               fdofs_;
+  HostVector                 fvals_;
+  HostVector                 base_prm_;
+  state::TimeDims            base_dims_;
+  state::TimeDims            dims_;
+  Index                      ctr_param_offset_{0};
+  Array<LinearInterpolation> ctr_time_stencils_;
+  Index                      ctr_param_levels_{0};
 };
 
 } // namespace assembly

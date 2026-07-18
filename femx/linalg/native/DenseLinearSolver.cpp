@@ -17,8 +17,8 @@ DenseLinearSolver::DenseLinearSolver(Real pivot_tolerance)
 }
 
 void DenseLinearSolver::solve(const LinearOperator& op,
-                              const Vector<Real>&   rhs,
-                              Vector<Real>&         out)
+                              const HostVector&     rhs,
+                              HostVector&           out)
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
   {
@@ -26,14 +26,14 @@ void DenseLinearSolver::solve(const LinearOperator& op,
         "DenseLinearSolver received inconsistent dimensions");
   }
 
-  Vector<Real> mat;
+  HostVector mat;
   sample(op, false, mat);
   solveDense(mat, rhs, out, op.numCols());
 }
 
 void DenseLinearSolver::solveT(const LinearOperator& op,
-                               const Vector<Real>&   rhs,
-                               Vector<Real>&         out)
+                               const HostVector&     rhs,
+                               HostVector&           out)
 {
   if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
   {
@@ -41,35 +41,35 @@ void DenseLinearSolver::solveT(const LinearOperator& op,
         "DenseLinearSolver received inconsistent transpose dimensions");
   }
 
-  Vector<Real> mat;
+  HostVector mat;
   sample(op, true, mat);
   solveDense(mat, rhs, out, op.numRows());
 }
 
 void DenseLinearSolver::sample(const LinearOperator& op,
-                               bool                  transpose,
-                               Vector<Real>&         mat) const
+                               bool                  tr,
+                               HostVector&           mat) const
 {
-  const Index size = transpose ? op.numRows() : op.numCols();
+  const Index size = tr ? op.numRows() : op.numCols();
   mat.assign(size * size, 0.0);
 
-  Vector<Real> basis(size);
-  Vector<Real> column;
+  HostVector basis(size);
+  HostVector col;
   for (Index j = 0; j < size; ++j)
   {
     basis.setZero();
     basis[j] = 1.0;
 
-    if (transpose)
+    if (tr)
     {
-      op.applyT(basis, column);
+      op.applyT(basis, col);
     }
     else
     {
-      op.apply(basis, column);
+      op.apply(basis, col);
     }
 
-    if (column.size() != size)
+    if (col.size() != size)
     {
       throw std::runtime_error(
           "DenseLinearSolver sampled operator with inconsistent size");
@@ -77,17 +77,17 @@ void DenseLinearSolver::sample(const LinearOperator& op,
 
     for (Index i = 0; i < size; ++i)
     {
-      mat[entry(i, j, size)] = column[i];
+      mat[entry(i, j, size)] = col[i];
     }
   }
 }
 
-void DenseLinearSolver::solveDense(Vector<Real>        mat,
-                                   const Vector<Real>& rhs,
-                                   Vector<Real>&       out,
-                                   Index               size) const
+void DenseLinearSolver::solveDense(HostVector        mat,
+                                   const HostVector& rhs,
+                                   HostVector&       out,
+                                   Index             size) const
 {
-  Vector<Real> b(size, 0.0);
+  HostVector b(size, 0.0);
 
   for (Index i = 0; i < size; ++i)
   {

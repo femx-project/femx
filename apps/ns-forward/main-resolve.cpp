@@ -8,8 +8,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
@@ -99,15 +98,6 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
   opts.flexible     = solver.flexible;
 }
 
-WorkspaceType workspaceType(const SolverParams& solver)
-{
-  if (solver.backend == "cuda")
-  {
-    return WorkspaceType::Cuda;
-  }
-  return WorkspaceType::Cpu;
-}
-
 int run(const Params& prm)
 {
   const bool output_enabled = prm.output.enabled;
@@ -122,8 +112,8 @@ int run(const Params& prm)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  CsrAssemblyMatrix   A(fwd.model.matrixPattern());
-  ReSolveLinearSolver solver(workspaceType(prm.solver), opts);
+  MapCsrMatrix        A(fwd.model.map());
+  ReSolveLinearSolver solver(opts);
 
   TimeLinearIntegrator integ(fwd.problem, A, solver);
   integ.setInitialState(fwd.x0);

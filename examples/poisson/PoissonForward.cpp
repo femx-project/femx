@@ -9,20 +9,16 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/assembly/Assembler.hpp>
+#include "PoissonOperator.hpp"
+#include <femx/assembly/Assembly.hpp>
 #include <femx/fem/DirichletBC.hpp>
-#include <femx/fem/ElementValues.hpp>
+#include <femx/fem/DofLayout.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/linalg/AssemblyMatrix.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
 using namespace femx::fem;
 using namespace femx::io;
-using namespace femx::linalg;
 
 #ifndef FEMX_POISSON_DEFAULT_OUTPUT_DIR
 #define FEMX_POISSON_DEFAULT_OUTPUT_DIR "output"
@@ -105,16 +101,16 @@ std::string lowerAscii(std::string value)
   return value;
 }
 
-WorkspaceType parseWorkspaceType(const std::string& value)
+MemorySpace parseMemorySpace(const std::string& value)
 {
   const std::string backend = lowerAscii(value);
   if (backend == "cpu")
   {
-    return WorkspaceType::Cpu;
+    return MemorySpace::Host;
   }
   if (backend == "cuda" || backend == "gpu")
   {
-    return WorkspaceType::Cuda;
+    return MemorySpace::Device;
   }
   throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
 }
@@ -133,24 +129,24 @@ bool parseOutputValue(const std::string& value)
   throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-WorkspaceType readBackendOption(int&               i,
-                                int                argc,
-                                char**             argv,
-                                const std::string& name)
+MemorySpace readBackendOption(int&               i,
+                              int                argc,
+                              char**             argv,
+                              const std::string& name)
 {
-  return parseWorkspaceType(readStringOption(i, argc, argv, name));
+  return parseMemorySpace(readStringOption(i, argc, argv, name));
 }
 
 bool readBackendAssignment(const std::string& arg,
                            const std::string& name,
-                           WorkspaceType&     out)
+                           MemorySpace&       out)
 {
   std::string value;
   if (!readStringAssignment(arg, name, value))
   {
     return false;
   }
-  out = parseWorkspaceType(value);
+  out = parseMemorySpace(value);
   return true;
 }
 
@@ -163,9 +159,9 @@ Mesh makePoissonMesh(const Options& opts)
   return Mesh::makeStructuredQuad(opts.num_x_cells, opts.num_y_cells);
 }
 
-std::filesystem::path vtuPathFromBase(const std::string& output_base)
+std::filesystem::path vtuPathFromBase(const std::string& base)
 {
-  std::filesystem::path path(output_base);
+  std::filesystem::path path(base);
   if (path.extension() == ".vtu")
   {
     return path;
@@ -174,90 +170,22 @@ std::filesystem::path vtuPathFromBase(const std::string& output_base)
   return path;
 }
 
-void applyDenseBoundary(const DirichletBC&   bc,
-                        DenseAssemblyMatrix& A,
-                        Vector<Real>&        rhs)
-{
-  DenseMatrix& mat = A.mat();
-  if (mat.rows() != mat.cols() || rhs.size() != mat.rows())
-  {
-    throw std::runtime_error(
-        "Poisson dense boundary condition received inconsistent dimensions");
-  }
-  if (bc.dofs().size() != bc.values().size())
-  {
-    throw std::runtime_error("DirichletBC has inconsistent data");
-  }
-
-  const Index  size = mat.rows();
-  Vector<char> is_dirichlet(size, 0);
-  Vector<Real> dirichlet_values(size);
-
-  for (Index c = 0; c < bc.dofs().size(); ++c)
-  {
-    const Index id = bc.dofs()[c];
-    if (id < 0 || id >= size)
-    {
-      throw std::runtime_error("Dirichlet id is out of range");
-    }
-
-    is_dirichlet[id]     = 1;
-    dirichlet_values[id] = bc.values()[c];
-  }
-
-  for (Index row = 0; row < size; ++row)
-  {
-    const bool row_is_dirichlet = is_dirichlet[row] != 0;
-
-    for (Index col = 0; col < size; ++col)
-    {
-      if (row_is_dirichlet)
-      {
-        mat(row, col) = row == col ? 1.0 : 0.0;
-      }
-      else if (is_dirichlet[col] != 0)
-      {
-        rhs[row]      -= mat(row, col) * dirichlet_values[col];
-        mat(row, col)  = 0.0;
-      }
-    }
-
-    if (row_is_dirichlet)
-    {
-      rhs[row] = dirichlet_values[row];
-    }
-  }
-}
-
-void applyBoundary(const DirichletBC& bc,
-                   AssemblyMatrix&    A,
-                   Vector<Real>&      rhs)
-{
-  if (auto* csr = dynamic_cast<CsrAssemblyMatrix*>(&A))
-  {
-    bc.apply(csr->mat(), rhs);
-    return;
-  }
-
-  if (auto* dense = dynamic_cast<DenseAssemblyMatrix*>(&A))
-  {
-    applyDenseBoundary(bc, *dense, rhs);
-    return;
-  }
-
-  throw std::runtime_error("Poisson example received unsupported matrix type");
-}
-
 } // namespace
 
 PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
   : opts_(opts),
     mesh_(makePoissonMesh(opts)),
-    space_(&mesh_, &fe_),
-    quad_(GaussQuadrature::make(fe_.referenceElement(), 2))
+    space_(&mesh_, &fe_)
 {
   space_.setup();
-  pattern_ = std::make_unique<CsrPattern>(makeCsrPattern(space_));
+  geom_ = makeGeometry(mesh_);
+  map_  = assembly::makeAssemblyMap(DofLayout(space_));
+
+  DirichletBC boundary;
+  boundary.addBoundary(space_, onBoundary, boundaryValue);
+  bc_vals_ = boundary.vals();
+  bc_plan_ = assembly::makeBoundaryPlan(boundary.dofs(),
+                                        map_.graph());
 }
 
 const Options& PoissonForwardProblem::options() const noexcept
@@ -265,9 +193,26 @@ const Options& PoissonForwardProblem::options() const noexcept
   return opts_;
 }
 
-const CsrPattern& PoissonForwardProblem::pattern() const
+const HostGeometry& PoissonForwardProblem::geom() const noexcept
 {
-  return *pattern_;
+  return geom_;
+}
+
+const assembly::HostAssemblyMap&
+PoissonForwardProblem::map() const noexcept
+{
+  return map_;
+}
+
+const assembly::HostBoundaryPlan&
+PoissonForwardProblem::bcPlan() const noexcept
+{
+  return bc_plan_;
+}
+
+const HostVector& PoissonForwardProblem::bcVals() const noexcept
+{
+  return bc_vals_;
 }
 
 Index PoissonForwardProblem::numNodes() const noexcept
@@ -280,47 +225,29 @@ Index PoissonForwardProblem::numDofs() const noexcept
   return space_.numDofs();
 }
 
-void PoissonForwardProblem::assemble(AssemblyMatrix& A,
-                                     Vector<Real>&   rhs) const
+void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
+                                     HostVector&    rhs) const
 {
-  Assembler assembler(space_);
-  assembler.initMat(A);
-  assembler.initVec(rhs);
+  HostVector zero_state(numDofs(), 0.0);
+  HostVector res;
+  CpuContext ctx;
+  assembly::assemble(PoissonQuadQ1Operator{},
+                     geom_,
+                     map_,
+                     zero_state,
+                     res,
+                     mat,
+                     ctx);
 
-  ElementValues ev(fe_, quad_);
-  DenseMatrix   Ae(space_.numDofsPerElem(), space_.numDofsPerElem());
-
-  for (Index ie = 0; ie < mesh_.numElems(); ++ie)
+  rhs.resize(res.size());
+  for (Index row = 0; row < res.size(); ++row)
   {
-    ev.reinit(mesh_.elem(ie));
-    Ae.setZero();
-
-    for (Index iq = 0; iq < ev.numQuadraturePoints(); ++iq)
-    {
-      const auto dNdx = ev.dNdx(iq);
-      const Real JxW  = ev.JxW(iq);
-
-      for (Index i = 0; i < Ae.rows(); ++i)
-      {
-        for (Index j = 0; j < Ae.cols(); ++j)
-        {
-          for (Index d = 0; d < ev.dim(); ++d)
-          {
-            Ae(i, j) += dNdx(i, d) * dNdx(j, d) * JxW;
-          }
-        }
-      }
-    }
-
-    assembler.addMat(ie, Ae, A);
+    rhs[row] = -res[row];
   }
-
-  DirichletBC bc;
-  bc.addBoundary(space_, onBoundary, boundaryValue);
-  applyBoundary(bc, A, rhs);
+  assembly::prepareForwardSolve(bc_plan_, mat, rhs, bc_vals_);
 }
 
-ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
+ErrorReport PoissonForwardProblem::errorReport(const HostVector& x) const
 {
   if (x.size() != space_.numDofs())
   {
@@ -328,9 +255,9 @@ ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
   }
 
   ErrorReport report;
-  report.min_value = std::numeric_limits<Real>::infinity();
-  report.max_value = -std::numeric_limits<Real>::infinity();
-  report.max_err   = 0.0;
+  report.min_val = std::numeric_limits<Real>::infinity();
+  report.max_val = -std::numeric_limits<Real>::infinity();
+  report.max_err = 0.0;
 
   Real err2_sum = 0.0;
   for (Index in = 0; in < mesh_.numNodes(); ++in)
@@ -338,10 +265,10 @@ ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
     const Real value = x[space_.globalDof(in, 0)];
     const Real err   = value - exactValue(mesh_.node(in));
 
-    report.min_value  = std::min(report.min_value, value);
-    report.max_value  = std::max(report.max_value, value);
-    report.max_err    = std::max(report.max_err, std::abs(err));
-    err2_sum         += err * err;
+    report.min_val  = std::min(report.min_val, value);
+    report.max_val  = std::max(report.max_val, value);
+    report.max_err  = std::max(report.max_err, std::abs(err));
+    err2_sum       += err * err;
   }
 
   report.rms_err = std::sqrt(err2_sum / static_cast<Real>(mesh_.numNodes()));
@@ -349,10 +276,10 @@ ErrorReport PoissonForwardProblem::errorReport(const Vector<Real>& x) const
   return report;
 }
 
-void PoissonForwardProblem::writeSolution(const Vector<Real>& x,
-                                          const std::string&  output_base) const
+void PoissonForwardProblem::writeSolution(const HostVector&  x,
+                                          const std::string& base) const
 {
-  if (output_base.empty())
+  if (base.empty())
   {
     return;
   }
@@ -361,15 +288,15 @@ void PoissonForwardProblem::writeSolution(const Vector<Real>& x,
     throw std::runtime_error("Poisson solution vector has incompatible size");
   }
 
-  const std::filesystem::path output_path = vtuPathFromBase(output_base);
-  if (output_path.has_parent_path())
+  const std::filesystem::path path = vtuPathFromBase(base);
+  if (path.has_parent_path())
   {
-    std::filesystem::create_directories(output_path.parent_path());
+    std::filesystem::create_directories(path.parent_path());
   }
 
-  Vector<Real> solution(mesh_.numNodes());
-  Vector<Real> exact(mesh_.numNodes());
-  Vector<Real> error(mesh_.numNodes());
+  HostVector solution(mesh_.numNodes());
+  HostVector exact(mesh_.numNodes());
+  HostVector error(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     solution[in] = x[space_.globalDof(in, 0)];
@@ -378,7 +305,7 @@ void PoissonForwardProblem::writeSolution(const Vector<Real>& x,
   }
 
   VtuWriter out;
-  out.writePointData(output_path.string(),
+  out.writePointData(path.string(),
                      mesh_,
                      {{"solution", 1, &solution},
                       {"exact", 1, &exact},
@@ -515,7 +442,7 @@ void printReport(std::ostream&                out,
                  const std::string&           backend,
                  const PoissonForwardProblem& problem,
                  const ErrorReport&           error,
-                 Real                         residual_norm)
+                 Real                         res_norm)
 {
   const Options& opts = problem.options();
   out << "Poisson forward (" << backend << ")\n";
@@ -523,9 +450,9 @@ void printReport(std::ostream&                out,
       << '\n';
   out << "  nodes: " << problem.numNodes() << '\n';
   out << "  dofs: " << problem.numDofs() << '\n';
-  out << "  solution range: [" << error.min_value << ", "
-      << error.max_value << "]\n";
-  out << "  residual l2 norm: " << residual_norm << '\n';
+  out << "  solution range: [" << error.min_val << ", "
+      << error.max_val << "]\n";
+  out << "  residual l2 norm: " << res_norm << '\n';
   out << "  rms nodal error: " << error.rms_err << '\n';
   out << "  max nodal error: " << error.max_err << '\n';
 }

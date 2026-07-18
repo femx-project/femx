@@ -33,10 +33,10 @@ void TimeObservationData::resize(Index num_levels, Index num_obs)
   num_obs_    = num_obs;
   data_.resize(num_levels_ * num_obs_);
   sampler_.clear();
-  pts_         = Vector<Point3>{};
-  comps_       = Vector<Index>{};
-  time_levels_ = Vector<Index>{};
-  time_values_ = Vector<Real>{};
+  pts_         = Array<Point3>{};
+  comps_       = Array<Index>{};
+  time_levels_ = Array<Index>{};
+  time_vals_   = HostVector{};
 }
 
 bool TimeObservationData::empty() const
@@ -44,7 +44,7 @@ bool TimeObservationData::empty() const
   return data_.empty();
 }
 
-Index TimeObservationData::numLevels() const
+Index TimeObservationData::numTimeLevels() const
 {
   return num_levels_;
 }
@@ -66,7 +66,7 @@ bool TimeObservationData::hasTimeLevels() const
 
 bool TimeObservationData::hasTimeValues() const
 {
-  return !time_values_.empty();
+  return !time_vals_.empty();
 }
 
 const std::string& TimeObservationData::sampler() const
@@ -74,24 +74,24 @@ const std::string& TimeObservationData::sampler() const
   return sampler_;
 }
 
-const Vector<Point3>& TimeObservationData::pts() const
+const Array<Point3>& TimeObservationData::pts() const
 {
   return pts_;
 }
 
-const Vector<Index>& TimeObservationData::comps() const
+const Array<Index>& TimeObservationData::comps() const
 {
   return comps_;
 }
 
-const Vector<Index>& TimeObservationData::timeLevels() const
+const Array<Index>& TimeObservationData::timeLevels() const
 {
   return time_levels_;
 }
 
-const Vector<Real>& TimeObservationData::timeValues() const
+const HostVector& TimeObservationData::timeValues() const
 {
-  return time_values_;
+  return time_vals_;
 }
 
 Index TimeObservationData::timeLevel(Index row) const
@@ -111,12 +111,12 @@ Real TimeObservationData::timeValue(Index row) const
   {
     return static_cast<Real>(timeLevel(row));
   }
-  return time_values_[row];
+  return time_vals_[row];
 }
 
-void TimeObservationData::setLayout(std::string    sampler,
-                                    Vector<Point3> pts,
-                                    Vector<Index>  comps)
+void TimeObservationData::setLayout(std::string   sampler,
+                                    Array<Point3> pts,
+                                    Array<Index>  comps)
 {
   sampler_ = std::move(sampler);
   pts_     = std::move(pts);
@@ -124,30 +124,30 @@ void TimeObservationData::setLayout(std::string    sampler,
   checkLayout();
 }
 
-void TimeObservationData::setTimeLevels(Vector<Index> levels)
+void TimeObservationData::setTimeLevels(Array<Index> levels)
 {
   time_levels_ = std::move(levels);
-  time_values_ = Vector<Real>{};
+  time_vals_   = HostVector{};
   checkTimeLevels();
 }
 
-void TimeObservationData::setTimeValues(Vector<Real> vals)
+void TimeObservationData::setTimeValues(HostVector vals)
 {
-  time_values_ = std::move(vals);
-  time_levels_ = Vector<Index>{};
+  time_vals_   = std::move(vals);
+  time_levels_ = Array<Index>{};
   checkTimeValues();
 }
 
-VectorView<Real> TimeObservationData::operator[](Index level)
+HostVectorView TimeObservationData::operator[](Index level)
 {
   checkLevel(level);
-  return VectorView<Real>(data_.data() + level * num_obs_, num_obs_);
+  return HostVectorView(data_.data() + level * num_obs_, num_obs_);
 }
 
-VectorView<const Real> TimeObservationData::operator[](Index level) const
+HostConstVectorView TimeObservationData::operator[](Index level) const
 {
   checkLevel(level);
-  return VectorView<const Real>(data_.data() + level * num_obs_, num_obs_);
+  return HostConstVectorView(data_.data() + level * num_obs_, num_obs_);
 }
 
 void TimeObservationData::setZero()
@@ -157,7 +157,7 @@ void TimeObservationData::setZero()
 
 void TimeObservationData::checkLevel(Index level) const
 {
-  if (level < 0 || level >= numLevels())
+  if (level < 0 || level >= numTimeLevels())
   {
     throw std::runtime_error("TimeObservationData level is out of range");
   }
@@ -188,7 +188,7 @@ void TimeObservationData::checkTimeLevels() const
   {
     return;
   }
-  if (time_levels_.size() != numLevels())
+  if (time_levels_.size() != numTimeLevels())
   {
     throw std::runtime_error(
         "TimeObservationData time level count does not match data");
@@ -206,19 +206,19 @@ void TimeObservationData::checkTimeLevels() const
 
 void TimeObservationData::checkTimeValues() const
 {
-  if (time_values_.empty())
+  if (time_vals_.empty())
   {
     return;
   }
-  if (time_values_.size() != numLevels())
+  if (time_vals_.size() != numTimeLevels())
   {
     throw std::runtime_error(
         "TimeObservationData time value count does not match data");
   }
-  for (Index i = 0; i < time_values_.size(); ++i)
+  for (Index i = 0; i < time_vals_.size(); ++i)
   {
-    if (!std::isfinite(time_values_[i]) || time_values_[i] < 0.0
-        || (i > 0 && time_values_[i] <= time_values_[i - 1]))
+    if (!std::isfinite(time_vals_[i]) || time_vals_[i] < 0.0
+        || (i > 0 && time_vals_[i] <= time_vals_[i - 1]))
     {
       throw std::runtime_error(
           "TimeObservationData time values must be finite and increasing");
@@ -228,7 +228,7 @@ void TimeObservationData::checkTimeValues() const
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
                                   const TimeTrajectory&          tr,
-                                  const Vector<Real>&            prm)
+                                  const HostVector&              prm)
 {
   if (tr.numSteps() != obs.numSteps() || tr.numStates() != obs.numStates()
       || prm.size() != obs.numParams())
@@ -237,9 +237,9 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   }
 
   TimeObservationData data(obs.numSteps() + 1, obs.numObservations());
-  for (Index level = 0; level < data.numLevels(); ++level)
+  for (Index level = 0; level < data.numTimeLevels(); ++level)
   {
-    Vector<Real> vals(obs.numObservations());
+    HostVector vals(obs.numObservations());
     obs.observe(level, tr[level], prm, vals);
     data[level] = vals;
   }
@@ -263,11 +263,11 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
 
   out << std::setprecision(std::numeric_limits<Real>::max_digits10);
   out << "femx_time_obs_data\n\n";
-  out << "num_levels " << data.numLevels() << "\n\n";
+  out << "num_levels " << data.numTimeLevels() << "\n\n";
   if (data.hasTimeValues())
   {
     out << "time_values\n";
-    for (Index row = 0; row < data.numLevels(); ++row)
+    for (Index row = 0; row < data.numTimeLevels(); ++row)
     {
       out << "  " << data.timeValue(row) << '\n';
     }
@@ -276,7 +276,7 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
   else if (data.hasTimeLevels())
   {
     out << "time_levels\n";
-    for (Index row = 0; row < data.numLevels(); ++row)
+    for (Index row = 0; row < data.numTimeLevels(); ++row)
     {
       out << "  " << data.timeLevel(row) << '\n';
     }
@@ -298,11 +298,11 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
   }
 
   out << "\nvalues\n";
-  const Index num_comp = data.comps().size();
-  const Index num_points     = data.pts().size();
-  for (Index level = 0; level < data.numLevels(); ++level)
+  const Index num_comp   = data.comps().size();
+  const Index num_points = data.pts().size();
+  for (Index level = 0; level < data.numTimeLevels(); ++level)
   {
-    const Vector<Real> vals = data[level];
+    const HostVector vals = data[level];
     out << "  level " << level << '\n';
     for (Index point = 0; point < num_points; ++point)
     {
@@ -317,7 +317,7 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
       }
       out << '\n';
     }
-    if (level + 1 < data.numLevels())
+    if (level + 1 < data.numTimeLevels())
     {
       out << '\n';
     }
@@ -355,15 +355,15 @@ TimeObservationData readTimeObsData(const std::string& path)
   in >> key >> num_levels;
   requireKey(key, "num_levels");
 
-  Vector<Index> time_levels;
-  Vector<Real>  time_values;
+  Array<Index> time_levels;
+  HostVector   time_vals;
   in >> key;
   if (key == "time_values")
   {
-    time_values.resize(num_levels);
+    time_vals.resize(num_levels);
     for (Index i = 0; i < num_levels; ++i)
     {
-      in >> time_values[i];
+      in >> time_vals[i];
     }
     in >> key;
   }
@@ -383,7 +383,7 @@ TimeObservationData readTimeObsData(const std::string& path)
 
   in >> key;
   requireKey(key, "points");
-  Vector<Point3> pts;
+  Array<Point3> pts;
   pts.reserve(num_points);
   for (Index i = 0; i < num_points; ++i)
   {
@@ -398,7 +398,7 @@ TimeObservationData readTimeObsData(const std::string& path)
 
   in >> key;
   requireKey(key, "components");
-  Vector<Index> comps(num_comp);
+  Array<Index> comps(num_comp);
   for (Index i = 0; i < num_comp; ++i)
   {
     in >> comps[i];
@@ -409,9 +409,9 @@ TimeObservationData readTimeObsData(const std::string& path)
 
   TimeObservationData data(num_levels, num_points * num_comp);
   data.setLayout("point", std::move(pts), std::move(comps));
-  if (!time_values.empty())
+  if (!time_vals.empty())
   {
-    data.setTimeValues(std::move(time_values));
+    data.setTimeValues(std::move(time_vals));
   }
   else if (!time_levels.empty())
   {
@@ -429,7 +429,7 @@ TimeObservationData readTimeObsData(const std::string& path)
           "Time observation data has unexpected level label");
     }
 
-    VectorView<Real> vals = data[level];
+    HostVectorView vals = data[level];
     for (Index i = 0; i < vals.size(); ++i)
     {
       if (!(in >> vals[i]))

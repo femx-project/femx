@@ -17,14 +17,14 @@ class TimeSeriesDataIn
 public:
   struct VectorField
   {
-    std::string                 name;
-    std::array<Vector<Real>, 3> vals;
+    std::string               name;
+    std::array<HostVector, 3> vals;
   };
 
   struct Step
   {
-    Real                time{0.0};
-    Vector<VectorField> vecs;
+    Real               time{0.0};
+    Array<VectorField> vecs;
   };
 
   static TimeSeriesDataIn read(const std::string& path);
@@ -35,13 +35,13 @@ public:
 
   Real time(Index step) const;
 
-  const std::array<Vector<Real>, 3>& vectorField(
+  const std::array<HostVector, 3>& vectorField(
       Index              step,
       const std::string& name) const;
 
 private:
-  fem::Mesh    mesh_;
-  Vector<Step> steps_;
+  fem::Mesh   mesh_;
+  Array<Step> steps_;
 };
 
 } // namespace io

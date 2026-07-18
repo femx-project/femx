@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace state
 {
 class TimeTrajectory;
@@ -31,16 +28,16 @@ public:
   virtual Index numParams() const = 0;
 
   virtual Real value(const state::TimeTrajectory& tr,
-                     const Vector<Real>&          prm) const = 0;
+                     const HostVector&            prm) const = 0;
 
   virtual void stateGrad(Index                        level,
                          const state::TimeTrajectory& tr,
-                         const Vector<Real>&          prm,
-                         Vector<Real>&                out) const = 0;
+                         const HostVector&            prm,
+                         HostVector&                  out) const = 0;
 
   virtual void paramGrad(const state::TimeTrajectory& tr,
-                         const Vector<Real>&          prm,
-                         Vector<Real>&                out) const = 0;
+                         const HostVector&            prm,
+                         HostVector&                  out) const = 0;
 };
 
 } // namespace inverse

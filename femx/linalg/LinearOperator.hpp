@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 
@@ -25,12 +22,12 @@ public:
   virtual Index numCols() const = 0;
 
   /** @brief Compute out = A dir. */
-  virtual void apply(const Vector<Real>& dir,
-                     Vector<Real>&       out) const = 0;
+  virtual void apply(const HostVector& dir,
+                     HostVector&       out) const = 0;
 
   /** @brief Compute out = A^T dir. */
-  virtual void applyT(const Vector<Real>& dir,
-                      Vector<Real>&       out) const = 0;
+  virtual void applyT(const HostVector& dir,
+                      HostVector&       out) const = 0;
 };
 
 } // namespace linalg

@@ -9,7 +9,7 @@ namespace femx
 {
 namespace linalg
 {
-class MatrixBuilder;
+class MatrixOperator;
 } // namespace linalg
 
 namespace assembly
@@ -27,42 +27,42 @@ class DirichletControlResidual final : public state::Residual
 public:
   DirichletControlResidual(const state::Residual& base,
                            fem::DirichletControl  ctr,
-                           Vector<Index>          fdofs            = {},
+                           Array<Index>           fdofs            = {},
                            Index                  ctr_param_offset = 0,
-                           Index                  num_param       = -1,
-                           Vector<Real>           fvals            = {});
+                           Index                  num_param        = -1,
+                           HostVector             fvals            = {});
 
   state::Dimensions dims() const override;
 
   const fem::DirichletControl& control() const;
 
-  void res(const Vector<Real>& state,
-           const Vector<Real>& prm,
-           Vector<Real>&       out) const override;
+  void res(const HostVector& state,
+           const HostVector& prm,
+           HostVector&       out) const override;
 
-  void linearize(const Vector<Real>&   state,
-                 const Vector<Real>&   prm,
+  void linearize(const HostVector&     state,
+                 const HostVector&     prm,
                  state::Linearization& out) const override;
 
 private:
-  void checkVectorSizes(const Vector<Real>& state,
-                        const Vector<Real>& prm) const;
+  void checkVectorSizes(const HostVector& state,
+                        const HostVector& prm) const;
 
-  void replaceStateRows(linalg::MatrixBuilder& out, Real diag) const;
-  void assembleParamJac(linalg::MatrixBuilder& out) const;
+  void replaceStateRows(linalg::MatrixOperator& out, Real diag) const;
+  void assembleParamJac(linalg::MatrixOperator& out) const;
 
-  Vector<Real> controlValues(const Vector<Real>& prm) const;
-  Real         fixedValue(Index i) const;
-  Index        ctrIndex(Index i) const;
+  HostVector controlVals(const HostVector& prm) const;
+  Real       fixedValue(Index i) const;
+  Index      ctrIndex(Index i) const;
 
-  Vector<Index> constrainedRows() const;
+  Array<Index> bcRows() const;
 
 private:
   const state::Residual& base_;                ///< Wrapped residual before row replacement.
   fem::DirichletControl  ctr_;                 ///< Parameter-controlled Dirichlet dofs.
-  Vector<Index>          fdofs_;               ///< Fixed Dirichlet dofs.
-  Vector<Real>           fvals_;               ///< Fixed Dirichlet values.
-  Vector<Real>           base_prm_;            ///< Parameter vector passed to the base residual.
+  Array<Index>           fdofs_;               ///< Fixed Dirichlet dofs.
+  HostVector             fvals_;               ///< Fixed Dirichlet values.
+  HostVector             base_prm_;            ///< Parameter vector passed to the base residual.
   state::Dimensions      base_dims_;           ///< Dimensions of the wrapped residual.
   state::Dimensions      dims_;                ///< Dimensions exposed by this wrapper.
   Index                  ctr_param_offset_{0}; ///< Offset of control parameters.

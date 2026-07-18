@@ -29,7 +29,7 @@ struct EntityKey
 
 struct EntityData
 {
-  Vector<Index> ptags;
+  Array<Index> ptags;
 };
 
 struct ElemRecord
@@ -38,7 +38,7 @@ struct ElemRecord
   Index          etag  = 0;
   Index          ptag  = 0;
   Element::Shape shape = Element::Shape::Unknown;
-  Vector<Index>  nids;
+  Array<Index>   nids;
 };
 
 std::string stripQuotes(std::string value)
@@ -260,7 +260,7 @@ void readNodesV4(std::istream&           in,
     Index num_nodes_block = 0;
     in >> edim >> etag >> parametric >> num_nodes_block;
 
-    Vector<Index> ntags(num_nodes_block);
+    Array<Index> ntags(num_nodes_block);
     for (Index i = 0; i < num_nodes_block; ++i)
     {
       in >> ntags[i];
@@ -290,20 +290,20 @@ void readNodesV4(std::istream&           in,
 
 void readElemsV2(std::istream&                 in,
                  const std::map<Index, Index>& nid_by_tag,
-                 Vector<ElemRecord>&           elems)
+                 Array<ElemRecord>&            elems)
 {
   Index num_elems = 0;
   in >> num_elems;
   elems.reserve(elems.size() + num_elems);
 
-  for (Index i = 0; i < num_elems; ++i)
+  for (Index ie = 0; ie < num_elems; ++ie)
   {
     Index elem_tag  = 0;
     Index elem_type = 0;
     Index num_tags  = 0;
     in >> elem_tag >> elem_type >> num_tags;
 
-    Vector<Index> tags(num_tags);
+    Array<Index> tags(num_tags);
     for (Index j = 0; j < num_tags; ++j)
     {
       in >> tags[j];
@@ -342,7 +342,7 @@ void readElemsV2(std::istream&                 in,
 
 void readElemsV4(std::istream&                 in,
                  const std::map<Index, Index>& nid_by_tag,
-                 Vector<ElemRecord>&           elems)
+                 Array<ElemRecord>&            elems)
 {
   Index num_blocks   = 0;
   Index num_elems    = 0;
@@ -362,7 +362,7 @@ void readElemsV4(std::istream&                 in,
     const Index          num_nodes = gmshNumNodes(elem_type);
     const Element::Shape shape     = gmshShape(elem_type);
 
-    for (Index i = 0; i < num_elems_block; ++i)
+    for (Index ie = 0; ie < num_elems_block; ++ie)
     {
       Index elem_tag = 0;
       in >> elem_tag;
@@ -396,11 +396,12 @@ void readElemsV4(std::istream&                 in,
   expectMarker(in, "$EndElements");
 }
 
-Index meshDim(const Vector<ElemRecord>& elems)
+Index meshDim(const Array<ElemRecord>& elems)
 {
   Index dim = 0;
-  for (const auto& elem : elems)
+  for (Index ie = 0; ie < elems.size(); ++ie)
   {
+    const auto& elem = elems[ie];
     switch (elem.shape)
     {
     case Element::Shape::Triangle:
@@ -423,11 +424,12 @@ Index meshDim(const Vector<ElemRecord>& elems)
 }
 
 void addElemsToMesh(Mesh&                                  mesh,
-                    const Vector<ElemRecord>&              elems,
+                    const Array<ElemRecord>&               elems,
                     const std::map<EntityKey, EntityData>& entities)
 {
-  for (const auto& elem : elems)
+  for (Index ie = 0; ie < elems.size(); ++ie)
   {
+    const auto&       elem = elems[ie];
     const Index       ptag = elem.ptag > 0
                                  ? elem.ptag
                                  : firstPhysicalTag(entities,
@@ -472,7 +474,7 @@ Mesh GmshReader::read(const std::string& path)
   Mesh                            mesh;
   std::map<EntityKey, EntityData> entities;
   std::map<Index, Index>          nid_by_tag;
-  Vector<ElemRecord>              elems;
+  Array<ElemRecord>               elems;
   Real                            version = 0.0;
 
   std::string mark;

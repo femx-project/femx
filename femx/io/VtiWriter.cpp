@@ -134,8 +134,8 @@ std::string base64Encode(const unsigned char* data,
 
 std::string fieldBinaryBase64(const VtiWriter::ElemField& field)
 {
-  const uint64_t        bytes = fieldBytes(field);
-  Vector<unsigned char> buffer(static_cast<Index>(sizeof(bytes) + bytes));
+  const uint64_t       bytes = fieldBytes(field);
+  Array<unsigned char> buffer(static_cast<Index>(sizeof(bytes) + bytes));
   memcpy(buffer.data(), &bytes, sizeof(bytes));
   memcpy(buffer.data() + sizeof(bytes),
          field.vals->data(),
@@ -143,8 +143,8 @@ std::string fieldBinaryBase64(const VtiWriter::ElemField& field)
   return base64Encode(buffer.data(), buffer.size());
 }
 
-void checkFields(const Vector<VtiWriter::ElemField>& fields,
-                 Index                               elems)
+void checkFields(const Array<VtiWriter::ElemField>& fields,
+                 Index                              elems)
 {
   if (fields.empty())
   {
@@ -192,9 +192,9 @@ std::string point3String(const std::array<Real, 3>& vals)
 
 } // namespace
 
-void VtiWriter::writeElemData(const std::string&       fname,
-                              const Image&             image,
-                              const Vector<ElemField>& fields) const
+void VtiWriter::writeElemData(const std::string&      fname,
+                              const Image&            image,
+                              const Array<ElemField>& fields) const
 {
   if (!isLittleEndian())
   {

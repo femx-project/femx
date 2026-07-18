@@ -16,7 +16,7 @@ namespace femx::model::ns
 
 fem::DirichletBC makeDirichletBC(
     const fem::MixedFESpace& space,
-    const Vector<BCsParams>& bcs,
+    const Array<BCsParams>&  bcs,
     Real                     time);
 
 } // namespace femx::model::ns

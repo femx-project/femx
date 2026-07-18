@@ -3,8 +3,8 @@ add_library(femx::linalg_petsc ALIAS femx_linalg_petsc)
 
 target_sources(
   femx_linalg_petsc
-  PRIVATE KspLinearSolver.cpp PETScAssemblyMatrix.cpp PETScVector.cpp
-  PUBLIC KspLinearSolver.hpp PETScAssemblyMatrix.hpp PETScVector.hpp
+  PRIVATE KspLinearSolver.cpp PETScOperator.cpp PETScVector.cpp
+  PUBLIC KspLinearSolver.hpp PETScOperator.hpp PETScVector.hpp
          VectorConversion.hpp)
 
 target_link_libraries(femx_linalg_petsc PUBLIC femx_linalg PkgConfig::PETSC

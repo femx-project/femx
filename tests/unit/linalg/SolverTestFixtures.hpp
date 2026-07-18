@@ -5,24 +5,19 @@
 #include <stdexcept>
 
 #include "TestHelper.hpp"
-#include <femx/linalg/CsrPattern.hpp>
+#include <femx/assembly/AssemblyMap.hpp>
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/native/MapCsrMatrix.hpp>
 
 namespace femx::tests::solver
 {
 
-inline CsrPattern makeDense3Pattern()
+inline assembly::HostAssemblyMap makeDense3Map()
 {
-  return CsrPattern(3,
-                    3,
-                    1,
-                    [](Index, Vector<Index>& dofs)
-                    {
-                      dofs = {0, 1, 2};
-                    });
+  const Array<Array<Index>> dofs{{0, 1, 2}};
+  return assembly::makeAssemblyMap(3, 3, dofs, dofs);
 }
 
 inline Index gridNode(Index ix, Index iy, Index nx)
@@ -30,88 +25,85 @@ inline Index gridNode(Index ix, Index iy, Index nx)
   return iy * nx + ix;
 }
 
-inline CsrPattern makeGrid5PointPattern(Index nx, Index ny)
+inline assembly::HostAssemblyMap makeGrid5PointMap(Index nx, Index ny)
 {
-  const Index num_horizontal_edges = (nx - 1) * ny;
-  const Index num_vertical_edges   = nx * (ny - 1);
+  const Index         num_horizontal_edges = (nx - 1) * ny;
+  const Index         num_vertical_edges   = nx * (ny - 1);
+  Array<Array<Index>> dofs;
+  dofs.reserve(num_horizontal_edges + num_vertical_edges);
 
-  return CsrPattern(
-      nx * ny,
-      nx * ny,
-      num_horizontal_edges + num_vertical_edges,
-      [nx, num_horizontal_edges](Index ie, Vector<Index>& dofs)
-      {
-        if (ie < num_horizontal_edges)
-        {
-          const Index iy = ie / (nx - 1);
-          const Index ix = ie % (nx - 1);
-          dofs           = {gridNode(ix, iy, nx),
-                            gridNode(ix + 1, iy, nx)};
-          return;
-        }
+  for (Index iy = 0; iy < ny; ++iy)
+  {
+    for (Index ix = 0; ix + 1 < nx; ++ix)
+    {
+      dofs.push_back({gridNode(ix, iy, nx), gridNode(ix + 1, iy, nx)});
+    }
+  }
+  for (Index iy = 0; iy + 1 < ny; ++iy)
+  {
+    for (Index ix = 0; ix < nx; ++ix)
+    {
+      dofs.push_back({gridNode(ix, iy, nx), gridNode(ix, iy + 1, nx)});
+    }
+  }
 
-        const Index edge = ie - num_horizontal_edges;
-        const Index iy   = edge / nx;
-        const Index ix   = edge % nx;
-        dofs             = {gridNode(ix, iy, nx),
-                            gridNode(ix, iy + 1, nx)};
-      });
+  return assembly::makeAssemblyMap(nx * ny, nx * ny, dofs, dofs);
 }
 
-template <typename AssemblyMatrix>
-void fillTestMatrix(AssemblyMatrix& matrix)
+template <typename MatrixOperator>
+void fillTestMat(MatrixOperator& mat)
 {
-  matrix.set(0, 0, 4.0);
-  matrix.set(0, 1, 1.0);
-  matrix.set(0, 2, -1.0);
+  mat.set(0, 0, 4.0);
+  mat.set(0, 1, 1.0);
+  mat.set(0, 2, -1.0);
 
-  matrix.set(1, 0, 2.0);
-  matrix.set(1, 1, 5.0);
-  matrix.set(1, 2, 1.0);
+  mat.set(1, 0, 2.0);
+  mat.set(1, 1, 5.0);
+  mat.set(1, 2, 1.0);
 
-  matrix.set(2, 0, 1.0);
-  matrix.set(2, 1, -2.0);
-  matrix.set(2, 2, 3.0);
+  mat.set(2, 0, 1.0);
+  mat.set(2, 1, -2.0);
+  mat.set(2, 2, 3.0);
 
-  matrix.finalize();
+  mat.finalize();
 }
 
-template <typename AssemblyMatrix>
-void fillGrid5PointMatrix(AssemblyMatrix& matrix, Index nx, Index ny)
+template <typename MatrixOperator>
+void fillGrid5PointMat(MatrixOperator& mat, Index nx, Index ny)
 {
   for (Index iy = 0; iy < ny; ++iy)
   {
     for (Index ix = 0; ix < nx; ++ix)
     {
       const Index row = gridNode(ix, iy, nx);
-      matrix.set(row, row, 4.0);
+      mat.set(row, row, 4.0);
 
       if (ix + 1 < nx)
       {
         const Index col = gridNode(ix + 1, iy, nx);
-        matrix.set(row, col, -1.0);
-        matrix.set(col, row, -1.0);
+        mat.set(row, col, -1.0);
+        mat.set(col, row, -1.0);
       }
       if (iy + 1 < ny)
       {
         const Index col = gridNode(ix, iy + 1, nx);
-        matrix.set(row, col, -1.0);
-        matrix.set(col, row, -1.0);
+        mat.set(row, col, -1.0);
+        mat.set(col, row, -1.0);
       }
     }
   }
 
-  matrix.finalize();
+  mat.finalize();
 }
 
-inline Vector<Real> expectedSolution()
+inline HostVector expectedSolution()
 {
   return {1.0, -2.0, 0.5};
 }
 
-inline Vector<Real> expectedGridSolution(Index nx, Index ny)
+inline HostVector expectedGridSolution(Index nx, Index ny)
 {
-  Vector<Real> x(nx * ny);
+  HostVector x(nx * ny);
   for (Index iy = 0; iy < ny; ++iy)
   {
     for (Index ix = 0; ix < nx; ++ix)
@@ -126,12 +118,12 @@ inline Vector<Real> expectedGridSolution(Index nx, Index ny)
   return x;
 }
 
-inline Vector<Real> forwardRhs()
+inline HostVector forwardRhs()
 {
   return {1.5, -7.5, 6.5};
 }
 
-inline Vector<Real> transposeRhs()
+inline HostVector trRhs()
 {
   return {0.5, -10.0, -1.5};
 }
@@ -141,9 +133,9 @@ inline bool near(Real actual, Real expected, Real tol)
   return std::abs(actual - expected) <= tol * (1.0 + std::abs(expected));
 }
 
-inline bool vectorNear(const Vector<Real>& actual,
-                       const Vector<Real>& expected,
-                       Real                tol)
+inline bool vecNear(const HostVector& actual,
+                    const HostVector& expected,
+                    Real              tol)
 {
   if (actual.size() != expected.size())
   {
@@ -166,26 +158,26 @@ inline TestOutcome solvesForwardAndTranspose(
     const char*                   name,
     linalg::LinearSolver&         solver,
     const linalg::LinearOperator& op,
-    const Vector<Real>&           expected,
+    const HostVector&             expected,
     Real                          tol = 1.0e-8)
 {
   TestStatus status(name);
 
   try
   {
-    Vector<Real> rhs;
+    HostVector rhs;
     op.apply(expected, rhs);
 
-    Vector<Real> x;
+    HostVector x;
     solver.solve(op, rhs, x);
-    status *= vectorNear(x, expected, tol);
+    status *= vecNear(x, expected, tol);
 
-    Vector<Real> rhs_t;
+    HostVector rhs_t;
     op.applyT(expected, rhs_t);
 
-    Vector<Real> xt;
+    HostVector xt;
     solver.solveT(op, rhs_t, xt);
-    status *= vectorNear(xt, expected, tol);
+    status *= vecNear(xt, expected, tol);
   }
   catch (const std::exception& e)
   {

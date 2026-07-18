@@ -4,7 +4,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/VectorView.hpp>
 
@@ -23,8 +23,8 @@ struct TimeDims
 {
   Index num_steps          = 0; ///< Number of residual steps.
   Index num_states         = 0; ///< Size of one state vector.
-  Index num_param         = 0; ///< Size of the parameter vector shared by all steps.
-  Index num_residuals      = 0; ///< Size of one residual vector.
+  Index num_param          = 0; ///< Size of the parameter vector shared by all steps.
+  Index num_res            = 0; ///< Size of one residual vector.
   Index num_history_states = 1; ///< Number of history states required by each step.
 };
 
@@ -69,7 +69,7 @@ public:
     return num_states_;
   }
 
-  VectorView<const Real> state(Index i) const
+  HostConstVectorView state(Index i) const
   {
     if (i < 0 || i >= count_)
     {
@@ -102,10 +102,10 @@ private:
  */
 struct TimeContext
 {
-  Index               step = 0;
-  const Vector<Real>* nxt  = nullptr;
-  const Vector<Real>* prm  = nullptr;
-  TimeHistoryView     hist;
+  Index             step = 0;
+  const HostVector* nxt  = nullptr;
+  const HostVector* prm  = nullptr;
+  TimeHistoryView   hist;
 };
 
 /**
@@ -200,16 +200,16 @@ class TimeLinearization
 public:
   void reset(const TimeResidual& problem, TimeContext ctx);
 
-  void applyJac(VariableBlock       wrt,
-                const Vector<Real>& dir,
-                Vector<Real>&       out) const;
+  void applyJac(VariableBlock     wrt,
+                const HostVector& dir,
+                HostVector&       out) const;
 
-  void applyJacT(VariableBlock       wrt,
-                 const Vector<Real>& adj,
-                 Vector<Real>&       out) const;
+  void applyJacT(VariableBlock     wrt,
+                 const HostVector& adj,
+                 HostVector&       out) const;
 
-  bool assembleJac(VariableBlock          wrt,
-                   linalg::MatrixBuilder& out) const;
+  bool assembleJac(VariableBlock           wrt,
+                   linalg::MatrixOperator& out) const;
 
 private:
   void checkReady() const;
@@ -233,11 +233,11 @@ public:
    * @brief Evaluate the residual for one time step.
    *
    * @param ctx Step context containing history states, next state, and the parameter vector.
-   * @param out Output residual. Implementations may resize it to dims().num_residuals.
+   * @param out Output residual. Implementations may resize it to dims().num_res.
    * @throws std::runtime_error if ctx has inconsistent sizes.
    */
   virtual void res(const TimeContext& ctx,
-                   Vector<Real>&      out) const = 0;
+                   HostVector&        out) const = 0;
 
   /**
    * @brief Apply a Jacobian block to a direction vector.
@@ -245,25 +245,25 @@ public:
    * @param ctx Step context used for the linearization point.
    * @param wrt Variable block to differentiate with respect to.
    * @param dir Direction vector with the size of wrt.
-   * @param out Output vector of size dims().num_residuals.
+   * @param out Output vector of size dims().num_res.
    */
-  virtual void applyJac(const TimeContext&  ctx,
-                        VariableBlock       wrt,
-                        const Vector<Real>& dir,
-                        Vector<Real>&       out) const = 0;
+  virtual void applyJac(const TimeContext& ctx,
+                        VariableBlock      wrt,
+                        const HostVector&  dir,
+                        HostVector&        out) const = 0;
 
   /**
    * @brief Apply the transpose of a Jacobian block to an adjoint vector.
    *
    * @param ctx Step context used for the linearization point.
    * @param wrt Variable block to differentiate with respect to.
-   * @param adj Adjoint vector of size dims().num_residuals.
+   * @param adj Adjoint vector of size dims().num_res.
    * @param out Output vector with the size of wrt.
    */
-  virtual void applyJacT(const TimeContext&  ctx,
-                         VariableBlock       wrt,
-                         const Vector<Real>& adj,
-                         Vector<Real>&       out) const = 0;
+  virtual void applyJacT(const TimeContext& ctx,
+                         VariableBlock      wrt,
+                         const HostVector&  adj,
+                         HostVector&        out) const = 0;
 
   /**
    * @brief Store a lightweight linearization object for repeated applies.
@@ -280,9 +280,9 @@ public:
    * @return true if out was filled, false if the block is only available
    *         through applyJac/applyJacT.
    */
-  virtual bool assembleJac(const TimeContext&     ctx,
-                           VariableBlock          wrt,
-                           linalg::MatrixBuilder& out) const
+  virtual bool assembleJac(const TimeContext&      ctx,
+                           VariableBlock           wrt,
+                           linalg::MatrixOperator& out) const
   {
     (void) ctx;
     (void) wrt;
@@ -296,10 +296,10 @@ public:
    * Residual wrappers use this to apply constraints that are easier to express
    * on the assembled matrix and right-hand side than in the local Jacobian.
    */
-  virtual void prepareLinearSolve(const TimeContext&     ctx,
-                                  VariableBlock          wrt,
-                                  linalg::MatrixBuilder& J,
-                                  Vector<Real>&          rhs) const
+  virtual void prepareLinearSolve(const TimeContext&      ctx,
+                                  VariableBlock           wrt,
+                                  linalg::MatrixOperator& J,
+                                  HostVector&             rhs) const
   {
     (void) ctx;
     (void) wrt;
@@ -315,25 +315,25 @@ inline void TimeLinearization::reset(const TimeResidual& problem,
   ctx_     = ctx;
 }
 
-inline void TimeLinearization::applyJac(VariableBlock       wrt,
-                                        const Vector<Real>& dir,
-                                        Vector<Real>&       out) const
+inline void TimeLinearization::applyJac(VariableBlock     wrt,
+                                        const HostVector& dir,
+                                        HostVector&       out) const
 {
   checkReady();
   problem_->applyJac(ctx_, wrt, dir, out);
 }
 
-inline void TimeLinearization::applyJacT(VariableBlock       wrt,
-                                         const Vector<Real>& adj,
-                                         Vector<Real>&       out) const
+inline void TimeLinearization::applyJacT(VariableBlock     wrt,
+                                         const HostVector& adj,
+                                         HostVector&       out) const
 {
   checkReady();
   problem_->applyJacT(ctx_, wrt, adj, out);
 }
 
 inline bool TimeLinearization::assembleJac(
-    VariableBlock          wrt,
-    linalg::MatrixBuilder& out) const
+    VariableBlock           wrt,
+    linalg::MatrixOperator& out) const
 {
   checkReady();
   return problem_->assembleJac(ctx_, wrt, out);

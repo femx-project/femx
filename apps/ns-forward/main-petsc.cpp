@@ -6,7 +6,7 @@
 #include <string>
 
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
@@ -114,12 +114,6 @@ int run(const Params& prm)
   OutputParams      output = prm.output;
   output.enabled           = rank == 0 && prm.output.enabled;
 
-  if (prm.solver.backend != "cpu")
-  {
-    throw std::runtime_error(
-        "PETSc Navier-Stokes app supports only solver.backend = 'cpu'");
-  }
-
   if (output.enabled)
   {
     writeBuildInfo(output.directory, makeBuildInfo());
@@ -131,8 +125,8 @@ int run(const Params& prm)
   PETScVector mat_row(PETSC_COMM_WORLD);
   mat_row.resize(fwd.model.numStates());
 
-  PETScAssemblyMatrix A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.matrixPattern(), mat_row);
+  PETScOperator A(PETSC_COMM_WORLD);
+  A.resize(fwd.model.map().graph(), mat_row);
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);

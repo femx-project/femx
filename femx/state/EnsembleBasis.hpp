@@ -20,27 +20,27 @@ class EnsembleBasis final
 public:
   EnsembleBasis() = default;
 
-  EnsembleBasis(Vector<Real> mean, DenseMatrix perturbations);
+  EnsembleBasis(HostVector mean, DenseMatrix perturbations);
 
-  void reset(Vector<Real> mean, DenseMatrix perturbations);
+  void reset(HostVector mean, DenseMatrix perturbations);
 
   Index numPhysicalParams() const;
   Index numCoefficients() const;
 
-  const Vector<Real>& mean() const;
-  const DenseMatrix&  perturbations() const;
+  const HostVector&  mean() const;
+  const DenseMatrix& perturbations() const;
 
-  void apply(const Vector<Real>& alpha, Vector<Real>& out) const;
-  void applyT(const Vector<Real>& grad, Vector<Real>& out) const;
+  void apply(const HostVector& alpha, HostVector& out) const;
+  void applyT(const HostVector& grad, HostVector& out) const;
 
 private:
   void checkDims() const;
-  void checkAlpha(const Vector<Real>& alpha) const;
-  void checkPhysical(const Vector<Real>& value) const;
+  void checkAlpha(const HostVector& alpha) const;
+  void checkPhysical(const HostVector& value) const;
 
 private:
-  Vector<Real> mean_;
-  DenseMatrix  perturbations_;
+  HostVector  mean_;
+  DenseMatrix perturbations_;
 };
 
 } // namespace state

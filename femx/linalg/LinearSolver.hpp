@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 
@@ -25,13 +22,13 @@ public:
 
   /** @brief Solve op out = rhs. */
   virtual void solve(const LinearOperator& op,
-                     const Vector<Real>&   rhs,
-                     Vector<Real>&         out) = 0;
+                     const HostVector&     rhs,
+                     HostVector&           out) = 0;
 
   /** @brief Solve op^T out = rhs. */
   virtual void solveT(const LinearOperator& op,
-                      const Vector<Real>&   rhs,
-                      Vector<Real>&         out) = 0;
+                      const HostVector&     rhs,
+                      HostVector&           out) = 0;
 };
 
 } // namespace linalg

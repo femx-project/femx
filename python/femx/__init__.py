@@ -2,14 +2,13 @@
 
 from ._core import __version__
 from ._core import (
-    AssemblyMatrix,
-    DenseAssemblyMatrix,
+    MatrixOperator,
+    DenseMatrix,
     DenseLinearSolver,
     EnsembleBasis,
     FluidParams,
     LinearOperator,
     LinearSolver,
-    MatrixBuilder,
     SumTimeObjective,
     TimeBlockRegularization,
     TimeDims,
@@ -47,9 +46,9 @@ from .navier_stokes import (
 from .observation import GaussianObservation, VelocityObservationOperator
 
 __all__ = [
-    "AssemblyMatrix",
+    "MatrixOperator",
     "BoundarySurface",
-    "DenseAssemblyMatrix",
+    "DenseMatrix",
     "DenseLinearSolver",
     "DirichletBC",
     "EnsembleBasis",
@@ -58,7 +57,6 @@ __all__ = [
     "InitialStateControl",
     "LinearOperator",
     "LinearSolver",
-    "MatrixBuilder",
     "Mesh",
     "NavierStokesModel",
     "NavierStokesProblem",

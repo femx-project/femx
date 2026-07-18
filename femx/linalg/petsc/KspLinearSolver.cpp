@@ -1,13 +1,10 @@
-#include <cmath>
-#include <limits>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 
 #include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/linalg/petsc/VectorConversion.hpp>
 
@@ -22,8 +19,8 @@ private:
   struct ShellContext
   {
     const LinearOperator* op{nullptr};
-    Vector<Real>          input;
-    Vector<Real>          output;
+    HostVector            input;
+    HostVector            output;
   };
 
   class ScopedVec
@@ -126,29 +123,29 @@ public:
   }
 
   void solve(const LinearOperator& op,
-             const Vector<Real>&   rhs,
-             Vector<Real>&         out)
+             const HostVector&     rhs,
+             HostVector&           out)
   {
     solveLinearOperator(op, rhs, out, false);
   }
 
   void solveT(const LinearOperator& op,
-              const Vector<Real>&   rhs,
-              Vector<Real>&         out)
+              const HostVector&     rhs,
+              HostVector&           out)
   {
     solveLinearOperator(op, rhs, out, true);
   }
 
-  void solve(const PETScAssemblyMatrix& op,
-             const PETScVector&         rhs,
-             PETScVector&               out)
+  void solve(const PETScOperator& op,
+             const PETScVector&   rhs,
+             PETScVector&         out)
   {
     solveSystem(op, rhs, out, false);
   }
 
-  void solveT(const PETScAssemblyMatrix& op,
-              const PETScVector&         rhs,
-              PETScVector&               out)
+  void solveT(const PETScOperator& op,
+              const PETScVector&   rhs,
+              PETScVector&         out)
   {
     solveSystem(op, rhs, out, true);
   }
@@ -170,14 +167,14 @@ public:
 
 private:
   void solveLinearOperator(const LinearOperator& op,
-                           const Vector<Real>&   rhs,
-                           Vector<Real>&         out,
-                           bool                  transpose)
+                           const HostVector&     rhs,
+                           HostVector&           out,
+                           bool                  tr)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScAssemblyMatrix*>(&op))
+            dynamic_cast<const PETScOperator*>(&op))
     {
-      solveSystem(*petsc_mat, rhs, out, transpose);
+      solveSystem(*petsc_mat, rhs, out, tr);
       return;
     }
 
@@ -191,7 +188,7 @@ private:
           "KspLinearSolver received inconsistent rhs size");
     }
 
-    checkInitialized();
+    checkInit();
 
     const PetscInt size = static_cast<PetscInt>(op.numRows());
 
@@ -213,14 +210,7 @@ private:
     check(KSPCreate(PETSC_COMM_SELF, ksp.put()), "KSPCreate");
     configureKsp(ksp.get());
     check(KSPSetOperators(ksp.get(), mat, mat), "KSPSetOperators");
-    if (opts_.check_finite)
-    {
-      checkFinite(rhs_vec.get(), "right-hand side");
-      checkFinite(out_vec.get(), "initial guess");
-      checkFinite(mat, "operator");
-    }
-
-    if (transpose)
+    if (tr)
     {
       check(KSPSolveTranspose(ksp.get(), rhs_vec.get(), out_vec.get()),
             "KSPSolveTranspose");
@@ -236,10 +226,10 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScAssemblyMatrix& op,
-                   const Vector<Real>&        rhs,
-                   Vector<Real>&              out,
-                   bool                       transpose)
+  void solveSystem(const PETScOperator& op,
+                   const HostVector&    rhs,
+                   HostVector&          out,
+                   bool                 tr)
   {
     if (op.numRows() != op.numCols())
     {
@@ -266,14 +256,7 @@ private:
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
-    if (opts_.check_finite)
-    {
-      checkFinite(rhs_vec.get(), "right-hand side");
-      checkFinite(out_vec.get(), "initial guess");
-      checkFinite(op.mat(), "operator");
-    }
-
-    if (transpose)
+    if (tr)
     {
       check(KSPSolveTranspose(ksp_, rhs_vec.get(), out_vec.get()),
             "KSPSolveTranspose");
@@ -289,10 +272,10 @@ private:
     check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
   }
 
-  void solveSystem(const PETScAssemblyMatrix& op,
-                   const PETScVector&         rhs,
-                   PETScVector&               out,
-                   bool                       transpose)
+  void solveSystem(const PETScOperator& op,
+                   const PETScVector&   rhs,
+                   PETScVector&         out,
+                   bool                 tr)
   {
     if (op.numRows() != op.numCols())
     {
@@ -300,8 +283,8 @@ private:
           "KspLinearSolver requires a square PETSc matrix");
     }
 
-    const Index rhs_size = transpose ? op.numCols() : op.numRows();
-    const Index out_size = transpose ? op.numRows() : op.numCols();
+    const Index rhs_size = tr ? op.numCols() : op.numRows();
+    const Index out_size = tr ? op.numRows() : op.numCols();
     if (rhs.size() != rhs_size || out.size() != out_size)
     {
       throw std::runtime_error(
@@ -315,14 +298,7 @@ private:
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
-    if (opts_.check_finite)
-    {
-      checkFinite(rhs.vec(), "right-hand side");
-      checkFinite(out.vec(), "initial guess");
-      checkFinite(op.mat(), "operator");
-    }
-
-    if (transpose)
+    if (tr)
     {
       check(KSPSolveTranspose(ksp_, rhs.vec(), out.vec()),
             "KSPSolveTranspose");
@@ -342,7 +318,7 @@ private:
                                PetscInt              size)
   {
     if (const auto* petsc_mat =
-            dynamic_cast<const PETScAssemblyMatrix*>(&op))
+            dynamic_cast<const PETScOperator*>(&op))
     {
       return petsc_mat->mat();
     }
@@ -380,9 +356,9 @@ private:
     check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
   }
 
-  void setInitialGuess(Vec                 vec,
-                       const Vector<Real>& guess,
-                       Index               size)
+  void setInitialGuess(Vec               vec,
+                       const HostVector& guess,
+                       Index             size)
   {
     if (opts_.nonzero_guess && guess.size() == size)
     {
@@ -454,63 +430,7 @@ private:
     }
   }
 
-  static void checkFinite(Vec vec, const char* object)
-  {
-    PetscInt local_size = 0;
-    check(VecGetLocalSize(vec, &local_size), "VecGetLocalSize");
-
-    const PetscScalar* data = nullptr;
-    check(VecGetArrayRead(vec, &data), "VecGetArrayRead");
-
-    PetscReal local_max = 0.0;
-    bool      local_ok  = true;
-    for (PetscInt i = 0; i < local_size; ++i)
-    {
-      const PetscReal value = PetscAbsScalar(data[i]);
-      if (!std::isfinite(value))
-      {
-        local_ok = false;
-        break;
-      }
-      local_max = std::max(local_max, value);
-    }
-    check(VecRestoreArrayRead(vec, &data), "VecRestoreArrayRead");
-
-    PetscReal global_max = 0.0;
-    PetscInt  ok         = local_ok ? 1 : 0;
-    PetscInt  global_ok  = 0;
-    MPI_Comm  comm       = PETSC_COMM_SELF;
-    check(PetscObjectGetComm(reinterpret_cast<PetscObject>(vec), &comm),
-          "PetscObjectGetComm");
-    checkMPI(MPI_Allreduce(
-                 &local_max, &global_max, 1, MPIU_REAL, MPIU_MAX, comm),
-             "MPI_Allreduce");
-    checkMPI(MPI_Allreduce(&ok, &global_ok, 1, MPI_INT, MPI_MIN, comm),
-             "MPI_Allreduce");
-
-    if (!global_ok || !std::isfinite(global_max)
-        || global_max > std::sqrt(std::numeric_limits<PetscReal>::max()))
-    {
-      std::ostringstream msg;
-      msg << "KspLinearSolver received non-finite or too-large " << object
-          << " (max_abs=" << global_max << ")";
-      throw std::runtime_error(
-          msg.str());
-    }
-  }
-
-  static void checkFinite(Mat mat, const char* object)
-  {
-    PetscReal norm = 0.0;
-    check(MatNorm(mat, NORM_FROBENIUS, &norm), "MatNorm");
-    if (!std::isfinite(norm))
-    {
-      throw std::runtime_error(
-          std::string("KspLinearSolver received non-finite ") + object);
-    }
-  }
-
-  static void checkInitialized()
+  static void checkInit()
   {
     PetscBool initialized = PETSC_FALSE;
     check(PetscInitialized(&initialized), "PetscInitialized");
@@ -535,7 +455,7 @@ private:
 
   void ensureKsp()
   {
-    checkInitialized();
+    checkInit();
     if (ksp_ == nullptr)
     {
       check(KSPCreate(comm_, &ksp_), "KSPCreate");
@@ -638,29 +558,29 @@ const KspOptions& KspLinearSolver::opts() const
 }
 
 void KspLinearSolver::solve(const LinearOperator& op,
-                            const Vector<Real>&   rhs,
-                            Vector<Real>&         out)
+                            const HostVector&     rhs,
+                            HostVector&           out)
 {
   impl_->solve(op, rhs, out);
 }
 
 void KspLinearSolver::solveT(const LinearOperator& op,
-                             const Vector<Real>&   rhs,
-                             Vector<Real>&         out)
+                             const HostVector&     rhs,
+                             HostVector&           out)
 {
   impl_->solveT(op, rhs, out);
 }
 
-void KspLinearSolver::solve(const PETScAssemblyMatrix& op,
-                            const PETScVector&         rhs,
-                            PETScVector&               out)
+void KspLinearSolver::solve(const PETScOperator& op,
+                            const PETScVector&   rhs,
+                            PETScVector&         out)
 {
   impl_->solve(op, rhs, out);
 }
 
-void KspLinearSolver::solveT(const PETScAssemblyMatrix& op,
-                             const PETScVector&         rhs,
-                             PETScVector&               out)
+void KspLinearSolver::solveT(const PETScOperator& op,
+                             const PETScVector&   rhs,
+                             PETScVector&         out)
 {
   impl_->solveT(op, rhs, out);
 }

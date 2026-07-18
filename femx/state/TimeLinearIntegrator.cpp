@@ -1,9 +1,9 @@
 #include <chrono>
 #include <stdexcept>
 
-#include <femx/linalg/AssemblyMatrix.hpp>
 #include <femx/linalg/BlockVectorView.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/MatrixOperator.hpp>
 #include <femx/state/TimeLinearIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
@@ -24,8 +24,8 @@ Real elapsedSeconds(const Clock::time_point& begin)
   return std::chrono::duration<Real>(Clock::now() - begin).count();
 }
 
-void copyStateToView(const Vector<Real>& src,
-                     VectorView<Real>    dst)
+void copyStateToView(const HostVector& src,
+                     HostVectorView    dst)
 {
   if (src.size() != dst.size())
   {
@@ -38,8 +38,8 @@ void copyStateToView(const Vector<Real>& src,
   }
 }
 
-void copyView(VectorView<Real> src,
-              VectorView<Real> dst)
+void copyView(HostVectorView src,
+              HostVectorView dst)
 {
   if (src.size() != dst.size())
   {
@@ -52,10 +52,10 @@ void copyView(VectorView<Real> src,
   }
 }
 
-void initializeHistoryWindow(const Vector<Real>& initial,
-                             Index               depth,
-                             Index               num_states,
-                             Vector<Real>&       hist)
+void initializeHistoryWindow(const HostVector& initial,
+                             Index             depth,
+                             Index             num_states,
+                             HostVector&       hist)
 {
   if (depth < 0 || num_states < 0 || initial.size() != num_states)
   {
@@ -70,10 +70,10 @@ void initializeHistoryWindow(const Vector<Real>& initial,
   }
 }
 
-void advanceHistoryWindow(Vector<Real>&       hist,
-                          Index               depth,
-                          Index               num_states,
-                          const Vector<Real>& next)
+void advanceHistoryWindow(HostVector&       hist,
+                          Index             depth,
+                          Index             num_states,
+                          const HostVector& next)
 {
   if (depth < 0 || num_states < 0 || hist.size() != depth * num_states
       || next.size() != num_states)
@@ -96,14 +96,14 @@ void advanceHistoryWindow(Vector<Real>&       hist,
 
 TimeLinearIntegrator::TimeLinearIntegrator(
     const TimeResidual& problem,
-    AssemblyMatrix&     J_next,
+    MatrixOperator&     J_next,
     LinearSolver&       lin_solver)
   : problem_(problem),
     J_next_(J_next),
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
-  if (dims_.num_residuals != dims_.num_states)
+  if (dims_.num_res != dims_.num_states)
   {
     throw std::runtime_error(
         "TimeLinearIntegrator requires square state residual dimensions");
@@ -115,7 +115,7 @@ TimeLinearIntegrator::TimeLinearIntegrator(
   }
 }
 
-void TimeLinearIntegrator::setInitialState(const Vector<Real>& state)
+void TimeLinearIntegrator::setInitialState(const HostVector& state)
 {
   if (state.size() != numStates())
   {
@@ -128,7 +128,7 @@ void TimeLinearIntegrator::setInitialState(const Vector<Real>& state)
 
 void TimeLinearIntegrator::clearInitialState()
 {
-  init_state_     = Vector<Real>{};
+  init_state_     = HostVector{};
   has_init_state_ = false;
 }
 
@@ -187,19 +187,19 @@ Index TimeLinearIntegrator::numParams() const
   return dims_.num_param;
 }
 
-void TimeLinearIntegrator::solve(const Vector<Real>& prm,
-                                 TimeTrajectory&     tr)
+void TimeLinearIntegrator::solve(const HostVector& prm,
+                                 TimeTrajectory&   tr)
 {
   solveImpl(prm, &tr);
 }
 
-void TimeLinearIntegrator::solve(const Vector<Real>& prm)
+void TimeLinearIntegrator::solve(const HostVector& prm)
 {
   solveImpl(prm, nullptr);
 }
 
-void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
-                                     TimeTrajectory*     tr)
+void TimeLinearIntegrator::solveImpl(const HostVector& prm,
+                                     TimeTrajectory*   tr)
 {
   if (prm.size() != numParams())
   {
@@ -214,7 +214,7 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
 
   MonitorScope monitor_scope(*this);
 
-  Vector<Real> init;
+  HostVector init;
   initializeInitialState(init);
   if (tr != nullptr)
   {
@@ -222,12 +222,12 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
   }
   observeState(0, init);
 
-  Vector<Real> hist;
+  HostVector hist;
   initializeHistoryWindow(init, dims_.num_history_states, numStates(), hist);
   for (Index step = 0; step < numSteps(); ++step)
   {
-    Vector<Real> cur_state = VectorView<Real>(hist.data(), numStates());
-    Vector<Real> x_next    = cur_state;
+    HostVector cur_state = HostVectorView(hist.data(), numStates());
+    HostVector x_next    = cur_state;
 
     solveStep(step, prm, hist, x_next);
     if (tr != nullptr)
@@ -253,10 +253,10 @@ void TimeLinearIntegrator::solveImpl(const Vector<Real>& prm,
 }
 
 void TimeLinearIntegrator::solveStep(
-    Index               step,
-    const Vector<Real>& prm,
-    const Vector<Real>& hist,
-    Vector<Real>&       x_next)
+    Index             step,
+    const HostVector& prm,
+    const HostVector& hist,
+    HostVector&       x_next)
 {
   last_assm_sec_  = 0.0;
   last_solve_sec_ = 0.0;
@@ -267,9 +267,9 @@ void TimeLinearIntegrator::solveStep(
   ctx.prm  = &prm;
   ctx.hist = TimeHistoryView(hist.data(), dims_.num_history_states, numStates());
 
-  Vector<Real> res;
+  HostVector res;
   problem_.res(ctx, res);
-  if (res.size() != dims_.num_residuals)
+  if (res.size() != dims_.num_res)
   {
     throw std::runtime_error("TimeLinearIntegrator residual size mismatch");
   }
@@ -283,8 +283,8 @@ void TimeLinearIntegrator::solveStep(
   }
   J_next_.finalize();
 
-  Vector<Real> rhs;
-  J_next_.matvec(x_next, rhs);
+  HostVector rhs;
+  J_next_.apply(x_next, rhs);
   if (rhs.size() != res.size())
   {
     throw std::runtime_error("TimeLinearIntegrator RHS size mismatch");
@@ -298,8 +298,8 @@ void TimeLinearIntegrator::solveStep(
   assm_sec_      += last_assm_sec_;
   ++assm_calls_;
 
-  Vector<Real> next;
-  const auto   solve_begin = Clock::now();
+  HostVector next;
+  const auto solve_begin = Clock::now();
 
   lin_solver_.solve(J_next_, rhs, next);
 
@@ -319,7 +319,7 @@ void TimeLinearIntegrator::solveStep(
   }
 }
 
-void TimeLinearIntegrator::initializeInitialState(Vector<Real>& state) const
+void TimeLinearIntegrator::initializeInitialState(HostVector& state) const
 {
   if (has_init_state_)
   {

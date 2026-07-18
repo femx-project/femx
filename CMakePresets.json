@@ -39,6 +39,21 @@
       }
     },
     {
+      "name": "cuda",
+      "displayName": "CUDA backend",
+      "description": "Build the standalone CUDA containers and assembly path.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/cuda",
+      "cacheVariables": {
+        "FEMX_ENABLE_CUDA": "ON",
+        "FEMX_ENABLE_RESOLVE": "OFF",
+        "FEMX_ENABLE_PETSC": "OFF",
+        "FEMX_BUILD_APPS": "OFF",
+        "FEMX_BUILD_EXAMPLES": "OFF",
+        "CMAKE_CUDA_ARCHITECTURES": "60"
+      }
+    },
+    {
       "name": "resolve-cuda",
       "displayName": "ReSolve CUDA",
       "description": "Build apps/tests with the CUDA-enabled ReSolve backend.",
@@ -122,6 +137,10 @@
   ],
   "buildPresets": [
     {
+      "name": "cuda",
+      "configurePreset": "cuda"
+    },
+    {
       "name": "resolve",
       "configurePreset": "resolve"
     },
@@ -153,6 +172,13 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "cuda",
+      "configurePreset": "cuda",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
     {
       "name": "resolve",
       "configurePreset": "resolve",

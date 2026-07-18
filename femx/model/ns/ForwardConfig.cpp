@@ -55,15 +55,15 @@ std::array<Real, 3> parseVector3(const json&        node,
   return vals;
 }
 
-Vector<Real> parseRealVector(const json&        node,
-                             const std::string& name)
+HostVector parseRealVector(const json&        node,
+                           const std::string& name)
 {
   if (!node.is_array())
   {
     throw std::runtime_error(name + " must be an array");
   }
 
-  Vector<Real> vals(static_cast<Index>(node.size()));
+  HostVector vals(static_cast<Index>(node.size()));
   for (Index i = 0; i < vals.size(); ++i)
   {
     vals[i] = node.at(i).get<Real>();
@@ -608,10 +608,6 @@ void validate(const Params& prm)
   {
     throw std::runtime_error("Fluid rho and mu must be positive");
   }
-  if (prm.solver.backend != "cpu" && prm.solver.backend != "cuda")
-  {
-    throw std::runtime_error("Backend must be either 'cpu' or 'cuda'");
-  }
   if (prm.solver.method != "direct"
       && prm.solver.method != "iterative")
   {
@@ -703,7 +699,6 @@ Params loadConfig(const std::string& path)
   if (root.contains("solver"))
   {
     const auto& solver = root.at("solver");
-    assign(solver, "backend", prm.solver.backend);
     assign(solver, "method", prm.solver.method);
     if (solver.contains("solve"))
     {

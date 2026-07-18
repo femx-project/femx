@@ -6,9 +6,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 class LinearSolver;
@@ -34,9 +31,9 @@ public:
 
   Index numStates() const override;
   Index numParams() const override;
-  Index numResiduals() const override;
+  Index numRes() const override;
 
-  void solve(const Vector<Real>& prm, Vector<Real>& state) override;
+  void solve(const HostVector& prm, HostVector& state) override;
 
 private:
   const state::Residual& problem_;

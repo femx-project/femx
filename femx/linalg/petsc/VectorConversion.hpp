@@ -12,7 +12,7 @@ namespace linalg
 namespace detail
 {
 
-inline PetscErrorCode copyFromPETSc(Vec input, Vector<Real>& output)
+inline PetscErrorCode copyFromPETSc(Vec input, HostVector& output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(input, &size));
@@ -45,7 +45,7 @@ inline PetscErrorCode copyFromPETSc(Vec input, Vector<Real>& output)
   return PETSC_SUCCESS;
 }
 
-inline PetscErrorCode copyToPETSc(const Vector<Real>& input, Vec output)
+inline PetscErrorCode copyToPETSc(const HostVector& input, Vec output)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(output, &size));

@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include <femx/assembly/Assembler.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
@@ -110,16 +109,17 @@ NavierStokesModel::NavierStokesModel(fem::Mesh   mesh,
     mesh_(validatedModelMesh(std::move(mesh), num_steps_, dt_, fluid)),
     element_(makeElement(mesh_)),
     space_(makeSpace(mesh_, *element_)),
+    geometry_(fem::makeGeometry(mesh_)),
     fluid_(fluid),
     quadrature_(makeVelocityQuadrature(space_)),
     kernel_(makeKernel(space_, quadrature_, fluid_, dt_)),
-    residual_(num_steps_,
-              fem::DofLayout(space_),
-              Vector<fem::DofLayout>{fem::DofLayout(space_),
-                                     fem::DofLayout(space_)},
-              fem::DofLayout(space_),
-              kernel_),
-    matrix_pattern_(assembly::makeCsrPattern(space_))
+    res_(num_steps_,
+         fem::DofLayout(space_),
+         Array<fem::DofLayout>{fem::DofLayout(space_),
+                               fem::DofLayout(space_)},
+         fem::DofLayout(space_),
+         kernel_),
+    map_(assembly::makeAssemblyMap(fem::DofLayout(space_)))
 {
 }
 
@@ -153,28 +153,33 @@ const fem::MixedFESpace& NavierStokesModel::space() const
   return space_;
 }
 
-assembly::TimeFEMResidual& NavierStokesModel::residual()
+const fem::HostGeometry& NavierStokesModel::geometry() const
 {
-  return residual_;
+  return geometry_;
 }
 
-const assembly::TimeFEMResidual& NavierStokesModel::residual() const
+assembly::HostTimeResidual& NavierStokesModel::residual()
 {
-  return residual_;
+  return res_;
 }
 
-const CsrPattern& NavierStokesModel::matrixPattern() const
+const assembly::HostTimeResidual& NavierStokesModel::residual() const
 {
-  return matrix_pattern_;
+  return res_;
 }
 
-Vector<Index> NavierStokesModel::velocityDofs() const
+const assembly::HostAssemblyMap& NavierStokesModel::map() const
+{
+  return map_;
+}
+
+Array<Index> NavierStokesModel::velocityDofs() const
 {
   const auto  velocity  = space_.field(0);
   const Index num_nodes = mesh_.numNodes();
   const Index num_comps = velocity.numComponents();
 
-  Vector<Index> dofs;
+  Array<Index> dofs;
   dofs.reserve(num_nodes * num_comps);
   for (Index node = 0; node < num_nodes; ++node)
   {
@@ -186,13 +191,13 @@ Vector<Index> NavierStokesModel::velocityDofs() const
   return dofs;
 }
 
-Vector<Index> NavierStokesModel::velocityBoundaryDofs(
+Array<Index> NavierStokesModel::velocityBoundaryDofs(
     Index boundary_tag) const
 {
   return fem::makeVelocityControl(space_, boundary_tag).stateDofs();
 }
 
-Vector<Index> NavierStokesModel::velocityBoundaryDofs(
+Array<Index> NavierStokesModel::velocityBoundaryDofs(
     const std::string& boundary_name) const
 {
   return fem::makeVelocityControl(space_, boundary_name).stateDofs();

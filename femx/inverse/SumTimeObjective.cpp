@@ -49,7 +49,7 @@ Index SumTimeObjective::numParams() const
 }
 
 Real SumTimeObjective::value(const TimeTrajectory& tr,
-                             const Vector<Real>&   prm) const
+                             const HostVector&     prm) const
 {
   Real value_out = 0.0;
   for (const TimeObjective* term : terms_)
@@ -61,11 +61,11 @@ Real SumTimeObjective::value(const TimeTrajectory& tr,
 
 void SumTimeObjective::stateGrad(Index                 level,
                                  const TimeTrajectory& tr,
-                                 const Vector<Real>&   prm,
-                                 Vector<Real>&         out) const
+                                 const HostVector&     prm,
+                                 HostVector&           out) const
 {
   resizeOrZero(out, numStates());
-  Vector<Real> term_grad;
+  HostVector term_grad;
   for (const TimeObjective* term : terms_)
   {
     term->stateGrad(level, tr, prm, term_grad);
@@ -74,11 +74,11 @@ void SumTimeObjective::stateGrad(Index                 level,
 }
 
 void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
-                                 const Vector<Real>&   prm,
-                                 Vector<Real>&         out) const
+                                 const HostVector&     prm,
+                                 HostVector&           out) const
 {
   resizeOrZero(out, numParams());
-  Vector<Real> term_grad;
+  HostVector term_grad;
   for (const TimeObjective* term : terms_)
   {
     term->paramGrad(tr, prm, term_grad);
@@ -86,9 +86,9 @@ void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
   }
 }
 
-void SumTimeObjective::addInto(const Vector<Real>& input,
-                               Vector<Real>&       out,
-                               Index               size)
+void SumTimeObjective::addInto(const HostVector& input,
+                               HostVector&       out,
+                               Index             size)
 {
   checkSize(input, size);
   for (Index i = 0; i < size; ++i)
@@ -97,7 +97,7 @@ void SumTimeObjective::addInto(const Vector<Real>& input,
   }
 }
 
-void SumTimeObjective::checkSize(const Vector<Real>& value, Index exp)
+void SumTimeObjective::checkSize(const HostVector& value, Index exp)
 {
   if (value.size() != exp)
   {

@@ -24,7 +24,7 @@ namespace
 
 fem::TimeDirichletData makeFixedDirichletData(
     const fem::MixedFESpace& space,
-    const Vector<BCsParams>& bcs,
+    const Array<BCsParams>&  bcs,
     Index                    steps,
     Real                     dt)
 {
@@ -51,7 +51,7 @@ ForwardProblem::ForwardProblem(const Params& prm)
             fixed.dofs,
             0,
             0,
-            fixed.values),
+            fixed.vals),
     x0(fixed.initial_state),
     prm0(0)
 {
@@ -90,10 +90,10 @@ AppOptions parseAppOptions(int   argc,
   return opts;
 }
 
-void printUsage(std::ostream&              out,
-                const std::string&         executable,
-                const std::string&         option_suffix,
-                const Vector<std::string>& extra_lines)
+void printUsage(std::ostream&             out,
+                const std::string&        executable,
+                const std::string&        option_suffix,
+                const Array<std::string>& extra_lines)
 {
   out << "Usage: " << executable << " --config FILE" << option_suffix << '\n';
   for (const std::string& line : extra_lines)
@@ -116,7 +116,7 @@ std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
   }
 }
 
-bool isFinite(const Vector<Real>& x)
+bool isFinite(const HostVector& x)
 {
   for (Index i = 0; i < x.size(); ++i)
   {

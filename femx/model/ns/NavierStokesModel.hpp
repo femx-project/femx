@@ -3,13 +3,14 @@
 #include <memory>
 #include <string>
 
-#include <femx/assembly/TimeFEMResidual.hpp>
+#include <femx/assembly/AssemblyMap.hpp>
+#include <femx/assembly/HostTimeResidual.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/Config.hpp>
 #include <femx/model/ns/Kernel.hpp>
@@ -48,14 +49,16 @@ public:
 
   const fem::MixedFESpace& space() const;
 
-  assembly::TimeFEMResidual&       residual();
-  const assembly::TimeFEMResidual& residual() const;
+  const fem::HostGeometry& geometry() const;
 
-  const CsrPattern& matrixPattern() const;
+  assembly::HostTimeResidual&       residual();
+  const assembly::HostTimeResidual& residual() const;
 
-  Vector<Index> velocityDofs() const;
-  Vector<Index> velocityBoundaryDofs(Index boundary_tag) const;
-  Vector<Index> velocityBoundaryDofs(
+  const assembly::HostAssemblyMap& map() const;
+
+  Array<Index> velocityDofs() const;
+  Array<Index> velocityBoundaryDofs(Index boundary_tag) const;
+  Array<Index> velocityBoundaryDofs(
       const std::string& boundary_name) const;
 
 private:
@@ -65,11 +68,12 @@ private:
   fem::Mesh                           mesh_;
   std::unique_ptr<fem::FiniteElement> element_;
   fem::MixedFESpace                   space_;
+  fem::HostGeometry                   geometry_;
   FluidParams                         fluid_;
   fem::GaussQuadrature                quadrature_;
   NavierKernel                        kernel_;
-  assembly::TimeFEMResidual           residual_;
-  CsrPattern                          matrix_pattern_;
+  assembly::HostTimeResidual          res_;
+  assembly::HostAssemblyMap           map_;
 };
 
 } // namespace femx::model::ns

@@ -40,7 +40,7 @@ public:
     Index          ptag = 0;                        ///< Physical boundary tag.
     std::string    pname;                           ///< Physical boundary name.
     Element::Shape shape = Element::Shape::Unknown; ///< Facet element shape.
-    Vector<Index>  nids;                            ///< Mesh-node ids on the facet.
+    Array<Index>   nids;                            ///< Mesh-node ids on the facet.
   };
 
   Mesh() = default;
@@ -83,7 +83,7 @@ public:
     return elems_.size();
   }
 
-  const Vector<Element>& elems() const noexcept
+  const Array<Element>& elems() const noexcept
   {
     return elems_;
   }
@@ -93,14 +93,14 @@ public:
     return elems_[ie];
   }
 
-  const Vector<BoundaryFacet>& boundaryFacets() const noexcept
+  const Array<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;
   }
 
-  Vector<BoundaryFacet> boundaryFacets(const std::string& pname) const
+  Array<BoundaryFacet> boundaryFacets(const std::string& pname) const
   {
-    Vector<BoundaryFacet> facets;
+    Array<BoundaryFacet> facets;
     for (const auto& facet : boundary_facets_)
     {
       if (facet.pname == pname)
@@ -143,7 +143,7 @@ public:
   }
 
   /** @brief Add one element using mesh node ids. */
-  void addElem(const Vector<Index>& nids)
+  void addElem(const Array<Index>& nids)
   {
     addElem(nids, Element::Shape::Unknown, dim_, 0, 0, {});
   }
@@ -158,14 +158,14 @@ public:
    * @param[in] ptag - Physical group tag.
    * @param[in] pname - Physical group name.
    */
-  void addElem(const Vector<Index>& nids,
-               Element::Shape       shape,
-               Index                edim,
-               Index                etag,
-               Index                ptag,
-               std::string          pname)
+  void addElem(const Array<Index>& nids,
+               Element::Shape      shape,
+               Index               edim,
+               Index               etag,
+               Index               ptag,
+               std::string         pname)
   {
-    Vector<Node> cn;
+    Array<Node> cn;
     cn.reserve(nids.size());
     for (Index in : nids)
     {
@@ -193,10 +193,10 @@ public:
   }
 
 private:
-  Index                 dim_{0};
-  Vector<Node>          nodes_;
-  Vector<Element>       elems_;
-  Vector<BoundaryFacet> boundary_facets_;
+  Index                dim_{0};
+  Array<Node>          nodes_;
+  Array<Element>       elems_;
+  Array<BoundaryFacet> boundary_facets_;
   std::map<std::pair<Index, Index>, std::string>
       physical_names_;
 };

@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace state
 {
 
@@ -17,9 +14,9 @@ class Linearization;
  */
 struct Dimensions
 {
-  Index num_states    = 0; ///< Size of the state vector.
-  Index num_param    = 0; ///< Size of the parameter/control vector.
-  Index num_residuals = 0; ///< Size of the residual vector.
+  Index num_states = 0; ///< Size of the state vector.
+  Index num_param  = 0; ///< Size of the parameter/control vector.
+  Index num_res    = 0; ///< Size of the residual vector.
 };
 
 /**
@@ -38,14 +35,14 @@ public:
   virtual Dimensions dims() const = 0;
 
   /** @brief Evaluate R(state, prm). */
-  virtual void res(const Vector<Real>& state,
-                   const Vector<Real>& prm,
-                   Vector<Real>&       out) const = 0;
+  virtual void res(const HostVector& state,
+                   const HostVector& prm,
+                   HostVector&       out) const = 0;
 
   /** @brief Assemble or update Jacobians of R at (state, prm). */
-  virtual void linearize(const Vector<Real>& state,
-                         const Vector<Real>& prm,
-                         Linearization&      out) const = 0;
+  virtual void linearize(const HostVector& state,
+                         const HostVector& prm,
+                         Linearization&    out) const = 0;
 };
 
 } // namespace state

@@ -20,7 +20,7 @@ LinearStateSolver::LinearStateSolver(const Residual& problem,
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
-  if (dims_.num_residuals != dims_.num_states)
+  if (dims_.num_res != dims_.num_states)
   {
     throw std::runtime_error(
         "LinearStateSolver requires square state residual dimensions");
@@ -37,28 +37,28 @@ Index LinearStateSolver::numParams() const
   return dims_.num_param;
 }
 
-Index LinearStateSolver::numResiduals() const
+Index LinearStateSolver::numRes() const
 {
-  return dims_.num_residuals;
+  return dims_.num_res;
 }
 
-void LinearStateSolver::solve(const Vector<Real>& prm,
-                              Vector<Real>&       state)
+void LinearStateSolver::solve(const HostVector& prm,
+                              HostVector&       state)
 {
   if (prm.size() != numParams())
   {
     throw std::runtime_error("LinearStateSolver parameter size mismatch");
   }
 
-  Vector<Real> zero_state(numStates());
-  Vector<Real> res;
+  HostVector zero_state(numStates());
+  HostVector res;
   problem_.res(zero_state, prm, res);
-  if (res.size() != numResiduals())
+  if (res.size() != numRes())
   {
     throw std::runtime_error("LinearStateSolver residual size mismatch");
   }
 
-  Vector<Real> rhs(res.size());
+  HostVector rhs(res.size());
   for (Index i = 0; i < res.size(); ++i)
   {
     rhs[i] = -res[i];

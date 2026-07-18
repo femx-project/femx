@@ -20,7 +20,7 @@ NewtonStateSolver::NewtonStateSolver(const Residual& problem,
     lin_solver_(lin_solver),
     dims_(problem.dims())
 {
-  if (dims_.num_residuals != dims_.num_states)
+  if (dims_.num_res != dims_.num_states)
   {
     throw std::runtime_error(
         "NewtonStateSolver requires square state residual dimensions");
@@ -37,7 +37,7 @@ const NewtonStateOptions& NewtonStateSolver::opts() const
   return opts_;
 }
 
-void NewtonStateSolver::setInitialState(const Vector<Real>& state)
+void NewtonStateSolver::setInitialState(const HostVector& state)
 {
   if (state.size() != numStates())
   {
@@ -49,7 +49,7 @@ void NewtonStateSolver::setInitialState(const Vector<Real>& state)
 
 void NewtonStateSolver::clearInitialState()
 {
-  init_state_     = Vector<Real>{};
+  init_state_     = HostVector{};
   has_init_state_ = false;
 }
 
@@ -63,13 +63,13 @@ Index NewtonStateSolver::numParams() const
   return dims_.num_param;
 }
 
-Index NewtonStateSolver::numResiduals() const
+Index NewtonStateSolver::numRes() const
 {
-  return dims_.num_residuals;
+  return dims_.num_res;
 }
 
-void NewtonStateSolver::solve(const Vector<Real>& prm,
-                              Vector<Real>&       state)
+void NewtonStateSolver::solve(const HostVector& prm,
+                              HostVector&       state)
 {
   if (prm.size() != numParams())
   {
@@ -78,19 +78,19 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
 
   initializeState(state);
 
-  Vector<Real> res;
-  Vector<Real> rhs;
-  Vector<Real> step;
+  HostVector res;
+  HostVector rhs;
+  HostVector step;
   for (Index i = 0; i <= opts_.max_its; ++i)
   {
     problem_.res(state, prm, res);
-    if (res.size() != numResiduals())
+    if (res.size() != numRes())
     {
       throw std::runtime_error("NewtonStateSolver residual size mismatch");
     }
 
     if (squaredNorm(res)
-        <= opts_.residual_tolerance * opts_.residual_tolerance)
+        <= opts_.res_tol * opts_.res_tol)
     {
       return;
     }
@@ -126,7 +126,7 @@ void NewtonStateSolver::solve(const Vector<Real>& prm,
   throw std::runtime_error("NewtonStateSolver failed to converge");
 }
 
-void NewtonStateSolver::initializeState(Vector<Real>& state) const
+void NewtonStateSolver::initializeState(HostVector& state) const
 {
   if (has_init_state_)
   {

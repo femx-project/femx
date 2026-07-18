@@ -34,14 +34,14 @@ public:
     return data_[block * block_size_ + i];
   }
 
-  VectorView<T> block(Index i) const
+  HostArrayView<T> block(Index i) const
   {
-    return VectorView<T>(data_ + i * block_size_, block_size_);
+    return HostArrayView<T>(data_ + i * block_size_, block_size_);
   }
 
-  VectorView<T> flat() const
+  HostArrayView<T> flat() const
   {
-    return VectorView<T>(data_, size());
+    return HostArrayView<T>(data_, size());
   }
 
   T* data() const

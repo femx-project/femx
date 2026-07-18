@@ -67,7 +67,7 @@ PetscInt PETScVector::localSize() const
 
 void PETScVector::resize(Index size)
 {
-  checkInitialized();
+  checkInit();
 
   if (vec_ != nullptr && size_ == size)
   {
@@ -117,9 +117,9 @@ void PETScVector::addAtomic(Index row, Real value)
   add(row, value);
 }
 
-void PETScVector::addValues(const PetscInt*     rows,
-                            Index               count,
-                            const Vector<Real>& vals)
+void PETScVector::addValues(const PetscInt*   rows,
+                            Index             count,
+                            const HostVector& vals)
 {
   if (vals.size() != count)
   {
@@ -155,7 +155,7 @@ void PETScVector::finalize()
   check(VecAssemblyEnd(vec_), "VecAssemblyEnd");
 }
 
-void PETScVector::copyOwnedFrom(const Vector<Real>& vals)
+void PETScVector::copyOwnedFrom(const HostVector& vals)
 {
   if (vals.size() != size())
   {
@@ -174,7 +174,7 @@ void PETScVector::copyOwnedFrom(const Vector<Real>& vals)
   check(VecRestoreArray(vec(), &data), "VecRestoreArray");
 }
 
-void PETScVector::copyToAll(Vector<Real>& vals) const
+void PETScVector::copyToAll(HostVector& vals) const
 {
   check(detail::copyFromPETSc(vec(), vals), "copyFromPETSc");
 }
@@ -192,7 +192,7 @@ void PETScVector::setValue(Index row, Real value, InsertMode mode)
         "VecSetValue");
 }
 
-void PETScVector::checkInitialized()
+void PETScVector::checkInit()
 {
   PetscBool initialized = PETSC_FALSE;
   check(PetscInitialized(&initialized), "PetscInitialized");

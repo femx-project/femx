@@ -58,8 +58,8 @@ Point3 selectorCenter(const fem::Mesh& mesh, const BoundarySelector& sel)
   return boundaryCenter(mesh, sel.physical);
 }
 
-Vector<Index> gaugeDofs(const fem::MixedFESpace& space,
-                        const BoundarySelector&  sel)
+Array<Index> gaugeDofs(const fem::MixedFESpace& space,
+                       const BoundarySelector&  sel)
 {
   Index      in_out   = 0;
   Real       dist_out = 0.0;
@@ -74,7 +74,7 @@ Vector<Index> gaugeDofs(const fem::MixedFESpace& space,
     }
   }
 
-  Vector<Index> dofs(1);
+  Array<Index> dofs(1);
   dofs[0] = space.field(1).globalDof(in_out, 0);
   return dofs;
 }
@@ -90,12 +90,12 @@ fem::DirichletControl makeVelocityControl(
   return makeVelocityControl(space, sel.physical);
 }
 
-void splitStateFields(VectorView<const Real>   state,
+void splitStateFields(HostConstVectorView      state,
                       const fem::MixedFESpace& space,
-                      Vector<Real>&            ux,
-                      Vector<Real>&            uy,
-                      Vector<Real>&            uz,
-                      Vector<Real>&            pressure)
+                      HostVector&              ux,
+                      HostVector&              uy,
+                      HostVector&              uz,
+                      HostVector&              pressure)
 {
   const fem::Mesh& mesh      = space.mesh();
   const Index      num_nodes = mesh.numNodes();

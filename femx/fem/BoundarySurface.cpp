@@ -15,9 +15,9 @@ namespace
 
 constexpr Real min_measure = 1.0e-28;
 
-Vector<Mesh::BoundaryFacet> facetsByTag(const Mesh& mesh, Index physical_tag)
+Array<Mesh::BoundaryFacet> facetsByTag(const Mesh& mesh, Index physical_tag)
 {
-  Vector<Mesh::BoundaryFacet> facets;
+  Array<Mesh::BoundaryFacet> facets;
   for (const auto& facet : mesh.boundaryFacets())
   {
     if (facet.ptag == physical_tag)
@@ -28,14 +28,14 @@ Vector<Mesh::BoundaryFacet> facetsByTag(const Mesh& mesh, Index physical_tag)
   return facets;
 }
 
-void addEntry(SparseTripletMatrix& matrix,
+void addEntry(SparseTripletMatrix& mat,
               Index                row,
               Index                col,
-              Real                 value)
+              Real                 val)
 {
-  matrix.row_indices.push_back(row);
-  matrix.col_indices.push_back(col);
-  matrix.values.push_back(value);
+  mat.row_indices.push_back(row);
+  mat.col_indices.push_back(col);
+  mat.vals.push_back(val);
 }
 
 std::pair<Index, Index> orderedEdge(Index a, Index b)
@@ -43,8 +43,8 @@ std::pair<Index, Index> orderedEdge(Index a, Index b)
   return a < b ? std::make_pair(a, b) : std::make_pair(b, a);
 }
 
-void assembleSegment(const Vector<Index>&    element,
-                     const Vector<Point3>&   nodes,
+void assembleSegment(const Array<Index>&     element,
+                     const Array<Point3>&    nodes,
                      BoundaryScalarMatrices& out)
 {
   if (element.size() != 2)
@@ -80,8 +80,8 @@ void assembleSegment(const Vector<Index>&    element,
   }
 }
 
-void assembleTriangle(const Vector<Index>&    element,
-                      const Vector<Point3>&   nodes,
+void assembleTriangle(const Array<Index>&     element,
+                      const Array<Point3>&    nodes,
                       BoundaryScalarMatrices& out)
 {
   if (element.size() != 3)
@@ -155,9 +155,9 @@ BoundarySurface::BoundarySurface(const Mesh& mesh, Index physical_tag)
 }
 
 void BoundarySurface::initialize(
-    const Mesh&                        mesh,
-    const Vector<Mesh::BoundaryFacet>& facets,
-    const std::string&                 label)
+    const Mesh&                       mesh,
+    const Array<Mesh::BoundaryFacet>& facets,
+    const std::string&                label)
 {
   if (facets.empty())
   {
@@ -179,7 +179,7 @@ void BoundarySurface::initialize(
           label + " supports only segment and triangle facets");
     }
 
-    Vector<Index> element;
+    Array<Index> element;
     element.reserve(facet.nids.size());
     for (Index mesh_node_id : facet.nids)
     {
@@ -202,10 +202,10 @@ void BoundarySurface::initialize(
 
 void BoundarySurface::findRimNodes()
 {
-  Vector<Index> is_rim(numNodes(), 0);
+  Array<Index> is_rim(numNodes(), 0);
   if (dim_ == 1)
   {
-    Vector<Index> incidence(numNodes(), 0);
+    Array<Index> incidence(numNodes(), 0);
     for (Index ie = 0; ie < numElements(); ++ie)
     {
       if (element_shapes_[ie] != Element::Shape::Segment

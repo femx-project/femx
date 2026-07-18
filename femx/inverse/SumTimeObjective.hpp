@@ -28,26 +28,26 @@ public:
   Index numParams() const override;
 
   Real value(const state::TimeTrajectory& tr,
-             const Vector<Real>&          prm) const override;
+             const HostVector&            prm) const override;
 
   void stateGrad(Index                        level,
                  const state::TimeTrajectory& tr,
-                 const Vector<Real>&          prm,
-                 Vector<Real>&                out) const override;
+                 const HostVector&            prm,
+                 HostVector&                  out) const override;
 
   void paramGrad(const state::TimeTrajectory& tr,
-                 const Vector<Real>&          prm,
-                 Vector<Real>&                out) const override;
+                 const HostVector&            prm,
+                 HostVector&                  out) const override;
 
 private:
-  static void checkSize(const Vector<Real>& value, Index exp);
-  static void addInto(const Vector<Real>& input, Vector<Real>& out, Index size);
+  static void checkSize(const HostVector& value, Index exp);
+  static void addInto(const HostVector& input, HostVector& out, Index size);
 
 private:
-  Index                        num_steps_{0};
-  Index                        num_states_{0};
-  Index                        num_param_{0};
-  Vector<const TimeObjective*> terms_;
+  Index                       num_steps_{0};
+  Index                       num_states_{0};
+  Index                       num_param_{0};
+  Array<const TimeObjective*> terms_;
 };
 
 } // namespace inverse
