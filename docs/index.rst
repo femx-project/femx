@@ -3,7 +3,7 @@ femx
 ****
 
 femx is a research finite-element code for forward and inverse PDE workflows.
-The v0.2.0 documentation introduces the C++ examples and supported Python API,
+The v0.3.0 documentation introduces the C++ examples and supported Python API,
 and links to Doxygen-generated API references.
 
 Documentation
