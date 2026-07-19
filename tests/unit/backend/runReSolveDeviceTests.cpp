@@ -139,8 +139,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
 
   try
   {
-#if defined(FEMX_RESOLVE_DEVELOP_PREFIX) && defined(FEMX_RESOLVE_BUILD_ID)
-    std::cout << "    ReSolve prefix: " << FEMX_RESOLVE_DEVELOP_PREFIX << '\n';
+#if defined(FEMX_RESOLVE_BUILD_ID)
     std::cout << "    ReSolve build: " << FEMX_RESOLVE_BUILD_ID << '\n';
 #endif
 
