@@ -15,147 +15,83 @@
 namespace femx::assembly
 {
 
-/** @brief Host-state residual decorated with time-dependent constraints. */
+/** @brief Time residual decorated with constraints in one backend. */
 template <class Backend>
 class ConstrainedTimeResidual final : public state::TimeResidual<Backend>
 {
-  static_assert(Backend::space == MemorySpace::Host,
-                "Generic ConstrainedTimeResidual requires Host state storage");
-
 public:
   using Base      = state::TimeResidual<Backend>;
-  using Mat       = typename Base::Mat;
-  using Ctx       = typename Base::Ctx;
+  using Vec       = typename Base::Vec;
+  using VecView   = typename Base::VecView;
   using ConstView = typename Base::ConstView;
+  using Mat       = typename Base::Mat;
+  using Graph     = typename Base::Graph;
+  using Ctx       = typename Base::Ctx;
+  using StepCtx   = typename Base::StepCtx;
+  using Boundary  = BoundaryMap<Backend::space>;
+  using Control   = fem::ControlMap<Backend::space>;
+  using InitMap   = fem::InitialStateMap<Backend::space>;
 
+  /** @brief Decorate a non-owning Host residual. */
   ConstrainedTimeResidual(const Base&              base,
                           fem::HostControlMap      control,
-                          fem::HostInitialStateMap init_state = {});
+                          fem::HostInitialStateMap init = {});
+
+  /** @brief Copy constraint data and take ownership of a Device residual. */
+  ConstrainedTimeResidual(std::unique_ptr<Base>    base,
+                          fem::HostControlMap      control,
+                          fem::HostInitialStateMap init,
+                          Ctx&                     ctx);
 
   state::TimeDims dims() const override;
 
-  const HostCsrGraph&         hostGraph() const override;
-  const typename Base::Graph& graph() const override;
+  const HostCsrGraph& hostGraph() const override;
+  const Graph&        graph() const override;
 
-  const fem::HostControlMap& controlMap() const noexcept;
-  void                       setInitialStateMap(fem::HostInitialStateMap init_state);
-  void                       clearInitialStateMap() noexcept;
+  const Control& controlMap() const noexcept;
 
-  void initialState(ConstView prm, HostVector& out, Ctx& ctx) const override;
-  void addInitialStateJacobianTranspose(ConstView      state_grad,
-                                        HostVectorView out,
-                                        Ctx&           ctx) const override;
+  /** @brief Host-only convenience API used when rebuilding inverse metadata. */
+  void setInitialStateMap(fem::HostInitialStateMap init);
+  void clearInitialStateMap() noexcept;
 
-  void res(const state::HostTimeContext& time,
-           HostVector&                   out,
-           Ctx&                          ctx) const override;
-  void assemble(const state::HostTimeContext& time,
-                state::VariableBlock          wrt,
-                HostVector&                   res,
-                Mat&                          jac,
-                Ctx&                          ctx) const override;
-  void applyJac(const state::HostTimeContext& time,
-                state::VariableBlock          wrt,
-                ConstView                     dir,
-                HostVector&                   out,
-                Ctx&                          ctx) const override;
-  void applyJacT(const state::HostTimeContext& time,
-                 state::VariableBlock          wrt,
-                 ConstView                     adj,
-                 HostVector&                   out,
-                 Ctx&                          ctx) const override;
-  void assembleJac(const state::HostTimeContext& time,
-                   state::VariableBlock          wrt,
-                   Mat&                          out,
-                   Ctx&                          ctx) const override;
-  void prepareLinearSolve(const state::HostTimeContext& time,
-                          state::VariableBlock          wrt,
-                          Mat&                          jac,
-                          HostVector&                   rhs,
-                          Ctx&                          ctx) const override;
+  void initialState(ConstView prm, Vec& out, Ctx& ctx) const override;
+  void addInitialStateJacobianTranspose(ConstView state_grad,
+                                        VecView   out,
+                                        Ctx&      ctx) const override;
+
+  void res(const StepCtx& time, Vec& out, Ctx& ctx) const override;
+  void assembleNext(const StepCtx& time,
+                    Vec&           res,
+                    Mat&           jac,
+                    Ctx&           ctx) const override;
+  void applyJacT(const StepCtx&       time,
+                 state::VariableBlock wrt,
+                 ConstView            adj,
+                 Vec&                 out,
+                 Ctx&                 ctx) const override;
+  void prepareLinearSolve(const StepCtx& time,
+                          Mat&           jac,
+                          Vec&           rhs,
+                          Ctx&           ctx) const override;
 
 private:
-  state::HostTimeContext baseContext(
-      const state::HostTimeContext& time) const;
-  void checkContext(const state::HostTimeContext& time) const;
-  void checkInitialStateMap(const fem::HostInitialStateMap& map) const;
+  StepCtx baseCtx(const StepCtx& time) const;
 
-  const Base&              base_;
-  fem::HostControlMap      control_;
-  fem::HostInitialStateMap init_state_;
-  HostBoundaryMap          boundary_;
-  HostVector               base_prm_;
-  mutable HostVector       boundary_vals_;
-  state::TimeDims          base_dims_;
-  state::TimeDims          dims_;
-};
+  void initDims(const fem::HostControlMap&      control,
+                const fem::HostInitialStateMap& init);
+  void checkCtx(const StepCtx& time) const;
+  void checkInitMap(const fem::HostInitialStateMap& map) const;
 
-/** @brief CUDA residual decorated with time-dependent constraints. */
-template <>
-class ConstrainedTimeResidual<linalg::CudaCsrBackend> final
-  : public state::DeviceTimeResidual
-{
-public:
-  using Base = state::DeviceTimeResidual;
-
-  ConstrainedTimeResidual(std::unique_ptr<Base>    base,
-                          fem::HostControlMap      control,
-                          fem::HostInitialStateMap init_state,
-                          CudaContext&             ctx);
-  ~ConstrainedTimeResidual() override;
-
-  state::TimeDims       dims() const override;
-  const HostCsrGraph&   hostGraph() const override;
-  const DeviceCsrGraph& graph() const override;
-
-  void initialState(DeviceConstVectorView prm,
-                    DeviceVector&         out,
-                    CudaContext&          ctx) const override;
-  void addInitialStateJacobianTranspose(DeviceConstVectorView state_grad,
-                                        DeviceVectorView      out,
-                                        CudaContext&          ctx) const override;
-  void res(const state::DeviceTimeContext& time,
-           DeviceVector&                   out,
-           CudaContext&                    ctx) const override;
-  void assemble(const state::DeviceTimeContext& time,
-                state::VariableBlock            wrt,
-                DeviceVector&                   res,
-                DeviceCsrMatrix&                jac,
-                CudaContext&                    ctx) const override;
-  void applyJac(const state::DeviceTimeContext& time,
-                state::VariableBlock            wrt,
-                DeviceConstVectorView           dir,
-                DeviceVector&                   out,
-                CudaContext&                    ctx) const override;
-  void applyJacT(const state::DeviceTimeContext& time,
-                 state::VariableBlock            wrt,
-                 DeviceConstVectorView           adj,
-                 DeviceVector&                   out,
-                 CudaContext&                    ctx) const override;
-  void assembleJac(const state::DeviceTimeContext& time,
-                   state::VariableBlock            wrt,
-                   DeviceCsrMatrix&                out,
-                   CudaContext&                    ctx) const override;
-  void prepareLinearSolve(const state::DeviceTimeContext& time,
-                          state::VariableBlock            wrt,
-                          DeviceCsrMatrix&                jac,
-                          DeviceVector&                   rhs,
-                          CudaContext&                    ctx) const override;
-
-private:
-  state::DeviceTimeContext baseContext(
-      const state::DeviceTimeContext& time) const;
-  void checkContext(const state::DeviceTimeContext& time) const;
-  void checkParameters(DeviceConstVectorView prm) const;
-
-  std::unique_ptr<Base>      base_;
-  state::TimeDims            base_dims_;
-  state::TimeDims            dims_;
-  DeviceBoundaryMap          boundary_;
-  fem::DeviceControlMap      control_;
-  fem::DeviceInitialStateMap init_state_;
-  mutable DeviceVector       boundary_vals_;
-  bool                       has_init_state_{false};
+  std::unique_ptr<Base> owned_base_;
+  const Base*           base_{nullptr};
+  Control               control_;
+  InitMap               init_;
+  Boundary              boundary_;
+  Vec                   base_prm_;
+  mutable Vec           base_adj_;
+  mutable Vec           boundary_vals_;
+  state::TimeDims       base_dims_;
+  state::TimeDims       dims_;
 };
 
 using HostConstrainedTimeResidual =

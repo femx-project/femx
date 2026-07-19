@@ -81,6 +81,18 @@ __global__ void replaceResKernel(
   }
 }
 
+__global__ void zeroBoundaryKernel(
+    BoundaryMapView<MemorySpace::Device> map,
+    Real*                                vals)
+{
+  const Index ib =
+      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (ib < map.num_bcs)
+  {
+    vals[map.bcRow(ib)] = 0.0;
+  }
+}
+
 void checkMat(const DeviceBoundaryMap& map, const DeviceCsrMatrix& mat)
 {
   require(mat.graph().layoutId() == map.layoutId(),
@@ -160,6 +172,23 @@ void replaceRes(const DeviceBoundaryMap& map,
       (map.numBcs() + kThreads - 1) / kThreads);
   replaceResKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(
       map.view(), state.data(), bc_vals.data(), res.data());
+  device::checkLastError();
+}
+
+void zeroBoundary(const DeviceBoundaryMap& map,
+                  DeviceVectorView         vals,
+                  CudaContext&             ctx)
+{
+  require(vals.size() == map.rows(),
+          "BoundaryMap vector has incompatible size");
+  if (map.numBcs() == 0)
+  {
+    return;
+  }
+  const unsigned int blocks = static_cast<unsigned int>(
+      (map.numBcs() + kThreads - 1) / kThreads);
+  zeroBoundaryKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(map.view(),
+                                                               vals.data());
   device::checkLastError();
 }
 

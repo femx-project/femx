@@ -101,6 +101,8 @@ void  transposeCsr(void*        workspace,
                    Real*        dst_vals,
                    Index*       dst_row_ptr,
                    Index*       dst_col_ind,
+                   Index*       src_to_tr,
+                   bool         rebuild_graph,
                    CudaContext& ctx);
 } // namespace detail
 #endif
@@ -257,7 +259,7 @@ public:
     ensureCuda();
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Device transpose dimensions");
-    ensureCudaTranspose(mat);
+    const bool rebuild_graph = ensureCudaTranspose(mat);
     detail::transposeCsr(cuda_tr_work_,
                          mat.rows(),
                          mat.cols(),
@@ -268,6 +270,8 @@ public:
                          cuda_tr_vals_.data(),
                          cuda_tr_row_ptr_.data(),
                          cuda_tr_col_ind_.data(),
+                         cuda_src_to_tr_.data(),
+                         rebuild_graph,
                          ctx);
     bindCuda(cuda_tr_sys_,
              mat.cols(),
@@ -277,7 +281,7 @@ public:
              cuda_tr_col_ind_.data(),
              cuda_tr_vals_.data(),
              *cuda_work_);
-    solveDeviceWith(cuda_tr_sys_, cuda_tr_vecs_, rhs, sol, ctx);
+    solveDeviceWith(cuda_tr_sys_, cuda_vecs_, rhs, sol, ctx);
 #else
     (void) mat;
     (void) rhs;
@@ -616,7 +620,7 @@ private:
     ensureCudaWork(cuda_work_);
   }
 
-  void ensureCudaTranspose(const DeviceCsrMatrix& mat)
+  bool ensureCudaTranspose(const DeviceCsrMatrix& mat)
   {
     if (cuda_tr_work_ == nullptr)
     {
@@ -624,7 +628,7 @@ private:
     }
     if (cuda_tr_src_layout_ == mat.graph().layoutId())
     {
-      return;
+      return false;
     }
 
     if (cuda_tr_row_ptr_.size() != mat.cols() + 1)
@@ -639,8 +643,13 @@ private:
     {
       cuda_tr_vals_.resize(mat.nnz());
     }
+    if (cuda_src_to_tr_.size() != mat.nnz())
+    {
+      cuda_src_to_tr_.resize(mat.nnz());
+    }
     resetCudaSystem(cuda_tr_sys_);
     cuda_tr_src_layout_ = mat.graph().layoutId();
+    return true;
   }
 
   static void resetCudaSystem(CudaSystem& sys)
@@ -834,9 +843,9 @@ private:
   void*                                         cuda_tr_work_{nullptr};
   DeviceIndexVector                             cuda_tr_row_ptr_;
   DeviceIndexVector                             cuda_tr_col_ind_;
+  DeviceIndexVector                             cuda_src_to_tr_;
   DeviceVector                                  cuda_tr_vals_;
   CudaSystem                                    cuda_tr_sys_;
-  CudaVecs                                      cuda_tr_vecs_;
 #endif
 };
 

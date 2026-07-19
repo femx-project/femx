@@ -14,20 +14,16 @@
 namespace femx::state
 {
 
-/** @brief Native state and timing data observed after one time level. */
-template <MemorySpace Space>
+/** @brief Host state and timing data observed after one time level. */
 struct TimeStepStateContext
 {
-  Index                         level{0};
-  Index                         total_steps{0};
-  VectorView<Space, const Real> prev;
-  VectorView<Space, const Real> curr;
-  Real                          assm_sec{0.0};
-  Real                          lin_solve_sec{0.0};
+  Index               level{0};
+  Index               total_steps{0};
+  HostConstVectorView prev;
+  HostConstVectorView curr;
+  Real                assm_sec{0.0};
+  Real                lin_solve_sec{0.0};
 };
-
-using HostTimeStepStateContext   = TimeStepStateContext<MemorySpace::Host>;
-using DeviceTimeStepStateContext = TimeStepStateContext<MemorySpace::Device>;
 
 /** @brief Timings and operation counts for one time solve. */
 struct SolveStats
@@ -55,8 +51,8 @@ public:
   using Ctx       = typename Backend::Ctx;
   using Res       = TimeResidual<Backend>;
   using Solver    = linalg::LinearSolver<Backend>;
-  using Tr        = Trajectory<space>;
-  using StepCtx   = TimeStepStateContext<space>;
+  using Tr        = TimeTrajectory;
+  using StepCtx   = TimeStepStateContext;
   using Observer  = std::function<bool(const StepCtx&)>;
 
   TimeIntegrator(const Res& res, Mat& jac, Solver& solver, Ctx& ctx);
@@ -272,23 +268,24 @@ SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
 {
   const TimeContext<space> time       = timeCtx(step, prm);
   const auto               assm_begin = detail::TimeClock::now();
-  res_.assemble(time, VariableBlock::NextState, res_vec_, jac_, ctx_);
-  require(res_vec_.size() == dims_.num_res,
-          "TimeIntegrator residual size mismatch");
+
+  res_.assembleNext(time, res_vec_, jac_, ctx_);
+  require(res_vec_.size() == dims_.num_res, "TimeIntegrator residual size mismatch");
+
   finalize(jac_, ctx_);
   apply(jac_, nxt_.view(), rhs_, ctx_);
   axpby(-1.0, res_vec_.view(), 1.0, rhs_.view(), ctx_);
-  res_.prepareLinearSolve(
-      time, VariableBlock::NextState, jac_, rhs_, ctx_);
-  ctx_.synchronize();
-  const Real assm_sec = detail::elapsedSec(assm_begin);
 
+  res_.prepareLinearSolve(time, jac_, rhs_, ctx_);
+  ctx_.synchronize();
+
+  const Real assm_sec = detail::elapsedSec(assm_begin);
+  
   const auto solve_begin = detail::TimeClock::now();
   solver_.solve(jac_, rhs_, sol_, ctx_);
   const Real lin_solve_sec = detail::elapsedSec(solve_begin);
 
-  require(sol_.size() == numStates(),
-          "TimeIntegrator solution size mismatch");
+  require(sol_.size() == numStates(), "TimeIntegrator solution size mismatch");
   advanceHist();
   return {assm_sec, lin_solve_sec, 1, 1};
 }
@@ -313,12 +310,25 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
     copy(nxt_.view(), tr->level(0), ctx_);
   }
 
-  Vec prev;
+  HostVector obs_prev;
+  HostVector obs_curr;
   if (observer)
   {
-    copy(nxt_.view(), prev, ctx_);
-    ctx_.synchronize();
-    if (observer({0, numSteps(), prev.view(), prev.view(), 0.0, 0.0}))
+    HostConstVectorView init;
+    if (tr != nullptr)
+    {
+      ctx_.synchronize();
+      init = static_cast<const Tr&>(*tr).level(0);
+    }
+    else
+    {
+      obs_prev.resize(numStates());
+      obs_curr.resize(numStates());
+      copy(nxt_.view(), obs_prev.view(), ctx_);
+      ctx_.synchronize();
+      init = static_cast<const HostVector&>(obs_prev).view();
+    }
+    if (observer({0, numSteps(), init, init, 0.0, 0.0}))
     {
       return stats_;
     }
@@ -326,11 +336,6 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
 
   for (Index step = 0; step < numSteps(); ++step)
   {
-    if (observer)
-    {
-      copy(nxt_.view(), prev, ctx_);
-    }
-
     const SolveStats step_stats  = solveStep(step, prm);
     stats_.assm_sec             += step_stats.assm_sec;
     stats_.lin_solve_sec        += step_stats.lin_solve_sec;
@@ -344,13 +349,34 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
 
     if (observer)
     {
-      ctx_.synchronize();
-      if (observer({step + 1,
-                    numSteps(),
-                    prev.view(),
-                    nxt_.view(),
-                    step_stats.assm_sec,
-                    step_stats.lin_solve_sec}))
+      HostConstVectorView prev;
+      HostConstVectorView curr;
+      if (tr != nullptr)
+      {
+        ctx_.synchronize();
+        const Tr& const_tr = *tr;
+        prev               = const_tr.level(step);
+        curr               = const_tr.level(step + 1);
+      }
+      else
+      {
+        copy(nxt_.view(), obs_curr.view(), ctx_);
+        ctx_.synchronize();
+        prev = static_cast<const HostVector&>(obs_prev).view();
+        curr = static_cast<const HostVector&>(obs_curr).view();
+      }
+
+      const bool stop = observer({step + 1,
+                                  numSteps(),
+                                  prev,
+                                  curr,
+                                  step_stats.assm_sec,
+                                  step_stats.lin_solve_sec});
+      if (tr == nullptr)
+      {
+        std::swap(obs_prev, obs_curr);
+      }
+      if (stop)
       {
         break;
       }

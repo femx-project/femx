@@ -87,19 +87,19 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    require(prm.size() == numParams(),
-            "LinearStateSolver parameter size mismatch");
+    require(prm.size() == numParams(),"LinearStateSolver parameter size mismatch");
 
     res_.res(zero_, prm, res_vec_, ctx_);
-    require(res_vec_.size() == numRes(),
-            "LinearStateSolver residual size mismatch");
+    require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
+
     axpby(-1.0, res_vec_.view(), 0.0, rhs_.view(), ctx_);
     res_.assembleStateJac(zero_, prm, jac_, ctx_);
+
     finalize(jac_, ctx_);
     solver_.solve(jac_, rhs_, state, ctx_);
+
     ctx_.synchronize();
-    require(state.size() == numStates(),
-            "LinearStateSolver solution size mismatch");
+    require(state.size() == numStates(),"LinearStateSolver solution size mismatch");
   }
 
 private:

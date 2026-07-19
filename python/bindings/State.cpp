@@ -47,8 +47,8 @@ using femx::state::EnsembleBasis;
 using femx::state::HostTimeContext;
 using femx::state::HostTimeHistoryView;
 using femx::state::HostTimeIntegrator;
-using femx::state::HostTimeStepStateContext;
 using femx::state::TimeDims;
+using femx::state::TimeStepStateContext;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 using femx::state::VariableBlock;
@@ -103,7 +103,7 @@ public:
   {
   }
 
-  bool operator()(const HostTimeStepStateContext& ctx)
+  bool operator()(const TimeStepStateContext& ctx)
   {
     py::gil_scoped_acquire acquire;
     checkSignals();
@@ -255,11 +255,6 @@ py::dict ctxData(const HostTimeContext& ctx)
   return out;
 }
 
-Index variableSize(const TimeDims& dims, VariableBlock wrt)
-{
-  return wrt.isParam() ? dims.num_param : dims.num_states;
-}
-
 class PyTimeResidual : public TimeResidual
 {
 public:
@@ -338,24 +333,6 @@ public:
     copyArray(override(ctxData(ctx)), out, "residual result");
   }
 
-  void applyJac(const HostTimeContext& ctx,
-                VariableBlock          wrt,
-                HostConstVectorView    dir,
-                HostVector&            out,
-                femx::CpuContext&) const override
-  {
-    py::gil_scoped_acquire gil;
-    const py::function     override = py::get_override(this, "apply_jacobian");
-    if (!override)
-    {
-      throw std::runtime_error(
-          "TimeResidual.apply_jacobian() is not implemented");
-    }
-    copyArray(override(ctxData(ctx), wrt, vectorArray(dir)),
-              out,
-              "Jacobian result");
-  }
-
   void applyJacT(const HostTimeContext& ctx,
                  VariableBlock          wrt,
                  HostConstVectorView    adj,
@@ -375,28 +352,14 @@ public:
               "transpose Jacobian result");
   }
 
-  void assemble(const HostTimeContext& ctx,
-                VariableBlock          wrt,
-                HostVector&            res_out,
-                femx::HostCsrMatrix&   jac,
-                femx::CpuContext&      cpu) const override
+  void assembleNext(const HostTimeContext& ctx,
+                    HostVector&            res_out,
+                    femx::HostCsrMatrix&   jac,
+                    femx::CpuContext&      cpu) const override
   {
     res(ctx, res_out, cpu);
-    assembleJac(ctx, wrt, jac, cpu);
-  }
-
-  void assembleJac(const HostTimeContext& ctx,
-                   VariableBlock          wrt,
-                   femx::HostCsrMatrix&   out,
-                   femx::CpuContext&      cpu) const override
-  {
-    if (wrt.isParam())
-    {
-      throw std::runtime_error(
-          "Python TimeResidual parameter Jacobian is matrix-free");
-    }
     updateGraph();
-    if (out.graph().layoutId() != graph_.layoutId())
+    if (jac.graph().layoutId() != graph_.layoutId())
     {
       throw std::runtime_error(
           "Python TimeResidual Jacobian uses an incompatible graph");
@@ -404,51 +367,44 @@ public:
 
     py::gil_scoped_acquire gil;
     const py::function     override =
-        py::get_override(this, "assemble_jacobian");
+        py::get_override(this, "assemble_next");
     if (!override)
     {
-      assembleJacFromProducts(ctx, wrt, out, cpu);
-      return;
+      throw std::runtime_error(
+          "TimeResidual.assemble_next() is not implemented");
     }
 
-    const py::object value = override(ctxData(ctx), wrt);
-    if (value.is_none())
-    {
-      assembleJacFromProducts(ctx, wrt, out, cpu);
-      return;
-    }
-
-    const RealArray mat = RealArray::ensure(value);
+    const py::object value = override(ctxData(ctx));
+    const RealArray  mat   = RealArray::ensure(value);
     if (!mat || mat.ndim() != 2)
     {
       throw std::runtime_error(
-          "TimeResidual.assemble_jacobian() must return a two-dimensional array or None");
+          "TimeResidual.assemble_next() must return a two-dimensional array");
     }
 
     const TimeDims dims = this->dims();
     const Index    rows = static_cast<Index>(mat.shape(0));
     const Index    cols = static_cast<Index>(mat.shape(1));
-    if (rows != dims.num_res || cols != variableSize(dims, wrt))
+    if (rows != dims.num_res || cols != dims.num_states)
     {
       throw std::runtime_error(
-          "TimeResidual.assemble_jacobian() returned an array with invalid shape");
+          "TimeResidual.assemble_next() returned an array with invalid shape");
     }
 
-    out.setZero();
+    jac.setZero();
     const auto data = mat.unchecked<2>();
     for (Index row = 0; row < rows; ++row)
     {
-      for (Index k = out.rowPtrData()[row];
-           k < out.rowPtrData()[row + 1];
+      for (Index k = jac.rowPtrData()[row];
+           k < jac.rowPtrData()[row + 1];
            ++k)
       {
-        out.valsData()[k] = data(row, out.colIndData()[k]);
+        jac.valsData()[k] = data(row, jac.colIndData()[k]);
       }
     }
   }
 
   void prepareLinearSolve(const HostTimeContext& ctx,
-                          VariableBlock          wrt,
                           femx::HostCsrMatrix&   jac,
                           HostVector&            rhs,
                           femx::CpuContext&) const override
@@ -475,7 +431,6 @@ public:
     py::array_t<Real> rhs_array = vectorArray(rhs);
     const py::object  result    = override(
         ctxData(ctx),
-        wrt,
         jac_array,
         rhs_array);
     if (result.is_none())
@@ -527,27 +482,6 @@ private:
     }
     graph_ = femx::HostCsrGraph(
         dim.num_res, dim.num_states, std::move(row_ptr), std::move(col_ind));
-  }
-
-  void assembleJacFromProducts(const HostTimeContext& ctx,
-                               VariableBlock          wrt,
-                               femx::HostCsrMatrix&   out,
-                               femx::CpuContext&      cpu) const
-  {
-    const TimeDims dim = dims();
-    HostVector     dir(dim.num_states);
-    HostVector     col;
-    out.setZero();
-    for (Index j = 0; j < dim.num_states; ++j)
-    {
-      dir.setZero();
-      dir[j] = 1.0;
-      applyJac(ctx, wrt, dir.view(), col, cpu);
-      for (Index row = 0; row < dim.num_res; ++row)
-      {
-        out.valsData()[row * dim.num_states + j] = col[row];
-      }
-    }
   }
 
   mutable femx::HostCsrGraph graph_;
@@ -721,7 +655,6 @@ void bindState(py::module_& module)
       .def_static("history", &VariableBlock::hist, py::arg("lag"))
       .def_property_readonly("is_history_state",
                              &VariableBlock::isHistoryState)
-      .def_property_readonly("is_next_state", &VariableBlock::isNextState)
       .def_property_readonly("is_parameter", &VariableBlock::isParam)
       .def_property_readonly("history_lag",
                              &VariableBlock::historyLag);
@@ -805,7 +738,7 @@ void bindState(py::module_& module)
             {
               PythonTimeObserver           observer(progress);
               HostTimeIntegrator::Observer callback =
-                  [&observer](const HostTimeStepStateContext& context)
+                  [&observer](const TimeStepStateContext& context)
               {
                 return observer(context);
               };

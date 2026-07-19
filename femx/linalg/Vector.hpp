@@ -464,6 +464,16 @@ inline void copy(DeviceConstVectorView src,
   copy(src, dst.view(), ctx);
 }
 
+/** @brief Enqueue an equal-sized Host-to-Device view copy. */
+void copy(HostConstVectorView src,
+          DeviceVectorView    dst,
+          CudaContext&        ctx);
+
+/** @brief Enqueue an equal-sized Device-to-Host view copy. */
+void copy(DeviceConstVectorView src,
+          HostVectorView        dst,
+          CudaContext&          ctx);
+
 /** @brief Enqueue zeroing of a Device view. */
 void zero(DeviceVectorView vals, CudaContext& ctx);
 
@@ -520,6 +530,20 @@ namespace detail
 
 inline void copy(DeviceConstVectorView,
                  DeviceVectorView,
+                 CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void copy(HostConstVectorView,
+                 DeviceVectorView,
+                 CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void copy(DeviceConstVectorView,
+                 HostVectorView,
                  CudaContext&)
 {
   detail::throwCudaVectorUnavailable();

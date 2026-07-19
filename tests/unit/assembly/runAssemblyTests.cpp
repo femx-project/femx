@@ -61,56 +61,36 @@ public:
     out = ctx.nxt;
   }
 
-  void applyJac(const state::HostTimeContext&,
-                state::VariableBlock wrt,
-                HostConstVectorView  dir,
-                HostVector&          out,
-                CpuContext&) const override
-  {
-    resizeOrZero(out, 3);
-    if (wrt.isNextState())
-    {
-      out = dir;
-    }
-  }
-
   void applyJacT(const state::HostTimeContext&,
                  state::VariableBlock wrt,
                  HostConstVectorView  adj,
                  HostVector&          out,
                  CpuContext&) const override
   {
+    require(!wrt.isNextState(),
+            "Identity transpose apply supports history and parameters");
     if (wrt.isParam())
     {
       out.resize(0);
       return;
     }
     resizeOrZero(out, 3);
-    if (wrt.isNextState())
-    {
-      out = adj;
-    }
   }
 
-  void assemble(const state::HostTimeContext&,
-                state::VariableBlock wrt,
-                HostVector&          res,
-                HostCsrMatrix&       out,
-                CpuContext&) const override
+  void assembleNext(const state::HostTimeContext& ctx,
+                    HostVector&                   res,
+                    HostCsrMatrix&                out,
+                    CpuContext&) const override
   {
-    require(!wrt.isParam(), "Identity parameter Jacobian is matrix-free");
-    resizeOrZero(res, 3);
+    res = ctx.nxt;
     out.setZero();
-    if (wrt.isNextState())
+    for (Index i = 0; i < 3; ++i)
     {
-      for (Index i = 0; i < 3; ++i)
+      for (Index k = out.rowPtrData()[i]; k < out.rowPtrData()[i + 1]; ++k)
       {
-        for (Index k = out.rowPtrData()[i]; k < out.rowPtrData()[i + 1]; ++k)
+        if (out.colIndData()[k] == i)
         {
-          if (out.colIndData()[k] == i)
-          {
-            out.valsData()[k] = 1.0;
-          }
+          out.valsData()[k] = 1.0;
         }
       }
     }
@@ -202,17 +182,9 @@ TestOutcome mappedTimeDirichletResidual()
   res.res(ctx, out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 
-  const HostVector dir{2.0, 6.0};
-  res.applyJac(ctx, state::VariableBlock::Param, dir.view(), out, cpu);
-  status *= valsNear(out, std::array<Real, 3>{{-6.0, 0.0, 3.0}});
-
   const HostVector adj{1.0, 5.0, 3.0};
   res.applyJacT(ctx, state::VariableBlock::Param, adj.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 2>{{0.75, 0.25}});
-
-  res.applyJacT(
-      ctx, state::VariableBlock::NextState, adj.view(), out, cpu);
-  status *= valsNear(out, std::array<Real, 3>{{1.0, 5.0, 3.0}});
 
   res.applyJacT(
       ctx, state::VariableBlock::hist(0), adj.view(), out, cpu);

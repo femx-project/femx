@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "TestHelper.hpp"
+#include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
@@ -49,27 +50,15 @@ bool vectorsNear(const HostVector& lhs,
 Real deviceValue(inverse::DeviceTimeReducedFunctional& functional,
                  const HostVector&                     parameters)
 {
-  CudaContext  transfer;
-  DeviceVector device_parameters;
-  femx::copy(parameters, device_parameters, transfer);
-  transfer.synchronize();
-  return functional.value(device_parameters.view());
+  return functional.value(parameters.view());
 }
 
 Real deviceValueGrad(inverse::DeviceTimeReducedFunctional& functional,
                      const HostVector&                     parameters,
                      HostVector&                           gradient)
 {
-  CudaContext  transfer;
-  DeviceVector device_parameters;
-  DeviceVector device_gradient(functional.numParams());
-  femx::copy(parameters, device_parameters, transfer);
-  transfer.synchronize();
-  const Real value = functional.valueGrad(
-      device_parameters.view(), device_gradient.view());
-  femx::copy(device_gradient, gradient, transfer);
-  transfer.synchronize();
-  return value;
+  gradient.resize(functional.numParams());
+  return functional.valueGrad(parameters.view(), gradient.view());
 }
 
 struct ProblemData
@@ -132,7 +121,7 @@ ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
 TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!CudaContext::available() || !ad::has_enzyme)
   {
     status.skipTest();
     return status.report();
@@ -215,6 +204,10 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
     const Real       cuda_val  = deviceValueGrad(cuda, prm, cuda_grad);
     status                    *= near(cuda_val, cpu_val, 2.0e-6);
     status                    *= vectorsNear(cuda_grad, cpu_grad, 2.0e-5);
+    status                    *= cpu.assemblyCalls() == 2 * steps;
+    status                    *= cpu.solveCalls() == 2 * steps;
+    status                    *= cuda.assemblyCalls() == 2 * steps;
+    status                    *= cuda.solveCalls() == 2 * steps;
 
     HostVector repeat_grad;
     const Real repeat_val  = deviceValueGrad(cuda, prm, repeat_grad);

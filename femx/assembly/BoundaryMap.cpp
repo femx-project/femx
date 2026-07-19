@@ -202,6 +202,17 @@ void replaceRes(const HostBoundaryMap& map,
   replaceRes(map, state.view(), bc_vals.view(), res.view());
 }
 
+void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals)
+{
+  require(vals.size() == map.rows(),
+          "BoundaryMap vector has incompatible size");
+  const auto view = map.view();
+  for (Index ib = 0; ib < view.num_bcs; ++ib)
+  {
+    vals[view.bcRow(ib)] = 0.0;
+  }
+}
+
 void prepareForwardSolve(const HostBoundaryMap& map,
                          HostCsrMatrix&         solve_mat,
                          HostVector&            rhs,
@@ -248,6 +259,14 @@ void replaceRes(const DeviceBoundaryMap&,
                 DeviceConstVectorView,
                 DeviceVectorView,
                 CudaContext&)
+{
+  throw std::runtime_error(
+      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
+}
+
+void zeroBoundary(const DeviceBoundaryMap&,
+                  DeviceVectorView,
+                  CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");

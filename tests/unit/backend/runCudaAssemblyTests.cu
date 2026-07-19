@@ -457,6 +457,21 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     ctx.synchronize();
     recordCheck(status, vecsNear(gpu_res, cpu_res), "CUDA time res");
     recordCheck(status, matsNear(gpu_jac, cpu_jac), "CUDA time jac");
+
+    assembly::assembleResidual(TimeRowOperator{},
+                               3,
+                               2,
+                               dmap,
+                               dhist.view(),
+                               dnxt.view(),
+                               dres,
+                               ctx);
+    HostVector gpu_res_only;
+    femx::copy(dres, gpu_res_only, ctx);
+    ctx.synchronize();
+    recordCheck(status,
+                vecsNear(gpu_res_only, cpu_res),
+                "CUDA time residual-only assembly");
   }
   catch (const std::exception& error)
   {

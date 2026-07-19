@@ -958,7 +958,9 @@ class TaoOptimizer:
 
 
 _BACKENDS["dense"] = _Backend(_dense_solver)
-if hasattr(_core, "_ReSolveLinearSolver"):
+if hasattr(_core, "_ReSolveLinearSolver") and (
+    not _core._resolve_uses_cuda or _core._cuda_available
+):
     _BACKENDS["resolve"] = _Backend(
         _resolve_solver,
         device_time=_core._resolve_uses_cuda,

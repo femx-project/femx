@@ -1088,7 +1088,7 @@ TimeTrajectory solvePetsc(PythonPetscTimeIntegrator& owner,
   using Integrator =
       femx::state::TimeIntegrator<femx::linalg::PetscBackend>;
   Integrator::Observer observer =
-      [&progress](const femx::state::HostTimeStepStateContext& step)
+      [&progress](const femx::state::TimeStepStateContext& step)
   {
     py::gil_scoped_acquire acquire;
     if (PyErr_CheckSignals() != 0)
@@ -1306,31 +1306,21 @@ public:
   Real value(femx::HostConstVectorView          prm,
              femx::inverse::TimeReducedProgress progress = {}) override
   {
-    copyParam(prm);
-    return impl_.value(device_prm_.view(), std::move(progress));
+    return impl_.value(prm, std::move(progress));
   }
 
   void grad(femx::HostConstVectorView          prm,
             femx::HostVectorView               out,
             femx::inverse::TimeReducedProgress progress = {}) override
   {
-    copyParam(prm);
-    resizeGrad();
-    impl_.grad(
-        device_prm_.view(), device_grad_.view(), std::move(progress));
-    copyGrad(out);
+    impl_.grad(prm, out, std::move(progress));
   }
 
   Real valueGrad(femx::HostConstVectorView          prm,
                  femx::HostVectorView               out,
                  femx::inverse::TimeReducedProgress progress = {}) override
   {
-    copyParam(prm);
-    resizeGrad();
-    const Real val = impl_.valueGrad(
-        device_prm_.view(), device_grad_.view(), std::move(progress));
-    copyGrad(out);
-    return val;
+    return impl_.valueGrad(prm, out, std::move(progress));
   }
 
   void resetTiming() noexcept override
@@ -1359,41 +1349,9 @@ public:
   }
 
 private:
-  void copyParam(femx::HostConstVectorView prm)
-  {
-    host_prm_ = prm;
-    femx::copy(host_prm_, device_prm_, transfer_);
-    transfer_.synchronize();
-  }
-
-  void resizeGrad()
-  {
-    if (device_grad_.size() != numParams())
-    {
-      device_grad_.resize(numParams());
-    }
-  }
-
-  void copyGrad(femx::HostVectorView out)
-  {
-    if (out.size() != numParams())
-    {
-      throw std::runtime_error(
-          "Device reduced-functional gradient size mismatch");
-    }
-    femx::HostVector host_grad;
-    femx::copy(device_grad_, host_grad, transfer_);
-    transfer_.synchronize();
-    femx::copy(host_grad.view(), out);
-  }
-
   femx::DeviceCsrMatrix                      jac_;
   femx::linalg::ReSolveLinearSolver          solver_;
   femx::inverse::DeviceTimeReducedFunctional impl_;
-  femx::CudaContext                          transfer_;
-  femx::HostVector                           host_prm_;
-  femx::DeviceVector                         device_prm_;
-  femx::DeviceVector                         device_grad_;
 };
 #endif
 
@@ -1688,17 +1646,17 @@ void bindNavierStokes(py::module_& module)
             femx::DeviceVector device_values;
             femx::copy(values, device_values, transfer);
             transfer.synchronize();
-            femx::state::DeviceTimeTrajectory device_trajectory;
+            TimeTrajectory trajectory;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
-              integrator.solve(device_values.view(), device_trajectory);
+              integrator.solve(device_values.view(), trajectory);
             }
             else
             {
               femx::state::DeviceTimeIntegrator::Observer observer =
                   [&progress](
-                      const femx::state::DeviceTimeStepStateContext& step)
+                      const femx::state::TimeStepStateContext& step)
               {
                 py::gil_scoped_acquire acquire;
                 if (PyErr_CheckSignals() != 0)
@@ -1721,13 +1679,9 @@ void bindNavierStokes(py::module_& module)
               };
               py::gil_scoped_release release;
               integrator.solve(device_values.view(),
-                               device_trajectory,
+                               trajectory,
                                std::move(observer));
             }
-            TimeTrajectory trajectory;
-            femx::state::copy(
-                device_trajectory, trajectory, transfer);
-            transfer.synchronize();
             return trajectory;
           },
           py::arg("param"),

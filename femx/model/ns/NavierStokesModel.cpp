@@ -4,7 +4,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/Assembly.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/Checks.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/DofLayout.hpp>
@@ -129,34 +131,296 @@ void allreduce(HostVector& vec)
 
 } // namespace
 
+struct NavierWork
+{
+  HostVector   hist;
+  HostVector   nxt;
+  HostVector   jac;
+  HostVector   adj;
+  HostVector   vjp;
+  DenseMatrix  mat;
+  Array<Index> rows;
+  Array<Index> cols;
+};
+
+template <class Vec, class Ctx>
+void resizeAndZero(Vec& out, Index size, Ctx& ctx)
+{
+  if (out.size() != size)
+  {
+    out.resize(size);
+  }
+  zero(out.view(), ctx);
+}
+
+void gather(const assembly::HostAssemblyMap& map,
+            Index                            num_hist,
+            HostConstVectorView              hist,
+            HostConstVectorView              nxt,
+            Index                            ie,
+            NavierWork&                      work)
+{
+  const auto  map_v = map.view();
+  const Index nc    = map_v.numStateDofs(ie);
+  work.hist.resize(num_hist * nc);
+  work.nxt.resize(nc);
+  for (Index lag = 0; lag < num_hist; ++lag)
+  {
+    for (Index col = 0; col < nc; ++col)
+    {
+      work.hist[lag * nc + col] =
+          hist[lag * map.numStates() + map_v.stateDof(ie, col)];
+    }
+  }
+  for (Index col = 0; col < nc; ++col)
+  {
+    work.nxt[col] = nxt[map_v.stateDof(ie, col)];
+  }
+}
+
+assembly::TimeElementView<MemorySpace::Host> elem(Index             step,
+                                                  Index             num_hist,
+                                                  Index             ie,
+                                                  const NavierWork& work)
+{
+  return {ie, step, num_hist, work.hist.view(), work.nxt.view()};
+}
+
+void reduce(HostVector& vec,
+            Index       ie_begin,
+            Index       ie_end,
+            Index       num_elems)
+{
+#if defined(FEMX_HAS_PETSC)
+  if (ie_begin != 0 || ie_end != num_elems)
+  {
+    allreduce(vec);
+  }
+#else
+  (void) vec;
+  (void) ie_begin;
+  (void) ie_end;
+  (void) num_elems;
+#endif
+}
+
+namespace detail
+{
+
+template <class Ctx>
+void evalNavierRes(
+    const NavierOperator<MemorySpace::Host>& op,
+    Index                                    step,
+    Index                                    num_hist,
+    Index                                    ie_begin,
+    Index                                    ie_end,
+    const assembly::HostAssemblyMap&         map,
+    HostConstVectorView                      hist,
+    HostConstVectorView                      nxt,
+    HostVector&                              out,
+    Ctx&                                     ctx)
+{
+  resizeAndZero(out, map.numRes(), ctx);
+#pragma omp parallel
+  {
+    NavierWork work;
+#pragma omp for
+    for (Index ie = ie_begin; ie < ie_end; ++ie)
+    {
+      gather(map, num_hist, hist, nxt, ie, work);
+      const auto  e     = elem(step, num_hist, ie, work);
+      const auto  map_v = map.view();
+      const Index nr    = map_v.numResDofs(ie);
+      const Index nc    = map_v.numStateDofs(ie);
+      work.jac.resize(nc);
+      for (Index row = 0; row < nr; ++row)
+      {
+        Real val = 0.0;
+        op.evalRow(e,
+                   state::VariableBlock::NextState,
+                   row,
+                   val,
+                   work.jac.view());
+        add(out, map_v.resDof(ie, row), val);
+      }
+    }
+  }
+  reduce(out, ie_begin, ie_end, map.numElems());
+}
+
+template <class Matrix, class Ctx>
+void assembleNavierNext(
+    const NavierOperator<MemorySpace::Host>& op,
+    Index                                    step,
+    Index                                    num_hist,
+    Index                                    ie_begin,
+    Index                                    ie_end,
+    const assembly::HostAssemblyMap&         map,
+    HostConstVectorView                      hist,
+    HostConstVectorView                      nxt,
+    HostVector&                              res,
+    Matrix&                                  mat,
+    Ctx&                                     ctx)
+{
+  resizeAndZero(res, map.numRes(), ctx);
+  resetMat(map, mat);
+#pragma omp parallel
+  {
+    NavierWork work;
+#pragma omp for
+    for (Index ie = ie_begin; ie < ie_end; ++ie)
+    {
+      gather(map, num_hist, hist, nxt, ie, work);
+      const auto  e     = elem(step, num_hist, ie, work);
+      const auto  map_v = map.view();
+      const Index nr    = map_v.numResDofs(ie);
+      const Index nc    = map_v.numStateDofs(ie);
+      work.mat.resize(nr, nc);
+      work.rows.resize(nr);
+      work.cols.resize(nc);
+
+      for (Index row = 0; row < nr; ++row)
+      {
+        work.rows[row] = map_v.resDof(ie, row);
+        Real val       = 0.0;
+        op.evalRow(e,
+                   state::VariableBlock::NextState,
+                   row,
+                   val,
+                   {work.mat.data() + row * nc, nc});
+        add(res, work.rows[row], val);
+      }
+      for (Index col = 0; col < nc; ++col)
+      {
+        work.cols[col] = map_v.stateDof(ie, col);
+      }
+      addElem(map, mat, ie, work.rows, work.cols, work.mat);
+    }
+  }
+  reduce(res, ie_begin, ie_end, map.numElems());
+}
+
+template <class Ctx>
+void applyNavierHistJacT(
+    const NavierOperator<MemorySpace::Host>& op,
+    Index                                    step,
+    Index                                    num_hist,
+    Index                                    lag,
+    Index                                    ie_begin,
+    Index                                    ie_end,
+    const assembly::HostAssemblyMap&         map,
+    HostConstVectorView                      hist,
+    HostConstVectorView                      nxt,
+    HostConstVectorView                      adj,
+    HostVector&                              out,
+    Ctx&                                     ctx)
+{
+  resizeAndZero(out, map.numStates(), ctx);
+#pragma omp parallel
+  {
+    NavierWork work;
+#pragma omp for
+    for (Index ie = ie_begin; ie < ie_end; ++ie)
+    {
+      gather(map, num_hist, hist, nxt, ie, work);
+      const auto  e     = elem(step, num_hist, ie, work);
+      const auto  map_v = map.view();
+      const Index nr    = map_v.numResDofs(ie);
+      const Index nc    = map_v.numStateDofs(ie);
+      work.adj.resize(nr);
+      work.vjp.resize(num_hist * nc);
+      for (Index row = 0; row < nr; ++row)
+      {
+        work.adj[row] = adj[map_v.resDof(ie, row)];
+      }
+      histVjp(op, e, work.adj.view(), work.vjp.view());
+      for (Index col = 0; col < nc; ++col)
+      {
+        add(out,
+            map_v.stateDof(ie, col),
+            work.vjp[lag * nc + col]);
+      }
+    }
+  }
+  reduce(out, ie_begin, ie_end, map.numElems());
+}
+
+} // namespace detail
+
 template <class Backend>
-class HostNavierResidual : public state::TimeResidual<Backend>
+class NavierResidual : public state::TimeResidual<Backend>
 {
 public:
   using Base      = state::TimeResidual<Backend>;
-  using Mat       = typename Base::Mat;
-  using Ctx       = typename Base::Ctx;
+  using Vec       = typename Base::Vec;
   using ConstView = typename Base::ConstView;
+  using Mat       = typename Base::Mat;
+  using Graph     = typename Base::Graph;
+  using Ctx       = typename Base::Ctx;
+  using StepCtx   = typename Base::StepCtx;
+  using Map       = assembly::AssemblyMap<Backend::space>;
+  using Data      = NavierData<Backend::space>;
+  using Op        = NavierOperator<Backend::space>;
 
-  HostNavierResidual(Index                             nstep,
-                     const assembly::HostAssemblyMap&  map,
-                     NavierOperator<MemorySpace::Host> op)
-    : nstep_(nstep), map_(map), op_(op), ie_end_(map.numElems())
+  NavierResidual(Index                             nstep,
+                 const assembly::HostAssemblyMap&  map,
+                 NavierOperator<MemorySpace::Host> op)
+    : nstep_(nstep)
   {
-    static_assert(Backend::space == MemorySpace::Host,
-                  "HostNavierResidual requires Host state storage");
+    if constexpr (Backend::space == MemorySpace::Host)
+    {
+      map_ptr_    = &map;
+      host_graph_ = &map.graph();
+      op_         = op;
+      ie_end_     = map.numElems();
+    }
+    else
+    {
+      require(false, "Host Navier residual requires Host storage");
+    }
+  }
+
+  NavierResidual(Index                            nstep,
+                 const assembly::HostAssemblyMap& map,
+                 const HostNavierData&            data,
+                 KernelFluid                      fluid,
+                 Real                             dt,
+                 Ctx&                             ctx)
+    : nstep_(nstep)
+  {
+    if constexpr (Backend::space == MemorySpace::Device)
+    {
+      owned_map_ = std::make_unique<Map>();
+      copy(map, *owned_map_, ctx);
+      owned_data_ = std::make_unique<Data>();
+      ns::copy(data, *owned_data_, ctx);
+      host_graph_store_ = map.graph();
+      map_ptr_          = owned_map_.get();
+      host_graph_       = &host_graph_store_;
+      op_               = Op(owned_data_->view(), fluid, dt);
+      ie_end_           = map.numElems();
+    }
+    else
+    {
+      require(false, "Device Navier residual requires Device storage");
+    }
   }
 
   void setElemRange(Index ie_begin, Index ie_end)
   {
     require(ie_begin >= 0 && ie_end >= ie_begin
-                && ie_end <= map_.numElems(),
+                && ie_end <= map().numElems(),
             "Navier residual element range is invalid");
-#if !defined(FEMX_HAS_PETSC)
-    if (ie_begin != 0 || ie_end != map_.numElems())
+    if constexpr (Backend::space == MemorySpace::Device)
     {
-      throw std::runtime_error(
-          "Navier residual element ranges require PETSc");
+      require(ie_begin == 0 && ie_end == map().numElems(),
+              "CUDA Navier residual requires the full element range");
+    }
+#if !defined(FEMX_HAS_PETSC)
+    else
+    {
+      require(ie_begin == 0 && ie_end == map().numElems(),
+              "Navier residual element ranges require PETSc");
     }
 #endif
     ie_begin_ = ie_begin;
@@ -165,311 +429,133 @@ public:
 
   state::TimeDims dims() const override
   {
-    return {nstep_, map_.numStates(), 0, map_.numRes(), kNumHist};
+    return {nstep_, map().numStates(), 0, map().numRes(), kNumHist};
   }
 
   const HostCsrGraph& hostGraph() const override
   {
-    return map_.graph();
+    return *host_graph_;
   }
 
-  const typename Base::Graph& graph() const override
+  const Graph& graph() const override
   {
-    return map_.graph();
+    return map().graph();
   }
 
-  void initialState(ConstView prm, HostVector& out, Ctx&) const override
+  void initialState(ConstView prm, Vec& out, Ctx& ctx) const override
   {
-    require(prm.empty(),
-            "Navier physics residual is parameter-free");
-    resizeOrZero(out, map_.numStates());
+    require(prm.empty(), "Navier physics residual is parameter-free");
+    resizeAndZero(out, map().numStates(), ctx);
   }
 
-  void res(const state::HostTimeContext& ctx,
-           HostVector&                   out,
-           Ctx&) const override
+  void res(const StepCtx& time, Vec& out, Ctx& ctx) const override
   {
-    checkCtx(ctx);
-    resizeOrZero(out, map_.numRes());
-
-#pragma omp parallel
-    {
-      Work work;
-#pragma omp for
-      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
-      {
-        gather(ctx, ie, work);
-        const auto  e   = elem(ctx.step, ie, work);
-        const auto  map = map_.view();
-        const Index nr  = map.numResDofs(ie);
-        const Index nc  = map.numStateDofs(ie);
-        work.jac.resize(nc);
-        for (Index row = 0; row < nr; ++row)
-        {
-          Real val = 0.0;
-          op_.evalRow(e,
-                      state::VariableBlock::NextState,
-                      row,
-                      val,
-                      work.jac.view());
-          add(out, map.resDof(ie, row), val);
-        }
-      }
-    }
-    reduce(out);
+    checkCtx(time);
+    const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
+    detail::evalNavierRes(op_,
+                          time.step,
+                          kNumHist,
+                          ie_begin_,
+                          ie_end_,
+                          map(),
+                          hist,
+                          time.nxt,
+                          out,
+                          ctx);
   }
 
-  void assemble(const state::HostTimeContext& ctx,
-                state::VariableBlock          wrt,
-                HostVector&                   res,
-                Mat&                          jac,
-                Ctx&) const override
+  void assembleNext(const StepCtx& time,
+                    Vec&           res,
+                    Mat&           jac,
+                    Ctx&           ctx) const override
   {
-    checkCtx(ctx);
-    checkWrt(wrt);
-    require(!wrt.isParam(),
-            "Navier parameter Jacobian is matrix-free");
-    resizeOrZero(res, map_.numRes());
-    assembleImpl(ctx, wrt, &res, jac);
+    checkCtx(time);
+    const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
+    detail::assembleNavierNext(op_,
+                               time.step,
+                               kNumHist,
+                               ie_begin_,
+                               ie_end_,
+                               map(),
+                               hist,
+                               time.nxt,
+                               res,
+                               jac,
+                               ctx);
   }
 
-  void applyJac(const state::HostTimeContext& ctx,
-                state::VariableBlock          wrt,
-                ConstView                     dir,
-                HostVector&                   out,
-                Ctx&) const override
+  void applyJacT(const StepCtx&       time,
+                 state::VariableBlock wrt,
+                 ConstView            adj,
+                 Vec&                 out,
+                 Ctx&                 ctx) const override
   {
-    checkCtx(ctx);
-    checkWrt(wrt);
-    require(dir.size() == (wrt.isParam() ? 0 : map_.numStates()),
-            "Navier residual direction size mismatch");
-
-    resizeOrZero(out, map_.numRes());
-    if (wrt.isParam())
-    {
-      return;
-    }
-
-#pragma omp parallel
-    {
-      Work work;
-#pragma omp for
-      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
-      {
-        gather(ctx, ie, work);
-        const auto  e   = elem(ctx.step, ie, work);
-        const auto  map = map_.view();
-        const Index nr  = map.numResDofs(ie);
-        const Index nc  = map.numStateDofs(ie);
-        work.jac.resize(nc);
-        for (Index row = 0; row < nr; ++row)
-        {
-          Real unused = 0.0;
-          op_.evalRow(e, wrt, row, unused, work.jac.view());
-          Real val = 0.0;
-          for (Index col = 0; col < nc; ++col)
-          {
-            val += work.jac[col] * dir[map.stateDof(ie, col)];
-          }
-          add(out, map.resDof(ie, row), val);
-        }
-      }
-    }
-    reduce(out);
-  }
-
-  void applyJacT(const state::HostTimeContext& ctx,
-                 state::VariableBlock          wrt,
-                 ConstView                     adj,
-                 HostVector&                   out,
-                 Ctx&) const override
-  {
-    checkCtx(ctx);
-    checkWrt(wrt);
-    require(adj.size() == map_.numRes(),
+    checkCtx(time);
+    require(!wrt.isNextState(),
+            "Navier transpose apply supports only history and parameter blocks");
+    require(adj.size() == map().numRes(),
             "Navier residual adjoint size mismatch");
     if (wrt.isParam())
     {
       out.resize(0);
       return;
     }
-
-    resizeOrZero(out, map_.numStates());
-#pragma omp parallel
+    require(wrt.historyLag() >= 0 && wrt.historyLag() < kNumHist,
+            "Navier residual history lag is out of range");
+    if (!ad::has_enzyme)
     {
-      Work work;
-#pragma omp for
-      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
-      {
-        gather(ctx, ie, work);
-        const auto  e   = elem(ctx.step, ie, work);
-        const auto  map = map_.view();
-        const Index nr  = map.numResDofs(ie);
-        const Index nc  = map.numStateDofs(ie);
-        work.jac.resize(nc);
-        for (Index row = 0; row < nr; ++row)
-        {
-          Real unused = 0.0;
-          op_.evalRow(e, wrt, row, unused, work.jac.view());
-          const Real val = adj[map.resDof(ie, row)];
-          for (Index col = 0; col < nc; ++col)
-          {
-            add(out,
-                map.stateDof(ie, col),
-                work.jac[col] * val);
-          }
-        }
-      }
+      throw std::runtime_error(
+          "Navier history VJP requires Enzyme. Configure with "
+          "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
     }
-    reduce(out);
-  }
 
-  void assembleJac(const state::HostTimeContext& ctx,
-                   state::VariableBlock          wrt,
-                   Mat&                          out,
-                   Ctx&) const override
-  {
-    checkCtx(ctx);
-    checkWrt(wrt);
-    require(!wrt.isParam(),
-            "Navier parameter Jacobian is matrix-free");
-    assembleImpl(ctx, wrt, nullptr, out);
+    const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
+    detail::applyNavierHistJacT(op_,
+                                time.step,
+                                kNumHist,
+                                wrt.historyLag(),
+                                ie_begin_,
+                                ie_end_,
+                                map(),
+                                hist,
+                                time.nxt,
+                                adj,
+                                out,
+                                ctx);
   }
 
 private:
-  static constexpr Index kNumHist = 2;
-
-  struct Work
+  const Map& map() const
   {
-    HostVector   hist;
-    HostVector   nxt;
-    HostVector   jac;
-    DenseMatrix  mat;
-    Array<Index> rows;
-    Array<Index> cols;
-  };
-
-  template <class Matrix>
-  void assembleImpl(const state::HostTimeContext& ctx,
-                    state::VariableBlock          wrt,
-                    HostVector*                   res,
-                    Matrix&                       mat) const
-  {
-    resetMat(map_, mat);
-
-#pragma omp parallel
-    {
-      Work work;
-#pragma omp for
-      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
-      {
-        gather(ctx, ie, work);
-        const auto  e     = elem(ctx.step, ie, work);
-        const auto  map_v = map_.view();
-        const Index nr    = map_v.numResDofs(ie);
-        const Index nc    = map_v.numStateDofs(ie);
-        work.mat.resize(nr, nc);
-        work.rows.resize(nr);
-        work.cols.resize(nc);
-
-        for (Index row = 0; row < nr; ++row)
-        {
-          work.rows[row] = map_v.resDof(ie, row);
-          Real val       = 0.0;
-          op_.evalRow(e,
-                      wrt,
-                      row,
-                      val,
-                      {work.mat.data() + row * nc, nc});
-          if (res != nullptr)
-          {
-            add(*res, work.rows[row], val);
-          }
-        }
-        for (Index col = 0; col < nc; ++col)
-        {
-          work.cols[col] = map_v.stateDof(ie, col);
-        }
-        addElem(map_, mat, ie, work.rows, work.cols, work.mat);
-      }
-    }
-    if (res != nullptr)
-    {
-      reduce(*res);
-    }
+    return *map_ptr_;
   }
 
-  void checkCtx(const state::HostTimeContext& ctx) const
+  void checkCtx(const StepCtx& ctx) const
   {
     require(ctx.step >= 0 && ctx.step < nstep_,
             "Navier residual step is out of range");
     require(ctx.hist.count() >= kNumHist
-                && ctx.hist.stateSize() == map_.numStates()
-                && ctx.nxt.size() == map_.numStates() && ctx.prm.empty(),
+                && ctx.hist.stateSize() == map().numStates()
+                && ctx.nxt.size() == map().numStates() && ctx.prm.empty(),
             "Navier residual vector size mismatch");
   }
 
-  static void checkWrt(state::VariableBlock wrt)
-  {
-    require(!wrt.isHistoryState()
-                || (wrt.historyLag() >= 0 && wrt.historyLag() < kNumHist),
-            "Navier residual history lag is out of range");
-  }
-
-  void gather(const state::HostTimeContext& ctx,
-              Index                         ie,
-              Work&                         work) const
-  {
-    const auto  map = map_.view();
-    const Index nc  = map.numStateDofs(ie);
-    work.hist.resize(kNumHist * nc);
-    work.nxt.resize(nc);
-    for (Index lag = 0; lag < kNumHist; ++lag)
-    {
-      const auto src = ctx.hist.state(lag);
-      for (Index col = 0; col < nc; ++col)
-      {
-        work.hist[lag * nc + col] = src[map.stateDof(ie, col)];
-      }
-    }
-    for (Index col = 0; col < nc; ++col)
-    {
-      work.nxt[col] = ctx.nxt[map.stateDof(ie, col)];
-    }
-  }
-
-  static assembly::TimeElementView<MemorySpace::Host> elem(
-      Index       step,
-      Index       ie,
-      const Work& work)
-  {
-    return {ie, step, kNumHist, work.hist.view(), work.nxt.view()};
-  }
-
-  void reduce(HostVector& vec) const
-  {
-#if defined(FEMX_HAS_PETSC)
-    if (ie_begin_ != 0 || ie_end_ != map_.numElems())
-    {
-      allreduce(vec);
-    }
-#else
-    (void) vec;
-#endif
-  }
-
-  Index                             nstep_{0};
-  const assembly::HostAssemblyMap&  map_;
-  NavierOperator<MemorySpace::Host> op_;
-  Index                             ie_begin_{0};
-  Index                             ie_end_{0};
+  Index                 nstep_{0};
+  std::unique_ptr<Map>  owned_map_;
+  std::unique_ptr<Data> owned_data_;
+  const Map*            map_ptr_{nullptr};
+  HostCsrGraph          host_graph_store_;
+  const HostCsrGraph*   host_graph_{nullptr};
+  Op                    op_;
+  Index                 ie_begin_{0};
+  Index                 ie_end_{0};
 };
 
 class NavierStokesModel::Residual final
-  : public HostNavierResidual<linalg::HostCsrBackend>
+  : public NavierResidual<linalg::HostCsrBackend>
 {
 public:
-  using HostNavierResidual::HostNavierResidual;
+  using NavierResidual::NavierResidual;
 };
 
 NavierStokesModel::NavierStokesModel(const std::string& path,
@@ -572,11 +658,32 @@ NavierOperator<MemorySpace::Host> NavierStokesModel::op() const
   return {data_.view(), {fluid_.rho, fluid_.mu}, dt_};
 }
 
+#if defined(FEMX_HAS_CUDA)
+std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
+    const NavierStokesModel& model,
+    fem::HostControlMap      control,
+    fem::HostInitialStateMap init_state)
+{
+  CudaContext ctx;
+  auto        base = std::make_unique<NavierResidual<linalg::CudaCsrBackend>>(
+      model.numSteps(),
+      model.map(),
+      model.data(),
+      KernelFluid{model.fluid().rho, model.fluid().mu},
+      model.dt(),
+      ctx);
+  auto out = std::make_unique<assembly::DeviceConstrainedTimeResidual>(
+      std::move(base), std::move(control), std::move(init_state), ctx);
+  ctx.synchronize();
+  return out;
+}
+#endif
+
 #if defined(FEMX_HAS_PETSC)
 std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
 makePetscTimeResidual(const NavierStokesModel& model)
 {
-  auto res = std::make_unique<HostNavierResidual<linalg::PetscBackend>>(
+  auto res = std::make_unique<NavierResidual<linalg::PetscBackend>>(
       model.numSteps(), model.map(), model.op());
   res->setElemRange(model.ie_begin_, model.ie_end_);
   return res;

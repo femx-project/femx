@@ -29,29 +29,20 @@ class ScalarRecurrence(femx.TimeResidual):
             - context["parameters"]
         )
 
-    def apply_jacobian(self, context, variable, direction):
+    def apply_jacobian_transpose(self, context, variable, adjoint):
         del context
-        if variable.is_next_state:
-            return direction
         if variable.is_history_state or variable.is_parameter:
-            return -direction
+            return -adjoint
         raise AssertionError("unexpected variable block")
 
-    def apply_jacobian_transpose(self, context, variable, adjoint):
-        return self.apply_jacobian(context, variable, adjoint)
-
-    def assemble_jacobian(self, context, variable):
+    def assemble_next(self, context):
         del context
-        if variable.is_next_state:
-            return np.array([[1.0]])
-        if variable.is_history_state or variable.is_parameter:
-            return np.array([[-1.0]])
-        return None
+        return np.array([[1.0]])
 
 
 class PreparedScalarRecurrence(ScalarRecurrence):
-    def prepare_linear_solve(self, context, variable, matrix, rhs):
-        del context, variable
+    def prepare_linear_solve(self, context, matrix, rhs):
+        del context
         self.prepared_types = (type(matrix), type(rhs))
         matrix[0, 0] = 2.0
         rhs[0] = 6.0

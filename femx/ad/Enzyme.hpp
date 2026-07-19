@@ -6,13 +6,16 @@
 
 #if defined(FEMX_HAS_ENZYME)
 
-extern int enzyme_dup;
-extern int enzyme_dupnoneed;
-extern int enzyme_const;
-extern int enzyme_out;
+extern FEMX_DEVICE int enzyme_dup;
+extern FEMX_DEVICE int enzyme_dupnoneed;
+extern FEMX_DEVICE int enzyme_const;
+extern FEMX_DEVICE int enzyme_out;
 
 template <typename Return, typename... Args>
-Return __enzyme_autodiff(void* fn, Args... args);
+FEMX_DEVICE Return __enzyme_autodiff(void* fn, Args... args);
+
+template <typename Return, typename... Args>
+FEMX_DEVICE Return __enzyme_fwddiff(void* fn, Args... args);
 
 #endif
 
@@ -26,13 +29,13 @@ namespace ad
 inline constexpr bool has_enzyme = true;
 
 template <auto Fn, typename Return, typename... Args>
-Return autodiff(Args... args)
+FEMX_DEVICE Return autodiff(Args... args)
 {
   return __enzyme_autodiff<Return>(reinterpret_cast<void*>(Fn), args...);
 }
 
 template <Real (*Fn)(Real)>
-Real derivative(Real x)
+FEMX_DEVICE Real derivative(Real x)
 {
   return autodiff<Fn, Real>(x);
 }

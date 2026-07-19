@@ -80,6 +80,12 @@ if(FEMX_ENABLE_CUDA)
     message(FATAL_ERROR "FEMX_ENABLE_CUDA=ON but no CUDA compiler was found.")
   endif()
   enable_language(CUDA)
+  if(FEMX_ENABLE_ENZYME AND NOT CMAKE_CUDA_COMPILER_ID MATCHES "Clang")
+    message(
+      FATAL_ERROR
+        "CUDA Enzyme requires Clang as CMAKE_CUDA_COMPILER because Enzyme "
+        "differentiates LLVM IR; nvcc cannot provide that IR.")
+  endif()
   find_package(CUDAToolkit REQUIRED)
   set(FEMX_HAS_CUDA ON)
   message(STATUS "CUDA execution backend: ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -253,7 +259,15 @@ if(FEMX_ENABLE_RESOLVE)
 
   set(ReSolve_DIR "${FEMX_RESOLVE_DEVELOP_CONFIG}" CACHE PATH
       "ReSolve development package directory" FORCE)
-  find_package(ReSolve CONFIG QUIET NO_DEFAULT_PATH)
+  if(FEMX_HAS_ENZYME AND FEMX_HAS_CUDA)
+    # The current ReSolveConfig forces nvcc in its consumer. Importing its
+    # exported targets directly keeps the Clang CUDA toolchain required by
+    # Enzyme while using the same installed libraries.
+    include("${FEMX_RESOLVE_DEVELOP_CONFIG}/ReSolveTargets.cmake")
+    set(ReSolve_FOUND TRUE)
+  else()
+    find_package(ReSolve CONFIG QUIET NO_DEFAULT_PATH)
+  endif()
 
   if(NOT ReSolve_FOUND)
     message(
@@ -560,8 +574,7 @@ install(
   DIRECTORY femx
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING
-  PATTERN "*.hpp"
-  PATTERN "TimeObjectivePlan.hpp" EXCLUDE)
+  PATTERN "*.hpp")
 
 set(FEMX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/femx")
 

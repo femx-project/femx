@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include <femx/ad/Enzyme.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
@@ -60,6 +62,66 @@ HostNavierData makeNavierData(const fem::FESpace&         vel_sp,
               data.JxW_.begin() + ie * num_qpts);
   }
   return data;
+}
+
+void histVjp(
+    const NavierOperator<MemorySpace::Host>&            op,
+    const assembly::TimeElementView<MemorySpace::Host>& e,
+    HostConstVectorView                                 adj,
+    HostVectorView                                      out)
+{
+  const Index ncol = op.data().numDofs();
+  require(e.hist.size() == e.num_hist * ncol && e.nxt.size() == ncol
+              && adj.size() == ncol && out.size() == e.hist.size(),
+          "Navier history VJP element dimensions do not match");
+
+#if defined(FEMX_HAS_ENZYME)
+  std::fill(out.data(), out.data() + out.size(), 0.0);
+  const auto data = op.data();
+  __enzyme_autodiff<void>(
+      reinterpret_cast<void*>(detail::evalNavierAdj<MemorySpace::Host>),
+      enzyme_const,
+      data.numElems(),
+      enzyme_const,
+      data.numQpts(),
+      enzyme_const,
+      data.numNodes(),
+      enzyme_const,
+      data.dim(),
+      enzyme_const,
+      data.NData(),
+      enzyme_const,
+      data.dNdxData(),
+      enzyme_const,
+      data.JxWData(),
+      enzyme_const,
+      op.fluid().rho,
+      enzyme_const,
+      op.fluid().mu,
+      enzyme_const,
+      op.dt(),
+      enzyme_const,
+      e.ie,
+      enzyme_const,
+      e.step,
+      enzyme_const,
+      e.num_hist,
+      enzyme_dup,
+      e.hist.data(),
+      out.data(),
+      enzyme_const,
+      e.nxt.data(),
+      enzyme_const,
+      adj.data());
+#else
+  (void) op;
+  (void) e;
+  (void) adj;
+  (void) out;
+  throw std::runtime_error(
+      "Navier history VJP requires Enzyme. Configure with "
+      "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
+#endif
 }
 
 } // namespace ns

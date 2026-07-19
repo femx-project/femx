@@ -85,23 +85,18 @@ public:
     out.assign(1, time.nxt[0] - time.hist.state(0)[0] - time.prm[0]);
   }
 
-  void assemble(const StepCtx&         time,
-                state::VariableBlock   wrt,
-                HostVector&            out,
-                linalg::PETScOperator& jac,
-                Ctx&                   ctx) const override
+  void assembleNext(const StepCtx&         time,
+                    HostVector&            out,
+                    linalg::PETScOperator& jac,
+                    Ctx&                   ctx) const override
   {
     res(time, out, ctx);
-    assembleJac(time, wrt, jac, ctx);
-  }
-
-  void applyJac(const StepCtx&,
-                state::VariableBlock wrt,
-                ConstView            dir,
-                HostVector&          out,
-                Ctx&) const override
-  {
-    out.assign(1, coefficient(wrt) * dir[0]);
+    if (jac.rows() != 1 || jac.cols() != 1)
+    {
+      jac.resize(1, 1);
+    }
+    jac.setZero();
+    jac.set(0, 0, 1.0);
   }
 
   void applyJacT(const StepCtx&,
@@ -110,30 +105,12 @@ public:
                  HostVector&          out,
                  Ctx&) const override
   {
-    out.assign(1, coefficient(wrt) * adj[0]);
-  }
-
-  void assembleJac(const StepCtx&,
-                   state::VariableBlock   wrt,
-                   linalg::PETScOperator& out,
-                   Ctx&) const override
-  {
-    require(!wrt.isParam(),
-            "ScalarTimeResidual parameter Jacobian is matrix-free");
-    if (out.rows() != 1 || out.cols() != 1)
-    {
-      out.resize(1, 1);
-    }
-    out.setZero();
-    out.set(0, 0, coefficient(wrt));
+    require(!wrt.isNextState(),
+            "ScalarTimeResidual transpose apply supports history and parameters");
+    out.assign(1, -adj[0]);
   }
 
 private:
-  static Real coefficient(state::VariableBlock wrt)
-  {
-    return wrt.isNextState() ? 1.0 : -1.0;
-  }
-
   state::TimeDims dims_;
   HostCsrGraph    graph_;
 };

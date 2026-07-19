@@ -68,9 +68,7 @@ TestOutcome trajectoryExposesContiguousDataAndLevels()
   status            *= second[1] == 5.0;
   status            *= second[2] == 6.0;
 
-  const auto view  = trajectory.view();
-  status          *= view.numTimeLevels() == 3;
-  status          *= view[1].data() == second.data();
+  status *= trajectory[1].data() == second.data();
 
   trajectory.level(2)[1]  = 42.0;
   status                 *= trajectory.data()[7] == 42.0;

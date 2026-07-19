@@ -168,9 +168,6 @@ inline constexpr VariableBlock VariableBlock::Param{
 template <class Backend>
 class TimeResidual;
 
-template <class Backend>
-class TimeLinearization;
-
 /** @brief Time-residual contract over one concrete execution backend. */
 template <class Backend>
 class TimeResidual
@@ -216,106 +213,32 @@ public:
 
   virtual void res(const StepCtx& time, Vec& out, Ctx& ctx) const = 0;
 
-  virtual void assemble(const StepCtx& time,
-                        VariableBlock  wrt,
-                        Vec&           res,
-                        Mat&           jac,
-                        Ctx&           ctx) const = 0;
+  /** @brief Assemble the residual and next-state Jacobian together. */
+  virtual void assembleNext(const StepCtx& time,
+                            Vec&           res,
+                            Mat&           jac,
+                            Ctx&           ctx) const = 0;
 
-  virtual void applyJac(const StepCtx& time,
-                        VariableBlock  wrt,
-                        ConstView      dir,
-                        Vec&           out,
-                        Ctx&           ctx) const = 0;
-
+  /** @brief Apply a history or parameter Jacobian transpose. */
   virtual void applyJacT(const StepCtx& time,
                          VariableBlock  wrt,
                          ConstView      adj,
                          Vec&           out,
                          Ctx&           ctx) const = 0;
 
-  virtual void assembleJac(const StepCtx& time,
-                           VariableBlock  wrt,
-                           Mat&           out,
-                           Ctx&           ctx) const
-  {
-    Vec unused;
-    assemble(time, wrt, unused, out, ctx);
-  }
-
   virtual void prepareLinearSolve(const StepCtx& time,
-                                  VariableBlock  wrt,
                                   Mat&           jac,
                                   Vec&           rhs,
                                   Ctx&           ctx) const
   {
     (void) time;
-    (void) wrt;
     (void) jac;
     (void) rhs;
     (void) ctx;
   }
-
-  void linearize(const StepCtx&              time,
-                 TimeLinearization<Backend>& out,
-                 Ctx&                        ctx) const
-  {
-    out.reset(*this, time, ctx);
-  }
 };
 
-/** @brief Lightweight linearization at one backend time-step context. */
-template <class Backend>
-class TimeLinearization
-{
-public:
-  using Res       = TimeResidual<Backend>;
-  using Vec       = typename Res::Vec;
-  using ConstView = typename Res::ConstView;
-  using Mat       = typename Res::Mat;
-  using Ctx       = typename Res::Ctx;
-  using StepCtx   = typename Res::StepCtx;
-
-  void reset(const Res& res, StepCtx time, Ctx& ctx)
-  {
-    res_  = &res;
-    time_ = time;
-    ctx_  = &ctx;
-  }
-
-  void assembleJac(VariableBlock wrt, Mat& out) const
-  {
-    checkReady();
-    res_->assembleJac(time_, wrt, out, *ctx_);
-  }
-
-  void applyJac(VariableBlock wrt, ConstView dir, Vec& out) const
-  {
-    checkReady();
-    res_->applyJac(time_, wrt, dir, out, *ctx_);
-  }
-
-  void applyJacT(VariableBlock wrt, ConstView adj, Vec& out) const
-  {
-    checkReady();
-    res_->applyJacT(time_, wrt, adj, out, *ctx_);
-  }
-
-private:
-  void checkReady() const
-  {
-    require(res_ != nullptr,
-            "TimeLinearization has not been initialized");
-  }
-
-  const Res* res_{nullptr};
-  StepCtx    time_;
-  Ctx*       ctx_{nullptr};
-};
-
-using HostTimeResidual        = TimeResidual<linalg::HostCsrBackend>;
-using DeviceTimeResidual      = TimeResidual<linalg::CudaCsrBackend>;
-using HostTimeLinearization   = TimeLinearization<linalg::HostCsrBackend>;
-using DeviceTimeLinearization = TimeLinearization<linalg::CudaCsrBackend>;
+using HostTimeResidual   = TimeResidual<linalg::HostCsrBackend>;
+using DeviceTimeResidual = TimeResidual<linalg::CudaCsrBackend>;
 
 } // namespace femx::state

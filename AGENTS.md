@@ -5,7 +5,7 @@
 - Keep public type and operation names descriptive. For local variables,
   function parameters, and private data members, prefer the established short
   forms: `jac`, `tr`, `sec`, `lin`, `init`, `ctx`, `hist`, `res`, `val`,
-  `vals`, `src`, and `dst`.
+  `vals`, `src`, `ref`, `obs`, `obj`, `integ`, and `dst`.
 - Use the same abbreviation consistently in declarations, definitions, and
   nearby tests. Prefer other conventional numerical abbreviations such as
   `mat`, `vec`, `prm`, `grad`, `adj`, `assm`, `sol`, `dir`, `dim`, `idx`, and

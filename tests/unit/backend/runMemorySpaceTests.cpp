@@ -75,8 +75,6 @@ TestOutcome hostAndDeviceTypesAreDistinct()
 
   status *= !std::is_same<HostVector, DeviceVector>::value;
   status *= !std::is_same<HostIndexVector, DeviceIndexVector>::value;
-  status *= !std::is_same<state::TimeTrajectory,
-                          state::DeviceTimeTrajectory>::value;
   status *= std::is_same<typename std::remove_pointer<
                              decltype(HostVector{}.data())>::type,
                          Real>::value;
@@ -118,11 +116,14 @@ TestOutcome deviceStorageRequiresExplicitStreamSemantics()
   status *= !HasContextlessResizeOrZero<DeviceVector>::value;
   status *= HasContextResizeOrZero<DeviceVector>::value;
   status *= HasContextlessSetZero<state::TimeTrajectory>::value;
-  status *= !HasContextlessSetZero<state::DeviceTimeTrajectory>::value;
-  status *= HasContextSetZero<state::DeviceTimeTrajectory>::value;
-  status *= !std::is_copy_constructible<state::DeviceTimeTrajectory>::value;
-  status *= std::is_nothrow_move_constructible<
-      state::DeviceTimeTrajectory>::value;
+  status *= !HasContextSetZero<state::TimeTrajectory>::value;
+  status *= std::is_copy_constructible<state::TimeTrajectory>::value;
+  status *= std::is_same<
+      decltype(std::declval<state::TimeTrajectory&>().level(Index{})),
+      HostVectorView>::value;
+  status *= std::is_same<
+      decltype(std::declval<const state::TimeTrajectory&>().level(Index{})),
+      HostConstVectorView>::value;
 
   return status.report();
 }

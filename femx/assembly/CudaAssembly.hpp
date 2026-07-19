@@ -48,8 +48,7 @@ inline void checkTimeAssemblyInputs(
     state::VariableBlock                    wrt,
     const AssemblyMap<MemorySpace::Device>& map,
     DeviceConstVectorView                   hist,
-    DeviceConstVectorView                   nxt,
-    const DeviceCsrMatrix&                  jac)
+    DeviceConstVectorView                   nxt)
 {
   require(num_hist > 0 && hist.size() == num_hist * map.numStates()
               && nxt.size() == map.numStates(),
@@ -57,6 +56,17 @@ inline void checkTimeAssemblyInputs(
   require(!wrt.isParam()
               && (!wrt.isHistoryState() || (wrt.historyLag() >= 0 && wrt.historyLag() < num_hist)),
           "CUDA time assembly variable block is invalid");
+}
+
+inline void checkTimeAssemblyInputs(
+    Index                                   num_hist,
+    state::VariableBlock                    wrt,
+    const AssemblyMap<MemorySpace::Device>& map,
+    DeviceConstVectorView                   hist,
+    DeviceConstVectorView                   nxt,
+    const DeviceCsrMatrix&                  jac)
+{
+  checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   require(jac.graph().layoutId() == map.graph().layoutId(),
           "CUDA time assembly matrix must use the AssemblyMap CSR layout");
 }
@@ -235,9 +245,12 @@ __global__ void assembleTimeKernel(
   {
     atomicAdd(res + map.resDof(ie, row), res_e[row]);
   }
-  for (Index i = tid; i < njac; i += stride)
+  if (jac != nullptr)
   {
-    atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+    for (Index i = tid; i < njac; i += stride)
+    {
+      atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+    }
   }
 }
 
@@ -339,10 +352,9 @@ void assemble(const ElementOperator&                  op,
     return;
   }
 
-  const std::size_t smem = detail::assemblySharedBytes(geom, map);
-  const int         threads =
-      detail::configureAssemblyLaunch<ElementOperator>(smem);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem    = detail::assemblySharedBytes(geom, map);
+  const int         threads = detail::configureAssemblyLaunch<ElementOperator>(smem);
+  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleKernel<ElementOperator>
       <<<static_cast<unsigned int>(map.numElems()),
@@ -373,12 +385,15 @@ void assemble(const ElementOperator&                  op,
   static_assert(std::is_trivially_copyable<ElementOperator>::value,
                 "CUDA time ElementOperator must be trivially copyable");
 
-  detail::checkTimeAssemblyInputs(
-      num_hist, wrt, map, hist, nxt, jac);
+  detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt, jac);
   const DeviceVector& vals = jac.vals();
   detail::checkTimeAssemblyAliases(hist, nxt, res, vals);
 
-  resizeOrZero(res, map.numRes(), ctx);
+  if (res.size() != map.numRes())
+  {
+    res.resize(map.numRes());
+  }
+  res.setZero(ctx);
   jac.setZero(ctx);
   if (map.numElems() == 0)
   {
@@ -402,6 +417,60 @@ void assemble(const ElementOperator&                  op,
                    nxt.data(),
                    res.data(),
                    jac.valsData());
+  device::checkLastError();
+}
+
+/** @brief Assemble one time residual on CUDA without allocating a Jacobian. */
+template <class ElementOperator>
+void assembleResidual(
+    const ElementOperator&                  op,
+    Index                                   step,
+    Index                                   num_hist,
+    const AssemblyMap<MemorySpace::Device>& map,
+    DeviceConstVectorView                   hist,
+    DeviceConstVectorView                   nxt,
+    DeviceVector&                           res,
+    CudaContext&                            ctx)
+{
+  static_assert(std::is_trivially_copyable<ElementOperator>::value,
+                "CUDA time ElementOperator must be trivially copyable");
+
+  detail::checkTimeAssemblyInputs(num_hist,
+                                  state::VariableBlock::NextState,
+                                  map,
+                                  hist,
+                                  nxt);
+  require(hist.data() != res.data() && nxt.data() != res.data(),
+          "CUDA time residual output must not alias its inputs");
+
+  if (res.size() != map.numRes())
+  {
+    res.resize(map.numRes());
+  }
+  res.setZero(ctx);
+  if (map.numElems() == 0)
+  {
+    return;
+  }
+
+  const std::size_t smem = detail::timeAssemblySharedBytes(num_hist, map);
+  const int         threads =
+      detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
+  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+
+  detail::assembleTimeKernel<ElementOperator>
+      <<<static_cast<unsigned int>(map.numElems()),
+         static_cast<unsigned int>(threads),
+         smem,
+         stream>>>(op,
+                   step,
+                   num_hist,
+                   state::VariableBlock::NextState,
+                   map.view(),
+                   hist.data(),
+                   nxt.data(),
+                   res.data(),
+                   nullptr);
   device::checkLastError();
 }
 

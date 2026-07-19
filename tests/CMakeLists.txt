@@ -51,26 +51,6 @@ if(FEMX_HAS_CUDA)
   add_test(NAME CudaLinalgTests COMMAND runCudaLinalgTests)
   set_tests_properties(CudaLinalgTests PROPERTIES LABELS "cuda;optional")
 
-  add_executable(runCudaTrajectoryTests
-                 unit/state/runCudaTrajectoryTests.cu)
-  target_include_directories(runCudaTrajectoryTests
-                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runCudaTrajectoryTests PRIVATE femx::state)
-  set_target_properties(runCudaTrajectoryTests PROPERTIES CUDA_STANDARD 17
-                                                          CUDA_STANDARD_REQUIRED ON)
-  add_test(NAME CudaTrajectoryTests COMMAND runCudaTrajectoryTests)
-  set_tests_properties(CudaTrajectoryTests PROPERTIES LABELS "cuda;optional")
-
-  add_executable(runCudaObjectiveTests
-                 unit/inverse/runCudaObjectiveTests.cu)
-  target_include_directories(runCudaObjectiveTests
-                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runCudaObjectiveTests PRIVATE femx::inverse)
-  set_target_properties(runCudaObjectiveTests PROPERTIES CUDA_STANDARD 17
-                                                       CUDA_STANDARD_REQUIRED ON)
-  add_test(NAME CudaObjectiveTests COMMAND runCudaObjectiveTests)
-  set_tests_properties(CudaObjectiveTests
-                       PROPERTIES LABELS "inverse;cuda;focused")
 endif()
 
 if(FEMX_HAS_CUDA

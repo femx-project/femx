@@ -60,10 +60,10 @@ BuildInfo makeBuildInfo()
        {"cmake build type", FEMX_CMAKE_BUILD_TYPE},
        {"cmake cxx compiler", FEMX_CMAKE_CXX_COMPILER},
        {"FEMX_ENABLE_HDF5", FEMX_ENABLE_HDF5_OPTION},
-        {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
-        {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
-        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
-        {"PETSc version",
+       {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
+       {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
+       {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
+       {"PETSc version",
         std::to_string(PETSC_VERSION_MAJOR) + "."
             + std::to_string(PETSC_VERSION_MINOR) + "."
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
@@ -128,9 +128,10 @@ int run(const Params& prm)
   setKspOptions(solver, prm.solver);
 
   auto                                   base_res = makePetscTimeResidual(fwd.model);
-  assembly::PetscConstrainedTimeResidual res(
-      *base_res, fwd.problem.controlMap());
-  PetscContext                 ctx{PETSC_COMM_WORLD};
+  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.problem.controlMap());
+
+  PetscContext ctx{PETSC_COMM_WORLD};
+
   TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
   integ.setInitialState(fwd.x0);
 

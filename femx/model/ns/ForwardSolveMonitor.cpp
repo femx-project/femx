@@ -265,8 +265,7 @@ void ForwardSolveMonitor::observe(Index             level,
                       static_cast<Real>(level) * dt_);
 }
 
-bool ForwardSolveMonitor::observeStep(
-    const state::HostTimeStepStateContext& ctx)
+bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
 {
   result_.final_step  = ctx.level;
   result_.final_time  = static_cast<Real>(ctx.level) * dt_;

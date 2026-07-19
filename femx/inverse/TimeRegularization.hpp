@@ -10,8 +10,6 @@ namespace femx
 namespace inverse
 {
 
-class TimeObjectivePlan;
-
 class TimeRegularization final : public TimeObjective
 {
 public:
@@ -40,8 +38,6 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  friend class TimeObjectivePlan;
-
   Index index(Index level, Index comp) const;
   Real  centered(const HostVector& prm, Index level, Index comp) const;
   void  checkParamSize(const HostVector& prm) const;

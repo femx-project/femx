@@ -10,8 +10,6 @@ namespace femx
 namespace inverse
 {
 
-class TimeObjectivePlan;
-
 /** Sparse block quadratic regularization repeated over control levels. */
 class TimeBlockRegularization final : public TimeObjective
 {
@@ -43,8 +41,6 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  friend class TimeObjectivePlan;
-
   Index index(Index level, Index comp) const;
   Real  centered(const HostVector& prm, Index level, Index comp) const;
   void  checkParamSize(const HostVector& prm) const;

@@ -116,19 +116,14 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     cuda_ctx.synchronize();
     cuda.setInitialState(device_initial);
 
-    state::DeviceTimeTrajectory device_trajectory;
-    cuda.solve(device_parameters.view(), device_trajectory);
     state::TimeTrajectory actual;
-    state::copy(device_trajectory, actual, cuda_ctx);
-    cuda_ctx.synchronize();
+    cuda.solve(device_parameters.view(), actual);
     status *= trajectoriesNear(actual, expected, 1.0e-6);
     status *= actual[1][dofs[0]] == level_vals[0];
     status *= actual[2][dofs[0]] == level_vals[0];
 
     const state::SolveStats repeat_stats =
-        cuda.solve(device_parameters.view(), device_trajectory);
-    state::copy(device_trajectory, actual, cuda_ctx);
-    cuda_ctx.synchronize();
+        cuda.solve(device_parameters.view(), actual);
     status *= repeat_stats.assm_calls == steps;
     status *= repeat_stats.lin_solve_calls == steps;
     status *= trajectoriesNear(actual, expected, 1.0e-6);

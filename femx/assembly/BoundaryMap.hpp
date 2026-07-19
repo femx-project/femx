@@ -254,6 +254,14 @@ void replaceRes(const DeviceBoundaryMap& map,
                 DeviceVectorView         res,
                 CudaContext&             ctx);
 
+/** @brief Set constrained entries of a Host vector to zero. */
+void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals);
+
+/** @brief Asynchronous CUDA equivalent of zeroBoundary(). */
+void zeroBoundary(const DeviceBoundaryMap& map,
+                  DeviceVectorView         vals,
+                  CudaContext&             ctx);
+
 /**
  * @brief Prepare a separate forward-solve matrix and right-hand side.
  *

@@ -62,7 +62,7 @@ public:
              Index num_states);
   void observe(Index             level,
                const HostVector& state);
-  bool observeStep(const state::HostTimeStepStateContext& ctx);
+  bool observeStep(const state::TimeStepStateContext& ctx);
   void stop();
 
 private:

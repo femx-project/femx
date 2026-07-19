@@ -266,6 +266,48 @@ void copy(DeviceConstVectorView src,
                ctx.stream());
 }
 
+void copy(HostConstVectorView src,
+          DeviceVectorView    dst,
+          CudaContext&        ctx)
+{
+  checkView(src.data(), src.size(), "Host-to-Device copy has an invalid source view");
+  checkView(dst.data(), dst.size(), "Host-to-Device copy has an invalid destination view");
+  require(src.size() == dst.size(),
+          "Host-to-Device view copy requires equal sizes");
+  if (src.empty())
+  {
+    return;
+  }
+
+  device::copy(dst.data(),
+               MemorySpace::Device,
+               src.data(),
+               MemorySpace::Host,
+               static_cast<std::size_t>(src.size()) * sizeof(Real),
+               ctx.stream());
+}
+
+void copy(DeviceConstVectorView src,
+          HostVectorView        dst,
+          CudaContext&          ctx)
+{
+  checkView(src.data(), src.size(), "Device-to-Host copy has an invalid source view");
+  checkView(dst.data(), dst.size(), "Device-to-Host copy has an invalid destination view");
+  require(src.size() == dst.size(),
+          "Device-to-Host view copy requires equal sizes");
+  if (src.empty())
+  {
+    return;
+  }
+
+  device::copy(dst.data(),
+               MemorySpace::Host,
+               src.data(),
+               MemorySpace::Device,
+               static_cast<std::size_t>(src.size()) * sizeof(Real),
+               ctx.stream());
+}
+
 void zero(DeviceVectorView vals, CudaContext& ctx)
 {
   checkView(vals.data(), vals.size(), "zero has an invalid view");

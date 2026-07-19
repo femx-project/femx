@@ -39,7 +39,16 @@ if(TARGET femx_linalg_petsc)
 endif()
 
 if(FEMX_HAS_CUDA)
-  target_sources(femx_model_ns PRIVATE NavierStokesModel.cu)
+  target_sources(femx_model_ns PRIVATE Components.cu)
   set_target_properties(femx_model_ns PROPERTIES CUDA_STANDARD 17
                                                  CUDA_STANDARD_REQUIRED ON)
+endif()
+
+if(FEMX_HAS_ENZYME)
+  # Enzyme's reverse lowering relies on the scalarized local work arrays.
+  # Keep these two translation units optimized in Debug/default builds too.
+  set_property(SOURCE Components.cpp APPEND PROPERTY COMPILE_OPTIONS -O2)
+  if(FEMX_HAS_CUDA)
+    set_property(SOURCE Components.cu APPEND PROPERTY COMPILE_OPTIONS -O2)
+  endif()
 endif()

@@ -62,6 +62,12 @@ inline void copy(HostConstVectorView src,
   femx::copy(src, dst, ctx);
 }
 
+inline void zero(HostVectorView vals, PetscContext&)
+{
+  CpuContext ctx;
+  femx::zero(vals, ctx);
+}
+
 inline void apply(const PETScOperator& mat,
                   HostConstVectorView  dir,
                   HostVector&          out,

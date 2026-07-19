@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "TestHelper.hpp"
+#include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/Assembly.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
@@ -123,6 +124,45 @@ model::ns::NavierStokesModel makeModel()
   return {fem::Mesh::makeStructuredQuad(2, 1), 3, 0.05, fluid};
 }
 
+fem::HostControlMap makeEmptyControl(
+    const model::ns::NavierStokesModel& model)
+{
+  return fem::makeControlMap(model.numSteps(),
+                             model.numStates(),
+                             {},
+                             {},
+                             {},
+                             {},
+                             0,
+                             0);
+}
+
+fem::Mesh makeTriangleMesh()
+{
+  fem::Mesh mesh(2);
+  mesh.addNode({0.0, 0.0, 0.0});
+  mesh.addNode({1.0, 0.0, 0.0});
+  mesh.addNode({0.0, 1.0, 0.0});
+  mesh.addElem({0, 1, 2}, fem::Element::Shape::Triangle, 2, 1, 0, {});
+  return mesh;
+}
+
+fem::Mesh makeTetrahedronMesh()
+{
+  fem::Mesh mesh(3);
+  mesh.addNode({0.0, 0.0, 0.0});
+  mesh.addNode({1.0, 0.0, 0.0});
+  mesh.addNode({0.0, 1.0, 0.0});
+  mesh.addNode({0.0, 0.0, 1.0});
+  mesh.addElem({0, 1, 2, 3},
+               fem::Element::Shape::Tetrahedron,
+               3,
+               1,
+               0,
+               {});
+  return mesh;
+}
+
 void fillStates(Index num_states, HostVector& hist, HostVector& nxt)
 {
   hist.resize(2 * num_states);
@@ -197,9 +237,7 @@ TestOutcome navierModelResidualMatchesRowAssembly()
     CpuContext    ctx;
     HostVector    model_res;
     HostCsrMatrix model_jac(model.map().graph());
-    model.residual().res(time, model_res, ctx);
-    model.residual().assembleJac(
-        time, state::VariableBlock::NextState, model_jac, ctx);
+    model.residual().assembleNext(time, model_res, model_jac, ctx);
 
     HostVector    row_res;
     HostCsrMatrix row_jac(model.map().graph());
@@ -249,7 +287,7 @@ TestOutcome navierModelResidualMatchesRowAssembly()
   return status.report();
 }
 
-TestOutcome navierHistoryTangentsAreExact()
+TestOutcome navierHistVjpMatchesFiniteDiff()
 {
   TestStatus status(__func__);
   try
@@ -274,23 +312,24 @@ TestOutcome navierHistoryTangentsAreExact()
 
     for (Index lag = 0; lag < 2; ++lag)
     {
-      const auto    wrt = state::VariableBlock::hist(lag);
-      HostVector    res;
-      HostCsrMatrix jac(model.map().graph());
-      assembly::assemble(model.op(),
-                         1,
-                         2,
-                         wrt,
-                         model.map(),
-                         hist,
-                         nxt,
-                         res,
-                         jac,
-                         ctx);
+      const auto wrt = state::VariableBlock::hist(lag);
+      HostVector jtw;
 
-      HostCsrMatrix model_jac(model.map().graph());
-      model.residual().assembleJac(time, wrt, model_jac, ctx);
-      status *= matNear(jac, model_jac);
+      if (!ad::has_enzyme)
+      {
+        bool threw = false;
+        try
+        {
+          model.residual().applyJacT(
+              time, wrt, dir.view(), jtw, ctx);
+        }
+        catch (const std::runtime_error&)
+        {
+          threw = true;
+        }
+        status *= threw;
+        continue;
+      }
 
       constexpr Real eps        = 1.0e-6;
       HostVector     plus_hist  = hist;
@@ -301,84 +340,35 @@ TestOutcome navierHistoryTangentsAreExact()
         minus_hist[lag * model.numStates() + i] -= eps * dir[i];
       }
 
-      HostVector    plus;
-      HostVector    minus;
-      HostCsrMatrix unused_plus(model.map().graph());
-      HostCsrMatrix unused_minus(model.map().graph());
-      assembly::assemble(model.op(),
-                         1,
-                         2,
-                         state::VariableBlock::NextState,
-                         model.map(),
-                         plus_hist,
-                         nxt,
-                         plus,
-                         unused_plus,
-                         ctx);
-      assembly::assemble(model.op(),
-                         1,
-                         2,
-                         state::VariableBlock::NextState,
-                         model.map(),
-                         minus_hist,
-                         nxt,
-                         minus,
-                         unused_minus,
-                         ctx);
+      const state::HostTimeContext plus_time{
+          1,
+          nxt.view(),
+          prm.view(),
+          {plus_hist.data(), 2, model.numStates()}};
+      const state::HostTimeContext minus_time{
+          1,
+          nxt.view(),
+          prm.view(),
+          {minus_hist.data(), 2, model.numStates()}};
+      HostVector plus;
+      HostVector minus;
+      model.residual().res(plus_time, plus, ctx);
+      model.residual().res(minus_time, minus, ctx);
 
-      const HostVector exact = apply(jac, dir);
-      HostVector       fd(exact.size());
-      for (Index i = 0; i < fd.size(); ++i)
+      HostVector adj(model.numStates());
+      for (Index i = 0; i < adj.size(); ++i)
       {
-        fd[i] = (plus[i] - minus[i]) / (2.0 * eps);
+        adj[i] = -0.15 + 0.013 * i;
       }
-      status *= vecNear(exact, fd, 2.0e-6);
-    }
-  }
-  catch (const std::exception& e)
-  {
-    std::cout << "    exception: " << e.what() << '\n';
-    status *= false;
-  }
-  return status.report();
-}
-
-TestOutcome navierBlockTransposeIdentity()
-{
-  TestStatus status(__func__);
-  try
-  {
-    auto       model = makeModel();
-    HostVector hist;
-    HostVector nxt;
-    fillStates(model.numStates(), hist, nxt);
-    const HostVector             prm;
-    const state::HostTimeContext time{
-        1,
-        nxt.view(),
-        prm.view(),
-        {hist.data(), 2, model.numStates()}};
-
-    HostVector dir(model.numStates());
-    HostVector adj(model.numStates());
-    for (Index i = 0; i < model.numStates(); ++i)
-    {
-      dir[i] = 0.1 + 0.007 * i;
-      adj[i] = -0.05 + 0.011 * i;
-    }
-
-    const state::VariableBlock blocks[] = {
-        state::VariableBlock::NextState,
-        state::VariableBlock::hist(0),
-        state::VariableBlock::hist(1)};
-    CpuContext ctx;
-    for (const auto wrt : blocks)
-    {
-      HostVector jv;
-      HostVector jtw;
-      model.residual().applyJac(time, wrt, dir.view(), jv, ctx);
       model.residual().applyJacT(time, wrt, adj.view(), jtw, ctx);
-      status *= near(dot(jv, adj), dot(dir, jtw), 1.0e-10);
+      const Real fd  = (dot(plus, adj) - dot(minus, adj)) / (2.0 * eps);
+      const Real vjp = dot(dir, jtw);
+      if (!near(vjp, fd, 2.0e-6))
+      {
+        std::cout << "    history lag " << lag << " VJP mismatch: "
+                  << vjp << " != " << fd << '\n';
+      }
+      status *= near(vjp, fd, 2.0e-6);
     }
   }
   catch (const std::exception& e)
@@ -406,30 +396,23 @@ TestOutcome navierAssemblyMatchesPetsc()
         prm.view(),
         {hist.data(), 2, model.numStates()}};
 
-    const state::VariableBlock blocks[] = {
-        state::VariableBlock::NextState,
-        state::VariableBlock::hist(0),
-        state::VariableBlock::hist(1)};
-    CpuContext           csr_ctx;
-    linalg::PetscContext petsc_ctx{PETSC_COMM_SELF};
-    auto                 petsc_residual = model::ns::makePetscTimeResidual(model);
-    for (const auto wrt : blocks)
-    {
-      HostCsrMatrix         csr(model.map().graph());
-      linalg::PETScOperator petsc(PETSC_COMM_SELF);
-      HostVector            csr_res;
-      HostVector            petsc_res;
+    CpuContext            csr_ctx;
+    linalg::PetscContext  petsc_ctx{PETSC_COMM_SELF};
+    auto                  petsc_residual = model::ns::makePetscTimeResidual(model);
+    HostCsrMatrix         csr(model.map().graph());
+    linalg::PETScOperator petsc(PETSC_COMM_SELF);
+    HostVector            csr_res;
+    HostVector            petsc_res;
 
-      model.residual().assemble(time, wrt, csr_res, csr, csr_ctx);
-      petsc_residual->assemble(time, wrt, petsc_res, petsc, petsc_ctx);
-      petsc.finalize();
-      status *= vecNear(csr_res, petsc_res);
+    model.residual().assembleNext(time, csr_res, csr, csr_ctx);
+    petsc_residual->assembleNext(time, petsc_res, petsc, petsc_ctx);
+    petsc.finalize();
+    status *= vecNear(csr_res, petsc_res);
 
-      const HostVector csr_out = apply(csr, nxt);
-      HostVector       petsc_out;
-      petsc.apply(nxt.view(), petsc_out);
-      status *= vecNear(csr_out, petsc_out);
-    }
+    const HostVector csr_out = apply(csr, nxt);
+    HostVector       petsc_out;
+    petsc.apply(nxt.view(), petsc_out);
+    status *= vecNear(csr_out, petsc_out);
   }
   catch (const std::exception& e)
   {
@@ -477,9 +460,7 @@ TestOutcome navierRowAssemblyMatchesDevice()
         {model.fluid().rho, model.fluid().mu},
         model.dt());
     const state::VariableBlock blocks[] = {
-        state::VariableBlock::NextState,
-        state::VariableBlock::hist(0),
-        state::VariableBlock::hist(1)};
+        state::VariableBlock::NextState};
     for (const auto wrt : blocks)
     {
       HostVector    host_res;
@@ -527,6 +508,98 @@ TestOutcome navierRowAssemblyMatchesDevice()
   return status.report();
 }
 
+TestOutcome navierHistoryVjpMatchesDevice()
+{
+  TestStatus status(__func__);
+#if defined(FEMX_HAS_CUDA)
+  if (!CudaContext::available())
+  {
+    status.skipTest();
+    return status.report();
+  }
+
+  try
+  {
+    const auto check = [&status](fem::Mesh mesh) {
+      model::ns::FluidParams fluid;
+      fluid.rho = 1.2;
+      fluid.mu  = 0.03;
+      model::ns::NavierStokesModel model(
+          std::move(mesh), 3, 0.05, fluid);
+      HostVector hist;
+      HostVector nxt;
+      fillStates(model.numStates(), hist, nxt);
+      HostVector adj(model.numStates());
+      for (Index i = 0; i < adj.size(); ++i)
+      {
+        adj[i] = -0.08 + 0.009 * i;
+      }
+
+      auto        control = makeEmptyControl(model);
+      CudaContext ctx;
+      auto        dev_res = model::ns::makeDeviceTimeResidual(
+          model, std::move(control));
+      DeviceVector dev_hist;
+      DeviceVector dev_nxt;
+      DeviceVector dev_adj;
+      DeviceVector dev_prm;
+      femx::copy(hist, dev_hist, ctx);
+      femx::copy(nxt, dev_nxt, ctx);
+      femx::copy(adj, dev_adj, ctx);
+      const state::DeviceTimeContext dev_time{
+          1,
+          dev_nxt.view(),
+          dev_prm.view(),
+          {dev_hist.data(), 2, model.numStates()}};
+
+      const HostVector             prm;
+      const state::HostTimeContext host_time{
+          1,
+          nxt.view(),
+          prm.view(),
+          {hist.data(), 2, model.numStates()}};
+      CpuContext cpu;
+      for (Index lag = 0; lag < 2; ++lag)
+      {
+        DeviceVector dev_vjp;
+        HostVector   host_vjp;
+        model.residual().applyJacT(host_time,
+                                   state::VariableBlock::hist(lag),
+                                   adj.view(),
+                                   host_vjp,
+                                   cpu);
+        dev_res->applyJacT(dev_time,
+                           state::VariableBlock::hist(lag),
+                           dev_adj.view(),
+                           dev_vjp,
+                           ctx);
+        HostVector got;
+        femx::copy(dev_vjp, got, ctx);
+        ctx.synchronize();
+        status *= vecNear(got, host_vjp, 2.0e-9);
+      }
+    };
+
+    if (!ad::has_enzyme)
+    {
+      status.skipTest();
+      return status.report();
+    }
+    check(fem::Mesh::makeStructuredQuad(2, 1));
+    check(makeTriangleMesh());
+    check(makeTetrahedronMesh());
+  }
+  catch (const std::exception& e)
+  {
+    std::cout << "    exception: " << e.what() << '\n';
+    status *= false;
+  }
+#else
+  status.skipTest();
+#endif
+  return status.report();
+}
+
 } // namespace
 } // namespace tests
 } // namespace femx
@@ -546,10 +619,10 @@ int main(int argc, char** argv)
   femx::tests::TestingResults results;
   results            += femx::tests::navierDataFlattensEveryElement();
   results            += femx::tests::navierModelResidualMatchesRowAssembly();
-  results            += femx::tests::navierHistoryTangentsAreExact();
-  results            += femx::tests::navierBlockTransposeIdentity();
+  results            += femx::tests::navierHistVjpMatchesFiniteDiff();
   results            += femx::tests::navierAssemblyMatchesPetsc();
   results            += femx::tests::navierRowAssemblyMatchesDevice();
+  results            += femx::tests::navierHistoryVjpMatchesDevice();
   const int failures  = results.summary();
 
 #if defined(FEMX_HAS_PETSC)

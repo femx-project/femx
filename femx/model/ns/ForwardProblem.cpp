@@ -169,7 +169,7 @@ ForwardSolveResult solveHost(TimeIntegrator<Backend>& integ,
 
   monitor.start(integ.numSteps(), integ.numStates());
   typename TimeIntegrator<Backend>::Observer observer =
-      [&monitor](const HostTimeStepStateContext& ctx)
+      [&monitor](const TimeStepStateContext& ctx)
   {
     if (ctx.level == 0)
     {
@@ -233,37 +233,15 @@ ForwardSolveResult solve(DeviceTimeIntegrator& integ,
   femx::copy(prob.prm0, parameters, transfer);
   transfer.synchronize();
 
-  HostVector                     prev(integ.numStates());
-  HostVector                     curr(integ.numStates());
   DeviceTimeIntegrator::Observer observer =
-      [&monitor, &transfer, &prev, &curr](
-          const DeviceTimeStepStateContext& ctx)
+      [&monitor](const TimeStepStateContext& ctx)
   {
-    device::copy(prev.data(),
-                 MemorySpace::Host,
-                 ctx.prev.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(prev.size()) * sizeof(Real),
-                 transfer.stream());
-    device::copy(curr.data(),
-                 MemorySpace::Host,
-                 ctx.curr.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(curr.size()) * sizeof(Real),
-                 transfer.stream());
-    transfer.synchronize();
-    const HostTimeStepStateContext h_ctx{ctx.level,
-                                         ctx.total_steps,
-                                         prev.view(),
-                                         curr.view(),
-                                         ctx.assm_sec,
-                                         ctx.lin_solve_sec};
     if (ctx.level == 0)
     {
-      monitor.observe(0, curr);
+      monitor.observe(0, HostVector(ctx.curr));
       return false;
     }
-    return monitor.observeStep(h_ctx);
+    return monitor.observeStep(ctx);
   };
 
   try

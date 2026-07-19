@@ -13,8 +13,6 @@ namespace femx
 namespace inverse
 {
 
-class TimeObjectivePlan;
-
 /**
  * @brief Objective 0.5 * sum_l weight_l ||H_l(u_l,m) - data_l||^2.
  *
@@ -67,8 +65,6 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  friend class TimeObjectivePlan;
-
   Index               numTimeLevels() const;
   void                checkInputs() const;
   void                checkLevel(Index level) const;
