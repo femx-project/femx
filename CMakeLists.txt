@@ -7,7 +7,7 @@ option(FEMX_ENABLE_CUDA "Enable CUDA memory and assembly backends" OFF)
 
 project(
   femx
-  VERSION 0.2.0
+  VERSION 0.3.0
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)

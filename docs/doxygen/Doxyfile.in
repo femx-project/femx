@@ -1,5 +1,5 @@
 PROJECT_NAME           = "femx"
-PROJECT_NUMBER         = "0.2.0"
+PROJECT_NUMBER         = "0.3.0"
 PROJECT_BRIEF          = "Finite-element research code for PDE workflows"
 
 OUTPUT_DIRECTORY       = docs/doxygen
