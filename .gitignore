@@ -1,6 +1,5 @@
 .vscode
 .codex
-.agents
 *.code-workspace
 
 build/
