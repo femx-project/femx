@@ -13,10 +13,7 @@ if(@FEMX_ENABLE_OPENMP@)
 endif()
 
 if(@FEMX_HAS_RESOLVE@)
-  set(ReSolve_DIR "@FEMX_RESOLVE_DEVELOP_CONFIG@" CACHE PATH
-      "ReSolve development package directory" FORCE)
-  find_dependency(ReSolve CONFIG PATHS "@FEMX_RESOLVE_DEVELOP_PREFIX_REAL@"
-                  NO_DEFAULT_PATH)
+  find_dependency(ReSolve CONFIG)
 endif()
 
 if(@FEMX_HAS_HDF5@)

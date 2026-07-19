@@ -53,11 +53,11 @@
       }
     },
     {
-      "name": "resolve",
+      "name": "resolve-cuda",
       "displayName": "ReSolve CUDA",
       "description": "Build apps/tests with the CUDA-enabled ReSolve backend.",
       "inherits": "resolve-base",
-      "binaryDir": "${sourceDir}/build/resolve",
+      "binaryDir": "${sourceDir}/build/resolve-cuda",
       "cacheVariables": {
         "FEMX_RESOLVE_BACKEND": "CUDA",
         "CMAKE_CUDA_ARCHITECTURES": "60"
@@ -142,8 +142,8 @@
       "configurePreset": "resolve-cpu"
     },
     {
-      "name": "resolve",
-      "configurePreset": "resolve"
+      "name": "resolve-cuda",
+      "configurePreset": "resolve-cuda"
     },
     {
       "name": "resolve-petsc",
@@ -184,8 +184,8 @@
       }
     },
     {
-      "name": "resolve",
-      "configurePreset": "resolve",
+      "name": "resolve-cuda",
+      "configurePreset": "resolve-cuda",
       "output": {
         "outputOnFailure": true
       }

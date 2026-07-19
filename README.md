@@ -15,8 +15,8 @@ minor releases.
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve development install at `/opt/resolve/develop`, for CPU/CUDA linear
-  solver backends. Re::Solve 0.99.2 is not supported.
+- Re::Solve built from the `develop` branch, for CPU/CUDA linear solver
+  backends
 - PETSc 3.19 or later (tested with PETSc 3.19.6)
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
