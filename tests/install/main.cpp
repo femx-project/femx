@@ -53,7 +53,7 @@ int main()
     checkClose(x[1], 2.0, "x[1]");
 
     femx::HostVector Ax(2);
-    femx::apply(A, x.view(), Ax.view());
+    femx::apply(A, x.view(), Ax.view(), ctx);
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");
   }
