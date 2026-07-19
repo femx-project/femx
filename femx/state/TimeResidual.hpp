@@ -1,92 +1,73 @@
 #pragma once
 
-#include <stdexcept>
-
+#include <femx/common/Checks.hpp>
+#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/BlockVectorView.hpp>
-#include <femx/linalg/MatrixBuilder.hpp>
+#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
-namespace femx
-{
-namespace state
+namespace femx::state
 {
 
-/**
- * @brief Sizes that define a time-dependent residual problem.
- *
- * A trajectory has num_steps + 1 state levels. Residual step t advances the
- * history window ending at level t to the next state at level t + 1.
- */
+/** @brief Dimensions of a time-dependent residual problem. */
 struct TimeDims
 {
-  Index num_steps          = 0; ///< Number of residual steps.
-  Index num_states         = 0; ///< Size of one state vector.
-  Index num_param         = 0; ///< Size of the parameter vector shared by all steps.
-  Index num_residuals      = 0; ///< Size of one residual vector.
-  Index num_history_states = 1; ///< Number of history states required by each step.
+  Index num_steps  = 0;
+  Index num_states = 0;
+  Index num_param  = 0;
+  Index num_res    = 0;
+  Index num_hist   = 1;
 };
 
-/**
- * @brief Non-owning view of time-history states for one residual step.
- *
- * TimeHistoryView presents contiguous history data as indexed state vectors
- * without copying the underlying storage.
- */
+/** @brief Non-owning lag-major history window. */
+template <MemorySpace Space>
 class TimeHistoryView
 {
 public:
-  TimeHistoryView() = default;
+  FEMX_HOST_DEVICE TimeHistoryView() = default;
 
-  TimeHistoryView(const Real* data, Index count, Index num_states)
-    : data_(data),
-      count_(count),
-      num_states_(num_states)
+  FEMX_HOST_DEVICE TimeHistoryView(const Real* data,
+                                   Index       count,
+                                   Index       num_states)
+    : data_(data), count_(count), num_states_(num_states)
   {
-    if (count_ < 0 || num_states_ < 0)
-    {
-      throw std::runtime_error("TimeHistoryView received invalid dimensions");
-    }
-    if (count_ > 0 && num_states_ > 0 && data_ == nullptr)
-    {
-      throw std::runtime_error("TimeHistoryView received null data");
-    }
   }
 
-  bool empty() const
+  FEMX_HOST_DEVICE bool empty() const
   {
     return count_ == 0;
   }
 
-  Index count() const
+  FEMX_HOST_DEVICE Index count() const
   {
     return count_;
   }
 
-  Index stateSize() const
+  FEMX_HOST_DEVICE Index stateSize() const
   {
     return num_states_;
   }
 
-  VectorView<const Real> state(Index i) const
+  FEMX_HOST_DEVICE VectorView<Space, const Real> state(Index i) const
   {
-    if (i < 0 || i >= count_)
-    {
-      throw std::runtime_error("TimeHistoryView state index is out of range");
-    }
     return blocks().block(i);
   }
 
-  const Real* data() const
+  FEMX_HOST_DEVICE const Real* data() const
   {
     return data_;
   }
 
-private:
-  BlockVectorView<const Real> blocks() const
+  FEMX_HOST_DEVICE VectorView<Space, const Real> values() const
   {
-    return BlockVectorView<const Real>(data_, count_, num_states_);
+    return {data_, count_ * num_states_};
+  }
+
+private:
+  FEMX_HOST_DEVICE BlockVectorView<Space, const Real> blocks() const
+  {
+    return {data_, count_, num_states_};
   }
 
   const Real* data_{nullptr};
@@ -94,26 +75,22 @@ private:
   Index       num_states_{0};
 };
 
-/**
- * @brief Context for one residual step.
- *
- * history.state(0) is the state at the current time level for this residual,
- * history.state(1) is one level older.
- */
+/** @brief Native-memory inputs at one residual step. */
+template <MemorySpace Space>
 struct TimeContext
 {
-  Index               step = 0;
-  const Vector<Real>* nxt  = nullptr;
-  const Vector<Real>* prm  = nullptr;
-  TimeHistoryView     hist;
+  Index                         step{0};
+  VectorView<Space, const Real> nxt;
+  VectorView<Space, const Real> prm;
+  TimeHistoryView<Space>        hist;
 };
 
-/**
- * @brief Differentiation block for a time residual.
- *
- * History states are addressed by lag, with hist(0) referring to the current
- * time level for the residual.
- */
+using HostTimeHistoryView   = TimeHistoryView<MemorySpace::Host>;
+using DeviceTimeHistoryView = TimeHistoryView<MemorySpace::Device>;
+using HostTimeContext       = TimeContext<MemorySpace::Host>;
+using DeviceTimeContext     = TimeContext<MemorySpace::Device>;
+
+/** @brief Variable block of a time-residual Jacobian. */
 class VariableBlock final
 {
 public:
@@ -124,54 +101,53 @@ public:
     Param
   };
 
-  constexpr VariableBlock(Kind  kind        = Kind::HistoryState,
-                          Index history_lag = 0)
-    : kind_(kind),
-      hist_lag_(history_lag)
+  FEMX_HOST_DEVICE constexpr VariableBlock(
+      Kind  kind     = Kind::HistoryState,
+      Index hist_lag = 0)
+    : kind_(kind), hist_lag_(hist_lag)
   {
   }
 
-  static constexpr VariableBlock hist(Index lag)
+  FEMX_HOST_DEVICE static constexpr VariableBlock hist(Index lag)
   {
-    return VariableBlock(Kind::HistoryState, lag);
+    return {Kind::HistoryState, lag};
   }
 
-  bool isHistoryState() const
+  FEMX_HOST_DEVICE constexpr bool isHistoryState() const
   {
     return kind_ == Kind::HistoryState;
   }
 
-  bool isNextState() const
+  FEMX_HOST_DEVICE constexpr bool isNextState() const
   {
     return kind_ == Kind::NextState;
   }
 
-  bool isParam() const
+  FEMX_HOST_DEVICE constexpr bool isParam() const
   {
     return kind_ == Kind::Param;
   }
 
-  Kind kind() const
+  FEMX_HOST_DEVICE constexpr Kind kind() const
   {
     return kind_;
   }
 
-  Index historyLag() const
+  FEMX_HOST_DEVICE constexpr Index historyLag() const
   {
-    if (!isHistoryState())
-    {
-      throw std::runtime_error(
-          "VariableBlock does not refer to a history state");
-    }
     return hist_lag_;
   }
 
-  friend bool operator==(VariableBlock lhs, VariableBlock rhs)
+  FEMX_HOST_DEVICE friend constexpr bool operator==(
+      VariableBlock lhs,
+      VariableBlock rhs)
   {
     return lhs.kind_ == rhs.kind_ && lhs.hist_lag_ == rhs.hist_lag_;
   }
 
-  friend bool operator!=(VariableBlock lhs, VariableBlock rhs)
+  FEMX_HOST_DEVICE friend constexpr bool operator!=(
+      VariableBlock lhs,
+      VariableBlock rhs)
   {
     return !(lhs == rhs);
   }
@@ -184,169 +160,85 @@ private:
   Index hist_lag_{0};
 };
 
-inline constexpr VariableBlock VariableBlock::NextState = VariableBlock(VariableBlock::Kind::NextState);
-inline constexpr VariableBlock VariableBlock::Param     = VariableBlock(VariableBlock::Kind::Param);
+inline constexpr VariableBlock VariableBlock::NextState{
+    VariableBlock::Kind::NextState};
+inline constexpr VariableBlock VariableBlock::Param{
+    VariableBlock::Kind::Param};
 
+template <class Backend>
 class TimeResidual;
 
-/**
- * @brief Linearization of a TimeResidual at one time-step context.
- *
- * TimeLinearization binds a residual and context so callers can apply or
- * assemble Jacobians for individual variable blocks.
- */
-class TimeLinearization
-{
-public:
-  void reset(const TimeResidual& problem, TimeContext ctx);
-
-  void applyJac(VariableBlock       wrt,
-                const Vector<Real>& dir,
-                Vector<Real>&       out) const;
-
-  void applyJacT(VariableBlock       wrt,
-                 const Vector<Real>& adj,
-                 Vector<Real>&       out) const;
-
-  bool assembleJac(VariableBlock          wrt,
-                   linalg::MatrixBuilder& out) const;
-
-private:
-  void checkReady() const;
-
-private:
-  const TimeResidual* problem_{nullptr};
-  TimeContext         ctx_;
-};
-
+/** @brief Time-residual contract over one concrete execution backend. */
+template <class Backend>
 class TimeResidual
 {
+  static_assert(linalg::is_backend_v<Backend>,
+                "TimeResidual requires a valid backend type");
+
 public:
+  static constexpr MemorySpace space = Backend::space;
+
+  using Vec       = typename Backend::Vec;
+  using VecView   = typename Backend::VecView;
+  using ConstView = typename Backend::ConstView;
+  using Mat       = typename Backend::Mat;
+  using Graph     = typename Backend::Graph;
+  using Ctx       = typename Backend::Ctx;
+  using StepCtx   = TimeContext<space>;
+
   virtual ~TimeResidual() = default;
 
-  /**
-   * @brief Return the dimensions and history depth expected by this residual.
-   */
   virtual TimeDims dims() const = 0;
 
-  /**
-   * @brief Evaluate the residual for one time step.
-   *
-   * @param ctx Step context containing history states, next state, and the parameter vector.
-   * @param out Output residual. Implementations may resize it to dims().num_residuals.
-   * @throws std::runtime_error if ctx has inconsistent sizes.
-   */
-  virtual void res(const TimeContext& ctx,
-                   Vector<Real>&      out) const = 0;
+  /** @brief Return the Host graph used to construct boundary metadata. */
+  virtual const HostCsrGraph& hostGraph() const = 0;
 
-  /**
-   * @brief Apply a Jacobian block to a direction vector.
-   *
-   * @param ctx Step context used for the linearization point.
-   * @param wrt Variable block to differentiate with respect to.
-   * @param dir Direction vector with the size of wrt.
-   * @param out Output vector of size dims().num_residuals.
-   */
-  virtual void applyJac(const TimeContext&  ctx,
-                        VariableBlock       wrt,
-                        const Vector<Real>& dir,
-                        Vector<Real>&       out) const = 0;
+  /** @brief Return the matrix graph in this backend's storage. */
+  virtual const Graph& graph() const = 0;
 
-  /**
-   * @brief Apply the transpose of a Jacobian block to an adjoint vector.
-   *
-   * @param ctx Step context used for the linearization point.
-   * @param wrt Variable block to differentiate with respect to.
-   * @param adj Adjoint vector of size dims().num_residuals.
-   * @param out Output vector with the size of wrt.
-   */
-  virtual void applyJacT(const TimeContext&  ctx,
-                         VariableBlock       wrt,
-                         const Vector<Real>& adj,
-                         Vector<Real>&       out) const = 0;
+  /** @brief Evaluate the parameter-dependent initial state. */
+  virtual void initialState(ConstView prm, Vec& out, Ctx& ctx) const = 0;
 
-  /**
-   * @brief Store a lightweight linearization object for repeated applies.
-   */
-  virtual void linearize(const TimeContext& ctx,
-                         TimeLinearization& out) const
+  /** @brief Add the initial-state Jacobian transpose product to `out`. */
+  virtual void addInitialStateJacobianTranspose(
+      ConstView state_grad,
+      VecView   out,
+      Ctx&) const
   {
-    out.reset(*this, ctx);
+    const TimeDims dim = dims();
+    require(state_grad.size() == dim.num_states
+                && out.size() == dim.num_param,
+            "TimeResidual initial-state transpose size mismatch");
   }
 
-  /**
-   * @brief Assemble a Jacobian block when this residual supports it.
-   *
-   * @return true if out was filled, false if the block is only available
-   *         through applyJac/applyJacT.
-   */
-  virtual bool assembleJac(const TimeContext&     ctx,
-                           VariableBlock          wrt,
-                           linalg::MatrixBuilder& out) const
-  {
-    (void) ctx;
-    (void) wrt;
-    (void) out;
-    return false;
-  }
+  virtual void res(const StepCtx& time, Vec& out, Ctx& ctx) const = 0;
 
-  /**
-   * @brief Optional hook to modify an assembled system before a linear solve.
-   *
-   * Residual wrappers use this to apply constraints that are easier to express
-   * on the assembled matrix and right-hand side than in the local Jacobian.
-   */
-  virtual void prepareLinearSolve(const TimeContext&     ctx,
-                                  VariableBlock          wrt,
-                                  linalg::MatrixBuilder& J,
-                                  Vector<Real>&          rhs) const
+  /** @brief Assemble the residual and next-state Jacobian together. */
+  virtual void assembleNext(const StepCtx& time,
+                            Vec&           res,
+                            Mat&           jac,
+                            Ctx&           ctx) const = 0;
+
+  /** @brief Apply a history or parameter Jacobian transpose. */
+  virtual void applyJacT(const StepCtx& time,
+                         VariableBlock  wrt,
+                         ConstView      adj,
+                         Vec&           out,
+                         Ctx&           ctx) const = 0;
+
+  virtual void prepareLinearSolve(const StepCtx& time,
+                                  Mat&           jac,
+                                  Vec&           rhs,
+                                  Ctx&           ctx) const
   {
-    (void) ctx;
-    (void) wrt;
-    (void) J;
+    (void) time;
+    (void) jac;
     (void) rhs;
+    (void) ctx;
   }
 };
 
-inline void TimeLinearization::reset(const TimeResidual& problem,
-                                     TimeContext         ctx)
-{
-  problem_ = &problem;
-  ctx_     = ctx;
-}
+using HostTimeResidual   = TimeResidual<linalg::HostCsrBackend>;
+using DeviceTimeResidual = TimeResidual<linalg::CudaCsrBackend>;
 
-inline void TimeLinearization::applyJac(VariableBlock       wrt,
-                                        const Vector<Real>& dir,
-                                        Vector<Real>&       out) const
-{
-  checkReady();
-  problem_->applyJac(ctx_, wrt, dir, out);
-}
-
-inline void TimeLinearization::applyJacT(VariableBlock       wrt,
-                                         const Vector<Real>& adj,
-                                         Vector<Real>&       out) const
-{
-  checkReady();
-  problem_->applyJacT(ctx_, wrt, adj, out);
-}
-
-inline bool TimeLinearization::assembleJac(
-    VariableBlock          wrt,
-    linalg::MatrixBuilder& out) const
-{
-  checkReady();
-  return problem_->assembleJac(ctx_, wrt, out);
-}
-
-inline void TimeLinearization::checkReady() const
-{
-  if (problem_ == nullptr)
-  {
-    throw std::runtime_error(
-        "TimeLinearization used before TimeResidual::linearize");
-  }
-}
-
-} // namespace state
-} // namespace femx
+} // namespace femx::state

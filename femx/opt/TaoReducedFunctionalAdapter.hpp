@@ -9,7 +9,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/VectorConversion.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 
 namespace femx
 {
@@ -18,7 +18,7 @@ namespace opt
 
 using TaoNumParamsCallback = std::function<Index()>;
 using TaoValueGradCallback =
-    std::function<Real(const Vector<Real>&, Vector<Real>&)>;
+    std::function<Real(const HostVector&, HostVector&)>;
 
 /**
  * @brief Adapter from PETSc TAO callbacks to a reduced functional.
@@ -39,13 +39,13 @@ public:
   template <typename Functional,
             typename = decltype(std::declval<Functional&>().numParams()),
             typename = decltype(std::declval<Functional&>().valueGrad(
-                std::declval<const Vector<Real>&>(),
-                std::declval<Vector<Real>&>()))>
+                std::declval<const HostVector&>(),
+                std::declval<HostVector&>()))>
   explicit TaoReducedFunctionalAdapter(Functional& fn)
     : TaoReducedFunctionalAdapter(
           [&fn]()
           { return fn.numParams(); },
-          [&fn](const Vector<Real>& prm, Vector<Real>& grad)
+          [&fn](const HostVector& prm, HostVector& grad)
           { return fn.valueGrad(prm, grad); })
   {
   }
@@ -86,7 +86,7 @@ public:
       if (grad != nullptr)
       {
         PetscCall(::femx::linalg::detail::copyToPETSc(
-            adapter->grad_, grad));
+            adapter->grad_.view(), grad));
       }
     }
     catch (const std::exception& e)
@@ -118,8 +118,8 @@ private:
 private:
   TaoNumParamsCallback num_param_;
   TaoValueGradCallback value_grad_;
-  Vector<Real>         prm_;
-  Vector<Real>         grad_;
+  HostVector           prm_;
+  HostVector           grad_;
 };
 
 } // namespace opt

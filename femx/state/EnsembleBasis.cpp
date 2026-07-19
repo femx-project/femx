@@ -1,6 +1,6 @@
-#include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 
 namespace femx
@@ -8,17 +8,17 @@ namespace femx
 namespace state
 {
 
-EnsembleBasis::EnsembleBasis(Vector<Real> mean, DenseMatrix perturbations)
+EnsembleBasis::EnsembleBasis(HostVector mean, DenseMatrix perturbations)
   : mean_(std::move(mean)),
-    perturbations_(std::move(perturbations))
+    perts_(std::move(perturbations))
 {
   checkDims();
 }
 
-void EnsembleBasis::reset(Vector<Real> mean, DenseMatrix perturbations)
+void EnsembleBasis::reset(HostVector mean, DenseMatrix perturbations)
 {
-  mean_          = std::move(mean);
-  perturbations_ = std::move(perturbations);
+  mean_  = std::move(mean);
+  perts_ = std::move(perturbations);
   checkDims();
 }
 
@@ -29,86 +29,56 @@ Index EnsembleBasis::numPhysicalParams() const
 
 Index EnsembleBasis::numCoefficients() const
 {
-  return perturbations_.cols();
+  return perts_.cols();
 }
 
-const Vector<Real>& EnsembleBasis::mean() const
+const HostVector& EnsembleBasis::mean() const
 {
   return mean_;
 }
 
 const DenseMatrix& EnsembleBasis::perturbations() const
 {
-  return perturbations_;
+  return perts_;
 }
 
-void EnsembleBasis::apply(const Vector<Real>& alpha,
-                          Vector<Real>&       out) const
+void EnsembleBasis::apply(const HostVector& alpha,
+                          HostVector&       out) const
 {
   checkAlpha(alpha);
-
-  Vector<Real> result(numPhysicalParams());
-  for (Index i = 0; i < numPhysicalParams(); ++i)
-  {
-    result[i] = mean_[i];
-  }
-
-  for (Index j = 0; j < numCoefficients(); ++j)
-  {
-    const Real coeff = alpha[j];
-    for (Index i = 0; i < numPhysicalParams(); ++i)
-    {
-      result[i] += perturbations_(i, j) * coeff;
-    }
-  }
-
-  out = std::move(result);
+  out = mean_;
+  CpuContext ctx;
+  femx::apply(perts_.view(), alpha.view(), out.view(), ctx, 1.0, 1.0);
 }
 
-void EnsembleBasis::applyT(const Vector<Real>& grad,
-                           Vector<Real>&       out) const
+void EnsembleBasis::applyT(const HostVector& grad,
+                           HostVector&       out) const
 {
   checkPhysical(grad);
-
-  Vector<Real> result(numCoefficients());
-  for (Index j = 0; j < numCoefficients(); ++j)
-  {
-    Real value = 0.0;
-    for (Index i = 0; i < numPhysicalParams(); ++i)
-    {
-      value += perturbations_(i, j) * grad[i];
-    }
-    result[j] = value;
-  }
-
-  out = std::move(result);
+  out.resize(numCoefficients());
+  CpuContext ctx;
+  femx::applyT(perts_.view(), grad.view(), out.view(), ctx);
 }
 
 void EnsembleBasis::checkDims() const
 {
-  if (perturbations_.rows() < 0 || perturbations_.cols() < 0
-      || perturbations_.rows() != mean_.size())
-  {
-    throw std::runtime_error("EnsembleBasis received inconsistent dimensions");
-  }
+  require(perts_.rows() >= 0 && perts_.cols() >= 0
+              && perts_.rows() == mean_.size(),
+          "EnsembleBasis received inconsistent dimensions");
 }
 
-void EnsembleBasis::checkAlpha(const Vector<Real>& alpha) const
+void EnsembleBasis::checkAlpha(const HostVector& alpha) const
 {
   checkDims();
-  if (alpha.size() != numCoefficients())
-  {
-    throw std::runtime_error("EnsembleBasis coefficient size mismatch");
-  }
+  require(alpha.size() == numCoefficients(),
+          "EnsembleBasis coefficient size mismatch");
 }
 
-void EnsembleBasis::checkPhysical(const Vector<Real>& value) const
+void EnsembleBasis::checkPhysical(const HostVector& val) const
 {
   checkDims();
-  if (value.size() != numPhysicalParams())
-  {
-    throw std::runtime_error("EnsembleBasis physical vector size mismatch");
-  }
+  require(val.size() == numPhysicalParams(),
+          "EnsembleBasis physical vector size mismatch");
 }
 
 } // namespace state

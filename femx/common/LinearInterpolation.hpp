@@ -48,8 +48,8 @@ struct LinearInterpolation
   }
 };
 
-inline LinearInterpolation linearInterpolation(const Vector<Real>& pts,
-                                               Real                x)
+inline LinearInterpolation linearInterpolation(const HostVector& pts,
+                                               Real              x)
 {
   if (pts.empty() || !std::isfinite(x))
   {

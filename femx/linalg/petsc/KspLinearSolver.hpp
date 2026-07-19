@@ -7,14 +7,14 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 
 namespace femx
 {
 namespace linalg
 {
 
-class PETScAssemblyMatrix;
-class PETScVector;
+class PETScOperator;
 
 /**
  * @brief User-facing PETSc KSP options used by KspLinearSolver.
@@ -34,17 +34,16 @@ struct KspOptions
 
   bool nonzero_guess = false; ///< Use the input vector as an initial guess.
   bool use_opts_db   = true;  ///< Allow PETSc options-database overrides.
-  bool check_finite  = false; ///< Check matrix/vector values before solving.
 };
 
 /**
  * @brief PETSc KSP adapter for linalg::LinearSolver.
  *
- * KspLinearSolver accepts femx linear operators and PETSc-native assembly
- * matrices. The solver options can be set programmatically and optionally
- * overridden by PETSc's options database.
+ * KspLinearSolver accepts PETSc-native matrices through `PetscBackend`. The
+ * solver options can be set programmatically and optionally overridden by
+ * PETSc's options database.
  */
-class KspLinearSolver final : public LinearSolver
+class KspLinearSolver final : public LinearSolver<PetscBackend>
 {
 public:
   explicit KspLinearSolver(MPI_Comm comm = PETSC_COMM_SELF);
@@ -58,21 +57,15 @@ public:
 
   const KspOptions& opts() const;
 
-  void solve(const LinearOperator& op,
-             const Vector<Real>&   rhs,
-             Vector<Real>&         out) override;
+  void solve(const PETScOperator& mat,
+             const HostVector&    rhs,
+             HostVector&          sol,
+             PetscContext&        ctx) override;
 
-  void solveT(const LinearOperator& op,
-              const Vector<Real>&   rhs,
-              Vector<Real>&         out) override;
-
-  void solve(const PETScAssemblyMatrix& op,
-             const PETScVector&         rhs,
-             PETScVector&               out);
-
-  void solveT(const PETScAssemblyMatrix& op,
-              const PETScVector&         rhs,
-              PETScVector&               out);
+  void solveT(const PETScOperator& mat,
+              const HostVector&    rhs,
+              HostVector&          sol,
+              PetscContext&        ctx) override;
 
   KSPConvergedReason convergedReason() const;
 

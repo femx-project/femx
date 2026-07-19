@@ -6,13 +6,12 @@
 #include <string>
 
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -114,30 +113,26 @@ int run(const Params& prm)
   OutputParams      output = prm.output;
   output.enabled           = rank == 0 && prm.output.enabled;
 
-  if (prm.solver.backend != "cpu")
-  {
-    throw std::runtime_error(
-        "PETSc Navier-Stokes app supports only solver.backend = 'cpu'");
-  }
-
   if (output.enabled)
   {
     writeBuildInfo(output.directory, makeBuildInfo());
   }
 
   ForwardProblem fwd(prm);
-  setElemRange(fwd.model.residual(), fwd.model.mesh().numElems());
+  setElemRange(fwd.model, fwd.model.mesh().numElems());
 
-  PETScVector mat_row(PETSC_COMM_WORLD);
-  mat_row.resize(fwd.model.numStates());
-
-  PETScAssemblyMatrix A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.matrixPattern(), mat_row);
+  PETScOperator A(PETSC_COMM_WORLD);
+  A.resize(fwd.model.map().graph());
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  TimeLinearIntegrator integ(fwd.problem, A, solver);
+  auto                                   base_res = makePetscTimeResidual(fwd.model);
+  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.problem.controlMap());
+
+  PetscContext ctx{PETSC_COMM_WORLD};
+
+  TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
   integ.setInitialState(fwd.x0);
 
   std::ofstream log_out;
@@ -147,7 +142,6 @@ int run(const Params& prm)
   }
 
   ForwardSolveResult result;
-  integ.resetTiming();
   result = solve(integ,
                  fwd,
                  prm.time,

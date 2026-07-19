@@ -1,9 +1,11 @@
 #include "ForwardProblem.hpp"
 
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <ostream>
 #include <stdexcept>
+#include <utility>
 
 #include "Boundary.hpp"
 #include <femx/fem/FiniteElement.hpp>
@@ -13,7 +15,7 @@
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/runtime/Cli.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx::state;
 using namespace femx::assembly;
 
@@ -24,7 +26,7 @@ namespace
 
 fem::TimeDirichletData makeFixedDirichletData(
     const fem::MixedFESpace& space,
-    const Vector<BCsParams>& bcs,
+    const Array<BCsParams>&  bcs,
     Index                    steps,
     Real                     dt)
 {
@@ -38,6 +40,27 @@ fem::TimeDirichletData makeFixedDirichletData(
       });
 }
 
+void configureMonitor(ForwardSolveMonitor& monitor,
+                      const TimeParams&    time,
+                      const OutputParams&  output,
+                      std::ostream*        terminal,
+                      std::ostream*        log_out)
+{
+  if (output.enabled)
+  {
+    monitor.setFieldOutput(output.directory, output.interval);
+  }
+  if (terminal != nullptr || log_out != nullptr)
+  {
+    monitor.setDetailedLog(terminal,
+                           log_out,
+                           time.convergence.enabled);
+  }
+  monitor.setConvergence({time.convergence.enabled,
+                          time.convergence.vel_rel_tol,
+                          time.convergence.min_steps});
+}
+
 } // namespace
 
 ForwardProblem::ForwardProblem(const Params& prm)
@@ -47,12 +70,15 @@ ForwardProblem::ForwardProblem(const Params& prm)
                                  model.numSteps(),
                                  model.dt())),
     problem(model.residual(),
-            fem::DirichletControl{},
-            fixed.dofs,
-            0,
-            0,
-            fixed.values),
-    x0(fixed.initial_state),
+            fem::makeControlMap(model.numSteps(),
+                                model.numStates(),
+                                {},
+                                fixed.dofs,
+                                fixed.vals,
+                                {},
+                                0,
+                                0)),
+    x0(fixed.init_state),
     prm0(0)
 {
 }
@@ -90,10 +116,10 @@ AppOptions parseAppOptions(int   argc,
   return opts;
 }
 
-void printUsage(std::ostream&              out,
-                const std::string&         executable,
-                const std::string&         option_suffix,
-                const Vector<std::string>& extra_lines)
+void printUsage(std::ostream&             out,
+                const std::string&        executable,
+                const std::string&        option_suffix,
+                const Array<std::string>& extra_lines)
 {
   out << "Usage: " << executable << " --config FILE" << option_suffix << '\n';
   for (const std::string& line : extra_lines)
@@ -116,7 +142,7 @@ std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
   }
 }
 
-bool isFinite(const Vector<Real>& x)
+bool isFinite(const HostVector& x)
 {
   for (Index i = 0; i < x.size(); ++i)
   {
@@ -128,35 +154,108 @@ bool isFinite(const Vector<Real>& x)
   return true;
 }
 
-ForwardSolveResult solve(TimeLinearIntegrator& integrator,
-                         const ForwardProblem& problem,
+template <class Backend>
+ForwardSolveResult solveHost(TimeIntegrator<Backend>& integ,
+                             const ForwardProblem&    prob,
+                             const TimeParams&        time,
+                             const OutputParams&      prm,
+                             std::ostream*            terminal,
+                             std::ostream*            log_out)
+{
+  ForwardSolveMonitor monitor(prob.model.space(),
+                              prob.model.dt(),
+                              prob.model.numSteps());
+  configureMonitor(monitor, time, prm, terminal, log_out);
+
+  monitor.start(integ.numSteps(), integ.numStates());
+  typename TimeIntegrator<Backend>::Observer observer =
+      [&monitor](const TimeStepStateContext& ctx)
+  {
+    if (ctx.level == 0)
+    {
+      monitor.observe(0, HostVector(ctx.curr));
+      return false;
+    }
+    return monitor.observeStep(ctx);
+  };
+
+  try
+  {
+    integ.solve(prob.prm0.view(), observer);
+  }
+  catch (...)
+  {
+    monitor.stop();
+    throw;
+  }
+  monitor.stop();
+  return monitor.result();
+}
+
+ForwardSolveResult solve(HostTimeIntegrator&   integ,
+                         const ForwardProblem& prob,
                          const TimeParams&     time,
                          const OutputParams&   prm,
                          std::ostream*         terminal,
                          std::ostream*         log_out)
 {
-  ForwardSolveMonitor monitor(problem.model.space(),
-                              problem.model.dt(),
-                              problem.model.numSteps());
-  if (prm.enabled)
-  {
-    monitor.setFieldOutput(prm.directory, prm.interval);
-  }
-  if (terminal != nullptr || log_out != nullptr)
-  {
-    monitor.setDetailedLog(terminal,
-                           log_out,
-                           time.convergence.enabled);
-  }
-  monitor.setConvergence({time.convergence.enabled,
-                          time.convergence.vel_rel_tol,
-                          time.convergence.min_steps});
+  return solveHost(integ, prob, time, prm, terminal, log_out);
+}
 
-  integrator.setMonitor(&monitor);
-  integrator.solve(problem.prm0);
+#if defined(FEMX_HAS_PETSC)
+ForwardSolveResult solve(TimeIntegrator<linalg::PetscBackend>& integ,
+                         const ForwardProblem&                 prob,
+                         const TimeParams&                     time,
+                         const OutputParams&                   prm,
+                         std::ostream*                         terminal,
+                         std::ostream*                         log_out)
+{
+  return solveHost(integ, prob, time, prm, terminal, log_out);
+}
+#endif
 
-  integrator.clearMonitor();
+#if defined(FEMX_HAS_CUDA)
+ForwardSolveResult solve(DeviceTimeIntegrator& integ,
+                         const ForwardProblem& prob,
+                         const TimeParams&     time,
+                         const OutputParams&   prm,
+                         std::ostream*         terminal,
+                         std::ostream*         log_out)
+{
+  ForwardSolveMonitor monitor(prob.model.space(),
+                              prob.model.dt(),
+                              prob.model.numSteps());
+  configureMonitor(monitor, time, prm, terminal, log_out);
+
+  monitor.start(integ.numSteps(), integ.numStates());
+  CudaContext  transfer;
+  DeviceVector parameters;
+  femx::copy(prob.prm0, parameters, transfer);
+  transfer.synchronize();
+
+  DeviceTimeIntegrator::Observer observer =
+      [&monitor](const TimeStepStateContext& ctx)
+  {
+    if (ctx.level == 0)
+    {
+      monitor.observe(0, HostVector(ctx.curr));
+      return false;
+    }
+    return monitor.observeStep(ctx);
+  };
+
+  try
+  {
+    integ.solve(parameters.view(), std::move(observer));
+  }
+  catch (...)
+  {
+    monitor.stop();
+    throw;
+  }
+  monitor.stop();
   return monitor.result();
 }
+#endif
 
 } // namespace femx::model::ns

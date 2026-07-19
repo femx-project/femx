@@ -59,11 +59,11 @@ public:
                   Index comp) const noexcept;
 
   /** @brief Fill the global dof ids used by one element. */
-  void elemDofs(Index          ie,
-                Vector<Index>& dofs) const;
+  void elemDofs(Index         ie,
+                Array<Index>& dofs) const;
 
   /** @brief Return the global dof ids used by one element. */
-  Vector<Index> elemDofs(Index ie) const;
+  Array<Index> elemDofs(Index ie) const;
 
 private:
   const Mesh*          mesh_{nullptr};

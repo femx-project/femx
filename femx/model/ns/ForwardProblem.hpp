@@ -5,20 +5,13 @@
 #include <string>
 
 #include "ForwardConfig.hpp"
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
-
-namespace femx
-{
-namespace state
-{
-class TimeLinearIntegrator;
-} // namespace state
-} // namespace femx
+#include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::model::ns
 {
@@ -38,33 +31,53 @@ struct ForwardProblem
   ForwardProblem(ForwardProblem&&)                 = delete;
   ForwardProblem& operator=(ForwardProblem&&)      = delete;
 
-  NavierStokesModel                      model;
-  fem::TimeDirichletData                 fixed;
-  assembly::TimeDirichletControlResidual problem;
-  Vector<Real>                           x0;
-  Vector<Real>                           prm0;
+  NavierStokesModel                     model;
+  fem::TimeDirichletData                fixed;
+  assembly::HostConstrainedTimeResidual problem;
+  HostVector                            x0;
+  HostVector                            prm0;
 };
 
 AppOptions parseAppOptions(int   argc,
                            char* argv[],
                            bool  allow_unknown_options);
 
-void printUsage(std::ostream&              out,
-                const std::string&         executable,
-                const std::string&         option_suffix = {},
-                const Vector<std::string>& extra_lines   = {});
+void printUsage(std::ostream&             out,
+                const std::string&        executable,
+                const std::string&        option_suffix = {},
+                const Array<std::string>& extra_lines   = {});
 
 std::unique_ptr<fem::FiniteElement> makeElem(const fem::Mesh&   mesh,
                                              const std::string& executable);
 
-bool isFinite(const Vector<Real>& x);
+bool isFinite(const HostVector& x);
 
 ForwardSolveResult solve(
-    femx::state::TimeLinearIntegrator& integrator,
+    femx::state::HostTimeIntegrator& integrator,
+    const ForwardProblem&            problem,
+    const TimeParams&                time,
+    const OutputParams&              prm,
+    std::ostream*                    terminal = nullptr,
+    std::ostream*                    log_out  = nullptr);
+
+#if defined(FEMX_HAS_PETSC)
+ForwardSolveResult solve(
+    femx::state::TimeIntegrator<linalg::PetscBackend>& integrator,
+    const ForwardProblem&                              problem,
+    const TimeParams&                                  time,
+    const OutputParams&                                prm,
+    std::ostream*                                      terminal = nullptr,
+    std::ostream*                                      log_out  = nullptr);
+#endif
+
+#if defined(FEMX_HAS_CUDA)
+ForwardSolveResult solve(
+    femx::state::DeviceTimeIntegrator& integrator,
     const ForwardProblem&              problem,
     const TimeParams&                  time,
     const OutputParams&                prm,
     std::ostream*                      terminal = nullptr,
     std::ostream*                      log_out  = nullptr);
+#endif
 
 } // namespace femx::model::ns

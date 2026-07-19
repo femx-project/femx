@@ -6,8 +6,50 @@
 namespace femx
 {
 
+/** @brief Storage location used by backend-aware containers and views. */
+enum class MemorySpace
+{
+  Host,  ///< CPU-addressable memory.
+  Device ///< CUDA device memory.
+};
+
+/** @brief Scalar type used by finite-element and linear-algebra operations. */
 using Real  = double;
+/** @brief Signed index type used by meshes, DOFs, and sparse matrices. */
 using Index = std::int32_t;
+
+template <MemorySpace Space, class T = Real>
+class Vector;
+
+template <class T>
+using Array = Vector<MemorySpace::Host, T>;
+
+template <MemorySpace Space, class T>
+class VectorView;
+
+template <MemorySpace Space>
+class CsrGraph;
+
+template <MemorySpace Space>
+class CsrMatrix;
+
+using HostVector   = Vector<MemorySpace::Host>;
+using DeviceVector = Vector<MemorySpace::Device>;
+
+using HostIndexVector   = Vector<MemorySpace::Host, Index>;
+using DeviceIndexVector = Vector<MemorySpace::Device, Index>;
+
+using HostCsrGraph   = CsrGraph<MemorySpace::Host>;
+using DeviceCsrGraph = CsrGraph<MemorySpace::Device>;
+
+using HostCsrMatrix   = CsrMatrix<MemorySpace::Host>;
+using DeviceCsrMatrix = CsrMatrix<MemorySpace::Device>;
+
+template <class T>
+using HostArrayView = VectorView<MemorySpace::Host, T>;
+
+using HostVectorView      = HostArrayView<Real>;
+using HostConstVectorView = HostArrayView<const Real>;
 
 namespace constants
 {
@@ -34,3 +76,11 @@ static const char* const CLEAR  = "\033[0m";
 } // namespace colors
 
 } // namespace femx
+
+#if defined(__CUDACC__)
+#define FEMX_HOST_DEVICE __host__ __device__
+#define FEMX_DEVICE      __device__
+#else
+#define FEMX_HOST_DEVICE
+#define FEMX_DEVICE
+#endif

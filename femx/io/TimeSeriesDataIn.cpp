@@ -6,9 +6,10 @@
 #ifdef FEMX_HAS_HDF5
 #include <cmath>
 #include <fstream>
-#include <hdf5.h>
 #include <iterator>
 #include <regex>
+
+#include <hdf5.h>
 #endif
 
 namespace femx
@@ -100,9 +101,9 @@ Element::Shape inferShape(Index cn,
 
 struct XdmfInfo
 {
-  Vector<Real>        times;
-  Vector<std::string> vector_fields;
-  Element::Shape      shape = Element::Shape::Unknown;
+  HostVector         times;
+  Array<std::string> vec_fields;
+  Element::Shape     shape = Element::Shape::Unknown;
 };
 
 std::string xmlAttribute(const std::string& text,
@@ -117,8 +118,8 @@ std::string xmlAttribute(const std::string& text,
   return {};
 }
 
-void addUnique(Vector<std::string>& vals,
-               const std::string&   value)
+void addUnique(Array<std::string>& vals,
+               const std::string&  value)
 {
   for (const std::string& existing : vals)
   {
@@ -167,14 +168,14 @@ XdmfInfo readXdmfInfo(const std::string& path)
     const std::string name = xmlAttribute(tag, "Name");
     if (type == "Vector" && !name.empty())
     {
-      addUnique(info.vector_fields, name);
+      addUnique(info.vec_fields, name);
     }
   }
   return info;
 }
 
-Index meshDim(const Vector<double>& geometry,
-              Element::Shape        shape)
+Index meshDim(const HostVector& geometry,
+              Element::Shape    shape)
 {
   if (shape == Element::Shape::Tetrahedron)
   {
@@ -214,8 +215,8 @@ bool linkExists(hid_t file, const std::string& path)
   return H5Lexists(file, path.c_str(), H5P_DEFAULT) > 0;
 }
 
-Vector<hsize_t> datasetDims(hid_t              dset,
-                            const std::string& path)
+Array<hsize_t> datasetDims(hid_t              dset,
+                           const std::string& path)
 {
   hid_t space = H5Dget_space(dset);
   checkHdf5Id(space, "Failed to get dataspace for " + path);
@@ -226,16 +227,16 @@ Vector<hsize_t> datasetDims(hid_t              dset,
     throw std::runtime_error("Dataset has invalid rank: " + path);
   }
 
-  Vector<hsize_t> dims(ndims);
+  Array<hsize_t> dims(ndims);
   checkHdf5(H5Sget_simple_extent_dims(space, dims.data(), nullptr),
             "Failed to read dimensions for " + path);
   checkHdf5(H5Sclose(space), "Failed to close dataspace for " + path);
   return dims;
 }
 
-Vector<double> readDoubleDataset(hid_t              file,
-                                 const std::string& path,
-                                 Vector<hsize_t>&   dims)
+HostVector readDoubleDataset(hid_t              file,
+                             const std::string& path,
+                             Array<hsize_t>&    dims)
 {
   hid_t dset = H5Dopen2(file, path.c_str(), H5P_DEFAULT);
   checkHdf5Id(dset, "Failed to open dataset " + path);
@@ -246,7 +247,7 @@ Vector<double> readDoubleDataset(hid_t              file,
   {
     count *= dim;
   }
-  Vector<double> data(static_cast<Index>(count));
+  HostVector data(static_cast<Index>(count));
   checkHdf5(H5Dread(dset,
                     H5T_NATIVE_DOUBLE,
                     H5S_ALL,
@@ -258,9 +259,9 @@ Vector<double> readDoubleDataset(hid_t              file,
   return data;
 }
 
-Vector<Index> readIntDataset(hid_t              file,
-                             const std::string& path,
-                             Vector<hsize_t>&   dims)
+Array<Index> readIntDataset(hid_t              file,
+                            const std::string& path,
+                            Array<hsize_t>&    dims)
 {
   hid_t dset = H5Dopen2(file, path.c_str(), H5P_DEFAULT);
   checkHdf5Id(dset, "Failed to open dataset " + path);
@@ -271,7 +272,7 @@ Vector<Index> readIntDataset(hid_t              file,
   {
     count *= dim;
   }
-  Vector<Index> data(static_cast<Index>(count));
+  Array<Index> data(static_cast<Index>(count));
   checkHdf5(H5Dread(dset,
                     H5T_NATIVE_INT,
                     H5S_ALL,
@@ -285,16 +286,16 @@ Vector<Index> readIntDataset(hid_t              file,
 
 Mesh readMesh(hid_t file, Element::Shape shape)
 {
-  Vector<hsize_t> geom_dims;
-  const auto      geometry =
+  Array<hsize_t> geom_dims;
+  const auto     geometry =
       readDoubleDataset(file, "/Mesh/Geometry", geom_dims);
   if (geom_dims.size() != 2 || geom_dims[1] != 3)
   {
     throw std::runtime_error("TimeSeriesDataIn expects /Mesh/Geometry as N x 3");
   }
 
-  Vector<hsize_t> topo_dims;
-  const auto      topology =
+  Array<hsize_t> topo_dims;
+  const auto     topology =
       readIntDataset(file, "/Mesh/Topology", topo_dims);
   if (topo_dims.size() != 2)
   {
@@ -320,7 +321,7 @@ Mesh readMesh(hid_t file, Element::Shape shape)
 
   for (Index ie = 0; ie < elems; ++ie)
   {
-    Vector<Index> nids;
+    Array<Index> nids;
     nids.reserve(cn);
     for (Index i = 0; i < cn; ++i)
     {
@@ -331,12 +332,12 @@ Mesh readMesh(hid_t file, Element::Shape shape)
   return mesh;
 }
 
-std::array<Vector<Real>, 3> readVectorField(hid_t              file,
-                                            const std::string& path,
-                                            Index              num_nodes)
+std::array<HostVector, 3> readVectorField(hid_t              file,
+                                          const std::string& path,
+                                          Index              num_nodes)
 {
-  Vector<hsize_t> dims;
-  const auto      data = readDoubleDataset(file, path, dims);
+  Array<hsize_t> dims;
+  const auto     data = readDoubleDataset(file, path, dims);
   if (dims.size() != 2 || dims[0] != static_cast<hsize_t>(num_nodes)
       || dims[1] != 3)
   {
@@ -344,8 +345,8 @@ std::array<Vector<Real>, 3> readVectorField(hid_t              file,
         "TimeSeriesDataIn expects vector field as num_nodes x 3: " + path);
   }
 
-  std::array<Vector<Real>, 3> out{
-      Vector<Real>(num_nodes), Vector<Real>(num_nodes), Vector<Real>(num_nodes)};
+  std::array<HostVector, 3> out{
+      HostVector(num_nodes), HostVector(num_nodes), HostVector(num_nodes)};
   for (Index in = 0; in < num_nodes; ++in)
   {
     for (Index d = 0; d < 3; ++d)
@@ -400,10 +401,10 @@ TimeSeriesDataIn TimeSeriesDataIn::read(const std::string& path)
   }
 
   out.steps_.resize(hdf5_steps);
-  Vector<std::string> vector_fields = xdmf.vector_fields;
-  if (vector_fields.empty())
+  Array<std::string> vec_fields = xdmf.vec_fields;
+  if (vec_fields.empty())
   {
-    vector_fields.push_back("velocity");
+    vec_fields.push_back("velocity");
   }
 
   for (Index step = 0; step < hdf5_steps; ++step)
@@ -414,7 +415,7 @@ TimeSeriesDataIn TimeSeriesDataIn::read(const std::string& path)
                            : xdmf.times[step];
 
     const std::string group = "/Data/" + stepName(step);
-    for (const std::string& field : vector_fields)
+    for (const std::string& field : vec_fields)
     {
       const std::string field_path = group + "/" + field;
       if (linkExists(file, field_path))
@@ -445,7 +446,7 @@ Real TimeSeriesDataIn::time(Index step) const
   return steps_[step].time;
 }
 
-const std::array<Vector<Real>, 3>& TimeSeriesDataIn::vectorField(
+const std::array<HostVector, 3>& TimeSeriesDataIn::vectorField(
     Index              step,
     const std::string& name) const
 {

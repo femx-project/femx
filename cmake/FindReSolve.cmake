@@ -1,37 +1,18 @@
 include_guard(GLOBAL)
 
-set(_ReSolve_HINTS)
-set(_ReSolve_VERSION_ARGS)
-
-if(ReSolve_FIND_VERSION)
-  list(APPEND _ReSolve_VERSION_ARGS "${ReSolve_FIND_VERSION}")
-  if(ReSolve_FIND_VERSION_EXACT)
-    list(APPEND _ReSolve_VERSION_ARGS EXACT)
-  endif()
-endif()
-
-foreach(_var ReSolve_ROOT RESOLVE_ROOT)
-  if(DEFINED ${_var})
-    list(APPEND _ReSolve_HINTS "${${_var}}")
-  endif()
-
-  if(DEFINED ENV{${_var}})
-    list(APPEND _ReSolve_HINTS "$ENV{${_var}}")
-  endif()
-endforeach()
+set(_ReSolve_DEVELOP_PREFIX "/opt/resolve/develop")
+set(_ReSolve_DEVELOP_CONFIG
+    "${_ReSolve_DEVELOP_PREFIX}/share/resolve/cmake")
+set(ReSolve_DIR
+    "${_ReSolve_DEVELOP_CONFIG}"
+    CACHE PATH "Required ReSolve development package directory" FORCE)
 
 find_package(
   ReSolve
-  ${_ReSolve_VERSION_ARGS}
   CONFIG
   QUIET
-  HINTS
-  ${_ReSolve_HINTS}
-  PATH_SUFFIXES
-  share/resolve/cmake
-  share/ReSolve/cmake
-  lib/cmake/ReSolve
-  lib64/cmake/ReSolve)
+  PATHS "${_ReSolve_DEVELOP_PREFIX}"
+  NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ReSolve CONFIG_MODE)

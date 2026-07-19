@@ -12,6 +12,14 @@ from .mesh import Mesh
 
 _BACKENDS = {}
 
+
+@dataclass(frozen=True)
+class _Backend:
+    solver: object = None
+    device_time: bool = False
+    petsc_time: bool = False
+
+
 _RESOLVE_STRING_OPTIONS = (
     "factor",
     "refactor",
@@ -20,7 +28,7 @@ _RESOLVE_STRING_OPTIONS = (
     "ir",
     "gram_schmidt",
     "sketching",
-    "preconditioner_side",
+    "pc_side",
 )
 _RESOLVE_INT_OPTIONS = ("max_its", "restart")
 _RESOLVE_REAL_OPTIONS = ("rtol",)
@@ -140,11 +148,18 @@ def _resolve_options(values):
 def _backend_options(backend, values):
     if values is None:
         return None
-    if backend not in ("resolve", "resolve-cuda"):
+    if backend != "resolve":
         raise ValueError(
             f"solver options are not supported for backend '{backend}'"
         )
     return _resolve_options(values)
+
+
+def _activate_backend(prob, backend):
+    if backend == "petsc":
+        prob.model._impl._use_petsc_world_element_range()
+    else:
+        prob.model._impl._use_full_element_range()
 
 
 def _bnds(bnds, size):
@@ -190,54 +205,15 @@ def _bnds(bnds, size):
     return np.ascontiguousarray(lower), np.ascontiguousarray(upper)
 
 
-def _configure_assembly(prob, backend):
-    if backend == "petsc":
-        prob.model._impl._use_petsc_world_element_range()
-    else:
-        prob.model._impl._use_full_element_range()
-
-
-def _dense_matrix(prob):
-    _configure_assembly(prob, "dense")
-    return _core.DenseAssemblyMatrix()
-
-
 def _dense_solver(_, options=None):
     del options
     return _core.DenseLinearSolver()
 
 
-def _resolve_matrix(prob):
-    _configure_assembly(prob, "resolve")
-    return _core._CsrAssemblyMatrix(prob.model._impl._matrix_pattern)
-
-
 def _resolve_solver(_, options=None):
     if options is None:
-        return _core._ReSolveLinearSolver(_core._WorkspaceType.CPU)
-    return _core._ReSolveLinearSolver(
-        _core._WorkspaceType.CPU,
-        options,
-    )
-
-
-def _resolve_cuda_solver(_, options=None):
-    if options is None:
-        return _core._ReSolveLinearSolver(_core._WorkspaceType.CUDA)
-    return _core._ReSolveLinearSolver(
-        _core._WorkspaceType.CUDA,
-        options,
-    )
-
-
-def _petsc_matrix(prob):
-    _configure_assembly(prob, "petsc")
-    return _core._PETScAssemblyMatrix(prob.model._impl._matrix_pattern)
-
-
-def _petsc_solver(_, options=None):
-    del options
-    return _core._KspLinearSolver()
+        return _core._ReSolveLinearSolver()
+    return _core._ReSolveLinearSolver(options)
 
 
 @dataclass(frozen=True)
@@ -715,28 +691,55 @@ class NavierStokesSolver:
     def __init__(self, prob, backend, options=None):
         if not isinstance(prob, NavierStokesProblem):
             raise TypeError("prob must be a NavierStokesProblem")
-        matrix, solver = _factories(backend)
+        factories = _factories(backend)
         options = _backend_options(backend, options)
         prob._ensure_built()
 
         self._prob = prob
         self._compiled = prob._compiled
         self._backend = backend
-        self._matrix = matrix(prob)
-        self._linear_solver = solver(prob, options)
-        self._linear_integrator = _core.TimeLinearIntegrator(
-            prob.residual,
-            self._matrix,
-            self._linear_solver,
-        )
-        self._linear_integrator.set_initial_state(prob._initial_state)
-        if prob._initial_map is not None:
-            self._integrator = _core._AffineInitialStateIntegrator(
-                self._linear_integrator,
-                prob._initial_map,
-            )
+        if factories.device_time:
+            if prob._ctr is None:
+                self._integ = _core._DeviceTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                    options,
+                )
+            else:
+                self._integ = _core._DeviceTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                    prob._initial_modes,
+                    options,
+                )
+            self._timer = self._integ
+        elif factories.petsc_time:
+            if prob._ctr is None:
+                self._integ = _core._PetscTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                )
+            else:
+                self._integ = _core._PetscTimeIntegrator(
+                    prob.model._impl,
+                    prob._compiled,
+                    prob._initial_state,
+                    prob._initial_modes,
+                )
+            self._timer = self._integ
         else:
-            self._integrator = self._linear_integrator
+            lin = factories.solver(prob, options)
+            time = _core.TimeIntegrator(
+                prob.residual,
+                lin,
+            )
+            if prob._initial_map is None:
+                time.set_initial_state(prob._initial_state)
+            self._integ = time
+            self._timer = time
         self._num_solves = 0
 
     @property
@@ -753,11 +756,22 @@ class NavierStokesSolver:
 
     @property
     def assembly_calls(self):
-        return self._linear_integrator.assembly_calls
+        return self._timer.assembly_calls
 
     @property
     def linear_solve_calls(self):
-        return self._linear_integrator.solve_calls
+        return self._timer.solve_calls
+
+    @property
+    def assembly_seconds(self):
+        return self._timer.assembly_seconds
+
+    @property
+    def solve_seconds(self):
+        return self._timer.solve_seconds
+
+    def reset_timing(self):
+        self._timer.reset_timing()
 
     def solve(self, param=None, progress=None):
         if self._prob._compiled is not self._compiled:
@@ -767,9 +781,9 @@ class NavierStokesSolver:
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
 
-        _configure_assembly(self._prob, self._backend)
+        _activate_backend(self._prob, self._backend)
         param = self._prob._check_param(param)
-        traj = self._integrator.solve(param, progress=progress)
+        traj = self._integ.solve(param, progress=progress)
         self._num_solves += 1
         return traj
 
@@ -782,7 +796,6 @@ class NavierStokesReducedFunctional:
             raise TypeError("prob must be a NavierStokesProblem")
         if not isinstance(obj, _core.TimeObjective):
             raise TypeError("obj must be a TimeObjective")
-        matrix, solver = _factories(backend)
         prob._ensure_built()
         if (
             obj.num_steps != prob.model.num_steps
@@ -795,26 +808,25 @@ class NavierStokesReducedFunctional:
         self._compiled = prob._compiled
         self._obj = obj
         self._backend = backend
-        self._forward_solver = prob.create_solver(backend)
-        self._linearization = _core.TimeLinearization()
-        self._next_state_matrix = matrix(prob)
-        self._history_matrix = matrix(prob)
-        self._adjoint_solver = solver(prob)
-        self._impl = _core.TimeReducedFunctional(
-            self._forward_solver._integrator,
-            prob.residual,
-            self._linearization,
-            self._next_state_matrix,
-            self._history_matrix,
-            self._adjoint_solver,
-            obj,
-        )
-        self._init_grad = None
-        if prob._initial_map is not None:
-            self._init_grad = _core._AffineInitialStateGradientMap(
-                prob._initial_map,
+        self._fwd = prob.create_solver(backend)
+        factories = _factories(backend)
+        if factories.device_time:
+            self._impl = _core._DeviceTimeReducedFunctional(
+                self._fwd._integ,
+                obj,
             )
-            self._impl.set_initial_state_param_jac_t(self._init_grad)
+        elif factories.petsc_time:
+            self._impl = _core._PetscTimeReducedFunctional(
+                self._fwd._integ,
+                obj,
+            )
+        else:
+            adj = factories.solver(prob)
+            self._impl = _core.TimeReducedFunctional(
+                self._fwd._integ,
+                adj,
+                obj,
+            )
 
     @property
     def prob(self):
@@ -858,7 +870,7 @@ class NavierStokesReducedFunctional:
             )
 
     def _activate_backend(self):
-        _configure_assembly(self._prob, self._backend)
+        _activate_backend(self._prob, self._backend)
 
     def value(self, param):
         self._check_current()
@@ -945,13 +957,13 @@ class TaoOptimizer:
         )
 
 
-_BACKENDS["dense"] = (_dense_matrix, _dense_solver)
-if hasattr(_core, "_ReSolveLinearSolver"):
-    _BACKENDS["resolve"] = (_resolve_matrix, _resolve_solver)
-    if _core._resolve_has_cuda:
-        _BACKENDS["resolve-cuda"] = (
-            _resolve_matrix,
-            _resolve_cuda_solver,
-        )
-if hasattr(_core, "_KspLinearSolver"):
-    _BACKENDS["petsc"] = (_petsc_matrix, _petsc_solver)
+_BACKENDS["dense"] = _Backend(_dense_solver)
+if hasattr(_core, "_ReSolveLinearSolver") and (
+    not _core._resolve_uses_cuda or _core._cuda_available
+):
+    _BACKENDS["resolve"] = _Backend(
+        _resolve_solver,
+        device_time=_core._resolve_uses_cuda,
+    )
+if hasattr(_core, "_PetscTimeIntegrator"):
+    _BACKENDS["petsc"] = _Backend(petsc_time=True)

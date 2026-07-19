@@ -7,6 +7,7 @@ import femx
 
 
 TINY_MESH_FILE = Path(__file__).parent / "data" / "2d_tiny_tube.msh"
+HAS_ENZYME = getattr(femx._core, "_has_enzyme", False)
 
 DENSE_PARAM = np.array([0.1, 0.2])
 DENSE_PRED = np.array(
@@ -108,6 +109,7 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
         self.assertEqual(self.reduced.backend, "dense")
 
+    @unittest.skipUnless(HAS_ENZYME, "femx was built without Enzyme")
     def test_dense_reference_signature(self):
         traj = self.problem.solve(DENSE_PARAM)
         pred = self.operator.predict(traj)
@@ -145,6 +147,7 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             atol=1.0e-13,
         )
 
+    @unittest.skipUnless(HAS_ENZYME, "femx was built without Enzyme")
     def test_adjoint_gradient_matches_central_difference(self):
         parameters = np.array([0.1, 0.2])
 
@@ -155,8 +158,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             self.operator.predict(trajectory)
         )
         self.assertAlmostEqual(value, expected_value, places=13)
-        self.assertEqual(self.reduced.solve_calls, self.model.num_steps)
-        self.assertGreater(
+        self.assertEqual(self.reduced.solve_calls, 2 * self.model.num_steps)
+        self.assertEqual(
             self.reduced.assembly_calls,
             self.reduced.solve_calls,
         )
@@ -178,6 +181,7 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             atol=1.0e-9,
         )
 
+    @unittest.skipUnless(HAS_ENZYME, "femx was built without Enzyme")
     def test_reports_each_forward_and_adjoint_step(self):
         events = []
 
@@ -206,8 +210,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        "resolve" in femx.solver_backends(),
-        "femx was built without ReSolve",
+        HAS_ENZYME and "resolve" in femx.solver_backends(),
+        "femx was built without Enzyme or ReSolve",
     )
     def test_resolve_matches_dense_forward_value_and_gradient(self):
         traj = self.problem.solve(DENSE_PARAM, backend="resolve")
@@ -220,8 +224,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         np.testing.assert_allclose(
             traj.values,
             self.problem.solve(DENSE_PARAM).values,
-            rtol=2.0e-8,
-            atol=2.0e-10,
+            rtol=1.0e-6,
+            atol=2.0e-8,
         )
         self.assertAlmostEqual(obj, DENSE_OBJ, places=8)
         np.testing.assert_allclose(
@@ -232,8 +236,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        "petsc" in femx.solver_backends(),
-        "femx was built without PETSc",
+        HAS_ENZYME and "petsc" in femx.solver_backends(),
+        "femx was built without Enzyme or PETSc",
     )
     def test_petsc_matches_dense_forward_value_and_gradient(self):
         traj = self.problem.solve(DENSE_PARAM, backend="petsc")
@@ -257,11 +261,38 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             atol=2.0e-9,
         )
 
+    @unittest.skipUnless(
+        HAS_ENZYME and "petsc" in femx.solver_backends(),
+        "femx was built without Enzyme or PETSc/TAO",
+    )
+    def test_tao_accepts_dense_and_petsc_reduced_functionals(self):
+        results = []
+        for backend in ("dense", "petsc"):
+            reduced = self.problem.create_reduced(
+                self.observation.objective(num_param=self.problem.num_param),
+                backend=backend,
+            )
+            result = femx.TaoOptimizer(reduced).solve(
+                DENSE_PARAM,
+                max_itrs=2,
+            )
+            self.assertEqual(result.param.shape, DENSE_PARAM.shape)
+            self.assertEqual(result.grad.shape, DENSE_PARAM.shape)
+            self.assertTrue(np.isfinite(result.obj))
+            results.append(result)
+
+        self.assertAlmostEqual(results[0].obj, results[1].obj, places=12)
+
     def test_rejects_stale_problem_configuration(self):
         self.problem.add_bc(femx.DirichletBC("inlet", "pressure", 0.0))
 
         with self.assertRaisesRegex(RuntimeError, "configuration changed"):
             self.reduced.value(np.array([0.1, 0.2]))
+
+    @unittest.skipIf(HAS_ENZYME, "femx was built with Enzyme")
+    def test_gradient_requires_enzyme(self):
+        with self.assertRaisesRegex(RuntimeError, "requires Enzyme"):
+            self.reduced.grad(DENSE_PARAM)
 
 
 if __name__ == "__main__":

@@ -29,13 +29,13 @@ public:
 
   Element() = default;
 
-  Element(Vector<Index> nids,
-          Vector<Node>  nodes,
-          Shape         shape = Shape::Unknown,
-          Index         edim  = 0,
-          Index         etag  = 0,
-          Index         ptag  = 0,
-          std::string   pname = {})
+  Element(Array<Index> nids,
+          Array<Node>  nodes,
+          Shape        shape = Shape::Unknown,
+          Index        edim  = 0,
+          Index        etag  = 0,
+          Index        ptag  = 0,
+          std::string  pname = {})
     : nids_(std::move(nids)),
       nodes_(std::move(nodes)),
       shape_(shape),
@@ -56,7 +56,7 @@ public:
     return nids_.data();
   }
 
-  const Vector<Index>& nodeIds() const
+  const Array<Index>& nodeIds() const
   {
     return nids_;
   }
@@ -92,13 +92,13 @@ public:
   }
 
 private:
-  Vector<Index> nids_;
-  Vector<Node>  nodes_;
-  Shape         shape_{Shape::Unknown};
-  Index         edim_{0};
-  Index         etag_{0};
-  Index         ptag_{0};
-  std::string   pname_;
+  Array<Index> nids_;
+  Array<Node>  nodes_;
+  Shape        shape_{Shape::Unknown};
+  Index        edim_{0};
+  Index        etag_{0};
+  Index        ptag_{0};
+  std::string  pname_;
 };
 
 } // namespace fem

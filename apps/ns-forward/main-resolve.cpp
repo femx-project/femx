@@ -5,16 +5,16 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -99,15 +99,6 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
   opts.flexible     = solver.flexible;
 }
 
-WorkspaceType workspaceType(const SolverParams& solver)
-{
-  if (solver.backend == "cuda")
-  {
-    return WorkspaceType::Cuda;
-  }
-  return WorkspaceType::Cpu;
-}
-
 int run(const Params& prm)
 {
   const bool output_enabled = prm.output.enabled;
@@ -122,12 +113,6 @@ int run(const Params& prm)
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
 
-  CsrAssemblyMatrix   A(fwd.model.matrixPattern());
-  ReSolveLinearSolver solver(workspaceType(prm.solver), opts);
-
-  TimeLinearIntegrator integ(fwd.problem, A, solver);
-  integ.setInitialState(fwd.x0);
-
   std::ofstream log_out;
   if (output_enabled)
   {
@@ -135,13 +120,42 @@ int run(const Params& prm)
   }
 
   ForwardSolveResult result;
-  integ.resetTiming();
+#if defined(FEMX_RESOLVE_USE_CUDA)
+  CudaContext ctx;
+  auto        res = makeDeviceTimeResidual(fwd.model, fwd.problem.controlMap());
+
+  DeviceCsrMatrix     mat(res->graph());
+  ReSolveLinearSolver solver(opts);
+
+  DeviceTimeIntegrator integ(*res, mat, solver, ctx);
+
+  DeviceVector initial;
+  femx::copy(fwd.x0, initial, ctx);
+
+  ctx.synchronize();
+
+  integ.setInitialState(initial);
   result = solve(integ,
                  fwd,
                  prm.time,
                  prm.output,
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
+#else
+  HostCsrMatrix       mat(fwd.model.map().graph());
+  ReSolveLinearSolver solver(opts);
+  CpuContext          ctx;
+
+  HostTimeIntegrator integ(fwd.problem, mat, solver, ctx);
+
+  integ.setInitialState(fwd.x0);
+  result = solve(integ,
+                 fwd,
+                 prm.time,
+                 prm.output,
+                 &std::cout,
+                 output_enabled ? &log_out : nullptr);
+#endif
 
   if (!isFinite(result.final_state))
   {

@@ -46,7 +46,7 @@ Index DofLayout::numDofsPerElem() const
   return mixedSpace().numDofsPerElem();
 }
 
-void DofLayout::elemDofs(Index ie, Vector<Index>& dofs) const
+void DofLayout::elemDofs(Index ie, Array<Index>& dofs) const
 {
   if (ie < 0 || ie >= numElems())
   {

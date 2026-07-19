@@ -105,8 +105,8 @@ Index FESpace::globalDof(Index in,
   return comps_ * in + comp;
 }
 
-void FESpace::elemDofs(Index          ie,
-                       Vector<Index>& dofs) const
+void FESpace::elemDofs(Index         ie,
+                       Array<Index>& dofs) const
 {
   dofs.resize(dof_map_.numElementDofs());
 
@@ -117,9 +117,9 @@ void FESpace::elemDofs(Index          ie,
   }
 }
 
-Vector<Index> FESpace::elemDofs(Index ie) const
+Array<Index> FESpace::elemDofs(Index ie) const
 {
-  Vector<Index> dofs;
+  Array<Index> dofs;
   elemDofs(ie, dofs);
   return dofs;
 }

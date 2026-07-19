@@ -28,39 +28,51 @@
       }
     },
     {
-      "name": "resolve",
+      "name": "resolve-cpu",
       "displayName": "ReSolve CPU",
       "description": "Build apps/tests with a CPU-only ReSolve package.",
       "inherits": "resolve-base",
-      "binaryDir": "${sourceDir}/build/resolve",
+      "binaryDir": "${sourceDir}/build/resolve-cpu",
       "cacheVariables": {
-        "FEMX_RESOLVE_BACKEND": "CPU",
-        "RESOLVE_USE_CUDA": "OFF"
+        "FEMX_RESOLVE_BACKEND": "CPU"
       }
     },
     {
-      "name": "resolve-cuda",
-      "displayName": "ReSolve CUDA",
-      "description": "Build apps/tests with the CUDA-enabled ReSolve backend.",
-      "inherits": "resolve-base",
-      "binaryDir": "${sourceDir}/build/resolve-cuda",
+      "name": "cuda",
+      "displayName": "CUDA backend",
+      "description": "Build the standalone CUDA containers and assembly path.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/cuda",
       "cacheVariables": {
-        "FEMX_RESOLVE_BACKEND": "CUDA",
-        "RESOLVE_USE_CUDA": "ON",
+        "FEMX_ENABLE_CUDA": "ON",
+        "FEMX_ENABLE_RESOLVE": "OFF",
+        "FEMX_ENABLE_PETSC": "OFF",
+        "FEMX_BUILD_APPS": "OFF",
+        "FEMX_BUILD_EXAMPLES": "OFF",
         "CMAKE_CUDA_ARCHITECTURES": "60"
       }
     },
     {
-      "name": "resolve-cuda-petsc",
+      "name": "resolve",
+      "displayName": "ReSolve CUDA",
+      "description": "Build apps/tests with the CUDA-enabled ReSolve backend.",
+      "inherits": "resolve-base",
+      "binaryDir": "${sourceDir}/build/resolve",
+      "cacheVariables": {
+        "FEMX_RESOLVE_BACKEND": "CUDA",
+        "CMAKE_CUDA_ARCHITECTURES": "60"
+      }
+    },
+    {
+      "name": "resolve-petsc",
       "displayName": "ReSolve CUDA + PETSc",
       "description": "Build PETSc/TAO apps with the CUDA-enabled ReSolve backend.",
       "inherits": "base",
-      "binaryDir": "${sourceDir}/build/resolve-cuda-petsc",
+      "binaryDir": "${sourceDir}/build/resolve-petsc",
       "cacheVariables": {
         "FEMX_ENABLE_RESOLVE": "ON",
         "FEMX_ENABLE_PETSC": "ON",
         "FEMX_RESOLVE_BACKEND": "CUDA",
-        "RESOLVE_USE_CUDA": "ON",
         "CMAKE_CUDA_ARCHITECTURES": "60"
       }
     },
@@ -122,16 +134,20 @@
   ],
   "buildPresets": [
     {
+      "name": "cuda",
+      "configurePreset": "cuda"
+    },
+    {
+      "name": "resolve-cpu",
+      "configurePreset": "resolve-cpu"
+    },
+    {
       "name": "resolve",
       "configurePreset": "resolve"
     },
     {
-      "name": "resolve-cuda",
-      "configurePreset": "resolve-cuda"
-    },
-    {
-      "name": "resolve-cuda-petsc",
-      "configurePreset": "resolve-cuda-petsc"
+      "name": "resolve-petsc",
+      "configurePreset": "resolve-petsc"
     },
     {
       "name": "petsc",
@@ -154,6 +170,20 @@
   ],
   "testPresets": [
     {
+      "name": "cuda",
+      "configurePreset": "cuda",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "resolve-cpu",
+      "configurePreset": "resolve-cpu",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
       "name": "resolve",
       "configurePreset": "resolve",
       "output": {
@@ -161,15 +191,8 @@
       }
     },
     {
-      "name": "resolve-cuda",
-      "configurePreset": "resolve-cuda",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "resolve-cuda-petsc",
-      "configurePreset": "resolve-cuda-petsc",
+      "name": "resolve-petsc",
+      "configurePreset": "resolve-petsc",
       "output": {
         "outputOnFailure": true
       }

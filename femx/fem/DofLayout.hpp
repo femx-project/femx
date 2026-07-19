@@ -4,9 +4,6 @@
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
 namespace fem
 {
 
@@ -22,17 +19,25 @@ class MixedFESpace;
 class DofLayout
 {
 public:
+  /** @brief View the element DOF layout of a scalar finite-element space. */
   explicit DofLayout(const FESpace& space);
 
+  /** @brief View the concatenated element DOF layout of a mixed space. */
   explicit DofLayout(const MixedFESpace& space);
 
+  /** @brief Return the number of elements. */
   Index numElems() const;
 
+  /** @brief Return the number of global DOFs. */
   Index numDofs() const;
 
+  /**
+   * @brief Return a fixed local DOF count, or zero for variable-size layouts.
+   */
   Index numDofsPerElem() const;
 
-  void elemDofs(Index ie, Vector<Index>& dofs) const;
+  /** @brief Replace `dofs` with the global DOFs of element `ie`. */
+  void elemDofs(Index ie, Array<Index>& dofs) const;
 
 private:
   const MixedFESpace& mixedSpace() const;

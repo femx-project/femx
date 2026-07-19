@@ -4,13 +4,11 @@ add_library(femx::inverse ALIAS femx_inverse)
 target_sources(
   femx_inverse
   PRIVATE LeastSquaresObjective.cpp
-          ReducedFunctional.cpp
           SumObjective.cpp
           SumTimeObjective.cpp
           TimeBlockRegularization.cpp
           TimeLeastSquaresObjective.cpp
           TimeObservationData.cpp
-          TimeReducedFunctional.cpp
           TimeRegularization.cpp
   PUBLIC LeastSquaresObjective.hpp
          Objective.hpp

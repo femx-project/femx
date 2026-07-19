@@ -46,7 +46,7 @@ public:
   }
 
   void calcN(const QuadraturePoint& qp,
-             VectorView<Real>       N) const override
+             HostVectorView         N) const override
   {
     const Real r = qp[0];
     const Real s = qp[1];
@@ -58,7 +58,7 @@ public:
   }
 
   void calcdNdr(const QuadraturePoint& qp,
-                MatrixView<Real>       dNdr) const override
+                HostMatrixView<Real>   dNdr) const override
   {
     const Real r = qp[0];
     const Real s = qp[1];

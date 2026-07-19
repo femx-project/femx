@@ -87,13 +87,13 @@ inline IndexRange mpiPartitionRange(Index    count,
                         static_cast<Index>(commSize(comm)));
 }
 
-template <typename FemAssembler>
-void setElemRange(FemAssembler& fem,
-                  Index         num_elems,
-                  MPI_Comm      comm = PETSC_COMM_WORLD)
+template <typename ElementRangeOwner>
+void setElemRange(ElementRangeOwner& owner,
+                  Index              num_elems,
+                  MPI_Comm           comm = PETSC_COMM_WORLD)
 {
   const IndexRange elems = mpiPartitionRange(num_elems, comm);
-  fem.setElemRange(elems.begin, elems.end);
+  owner.setElemRange(elems.begin, elems.end);
 }
 
 inline void setPetscOptionIfMissing(const char* name,

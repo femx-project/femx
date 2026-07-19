@@ -3,8 +3,9 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/common/Checks.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
-#include <femx/linalg/BlockVectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx::fem
 {
@@ -13,107 +14,83 @@ namespace
 
 using ValueMap = std::map<Index, Real>;
 
-ValueMap conditionValues(const DirichletBC& condition,
-                         Index              num_states,
-                         Real               time)
+ValueMap conditionVals(const DirichletBC& bc,
+                       Index              nstate,
+                       Real               t)
 {
-  if (condition.dofs().size() != condition.values().size())
-  {
-    throw std::runtime_error("DirichletBC has inconsistent data");
-  }
+  require(bc.dofs().size() == bc.vals().size(),
+          "DirichletBC has inconsistent data");
 
-  ValueMap values;
-  for (Index i = 0; i < condition.dofs().size(); ++i)
+  ValueMap vals;
+  for (Index i = 0; i < bc.dofs().size(); ++i)
   {
-    const Index dof   = condition.dofs()[i];
-    const Real  value = condition.values()[i];
-    if (dof < 0 || dof >= num_states)
-    {
-      throw std::runtime_error("Dirichlet dof is out of range");
-    }
-    if (!std::isfinite(value))
-    {
-      throw std::runtime_error("Dirichlet value must be finite");
-    }
+    const Index dof = bc.dofs()[i];
+    const Real  val = bc.vals()[i];
+    require(dof >= 0 && dof < nstate,
+            "Dirichlet dof is out of range");
+    require(std::isfinite(val), "Dirichlet value must be finite");
 
-    const auto [it, inserted] = values.emplace(dof, value);
-    if (!inserted && std::abs(it->second - value) > 1.0e-12)
-    {
-      throw std::runtime_error(
-          "conflicting Dirichlet values at dof " + std::to_string(dof)
-          + ", time " + std::to_string(time));
-    }
+    const auto [it, inserted] = vals.emplace(dof, val);
+    require(inserted || std::abs(it->second - val) <= 1.0e-12,
+            "conflicting Dirichlet values at dof " + std::to_string(dof)
+                + ", time " + std::to_string(t));
   }
-  return values;
+  return vals;
 }
 
-void checkDofSet(const ValueMap& expected,
-                 const ValueMap& actual,
-                 Real            time)
+void checkDofSet(const ValueMap& ref, const ValueMap& curr, Real t)
 {
-  if (expected.size() != actual.size())
+  require(ref.size() == curr.size(),
+          "Dirichlet constrained dofs changed at time " + std::to_string(t));
+  auto ref_it  = ref.begin();
+  auto curr_it = curr.begin();
+  for (; ref_it != ref.end(); ++ref_it, ++curr_it)
   {
-    throw std::runtime_error(
-        "Dirichlet constrained dofs changed at time " + std::to_string(time));
-  }
-  auto expected_it = expected.begin();
-  auto actual_it   = actual.begin();
-  for (; expected_it != expected.end(); ++expected_it, ++actual_it)
-  {
-    if (expected_it->first != actual_it->first)
-    {
-      throw std::runtime_error(
-          "Dirichlet constrained dofs changed at time "
-          + std::to_string(time));
-    }
+    require(ref_it->first == curr_it->first,
+            "Dirichlet constrained dofs changed at time "
+                + std::to_string(t));
   }
 }
 
 } // namespace
 
 TimeDirichletData makeTimeDirichletData(
-    Index                    num_states,
-    Index                    steps,
+    Index                    nstate,
+    Index                    nstep,
     Real                     dt,
     const DirichletBCAtTime& bc_at_time)
 {
-  if (num_states <= 0 || steps <= 0 || !std::isfinite(dt) || dt <= 0.0)
-  {
-    throw std::runtime_error(
-        "makeTimeDirichletData received invalid dimensions");
-  }
-  if (!bc_at_time)
-  {
-    throw std::runtime_error(
-        "makeTimeDirichletData requires a boundary-condition callback");
-  }
+  require(nstate > 0 && nstep > 0 && std::isfinite(dt) && dt > 0.0,
+          "makeTimeDirichletData received invalid dimensions");
+  require(static_cast<bool>(bc_at_time),
+          "makeTimeDirichletData requires a boundary-condition callback");
 
-  const ValueMap initial = conditionValues(
-      bc_at_time(0.0), num_states, 0.0);
+  const ValueMap init = conditionVals(bc_at_time(0.0), nstate, 0.0);
 
   TimeDirichletData out;
-  out.initial_state.resize(num_states);
-  out.initial_state.setZero();
-  for (const auto& [dof, value] : initial)
+  out.init_state.resize(nstate);
+  out.init_state.setZero();
+  for (const auto& [dof, val] : init)
   {
     out.dofs.push_back(dof);
-    out.initial_state[dof] = value;
+    out.init_state[dof] = val;
   }
 
-  out.values.resize(steps * out.dofs.size());
-  BlockVectorView<Real> values(out.values.data(), steps, out.dofs.size());
-  for (Index step = 0; step < steps; ++step)
+  out.vals.resize(nstep * out.dofs.size());
+  BlockVectorView<MemorySpace::Host, Real> vals(
+      out.vals.data(), nstep, out.dofs.size());
+  for (Index step = 0; step < nstep; ++step)
   {
-    const Real     time    = static_cast<Real>(step + 1) * dt;
-    const ValueMap current = conditionValues(
-        bc_at_time(time), num_states, time);
-    checkDofSet(initial, current, time);
+    const Real     t    = static_cast<Real>(step + 1) * dt;
+    const ValueMap curr = conditionVals(
+        bc_at_time(t), nstate, t);
+    checkDofSet(init, curr, t);
 
-    Index column = 0;
-    for (const auto& [dof, value] : current)
+    Index col = 0;
+    for (const auto& [dof, val] : curr)
     {
       (void) dof;
-      values(step, column++) = value;
+      vals(step, col++) = val;
     }
   }
   return out;

@@ -1,12 +1,21 @@
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/CsrAssemblyMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+
+#if defined(FEMX_RESOLVE_USE_CUDA)
+#include <cuda_runtime_api.h>
+
+#include "PoissonOperator.hpp"
+#include <femx/assembly/CudaAssembly.hpp>
+#include <femx/common/Context.hpp>
+#endif
 
 using namespace femx;
 using namespace femx::examples;
@@ -20,25 +29,142 @@ using namespace femx::linalg;
 namespace
 {
 
+#if defined(FEMX_RESOLVE_USE_CUDA)
+constexpr int cuda_threads = 256;
+
+__global__ void negateKernel(Index size, const Real* src, Real* dst)
+{
+  const Index i = static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (i < size)
+  {
+    dst[i] = -src[i];
+  }
+}
+
+__global__ void resNormKernel(Index        rows,
+                              const Index* row_ptr,
+                              const Index* col_ind,
+                              const Real*  vals,
+                              const Real*  rhs,
+                              const Real*  sol,
+                              Real*        norm2)
+{
+  const Index row =
+      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (row >= rows)
+  {
+    return;
+  }
+
+  Real val = -rhs[row];
+  for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+  {
+    val += vals[k] * sol[col_ind[k]];
+  }
+  atomicAdd(norm2, val * val);
+}
+
+unsigned int cudaBlocks(Index size)
+{
+  const std::int64_t blocks =
+      (static_cast<std::int64_t>(size) + cuda_threads - 1) / cuda_threads;
+  return static_cast<unsigned int>(blocks);
+}
+
+void solveDevice(const PoissonForwardProblem& problem,
+                 HostVector&                  x,
+                 Real&                        res_norm)
+{
+  CudaContext ctx;
+
+  fem::DeviceGeometry         geom;
+  assembly::DeviceAssemblyMap map;
+  assembly::DeviceBoundaryMap bc_map;
+  copy(problem.geom(), geom, ctx);
+  assembly::copy(problem.map(), map, ctx);
+  assembly::copy(problem.bcMap(), bc_map, ctx);
+
+  DeviceVector state(problem.numDofs());
+  DeviceVector res;
+  DeviceVector rhs(problem.numDofs());
+  DeviceVector bc_vals;
+  copy(problem.bcVals(), bc_vals, ctx);
+
+  DeviceCsrMatrix mat(map.graph());
+  assembly::assemble(PoissonQuadQ1Operator{},
+                     geom,
+                     map,
+                     state,
+                     res,
+                     mat,
+                     ctx);
+  negateKernel<<<cudaBlocks(res.size()),
+                 cuda_threads,
+                 0,
+                 static_cast<cudaStream_t>(ctx.stream())>>>(
+      res.size(), res.data(), rhs.data());
+  device::checkLastError();
+  assembly::prepareForwardSolve(bc_map, mat, rhs, bc_vals, ctx);
+
+  ReSolveLinearSolver solver;
+  DeviceVector sol;
+  solver.solve(mat, rhs, sol, ctx);
+
+  DeviceVector norm2(1);
+  resNormKernel<<<cudaBlocks(mat.rows()),
+                  cuda_threads,
+                  0,
+                  static_cast<cudaStream_t>(ctx.stream())>>>(
+      mat.rows(),
+      mat.rowPtrData(),
+      mat.colIndData(),
+      mat.valsData(),
+      rhs.data(),
+      sol.data(),
+      norm2.data());
+  device::checkLastError();
+
+  HostVector host_norm2;
+  copy(sol, x, ctx);
+  copy(norm2, host_norm2, ctx);
+  ctx.synchronize();
+  res_norm = std::sqrt(host_norm2[0]);
+}
+#endif
+
 int run(const Options& opts)
 {
   ExampleHelper         helper("resolve", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  CsrAssemblyMatrix A(problem.pattern());
-  Vector<Real>      rhs;
-  problem.assemble(A, rhs);
+  HostVector x;
+  Real       res_norm = 0.0;
+  if (opts.backend == MemorySpace::Host)
+  {
+    HostCsrMatrix A(problem.map().graph());
+    HostVector    rhs;
+    problem.assemble(A, rhs);
 
-  ReSolveLinearSolver solver(opts.backend);
-
-  Vector<Real> x;
-  solver.solve(A, rhs, x);
+    ReSolveLinearSolver solver;
+    CpuContext          ctx;
+    solver.solve(A, rhs, x, ctx);
+    res_norm = helper.resNorm(A, rhs, x);
+  }
+  else
+  {
+#if defined(FEMX_RESOLVE_USE_CUDA)
+    solveDevice(problem, x, res_norm);
+#else
+    throw std::runtime_error(
+        "CUDA Poisson backend requires a CUDA-enabled ReSolve build");
+#endif
+  }
 
   printReport(std::cout,
-              helper.backendName(),
+              helper.name(),
               problem,
               problem.errorReport(x),
-              helper.residualNorm(A, rhs, x));
+              res_norm);
 
   if (opts.write_output)
   {
@@ -50,26 +176,13 @@ int run(const Options& opts)
   return 0;
 }
 
-bool hasHelp(int argc, char** argv)
-{
-  for (int i = 1; i < argc; ++i)
-  {
-    const std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h")
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
 } // namespace
 
 int main(int argc, char* argv[])
 {
   try
   {
-    if (hasHelp(argc, argv))
+    if (examples::hasHelp(argc, argv))
     {
       printUsage(FEMX_POISSON_APP_NAME, false);
       return 0;

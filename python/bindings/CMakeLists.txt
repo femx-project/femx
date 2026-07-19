@@ -66,7 +66,8 @@ if(TARGET femx_linalg_petsc)
 endif()
 
 set_target_properties(
-  _core PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/python/femx")
+  _core PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/python/femx"
+                   INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 install(TARGETS _core LIBRARY DESTINATION femx COMPONENT python)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../femx/"

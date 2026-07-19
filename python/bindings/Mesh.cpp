@@ -21,24 +21,24 @@ using femx::fem::BoundarySurface;
 using femx::fem::Mesh;
 using femx::fem::SparseTripletMatrix;
 
-py::array_t<Index> indexArray(const femx::Vector<Index>& values)
+py::array_t<Index> indexArray(const femx::Array<Index>& vals)
 {
-  py::array_t<Index> out(values.size());
+  py::array_t<Index> out(vals.size());
   auto               data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < values.size(); ++i)
+  for (Index i = 0; i < vals.size(); ++i)
   {
-    data(i) = values[i];
+    data(i) = vals[i];
   }
   return out;
 }
 
-py::array_t<Real> realArray(const femx::Vector<Real>& values)
+py::array_t<Real> realArray(const femx::HostVector& vals)
 {
-  py::array_t<Real> out(values.size());
+  py::array_t<Real> out(vals.size());
   auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < values.size(); ++i)
+  for (Index i = 0; i < vals.size(); ++i)
   {
-    data(i) = values[i];
+    data(i) = vals[i];
   }
   return out;
 }
@@ -94,13 +94,13 @@ py::array_t<Index> surfaceElements(const BoundarySurface& surface)
   return out;
 }
 
-py::dict tripletData(const SparseTripletMatrix& matrix)
+py::dict tripletData(const SparseTripletMatrix& mat)
 {
   py::dict out;
-  out["shape"] = py::make_tuple(matrix.rows, matrix.cols);
-  out["rows"]  = indexArray(matrix.row_indices);
-  out["cols"]  = indexArray(matrix.col_indices);
-  out["data"]  = realArray(matrix.values);
+  out["shape"] = py::make_tuple(mat.rows, mat.cols);
+  out["rows"]  = indexArray(mat.row_indices);
+  out["cols"]  = indexArray(mat.col_indices);
+  out["data"]  = realArray(mat.vals);
   return out;
 }
 

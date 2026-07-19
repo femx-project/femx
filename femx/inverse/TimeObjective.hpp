@@ -1,17 +1,10 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
+#include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
 {
-template <typename T>
-class Vector;
-
-namespace state
-{
-class TimeTrajectory;
-} // namespace state
-
 namespace inverse
 {
 
@@ -31,16 +24,16 @@ public:
   virtual Index numParams() const = 0;
 
   virtual Real value(const state::TimeTrajectory& tr,
-                     const Vector<Real>&          prm) const = 0;
+                     const HostVector&            prm) const = 0;
 
   virtual void stateGrad(Index                        level,
                          const state::TimeTrajectory& tr,
-                         const Vector<Real>&          prm,
-                         Vector<Real>&                out) const = 0;
+                         const HostVector&            prm,
+                         HostVector&                  out) const = 0;
 
   virtual void paramGrad(const state::TimeTrajectory& tr,
-                         const Vector<Real>&          prm,
-                         Vector<Real>&                out) const = 0;
+                         const HostVector&            prm,
+                         HostVector&                  out) const = 0;
 };
 
 } // namespace inverse

@@ -8,10 +8,9 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixView.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -28,8 +27,8 @@ bool near(Real a, Real b)
 }
 
 template <std::size_t N>
-bool valuesNear(const Vector<Real>&        actual,
-                const std::array<Real, N>& expected)
+bool valsNear(const HostVector&          actual,
+              const std::array<Real, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
   {
@@ -45,12 +44,12 @@ bool valuesNear(const Vector<Real>&        actual,
   return true;
 }
 
-Vector<Real> shapeValues(const FiniteElement&   elem,
-                         const QuadraturePoint& qp)
+HostVector shapeVals(const FiniteElement&   elem,
+                     const QuadraturePoint& qp)
 {
-  Vector<Real> values(elem.numDofsPerElement());
-  elem.calcN(qp, VectorView<Real>(values.data(), values.size()));
-  return values;
+  HostVector vals(elem.numDofsPerElement());
+  elem.calcN(qp, HostVectorView(vals.data(), vals.size()));
+  return vals;
 }
 
 DenseMatrix shapeGradients(const FiniteElement&   elem,
@@ -58,17 +57,17 @@ DenseMatrix shapeGradients(const FiniteElement&   elem,
 {
   DenseMatrix gradients(elem.numDofsPerElement(), elem.dim());
   elem.calcdNdr(qp,
-                MatrixView<Real>(
+                HostMatrixView<Real>(
                     gradients.data(), gradients.rows(), gradients.cols()));
   return gradients;
 }
 
-Real sum(const Vector<Real>& values)
+Real sum(const HostVector& vals)
 {
   Real total = 0.0;
-  for (Index i = 0; i < values.size(); ++i)
+  for (Index i = 0; i < vals.size(); ++i)
   {
-    total += values[i];
+    total += vals[i];
   }
   return total;
 }
@@ -139,9 +138,9 @@ TestOutcome triangleP1ShapeFunctions()
 
   LagrangeTriangleP1    tri;
   const QuadraturePoint interior{{0.2, 0.3, 0.0}, 0.0};
-  const Vector<Real>    N = shapeValues(tri, interior);
+  const HostVector      N = shapeVals(tri, interior);
 
-  status *= valuesNear(N, std::array<Real, 3>{{0.5, 0.2, 0.3}});
+  status *= valsNear(N, std::array<Real, 3>{{0.5, 0.2, 0.3}});
   status *= near(sum(N), 1.0);
   status *= gradientColumnsSumToZero(tri, interior);
 
@@ -152,11 +151,11 @@ TestOutcome triangleP1ShapeFunctions()
   }};
   for (Index node = 0; node < tri.numNodes(); ++node)
   {
-    const Vector<Real> values = shapeValues(
+    const HostVector vals = shapeVals(
         tri, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < tri.numNodes(); ++i)
     {
-      status *= near(values[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[i], i == node ? 1.0 : 0.0);
     }
   }
 
@@ -169,9 +168,9 @@ TestOutcome quadQ1ShapeFunctions()
 
   LagrangeQuadQ1        quad;
   const QuadraturePoint interior{{0.2, -0.4, 0.0}, 0.0};
-  const Vector<Real>    N = shapeValues(quad, interior);
+  const HostVector      N = shapeVals(quad, interior);
 
-  status *= valuesNear(N, std::array<Real, 4>{{0.28, 0.42, 0.18, 0.12}});
+  status *= valsNear(N, std::array<Real, 4>{{0.28, 0.42, 0.18, 0.12}});
   status *= near(sum(N), 1.0);
   status *= gradientColumnsSumToZero(quad, interior);
 
@@ -183,11 +182,11 @@ TestOutcome quadQ1ShapeFunctions()
   }};
   for (Index node = 0; node < quad.numNodes(); ++node)
   {
-    const Vector<Real> values = shapeValues(
+    const HostVector vals = shapeVals(
         quad, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < quad.numNodes(); ++i)
     {
-      status *= near(values[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[i], i == node ? 1.0 : 0.0);
     }
   }
 
@@ -200,9 +199,9 @@ TestOutcome tetrahedronP1ShapeFunctions()
 
   LagrangeTetrahedronP1 tet;
   const QuadraturePoint interior{{0.2, 0.3, 0.1}, 0.0};
-  const Vector<Real>    N = shapeValues(tet, interior);
+  const HostVector      N = shapeVals(tet, interior);
 
-  status *= valuesNear(N, std::array<Real, 4>{{0.4, 0.2, 0.3, 0.1}});
+  status *= valsNear(N, std::array<Real, 4>{{0.4, 0.2, 0.3, 0.1}});
   status *= near(sum(N), 1.0);
   status *= gradientColumnsSumToZero(tet, interior);
 
@@ -214,11 +213,11 @@ TestOutcome tetrahedronP1ShapeFunctions()
   }};
   for (Index node = 0; node < tet.numNodes(); ++node)
   {
-    const Vector<Real> values = shapeValues(
+    const HostVector vals = shapeVals(
         tet, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < tet.numNodes(); ++i)
     {
-      status *= near(values[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[i], i == node ? 1.0 : 0.0);
     }
   }
 

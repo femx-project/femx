@@ -6,18 +6,15 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScAssemblyMatrix.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/Linearization.hpp>
 
 using namespace femx;
 using namespace femx::examples;
 using namespace femx::examples::poisson_opt;
 using namespace femx::linalg;
-using namespace femx::state;
 using namespace femx::runtime;
 
 #ifndef FEMX_POISSON_OPT_APP_NAME
@@ -29,29 +26,27 @@ namespace
 
 int run(const Options& opts)
 {
-  if (opts.backend != WorkspaceType::Cpu)
-  {
-    throw std::runtime_error("PETSc Poisson optimization backend supports only 'cpu'");
-  }
-
-  ExampleHelper     helper("petsc", opts.backend, outputDir());
+  ExampleHelper     helper("petsc", MemorySpace::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  // Residual Jacobian with respect to the state u and the control m.
-  PETScAssemblyMatrix dRdu(PETSC_COMM_SELF);
-  DenseAssemblyMatrix dRdm;
+  PETScOperator fwd_jac(PETSC_COMM_SELF);
+  PETScOperator adj_jac(PETSC_COMM_SELF);
+  fwd_jac.resize(problem.stateMap().graph());
+  adj_jac.resize(problem.stateMap().graph());
 
-  MatrixLinearization lin(dRdu, dRdm);
-
-  // Linear solvers for forward/adjoint systems.
   KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
   KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);
+  PetscContext    ctx{PETSC_COMM_SELF};
 
-  const Result result = solve(
-      problem, lin, fwd_lin_solver, adj_lin_solver);
+  const Result result = solve<PetscBackend>(problem,
+                                            fwd_jac,
+                                            fwd_lin_solver,
+                                            adj_jac,
+                                            adj_lin_solver,
+                                            ctx);
 
   printReport(std::cout,
-              helper.backendName(),
+              helper.name(),
               problem,
               result.report,
               result.tao_itr,
@@ -59,10 +54,10 @@ int run(const Options& opts)
 
   if (opts.write_output)
   {
-    const std::string output_base = helper.outputBase(outputStem(opts));
-    problem.writeSolution(result.prm, result.state, output_base);
-    helper.printVisualizationPath(output_base);
-    helper.printVisualizationPath(output_base + ".observations");
+    const std::string base = helper.outputBase(outputStem(opts));
+    problem.writeSolution(result.prm, result.state, base);
+    helper.printVisualizationPath(base);
+    helper.printVisualizationPath(base + ".observations");
   }
 
   return result.converged ? 0 : 1;
@@ -80,7 +75,7 @@ int main(int argc, char* argv[])
 
     try
     {
-      if (hasOptHelp(argc, argv))
+      if (examples::hasHelp(argc, argv))
       {
         printUsage(std::cout, FEMX_POISSON_OPT_APP_NAME, true);
       }

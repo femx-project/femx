@@ -10,19 +10,19 @@ namespace femx
 
 using Point3 = std::array<Real, 3>;
 
-Real dot(const Vector<Real>& x, const Vector<Real>& y);
+Real dot(const HostVector& x, const HostVector& y);
 Real dot(const Point3& x, const Point3& y);
 
-Real squaredNorm(const Vector<Real>& x);
+Real squaredNorm(const HostVector& x);
 Real squaredNorm(const Point3& x);
 
-Real norm(const Vector<Real>& x);
+Real norm(const HostVector& x);
 Real norm(const Point3& x);
 
-Real rmse(const Vector<Real>& x, const Vector<Real>& y);
+Real rmse(const HostVector& x, const HostVector& y);
 
 /** @brief Component-wise difference x - y. */
-Vector<Real> difference(const Vector<Real>& x, const Vector<Real>& y);
+HostVector difference(const HostVector& x, const HostVector& y);
 
 /** @brief Component-wise difference x - y. */
 Point3 difference(const Point3& x, const Point3& y);

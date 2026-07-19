@@ -3,12 +3,12 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/fem/Element.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
-#include <femx/linalg/MatrixView.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -23,8 +23,8 @@ constexpr Real det_tol   = 1.0e-14;
 
 struct ScalarStencil
 {
-  Vector<Index> nids;
-  Vector<Real>  wts;
+  Array<Index> nids;
+  HostVector   wts;
 };
 
 bool insideBox(const Element& elem,
@@ -48,7 +48,7 @@ bool insideBox(const Element& elem,
   return true;
 }
 
-bool insideSimplex(const Vector<Real>& wts)
+bool insideSimplex(const HostVector& wts)
 {
   Real sum = 0.0;
   for (Real wt : wts)
@@ -62,18 +62,18 @@ bool insideSimplex(const Vector<Real>& wts)
   return std::abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
-Vector<Real> shapeWeights(const FiniteElement&   fe,
-                          const QuadraturePoint& qp)
+HostVector shapeWeights(const FiniteElement&   fe,
+                        const QuadraturePoint& qp)
 {
-  Vector<Real> wts(fe.numDofsPerElement());
-  fe.calcN(qp, VectorView<Real>(wts.data(), wts.size()));
+  HostVector wts(fe.numDofsPerElement());
+  fe.calcN(qp, HostVectorView(wts.data(), wts.size()));
   return wts;
 }
 
 bool triWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                Vector<Real>&        wts)
+                HostVector&          wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -96,7 +96,7 @@ bool triWeights(const FiniteElement& fe,
 bool tetWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                Vector<Real>&        wts)
+                HostVector&          wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -118,9 +118,9 @@ bool tetWeights(const FiniteElement& fe,
   return insideSimplex(wts);
 }
 
-Point3 mappedPoint(const Element&      elem,
-                   const Vector<Real>& wts,
-                   Index               dim)
+Point3 mappedPoint(const Element&    elem,
+                   const HostVector& wts,
+                   Index             dim)
 {
   Point3 mapped{0.0, 0.0, 0.0};
   for (Index in = 0; in < elem.numNodes(); ++in)
@@ -140,15 +140,15 @@ bool quadSolveStep(const Element&       elem,
                    const Point3&        point,
                    Real&                dr,
                    Real&                ds,
-                   Vector<Real>&        wts)
+                   HostVector&          wts)
 {
   const QuadraturePoint qp{{r, s, 0.0}, 0.0};
   wts = shapeWeights(fe, qp);
 
-  Vector<Real> grad(fe.numDofsPerElement() * fe.dim());
+  HostVector grad(fe.numDofsPerElement() * fe.dim());
   fe.calcdNdr(
       qp,
-      MatrixView<Real>(
+      HostMatrixView<Real>(
           grad.data(), fe.numDofsPerElement(), fe.dim()));
 
   Real j00 = 0.0;
@@ -182,7 +182,7 @@ bool quadSolveStep(const Element&       elem,
 bool quadWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 Vector<Real>&        wts)
+                 HostVector&          wts)
 {
   Real r = 0.0;
   Real s = 0.0;
@@ -219,7 +219,7 @@ bool quadWeights(const FiniteElement& fe,
 bool elemWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 Vector<Real>&        wts)
+                 HostVector&          wts)
 {
   switch (fe.referenceElement())
   {
@@ -246,26 +246,20 @@ bool tryFindScalarStencil(const FESpace& space,
 {
   const Mesh&          mesh = space.mesh();
   const FiniteElement& fe   = space.finiteElement();
-  if (mesh.dim() != fe.dim())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator mesh dimension does not match finite element");
-  }
+  require(mesh.dim() == fe.dim(),
+          "TimePointInterpolator mesh dimension does not match finite element");
 
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     const Element& elem = mesh.elem(ie);
-    if (elem.numNodes() != fe.numNodes())
-    {
-      throw std::runtime_error(
-          "TimePointInterpolator elem node count does not match finite element");
-    }
+    require(elem.numNodes() == fe.numNodes(),
+            "TimePointInterpolator elem node count does not match finite element");
     if (!insideBox(elem, point, mesh.dim()))
     {
       continue;
     }
 
-    Vector<Real> wts;
+    HostVector wts;
     if (elemWeights(fe, elem, point, wts))
     {
       out = ScalarStencil{elem.nodeIds(), wts};
@@ -289,22 +283,59 @@ ScalarStencil findScalarStencil(const FESpace& space,
 
 } // namespace
 
+Index DeviceTimePointInterpolator::numSteps() const
+{
+  return num_steps_;
+}
+
+Index DeviceTimePointInterpolator::numStates() const
+{
+  return data_.numStates();
+}
+
+Index DeviceTimePointInterpolator::numObservations() const
+{
+  return data_.numObservations();
+}
+
+void DeviceTimePointInterpolator::observe(Index                 level,
+                                          DeviceConstVectorView state,
+                                          DeviceVectorView      out,
+                                          CudaContext&          ctx) const
+{
+  checkLevel(level);
+  femx::apply(data_.matrix(), state, out, ctx);
+}
+
+void DeviceTimePointInterpolator::addStateJacT(
+    Index                 level,
+    DeviceConstVectorView dir,
+    DeviceVectorView      out,
+    CudaContext&          ctx) const
+{
+  checkLevel(level);
+  femx::applyT(data_.matrix(), dir, out, ctx, 1.0, 1.0);
+}
+
+void DeviceTimePointInterpolator::checkLevel(Index level) const
+{
+  require(level >= 0 && level <= numSteps(),
+          "DeviceTimePointInterpolator time level is out of range");
+}
+
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              const MixedFESpace& space,
                                              Index               fid,
-                                             Vector<Point3>      pts,
-                                             Vector<Index>       comps,
-                                             Index               num_param)
+                                             Array<Point3>       pts,
+                                             Array<Index>        comps,
+                                             Index               num_prm)
   : num_steps_(num_steps),
-    num_states_(space.numDofs()),
-    num_param_(num_param),
+    num_prm_(num_prm),
     pts_(std::move(pts)),
     comps_(std::move(comps))
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_param_ < 0)
-  {
-    throw std::runtime_error("TimePointInterpolator received invalid dimensions");
-  }
+  require(num_steps_ >= 0 && space.numDofs() >= 0 && num_prm_ >= 0,
+          "TimePointInterpolator received invalid dimensions");
 
   const MixedFieldView field = space.field(fid);
   if (comps_.empty())
@@ -317,14 +348,11 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
 
   for (Index comp : comps_)
   {
-    if (comp < 0 || comp >= field.numComponents())
-    {
-      throw std::runtime_error(
-          "TimePointInterpolator component is out of range");
-    }
+    require(comp >= 0 && comp < field.numComponents(),
+            "TimePointInterpolator component is out of range");
   }
 
-  stencils_ = buildStencils(field, pts_, comps_);
+  data_ = buildData(field, space.numDofs(), pts_, comps_);
 }
 
 Index TimePointInterpolator::numSteps() const
@@ -334,128 +362,116 @@ Index TimePointInterpolator::numSteps() const
 
 Index TimePointInterpolator::numStates() const
 {
-  return num_states_;
+  return data_.numStates();
 }
 
 Index TimePointInterpolator::numParams() const
 {
-  return num_param_;
+  return num_prm_;
 }
 
 Index TimePointInterpolator::numObservations() const
 {
-  return stencils_.size();
+  return data_.numObservations();
 }
 
-void TimePointInterpolator::observe(Index               level,
-                                    const Vector<Real>& state,
-                                    const Vector<Real>& prm,
-                                    Vector<Real>&       out) const
+std::unique_ptr<DeviceTimeObservationOperator>
+TimePointInterpolator::copyToDevice(CudaContext& ctx) const
+{
+  auto out = std::make_unique<DeviceTimePointInterpolator>();
+  copy(*this, *out, ctx);
+  return out;
+}
+
+void TimePointInterpolator::observe(Index             level,
+                                    const HostVector& state,
+                                    const HostVector& prm,
+                                    HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
-  resizeOrZero(out, numObservations());
-
-  for (Index i = 0; i < numObservations(); ++i)
+  if (out.size() != numObservations())
   {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[i] += stencil.wts[j] * state[stencil.indices[j]];
-    }
+    out.resize(numObservations());
   }
+  CpuContext ctx;
+  femx::apply(data_.matrix(), state.view(), out.view(), ctx);
 }
 
-void TimePointInterpolator::applyStateJac(Index               level,
-                                          const Vector<Real>& state,
-                                          const Vector<Real>& prm,
-                                          const Vector<Real>& dir,
-                                          Vector<Real>&       out) const
+void TimePointInterpolator::applyStateJac(Index             level,
+                                          const HostVector& state,
+                                          const HostVector& prm,
+                                          const HostVector& dir,
+                                          HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numStates())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator state direction size mismatch");
-  }
+  require(dir.size() == numStates(),
+          "TimePointInterpolator state direction size mismatch");
 
-  resizeOrZero(out, numObservations());
-  for (Index i = 0; i < numObservations(); ++i)
+  if (out.size() != numObservations())
   {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[i] += stencil.wts[j] * dir[stencil.indices[j]];
-    }
+    out.resize(numObservations());
   }
+  CpuContext ctx;
+  femx::apply(data_.matrix(), dir.view(), out.view(), ctx);
 }
 
-void TimePointInterpolator::applyStateJacT(Index               level,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir,
-                                           Vector<Real>&       out) const
+void TimePointInterpolator::applyStateJacT(Index             level,
+                                           const HostVector& state,
+                                           const HostVector& prm,
+                                           const HostVector& dir,
+                                           HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numObservations())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator observation direction size mismatch");
-  }
+  require(dir.size() == numObservations(),
+          "TimePointInterpolator observation direction size mismatch");
 
   resizeOrZero(out, numStates());
-  for (Index i = 0; i < numObservations(); ++i)
-  {
-    const Stencil& stencil = stencils_[i];
-    for (Index j = 0; j < stencil.indices.size(); ++j)
-    {
-      out[stencil.indices[j]] += stencil.wts[j] * dir[i];
-    }
-  }
+  CpuContext ctx;
+  femx::applyT(data_.matrix(), dir.view(), out.view(), ctx, 1.0, 1.0);
 }
 
-void TimePointInterpolator::applyParamJac(Index               level,
-                                          const Vector<Real>& state,
-                                          const Vector<Real>& prm,
-                                          const Vector<Real>& dir,
-                                          Vector<Real>&       out) const
+void TimePointInterpolator::applyParamJac(Index             level,
+                                          const HostVector& state,
+                                          const HostVector& prm,
+                                          const HostVector& dir,
+                                          HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numParams())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator parameter direction size mismatch");
-  }
+  require(dir.size() == numParams(),
+          "TimePointInterpolator parameter direction size mismatch");
 
   resizeOrZero(out, numObservations());
 }
 
-void TimePointInterpolator::applyParamJacT(Index               level,
-                                           const Vector<Real>& state,
-                                           const Vector<Real>& prm,
-                                           const Vector<Real>& dir,
-                                           Vector<Real>&       out) const
+void TimePointInterpolator::applyParamJacT(Index             level,
+                                           const HostVector& state,
+                                           const HostVector& prm,
+                                           const HostVector& dir,
+                                           HostVector&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numObservations())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator observation direction size mismatch");
-  }
+  require(dir.size() == numObservations(),
+          "TimePointInterpolator observation direction size mismatch");
 
   resizeOrZero(out, numParams());
 }
 
-const Vector<Point3>& TimePointInterpolator::pts() const
+const HostPointInterpolatorData& TimePointInterpolator::data() const noexcept
+{
+  return data_;
+}
+
+const Array<Point3>& TimePointInterpolator::pts() const
 {
   return pts_;
 }
 
-const Vector<Index>& TimePointInterpolator::comps() const
+const Array<Index>& TimePointInterpolator::comps() const
 {
   return comps_;
 }
@@ -469,12 +485,12 @@ bool TimePointInterpolator::containsPoint(const MixedFESpace& space,
   return tryFindScalarStencil(field.space(), point, stencil);
 }
 
-Vector<Point3> TimePointInterpolator::filterPointsInside(
-    const MixedFESpace&   space,
-    Index                 fid,
-    const Vector<Point3>& pts)
+Array<Point3> TimePointInterpolator::filterPointsInside(
+    const MixedFESpace&  space,
+    Index                fid,
+    const Array<Point3>& pts)
 {
-  Vector<Point3> filtered;
+  Array<Point3> filtered;
   filtered.reserve(pts.size());
   for (const Point3& point : pts)
   {
@@ -488,49 +504,56 @@ Vector<Point3> TimePointInterpolator::filterPointsInside(
 
 void TimePointInterpolator::checkLevel(Index level) const
 {
-  if (level < 0 || level > numSteps())
-  {
-    throw std::runtime_error("TimePointInterpolator time level is out of range");
-  }
+  require(level >= 0 && level <= numSteps(),
+          "TimePointInterpolator time level is out of range");
 }
 
 void TimePointInterpolator::checkInputs(
-    const Vector<Real>& state,
-    const Vector<Real>& prm) const
+    const HostVector& state,
+    const HostVector& prm) const
 {
-  if (state.size() != numStates() || prm.size() != numParams())
-  {
-    throw std::runtime_error("TimePointInterpolator input size mismatch");
-  }
+  require(state.size() == numStates() && prm.size() == numParams(),
+          "TimePointInterpolator input size mismatch");
 }
 
-Vector<TimePointInterpolator::Stencil> TimePointInterpolator::buildStencils(
+HostPointInterpolatorData TimePointInterpolator::buildData(
     const MixedFieldView& field,
-    const Vector<Point3>& pts,
-    const Vector<Index>&  comps)
+    Index                 num_states,
+    const Array<Point3>&  pts,
+    const Array<Index>&   comps)
 {
-  Vector<Stencil> stencils;
-  stencils.reserve(pts.size() * comps.size());
+  const Index     num_obs = pts.size() * comps.size();
+  HostIndexVector offsets;
+  HostIndexVector dofs;
+  HostVector      wts;
+  offsets.reserve(num_obs + 1);
+  dofs.reserve(num_obs * field.numShapesPerElem());
+  wts.reserve(num_obs * field.numShapesPerElem());
+  offsets.push_back(0);
 
   for (const Point3& point : pts)
   {
     const ScalarStencil scalar = findScalarStencil(field.space(), point);
     for (Index comp : comps)
     {
-      Stencil stencil;
-      stencil.indices.reserve(scalar.wts.size());
-      stencil.wts.reserve(scalar.wts.size());
       for (Index i = 0; i < scalar.wts.size(); ++i)
       {
-        stencil.indices.push_back(
-            field.globalDof(scalar.nids[i], comp));
-        stencil.wts.push_back(scalar.wts[i]);
+        dofs.push_back(field.globalDof(scalar.nids[i], comp));
+        wts.push_back(scalar.wts[i]);
       }
-      stencils.push_back(std::move(stencil));
+      offsets.push_back(dofs.size());
     }
   }
 
-  return stencils;
+  HostCsrGraph  graph(num_obs,
+                     num_states,
+                     std::move(offsets),
+                     std::move(dofs));
+  HostCsrMatrix mat(graph);
+  mat.vals() = std::move(wts);
+  HostPointInterpolatorData data;
+  data.mat_ = std::move(mat);
+  return data;
 }
 
 } // namespace fem

@@ -2,6 +2,7 @@
 
 #include "TestHelper.hpp"
 #include <femx/fem/Mesh.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 
 namespace femx
@@ -35,13 +36,36 @@ TestOutcome modelOwnsReusableDiscretization()
   status                     *= dims.num_steps == model.numSteps();
   status                     *= dims.num_states == model.numStates();
   status                     *= dims.num_param == 0;
-  status                     *= dims.num_residuals == model.numStates();
+  status                     *= dims.num_res == model.numStates();
 
-  status *= model.matrixPattern().rows() == model.numStates();
-  status *= model.matrixPattern().cols() == model.numStates();
-  status *= model.matrixPattern().numElems() == model.mesh().numElems();
+  status *= model.map().graph().rows() == model.numStates();
+  status *= model.map().graph().cols() == model.numStates();
+  status *= model.map().numElems() == model.mesh().numElems();
   status *= model.velocityDofs().size()
             == model.mesh().numNodes() * model.mesh().dim();
+
+  return status.report();
+}
+
+TestOutcome modelPublishesBackendAssemblyInputs()
+{
+  TestStatus status(__func__);
+
+  model::ns::NavierStokesModel model(
+      Mesh::makeStructuredQuad(2, 2), 2, 0.1, {});
+
+  const auto&   geometry = model.geometry();
+  const auto&   map      = model.map();
+  HostCsrMatrix mat(map.graph());
+
+  status *= geometry.dim() == model.mesh().dim();
+  status *= geometry.numNodes() == model.mesh().numNodes();
+  status *= geometry.numElems() == model.mesh().numElems();
+  status *= map.numRes() == model.numStates();
+  status *= map.numStates() == model.numStates();
+  status *= mat.rows() == model.numStates();
+  status *= mat.cols() == model.numStates();
+  status *= mat.nnz() == map.graph().nnz();
 
   return status.report();
 }
@@ -85,6 +109,7 @@ int main()
 {
   femx::tests::TestingResults results;
   results += femx::tests::modelOwnsReusableDiscretization();
+  results += femx::tests::modelPublishesBackendAssemblyInputs();
   results += femx::tests::modelRejectsInvalidTimeConfiguration();
   return results.summary();
 }

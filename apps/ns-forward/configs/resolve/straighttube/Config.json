@@ -13,7 +13,7 @@
   "bcs": [
     {
       "name": "inlet",
-      "tag": 4,
+      "physical": 4,
       "type": "dirichlet",
       "velocity": {
         "time": {
@@ -25,7 +25,7 @@
         },
         "space": {
           "type": "poiseuille",
-          "radius": 0.5,
+          "radius": 0.002,
           "center": "auto",
           "normal": [
             1.0,
@@ -37,26 +37,25 @@
     },
     {
       "name": "outlet",
-      "tag": 5,
+      "physical": 5,
       "type": "dirichlet",
       "p": 0.0
     },
     {
       "name": "wall",
-      "tag": 6,
+      "physical": 6,
       "type": "dirichlet",
       "ux": 0.0,
       "uy": 0.0
     }
   ],
   "solver": {
-    "backend": "cuda",
     "method": "iterative",
     "solve": "fgmres",
     "preconditioner": "ilu0",
     "restart": 200,
-    "rel_tol": 1.0e-8,
-    "max_its": 5000
+    "relative_tolerance": 1.0e-8,
+    "max_itrs": 5000
   },
   "output": {
     "enabled": true,

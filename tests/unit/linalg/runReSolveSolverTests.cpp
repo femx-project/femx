@@ -1,5 +1,4 @@
 #include "SolverTestFixtures.hpp"
-#include <femx/common/Workspace.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <resolve/resolve_defs.hpp>
 
@@ -7,6 +6,19 @@ namespace femx::tests
 {
 namespace
 {
+
+TestOutcome resolveOptionsHaveOneSharedDefault()
+{
+  TestStatus                   status(__func__);
+  const linalg::ReSolveOptions opts;
+
+  status *= opts.solve == "fgmres";
+  status *= opts.precond == "ilu0";
+  status *= opts.max_its == 1000;
+  status *= opts.restart == 200;
+  status *= opts.rtol == 1.0e-8;
+  return status.report();
+}
 
 #if defined(RESOLVE_USE_KLU)
 linalg::ReSolveOptions kluOptions()
@@ -26,28 +38,28 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
   constexpr Index nx = 16;
   constexpr Index ny = 16;
 
-  CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillGrid5PointMatrix(op, nx, ny);
+  const auto    map = solver::makeGrid5PointMap(nx, ny);
+  HostCsrMatrix mat(map.graph());
+  solver::fillGrid5PointMat(mat, nx, ny);
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu);
+  linalg::ReSolveLinearSolver lin_solver;
   return solver::solvesForwardAndTranspose(
-      __func__, lin_solver, op, solver::expectedGridSolution(nx, ny), 1.0e-7);
+      __func__, lin_solver, mat, solver::expectedGridSolution(nx, ny), 1.0e-7);
 }
 
 #if defined(RESOLVE_USE_KLU)
 TestOutcome resolveCpuKluSolvesForwardAndTranspose()
 {
-  CsrPattern                pattern = solver::makeDense3Pattern();
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillTestMatrix(op);
+  const auto    map = solver::makeDense3Map();
+  HostCsrMatrix mat(map.graph());
+  solver::fillTestMat(mat);
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu, kluOptions());
-  return solver::solvesForwardAndTranspose(__func__, lin_solver, op);
+  linalg::ReSolveLinearSolver lin_solver(kluOptions());
+  return solver::solvesForwardAndTranspose(__func__, lin_solver, mat);
 }
 #endif
 
-TestOutcome resolveCpuStoredOperatorSolves()
+TestOutcome resolveCpuConcreteMatrixReusesStorage()
 {
   TestStatus status(__func__);
 
@@ -56,28 +68,26 @@ TestOutcome resolveCpuStoredOperatorSolves()
     constexpr Index nx = 16;
     constexpr Index ny = 16;
 
-    CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-    linalg::CsrAssemblyMatrix op(pattern);
-    solver::fillGrid5PointMatrix(op, nx, ny);
+    const auto    map = solver::makeGrid5PointMap(nx, ny);
+    HostCsrMatrix mat(map.graph());
+    solver::fillGrid5PointMat(mat, nx, ny);
 
-    linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cpu);
-    lin_solver.setOperator(op.mat());
+    linalg::ReSolveLinearSolver lin_solver;
+    CpuContext                  ctx;
 
-    const Vector<Real> expected = solver::expectedGridSolution(nx, ny);
-    Vector<Real>       rhs;
-    op.apply(expected, rhs);
+    const HostVector expected = solver::expectedGridSolution(nx, ny);
+    HostVector       rhs(expected.size());
+    apply(mat, expected.view(), rhs.view(), ctx);
 
-    Vector<Real> x;
-    lin_solver.solve(rhs, x);
-    status *= solver::vectorNear(x, expected, 1.0e-7);
+    HostVector x;
+    lin_solver.solve(mat, rhs, x, ctx);
+    status *= solver::vecNear(x, expected, 1.0e-7);
 
-    op.setZero();
-    solver::fillGrid5PointMatrix(op, nx, ny);
-    lin_solver.setOperator(op.mat());
-
-    op.apply(expected, rhs);
-    lin_solver.solve(rhs, x);
-    status *= solver::vectorNear(x, expected, 1.0e-7);
+    mat.setZero();
+    solver::fillGrid5PointMat(mat, nx, ny);
+    apply(mat, expected.view(), rhs.view(), ctx);
+    lin_solver.solve(mat, rhs, x, ctx);
+    status *= solver::vecNear(x, expected, 1.0e-7);
   }
   catch (const std::exception& e)
   {
@@ -88,21 +98,34 @@ TestOutcome resolveCpuStoredOperatorSolves()
   return status.report();
 }
 
-#if defined(FEMX_RESOLVE_USE_CUDA)
-TestOutcome resolveCudaDefaultSolvesForwardAndTranspose()
+TestOutcome resolveZeroRhsReturnsZero()
 {
-  constexpr Index nx = 16;
-  constexpr Index ny = 16;
+  TestStatus status(__func__);
 
-  CsrPattern                pattern = solver::makeGrid5PointPattern(nx, ny);
-  linalg::CsrAssemblyMatrix op(pattern);
-  solver::fillGrid5PointMatrix(op, nx, ny);
+  try
+  {
+    const auto    map = solver::makeDense3Map();
+    HostCsrMatrix mat(map.graph());
+    solver::fillTestMat(mat);
+    const HostVector rhs(3, 0.0);
+    HostVector       sol{1.0, 2.0, 3.0};
+    CpuContext       ctx;
 
-  linalg::ReSolveLinearSolver lin_solver(WorkspaceType::Cuda);
-  return solver::solvesForwardAndTranspose(
-      __func__, lin_solver, op, solver::expectedGridSolution(nx, ny), 1.0e-7);
+    linalg::ReSolveLinearSolver host_solver;
+    host_solver.solve(mat, rhs, sol, ctx);
+    status *= solver::vecNear(sol, rhs, 0.0);
+    sol     = {1.0, 2.0, 3.0};
+    host_solver.solveT(mat, rhs, sol, ctx);
+    status *= solver::vecNear(sol, rhs, 0.0);
+  }
+  catch (const std::exception& e)
+  {
+    std::cout << "    exception: " << e.what() << '\n';
+    status *= false;
+  }
+
+  return status.report();
 }
-#endif
 
 } // namespace
 } // namespace femx::tests
@@ -111,14 +134,12 @@ int main(int, char**)
 {
   femx::tests::TestingResults results;
 
+  results += femx::tests::resolveOptionsHaveOneSharedDefault();
   results += femx::tests::resolveCpuDefaultSolvesForwardAndTranspose();
 #if defined(RESOLVE_USE_KLU)
   results += femx::tests::resolveCpuKluSolvesForwardAndTranspose();
 #endif
-  results += femx::tests::resolveCpuStoredOperatorSolves();
-#if defined(FEMX_RESOLVE_USE_CUDA)
-  results += femx::tests::resolveCudaDefaultSolvesForwardAndTranspose();
-#endif
-
+  results += femx::tests::resolveCpuConcreteMatrixReusesStorage();
+  results += femx::tests::resolveZeroRhsReturnsZero();
   return results.summary();
 }

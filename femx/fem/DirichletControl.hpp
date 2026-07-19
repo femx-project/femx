@@ -3,7 +3,7 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 
 namespace femx
 {
@@ -24,41 +24,40 @@ struct DirichletControlMapEntry
 class DirichletControl
 {
 public:
-  DirichletControl() = default;
+  DirichletControl();
 
-  explicit DirichletControl(Vector<Index> dofs);
+  explicit DirichletControl(Array<Index> dofs);
 
-  DirichletControl(Vector<Index>                    state_dofs,
-                   Index                            num_ctr_params,
-                   Vector<DirichletControlMapEntry> map_entries);
+  DirichletControl(Array<Index>                    state_dofs,
+                   Index                           num_ctr_params,
+                   Array<DirichletControlMapEntry> map_entries);
 
   Index numStateDofs() const;
   Index numControlParams() const;
 
   Index stateDof(Index i) const;
 
-  const Vector<Index>&                    stateDofs() const;
-  const Vector<DirichletControlMapEntry>& mapEntries() const;
+  const Array<Index>&  stateDofs() const;
+  const HostCsrMatrix& matrix() const noexcept;
 
   /** Remove state dofs while preserving and compacting the map P. */
   DirichletControl withoutStateDofs(
-      const Vector<Index>& excluded) const;
+      const Array<Index>& excluded) const;
 
   /** Compute P * direction in local controlled-state ordering. */
-  void apply(const Vector<Real>& direction, Vector<Real>& out) const;
+  void apply(const HostVector& dir, HostVector& out) const;
 
   /** Compute P^T * direction. */
-  void applyTranspose(const Vector<Real>& direction, Vector<Real>& out) const;
+  void applyTranspose(const HostVector& dir, HostVector& out) const;
 
 private:
   void checkDofIndex(Index i) const;
-  void checkControlVector(const Vector<Real>& control) const;
-  void checkStateVector(const Vector<Real>& state) const;
+  void checkControlVector(const HostVector& ctr) const;
+  void checkStateVector(const HostVector& state) const;
 
 private:
-  Vector<Index>                    dofs_;
-  Index                            num_ctr_params_{0};
-  Vector<DirichletControlMapEntry> map_entries_;
+  Array<Index>  dofs_;
+  HostCsrMatrix matrix_;
 };
 
 DirichletControl makeVelocityControl(
@@ -73,13 +72,13 @@ DirichletControl makeVelocityControl(
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     Index               ptag,
-    const Vector<Real>& normal);
+    const HostVector&   nrm);
 
 /** One scalar normal-velocity parameter per node on a boundary. */
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     const std::string&  pname,
-    const Vector<Real>& normal);
+    const HostVector&   nrm);
 
 } // namespace fem
 } // namespace femx

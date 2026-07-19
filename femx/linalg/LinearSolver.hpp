@@ -1,38 +1,38 @@
 #pragma once
 
-#include <femx/common/Types.hpp>
+#include <femx/linalg/Backend.hpp>
 
-namespace femx
-{
-template <typename T>
-class Vector;
-
-namespace linalg
+namespace femx::linalg
 {
 
-class LinearOperator;
-
-/**
- * @brief Solver for A x = b and A^T x = b.
- *
- * Backends such as PETSc and ReSolve implement this interface so state and
- * adjoint solvers can be written independently of the linear algebra package.
- */
+/** @brief Linear solve contract over one concrete execution backend. */
+template <class Backend>
 class LinearSolver
 {
+  static_assert(is_backend_v<Backend>,
+                "LinearSolver requires a valid backend type");
+
 public:
+  using Matrix  = typename Backend::Mat;
+  using Vector  = typename Backend::Vec;
+  using Context = typename Backend::Ctx;
+
   virtual ~LinearSolver() = default;
 
-  /** @brief Solve op out = rhs. */
-  virtual void solve(const LinearOperator& op,
-                     const Vector<Real>&   rhs,
-                     Vector<Real>&         out) = 0;
+  /** @brief Solve `mat * sol = rhs`. */
+  virtual void solve(const Matrix& mat,
+                     const Vector& rhs,
+                     Vector&       sol,
+                     Context&      ctx) = 0;
 
-  /** @brief Solve op^T out = rhs. */
-  virtual void solveT(const LinearOperator& op,
-                      const Vector<Real>&   rhs,
-                      Vector<Real>&         out) = 0;
+  /** @brief Solve `mat^T * sol = rhs`. */
+  virtual void solveT(const Matrix& mat,
+                      const Vector& rhs,
+                      Vector&       sol,
+                      Context&      ctx) = 0;
 };
 
-} // namespace linalg
-} // namespace femx
+using HostCsrLinearSolver = LinearSolver<HostCsrBackend>;
+using DeviceLinearSolver  = LinearSolver<CudaCsrBackend>;
+
+} // namespace femx::linalg

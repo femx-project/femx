@@ -6,7 +6,7 @@
 namespace femx
 {
 
-Real dot(const Vector<Real>& x, const Vector<Real>& y)
+Real dot(const HostVector& x, const HostVector& y)
 {
   if (x.size() != y.size())
   {
@@ -21,17 +21,17 @@ Real dot(const Vector<Real>& x, const Vector<Real>& y)
   return value;
 }
 
-Real squaredNorm(const Vector<Real>& x)
+Real squaredNorm(const HostVector& x)
 {
   return dot(x, x);
 }
 
-Real norm(const Vector<Real>& x)
+Real norm(const HostVector& x)
 {
   return std::sqrt(squaredNorm(x));
 }
 
-Real rmse(const Vector<Real>& x, const Vector<Real>& y)
+Real rmse(const HostVector& x, const HostVector& y)
 {
   if (x.size() != y.size())
   {
@@ -47,14 +47,14 @@ Real rmse(const Vector<Real>& x, const Vector<Real>& y)
   return std::sqrt(sum / x.size());
 }
 
-Vector<Real> difference(const Vector<Real>& x, const Vector<Real>& y)
+HostVector difference(const HostVector& x, const HostVector& y)
 {
   if (x.size() != y.size())
   {
     throw std::runtime_error("difference received incompatible vectors");
   }
 
-  Vector<Real> diff(x.size());
+  HostVector diff(x.size());
   for (Index i = 0; i < x.size(); ++i)
   {
     diff[i] = x[i] - y[i];

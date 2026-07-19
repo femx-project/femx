@@ -8,18 +8,18 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/state/TimeStateMonitor.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::model::ns
 {
 
 struct ForwardSolveResult
 {
-  Vector<Real> final_state;      ///< Last accepted state vector.
-  Index        final_step{0};    ///< Last completed time step.
-  Real         final_time{0.0};  ///< Physical time at final_step.
-  Real         vel_change{0.0};  ///< Last relative velocity change.
-  bool         converged{false}; ///< True when convergence stopped the run.
+  HostVector final_state;      ///< Last accepted state vector.
+  Index      final_step{0};    ///< Last completed time step.
+  Real       final_time{0.0};  ///< Physical time at final_step.
+  Real       vel_change{0.0};  ///< Last relative velocity change.
+  bool       converged{false}; ///< True when convergence stopped the run.
 };
 
 struct ForwardConvergenceParams
@@ -29,13 +29,13 @@ struct ForwardConvergenceParams
   Index min_steps   = 1;      ///< Minimum steps before convergence can stop.
 };
 
-class ForwardSolveMonitor final : public state::TimeStateMonitor
+class ForwardSolveMonitor final
 {
 public:
   ForwardSolveMonitor(const fem::MixedFESpace& space,
                       Real                     dt,
                       Index                    steps);
-  ~ForwardSolveMonitor() override;
+  ~ForwardSolveMonitor();
 
   void setFieldOutput(std::string directory,
                       Index       interval);
@@ -59,11 +59,11 @@ public:
   const ForwardSolveResult& result() const;
 
   void start(Index num_steps,
-             Index num_states) override;
-  void observe(Index               level,
-               const Vector<Real>& state) override;
-  bool observeStep(const state::TimeStepStateContext& ctx) override;
-  void stop() override;
+             Index num_states);
+  void observe(Index             level,
+               const HostVector& state);
+  bool observeStep(const state::TimeStepStateContext& ctx);
+  void stop();
 
 private:
   struct FieldOutput;
@@ -74,14 +74,14 @@ private:
   bool shouldWriteDetailedLog(Index step,
                               Index total) const;
 
-  void writeFieldOutput(Index               level,
-                        const Vector<Real>& state,
-                        Real                time);
+  void writeFieldOutput(Index             level,
+                        const HostVector& state,
+                        Real              time);
   void writeFinalFieldOutput();
   void writeDiagnosticsHeader();
-  void writeDiagnosticsRow(Index               level,
-                           const Vector<Real>& state,
-                           Real                time);
+  void writeDiagnosticsRow(Index             level,
+                           const HostVector& state,
+                           Real              time);
   void writeProgress(Index step,
                      Index total);
   void writeDetailedStepLog(Index step,
@@ -112,11 +112,11 @@ private:
 };
 
 Real velocityRelativeChange(const fem::MixedFESpace& space,
-                            const Vector<Real>&      previous,
-                            const Vector<Real>&      current);
+                            const HostVector&        prev,
+                            const HostVector&        curr);
 
 Real maxVelocityCfl(const fem::MixedFESpace& space,
-                    const Vector<Real>&      state,
+                    const HostVector&        state,
                     Real                     dt);
 
 bool shouldWriteForwardOutput(Index step,

@@ -1,105 +1,86 @@
 #pragma once
 
-#include <stdexcept>
+#include <cstdint>
+#include <limits>
 
+#include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
 
-namespace femx
-{
-namespace state
+namespace femx::state
 {
 
-/**
- * @brief State values on all time levels of a time-marching solve.
- *
- * TimeTrajectory stores contiguous state blocks so each time level can be
- * accessed as a VectorView.
- */
+/** @brief Host-owned state values for all time levels of one solve. */
 class TimeTrajectory
 {
 public:
   TimeTrajectory() = default;
 
-  TimeTrajectory(Index num_steps,
-                 Index num_states)
+  TimeTrajectory(Index num_steps, Index num_states)
   {
     resize(num_steps, num_states);
   }
 
-  void resize(Index num_steps,
-              Index num_states)
+  /** @brief Set dimensions, retaining an allocation of the required size. */
+  void resize(Index num_steps, Index num_states)
   {
-    if (num_steps < 0 || num_states < 0)
+    const Index size = checkedSize(num_steps, num_states);
+    if (data_.size() != size)
     {
-      throw std::runtime_error("TimeTrajectory received invalid dimensions");
+      data_.resize(size);
     }
-
     num_steps_  = num_steps;
     num_states_ = num_states;
-    data_.resize((num_steps_ + 1) * num_states_);
   }
 
-  bool empty() const
+  Index numSteps() const noexcept
   {
-    return data_.empty();
+    return data_.empty() ? 0 : num_steps_;
   }
 
-  Index numSteps() const
+  Index numTimeLevels() const noexcept
   {
-    return empty() ? 0 : num_steps_;
+    return data_.empty() ? 0 : num_steps_ + 1;
   }
 
-  Index numTimeLevels() const
+  Index numStates() const noexcept
   {
-    return empty() ? 0 : num_steps_ + 1;
+    return data_.empty() ? 0 : num_states_;
   }
 
-  Index numLevels() const
-  {
-    return numTimeLevels();
-  }
-
-  Index numStates() const
-  {
-    return empty() ? 0 : num_states_;
-  }
-
-  Index size() const
+  Index size() const noexcept
   {
     return data_.size();
   }
 
-  Real* data()
+  Real* data() noexcept
   {
     return data_.data();
   }
 
-  const Real* data() const
+  const Real* data() const noexcept
   {
     return data_.data();
   }
 
-  VectorView<Real> level(Index level)
+  HostVectorView level(Index level)
   {
     checkLevel(level);
-    return VectorView<Real>(data_.data() + level * num_states_, num_states_);
+    return {data() + level * num_states_, num_states_};
   }
 
-  VectorView<const Real> level(Index level) const
+  HostConstVectorView level(Index level) const
   {
     checkLevel(level);
-    return VectorView<const Real>(data_.data() + level * num_states_,
-                                  num_states_);
+    return {data() + level * num_states_, num_states_};
   }
 
-  VectorView<Real> operator[](Index level)
+  HostVectorView operator[](Index level)
   {
     return this->level(level);
   }
 
-  VectorView<const Real> operator[](Index level) const
+  HostConstVectorView operator[](Index level) const
   {
     return this->level(level);
   }
@@ -110,19 +91,27 @@ public:
   }
 
 private:
-  void checkLevel(Index level) const
+  static Index checkedSize(Index num_steps, Index num_states)
   {
-    if (level < 0 || level >= numTimeLevels())
-    {
-      throw std::runtime_error("TimeTrajectory level is out of range");
-    }
+    require(num_steps >= 0 && num_states >= 0,
+            "TimeTrajectory received invalid dimensions");
+
+    const std::int64_t size =
+        (static_cast<std::int64_t>(num_steps) + 1) * num_states;
+    require(size <= std::numeric_limits<Index>::max(),
+            "TimeTrajectory exceeds the Index range");
+    return static_cast<Index>(size);
   }
 
-private:
-  Vector<Real> data_;
-  Index        num_steps_{0};
-  Index        num_states_{0};
+  void checkLevel(Index level) const
+  {
+    require(level >= 0 && level < numTimeLevels(),
+            "TimeTrajectory level is out of range");
+  }
+
+  HostVector data_;
+  Index      num_steps_{0};
+  Index      num_states_{0};
 };
 
-} // namespace state
-} // namespace femx
+} // namespace femx::state

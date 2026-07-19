@@ -16,11 +16,11 @@ namespace fem
 /** Sparse matrix entries in coordinate (COO) form. */
 struct SparseTripletMatrix
 {
-  Index         rows{0};
-  Index         cols{0};
-  Vector<Index> row_indices;
-  Vector<Index> col_indices;
-  Vector<Real>  values;
+  Index        rows{0};
+  Index        cols{0};
+  Array<Index> row_indices;
+  Array<Index> col_indices;
+  HostVector   vals;
 };
 
 /** Scalar P1 mass, stiffness, and constant-load data on a boundary surface. */
@@ -28,7 +28,7 @@ struct BoundaryScalarMatrices
 {
   SparseTripletMatrix stiffness;
   SparseTripletMatrix mass;
-  Vector<Real>        load;
+  HostVector          load;
 };
 
 /**
@@ -59,28 +59,28 @@ public:
     return elements_.size();
   }
 
-  const Vector<Index>& meshNodeIds() const noexcept
+  const Array<Index>& meshNodeIds() const noexcept
   {
     return mesh_node_ids_;
   }
 
-  const Vector<Point3>& nodes() const noexcept
+  const Array<Point3>& nodes() const noexcept
   {
     return nodes_;
   }
 
-  const Vector<Vector<Index>>& elements() const noexcept
+  const Array<Array<Index>>& elements() const noexcept
   {
     return elements_;
   }
 
-  const Vector<Element::Shape>& elementShapes() const noexcept
+  const Array<Element::Shape>& elementShapes() const noexcept
   {
     return element_shapes_;
   }
 
   /** Local node ids on the boundary of this boundary surface. */
-  const Vector<Index>& rimNodeIds() const noexcept
+  const Array<Index>& rimNodeIds() const noexcept
   {
     return rim_node_ids_;
   }
@@ -89,18 +89,18 @@ public:
   BoundaryScalarMatrices scalarMatrices() const;
 
 private:
-  void initialize(const Mesh&                        mesh,
-                  const Vector<Mesh::BoundaryFacet>& facets,
-                  const std::string&                 label);
+  void initialize(const Mesh&                       mesh,
+                  const Array<Mesh::BoundaryFacet>& facets,
+                  const std::string&                label);
   void findRimNodes();
 
 private:
-  Index                  dim_{0};
-  Vector<Index>          mesh_node_ids_;
-  Vector<Point3>         nodes_;
-  Vector<Vector<Index>>  elements_;
-  Vector<Element::Shape> element_shapes_;
-  Vector<Index>          rim_node_ids_;
+  Index                 dim_{0};
+  Array<Index>          mesh_node_ids_;
+  Array<Point3>         nodes_;
+  Array<Array<Index>>   elements_;
+  Array<Element::Shape> element_shapes_;
+  Array<Index>          rim_node_ids_;
 };
 
 } // namespace fem

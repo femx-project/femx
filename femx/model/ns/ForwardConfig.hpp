@@ -37,13 +37,12 @@ struct TimeParams
 
 struct SolverParams
 {
-  std::string backend            = "cpu";       ///< Linear-solver backend.
   std::string method             = "iterative"; ///< Solver method family.
   std::string solve              = "fgmres";    ///< Krylov solve method.
   std::string preconditioner     = "ilu0";      ///< Preconditioner method.
   std::string gram_schmidt       = "cgs2";      ///< Orthogonalization method.
   std::string sketching          = "count";     ///< Sketching method.
-  Index       max_itrs     = 5000;        ///< Maximum linear iterations.
+  Index       max_itrs           = 5000;        ///< Maximum linear iterations.
   Index       restart            = 200;         ///< Krylov restart length.
   Real        relative_tolerance = 1.0e-8;      ///< Linear residual tolerance.
   bool        flexible           = true;        ///< Enable flexible Krylov methods.
@@ -65,8 +64,8 @@ struct VelocityProfileParams
 
 struct VelocityParams
 {
-  Vector<Real>          time;                     ///< Time samples.
-  Vector<Real>          value;                    ///< Velocity or flow-rate samples.
+  HostVector            time;                     ///< Time samples.
+  HostVector            vals;                     ///< Velocity or flow-rate samples.
   Real                  area   = 1.0;             ///< Boundary area for flow-rate input.
   Real                  per    = 0.0;             ///< Period for pulse inputs.
   std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0}; ///< Boundary normal.
@@ -88,12 +87,12 @@ struct BCsParams
 
 struct Params
 {
-  std::string       mesh_file; ///< Mesh file path.
-  TimeParams        time;      ///< Time-integration settings.
-  FluidParams       fluid;     ///< Fluid material parameters.
-  SolverParams      solver;    ///< Linear-solver settings.
-  OutputParams      output;    ///< Output settings.
-  Vector<BCsParams> bcs;       ///< Boundary-condition settings.
+  std::string      mesh_file; ///< Mesh file path.
+  TimeParams       time;      ///< Time-integration settings.
+  FluidParams      fluid;     ///< Fluid material parameters.
+  SolverParams     solver;    ///< Linear-solver settings.
+  OutputParams     output;    ///< Output settings.
+  Array<BCsParams> bcs;       ///< Boundary-condition settings.
 };
 
 Params loadConfig(const std::string& path);

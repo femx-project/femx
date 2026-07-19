@@ -12,9 +12,9 @@ namespace femx::fem
 /** Fixed Dirichlet data sampled at every time level. */
 struct TimeDirichletData
 {
-  Vector<Index> dofs;          ///< Fixed state dofs.
-  Vector<Real>  values;        ///< Step-major values with shape (steps, dofs).
-  Vector<Real>  initial_state; ///< State at time zero with boundary values applied.
+  Array<Index> dofs;       ///< Fixed state dofs.
+  HostVector   vals;       ///< Step-major values with shape (steps, dofs).
+  HostVector   init_state; ///< State at time zero with boundary values applied.
 };
 
 using DirichletBCAtTime =
@@ -28,8 +28,8 @@ using DirichletBCAtTime =
  * over time.
  */
 TimeDirichletData makeTimeDirichletData(
-    Index                    num_states,
-    Index                    steps,
+    Index                    nstate,
+    Index                    nstep,
     Real                     dt,
     const DirichletBCAtTime& bc_at_time);
 

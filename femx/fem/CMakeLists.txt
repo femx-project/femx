@@ -6,11 +6,13 @@ target_sources(
   PRIVATE DirichletBC.cpp
           TimeDirichletData.cpp
           BoundarySurface.cpp
+          ControlMap.cpp
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp
           ElementValues.cpp
           FESpace.cpp
+          Geometry.cpp
           GmshReader.cpp
           Mesh.cpp
           MixedFESpace.cpp
@@ -20,6 +22,7 @@ target_sources(
   PUBLIC DirichletBC.hpp
          TimeDirichletData.hpp
          BoundarySurface.hpp
+         ControlMap.hpp
          Element.hpp
          DirichletControl.hpp
          DofLayout.hpp
@@ -29,10 +32,10 @@ target_sources(
          FESpace.hpp
          FiniteElement.hpp
          GaussQuadrature.hpp
+         Geometry.hpp
          GmshReader.hpp
          Mesh.hpp
          ObservationGrid.hpp
-         Quadrature.hpp
          ReferenceElement.hpp
          TimePointInterpolator.hpp
          VelocityProfile.hpp

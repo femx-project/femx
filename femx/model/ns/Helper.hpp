@@ -10,7 +10,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx::model::ns
 {
@@ -21,18 +21,18 @@ fem::MixedFESpace makeSpace(fem::Mesh& mesh, fem::FiniteElement& elem);
 
 Point3 selectorCenter(const fem::Mesh& mesh, const BoundarySelector& sel);
 
-Vector<Index> gaugeDofs(const fem::MixedFESpace& space,
-                        const BoundarySelector&  sel);
+Array<Index> gaugeDofs(const fem::MixedFESpace& space,
+                       const BoundarySelector&  sel);
 
 fem::DirichletControl makeVelocityControl(
     const fem::MixedFESpace& space,
     const BoundarySelector&  sel);
 
-void splitStateFields(VectorView<const Real>   state,
+void splitStateFields(HostConstVectorView      state,
                       const fem::MixedFESpace& space,
-                      Vector<Real>&            ux,
-                      Vector<Real>&            uy,
-                      Vector<Real>&            uz,
-                      Vector<Real>&            pressure);
+                      HostVector&              ux,
+                      HostVector&              uy,
+                      HostVector&              uz,
+                      HostVector&              pressure);
 
 } // namespace femx::model::ns

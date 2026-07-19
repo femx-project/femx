@@ -15,8 +15,8 @@ minor releases.
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve 0.99.2 development API at commit `bd60de0` or later, for CPU/CUDA
-  linear solver backends. The `v0.99.2` tag lacks APIs used by the adapter.
+- Re::Solve development install at `/opt/resolve/develop`, for CPU/CUDA linear
+  solver backends. Re::Solve 0.99.2 is not supported.
 - PETSc 3.19 or later (tested with PETSc 3.19.6)
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
@@ -53,7 +53,7 @@ make
 For ReSolve:
 
 ```shell
-cmake .. -DFEMX_ENABLE_RESOLVE=ON -DReSolve_ROOT=/path/to/resolve
+cmake .. -DFEMX_ENABLE_RESOLVE=ON
 make
 ```
 
@@ -109,7 +109,7 @@ Backend-specific examples are available when their dependencies are enabled:
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
 ```
 
 See [examples/poisson-opt](examples/poisson-opt) for the optimization problem
@@ -158,9 +158,13 @@ add_executable(my_solver main.cpp)
 target_link_libraries(my_solver PRIVATE femx::femx)
 ```
 
-Component targets such as `femx::linalg`, `femx::fem`, `femx::assembly`,
-`femx::state`, `femx::inverse`, and `femx::io` are also available. `femx::opt`
-is available when PETSc is enabled.
+Component targets such as `femx::linalg`, `femx::ad`, `femx::fem`,
+`femx::assembly`, `femx::state`, `femx::inverse`, and `femx::io` are also
+available. `femx::opt` is available when PETSc is enabled.
+
+`femx::ad` exposes the optional C++ Enzyme entry point in
+`<femx/ad/Enzyme.hpp>`. Enable it with a Clang compiler and
+`FEMX_ENABLE_ENZYME=ON`; the Python API does not expose Enzyme yet.
 
 ## Documentation
 

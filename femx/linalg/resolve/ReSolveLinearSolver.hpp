@@ -3,21 +3,19 @@
 #include <memory>
 #include <string>
 
+#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/common/Workspace.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
-class CsrMatrix;
-template <typename T>
-class Vector;
-
 namespace linalg
 {
 
 /**
- * @brief ReSolve solver configuration used by ReSolveLinearSolver.
+ * @brief ReSolve configuration shared by host and CUDA solver adapters.
  */
 struct ReSolveOptions
 {
@@ -27,9 +25,9 @@ struct ReSolveOptions
   std::string precond  = "ilu0";   ///< Preconditioner method.
   std::string ir       = "none";   ///< Iterative-refinement method.
 
-  std::string gram_schmidt        = "cgs2";  ///< Krylov orthogonalization method.
-  std::string sketching           = "count"; ///< Sketching method for randomized Krylov variants.
-  std::string preconditioner_side = "right"; ///< Side on which to apply preconditioning.
+  std::string gram_schmidt = "cgs2";  ///< Krylov orthogonalization method.
+  std::string sketching    = "count"; ///< Sketching method for randomized Krylov variants.
+  std::string pc_side      = "right"; ///< Side on which to apply preconditioning.
 
   Index max_its  = 1000;   ///< Maximum Krylov iterations.
   Index restart  = 200;    ///< Krylov restart length.
@@ -38,43 +36,52 @@ struct ReSolveOptions
 };
 
 /**
- * @brief ReSolve adapter for femx sparse linear solves.
+ * @brief ReSolve adapter for Host and Device sparse linear solves.
  *
- * The adapter accepts CsrAssemblyMatrix operators and can run on the
- * configured ReSolve CPU or CUDA backend.  It implements both forward and
- * transpose solves for use in state and adjoint workflows.
+ * Host operations retain the LinearSolver interface used by CPU state and
+ * inverse workflows. Device overloads bind femx CUDA storage directly and do
+ * not stage matrices or vectors through Host memory. Host and CUDA resources
+ * are initialized independently on first use.
  */
-class ReSolveLinearSolver final : public LinearSolver
+class ReSolveLinearSolver final : public HostCsrLinearSolver,
+                                  public DeviceLinearSolver
 {
 public:
-  /** @brief Create a ReSolve linear solver for the given workspace. */
-  explicit ReSolveLinearSolver(WorkspaceType workspace_type);
+  /** @brief Create a lazy ReSolve linear solver with shared defaults. */
+  ReSolveLinearSolver();
 
   /** @brief Create a ReSolve linear solver with explicit options. */
-  ReSolveLinearSolver(WorkspaceType  workspace_type,
-                      ReSolveOptions opts);
+  explicit ReSolveLinearSolver(ReSolveOptions opts);
 
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /** @brief Solve op x = rhs for a CsrAssemblyMatrix operator. */
-  void solve(const LinearOperator& op,
-             const Vector<Real>&   rhs,
-             Vector<Real>&         out) override;
+  /** @brief Solve a concrete Host CSR system. */
+  void solve(const HostCsrMatrix& mat,
+             const HostVector&    rhs,
+             HostVector&          sol,
+             CpuContext&          ctx) override;
 
-  /** @brief Solve op^T x = rhs for a CsrAssemblyMatrix operator. */
-  void solveT(const LinearOperator& op,
-              const Vector<Real>&   rhs,
-              Vector<Real>&         out) override;
+  /** @brief Solve a concrete transposed Host CSR system. */
+  void solveT(const HostCsrMatrix& mat,
+              const HostVector&    rhs,
+              HostVector&          sol,
+              CpuContext&          ctx) override;
 
-  /** @brief Set the system matrix used by subsequent solves. */
-  void setOperator(const CsrMatrix& A);
+  /** @brief Solve a concrete Device CSR system without Host staging. */
+  void solve(const DeviceCsrMatrix& mat,
+             const DeviceVector&    rhs,
+             DeviceVector&          sol,
+             CudaContext&           ctx) override;
 
-  /** @brief Select or update the preconditioner method. */
-  void setPreconditioner(const std::string& method);
+  /** @brief Solve a concrete transposed Device CSR system on Device. */
+  void solveT(const DeviceCsrMatrix& mat,
+              const DeviceVector&    rhs,
+              DeviceVector&          sol,
+              CudaContext&           ctx) override;
 
-  /** @brief Solve A x = b using the current operator. */
-  void solve(const Vector<Real>& b, Vector<Real>& x);
+  ReSolveLinearSolver(const ReSolveLinearSolver&)            = delete;
+  ReSolveLinearSolver& operator=(const ReSolveLinearSolver&) = delete;
 
 private:
   class Impl;

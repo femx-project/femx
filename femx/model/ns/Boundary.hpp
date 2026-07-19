@@ -14,9 +14,15 @@ class MixedFESpace;
 namespace femx::model::ns
 {
 
+/**
+ * @brief Compile ordered app boundary settings into unique constrained DOFs.
+ *
+ * Later entries replace earlier values at shared boundary nodes. This lets a
+ * wall condition define inlet/outlet rims and cavity corners explicitly.
+ */
 fem::DirichletBC makeDirichletBC(
     const fem::MixedFESpace& space,
-    const Vector<BCsParams>& bcs,
+    const Array<BCsParams>&  bcs,
     Real                     time);
 
 } // namespace femx::model::ns

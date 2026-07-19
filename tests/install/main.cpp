@@ -3,11 +3,12 @@
 #include <iostream>
 #include <string>
 
+#include <femx/ad/Enzyme.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
 
 namespace
 {
@@ -30,28 +31,29 @@ int main()
     (void) mesh;
     femx::io::VtuWriter writer;
     (void) writer;
+    (void) femx::ad::has_enzyme;
 
-    femx::linalg::DenseAssemblyMatrix A;
-    A.resize(2, 2);
-    A.setZero();
-    A.set(0, 0, 3.0);
-    A.set(0, 1, 1.0);
-    A.set(1, 0, 1.0);
-    A.set(1, 1, 2.0);
+    femx::HostCsrGraph  graph(2,
+                             2,
+                             femx::HostIndexVector{0, 2, 4},
+                             femx::HostIndexVector{0, 1, 0, 1});
+    femx::HostCsrMatrix A(std::move(graph));
+    A.vals() = femx::HostVector{3.0, 1.0, 1.0, 2.0};
 
-    femx::Vector<femx::Real> rhs(2);
+    femx::HostVector rhs(2);
     rhs[0] = 5.0;
     rhs[1] = 5.0;
 
     femx::linalg::DenseLinearSolver solver;
-    femx::Vector<femx::Real>        x;
-    solver.solve(A, rhs, x);
+    femx::CpuContext                ctx;
+    femx::HostVector                x;
+    solver.solve(A, rhs, x, ctx);
 
     checkClose(x[0], 1.0, "x[0]");
     checkClose(x[1], 2.0, "x[1]");
 
-    femx::Vector<femx::Real> Ax;
-    A.apply(x, Ax);
+    femx::HostVector Ax(2);
+    femx::apply(A, x.view(), Ax.view());
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");
   }

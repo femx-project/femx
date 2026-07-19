@@ -4,11 +4,11 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/common/Workspace.hpp>
-#include <femx/linalg/native/DenseAssemblyMatrix.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 
 using namespace femx;
+using namespace femx::assembly;
 using namespace femx::examples;
 using namespace femx::examples::poisson;
 using namespace femx::linalg;
@@ -20,22 +20,9 @@ using namespace femx::linalg;
 namespace
 {
 
-bool hasHelp(int argc, char** argv)
-{
-  for (int i = 1; i < argc; ++i)
-  {
-    const std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h")
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
 int run(const Options& opts)
 {
-  if (opts.backend != WorkspaceType::Cpu)
+  if (opts.backend != MemorySpace::Host)
   {
     throw std::runtime_error("Dense Poisson backend supports only 'cpu'");
   }
@@ -43,20 +30,21 @@ int run(const Options& opts)
   ExampleHelper         helper("dense", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  DenseAssemblyMatrix A;
-  Vector<Real>        rhs;
+  HostCsrMatrix A(problem.map().graph());
+  HostVector    rhs;
   problem.assemble(A, rhs);
 
   DenseLinearSolver solver;
+  CpuContext        ctx;
 
-  Vector<Real> x;
-  solver.solve(A, rhs, x);
+  HostVector x;
+  solver.solve(A, rhs, x, ctx);
 
   printReport(std::cout,
-              helper.backendName(),
+              helper.name(),
               problem,
               problem.errorReport(x),
-              helper.residualNorm(A, rhs, x));
+              helper.resNorm(A, rhs, x));
 
   if (opts.write_output)
   {
@@ -74,7 +62,7 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (hasHelp(argc, argv))
+    if (examples::hasHelp(argc, argv))
     {
       printUsage(FEMX_POISSON_APP_NAME, false, "dense solver supports cpu only");
       return 0;

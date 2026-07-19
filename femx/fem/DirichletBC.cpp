@@ -16,7 +16,7 @@ namespace fem
 void DirichletBC::addDof(Index id, Real value)
 {
   dofs_.push_back(id);
-  values_.push_back(value);
+  vals_.push_back(value);
 }
 
 void DirichletBC::addBoundary(const FESpace& space,
@@ -179,43 +179,43 @@ void DirichletBC::addBoundary(const MixedFieldView& field,
   }
 }
 
-const Vector<Index>& DirichletBC::dofs() const noexcept
+const Array<Index>& DirichletBC::dofs() const noexcept
 {
   return dofs_;
 }
 
-const Vector<Real>& DirichletBC::values() const noexcept
+const HostVector& DirichletBC::vals() const noexcept
 {
-  return values_;
+  return vals_;
 }
 
-void DirichletBC::apply(CsrMatrix& A, Vector<Real>& b) const
+void DirichletBC::apply(HostCsrMatrix& A, HostVector& b) const
 {
-  if (dofs_.size() != values_.size())
+  if (dofs_.size() != vals_.size())
   {
     throw std::runtime_error("DirichletBC has inconsistent data");
   }
 
   const Index* rp   = A.rowPtrData();
   const Index* ci   = A.colIndData();
-  Real*        vals = A.valuesData();
+  Real*        vals = A.valsData();
 
-  Vector<char> is_dirichlet(A.rows(), 0);
-  Vector<char> found_diagonal(A.rows(), 0);
-  Vector<Real> dirichlet_values(A.rows());
+  Array<char> is_dirichlet(A.rows(), 0);
+  Array<char> found_diagonal(A.rows(), 0);
+  HostVector  bc_vals(A.rows());
 
   for (Index c = 0; c < dofs_.size(); ++c)
   {
-    const Index id    = dofs_[c];
-    const Real  value = values_[c];
+    const Index id  = dofs_[c];
+    const Real  val = vals_[c];
 
     if (id < 0 || id >= A.rows() || id >= b.size())
     {
       throw std::runtime_error("Dirichlet id is out of range");
     }
 
-    is_dirichlet[id]     = 1;
-    dirichlet_values[id] = value;
+    is_dirichlet[id] = 1;
+    bc_vals[id]      = val;
   }
 
   for (Index row = 0; row < A.rows(); ++row)
@@ -237,14 +237,14 @@ void DirichletBC::apply(CsrMatrix& A, Vector<Real>& b) const
       }
       else if (is_dirichlet[col] != 0)
       {
-        b[row]  -= vals[k] * dirichlet_values[col];
+        b[row]  -= vals[k] * bc_vals[col];
         vals[k]  = 0.0;
       }
     }
 
     if (row_is_dirichlet)
     {
-      b[row] = dirichlet_values[row];
+      b[row] = bc_vals[row];
     }
   }
 
