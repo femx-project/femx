@@ -1,0 +1,20 @@
+---
+# Keep the initial check set small and explicit. Add checks only after the
+# existing codebase is clean for them.
+Checks: >
+  -*,
+  clang-analyzer-core.*,
+  clang-analyzer-cplusplus.*,
+  clang-analyzer-deadcode.DeadStores,
+  bugprone-dangling-handle,
+  bugprone-infinite-loop,
+  bugprone-sizeof-expression,
+  bugprone-use-after-move,
+  performance-for-range-copy,
+  performance-move-const-arg,
+  performance-unnecessary-copy-initialization
+WarningsAsErrors: ''
+HeaderFilterRegex: '(^|.*[/\\])(femx|python[/\\]bindings|apps|examples|tests)[/\\].*'
+SystemHeaders: false
+FormatStyle: file
+...
