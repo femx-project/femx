@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python API"
+  short_description: "Update femx Python bindings and wrappers safely"
+  default_prompt: "Use $python-api to implement a Python-visible femx API change across bindings, wrappers, exports, tests, and documentation."
