@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify"
+  short_description: "Select focused builds and tests for femx"
+  default_prompt: "Use $verify to validate the current changes with the smallest relevant build and test scope."
