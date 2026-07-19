@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <femx/assembly/AssemblyMap.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/fem/DofLayout.hpp>
 
 namespace femx
@@ -17,11 +18,8 @@ namespace
 
 Index checkedMul(Index lhs, Index rhs)
 {
-  if (lhs < 0 || rhs < 0)
-  {
-    throw std::runtime_error(
-        "AssemblyMap local dimensions must be non-negative");
-  }
+  require(lhs >= 0 && rhs >= 0,
+          "AssemblyMap local dimensions must be non-negative");
   const std::int64_t val = static_cast<std::int64_t>(lhs) * rhs;
   if (val > std::numeric_limits<Index>::max())
   {
@@ -45,11 +43,8 @@ void checkDofs(const Array<Index>& dofs, Index size, const char* kind)
 {
   for (Index dof : dofs)
   {
-    if (dof < 0 || dof >= size)
-    {
-      throw std::runtime_error(std::string("AssemblyMap ") + kind
-                               + " DOF is out of range");
-    }
+    require(dof >= 0 && dof < size,
+            std::string("AssemblyMap ") + kind + " DOF is out of range");
   }
 }
 
@@ -61,16 +56,10 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     const Array<Array<Index>>& elem_res,
     const Array<Array<Index>>& elem_state)
 {
-  if (num_res < 0 || num_states < 0)
-  {
-    throw std::runtime_error(
-        "AssemblyMap global dimensions must be non-negative");
-  }
-  if (elem_res.size() != elem_state.size())
-  {
-    throw std::runtime_error(
-        "AssemblyMap residual/state element counts differ");
-  }
+  require(num_res >= 0 && num_states >= 0,
+          "AssemblyMap global dimensions must be non-negative");
+  require(elem_res.size() == elem_state.size(),
+          "AssemblyMap residual/state element counts differ");
 
   const Index num_elem = elem_res.size();
 
@@ -189,11 +178,8 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     fem::DofLayout res_lyt,
     fem::DofLayout state_lyt)
 {
-  if (res_lyt.numElems() != state_lyt.numElems())
-  {
-    throw std::runtime_error(
-        "AssemblyMap residual/state layouts have different element counts");
-  }
+  require(res_lyt.numElems() == state_lyt.numElems(),
+          "AssemblyMap residual/state layouts have different element counts");
 
   Array<Array<Index>> res_dofs(res_lyt.numElems());
   Array<Array<Index>> state_dofs(state_lyt.numElems());

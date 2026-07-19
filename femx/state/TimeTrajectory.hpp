@@ -3,12 +3,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <stdexcept>
 #include <type_traits>
 
+#include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -200,26 +200,20 @@ public:
 private:
   static Index checkedSize(Index num_steps, Index num_states)
   {
-    if (num_steps < 0 || num_states < 0)
-    {
-      throw std::runtime_error("Trajectory received invalid dimensions");
-    }
+    require(num_steps >= 0 && num_states >= 0,
+            "Trajectory received invalid dimensions");
 
     const std::int64_t size =
         (static_cast<std::int64_t>(num_steps) + 1) * num_states;
-    if (size > std::numeric_limits<Index>::max())
-    {
-      throw std::runtime_error("Trajectory exceeds the Index range");
-    }
+    require(size <= std::numeric_limits<Index>::max(),
+            "Trajectory exceeds the Index range");
     return static_cast<Index>(size);
   }
 
   void checkLevel(Index level) const
   {
-    if (level < 0 || level >= numTimeLevels())
-    {
-      throw std::runtime_error("Trajectory level is out of range");
-    }
+    require(level >= 0 && level < numTimeLevels(),
+            "Trajectory level is out of range");
   }
 
 private:

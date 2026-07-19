@@ -3,16 +3,17 @@ add_library(femx::assembly ALIAS femx_assembly)
 
 target_sources(
   femx_assembly
-  PRIVATE AssemblyMap.cpp
+  PRIVATE Assembly.cpp
+          AssemblyMap.cpp
           BoundaryMap.cpp
-          TimeDirichletControlResidual.cpp
+          ConstrainedTimeResidual.cpp
   PUBLIC Assembly.hpp
          AssemblyMap.hpp
          BoundaryMap.hpp
-         CudaAssembly.hpp
-         TimeDirichletControlResidual.hpp)
+         ConstrainedTimeResidual.hpp
+         CudaAssembly.hpp)
 
-target_link_libraries(femx_assembly PUBLIC femx_config femx_ad femx_linalg
+target_link_libraries(femx_assembly PUBLIC femx_config femx_linalg
                                            femx_state femx_fem)
 
 if(FEMX_HAS_CUDA)
@@ -22,5 +23,5 @@ if(FEMX_HAS_CUDA)
 endif()
 
 if(TARGET femx_linalg_petsc)
-  target_link_libraries(femx_assembly PRIVATE femx_linalg_petsc)
+  target_link_libraries(femx_assembly PUBLIC femx_linalg_petsc)
 endif()

@@ -303,9 +303,9 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     femx::copy(host_state, device_state, ctx);
     femx::copy(host_res, device_res, ctx);
     assembly::replaceRes(device_map,
-                         device_state,
-                         device_bc,
-                         device_res,
+                         device_state.view(),
+                         device_bc.view(),
+                         device_res.view(),
                          ctx);
     HostVector actual_res;
     femx::copy(device_res, actual_res, ctx);
@@ -319,9 +319,9 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     try
     {
       assembly::replaceRes(device_map,
-                           device_state,
-                           device_bc,
-                           device_state,
+                           device_state.view(),
+                           device_bc.view(),
+                           device_state.view(),
                            ctx);
     }
     catch (const std::runtime_error&)
@@ -444,8 +444,8 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
                        2,
                        state::VariableBlock::hist(1),
                        dmap,
-                       dhist,
-                       dnxt,
+                       dhist.view(),
+                       dnxt.view(),
                        dres,
                        djac,
                        ctx);

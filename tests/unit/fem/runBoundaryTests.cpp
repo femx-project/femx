@@ -471,7 +471,7 @@ TestOutcome timeDirichletValueCompilation()
   status *= valsNear(
       vals.vals, std::array<Real, 4>{{1.5, -0.5, 2.0, -1.0}});
   status *= valsNear(
-      vals.initial_state,
+      vals.init_state,
       std::array<Real, 5>{{0.0, 1.0, 0.0, 0.0, 0.0}});
 
   bool threw = false;

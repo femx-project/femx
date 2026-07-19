@@ -5,10 +5,9 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -52,16 +51,6 @@ assembly::HostAssemblyMap makeSharedElementMap()
 {
   const Array<Array<Index>> dofs{{0, 1}, {1, 2}};
   return assembly::makeAssemblyMap(3, 3, dofs, dofs);
-}
-
-DenseMatrix makeLocalMatrix(Real a00, Real a01, Real a10, Real a11)
-{
-  DenseMatrix local(2, 2);
-  local(0, 0) = a00;
-  local(0, 1) = a01;
-  local(1, 0) = a10;
-  local(1, 1) = a11;
-  return local;
 }
 
 TestOutcome vectorBasics()
@@ -134,18 +123,38 @@ TestOutcome vectorViewCopiesAndAssigns()
   return status.report();
 }
 
+TestOutcome vectorGatherScatter()
+{
+  TestStatus status(__func__);
+
+  const HostVector      source{10.0, 20.0, 30.0, 40.0, 50.0};
+  const HostIndexVector indices{4, 1, 3};
+  HostVector            compact(3);
+  CpuContext            ctx;
+  gather(source.view(), indices.view(), compact.view(), ctx);
+  status *= valsNear(compact.data(),
+                     std::array<Real, 3>{{50.0, 20.0, 40.0}});
+
+  HostVector expanded(5, -1.0);
+  scatter(compact.view(), indices.view(), expanded.view(), ctx);
+  status *= valsNear(expanded.data(),
+                     std::array<Real, 5>{{-1.0, 20.0, -1.0, 40.0, 50.0}});
+
+  return status.report();
+}
+
 TestOutcome denseMatrixBasics()
 {
   TestStatus status(__func__);
 
   DenseMatrix empty;
-  status *= empty.numRows() == 0;
-  status *= empty.numCols() == 0;
+  status *= empty.rows() == 0;
+  status *= empty.cols() == 0;
   status *= empty.size() == 0;
 
   DenseMatrix mat(2, 3);
-  status *= mat.numRows() == 2;
-  status *= mat.numCols() == 3;
+  status *= mat.rows() == 2;
+  status *= mat.cols() == 3;
   status *= mat.size() == 6;
 
   mat(0, 0) = 1.0;
@@ -159,25 +168,13 @@ TestOutcome denseMatrixBasics()
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{1.0, 2.0, 3.0, 4.0, 5.0, 6.0}});
 
-  const HostVector x{1.0, 2.0, 3.0};
-  HostVector       y;
-  mat.apply(x, y);
-  status *= y.size() == 2;
-  status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
-
-  const HostVector xt{2.0, -1.0};
-  HostVector       yt;
-  mat.applyT(xt, yt);
-  status *= yt.size() == 3;
-  status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
-
   mat.setZero();
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
   mat.resize(3, 2);
-  status *= mat.numRows() == 3;
-  status *= mat.numCols() == 2;
+  status *= mat.rows() == 3;
+  status *= mat.cols() == 2;
   status *= mat.size() == 6;
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
@@ -191,64 +188,36 @@ TestOutcome denseMatrixApplies()
 
   DenseMatrix mat;
   mat.resize(2, 3);
-  mat.set(0, 0, 1.0);
-  mat.set(0, 1, 2.0);
-  mat.set(0, 2, 3.0);
-  mat.set(1, 0, 4.0);
-  mat.set(1, 1, 5.0);
-  mat.set(1, 2, 6.0);
+  mat(0, 0) = 1.0;
+  mat(0, 1) = 2.0;
+  mat(0, 2) = 3.0;
+  mat(1, 0) = 4.0;
+  mat(1, 1) = 5.0;
+  mat(1, 2) = 6.0;
 
   const HostVector x{1.0, 2.0, 3.0};
+  CpuContext       ctx;
 
-  HostVector y;
-  mat.apply(x, y);
-  status *= y.size() == 2;
+  HostVector y(2);
+  apply(mat.view(), x.view(), y.view(), ctx);
   status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
 
   const HostVector xt{2.0, -1.0};
-  HostVector       yt;
-  mat.applyT(xt, yt);
-  status *= yt.size() == 3;
+  HostVector       yt(3);
+  applyT(mat.view(), xt.view(), yt.view(), ctx);
   status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
 
   bool threw = false;
   try
   {
     HostVector wrong_input(2);
-    mat.apply(wrong_input, y);
+    apply(mat.view(), wrong_input.view(), y.view(), ctx);
   }
   catch (const std::runtime_error&)
   {
     threw = true;
   }
   status *= threw;
-
-  return status.report();
-}
-
-TestOutcome denseMatrixOperatorBuildsAndClearsValues()
-{
-  TestStatus status(__func__);
-
-  DenseMatrix mat;
-  mat.resize(2, 2);
-  status *= mat.numRows() == 2;
-  status *= mat.numCols() == 2;
-
-  mat.set(0, 0, 1.0);
-  mat.set(0, 1, 2.0);
-  mat.set(1, 0, 3.0);
-  mat.set(1, 1, 4.0);
-  mat.add(0, 1, 5.0);
-  mat.addAtomic(1, 0, 0.5);
-  mat.finalize();
-
-  status *= valsNear(mat.data(),
-                     std::array<Real, 4>{{1.0, 7.0, 3.5, 4.0}});
-
-  mat.setZero();
-  status *= valsNear(mat.data(),
-                     std::array<Real, 4>{{0.0, 0.0, 0.0, 0.0}});
 
   return status.report();
 }
@@ -318,120 +287,6 @@ TestOutcome csrMatrixOwnsValuesForGraph()
   return status.report();
 }
 
-TestOutcome mapCsrMatrixBuildsAndClearsValues()
-{
-  TestStatus status(__func__);
-
-  const auto           map = makeSharedElementMap();
-  linalg::MapCsrMatrix mat(map);
-
-  mat.set(0, 0, 1.0);
-  mat.set(0, 1, 2.0);
-  mat.set(1, 0, 3.0);
-  mat.set(1, 1, 4.0);
-  mat.set(1, 2, 5.0);
-  mat.set(2, 1, 6.0);
-  mat.set(2, 2, 7.0);
-  mat.add(1, 1, 0.5);
-  mat.addAtomic(2, 2, 0.25);
-  mat.finalize();
-
-  status *= valsNear(mat.mat().valsData(),
-                     std::array<Real, 7>{{1.0, 2.0, 3.0, 4.5, 5.0, 6.0, 7.25}});
-
-  bool resize_threw = false;
-  try
-  {
-    mat.resize(2, 3);
-  }
-  catch (const std::runtime_error&)
-  {
-    resize_threw = true;
-  }
-  status *= resize_threw;
-
-  bool entry_threw = false;
-  try
-  {
-    mat.set(0, 2, 1.0);
-  }
-  catch (const std::runtime_error&)
-  {
-    entry_threw = true;
-  }
-  status *= entry_threw;
-
-  mat.setZero();
-  status *= valsNear(mat.mat().valsData(),
-                     std::array<Real, 7>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
-
-  return status.report();
-}
-
-TestOutcome mapCsrMatrixAddsMappedElementMatrices()
-{
-  TestStatus status(__func__);
-
-  const auto           map = makeSharedElementMap();
-  linalg::MapCsrMatrix mat(map);
-  const DenseMatrix    elem0 = makeLocalMatrix(1.0, 2.0, 3.0, 4.0);
-  const DenseMatrix    elem1 = makeLocalMatrix(5.0, 6.0, 7.0, 8.0);
-
-  mat.addElem(0, {0, 1}, {0, 1}, elem0, false);
-  mat.addElem(1, {1, 2}, {1, 2}, elem1, false);
-  status *= valsNear(mat.mat().valsData(),
-                     std::array<Real, 7>{{1.0, 2.0, 3.0, 9.0, 6.0, 7.0, 8.0}});
-
-  mat.setZero();
-  mat.addElem(0, {0, 1}, {0, 1}, elem0, true);
-  mat.addElem(1, {1, 2}, {1, 2}, elem1, true);
-  status *= valsNear(mat.mat().valsData(),
-                     std::array<Real, 7>{{1.0, 2.0, 3.0, 9.0, 6.0, 7.0, 8.0}});
-
-  bool threw = false;
-  try
-  {
-    DenseMatrix wrong_size(1, 1);
-    mat.addElem(0, {0, 1}, {0, 1}, wrong_size, false);
-  }
-  catch (const std::runtime_error&)
-  {
-    threw = true;
-  }
-  status *= threw;
-
-  return status.report();
-}
-
-TestOutcome mapCsrMatrixMatvecAliasesApply()
-{
-  TestStatus status(__func__);
-
-  const auto           map = makeSharedElementMap();
-  linalg::MapCsrMatrix mat(map);
-
-  mat.set(0, 0, 1.0);
-  mat.set(0, 1, 2.0);
-  mat.set(1, 0, 3.0);
-  mat.set(1, 1, 4.0);
-  mat.set(1, 2, 5.0);
-  mat.set(2, 1, 6.0);
-  mat.set(2, 2, 7.0);
-
-  const HostVector x{1.0, 2.0, 3.0};
-  HostVector       y;
-  mat.apply(x, y);
-  status *= y.size() == 3;
-  status *= valsNear(y.data(), std::array<Real, 3>{{5.0, 26.0, 33.0}});
-
-  HostVector yt;
-  mat.applyT(x, yt);
-  status *= yt.size() == 3;
-  status *= valsNear(yt.data(), std::array<Real, 3>{{7.0, 28.0, 31.0}});
-
-  return status.report();
-}
-
 } // namespace
 } // namespace tests
 } // namespace femx
@@ -442,14 +297,11 @@ int main(int, char**)
 
   results += femx::tests::vectorBasics();
   results += femx::tests::vectorViewCopiesAndAssigns();
+  results += femx::tests::vectorGatherScatter();
   results += femx::tests::denseMatrixBasics();
   results += femx::tests::denseMatrixApplies();
-  results += femx::tests::denseMatrixOperatorBuildsAndClearsValues();
   results += femx::tests::assemblyMapBuildsSharedElementSparsity();
   results += femx::tests::csrMatrixOwnsValuesForGraph();
-  results += femx::tests::mapCsrMatrixBuildsAndClearsValues();
-  results += femx::tests::mapCsrMatrixAddsMappedElementMatrices();
-  results += femx::tests::mapCsrMatrixMatvecAliasesApply();
 
   return results.summary();
 }

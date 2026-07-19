@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
 using namespace femx::state;
 
@@ -18,11 +19,8 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
   : obs_(obs),
     data_(std::move(data))
 {
-  if (wt < 0.0)
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective received negative weight");
-  }
+  require(wt >= 0.0,
+          "TimeLeastSquaresObjective received negative weight");
   wts_.resize(numTimeLevels());
   for (Index level = 0; level < wts_.size(); ++level)
   {
@@ -109,7 +107,7 @@ Index TimeLeastSquaresObjective::numParams() const
 Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
                                       const HostVector&     prm) const
 {
-  Real       value_out = 0.0;
+  Real       val = 0.0;
   HostVector res;
   for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
@@ -118,11 +116,10 @@ Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
     const Real wt = observationWeight(interp);
     for (Index i = 0; i < res.size(); ++i)
     {
-      value_out += 0.5 * wt * observationEntryWeight(row, i)
-                   * res[i] * res[i];
+      val += 0.5 * wt * observationEntryWeight(row, i) * res[i] * res[i];
     }
   }
-  return value_out;
+  return val;
 }
 
 void TimeLeastSquaresObjective::stateGrad(Index                 level,
@@ -215,80 +212,54 @@ Index TimeLeastSquaresObjective::numTimeLevels() const
 
 void TimeLeastSquaresObjective::checkInputs() const
 {
-  if (data_.numObservations() != obs_.numObservations()
-      || wts_.size() != numTimeLevels()
-      || obs_wts_.size()
-             != data_.numTimeLevels() * data_.numObservations())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective received inconsistent dimensions");
-  }
-  if (!std::isfinite(time_offset_))
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective received invalid time offset");
-  }
-  if (!data_.hasTimeLevels() && !data_.hasTimeValues()
-      && data_.numTimeLevels() != numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective received inconsistent time levels");
-  }
+  require(data_.numObservations() == obs_.numObservations()
+              && wts_.size() == numTimeLevels()
+              && obs_wts_.size()
+                     == data_.numTimeLevels() * data_.numObservations(),
+          "TimeLeastSquaresObjective received inconsistent dimensions");
+  require(std::isfinite(time_offset_),
+          "TimeLeastSquaresObjective received invalid time offset");
+  require(data_.hasTimeLevels() || data_.hasTimeValues()
+              || data_.numTimeLevels() == numTimeLevels(),
+          "TimeLeastSquaresObjective received inconsistent time levels");
   for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     (void) interpolation(row);
   }
   for (Index level = 0; level < wts_.size(); ++level)
   {
-    if (!std::isfinite(wts_[level]) || wts_[level] < 0.0)
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective received invalid weight");
-    }
+    require(std::isfinite(wts_[level]) && wts_[level] >= 0.0,
+            "TimeLeastSquaresObjective received invalid weight");
   }
-  for (Real weight : obs_wts_)
+  for (Real wt : obs_wts_)
   {
-    if (!std::isfinite(weight) || weight < 0.0)
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective received invalid observation weight");
-    }
+    require(std::isfinite(wt) && wt >= 0.0,
+            "TimeLeastSquaresObjective received invalid observation weight");
   }
 }
 
 void TimeLeastSquaresObjective::checkLevel(Index level) const
 {
-  if (level < 0 || level >= numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective time level is out of range");
-  }
+  require(level >= 0 && level < numTimeLevels(),
+          "TimeLeastSquaresObjective time level is out of range");
 }
 
 LinearInterpolation
 TimeLeastSquaresObjective::interpolation(Index row) const
 {
-  if (row < 0 || row >= data_.numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective observation row is out of range");
-  }
+  require(row >= 0 && row < data_.numTimeLevels(),
+          "TimeLeastSquaresObjective observation row is out of range");
   if (data_.hasTimeValues())
   {
-    if (dt_ <= 0.0 || !std::isfinite(dt_))
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective requires positive dt");
-    }
+    require(dt_ > 0.0 && std::isfinite(dt_),
+            "TimeLeastSquaresObjective requires positive dt");
     const Real scaled = (data_.timeValue(row) + time_offset_) / dt_;
     const Real tol =
         std::max<Real>(1.0e-10,
                        1.0e-8 * std::max<Real>(1.0, std::abs(scaled)));
-    if (scaled < -tol || scaled > static_cast<Real>(numSteps()) + tol)
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective observation time is out of range");
-    }
+    require(scaled >= -tol
+                && scaled <= static_cast<Real>(numSteps()) + tol,
+            "TimeLeastSquaresObjective observation time is out of range");
 
     const Real clamped =
         std::min<Real>(std::max<Real>(scaled, 0.0),
@@ -305,25 +276,16 @@ TimeLeastSquaresObjective::interpolation(Index row) const
   Index level = data_.timeLevel(row);
   if (time_offset_ != 0.0)
   {
-    if (dt_ <= 0.0 || !std::isfinite(dt_))
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective requires positive dt for time offset");
-    }
+    require(dt_ > 0.0 && std::isfinite(dt_),
+            "TimeLeastSquaresObjective requires positive dt for time offset");
     const Real  offset       = time_offset_ / dt_;
     const Index level_offset = static_cast<Index>(llround(offset));
-    if (std::abs(offset - static_cast<Real>(level_offset)) > 1.0e-8)
-    {
-      throw std::runtime_error(
-          "TimeLeastSquaresObjective time offset must align to a time step");
-    }
+    require(std::abs(offset - static_cast<Real>(level_offset)) <= 1.0e-8,
+            "TimeLeastSquaresObjective time offset must align to a time step");
     level += level_offset;
   }
-  if (level < 0 || level >= numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective observation time level is out of range");
-  }
+  require(level >= 0 && level < numTimeLevels(),
+          "TimeLeastSquaresObjective observation time level is out of range");
   return {level, level, 0.0};
 }
 
@@ -342,12 +304,9 @@ Real TimeLeastSquaresObjective::observationEntryWeight(
     Index row,
     Index observation) const
 {
-  if (row < 0 || row >= data_.numTimeLevels() || observation < 0
-      || observation >= data_.numObservations())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective observation weight index is out of range");
-  }
+  require(row >= 0 && row < data_.numTimeLevels() && observation >= 0
+              && observation < data_.numObservations(),
+          "TimeLeastSquaresObjective observation weight index is out of range");
   return obs_wts_[row * data_.numObservations() + observation];
 }
 
@@ -382,11 +341,9 @@ void TimeLeastSquaresObjective::obsResidual(
     const HostVector&          prm,
     HostVector&                out) const
 {
-  if (tr.numTimeLevels() != numTimeLevels() || tr.numStates() != numStates())
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective trajectory size mismatch");
-  }
+  require(tr.numTimeLevels() == numTimeLevels()
+              && tr.numStates() == numStates(),
+          "TimeLeastSquaresObjective trajectory size mismatch");
   observeInterpolated(data_row, interp, tr, prm, out);
 
   const HostVector data = data_[data_row];
@@ -396,14 +353,11 @@ void TimeLeastSquaresObjective::obsResidual(
   }
 }
 
-void TimeLeastSquaresObjective::checkSize(const HostVector& value,
+void TimeLeastSquaresObjective::checkSize(const HostVector& val,
                                           Index             exp)
 {
-  if (value.size() != exp)
-  {
-    throw std::runtime_error(
-        "TimeLeastSquaresObjective vector size mismatch");
-  }
+  require(val.size() == exp,
+          "TimeLeastSquaresObjective vector size mismatch");
 }
 
 void TimeLeastSquaresObjective::scale(HostVector& out, Real factor)

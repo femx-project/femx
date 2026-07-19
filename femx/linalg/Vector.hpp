@@ -7,9 +7,10 @@
 #include <utility>
 #include <vector>
 
+#include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -18,6 +19,10 @@ namespace femx
 using DeviceVectorView      = VectorView<MemorySpace::Device, Real>;
 /** @brief Read-only non-owning view of contiguous Device real values. */
 using DeviceConstVectorView = VectorView<MemorySpace::Device, const Real>;
+/** @brief Read-only non-owning view of Host indices. */
+using HostConstIndexView    = VectorView<MemorySpace::Host, const Index>;
+/** @brief Read-only non-owning view of Device indices. */
+using DeviceConstIndexView  = VectorView<MemorySpace::Device, const Index>;
 
 /**
  * @brief Owning contiguous host vector with the femx signed index type.
@@ -195,10 +200,7 @@ public:
 private:
   static std::size_t checkedSize(Index size)
   {
-    if (size < 0)
-    {
-      throw std::runtime_error("Vector size must be non-negative");
-    }
+    require(size >= 0, "Vector size must be non-negative");
     return static_cast<std::size_t>(size);
   }
 
@@ -265,10 +267,7 @@ public:
   /** @brief Replace storage with a zeroed allocation of `size` values. */
   void resize(Index size)
   {
-    if (size < 0)
-    {
-      throw std::runtime_error("Vector size must be non-negative");
-    }
+    require(size >= 0, "Vector size must be non-negative");
     T* replacement = nullptr;
     if (size > 0)
     {
@@ -360,6 +359,89 @@ private:
   Index size_{0};
 };
 
+/** @brief Copy equal-sized Host views without changing storage. */
+inline void copy(HostConstVectorView src,
+                 HostVectorView      dst,
+                 CpuContext&)
+{
+  require(src.size() == dst.size(),
+          "Host view copy requires equal sizes");
+  if (src.empty() || src.data() == dst.data())
+  {
+    return;
+  }
+  require(!detail::overlaps(src, dst),
+          "Host view copy does not support partial overlap");
+  std::copy(src.begin(), src.end(), dst.begin());
+}
+
+/** @brief Resize and copy into owning Host storage. */
+inline void copy(HostConstVectorView src,
+                 HostVector&         dst,
+                 CpuContext&)
+{
+  dst = src;
+}
+
+/** @brief Set every entry of a Host view to zero. */
+inline void zero(HostVectorView vals, CpuContext&)
+{
+  std::fill(vals.begin(), vals.end(), Real{});
+}
+
+/** @brief Replace a Host view by `a * x + b * y`. */
+inline void axpby(Real                a,
+                  HostConstVectorView x,
+                  Real                b,
+                  HostVectorView      y,
+                  CpuContext&)
+{
+  require(x.size() == y.size(),
+          "Host axpby requires equal vector sizes");
+  require(x.data() == y.data() || !detail::overlaps(x, y),
+          "Host axpby does not support partial overlap");
+  for (Index i = 0; i < x.size(); ++i)
+  {
+    y[i] = a * x[i] + b * y[i];
+  }
+}
+
+/** @brief Set `dst[i] = src[indices[i]]` on Host. */
+inline void gather(HostConstVectorView src,
+                   HostConstIndexView  indices,
+                   HostVectorView      dst,
+                   CpuContext&)
+{
+  require(indices.size() == dst.size(),
+          "Host gather output size mismatch");
+  require(!detail::overlaps(src, dst),
+          "Host gather does not support aliased vectors");
+  for (Index i = 0; i < indices.size(); ++i)
+  {
+    require(indices[i] >= 0 && indices[i] < src.size(),
+            "Host gather index is out of range");
+    dst[i] = src[indices[i]];
+  }
+}
+
+/** @brief Set `dst[indices[i]] = src[i]` on Host. */
+inline void scatter(HostConstVectorView src,
+                    HostConstIndexView  indices,
+                    HostVectorView      dst,
+                    CpuContext&)
+{
+  require(src.size() == indices.size(),
+          "Host scatter input size mismatch");
+  require(!detail::overlaps(src, dst),
+          "Host scatter does not support aliased vectors");
+  for (Index i = 0; i < indices.size(); ++i)
+  {
+    require(indices[i] >= 0 && indices[i] < dst.size(),
+            "Host scatter index is out of range");
+    dst[indices[i]] = src[i];
+  }
+}
+
 /**
  * @brief Enqueue a same-sized device-view copy without changing storage.
  * @param src Read-only source view.
@@ -369,6 +451,21 @@ private:
 void copy(DeviceConstVectorView src,
           DeviceVectorView      dst,
           CudaContext&          ctx);
+
+/** @brief Resize and enqueue a copy into owning Device storage. */
+inline void copy(DeviceConstVectorView src,
+                 DeviceVector&         dst,
+                 CudaContext&          ctx)
+{
+  if (dst.size() != src.size())
+  {
+    dst.resize(src.size());
+  }
+  copy(src, dst.view(), ctx);
+}
+
+/** @brief Enqueue zeroing of a Device view. */
+void zero(DeviceVectorView vals, CudaContext& ctx);
 
 /**
  * @brief Replace `y` by `a * x + b * y` without changing storage.
@@ -383,6 +480,100 @@ void axpby(Real                  a,
            Real                  b,
            DeviceVectorView      y,
            CudaContext&          ctx);
+
+/**
+ * @brief Enqueue `dst[i] = src[indices[i]]` using cuSPARSE.
+ *
+ * Indices must be distinct and in `[0, src.size())`.
+ */
+void gather(DeviceConstVectorView src,
+            DeviceConstIndexView  indices,
+            DeviceVectorView      dst,
+            CudaContext&          ctx);
+
+/**
+ * @brief Enqueue `dst[indices[i]] = src[i]` using cuSPARSE.
+ *
+ * Indices must be distinct and in `[0, dst.size())`; unindexed destination
+ * entries are left unchanged.
+ */
+void scatter(DeviceConstVectorView src,
+             DeviceConstIndexView  indices,
+             DeviceVectorView      dst,
+             CudaContext&          ctx);
+
+/** @brief Overwrite the one-entry Device `out` with `x^T y` via cuBLAS. */
+void dot(DeviceConstVectorView x,
+         DeviceConstVectorView y,
+         DeviceVectorView      out,
+         CudaContext&          ctx);
+
+#if !defined(FEMX_HAS_CUDA)
+namespace detail
+{
+[[noreturn]] inline void throwCudaVectorUnavailable()
+{
+  throw std::runtime_error(
+      "femx was built without the CUDA execution backend");
+}
+} // namespace detail
+
+inline void copy(DeviceConstVectorView,
+                 DeviceVectorView,
+                 CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void zero(DeviceVectorView, CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void axpby(Real,
+                  DeviceConstVectorView,
+                  Real,
+                  DeviceVectorView,
+                  CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void gather(DeviceConstVectorView,
+                   DeviceConstIndexView,
+                   DeviceVectorView,
+                   CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void scatter(DeviceConstVectorView,
+                    DeviceConstIndexView,
+                    DeviceVectorView,
+                    CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+
+inline void dot(DeviceConstVectorView,
+                DeviceConstVectorView,
+                DeviceVectorView,
+                CudaContext&)
+{
+  detail::throwCudaVectorUnavailable();
+}
+#endif
+
+/** @brief Return the squared Euclidean norm of a Host vector. */
+inline Real squaredNorm(HostConstVectorView x, CpuContext&)
+{
+  Real val = 0.0;
+  for (Index i = 0; i < x.size(); ++i)
+  {
+    val += x[i] * x[i];
+  }
+  return val;
+}
 
 /**
  * @brief Enqueue an explicit host-to-device copy on context's stream.

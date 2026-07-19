@@ -1,16 +1,17 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <memory>
+#include <utility>
 
 #include "TestHelper.hpp"
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
+#include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
-#include <femx/model/ns/ResolveTimeIntegrator.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx::tests
@@ -86,26 +87,50 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     const HostVector init(model.numStates());
     const HostVector prm;
 
-    assembly::TimeDirichletControlResidual cpu_res(
-        model.residual(), fem::DirichletControl{}, dofs, 0, 0, vals);
-    linalg::MapCsrMatrix        cpu_mat(model.map());
+    assembly::HostConstrainedTimeResidual cpu_res(
+        model.residual(),
+        fem::makeControlMap(
+            steps, model.numStates(), {}, dofs, vals, {}, 0, 0));
+    HostCsrMatrix               cpu_mat(model.map().graph());
     linalg::ReSolveLinearSolver cpu_solver;
-    state::TimeLinearIntegrator cpu(cpu_res, cpu_mat, cpu_solver);
+    CpuContext                  cpu_ctx;
+    state::HostTimeIntegrator   cpu(
+        cpu_res, cpu_mat, cpu_solver, cpu_ctx);
     cpu.setInitialState(init);
     state::TimeTrajectory expected;
-    cpu.solve(prm, expected);
+    cpu.solve(prm.view(), expected);
 
-    model::ns::ResolveTimeIntegrator cuda(model, dofs, vals);
-    cuda.setInitialState(init);
+    auto control = fem::makeControlMap(
+        steps, model.numStates(), {}, dofs, vals, {}, 0, 0);
+    CudaContext cuda_ctx;
+    auto        cuda_res = model::ns::makeDeviceTimeResidual(
+        model, std::move(control));
+    DeviceCsrMatrix             cuda_mat(cuda_res->graph());
+    linalg::ReSolveLinearSolver cuda_solver;
+    state::DeviceTimeIntegrator cuda(
+        *cuda_res, cuda_mat, cuda_solver, cuda_ctx);
+    DeviceVector device_initial;
+    DeviceVector device_parameters;
+    femx::copy(init, device_initial, cuda_ctx);
+    femx::copy(prm, device_parameters, cuda_ctx);
+    cuda_ctx.synchronize();
+    cuda.setInitialState(device_initial);
+
+    state::DeviceTimeTrajectory device_trajectory;
+    cuda.solve(device_parameters.view(), device_trajectory);
     state::TimeTrajectory actual;
-    cuda.solve(prm, actual);
+    state::copy(device_trajectory, actual, cuda_ctx);
+    cuda_ctx.synchronize();
     status *= trajectoriesNear(actual, expected, 1.0e-6);
     status *= actual[1][dofs[0]] == level_vals[0];
     status *= actual[2][dofs[0]] == level_vals[0];
 
-    cuda.solve(prm, actual);
-    status *= cuda.assemblyCalls() == 2 * steps;
-    status *= cuda.solveCalls() == 2 * steps;
+    const state::SolveStats repeat_stats =
+        cuda.solve(device_parameters.view(), device_trajectory);
+    state::copy(device_trajectory, actual, cuda_ctx);
+    cuda_ctx.synchronize();
+    status *= repeat_stats.assm_calls == steps;
+    status *= repeat_stats.lin_solve_calls == steps;
     status *= trajectoriesNear(actual, expected, 1.0e-6);
   }
   catch (const std::exception& error)

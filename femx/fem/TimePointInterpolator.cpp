@@ -3,12 +3,12 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/fem/Element.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
-#include <femx/linalg/MatrixView.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -148,7 +148,7 @@ bool quadSolveStep(const Element&       elem,
   HostVector grad(fe.numDofsPerElement() * fe.dim());
   fe.calcdNdr(
       qp,
-      MatrixView<Real>(
+      HostMatrixView<Real>(
           grad.data(), fe.numDofsPerElement(), fe.dim()));
 
   Real j00 = 0.0;
@@ -246,20 +246,14 @@ bool tryFindScalarStencil(const FESpace& space,
 {
   const Mesh&          mesh = space.mesh();
   const FiniteElement& fe   = space.finiteElement();
-  if (mesh.dim() != fe.dim())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator mesh dimension does not match finite element");
-  }
+  require(mesh.dim() == fe.dim(),
+          "TimePointInterpolator mesh dimension does not match finite element");
 
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     const Element& elem = mesh.elem(ie);
-    if (elem.numNodes() != fe.numNodes())
-    {
-      throw std::runtime_error(
-          "TimePointInterpolator elem node count does not match finite element");
-    }
+    require(elem.numNodes() == fe.numNodes(),
+            "TimePointInterpolator elem node count does not match finite element");
     if (!insideBox(elem, point, mesh.dim()))
     {
       continue;
@@ -289,73 +283,6 @@ ScalarStencil findScalarStencil(const FESpace& space,
 
 } // namespace
 
-void observe(PointInterpolatorView<MemorySpace::Host> data,
-             HostConstVectorView                      state,
-             HostVectorView                           out)
-{
-  if (state.size() != data.numStates()
-      || out.size() != data.numObservations())
-  {
-    throw std::runtime_error(
-        "PointInterpolator Host observation size mismatch");
-  }
-  if (!out.empty() && state.data() == out.data())
-  {
-    throw std::runtime_error(
-        "PointInterpolator observation output must not alias state");
-  }
-
-  for (Index i = 0; i < data.numObservations(); ++i)
-  {
-    out[i] = data.eval(i, state.data());
-  }
-}
-
-void addStateJacT(PointInterpolatorView<MemorySpace::Host> data,
-                  HostConstVectorView                      dir,
-                  HostVectorView                           out)
-{
-  if (dir.size() != data.numObservations()
-      || out.size() != data.numStates())
-  {
-    throw std::runtime_error(
-        "PointInterpolator Host transpose size mismatch");
-  }
-  if (!out.empty() && dir.data() == out.data())
-  {
-    throw std::runtime_error(
-        "PointInterpolator transpose output must not alias direction");
-  }
-
-  for (Index i = 0; i < data.numObservations(); ++i)
-  {
-    for (Index k = data.begin(i); k < data.end(i); ++k)
-    {
-      out[data.dof(k)] += data.wt(k) * dir[i];
-    }
-  }
-}
-
-#if !defined(FEMX_HAS_CUDA)
-void observe(PointInterpolatorView<MemorySpace::Device>,
-             DeviceConstVectorView,
-             DeviceVectorView,
-             CudaContext&)
-{
-  throw std::runtime_error(
-      "PointInterpolator Device observation requires FEMX_ENABLE_CUDA");
-}
-
-void addStateJacT(PointInterpolatorView<MemorySpace::Device>,
-                  DeviceConstVectorView,
-                  DeviceVectorView,
-                  CudaContext&)
-{
-  throw std::runtime_error(
-      "PointInterpolator Device transpose requires FEMX_ENABLE_CUDA");
-}
-#endif
-
 Index DeviceTimePointInterpolator::numSteps() const
 {
   return num_steps_;
@@ -377,7 +304,7 @@ void DeviceTimePointInterpolator::observe(Index                 level,
                                           CudaContext&          ctx) const
 {
   checkLevel(level);
-  fem::observe(data_.view(), state, out, ctx);
+  femx::apply(data_.matrix(), state, out, ctx);
 }
 
 void DeviceTimePointInterpolator::addStateJacT(
@@ -387,16 +314,13 @@ void DeviceTimePointInterpolator::addStateJacT(
     CudaContext&          ctx) const
 {
   checkLevel(level);
-  fem::addStateJacT(data_.view(), dir, out, ctx);
+  femx::applyT(data_.matrix(), dir, out, ctx, 1.0, 1.0);
 }
 
 void DeviceTimePointInterpolator::checkLevel(Index level) const
 {
-  if (level < 0 || level > numSteps())
-  {
-    throw std::runtime_error(
-        "DeviceTimePointInterpolator time level is out of range");
-  }
+  require(level >= 0 && level <= numSteps(),
+          "DeviceTimePointInterpolator time level is out of range");
 }
 
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
@@ -410,10 +334,8 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
     pts_(std::move(pts)),
     comps_(std::move(comps))
 {
-  if (num_steps_ < 0 || space.numDofs() < 0 || num_prm_ < 0)
-  {
-    throw std::runtime_error("TimePointInterpolator received invalid dimensions");
-  }
+  require(num_steps_ >= 0 && space.numDofs() >= 0 && num_prm_ >= 0,
+          "TimePointInterpolator received invalid dimensions");
 
   const MixedFieldView field = space.field(fid);
   if (comps_.empty())
@@ -426,11 +348,8 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
 
   for (Index comp : comps_)
   {
-    if (comp < 0 || comp >= field.numComponents())
-    {
-      throw std::runtime_error(
-          "TimePointInterpolator component is out of range");
-    }
+    require(comp >= 0 && comp < field.numComponents(),
+            "TimePointInterpolator component is out of range");
   }
 
   data_ = buildData(field, space.numDofs(), pts_, comps_);
@@ -475,7 +394,8 @@ void TimePointInterpolator::observe(Index             level,
   {
     out.resize(numObservations());
   }
-  fem::observe(data_.view(), state.view(), out.view());
+  CpuContext ctx;
+  femx::apply(data_.matrix(), state.view(), out.view(), ctx);
 }
 
 void TimePointInterpolator::applyStateJac(Index             level,
@@ -486,17 +406,15 @@ void TimePointInterpolator::applyStateJac(Index             level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numStates())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator state direction size mismatch");
-  }
+  require(dir.size() == numStates(),
+          "TimePointInterpolator state direction size mismatch");
 
   if (out.size() != numObservations())
   {
     out.resize(numObservations());
   }
-  fem::observe(data_.view(), dir.view(), out.view());
+  CpuContext ctx;
+  femx::apply(data_.matrix(), dir.view(), out.view(), ctx);
 }
 
 void TimePointInterpolator::applyStateJacT(Index             level,
@@ -507,14 +425,12 @@ void TimePointInterpolator::applyStateJacT(Index             level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numObservations())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator observation direction size mismatch");
-  }
+  require(dir.size() == numObservations(),
+          "TimePointInterpolator observation direction size mismatch");
 
   resizeOrZero(out, numStates());
-  fem::addStateJacT(data_.view(), dir.view(), out.view());
+  CpuContext ctx;
+  femx::applyT(data_.matrix(), dir.view(), out.view(), ctx, 1.0, 1.0);
 }
 
 void TimePointInterpolator::applyParamJac(Index             level,
@@ -525,11 +441,8 @@ void TimePointInterpolator::applyParamJac(Index             level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numParams())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator parameter direction size mismatch");
-  }
+  require(dir.size() == numParams(),
+          "TimePointInterpolator parameter direction size mismatch");
 
   resizeOrZero(out, numObservations());
 }
@@ -542,11 +455,8 @@ void TimePointInterpolator::applyParamJacT(Index             level,
 {
   checkLevel(level);
   checkInputs(state, prm);
-  if (dir.size() != numObservations())
-  {
-    throw std::runtime_error(
-        "TimePointInterpolator observation direction size mismatch");
-  }
+  require(dir.size() == numObservations(),
+          "TimePointInterpolator observation direction size mismatch");
 
   resizeOrZero(out, numParams());
 }
@@ -594,20 +504,16 @@ Array<Point3> TimePointInterpolator::filterPointsInside(
 
 void TimePointInterpolator::checkLevel(Index level) const
 {
-  if (level < 0 || level > numSteps())
-  {
-    throw std::runtime_error("TimePointInterpolator time level is out of range");
-  }
+  require(level >= 0 && level <= numSteps(),
+          "TimePointInterpolator time level is out of range");
 }
 
 void TimePointInterpolator::checkInputs(
     const HostVector& state,
     const HostVector& prm) const
 {
-  if (state.size() != numStates() || prm.size() != numParams())
-  {
-    throw std::runtime_error("TimePointInterpolator input size mismatch");
-  }
+  require(state.size() == numStates() && prm.size() == numParams(),
+          "TimePointInterpolator input size mismatch");
 }
 
 HostPointInterpolatorData TimePointInterpolator::buildData(
@@ -616,13 +522,14 @@ HostPointInterpolatorData TimePointInterpolator::buildData(
     const Array<Point3>&  pts,
     const Array<Index>&   comps)
 {
-  HostPointInterpolatorData data;
-  const Index               num_obs = pts.size() * comps.size();
-  data.num_states_                  = num_states;
-  data.offsets_.reserve(num_obs + 1);
-  data.dofs_.reserve(num_obs * field.numShapesPerElem());
-  data.wts_.reserve(num_obs * field.numShapesPerElem());
-  data.offsets_.push_back(0);
+  const Index     num_obs = pts.size() * comps.size();
+  HostIndexVector offsets;
+  HostIndexVector dofs;
+  HostVector      wts;
+  offsets.reserve(num_obs + 1);
+  dofs.reserve(num_obs * field.numShapesPerElem());
+  wts.reserve(num_obs * field.numShapesPerElem());
+  offsets.push_back(0);
 
   for (const Point3& point : pts)
   {
@@ -631,13 +538,21 @@ HostPointInterpolatorData TimePointInterpolator::buildData(
     {
       for (Index i = 0; i < scalar.wts.size(); ++i)
       {
-        data.dofs_.push_back(field.globalDof(scalar.nids[i], comp));
-        data.wts_.push_back(scalar.wts[i]);
+        dofs.push_back(field.globalDof(scalar.nids[i], comp));
+        wts.push_back(scalar.wts[i]);
       }
-      data.offsets_.push_back(data.dofs_.size());
+      offsets.push_back(dofs.size());
     }
   }
 
+  HostCsrGraph  graph(num_obs,
+                     num_states,
+                     std::move(offsets),
+                     std::move(dofs));
+  HostCsrMatrix mat(graph);
+  mat.vals() = std::move(wts);
+  HostPointInterpolatorData data;
+  data.mat_ = std::move(mat);
   return data;
 }
 

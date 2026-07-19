@@ -1,11 +1,15 @@
 #include <stdexcept>
 
+#include "../state/StationaryFixtures.hpp"
 #include "TestHelper.hpp"
+#include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/state/StateSolver.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -185,6 +189,50 @@ TestOutcome timeBlockRegularizationUsesSparseQuadraticForm()
   return status.report();
 }
 
+TestOutcome hostBackendRunsStationarySolversAndAdjoint()
+{
+  TestStatus status(__func__);
+
+  stationary::AffineResidual<linalg::HostCsrBackend> res(2.0);
+  stationary::QuadraticObjective                     obj(1.0, 0.25);
+  HostCsrMatrix                                      fwd_jac(res.graph());
+  HostCsrMatrix                                      adj_jac(res.graph());
+  linalg::DenseLinearSolver                          fwd_solver;
+  linalg::DenseLinearSolver                          adj_solver;
+  CpuContext                                         ctx;
+  state::LinearStateSolver<linalg::HostCsrBackend>   state_solver(
+      res, fwd_jac, fwd_solver, ctx);
+  inverse::ReducedFunctional<linalg::HostCsrBackend> reduced(
+      state_solver, adj_jac, adj_solver, obj);
+
+  const HostVector prm{0.6};
+  HostVector       grad;
+  const Real       val  = reduced.valueGrad(prm, grad);
+  status               *= std::abs(val - 0.29) < 1.0e-13;
+  status               *= grad.size() == 1;
+  status               *= std::abs(grad[0] + 0.2) < 1.0e-13;
+
+  constexpr Real   eps = 1.0e-6;
+  const HostVector plus{prm[0] + eps};
+  const HostVector minus{prm[0] - eps};
+  const Real       fd =
+      (reduced.value(plus) - reduced.value(minus)) / (2.0 * eps);
+  status *= std::abs(grad[0] - fd) < 1.0e-9;
+
+  stationary::QuadraticResidual                    nonlinear_res;
+  HostCsrMatrix                                    nonlinear_jac(nonlinear_res.graph());
+  linalg::DenseLinearSolver                        nonlinear_solver;
+  state::NewtonStateSolver<linalg::HostCsrBackend> newton(
+      nonlinear_res, nonlinear_jac, nonlinear_solver, ctx);
+  newton.setInitialState(HostVector{1.0});
+  HostVector state;
+  newton.solve(HostVector{4.0}, state);
+  status *= state.size() == 1;
+  status *= std::abs(state[0] - 2.0) < 1.0e-10;
+
+  return status.report();
+}
+
 } // namespace
 } // namespace tests
 } // namespace femx
@@ -195,5 +243,6 @@ int main()
   results += femx::tests::timeLeastSquaresUsesObservationWeights();
   results += femx::tests::timeLeastSquaresRejectsInvalidObservationWeights();
   results += femx::tests::timeBlockRegularizationUsesSparseQuadraticForm();
+  results += femx::tests::hostBackendRunsStationarySolversAndAdjoint();
   return results.summary();
 }

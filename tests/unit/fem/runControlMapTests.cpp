@@ -122,12 +122,12 @@ TestOutcome hostControlMapJacobian()
   const HostVector          adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
   HostVector vals(map.numBcs());
-  fem::controlVals(map.view(), 1, prm.view(), vals.view());
+  fem::controlVals(map, 1, prm.view(), vals.view());
   status *= near(vals, HostVector{2.0, 3.75, 12.0, 13.0});
   status *= same(map.dofs(), HostIndexVector{1, 4, 0, 3});
 
   HostVector jac(map.numStates());
-  fem::controlJac(map.view(), 1, dir.view(), jac.view());
+  fem::controlJac(map, 1, dir.view(), jac.view());
 
   constexpr Real eps   = 1.0e-6;
   HostVector     plus  = prm;
@@ -139,8 +139,8 @@ TestOutcome hostControlMapJacobian()
   }
   HostVector plus_vals(map.numBcs());
   HostVector minus_vals(map.numBcs());
-  fem::controlVals(map.view(), 1, plus.view(), plus_vals.view());
-  fem::controlVals(map.view(), 1, minus.view(), minus_vals.view());
+  fem::controlVals(map, 1, plus.view(), plus_vals.view());
+  fem::controlVals(map, 1, minus.view(), minus_vals.view());
   const HostVector state{2.0, 3.0, 4.0, 5.0, 6.0};
   const HostVector plus_res  = boundaryRes(map, state, plus_vals);
   const HostVector minus_res = boundaryRes(map, state, minus_vals);
@@ -152,7 +152,7 @@ TestOutcome hostControlMapJacobian()
 
   HostVector grad(map.numParams());
   grad.setZero();
-  fem::addControlJacT(map.view(), 1, adj.view(), grad.view());
+  fem::addControlJacT(map, 1, adj.view(), grad.view());
   status *= near(jac, fd, 2.0e-9);
   status *= near(dot(jac, adj), dot(dir, grad));
   return status.report();
@@ -167,7 +167,7 @@ TestOutcome hostInitialStateTranspose()
   const HostVector               adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
   HostVector state(map.numStates());
-  fem::initialState(map.view(), prm.view(), state.view());
+  fem::initialState(map, prm.view(), state.view());
   status *= near(state, HostVector{6.375, 0.0, 6.625, 6.9375, 6.5});
 
   constexpr Real eps   = 1.0e-6;
@@ -180,8 +180,8 @@ TestOutcome hostInitialStateTranspose()
   }
   HostVector plus_state(map.numStates());
   HostVector minus_state(map.numStates());
-  fem::initialState(map.view(), plus.view(), plus_state.view());
-  fem::initialState(map.view(), minus.view(), minus_state.view());
+  fem::initialState(map, plus.view(), plus_state.view());
+  fem::initialState(map, minus.view(), minus_state.view());
   HostVector jac(map.numStates());
   for (Index i = 0; i < jac.size(); ++i)
   {
@@ -190,7 +190,7 @@ TestOutcome hostInitialStateTranspose()
 
   HostVector grad(map.numParams());
   grad.setZero();
-  fem::addInitialJacT(map.view(), adj.view(), grad.view());
+  fem::addInitialJacT(map, adj.view(), grad.view());
   status *= near(dot(jac, adj), dot(dir, grad), 2.0e-9);
   return status.report();
 }
@@ -218,13 +218,13 @@ TestOutcome cudaMapsMatchHost()
   HostVector expected_init_grad(host_init.numParams());
   expected_ctr_grad.setZero();
   expected_init_grad.setZero();
-  fem::controlVals(host_ctr.view(), 2, prm.view(), expected_vals.view());
-  fem::controlJac(host_ctr.view(), 2, dir.view(), expected_jac.view());
+  fem::controlVals(host_ctr, 2, prm.view(), expected_vals.view());
+  fem::controlJac(host_ctr, 2, dir.view(), expected_jac.view());
   fem::addControlJacT(
-      host_ctr.view(), 2, adj.view(), expected_ctr_grad.view());
-  fem::initialState(host_init.view(), prm.view(), expected_state.view());
+      host_ctr, 2, adj.view(), expected_ctr_grad.view());
+  fem::initialState(host_init, prm.view(), expected_state.view());
   fem::addInitialJacT(
-      host_init.view(), adj.view(), expected_init_grad.view());
+      host_init, adj.view(), expected_init_grad.view());
 
   CudaContext                ctx;
   fem::DeviceControlMap      ctr;
@@ -250,13 +250,13 @@ TestOutcome cudaMapsMatchHost()
   const Real* ctr_grad_ptr  = ctr_grad.data();
   const Real* state_ptr     = state.data();
   const Real* init_grad_ptr = init_grad.data();
-  fem::controlVals(ctr.view(), 2, dev_prm.view(), vals.view(), ctx);
-  fem::controlJac(ctr.view(), 2, dev_dir.view(), jac.view(), ctx);
+  fem::controlVals(ctr, 2, dev_prm.view(), vals.view(), ctx);
+  fem::controlJac(ctr, 2, dev_dir.view(), jac.view(), ctx);
   fem::addControlJacT(
-      ctr.view(), 2, dev_adj.view(), ctr_grad.view(), ctx);
-  fem::initialState(init.view(), dev_prm.view(), state.view(), ctx);
+      ctr, 2, dev_adj.view(), ctr_grad.view(), ctx);
+  fem::initialState(init, dev_prm.view(), state.view(), ctx);
   fem::addInitialJacT(
-      init.view(), dev_adj.view(), init_grad.view(), ctx);
+      init, dev_adj.view(), init_grad.view(), ctx);
 
   HostVector got_vals;
   HostVector got_jac;
@@ -269,9 +269,9 @@ TestOutcome cudaMapsMatchHost()
   femx::copy(state, got_state, ctx);
   femx::copy(init_grad, got_init_grad, ctx);
 
-  fem::controlVals(ctr.view(), 2, dev_prm.view(), vals.view(), ctx);
-  fem::controlJac(ctr.view(), 2, dev_dir.view(), jac.view(), ctx);
-  fem::initialState(init.view(), dev_prm.view(), state.view(), ctx);
+  fem::controlVals(ctr, 2, dev_prm.view(), vals.view(), ctx);
+  fem::controlJac(ctr, 2, dev_dir.view(), jac.view(), ctx);
+  fem::initialState(init, dev_prm.view(), state.view(), ctx);
   ctx.synchronize();
 
   status *= near(got_vals, expected_vals);

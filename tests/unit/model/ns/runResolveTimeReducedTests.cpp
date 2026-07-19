@@ -1,9 +1,10 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <memory>
 
 #include "TestHelper.hpp"
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
@@ -11,12 +12,10 @@
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
-#include <femx/model/ns/ResolveTimeIntegrator.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::tests
 {
@@ -47,64 +46,31 @@ bool vectorsNear(const HostVector& lhs,
   return true;
 }
 
-class InitialMapIntegrator final : public state::TimeIntegrator
+Real deviceValue(inverse::DeviceTimeReducedFunctional& functional,
+                 const HostVector&                     parameters)
 {
-public:
-  InitialMapIntegrator(state::TimeLinearIntegrator&    integ,
-                       const fem::HostInitialStateMap& init)
-    : integ_(integ), init_(init)
-  {
-  }
+  CudaContext  transfer;
+  DeviceVector device_parameters;
+  femx::copy(parameters, device_parameters, transfer);
+  transfer.synchronize();
+  return functional.value(device_parameters.view());
+}
 
-  Index numSteps() const override
-  {
-    return integ_.numSteps();
-  }
-
-  Index numStates() const override
-  {
-    return init_.numStates();
-  }
-
-  Index numParams() const override
-  {
-    return init_.numParams();
-  }
-
-  void solve(const HostVector&      prm,
-             state::TimeTrajectory& tr) override
-  {
-    HostVector state(init_.numStates());
-    fem::initialState(init_.view(), prm.view(), state.view());
-    integ_.setInitialState(state);
-    integ_.solve(prm, tr);
-  }
-
-private:
-  state::TimeLinearIntegrator&    integ_;
-  const fem::HostInitialStateMap& init_;
-};
-
-class InitialGradMap final : public inverse::InitialStateGradientMap
+Real deviceValueGrad(inverse::DeviceTimeReducedFunctional& functional,
+                     const HostVector&                     parameters,
+                     HostVector&                           gradient)
 {
-public:
-  explicit InitialGradMap(const fem::HostInitialStateMap& init)
-    : init_(init)
-  {
-  }
-
-  void apply(const HostVector&,
-             const HostVector& state_grad,
-             HostVector&       out) override
-  {
-    out.resize(init_.numParams());
-    out.setZero();
-    fem::addInitialJacT(init_.view(), state_grad.view(), out.view());
-  }
-
-private:
-  const fem::HostInitialStateMap& init_;
-};
+  CudaContext  transfer;
+  DeviceVector device_parameters;
+  DeviceVector device_gradient(functional.numParams());
+  femx::copy(parameters, device_parameters, transfer);
+  transfer.synchronize();
+  const Real value = functional.valueGrad(
+      device_parameters.view(), device_gradient.view());
+  femx::copy(device_gradient, gradient, transfer);
+  transfer.synchronize();
+  return value;
+}
 
 struct ProblemData
 {
@@ -217,41 +183,41 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         steps, model.numStates(), num_prm);
     obj.add(misfit).add(reg);
 
-    assembly::TimeDirichletControlResidual cpu_res(
-        model.residual(),
-        data.ctr,
-        data.fixed_dofs,
-        1,
-        num_prm,
-        data.fixed_vals,
-        data.time);
-    linalg::MapCsrMatrix           fwd_mat(model.map());
-    linalg::ReSolveLinearSolver    fwd_solver;
-    state::TimeLinearIntegrator    base(cpu_res, fwd_mat, fwd_solver);
-    InitialMapIntegrator           cpu_integ(base, init);
-    state::TimeLinearization       lin;
-    linalg::MapCsrMatrix           next(model.map());
-    linalg::MapCsrMatrix           hist(model.map());
-    linalg::ReSolveLinearSolver    adj_solver;
-    inverse::TimeReducedFunctional cpu(
-        cpu_integ, cpu_res, lin, next, hist, adj_solver, obj);
-    InitialGradMap init_grad(init);
-    cpu.setInitialStateParamJacT(&init_grad);
+    assembly::HostConstrainedTimeResidual cpu_res(
+        model.residual(), ctr, init);
+    HostCsrMatrix                      fwd_mat(model.map().graph());
+    linalg::ReSolveLinearSolver        fwd_solver;
+    CpuContext                         cpu_ctx;
+    state::HostTimeIntegrator          cpu_integ(cpu_res,
+                                        fwd_mat,
+                                        fwd_solver,
+                                        cpu_ctx);
+    HostCsrMatrix                      adj_mat(model.map().graph());
+    linalg::ReSolveLinearSolver        adj_solver;
+    inverse::HostTimeReducedFunctional cpu(
+        cpu_integ, adj_mat, adj_solver, obj);
 
-    model::ns::ResolveTimeIntegrator cuda_integ(
-        model, ctr, init);
-    model::ns::ResolveTimeReducedFunctional cuda(cuda_integ, obj);
+    CudaContext                 cuda_ctx;
+    auto                        cuda_res = model::ns::makeDeviceTimeResidual(model, ctr, init);
+    DeviceCsrMatrix             cuda_mat(cuda_res->graph());
+    linalg::ReSolveLinearSolver cuda_fwd_solver;
+    state::DeviceTimeIntegrator cuda_integ(
+        *cuda_res, cuda_mat, cuda_fwd_solver, cuda_ctx);
+    DeviceCsrMatrix                      cuda_adj_mat(cuda_res->graph());
+    linalg::ReSolveLinearSolver          cuda_adj_solver;
+    inverse::DeviceTimeReducedFunctional cuda(
+        cuda_integ, cuda_adj_mat, cuda_adj_solver, obj);
 
     const HostVector prm{0.25, 0.35, 0.65};
-    HostVector       cpu_grad;
+    HostVector       cpu_grad(num_prm);
     HostVector       cuda_grad;
-    const Real       cpu_val   = cpu.valueGrad(prm, cpu_grad);
-    const Real       cuda_val  = cuda.valueGrad(prm, cuda_grad);
+    const Real       cpu_val   = cpu.valueGrad(prm.view(), cpu_grad.view());
+    const Real       cuda_val  = deviceValueGrad(cuda, prm, cuda_grad);
     status                    *= near(cuda_val, cpu_val, 2.0e-6);
     status                    *= vectorsNear(cuda_grad, cpu_grad, 2.0e-5);
 
     HostVector repeat_grad;
-    const Real repeat_val  = cuda.valueGrad(prm, repeat_grad);
+    const Real repeat_val  = deviceValueGrad(cuda, prm, repeat_grad);
     status                *= near(repeat_val, cuda_val, 1.0e-12);
     status                *= vectorsNear(repeat_grad, cuda_grad, 1.0e-12);
 
@@ -263,7 +229,9 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
       HostVector minus  = prm;
       plus[i]          += eps;
       minus[i]         -= eps;
-      fd[i]             = (cuda.value(plus) - cuda.value(minus)) / (2.0 * eps);
+      fd[i]             = (deviceValue(cuda, plus)
+               - deviceValue(cuda, minus))
+              / (2.0 * eps);
     }
     status *= vectorsNear(cuda_grad, fd, 3.0e-5);
   }

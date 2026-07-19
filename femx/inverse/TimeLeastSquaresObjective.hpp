@@ -13,7 +13,7 @@ namespace femx
 namespace inverse
 {
 
-class DeviceTimeObjective;
+class TimeObjectivePlan;
 
 /**
  * @brief Objective 0.5 * sum_l weight_l ||H_l(u_l,m) - data_l||^2.
@@ -67,7 +67,7 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  friend class DeviceTimeObjective;
+  friend class TimeObjectivePlan;
 
   Index               numTimeLevels() const;
   void                checkInputs() const;
@@ -88,7 +88,7 @@ private:
                    const HostVector&            prm,
                    HostVector&                  out) const;
 
-  static void checkSize(const HostVector& value, Index exp);
+  static void checkSize(const HostVector& val, Index exp);
   static void scale(HostVector& out, Real factor);
   void        scaleObservationResidual(Index       row,
                                        HostVector& out,

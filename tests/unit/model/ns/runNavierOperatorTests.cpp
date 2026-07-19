@@ -10,12 +10,17 @@
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 
 #if defined(FEMX_HAS_CUDA)
 #include <femx/assembly/CudaAssembly.hpp>
+#endif
+
+#if defined(FEMX_HAS_PETSC)
+#include <petscsys.h>
+
+#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #endif
 
 namespace femx
@@ -182,25 +187,22 @@ TestOutcome navierModelResidualMatchesRowAssembly()
     HostVector hist;
     HostVector nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector         prm;
-    const state::TimeContext time{
+    const HostVector             prm;
+    const state::HostTimeContext time{
         1,
-        &nxt,
-        &prm,
+        nxt.view(),
+        prm.view(),
         {hist.data(), 2, model.numStates()}};
 
-    HostVector model_res;
-    model.residual().res(time, model_res);
-    linalg::MapCsrMatrix model_jac(model.map());
-    status *= model.residual().assembleJac(
-        time, state::VariableBlock::NextState, model_jac);
-    DenseMatrix dense_jac;
-    status *= model.residual().assembleJac(
-        time, state::VariableBlock::NextState, dense_jac);
+    CpuContext    ctx;
+    HostVector    model_res;
+    HostCsrMatrix model_jac(model.map().graph());
+    model.residual().res(time, model_res, ctx);
+    model.residual().assembleJac(
+        time, state::VariableBlock::NextState, model_jac, ctx);
 
     HostVector    row_res;
     HostCsrMatrix row_jac(model.map().graph());
-    CpuContext    ctx;
     assembly::assemble(model.op(),
                        1,
                        2,
@@ -213,13 +215,10 @@ TestOutcome navierModelResidualMatchesRowAssembly()
                        ctx);
 
     status *= vecNear(row_res, model_res);
-    status *= matNear(row_jac, model_jac.mat());
+    status *= matNear(row_jac, model_jac);
 
-    HostVector sparse_vec;
-    HostVector dense_vec;
-    model_jac.apply(nxt, sparse_vec);
-    dense_jac.apply(nxt, dense_vec);
-    status *= vecNear(sparse_vec, dense_vec);
+    const HostVector sparse_vec  = apply(model_jac, nxt);
+    status                      *= vecNear(sparse_vec, apply(row_jac, nxt));
 
     HostVector    zero_nxt(model.numStates(), 0.0);
     HostVector    zero_res;
@@ -234,8 +233,7 @@ TestOutcome navierModelResidualMatchesRowAssembly()
                        zero_res,
                        zero_jac,
                        ctx);
-    HostVector delta;
-    model_jac.apply(nxt, delta);
+    HostVector delta = apply(model_jac, nxt);
     for (Index i = 0; i < delta.size(); ++i)
     {
       delta[i] += zero_res[i];
@@ -260,11 +258,11 @@ TestOutcome navierHistoryTangentsAreExact()
     HostVector hist;
     HostVector nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector         prm;
-    const state::TimeContext time{
+    const HostVector             prm;
+    const state::HostTimeContext time{
         1,
-        &nxt,
-        &prm,
+        nxt.view(),
+        prm.view(),
         {hist.data(), 2, model.numStates()}};
     CpuContext ctx;
 
@@ -290,9 +288,9 @@ TestOutcome navierHistoryTangentsAreExact()
                          jac,
                          ctx);
 
-      linalg::MapCsrMatrix model_jac(model.map());
-      status *= model.residual().assembleJac(time, wrt, model_jac);
-      status *= matNear(jac, model_jac.mat());
+      HostCsrMatrix model_jac(model.map().graph());
+      model.residual().assembleJac(time, wrt, model_jac, ctx);
+      status *= matNear(jac, model_jac);
 
       constexpr Real eps        = 1.0e-6;
       HostVector     plus_hist  = hist;
@@ -354,11 +352,11 @@ TestOutcome navierBlockTransposeIdentity()
     HostVector hist;
     HostVector nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector         prm;
-    const state::TimeContext time{
+    const HostVector             prm;
+    const state::HostTimeContext time{
         1,
-        &nxt,
-        &prm,
+        nxt.view(),
+        prm.view(),
         {hist.data(), 2, model.numStates()}};
 
     HostVector dir(model.numStates());
@@ -373,12 +371,13 @@ TestOutcome navierBlockTransposeIdentity()
         state::VariableBlock::NextState,
         state::VariableBlock::hist(0),
         state::VariableBlock::hist(1)};
+    CpuContext ctx;
     for (const auto wrt : blocks)
     {
       HostVector jv;
       HostVector jtw;
-      model.residual().applyJac(time, wrt, dir, jv);
-      model.residual().applyJacT(time, wrt, adj, jtw);
+      model.residual().applyJac(time, wrt, dir.view(), jv, ctx);
+      model.residual().applyJacT(time, wrt, adj.view(), jtw, ctx);
       status *= near(dot(jv, adj), dot(dir, jtw), 1.0e-10);
     }
   }
@@ -387,6 +386,59 @@ TestOutcome navierBlockTransposeIdentity()
     std::cout << "    exception: " << e.what() << '\n';
     status *= false;
   }
+  return status.report();
+}
+
+TestOutcome navierAssemblyMatchesPetsc()
+{
+  TestStatus status(__func__);
+#if defined(FEMX_HAS_PETSC)
+  try
+  {
+    auto       model = makeModel();
+    HostVector hist;
+    HostVector nxt;
+    fillStates(model.numStates(), hist, nxt);
+    const HostVector             prm;
+    const state::HostTimeContext time{
+        1,
+        nxt.view(),
+        prm.view(),
+        {hist.data(), 2, model.numStates()}};
+
+    const state::VariableBlock blocks[] = {
+        state::VariableBlock::NextState,
+        state::VariableBlock::hist(0),
+        state::VariableBlock::hist(1)};
+    CpuContext           csr_ctx;
+    linalg::PetscContext petsc_ctx{PETSC_COMM_SELF};
+    auto                 petsc_residual = model::ns::makePetscTimeResidual(model);
+    for (const auto wrt : blocks)
+    {
+      HostCsrMatrix         csr(model.map().graph());
+      linalg::PETScOperator petsc(PETSC_COMM_SELF);
+      HostVector            csr_res;
+      HostVector            petsc_res;
+
+      model.residual().assemble(time, wrt, csr_res, csr, csr_ctx);
+      petsc_residual->assemble(time, wrt, petsc_res, petsc, petsc_ctx);
+      petsc.finalize();
+      status *= vecNear(csr_res, petsc_res);
+
+      const HostVector csr_out = apply(csr, nxt);
+      HostVector       petsc_out;
+      petsc.apply(nxt.view(), petsc_out);
+      status *= vecNear(csr_out, petsc_out);
+    }
+  }
+  catch (const std::exception& e)
+  {
+    std::cout << "    exception: " << e.what() << '\n';
+    status *= false;
+  }
+#else
+  status.skipTest();
+#endif
   return status.report();
 }
 
@@ -449,8 +501,8 @@ TestOutcome navierRowAssemblyMatchesDevice()
                          2,
                          wrt,
                          map,
-                         dev_hist,
-                         dev_nxt,
+                         dev_hist.view(),
+                         dev_nxt.view(),
                          dev_res,
                          dev_jac,
                          ctx);
@@ -479,13 +531,29 @@ TestOutcome navierRowAssemblyMatchesDevice()
 } // namespace tests
 } // namespace femx
 
-int main()
+int main(int argc, char** argv)
 {
+#if defined(FEMX_HAS_PETSC)
+  if (PetscInitialize(&argc, &argv, nullptr, nullptr) != PETSC_SUCCESS)
+  {
+    return 1;
+  }
+#else
+  (void) argc;
+  (void) argv;
+#endif
+
   femx::tests::TestingResults results;
-  results += femx::tests::navierDataFlattensEveryElement();
-  results += femx::tests::navierModelResidualMatchesRowAssembly();
-  results += femx::tests::navierHistoryTangentsAreExact();
-  results += femx::tests::navierBlockTransposeIdentity();
-  results += femx::tests::navierRowAssemblyMatchesDevice();
-  return results.summary();
+  results            += femx::tests::navierDataFlattensEveryElement();
+  results            += femx::tests::navierModelResidualMatchesRowAssembly();
+  results            += femx::tests::navierHistoryTangentsAreExact();
+  results            += femx::tests::navierBlockTransposeIdentity();
+  results            += femx::tests::navierAssemblyMatchesPetsc();
+  results            += femx::tests::navierRowAssemblyMatchesDevice();
+  const int failures  = results.summary();
+
+#if defined(FEMX_HAS_PETSC)
+  PetscFinalize();
+#endif
+  return failures;
 }

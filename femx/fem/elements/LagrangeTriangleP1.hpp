@@ -57,7 +57,7 @@ public:
   }
 
   void calcdNdr(const QuadraturePoint&,
-                MatrixView<Real> dNdr) const override
+                HostMatrixView<Real> dNdr) const override
   {
     dNdr(0, 0) = -1.0;
     dNdr(0, 1) = -1.0;

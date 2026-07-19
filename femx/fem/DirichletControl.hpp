@@ -3,7 +3,7 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 
 namespace femx
 {
@@ -24,7 +24,7 @@ struct DirichletControlMapEntry
 class DirichletControl
 {
 public:
-  DirichletControl() = default;
+  DirichletControl();
 
   explicit DirichletControl(Array<Index> dofs);
 
@@ -37,28 +37,27 @@ public:
 
   Index stateDof(Index i) const;
 
-  const Array<Index>&                    stateDofs() const;
-  const Array<DirichletControlMapEntry>& mapEntries() const;
+  const Array<Index>&  stateDofs() const;
+  const HostCsrMatrix& matrix() const noexcept;
 
   /** Remove state dofs while preserving and compacting the map P. */
   DirichletControl withoutStateDofs(
       const Array<Index>& excluded) const;
 
   /** Compute P * direction in local controlled-state ordering. */
-  void apply(const HostVector& direction, HostVector& out) const;
+  void apply(const HostVector& dir, HostVector& out) const;
 
   /** Compute P^T * direction. */
-  void applyTranspose(const HostVector& direction, HostVector& out) const;
+  void applyTranspose(const HostVector& dir, HostVector& out) const;
 
 private:
   void checkDofIndex(Index i) const;
-  void checkControlVector(const HostVector& control) const;
+  void checkControlVector(const HostVector& ctr) const;
   void checkStateVector(const HostVector& state) const;
 
 private:
-  Array<Index>                    dofs_;
-  Index                           num_ctr_params_{0};
-  Array<DirichletControlMapEntry> map_entries_;
+  Array<Index>  dofs_;
+  HostCsrMatrix matrix_;
 };
 
 DirichletControl makeVelocityControl(
@@ -73,13 +72,13 @@ DirichletControl makeVelocityControl(
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     Index               ptag,
-    const HostVector&   normal);
+    const HostVector&   nrm);
 
 /** One scalar normal-velocity parameter per node on a boundary. */
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace& space,
     const std::string&  pname,
-    const HostVector&   normal);
+    const HostVector&   nrm);
 
 } // namespace fem
 } // namespace femx

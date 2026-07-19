@@ -3,10 +3,10 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -157,41 +157,27 @@ private:
 
   void checkSizes() const
   {
-    if (rows() < 0 || cols() < 0
-        || rows() == std::numeric_limits<Index>::max())
-    {
-      throw std::runtime_error("CsrGraph dimensions must be non-negative");
-    }
-    if (rowPtr().size() != rows() + 1)
-    {
-      throw std::runtime_error(
-          "CsrGraph row-offset size does not match its row count");
-    }
+    require(rows() >= 0 && cols() >= 0
+                && rows() != std::numeric_limits<Index>::max(),
+            "CsrGraph dimensions must be non-negative");
+    require(rowPtr().size() == rows() + 1,
+            "CsrGraph row-offset size does not match its row count");
 
     if constexpr (Space == MemorySpace::Host)
     {
-      if (rowPtr()[0] != 0 || rowPtr()[rows()] != nnz())
-      {
-        throw std::runtime_error(
-            "CsrGraph row offsets must begin at zero and end at nnz");
-      }
+      require(rowPtr()[0] == 0 && rowPtr()[rows()] == nnz(),
+              "CsrGraph row offsets must begin at zero and end at nnz");
       for (Index row = 0; row < rows(); ++row)
       {
-        if (rowPtr()[row] < 0
-            || rowPtr()[row] > rowPtr()[row + 1]
-            || rowPtr()[row + 1] > nnz())
-        {
-          throw std::runtime_error(
-              "CsrGraph row offsets must be monotone and in range");
-        }
+        require(rowPtr()[row] >= 0
+                    && rowPtr()[row] <= rowPtr()[row + 1]
+                    && rowPtr()[row + 1] <= nnz(),
+                "CsrGraph row offsets must be monotone and in range");
       }
       for (Index k = 0; k < nnz(); ++k)
       {
-        if (colInd()[k] < 0 || colInd()[k] >= cols())
-        {
-          throw std::runtime_error(
-              "CsrGraph column index is out of range");
-        }
+        require(colInd()[k] >= 0 && colInd()[k] < cols(),
+                "CsrGraph column index is out of range");
       }
     }
   }
@@ -231,10 +217,10 @@ private:
     {
       storage_->layout_id = hostLayoutId();
     }
-    else if (storage_->layout_id == 0)
+    else
     {
-      throw std::runtime_error(
-          "Device CsrGraph must be created by copying a validated host graph");
+      require(storage_->layout_id != 0,
+              "Device CsrGraph must be created by copying a validated host graph");
     }
   }
 

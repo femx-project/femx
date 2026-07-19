@@ -6,7 +6,7 @@
 
 #include "Bindings.hpp"
 #include "PETScInit.hpp"
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
@@ -14,18 +14,23 @@
 #include <femx/fem/TimeDirichletData.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/inverse/TimeObjective.hpp>
+#include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/Config.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 #ifdef FEMX_RESOLVE_USE_CUDA
-#include <femx/model/ns/ResolveTimeIntegrator.hpp>
+#include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
 #ifdef FEMX_HAS_PETSC
+#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
+#include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 #include <pybind11/numpy.h>
@@ -41,10 +46,10 @@ using femx::DenseMatrix;
 using femx::HostVector;
 using femx::Index;
 using femx::Real;
-using femx::assembly::TimeDirichletControlResidual;
+using femx::assembly::HostConstrainedTimeResidual;
 using femx::model::ns::FluidParams;
 using femx::model::ns::NavierStokesModel;
-using femx::state::TimeResidual;
+using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 
 using RealArray  = py::array_t<Real,
@@ -101,9 +106,9 @@ DenseMatrix realMatrix(const RealArray& vals, const char* name)
   }
   DenseMatrix out(vals.shape(0), vals.shape(1));
   const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < out.numRows(); ++row)
+  for (Index row = 0; row < out.rows(); ++row)
   {
-    for (Index col = 0; col < out.numCols(); ++col)
+    for (Index col = 0; col < out.cols(); ++col)
     {
       out(row, col) = data(row, col);
       if (!std::isfinite(out(row, col)))
@@ -635,11 +640,14 @@ public:
     : model_(model),
       data_(makePythonDirichletData(model, specifications)),
       res_(model_.residual(),
-           femx::fem::DirichletControl{},
-           data_.dofs,
-           0,
-           0,
-           data_.vals)
+           femx::fem::makeControlMap(model_.numSteps(),
+                                     model_.numStates(),
+                                     {},
+                                     data_.dofs,
+                                     data_.vals,
+                                     {},
+                                     0,
+                                     0))
   {
   }
 
@@ -653,6 +661,11 @@ public:
     return data_;
   }
 
+  const femx::fem::HostControlMap& controlMap() const
+  {
+    return res_.controlMap();
+  }
+
   Index numSteps() const
   {
     return model_.numSteps();
@@ -661,7 +674,7 @@ public:
 private:
   NavierStokesModel&           model_;
   femx::fem::TimeDirichletData data_;
-  TimeDirichletControlResidual res_;
+  HostConstrainedTimeResidual  res_;
 };
 
 class ControlledDirichletProblem
@@ -678,12 +691,13 @@ public:
       time_stencils_(makePythonControlTimeStencils(
           model, ctr_specification)),
       res_(model_.residual(),
-           ctr_,
-           data_.dofs,
-           ctr_param_offset,
-           -1,
-           data_.vals,
-           time_stencils_),
+           femx::fem::makeControlMap(model_.numSteps(),
+                                     model_.numStates(),
+                                     ctr_,
+                                     data_.dofs,
+                                     data_.vals,
+                                     time_stencils_,
+                                     ctr_param_offset)),
       ctr_param_offset_(ctr_param_offset)
   {
   }
@@ -710,7 +724,7 @@ public:
 
   Index numControlLevels() const
   {
-    return (res_.numParams() - ctr_param_offset_)
+    return (res_.dims().num_param - ctr_param_offset_)
            / ctr_.numControlParams();
   }
 
@@ -724,14 +738,20 @@ public:
     return time_stencils_;
   }
 
+  const femx::fem::HostControlMap& controlMap() const
+  {
+    return res_.controlMap();
+  }
+
   Array<Index> controlMeshNodeIds() const
   {
-    const auto   u_dof = model_.space().field(0);
-    const Index  comps = u_dof.numComponents();
-    Array<Index> nodes(ctr_.numControlParams(), -1);
-    for (const auto& entry : ctr_.mapEntries())
+    const auto                 u_dof = model_.space().field(0);
+    const Index                comps = u_dof.numComponents();
+    Array<Index>               nodes(ctr_.numControlParams(), -1);
+    const femx::HostCsrMatrix& matrix = ctr_.matrix();
+    for (Index row = 0; row < matrix.rows(); ++row)
     {
-      const Index dof  = ctr_.stateDof(entry.state_row);
+      const Index dof  = ctr_.stateDof(row);
       const Index node = dof / comps;
       const Index comp = dof % comps;
       if (node < 0 || node >= model_.mesh().numNodes()
@@ -740,13 +760,18 @@ public:
         throw std::runtime_error(
             "Normal velocity control contains a non-velocity dof");
       }
-      Index& stored = nodes[entry.ctr_col];
-      if (stored >= 0 && stored != node)
+      for (Index k = matrix.rowPtrData()[row];
+           k < matrix.rowPtrData()[row + 1];
+           ++k)
       {
-        throw std::runtime_error(
-            "Normal velocity control column spans multiple nodes");
+        Index& stored = nodes[matrix.colIndData()[k]];
+        if (stored >= 0 && stored != node)
+        {
+          throw std::runtime_error(
+              "Normal velocity control column spans multiple nodes");
+        }
+        stored = node;
       }
-      stored = node;
     }
     for (const Index node : nodes)
     {
@@ -761,15 +786,17 @@ public:
 
   femx::fem::HostInitialStateMap makeInitialStateMap(
       const RealArray& mean,
-      const RealArray& modes) const
+      const RealArray& modes)
   {
-    return femx::fem::makeInitialStateMap(
+    auto map = femx::fem::makeInitialStateMap(
         realVector(mean, "initial_state_mean"),
         realMatrix(modes, "initial_state_modes"),
         ctr_,
         0,
         ctr_param_offset_,
-        res_.numParams());
+        res_.dims().num_param);
+    res_.setInitialStateMap(map);
+    return map;
   }
 
 private:
@@ -777,7 +804,7 @@ private:
   femx::fem::TimeDirichletData     data_;
   femx::fem::DirichletControl      ctr_;
   Array<femx::LinearInterpolation> time_stencils_;
-  TimeDirichletControlResidual     res_;
+  HostConstrainedTimeResidual      res_;
   Index                            ctr_param_offset_{0};
 };
 
@@ -941,6 +968,226 @@ private:
   femx::fem::TimePointInterpolator interpolator_;
 };
 
+#ifdef FEMX_HAS_PETSC
+class PythonPetscTimeIntegrator final
+{
+public:
+  PythonPetscTimeIntegrator(
+      NavierStokesModel&             model,
+      femx::fem::HostControlMap      control,
+      femx::fem::HostInitialStateMap init_map,
+      const HostVector&              init)
+  {
+    femx::python::initializePETSc();
+    ctx_.comm = PETSC_COMM_WORLD;
+    femx::runtime::setElemRange(
+        model, model.mesh().numElems(), PETSC_COMM_WORLD);
+
+    base_ = femx::model::ns::makePetscTimeResidual(model);
+    res_  = std::make_unique<
+         femx::assembly::PetscConstrainedTimeResidual>(
+        *base_, std::move(control), std::move(init_map));
+    jac_ = std::make_unique<femx::linalg::PETScOperator>(
+        PETSC_COMM_WORLD);
+    jac_->resize(res_->graph());
+    solver_ = std::make_unique<femx::linalg::KspLinearSolver>(
+        PETSC_COMM_WORLD);
+    integ_ = std::make_unique<
+        femx::state::TimeIntegrator<femx::linalg::PetscBackend>>(
+        *res_, *jac_, *solver_, ctx_);
+    if (!init.empty())
+    {
+      integ_->setInitialState(init);
+    }
+  }
+
+  femx::state::TimeIntegrator<femx::linalg::PetscBackend>& get() noexcept
+  {
+    return *integ_;
+  }
+
+  const femx::state::TimeIntegrator<femx::linalg::PetscBackend>&
+  get() const noexcept
+  {
+    return *integ_;
+  }
+
+private:
+  femx::linalg::PetscContext ctx_{PETSC_COMM_WORLD};
+  std::unique_ptr<
+      femx::state::TimeResidual<femx::linalg::PetscBackend>>
+                                                                base_;
+  std::unique_ptr<femx::assembly::PetscConstrainedTimeResidual> res_;
+  std::unique_ptr<femx::linalg::PETScOperator>                  jac_;
+  std::unique_ptr<femx::linalg::KspLinearSolver>                solver_;
+  std::unique_ptr<
+      femx::state::TimeIntegrator<femx::linalg::PetscBackend>>
+      integ_;
+};
+
+std::unique_ptr<PythonPetscTimeIntegrator>
+makePetscIntegrator(NavierStokesModel&     model,
+                    FixedDirichletProblem& problem,
+                    const RealArray&       initial)
+{
+  return std::make_unique<PythonPetscTimeIntegrator>(
+      model,
+      problem.controlMap(),
+      femx::fem::HostInitialStateMap{},
+      realVector(initial, "initial_state"));
+}
+
+std::unique_ptr<PythonPetscTimeIntegrator>
+makePetscIntegrator(NavierStokesModel&          model,
+                    ControlledDirichletProblem& problem,
+                    const RealArray&            mean,
+                    const RealArray&            modes)
+{
+  const Index num_prm = problem.residual().dims().num_param;
+  auto        init    = realVector(mean, "initial_state_mean");
+  auto        basis   = realMatrix(modes, "initial_state_modes");
+  if (basis.cols() == 0)
+  {
+    return std::make_unique<PythonPetscTimeIntegrator>(
+        model,
+        problem.controlMap(),
+        femx::fem::HostInitialStateMap{},
+        init);
+  }
+
+  auto init_map = femx::fem::makeInitialStateMap(
+      std::move(init),
+      std::move(basis),
+      problem.control(),
+      0,
+      problem.controlParamOffset(),
+      num_prm);
+  return std::make_unique<PythonPetscTimeIntegrator>(
+      model, problem.controlMap(), std::move(init_map), HostVector{});
+}
+
+TimeTrajectory solvePetsc(PythonPetscTimeIntegrator& owner,
+                          const RealArray&           parameters,
+                          const py::object&          progress)
+{
+  if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
+  {
+    throw py::type_error("progress must be callable");
+  }
+
+  HostVector     prm = realVector(parameters, "parameters");
+  TimeTrajectory tr;
+  auto&          integ = owner.get();
+  if (progress.is_none())
+  {
+    py::gil_scoped_release release;
+    integ.solve(prm.view(), tr);
+    return tr;
+  }
+
+  using Integrator =
+      femx::state::TimeIntegrator<femx::linalg::PetscBackend>;
+  Integrator::Observer observer =
+      [&progress](const femx::state::HostTimeStepStateContext& step)
+  {
+    py::gil_scoped_acquire acquire;
+    if (PyErr_CheckSignals() != 0)
+    {
+      throw py::error_already_set();
+    }
+    if (step.level == 0)
+    {
+      return false;
+    }
+    py::dict event;
+    event["type"]                 = "solve";
+    event["phase"]                = "forward";
+    event["step"]                 = step.level;
+    event["total"]                = step.total_steps;
+    event["assembly_seconds"]     = step.assm_sec;
+    event["linear_solve_seconds"] = step.lin_solve_sec;
+    progress(std::move(event));
+    return false;
+  };
+  py::gil_scoped_release release;
+  integ.solve(prm.view(), tr, std::move(observer));
+  return tr;
+}
+
+class PythonPetscTimeReducedFunctional final
+  : public PythonTimeReducedFunctional
+{
+public:
+  PythonPetscTimeReducedFunctional(
+      PythonPetscTimeIntegrator&          owner,
+      const femx::inverse::TimeObjective& obj)
+    : jac_(PETSC_COMM_WORLD), solver_(PETSC_COMM_WORLD)
+  {
+    jac_.resize(owner.get().residual().graph());
+    impl_ = std::make_unique<
+        femx::inverse::TimeReducedFunctional<femx::linalg::PetscBackend>>(
+        owner.get(), jac_, solver_, obj);
+  }
+
+  Index numParams() const noexcept override
+  {
+    return impl_->numParams();
+  }
+
+  Real value(femx::HostConstVectorView          prm,
+             femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    return impl_->value(prm, std::move(progress));
+  }
+
+  void grad(femx::HostConstVectorView          prm,
+            femx::HostVectorView               out,
+            femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    impl_->grad(prm, out, std::move(progress));
+  }
+
+  Real valueGrad(femx::HostConstVectorView          prm,
+                 femx::HostVectorView               out,
+                 femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    return impl_->valueGrad(prm, out, std::move(progress));
+  }
+
+  void resetTiming() noexcept override
+  {
+    impl_->resetTiming();
+  }
+
+  Real assemblySeconds() const noexcept override
+  {
+    return impl_->assemblySeconds();
+  }
+
+  Real solveSeconds() const noexcept override
+  {
+    return impl_->solveSeconds();
+  }
+
+  Index assemblyCalls() const noexcept override
+  {
+    return impl_->assemblyCalls();
+  }
+
+  Index solveCalls() const noexcept override
+  {
+    return impl_->solveCalls();
+  }
+
+private:
+  femx::linalg::PETScOperator   jac_;
+  femx::linalg::KspLinearSolver solver_;
+  std::unique_ptr<
+      femx::inverse::TimeReducedFunctional<femx::linalg::PetscBackend>>
+      impl_;
+};
+#endif
+
 #ifdef FEMX_RESOLVE_USE_CUDA
 femx::linalg::ReSolveOptions resolveOptions(const py::object& obj)
 {
@@ -949,48 +1196,82 @@ femx::linalg::ReSolveOptions resolveOptions(const py::object& obj)
              : obj.cast<femx::linalg::ReSolveOptions>();
 }
 
-std::unique_ptr<femx::model::ns::ResolveTimeIntegrator>
-makeResolveIntegrator(NavierStokesModel&     model,
-                      FixedDirichletProblem& problem,
-                      const RealArray&       initial,
-                      const py::object&      options)
+class PythonDeviceTimeIntegrator final
 {
-  auto out = std::make_unique<
-      femx::model::ns::ResolveTimeIntegrator>(
-      model,
-      problem.data().dofs,
-      problem.data().vals,
-      resolveOptions(options));
-  out->setInitialState(realVector(initial, "initial_state"));
-  return out;
+public:
+  PythonDeviceTimeIntegrator(
+      std::unique_ptr<femx::state::DeviceTimeResidual> res,
+      femx::linalg::ReSolveOptions                     opts)
+    : res_(std::move(res)),
+      jac_(res_->graph()),
+      solver_(std::move(opts)),
+      integ_(*res_, jac_, solver_, ctx_)
+  {
+  }
+
+  femx::state::DeviceTimeIntegrator& get() noexcept
+  {
+    return integ_;
+  }
+
+  const femx::state::DeviceTimeIntegrator& get() const noexcept
+  {
+    return integ_;
+  }
+
+  void setInitialState(const HostVector& init)
+  {
+    femx::DeviceVector state;
+    femx::copy(init, state, ctx_);
+    ctx_.synchronize();
+    integ_.setInitialState(state);
+  }
+
+private:
+  femx::CudaContext                                ctx_;
+  std::unique_ptr<femx::state::DeviceTimeResidual> res_;
+  femx::DeviceCsrMatrix                            jac_;
+  femx::linalg::ReSolveLinearSolver                solver_;
+  femx::state::DeviceTimeIntegrator                integ_;
+};
+
+std::unique_ptr<PythonDeviceTimeIntegrator>
+makeDeviceIntegrator(NavierStokesModel&     model,
+                     FixedDirichletProblem& problem,
+                     const RealArray&       initial,
+                     const py::object&      options)
+{
+  auto integrator =
+      std::make_unique<PythonDeviceTimeIntegrator>(
+          femx::model::ns::makeDeviceTimeResidual(
+              model, problem.controlMap()),
+          resolveOptions(options));
+  const HostVector host_initial =
+      realVector(initial, "initial_state");
+  integrator->setInitialState(host_initial);
+  return integrator;
 }
 
-std::unique_ptr<femx::model::ns::ResolveTimeIntegrator>
-makeResolveIntegrator(NavierStokesModel&          model,
-                      ControlledDirichletProblem& problem,
-                      const RealArray&            mean,
-                      const RealArray&            modes,
-                      const py::object&           options)
+std::unique_ptr<PythonDeviceTimeIntegrator>
+makeDeviceIntegrator(NavierStokesModel&          model,
+                     ControlledDirichletProblem& problem,
+                     const RealArray&            mean,
+                     const RealArray&            modes,
+                     const py::object&           options)
 {
   const Index num_prm = problem.residual().dims().num_param;
-  auto        ctr     = femx::fem::makeControlMap(
-      model.numSteps(),
-      model.numStates(),
-      problem.control(),
-      problem.data().dofs,
-      problem.data().vals,
-      problem.timeStencils(),
-      problem.controlParamOffset(),
-      num_prm);
-  auto init  = realVector(mean, "initial_state_mean");
-  auto basis = realMatrix(modes, "initial_state_modes");
-  if (basis.numCols() == 0)
+  auto        init    = realVector(mean, "initial_state_mean");
+  auto        basis   = realMatrix(modes, "initial_state_modes");
+  const auto  opts    = resolveOptions(options);
+  if (basis.cols() == 0)
   {
-    return std::make_unique<femx::model::ns::ResolveTimeIntegrator>(
-        model,
-        std::move(ctr),
-        std::move(init),
-        resolveOptions(options));
+    auto integrator =
+        std::make_unique<PythonDeviceTimeIntegrator>(
+            femx::model::ns::makeDeviceTimeResidual(
+                model, problem.controlMap()),
+            opts);
+    integrator->setInitialState(init);
+    return integrator;
   }
   auto init_map = femx::fem::makeInitialStateMap(
       std::move(init),
@@ -999,12 +1280,121 @@ makeResolveIntegrator(NavierStokesModel&          model,
       0,
       problem.controlParamOffset(),
       num_prm);
-  return std::make_unique<femx::model::ns::ResolveTimeIntegrator>(
-      model,
-      std::move(ctr),
-      std::move(init_map),
-      resolveOptions(options));
+  return std::make_unique<PythonDeviceTimeIntegrator>(
+      femx::model::ns::makeDeviceTimeResidual(
+          model, problem.controlMap(), std::move(init_map)),
+      opts);
 }
+
+class PythonDeviceTimeReducedFunctional final
+  : public PythonTimeReducedFunctional
+{
+public:
+  PythonDeviceTimeReducedFunctional(
+      PythonDeviceTimeIntegrator&         owner,
+      const femx::inverse::TimeObjective& obj)
+    : jac_(owner.get().residual().graph()),
+      impl_(owner.get(), jac_, solver_, obj)
+  {
+  }
+
+  Index numParams() const noexcept override
+  {
+    return impl_.numParams();
+  }
+
+  Real value(femx::HostConstVectorView          prm,
+             femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    copyParam(prm);
+    return impl_.value(device_prm_.view(), std::move(progress));
+  }
+
+  void grad(femx::HostConstVectorView          prm,
+            femx::HostVectorView               out,
+            femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    copyParam(prm);
+    resizeGrad();
+    impl_.grad(
+        device_prm_.view(), device_grad_.view(), std::move(progress));
+    copyGrad(out);
+  }
+
+  Real valueGrad(femx::HostConstVectorView          prm,
+                 femx::HostVectorView               out,
+                 femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    copyParam(prm);
+    resizeGrad();
+    const Real val = impl_.valueGrad(
+        device_prm_.view(), device_grad_.view(), std::move(progress));
+    copyGrad(out);
+    return val;
+  }
+
+  void resetTiming() noexcept override
+  {
+    impl_.resetTiming();
+  }
+
+  Real assemblySeconds() const noexcept override
+  {
+    return impl_.assemblySeconds();
+  }
+
+  Real solveSeconds() const noexcept override
+  {
+    return impl_.solveSeconds();
+  }
+
+  Index assemblyCalls() const noexcept override
+  {
+    return impl_.assemblyCalls();
+  }
+
+  Index solveCalls() const noexcept override
+  {
+    return impl_.solveCalls();
+  }
+
+private:
+  void copyParam(femx::HostConstVectorView prm)
+  {
+    host_prm_ = prm;
+    femx::copy(host_prm_, device_prm_, transfer_);
+    transfer_.synchronize();
+  }
+
+  void resizeGrad()
+  {
+    if (device_grad_.size() != numParams())
+    {
+      device_grad_.resize(numParams());
+    }
+  }
+
+  void copyGrad(femx::HostVectorView out)
+  {
+    if (out.size() != numParams())
+    {
+      throw std::runtime_error(
+          "Device reduced-functional gradient size mismatch");
+    }
+    femx::HostVector host_grad;
+    femx::copy(device_grad_, host_grad, transfer_);
+    transfer_.synchronize();
+    femx::copy(host_grad.view(), out);
+  }
+
+  femx::DeviceCsrMatrix                      jac_;
+  femx::linalg::ReSolveLinearSolver          solver_;
+  femx::inverse::DeviceTimeReducedFunctional impl_;
+  femx::CudaContext                          transfer_;
+  femx::HostVector                           host_prm_;
+  femx::DeviceVector                         device_prm_;
+  femx::DeviceVector                         device_grad_;
+};
 #endif
 
 } // namespace
@@ -1039,10 +1429,6 @@ void bindNavierStokes(py::module_& module)
           {
             return model.residual();
           },
-          py::return_value_policy::reference_internal)
-      .def_property_readonly(
-          "_map",
-          &NavierStokesModel::map,
           py::return_value_policy::reference_internal)
       .def(
           "_use_full_element_range",
@@ -1100,11 +1486,11 @@ void bindNavierStokes(py::module_& module)
           "initial_state",
           [](const FixedDirichletProblem& problem)
           {
-            py::array_t<Real> out(problem.data().initial_state.size());
+            py::array_t<Real> out(problem.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < problem.data().initial_state.size(); ++i)
+            for (Index i = 0; i < problem.data().init_state.size(); ++i)
             {
-              vals(i) = problem.data().initial_state[i];
+              vals(i) = problem.data().init_state[i];
             }
             return out;
           });
@@ -1140,11 +1526,11 @@ void bindNavierStokes(py::module_& module)
           "initial_state",
           [](const ControlledDirichletProblem& problem)
           {
-            py::array_t<Real> out(problem.data().initial_state.size());
+            py::array_t<Real> out(problem.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < problem.data().initial_state.size(); ++i)
+            for (Index i = 0; i < problem.data().init_state.size(); ++i)
             {
-              vals(i) = problem.data().initial_state[i];
+              vals(i) = problem.data().init_state[i];
             }
             return out;
           })
@@ -1177,29 +1563,96 @@ void bindNavierStokes(py::module_& module)
            py::arg("mean"),
            py::arg("modes"));
 
-#ifdef FEMX_RESOLVE_USE_CUDA
-  using femx::model::ns::ResolveTimeIntegrator;
-  using femx::model::ns::ResolveTimeReducedFunctional;
+#ifdef FEMX_HAS_PETSC
+  py::class_<PythonPetscTimeIntegrator>(
+      module, "_PetscTimeIntegrator")
+      .def(py::init(static_cast<std::unique_ptr<PythonPetscTimeIntegrator> (*)(
+                        NavierStokesModel&,
+                        FixedDirichletProblem&,
+                        const RealArray&)>(&makePetscIntegrator)),
+           py::arg("model"),
+           py::arg("problem"),
+           py::arg("initial_state"),
+           py::keep_alive<1, 2>(),
+           py::keep_alive<1, 3>())
+      .def(py::init(static_cast<std::unique_ptr<PythonPetscTimeIntegrator> (*)(
+                        NavierStokesModel&,
+                        ControlledDirichletProblem&,
+                        const RealArray&,
+                        const RealArray&)>(&makePetscIntegrator)),
+           py::arg("model"),
+           py::arg("problem"),
+           py::arg("initial_state_mean"),
+           py::arg("initial_state_modes"),
+           py::keep_alive<1, 2>(),
+           py::keep_alive<1, 3>())
+      .def_property_readonly(
+          "num_steps",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().numSteps(); })
+      .def_property_readonly(
+          "num_states",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().numStates(); })
+      .def_property_readonly(
+          "num_param",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().numParams(); })
+      .def("solve",
+           &solvePetsc,
+           py::arg("param"),
+           py::arg("progress") = py::none())
+      .def("reset_timing",
+           [](PythonPetscTimeIntegrator& owner)
+           { owner.get().resetStats(); })
+      .def_property_readonly(
+          "assembly_seconds",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_sec; })
+      .def_property_readonly(
+          "solve_seconds",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_sec; })
+      .def_property_readonly(
+          "assembly_calls",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_calls; })
+      .def_property_readonly(
+          "solve_calls",
+          [](const PythonPetscTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_calls; });
 
-  py::class_<ResolveTimeIntegrator, femx::state::TimeIntegrator>(
-      module, "_ResolveTimeIntegrator")
-      .def(py::init(static_cast<std::unique_ptr<ResolveTimeIntegrator> (*)(
+  py::class_<PythonPetscTimeReducedFunctional,
+             PythonTimeReducedFunctional>(
+      module, "_PetscTimeReducedFunctional")
+      .def(py::init<PythonPetscTimeIntegrator&,
+                    const femx::inverse::TimeObjective&>(),
+           py::arg("integrator"),
+           py::arg("objective"),
+           py::keep_alive<1, 2>(),
+           py::keep_alive<1, 3>());
+#endif
+
+#ifdef FEMX_RESOLVE_USE_CUDA
+  py::class_<PythonDeviceTimeIntegrator>(
+      module, "_DeviceTimeIntegrator")
+      .def(py::init(static_cast<std::unique_ptr<PythonDeviceTimeIntegrator> (*)(
                         NavierStokesModel&,
                         FixedDirichletProblem&,
                         const RealArray&,
-                        const py::object&)>(&makeResolveIntegrator)),
+                        const py::object&)>(&makeDeviceIntegrator)),
            py::arg("model"),
            py::arg("problem"),
            py::arg("initial_state"),
            py::arg("options") = py::none(),
            py::keep_alive<1, 2>(),
            py::keep_alive<1, 3>())
-      .def(py::init(static_cast<std::unique_ptr<ResolveTimeIntegrator> (*)(
+      .def(py::init(static_cast<std::unique_ptr<PythonDeviceTimeIntegrator> (*)(
                         NavierStokesModel&,
                         ControlledDirichletProblem&,
                         const RealArray&,
                         const RealArray&,
-                        const py::object&)>(&makeResolveIntegrator)),
+                        const py::object&)>(&makeDeviceIntegrator)),
            py::arg("model"),
            py::arg("problem"),
            py::arg("initial_state_mean"),
@@ -1207,93 +1660,107 @@ void bindNavierStokes(py::module_& module)
            py::arg("options") = py::none(),
            py::keep_alive<1, 2>(),
            py::keep_alive<1, 3>())
-      .def_property_readonly("assembly_seconds",
-                             &ResolveTimeIntegrator::assemblySeconds)
-      .def_property_readonly("solve_seconds",
-                             &ResolveTimeIntegrator::solveSeconds)
-      .def_property_readonly("assembly_calls",
-                             &ResolveTimeIntegrator::assemblyCalls)
-      .def_property_readonly("solve_calls",
-                             &ResolveTimeIntegrator::solveCalls)
-      .def("reset_timing", &ResolveTimeIntegrator::resetTiming);
+      .def_property_readonly(
+          "num_steps",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().numSteps(); })
+      .def_property_readonly(
+          "num_states",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().numStates(); })
+      .def_property_readonly(
+          "num_param",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().numParams(); })
+      .def(
+          "solve",
+          [](PythonDeviceTimeIntegrator& owner,
+             const RealArray&            parameters,
+             const py::object&           progress)
+          {
+            auto& integrator = owner.get();
+            if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
+            {
+              throw py::type_error("progress must be callable");
+            }
+            const HostVector   values = realVector(parameters, "parameters");
+            femx::CudaContext  transfer;
+            femx::DeviceVector device_values;
+            femx::copy(values, device_values, transfer);
+            transfer.synchronize();
+            femx::state::DeviceTimeTrajectory device_trajectory;
+            if (progress.is_none())
+            {
+              py::gil_scoped_release release;
+              integrator.solve(device_values.view(), device_trajectory);
+            }
+            else
+            {
+              femx::state::DeviceTimeIntegrator::Observer observer =
+                  [&progress](
+                      const femx::state::DeviceTimeStepStateContext& step)
+              {
+                py::gil_scoped_acquire acquire;
+                if (PyErr_CheckSignals() != 0)
+                {
+                  throw py::error_already_set();
+                }
+                if (step.level == 0)
+                {
+                  return false;
+                }
+                py::dict event;
+                event["type"]                 = "solve";
+                event["phase"]                = "forward";
+                event["step"]                 = step.level;
+                event["total"]                = step.total_steps;
+                event["assembly_seconds"]     = step.assm_sec;
+                event["linear_solve_seconds"] = step.lin_solve_sec;
+                progress(std::move(event));
+                return false;
+              };
+              py::gil_scoped_release release;
+              integrator.solve(device_values.view(),
+                               device_trajectory,
+                               std::move(observer));
+            }
+            TimeTrajectory trajectory;
+            femx::state::copy(
+                device_trajectory, trajectory, transfer);
+            transfer.synchronize();
+            return trajectory;
+          },
+          py::arg("param"),
+          py::arg("progress") = py::none())
+      .def("reset_timing",
+           [](PythonDeviceTimeIntegrator& owner)
+           { owner.get().resetStats(); })
+      .def_property_readonly(
+          "assembly_seconds",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_sec; })
+      .def_property_readonly(
+          "solve_seconds",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_sec; })
+      .def_property_readonly(
+          "assembly_calls",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_calls; })
+      .def_property_readonly(
+          "solve_calls",
+          [](const PythonDeviceTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_calls; });
 
-  py::class_<ResolveTimeReducedFunctional>(
-      module, "_ResolveTimeReducedFunctional")
-      .def(py::init<ResolveTimeIntegrator&,
+  py::class_<PythonDeviceTimeReducedFunctional,
+             PythonTimeReducedFunctional>(
+      module, "_DeviceTimeReducedFunctional")
+      .def(py::init<PythonDeviceTimeIntegrator&,
                     const femx::inverse::TimeObjective&>(),
            py::arg("integrator"),
            py::arg("objective"),
            py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>())
-      .def_property_readonly("num_param",
-                             &ResolveTimeReducedFunctional::numParams)
-      .def_property_readonly("assembly_seconds",
-                             &ResolveTimeReducedFunctional::assemblySeconds)
-      .def_property_readonly("solve_seconds",
-                             &ResolveTimeReducedFunctional::solveSeconds)
-      .def_property_readonly("assembly_calls",
-                             &ResolveTimeReducedFunctional::assemblyCalls)
-      .def_property_readonly("solve_calls",
-                             &ResolveTimeReducedFunctional::solveCalls)
-      .def("reset_timing", &ResolveTimeReducedFunctional::resetTiming)
-      .def(
-          "value",
-          [](ResolveTimeReducedFunctional& fn,
-             const RealArray&              prm)
-          {
-            const HostVector       vals = realVector(prm, "param");
-            py::gil_scoped_release release;
-            return fn.value(vals);
-          },
-          py::arg("param"))
-      .def(
-          "grad",
-          [](ResolveTimeReducedFunctional& fn,
-             const RealArray&              prm)
-          {
-            const HostVector vals = realVector(prm, "param");
-            HostVector       out;
-            {
-              py::gil_scoped_release release;
-              fn.grad(vals, out);
-            }
-            return vectorArray(out);
-          },
-          py::arg("param"))
-      .def(
-          "value_grad",
-          [](ResolveTimeReducedFunctional& fn,
-             const RealArray&              prm,
-             const py::object&             progress)
-          {
-            const HostVector          vals = realVector(prm, "param");
-            PythonTimeProgressMonitor monitor(progress);
-            HostVector                grad;
-            Real                      val = 0.0;
-            if (progress.is_none())
-            {
-              py::gil_scoped_release release;
-              val = fn.valueGrad(vals, grad);
-            }
-            else
-            {
-              fn.setMonitor(&monitor);
-              try
-              {
-                py::gil_scoped_release release;
-                val = fn.valueGrad(vals, grad);
-              }
-              catch (...)
-              {
-                fn.clearMonitor();
-                throw;
-              }
-              fn.clearMonitor();
-            }
-            return py::make_tuple(val, vectorArray(grad));
-          },
-          py::arg("param"),
-          py::arg("progress") = py::none());
+           py::keep_alive<1, 3>());
 #endif
 
   py::class_<VelocityPointSampler,

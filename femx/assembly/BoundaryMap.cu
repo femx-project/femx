@@ -1,8 +1,7 @@
 #include <cuda_runtime_api.h>
 
-#include <stdexcept>
-
 #include <femx/assembly/BoundaryMap.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 
 namespace femx
@@ -84,11 +83,8 @@ __global__ void replaceResKernel(
 
 void checkMat(const DeviceBoundaryMap& map, const DeviceCsrMatrix& mat)
 {
-  if (mat.graph().layoutId() != map.layoutId())
-  {
-    throw std::runtime_error(
-        "BoundaryMap matrix does not match the mapped CSR layout");
-  }
+  require(mat.graph().layoutId() == map.layoutId(),
+          "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
 void checkForward(const DeviceBoundaryMap& map,
@@ -97,22 +93,13 @@ void checkForward(const DeviceBoundaryMap& map,
                   const DeviceVector&      bc_vals)
 {
   checkMat(map, mat);
-  if (rhs.size() != map.rows() || bc_vals.size() != map.numBcs())
-  {
-    throw std::runtime_error(
-        "BoundaryMap forward vectors have incompatible sizes");
-  }
-  if (&rhs == &bc_vals)
-  {
-    throw std::runtime_error(
-        "BoundaryMap RHS and prescribed values must not alias");
-  }
+  require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
+          "BoundaryMap forward vectors have incompatible sizes");
+  require(&rhs != &bc_vals,
+          "BoundaryMap RHS and prescribed values must not alias");
   const DeviceVector& mat_vals = mat.vals();
-  if (&rhs == &mat_vals || &bc_vals == &mat_vals)
-  {
-    throw std::runtime_error(
-        "BoundaryMap vectors must not alias matrix values");
-  }
+  require(&rhs != &mat_vals && &bc_vals != &mat_vals,
+          "BoundaryMap vectors must not alias matrix values");
 }
 
 cudaStream_t cudaStream(CudaContext& ctx)
@@ -155,22 +142,16 @@ void replaceRows(const DeviceBoundaryMap& map,
 }
 
 void replaceRes(const DeviceBoundaryMap& map,
-                const DeviceVector&      state,
-                const DeviceVector&      bc_vals,
-                DeviceVector&            res,
+                DeviceConstVectorView    state,
+                DeviceConstVectorView    bc_vals,
+                DeviceVectorView         res,
                 CudaContext&             ctx)
 {
-  if (state.size() != map.rows() || res.size() != map.rows()
-      || bc_vals.size() != map.numBcs())
-  {
-    throw std::runtime_error(
-        "BoundaryMap residual vectors have incompatible sizes");
-  }
-  if (&state == &res || &bc_vals == &res)
-  {
-    throw std::runtime_error(
-        "BoundaryMap residual output must not alias its inputs");
-  }
+  require(state.size() == map.rows() && res.size() == map.rows()
+              && bc_vals.size() == map.numBcs(),
+          "BoundaryMap residual vectors have incompatible sizes");
+  require(state.data() != res.data() && bc_vals.data() != res.data(),
+          "BoundaryMap residual output must not alias its inputs");
   if (map.numBcs() == 0)
   {
     return;

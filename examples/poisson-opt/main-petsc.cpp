@@ -6,18 +6,15 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/Linearization.hpp>
 
 using namespace femx;
 using namespace femx::examples;
 using namespace femx::examples::poisson_opt;
 using namespace femx::linalg;
-using namespace femx::state;
 using namespace femx::runtime;
 
 #ifndef FEMX_POISSON_OPT_APP_NAME
@@ -32,21 +29,21 @@ int run(const Options& opts)
   ExampleHelper     helper("petsc", MemorySpace::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  // Residual Jacobian with respect to the state u and the control m.
-  PETScVector state_layout(PETSC_COMM_SELF);
-  state_layout.resize(problem.numStates());
-  PETScOperator dRdu(PETSC_COMM_SELF);
-  dRdu.resize(problem.stateMap().graph(), state_layout);
-  DenseMatrix dRdm;
+  PETScOperator fwd_jac(PETSC_COMM_SELF);
+  PETScOperator adj_jac(PETSC_COMM_SELF);
+  fwd_jac.resize(problem.stateMap().graph());
+  adj_jac.resize(problem.stateMap().graph());
 
-  MatrixLinearization lin(dRdu, dRdm);
-
-  // Linear solvers for forward/adjoint systems.
   KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
   KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);
+  PetscContext    ctx{PETSC_COMM_SELF};
 
-  const Result result = solve(
-      problem, lin, fwd_lin_solver, adj_lin_solver);
+  const Result result = solve<PetscBackend>(problem,
+                                            fwd_jac,
+                                            fwd_lin_solver,
+                                            adj_jac,
+                                            adj_lin_solver,
+                                            ctx);
 
   printReport(std::cout,
               helper.name(),

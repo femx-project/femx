@@ -152,8 +152,8 @@ class NavierStokesProblemTest(unittest.TestCase):
         second = solver.solve(np.array([0.2, 0.6]))
         third = solver.solve(np.array([0.1, 0.3]))
         self.assertEqual(solver.num_solves, 2)
-        self.assertEqual(solver.assembly_calls, 2 * model.num_steps)
-        self.assertEqual(solver.linear_solve_calls, 2 * model.num_steps)
+        self.assertEqual(solver.assembly_calls, model.num_steps)
+        self.assertEqual(solver.linear_solve_calls, model.num_steps)
         np.testing.assert_allclose(second.values, trajectory.values)
         self.assertFalse(np.array_equal(third.values, second.values))
 

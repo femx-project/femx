@@ -5,18 +5,16 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
-#if defined(FEMX_RESOLVE_USE_CUDA)
-#include <femx/model/ns/ResolveTimeIntegrator.hpp>
-#endif
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -69,10 +67,10 @@ BuildInfo makeBuildInfo()
        {"cmake build type", FEMX_CMAKE_BUILD_TYPE},
        {"cmake cxx compiler", FEMX_CMAKE_CXX_COMPILER},
        {"cmake cuda architectures", FEMX_CMAKE_CUDA_ARCHITECTURES},
-       {"FEMX_ENABLE_HDF5", FEMX_ENABLE_HDF5_OPTION},
-       {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
-       {"FEMX_ENABLE_RESOLVE", FEMX_ENABLE_RESOLVE_OPTION},
-       {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION}}};
+        {"FEMX_ENABLE_HDF5", FEMX_ENABLE_HDF5_OPTION},
+        {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
+        {"FEMX_ENABLE_RESOLVE", FEMX_ENABLE_RESOLVE_OPTION},
+        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION}}};
 }
 
 void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
@@ -123,10 +121,15 @@ int run(const Params& prm)
 
   ForwardSolveResult result;
 #if defined(FEMX_RESOLVE_USE_CUDA)
-  ResolveTimeIntegrator integ(
-      fwd.model, fwd.fixed.dofs, fwd.fixed.vals, opts);
-  integ.setInitialState(fwd.x0);
-  integ.resetTiming();
+  CudaContext          ctx;
+  auto                 res = makeDeviceTimeResidual(fwd.model, fwd.problem.controlMap());
+  DeviceCsrMatrix      mat(res->graph());
+  ReSolveLinearSolver  solver(opts);
+  DeviceTimeIntegrator integ(*res, mat, solver, ctx);
+  DeviceVector         initial;
+  femx::copy(fwd.x0, initial, ctx);
+  ctx.synchronize();
+  integ.setInitialState(initial);
   result = solve(integ,
                  fwd,
                  prm.time,
@@ -134,11 +137,11 @@ int run(const Params& prm)
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
 #else
-  MapCsrMatrix         mat(fwd.model.map());
-  ReSolveLinearSolver  solver(opts);
-  TimeLinearIntegrator integ(fwd.problem, mat, solver);
+  HostCsrMatrix       mat(fwd.model.map().graph());
+  ReSolveLinearSolver solver(opts);
+  CpuContext          ctx;
+  HostTimeIntegrator  integ(fwd.problem, mat, solver, ctx);
   integ.setInitialState(fwd.x0);
-  integ.resetTiming();
   result = solve(integ,
                  fwd,
                  prm.time,

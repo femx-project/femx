@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdexcept>
 #include <type_traits>
 
+#include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrGraph.hpp>
@@ -26,6 +26,12 @@ public:
   using Graph = CsrGraph<Space>;
   /** @brief Numeric value-vector type in this matrix's memory space. */
   using Vals  = Vector<Space>;
+
+  /** @brief Allocate zeroed numeric values for an immutable CSR graph. */
+  CsrMatrix()
+    : graph_(), vals_(0)
+  {
+  }
 
   /** @brief Allocate zeroed numeric values for an immutable CSR graph. */
   explicit CsrMatrix(const Graph& graph)
@@ -114,17 +120,99 @@ private:
   Vals  vals_;
 };
 
-/**
- * @brief Compute `y = mat * x` on Device without changing storage.
- * @param mat Device CSR matrix.
- * @param x Read-only input view of size `mat.cols()`.
- * @param y Output view of size `mat.rows()`; it must not alias the inputs.
- * @param ctx CUDA stream on which the operation is enqueued.
- */
+/** @brief Compute `y = alpha * mat * x + beta * y` on Host. */
+void apply(const HostCsrMatrix& mat,
+           HostConstVectorView  x,
+           HostVectorView       y,
+           CpuContext&          ctx,
+           Real                 alpha = 1.0,
+           Real                 beta  = 0.0);
+
+/** @brief Compute `y = alpha * mat^T * x + beta * y` on Host. */
+void applyT(const HostCsrMatrix& mat,
+            HostConstVectorView  x,
+            HostVectorView       y,
+            CpuContext&          ctx,
+            Real                 alpha = 1.0,
+            Real                 beta  = 0.0);
+
+/** @brief Compute `y = alpha * mat * x + beta * y` on Device. */
 void apply(const DeviceCsrMatrix& mat,
            DeviceConstVectorView  x,
            DeviceVectorView       y,
-           CudaContext&           ctx);
+           CudaContext&           ctx,
+           Real                   alpha = 1.0,
+           Real                   beta  = 0.0);
+
+/** @brief Compute `y = alpha * mat^T * x + beta * y` on Device. */
+void applyT(const DeviceCsrMatrix& mat,
+            DeviceConstVectorView  x,
+            DeviceVectorView       y,
+            CudaContext&           ctx,
+            Real                   alpha = 1.0,
+            Real                   beta  = 0.0);
+
+/** @brief Resize and compute `out = mat * x` on Host. */
+inline void apply(const HostCsrMatrix& mat,
+                  HostConstVectorView  x,
+                  HostVector&          out,
+                  CpuContext&          ctx)
+{
+  if (out.size() != mat.rows())
+  {
+    out.resize(mat.rows());
+  }
+  apply(mat, x, out.view(), ctx);
+}
+
+/** @brief Resize and compute `out = mat^T * x` on Host. */
+inline void applyT(const HostCsrMatrix& mat,
+                   HostConstVectorView  x,
+                   HostVector&          out,
+                   CpuContext&          ctx)
+{
+  if (out.size() != mat.cols())
+  {
+    out.resize(mat.cols());
+  }
+  applyT(mat, x, out.view(), ctx);
+}
+
+/** @brief Resize and compute `out = mat * x` on Device. */
+inline void apply(const DeviceCsrMatrix& mat,
+                  DeviceConstVectorView  x,
+                  DeviceVector&          out,
+                  CudaContext&           ctx)
+{
+  if (out.size() != mat.rows())
+  {
+    out.resize(mat.rows());
+  }
+  apply(mat, x, out.view(), ctx);
+}
+
+/** @brief Resize and compute `out = mat^T * x` on Device. */
+inline void applyT(const DeviceCsrMatrix& mat,
+                   DeviceConstVectorView  x,
+                   DeviceVector&          out,
+                   CudaContext&           ctx)
+{
+  if (out.size() != mat.cols())
+  {
+    out.resize(mat.cols());
+  }
+  applyT(mat, x, out.view(), ctx);
+}
+
+/** @brief Host CSR assembly needs no finalization step. */
+inline void finalize(HostCsrMatrix&, CpuContext&)
+{
+}
+
+/** @brief Device CSR assembly needs no finalization step. */
+inline void finalize(DeviceCsrMatrix&, CudaContext&)
+{
+}
 
 namespace detail
 {
@@ -132,15 +220,12 @@ template <MemorySpace SrcSpace, MemorySpace DstSpace>
 inline void checkCsrMatCopy(const CsrMatrix<SrcSpace>& src,
                             const CsrMatrix<DstSpace>& dst)
 {
-  if (src.rows() != dst.rows() || src.cols() != dst.cols()
-      || src.nnz() != dst.nnz()
-      || src.graph().layoutId() != dst.graph().layoutId()
-      || src.vals().size() != src.nnz()
-      || dst.vals().size() != dst.nnz())
-  {
-    throw std::runtime_error(
-        "CsrMatrix copy requires compatible source and destination graphs");
-  }
+  require(src.rows() == dst.rows() && src.cols() == dst.cols()
+              && src.nnz() == dst.nnz()
+              && src.graph().layoutId() == dst.graph().layoutId()
+              && src.vals().size() == src.nnz()
+              && dst.vals().size() == dst.nnz(),
+          "CsrMatrix copy requires compatible source and destination graphs");
 }
 } // namespace detail
 

@@ -4,7 +4,8 @@ project(femx_install_test LANGUAGES CXX)
 
 find_package(femx CONFIG REQUIRED)
 
-foreach(_target femx::femx femx::linalg femx::model_ns femx::model::ns)
+foreach(_target femx::femx femx::ad femx::linalg femx::model_ns
+                femx::model::ns)
   if(NOT TARGET "${_target}")
     message(FATAL_ERROR "Expected installed femx target ${_target}")
   endif()

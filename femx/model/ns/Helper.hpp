@@ -10,7 +10,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx::model::ns
 {

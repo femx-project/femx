@@ -158,9 +158,13 @@ add_executable(my_solver main.cpp)
 target_link_libraries(my_solver PRIVATE femx::femx)
 ```
 
-Component targets such as `femx::linalg`, `femx::fem`, `femx::assembly`,
-`femx::state`, `femx::inverse`, and `femx::io` are also available. `femx::opt`
-is available when PETSc is enabled.
+Component targets such as `femx::linalg`, `femx::ad`, `femx::fem`,
+`femx::assembly`, `femx::state`, `femx::inverse`, and `femx::io` are also
+available. `femx::opt` is available when PETSc is enabled.
+
+`femx::ad` exposes the optional C++ Enzyme entry point in
+`<femx/ad/Enzyme.hpp>`. Enable it with a Clang compiler and
+`FEMX_ENABLE_ENZYME=ON`; the Python API does not expose Enzyme yet.
 
 ## Documentation
 

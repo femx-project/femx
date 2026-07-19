@@ -155,7 +155,7 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             self.operator.predict(trajectory)
         )
         self.assertAlmostEqual(value, expected_value, places=13)
-        self.assertEqual(self.reduced.solve_calls, self.model.num_steps)
+        self.assertEqual(self.reduced.solve_calls, 2 * self.model.num_steps)
         self.assertGreater(
             self.reduced.assembly_calls,
             self.reduced.solve_calls,
@@ -256,6 +256,28 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             rtol=2.0e-7,
             atol=2.0e-9,
         )
+
+    @unittest.skipUnless(
+        "petsc" in femx.solver_backends(),
+        "femx was built without PETSc/TAO",
+    )
+    def test_tao_accepts_dense_and_petsc_reduced_functionals(self):
+        results = []
+        for backend in ("dense", "petsc"):
+            reduced = self.problem.create_reduced(
+                self.observation.objective(num_param=self.problem.num_param),
+                backend=backend,
+            )
+            result = femx.TaoOptimizer(reduced).solve(
+                DENSE_PARAM,
+                max_itrs=2,
+            )
+            self.assertEqual(result.param.shape, DENSE_PARAM.shape)
+            self.assertEqual(result.grad.shape, DENSE_PARAM.shape)
+            self.assertTrue(np.isfinite(result.obj))
+            results.append(result)
+
+        self.assertAlmostEqual(results[0].obj, results[1].obj, places=12)
 
     def test_rejects_stale_problem_configuration(self):
         self.problem.add_bc(femx.DirichletBC("inlet", "pressure", 0.0))

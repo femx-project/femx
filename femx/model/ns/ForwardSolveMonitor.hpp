@@ -8,7 +8,7 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/state/TimeStateMonitor.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::model::ns
 {
@@ -29,13 +29,13 @@ struct ForwardConvergenceParams
   Index min_steps   = 1;      ///< Minimum steps before convergence can stop.
 };
 
-class ForwardSolveMonitor final : public state::TimeStateMonitor
+class ForwardSolveMonitor final
 {
 public:
   ForwardSolveMonitor(const fem::MixedFESpace& space,
                       Real                     dt,
                       Index                    steps);
-  ~ForwardSolveMonitor() override;
+  ~ForwardSolveMonitor();
 
   void setFieldOutput(std::string directory,
                       Index       interval);
@@ -59,11 +59,11 @@ public:
   const ForwardSolveResult& result() const;
 
   void start(Index num_steps,
-             Index num_states) override;
+             Index num_states);
   void observe(Index             level,
-               const HostVector& state) override;
-  bool observeStep(const state::TimeStepStateContext& ctx) override;
-  void stop() override;
+               const HostVector& state);
+  bool observeStep(const state::HostTimeStepStateContext& ctx);
+  void stop();
 
 private:
   struct FieldOutput;

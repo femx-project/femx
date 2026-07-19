@@ -2,9 +2,11 @@
 #include <cmath>
 
 #include "TestHelper.hpp"
-#include <femx/assembly/TimeDirichletControlResidual.hpp>
+#include <femx/assembly/AssemblyMap.hpp>
+#include <femx/assembly/ConstrainedTimeResidual.hpp>
+#include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -16,24 +18,54 @@ namespace tests
 namespace
 {
 
-class IdentityTimeResidual final : public state::TimeResidual
+class IdentityTimeResidual final : public state::HostTimeResidual
 {
 public:
+  IdentityTimeResidual()
+    : graph_(assembly::makeAssemblyMap(
+                 3,
+                 3,
+                 Array<Array<Index>>{{0, 1, 2}},
+                 Array<Array<Index>>{{0, 1, 2}})
+                 .graph())
+  {
+  }
+
   state::TimeDims dims() const override
   {
     return {2, 3, 0, 3, 1};
   }
 
-  void res(const state::TimeContext& ctx,
-           HostVector&               out) const override
+  const HostCsrGraph& hostGraph() const override
   {
-    out = *ctx.nxt;
+    return graph_;
   }
 
-  void applyJac(const state::TimeContext&,
+  const HostCsrGraph& graph() const override
+  {
+    return graph_;
+  }
+
+  void initialState(HostConstVectorView prm,
+                    HostVector&         out,
+                    CpuContext&) const override
+  {
+    require(prm.empty(), "Identity residual is parameter-free");
+    resizeOrZero(out, 3);
+  }
+
+  void res(const state::HostTimeContext& ctx,
+           HostVector&                   out,
+           CpuContext&) const override
+  {
+    out = ctx.nxt;
+  }
+
+  void applyJac(const state::HostTimeContext&,
                 state::VariableBlock wrt,
-                const HostVector&    dir,
-                HostVector&          out) const override
+                HostConstVectorView  dir,
+                HostVector&          out,
+                CpuContext&) const override
   {
     resizeOrZero(out, 3);
     if (wrt.isNextState())
@@ -42,35 +74,50 @@ public:
     }
   }
 
-  void applyJacT(const state::TimeContext&,
+  void applyJacT(const state::HostTimeContext&,
                  state::VariableBlock wrt,
-                 const HostVector&    adj,
-                 HostVector&          out) const override
+                 HostConstVectorView  adj,
+                 HostVector&          out,
+                 CpuContext&) const override
   {
     if (wrt.isParam())
     {
       out.resize(0);
       return;
     }
-    out = adj;
+    resizeOrZero(out, 3);
+    if (wrt.isNextState())
+    {
+      out = adj;
+    }
   }
 
-  bool assembleJac(const state::TimeContext&,
-                   state::VariableBlock    wrt,
-                   linalg::MatrixOperator& out) const override
+  void assemble(const state::HostTimeContext&,
+                state::VariableBlock wrt,
+                HostVector&          res,
+                HostCsrMatrix&       out,
+                CpuContext&) const override
   {
-    const Index cols = wrt.isParam() ? 0 : 3;
-    out.resize(3, cols);
+    require(!wrt.isParam(), "Identity parameter Jacobian is matrix-free");
+    resizeOrZero(res, 3);
     out.setZero();
     if (wrt.isNextState())
     {
       for (Index i = 0; i < 3; ++i)
       {
-        out.set(i, i, 1.0);
+        for (Index k = out.rowPtrData()[i]; k < out.rowPtrData()[i + 1]; ++k)
+        {
+          if (out.colIndData()[k] == i)
+          {
+            out.valsData()[k] = 1.0;
+          }
+        }
       }
     }
-    return true;
   }
+
+private:
+  HostCsrGraph graph_;
 };
 
 bool near(Real a, Real b)
@@ -109,50 +156,67 @@ TestOutcome mappedTimeDirichletResidual()
 {
   TestStatus status(__func__);
 
-  const IdentityTimeResidual                   base;
-  const assembly::TimeDirichletControlResidual res(
-      base,
+  DenseMatrix modes(3, 1);
+  modes(1, 0)        = 3.0;
+  const auto initial = fem::makeInitialStateMap(
+      HostVector{1.0, 2.0, 3.0},
+      std::move(modes),
       mappedControl(),
-      {},
       0,
-      -1,
-      {},
-      Array<LinearInterpolation>{{0, 1, 0.25}, {1, 1, 0.0}});
-
-  status *= res.numParams() == 2;
-
-  const HostVector         history{1.0, 2.0, 3.0};
-  const HostVector         next{10.0, 20.0, 30.0};
-  const HostVector         parameters{4.0, 8.0};
-  const state::TimeContext ctx{
       0,
-      &next,
-      &parameters,
-      state::TimeHistoryView(history.data(), 1, 3)};
+      2);
+  const IdentityTimeResidual                  base;
+  const assembly::HostConstrainedTimeResidual res(
+      base,
+      fem::makeControlMap(
+          2,
+          3,
+          mappedControl(),
+          {},
+          {},
+          Array<LinearInterpolation>{{0, 1, 0.25}, {1, 1, 0.0}},
+          0),
+      initial);
+
+  status *= res.dims().num_param == 2;
+
+  const HostVector             history{1.0, 2.0, 3.0};
+  const HostVector             next{10.0, 20.0, 30.0};
+  const HostVector             parameters{4.0, 8.0};
+  const state::HostTimeContext ctx{
+      0,
+      next.view(),
+      parameters.view(),
+      state::HostTimeHistoryView(history.data(), 1, 3)};
+  CpuContext cpu;
 
   HostVector out;
-  res.res(ctx, out);
+  res.initialState(parameters.view(), out, cpu);
+  status *= valsNear(out, std::array<Real, 3>{{8.0, 14.0, -4.0}});
+  const HostVector initial_adj{1.0, 2.0, 3.0};
+  HostVector       initial_grad(2);
+  res.addInitialStateJacobianTranspose(
+      initial_adj.view(), initial_grad.view(), cpu);
+  status *= valsNear(initial_grad, std::array<Real, 2>{{5.0, 0.0}});
+
+  res.res(ctx, out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 
-  res.applyJac(
-      ctx, state::VariableBlock::Param, HostVector{2.0, 6.0}, out);
+  const HostVector dir{2.0, 6.0};
+  res.applyJac(ctx, state::VariableBlock::Param, dir.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{-6.0, 0.0, 3.0}});
 
-  res.applyJacT(
-      ctx, state::VariableBlock::Param, HostVector{1.0, 5.0, 3.0}, out);
+  const HostVector adj{1.0, 5.0, 3.0};
+  res.applyJacT(ctx, state::VariableBlock::Param, adj.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 2>{{0.75, 0.25}});
 
-  DenseMatrix param_jac;
-  status *= res.assembleJac(
-      ctx, state::VariableBlock::Param, param_jac);
-  status *= param_jac.numRows() == 3;
-  status *= param_jac.numCols() == 2;
-  status *= near(param_jac(0, 0), -1.5);
-  status *= near(param_jac(0, 1), -0.5);
-  status *= near(param_jac(1, 0), 0.0);
-  status *= near(param_jac(1, 1), 0.0);
-  status *= near(param_jac(2, 0), 0.75);
-  status *= near(param_jac(2, 1), 0.25);
+  res.applyJacT(
+      ctx, state::VariableBlock::NextState, adj.view(), out, cpu);
+  status *= valsNear(out, std::array<Real, 3>{{1.0, 5.0, 3.0}});
+
+  res.applyJacT(
+      ctx, state::VariableBlock::hist(0), adj.view(), out, cpu);
+  status *= valsNear(out, std::array<Real, 3>{{0.0, 0.0, 0.0}});
 
   return status.report();
 }

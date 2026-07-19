@@ -10,6 +10,7 @@
 #include <type_traits>
 
 #include <femx/assembly/Assembly.hpp>
+#include <femx/common/Checks.hpp>
 
 namespace femx
 {
@@ -34,48 +35,41 @@ inline void checkAssemblyInputs(
     const DeviceVector&                     state,
     const DeviceCsrMatrix&                  jac)
 {
-  if (geom.numElems() != map.numElems())
-  {
-    throw std::runtime_error(
-        "Geometry and AssemblyMap have different element counts");
-  }
-  if (state.size() != map.numStates())
-  {
-    throw std::runtime_error(
-        "Assembly state size does not match AssemblyMap");
-  }
-  if (jac.graph().layoutId() != map.graph().layoutId())
-  {
-    throw std::runtime_error(
-        "Assembly matrix must use the AssemblyMap CSR layout");
-  }
+  require(geom.numElems() == map.numElems(),
+          "Geometry and AssemblyMap have different element counts");
+  require(state.size() == map.numStates(),
+          "Assembly state size does not match AssemblyMap");
+  require(jac.graph().layoutId() == map.graph().layoutId(),
+          "Assembly matrix must use the AssemblyMap CSR layout");
 }
 
 inline void checkTimeAssemblyInputs(
     Index                                   num_hist,
     state::VariableBlock                    wrt,
     const AssemblyMap<MemorySpace::Device>& map,
-    const DeviceVector&                     hist,
-    const DeviceVector&                     nxt,
+    DeviceConstVectorView                   hist,
+    DeviceConstVectorView                   nxt,
     const DeviceCsrMatrix&                  jac)
 {
-  if (num_hist <= 0 || hist.size() != num_hist * map.numStates()
-      || nxt.size() != map.numStates())
-  {
-    throw std::runtime_error(
-        "CUDA time assembly state dimensions do not match AssemblyMap");
-  }
-  if (wrt.isParam()
-      || (wrt.isHistoryState()
-          && (wrt.historyLag() < 0 || wrt.historyLag() >= num_hist)))
-  {
-    throw std::runtime_error("CUDA time assembly variable block is invalid");
-  }
-  if (jac.graph().layoutId() != map.graph().layoutId())
-  {
-    throw std::runtime_error(
-        "CUDA time assembly matrix must use the AssemblyMap CSR layout");
-  }
+  require(num_hist > 0 && hist.size() == num_hist * map.numStates()
+              && nxt.size() == map.numStates(),
+          "CUDA time assembly state dimensions do not match AssemblyMap");
+  require(!wrt.isParam()
+              && (!wrt.isHistoryState() || (wrt.historyLag() >= 0 && wrt.historyLag() < num_hist)),
+          "CUDA time assembly variable block is invalid");
+  require(jac.graph().layoutId() == map.graph().layoutId(),
+          "CUDA time assembly matrix must use the AssemblyMap CSR layout");
+}
+
+inline void checkTimeAssemblyAliases(DeviceConstVectorView hist,
+                                     DeviceConstVectorView nxt,
+                                     const DeviceVector&   res,
+                                     const DeviceVector&   vals)
+{
+  require(hist.data() != res.data() && hist.data() != vals.data()
+              && nxt.data() != res.data() && nxt.data() != vals.data()
+              && res.data() != vals.data(),
+          "CUDA time assembly outputs must not alias inputs or each other");
 }
 
 inline std::size_t assemblySharedBytes(
@@ -232,8 +226,7 @@ __global__ void assembleTimeKernel(
       {nxt_e, ncol}};
   for (Index row = tid; row < nrow; row += stride)
   {
-    VectorView<MemorySpace::Device, Real> jac_row(
-        jac_e + row * ncol, ncol);
+    VectorView<MemorySpace::Device, Real> jac_row(jac_e + row * ncol, ncol);
     op.evalRow(elem, wrt, row, res_e[row], jac_row);
   }
   __syncthreads();
@@ -253,8 +246,7 @@ int configureAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
-  checkCudaStatus(cudaGetDevice(&dev),
-                  "cudaGetDevice failed for CUDA assembly");
+  checkCudaStatus(cudaGetDevice(&dev), "cudaGetDevice failed for CUDA assembly");
 
   int default_smem = 0;
   checkCudaStatus(
@@ -279,8 +271,7 @@ int configureTimeAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
-  checkCudaStatus(cudaGetDevice(&dev),
-                  "cudaGetDevice failed for CUDA time assembly");
+  checkCudaStatus(cudaGetDevice(&dev), "cudaGetDevice failed for CUDA time assembly");
 
   int default_smem = 0;
   checkCudaStatus(
@@ -373,8 +364,8 @@ void assemble(const ElementOperator&                  op,
               Index                                   num_hist,
               state::VariableBlock                    wrt,
               const AssemblyMap<MemorySpace::Device>& map,
-              const DeviceVector&                     hist,
-              const DeviceVector&                     nxt,
+              DeviceConstVectorView                   hist,
+              DeviceConstVectorView                   nxt,
               DeviceVector&                           res,
               DeviceCsrMatrix&                        jac,
               CudaContext&                            ctx)
@@ -394,11 +385,9 @@ void assemble(const ElementOperator&                  op,
     return;
   }
 
-  const std::size_t smem =
-      detail::timeAssemblySharedBytes(num_hist, map);
-  const int threads =
-      detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
+  const int         threads = detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
+  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleTimeKernel<ElementOperator>
       <<<static_cast<unsigned int>(map.numElems()),

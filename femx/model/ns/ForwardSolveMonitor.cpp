@@ -265,7 +265,8 @@ void ForwardSolveMonitor::observe(Index             level,
                       static_cast<Real>(level) * dt_);
 }
 
-bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
+bool ForwardSolveMonitor::observeStep(
+    const state::HostTimeStepStateContext& ctx)
 {
   result_.final_step  = ctx.level;
   result_.final_time  = static_cast<Real>(ctx.level) * dt_;
@@ -301,8 +302,8 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
                          result_.final_time,
                          max_cfl,
                          result_.vel_change,
-                         ctx.assembly_sec,
-                         ctx.solve_sec);
+                         ctx.assm_sec,
+                         ctx.lin_solve_sec);
   }
 
   return result_.converged;
@@ -531,8 +532,8 @@ Real maxVelocityCfl(const fem::MixedFESpace& space,
       Real        vel2 = 0.0;
       for (Index d = 0; d < comps; ++d)
       {
-        const Real value  = state[velocity.globalDof(id, d)];
-        vel2             += value * value;
+        const Real val  = state[velocity.globalDof(id, d)];
+        vel2           += val * val;
       }
       max_cfl = std::max(max_cfl, std::sqrt(vel2) * dt / h);
     }

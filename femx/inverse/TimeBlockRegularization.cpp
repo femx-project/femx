@@ -1,7 +1,7 @@
 #include <cmath>
-#include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 using namespace femx::state;
 
@@ -29,49 +29,34 @@ TimeBlockRegularization::TimeBlockRegularization(
     vals_(std::move(vals)),
     weight_(weight)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_levels_ < 0
-      || block_size_ < 0 || !std::isfinite(weight_) || weight_ < 0.0
-      || rows_.size() != cols_.size() || rows_.size() != vals_.size())
-  {
-    throw std::runtime_error(
-        "TimeBlockRegularization received invalid inputs");
-  }
-  if (weight_ > 0.0 && vals_.empty())
-  {
-    throw std::runtime_error(
-        "TimeBlockRegularization received an empty matrix");
-  }
+  require(num_steps_ >= 0 && num_states_ >= 0 && num_levels_ >= 0
+              && block_size_ >= 0 && std::isfinite(weight_)
+              && weight_ >= 0.0 && rows_.size() == cols_.size()
+              && rows_.size() == vals_.size(),
+          "TimeBlockRegularization received invalid inputs");
+  require(weight_ == 0.0 || !vals_.empty(),
+          "TimeBlockRegularization received an empty matrix");
   for (Index i = 0; i < vals_.size(); ++i)
   {
-    if (rows_[i] < 0 || rows_[i] >= block_size_
-        || cols_[i] < 0 || cols_[i] >= block_size_
-        || !std::isfinite(vals_[i]))
-    {
-      throw std::runtime_error(
-          "TimeBlockRegularization received an invalid matrix");
-    }
+    require(rows_[i] >= 0 && rows_[i] < block_size_ && cols_[i] >= 0
+                && cols_[i] < block_size_ && std::isfinite(vals_[i]),
+            "TimeBlockRegularization received an invalid matrix");
   }
 
   if (reference.empty())
   {
     reference_.resize(numParams());
   }
-  else if (reference.size() == numParams())
-  {
-    for (const Real value : reference)
-    {
-      if (!std::isfinite(value))
-      {
-        throw std::runtime_error(
-            "TimeBlockRegularization reference must be finite");
-      }
-    }
-    reference_ = reference;
-  }
   else
   {
-    throw std::runtime_error(
-        "TimeBlockRegularization reference size mismatch");
+    require(reference.size() == numParams(),
+            "TimeBlockRegularization reference size mismatch");
+    for (const Real val : reference)
+    {
+      require(std::isfinite(val),
+              "TimeBlockRegularization reference must be finite");
+    }
+    reference_ = reference;
   }
 }
 
@@ -157,11 +142,8 @@ Real TimeBlockRegularization::centered(const HostVector& prm,
 void TimeBlockRegularization::checkParamSize(
     const HostVector& prm) const
 {
-  if (prm.size() != numParams())
-  {
-    throw std::runtime_error(
-        "TimeBlockRegularization parameter size mismatch");
-  }
+  require(prm.size() == numParams(),
+          "TimeBlockRegularization parameter size mismatch");
 }
 
 } // namespace inverse

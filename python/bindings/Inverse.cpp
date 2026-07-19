@@ -15,9 +15,8 @@
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/opt/TaoOptimizer.hpp>
@@ -36,6 +35,7 @@ namespace
 
 using femx::Array;
 using femx::DenseMatrix;
+using femx::HostConstVectorView;
 using femx::HostVector;
 using femx::Index;
 using femx::Real;
@@ -46,14 +46,80 @@ using femx::inverse::TimeLeastSquaresObjective;
 using femx::inverse::TimeObjective;
 using femx::inverse::TimeObservationData;
 using femx::inverse::TimeObservationOperator;
-using femx::inverse::TimeReducedFunctional;
 using femx::inverse::TimeRegularization;
-using femx::linalg::LinearSolver;
-using femx::linalg::MatrixOperator;
-using femx::state::TimeIntegrator;
-using femx::state::TimeLinearization;
-using femx::state::TimeResidual;
+using femx::linalg::HostCsrLinearSolver;
+using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
+
+using TimeReducedFunctional =
+    femx::inverse::HostTimeReducedFunctional;
+
+class PythonHostTimeReducedFunctional final
+  : public PythonTimeReducedFunctional
+{
+public:
+  PythonHostTimeReducedFunctional(PythonHostTimeIntegrator& owner,
+                                  HostCsrLinearSolver&      solver,
+                                  const TimeObjective&      obj)
+    : jac_(owner.get().residual().graph()),
+      impl_(owner.get(), jac_, solver, obj)
+  {
+  }
+
+  Index numParams() const noexcept override
+  {
+    return impl_.numParams();
+  }
+
+  Real value(HostConstVectorView                prm,
+             femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    return impl_.value(prm, std::move(progress));
+  }
+
+  void grad(HostConstVectorView                prm,
+            femx::HostVectorView               out,
+            femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    impl_.grad(prm, out, std::move(progress));
+  }
+
+  Real valueGrad(HostConstVectorView                prm,
+                 femx::HostVectorView               out,
+                 femx::inverse::TimeReducedProgress progress = {}) override
+  {
+    return impl_.valueGrad(prm, out, std::move(progress));
+  }
+
+  void resetTiming() noexcept override
+  {
+    impl_.resetTiming();
+  }
+
+  Real assemblySeconds() const noexcept override
+  {
+    return impl_.assemblySeconds();
+  }
+
+  Real solveSeconds() const noexcept override
+  {
+    return impl_.solveSeconds();
+  }
+
+  Index assemblyCalls() const noexcept override
+  {
+    return impl_.assemblyCalls();
+  }
+
+  Index solveCalls() const noexcept override
+  {
+    return impl_.solveCalls();
+  }
+
+private:
+  femx::HostCsrMatrix   jac_;
+  TimeReducedFunctional impl_;
+};
 
 using RealArray  = py::array_t<Real,
                                py::array::c_style | py::array::forcecast>;
@@ -109,9 +175,9 @@ DenseMatrix denseMatrixFromArray(const RealArray& vals,
 
   DenseMatrix out(vals.shape(0), vals.shape(1));
   const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < out.numRows(); ++row)
+  for (Index row = 0; row < out.rows(); ++row)
   {
-    for (Index col = 0; col < out.numCols(); ++col)
+    for (Index col = 0; col < out.cols(); ++col)
     {
       out(row, col) = data(row, col);
       if (!std::isfinite(out(row, col)))
@@ -123,29 +189,6 @@ DenseMatrix denseMatrixFromArray(const RealArray& vals,
   }
   return out;
 }
-
-class AffineInitialStateGradientMap final
-  : public femx::inverse::InitialStateGradientMap
-{
-public:
-  explicit AffineInitialStateGradientMap(HostInitialStateMap& map)
-    : map_(map)
-  {
-  }
-
-  void apply(const HostVector&,
-             const HostVector& state_grad,
-             HostVector&       out) override
-  {
-    out.resize(map_.numParams());
-    out.setZero();
-    femx::fem::addInitialJacT(
-        map_.view(), state_grad.view(), out.view());
-  }
-
-private:
-  HostInitialStateMap& map_;
-};
 
 HostVector flattenedVectorFromArray(const RealArray& vals,
                                     Index            expected_size,
@@ -412,13 +455,13 @@ const char* taoReason(TaoConvergedReason reason)
   return "TAO stopped with an unknown reason";
 }
 
-py::dict taoSolve(TimeReducedFunctional& functional,
-                  const RealArray&       initial,
-                  const py::object&      lower,
-                  const py::object&      upper,
-                  Index                  max_itrs,
-                  Real                   grad_tol,
-                  const py::object&      progress)
+py::dict taoSolve(PythonTimeReducedFunctional& functional,
+                  const RealArray&             initial,
+                  const py::object&            lower,
+                  const py::object&            upper,
+                  Index                        max_itrs,
+                  Real                         grad_tol,
+                  const py::object&            progress)
 {
   if (max_itrs <= 0)
   {
@@ -441,8 +484,7 @@ py::dict taoSolve(TimeReducedFunctional& functional,
   };
 
   class InterruptMonitor final
-    : public femx::opt::TaoProgressMonitor,
-      public femx::inverse::TimeReducedProgressMonitor
+    : public femx::opt::TaoProgressMonitor
   {
   public:
     InterruptMonitor(py::object progress, Index max_itrs)
@@ -465,7 +507,7 @@ py::dict taoSolve(TimeReducedFunctional& functional,
       notify(std::move(event), false);
     }
 
-    void progress(const char* phase, Index step, Index total) override
+    void progress(const char* phase, Index step, Index total)
     {
       py::gil_scoped_acquire acquire;
       py::dict               event;
@@ -515,13 +557,26 @@ py::dict taoSolve(TimeReducedFunctional& functional,
   femx::opt::TaoOptimizer tao(
       [&functional]()
       { return functional.numParams(); },
-      [&functional, &num_evals](const HostVector& param,
-                                HostVector&       grad)
+      [&functional, &num_evals, &interrupt_monitor](
+          const HostVector& param,
+          HostVector&       grad)
       {
         ++num_evals;
         try
         {
-          return functional.valueGrad(param, grad);
+          if (grad.size() != functional.numParams())
+          {
+            grad.resize(functional.numParams());
+          }
+          return functional.valueGrad(
+              param.view(),
+              grad.view(),
+              [&interrupt_monitor](const char* phase,
+                                   Index       step,
+                                   Index       total)
+              {
+                interrupt_monitor.progress(phase, step, total);
+              });
         }
         catch (const CalculationInterrupted&)
         {
@@ -535,7 +590,6 @@ py::dict taoSolve(TimeReducedFunctional& functional,
   tao.opts().grad_reduction_tol = 0.0;
   tao.opts().max_its            = max_itrs;
   tao.setMonitor(&interrupt_monitor);
-  functional.setMonitor(&interrupt_monitor);
 
   if (!lower.is_none())
   {
@@ -556,7 +610,6 @@ py::dict taoSolve(TimeReducedFunctional& functional,
     py::gil_scoped_release release;
     ierr = tao.solve(init, result);
   }
-  functional.clearMonitor();
   if (interrupt_monitor.interrupted())
   {
     if (PyErr_Occurred() == nullptr)
@@ -732,117 +785,90 @@ void bindInverse(py::module_& module)
           py::return_value_policy::reference_internal,
           py::keep_alive<1, 2>());
 
-  py::class_<TimeReducedFunctional>(module, "TimeReducedFunctional")
-      .def(py::init<TimeIntegrator&,
-                    const TimeResidual&,
-                    TimeLinearization&,
-                    MatrixOperator&,
-                    MatrixOperator&,
-                    LinearSolver&,
-                    const TimeObjective&>(),
-           py::arg("integrator"),
-           py::arg("problem"),
-           py::arg("linearization"),
-           py::arg("next_state_matrix"),
-           py::arg("history_matrix"),
-           py::arg("adjoint_solver"),
-           py::arg("objective"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>(),
-           py::keep_alive<1, 4>(),
-           py::keep_alive<1, 5>(),
-           py::keep_alive<1, 6>(),
-           py::keep_alive<1, 7>(),
-           py::keep_alive<1, 8>())
+  py::class_<PythonTimeReducedFunctional>(
+      module, "_TimeReducedFunctionalBase")
       .def_property_readonly("num_param",
-                             &TimeReducedFunctional::numParams)
-      .def_property_readonly("assembly_seconds",
-                             &TimeReducedFunctional::assemblySeconds)
+                             &PythonTimeReducedFunctional::numParams)
+      .def_property_readonly(
+          "assembly_seconds",
+          &PythonTimeReducedFunctional::assemblySeconds)
       .def_property_readonly("solve_seconds",
-                             &TimeReducedFunctional::solveSeconds)
+                             &PythonTimeReducedFunctional::solveSeconds)
       .def_property_readonly("assembly_calls",
-                             &TimeReducedFunctional::assemblyCalls)
+                             &PythonTimeReducedFunctional::assemblyCalls)
       .def_property_readonly("solve_calls",
-                             &TimeReducedFunctional::solveCalls)
-      .def("reset_timing", &TimeReducedFunctional::resetTiming)
-      .def(
-          "set_initial_state_param_jac_t",
-          [](TimeReducedFunctional&         functional,
-             AffineInitialStateGradientMap& mapping)
-          {
-            functional.setInitialStateParamJacT(&mapping);
-          },
-          py::arg("mapping"),
-          py::keep_alive<1, 2>())
-      .def("clear_initial_state_param_jac_t",
-           &TimeReducedFunctional::clearInitialStateParamJacT)
+                             &PythonTimeReducedFunctional::solveCalls)
+      .def("reset_timing", &PythonTimeReducedFunctional::resetTiming)
       .def(
           "value",
-          [](TimeReducedFunctional& functional,
-             const RealArray&       parameters)
+          [](PythonTimeReducedFunctional& fn,
+             const RealArray&             parameters)
           {
             const HostVector vals =
                 vectorFromArray(parameters, "parameters");
             py::gil_scoped_release release;
-            return functional.value(vals);
+            return fn.value(vals.view());
           },
           py::arg("param"))
       .def(
           "grad",
-          [](TimeReducedFunctional& functional,
-             const RealArray&       parameters)
+          [](PythonTimeReducedFunctional& fn,
+             const RealArray&             parameters)
           {
             const HostVector vals =
                 vectorFromArray(parameters, "parameters");
-            HostVector out;
+            HostVector out(fn.numParams());
             {
               py::gil_scoped_release release;
-              functional.grad(vals, out);
+              fn.grad(vals.view(), out.view());
             }
             return vectorArray(out);
           },
           py::arg("param"))
       .def(
           "value_grad",
-          [](TimeReducedFunctional& functional,
-             const RealArray&       parameters,
-             const py::object&      progress)
+          [](PythonTimeReducedFunctional& fn,
+             const RealArray&             parameters,
+             const py::object&            progress)
           {
             const HostVector vals =
                 vectorFromArray(parameters, "parameters");
             PythonTimeProgressMonitor monitor(progress);
-            HostVector                out;
+            HostVector                out(fn.numParams());
             Real                      value = 0.0;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
-              value = functional.valueGrad(vals, out);
+              value = fn.valueGrad(vals.view(), out.view());
             }
             else
             {
-              functional.setMonitor(&monitor);
-              try
-              {
-                py::gil_scoped_release release;
-                value = functional.valueGrad(vals, out);
-              }
-              catch (...)
-              {
-                functional.clearMonitor();
-                throw;
-              }
-              functional.clearMonitor();
+              py::gil_scoped_release release;
+              value = fn.valueGrad(
+                  vals.view(),
+                  out.view(),
+                  [&monitor](const char* phase,
+                             Index       step,
+                             Index       total)
+                  { monitor.progress(phase, step, total); });
             }
             return py::make_tuple(value, vectorArray(out));
           },
           py::arg("param"),
           py::arg("progress") = py::none());
 
-  py::class_<AffineInitialStateGradientMap>(
-      module, "_AffineInitialStateGradientMap")
-      .def(py::init<HostInitialStateMap&>(),
-           py::arg("map"),
-           py::keep_alive<1, 2>());
+  py::class_<PythonHostTimeReducedFunctional,
+             PythonTimeReducedFunctional>(module,
+                                          "TimeReducedFunctional")
+      .def(py::init<PythonHostTimeIntegrator&,
+                    HostCsrLinearSolver&,
+                    const TimeObjective&>(),
+           py::arg("integrator"),
+           py::arg("adjoint_solver"),
+           py::arg("objective"),
+           py::keep_alive<1, 2>(),
+           py::keep_alive<1, 3>(),
+           py::keep_alive<1, 4>());
 
 #ifdef FEMX_HAS_PETSC
   module.def("_tao_solve",

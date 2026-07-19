@@ -9,7 +9,6 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -57,11 +56,8 @@ int run(const Options& opts)
   HostVector    rhs;
   problem.assemble(A, rhs);
 
-  PETScVector layout(PETSC_COMM_WORLD);
-  layout.resize(problem.numDofs());
-
   PETScOperator A_petsc(PETSC_COMM_WORLD);
-  A_petsc.resize(problem.map().graph(), layout);
+  A_petsc.resize(problem.map().graph());
   if (isRoot())
   {
     copyToPETSc(A, A_petsc);
@@ -69,11 +65,12 @@ int run(const Options& opts)
   A_petsc.finalize();
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
+  PetscContext    ctx{PETSC_COMM_WORLD};
 
   HostVector x;
-  solver.solve(A_petsc, rhs, x);
+  solver.solve(A_petsc, rhs, x, ctx);
 
-  const Real res_norm = helper.resNorm(A_petsc, rhs, x);
+  const Real res_norm = helper.resNorm(A, rhs, x);
 
   if (isRoot())
   {

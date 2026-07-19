@@ -49,6 +49,14 @@ class ScalarRecurrence(femx.TimeResidual):
         return None
 
 
+class PreparedScalarRecurrence(ScalarRecurrence):
+    def prepare_linear_solve(self, context, variable, matrix, rhs):
+        del context, variable
+        self.prepared_types = (type(matrix), type(rhs))
+        matrix[0, 0] = 2.0
+        rhs[0] = 6.0
+
+
 class TimeTrajectoryTest(unittest.TestCase):
     def test_contiguous_numpy_view(self):
         trajectory = femx.TimeTrajectory(2, 3)
@@ -68,13 +76,12 @@ class TimeTrajectoryTest(unittest.TestCase):
         np.testing.assert_array_equal(retained_view[2], [6.0, 7.0, 8.0])
 
 
-class TimeLinearIntegratorTest(unittest.TestCase):
+class TimeIntegratorTest(unittest.TestCase):
     @staticmethod
     def make_integrator():
         problem = ScalarRecurrence(num_steps=3)
-        matrix = femx.DenseMatrix()
         linear_solver = femx.DenseLinearSolver()
-        integrator = femx.TimeLinearIntegrator(problem, matrix, linear_solver)
+        integrator = femx.TimeIntegrator(problem, linear_solver)
         integrator.set_initial_state(np.array([1.0]))
         return integrator
 
@@ -177,6 +184,19 @@ class TimeLinearIntegratorTest(unittest.TestCase):
         integrator = self.make_integrator()
         with self.assertRaisesRegex(TypeError, "progress must be callable"):
             integrator.solve(np.array([1.0]), progress=object())
+
+    def test_prepare_linear_solve_receives_mutable_numpy_arrays(self):
+        problem = PreparedScalarRecurrence(num_steps=1)
+        integrator = femx.TimeIntegrator(
+            problem,
+            femx.DenseLinearSolver(),
+        )
+        integrator.set_initial_state(np.array([1.0]))
+
+        trajectory = integrator.solve(np.array([0.0]))
+
+        self.assertEqual(problem.prepared_types, (np.ndarray, np.ndarray))
+        np.testing.assert_allclose(trajectory.values[:, 0], [1.0, 3.0])
 
 
 if __name__ == "__main__":

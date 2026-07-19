@@ -4,17 +4,16 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/Backend.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/Linearization.hpp>
 
 using namespace femx;
+using namespace femx::assembly;
 using namespace femx::examples;
 using namespace femx::examples::poisson_opt;
 using namespace femx::linalg;
-using namespace femx::state;
 using namespace femx::runtime;
 
 #ifndef FEMX_POISSON_OPT_APP_NAME
@@ -29,18 +28,18 @@ int run(const Options& opts)
   ExampleHelper     helper("resolve", MemorySpace::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  // Residual Jacobian with respect to the state u and the control m.
-  MapCsrMatrix dRdu(problem.stateMap());
-  DenseMatrix  dRdm;
-
-  MatrixLinearization lin(dRdu, dRdm);
-
-  // Linear solvers for forward/adjoint systems.
+  HostCsrMatrix       fwd_jac(problem.stateMap().graph());
+  HostCsrMatrix       adj_jac(problem.stateMap().graph());
   ReSolveLinearSolver fwd_lin_solver;
   ReSolveLinearSolver adj_lin_solver;
+  CpuContext          ctx;
 
-  const Result result = solve(
-      problem, lin, fwd_lin_solver, adj_lin_solver);
+  const Result result = solve<HostCsrBackend>(problem,
+                                              fwd_jac,
+                                              fwd_lin_solver,
+                                              adj_jac,
+                                              adj_lin_solver,
+                                              ctx);
 
   printReport(std::cout,
               helper.name(),

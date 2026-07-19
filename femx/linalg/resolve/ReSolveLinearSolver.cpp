@@ -6,11 +6,9 @@
 #include <type_traits>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/CsrTranspose.hpp>
-#include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -32,6 +30,81 @@ namespace femx
 namespace linalg
 {
 
+namespace
+{
+struct TransposeData
+{
+  HostCsrGraph    graph;
+  HostIndexVector src_to_tr;
+};
+
+TransposeData makeTrData(const HostCsrGraph& src)
+{
+  HostIndexVector row_ptr(src.cols() + 1, 0);
+  for (Index k = 0; k < src.nnz(); ++k)
+  {
+    ++row_ptr[src.colIndData()[k] + 1];
+  }
+  for (Index row = 0; row < src.cols(); ++row)
+  {
+    row_ptr[row + 1] += row_ptr[row];
+  }
+
+  HostIndexVector next = row_ptr;
+  HostIndexVector cols(src.nnz());
+  HostIndexVector perm(src.nnz());
+  for (Index row = 0; row < src.rows(); ++row)
+  {
+    for (Index k = src.rowPtrData()[row];
+         k < src.rowPtrData()[row + 1];
+         ++k)
+    {
+      const Index tr_row = src.colIndData()[k];
+      const Index tr_k   = next[tr_row]++;
+      cols[tr_k]         = row;
+      perm[k]            = tr_k;
+    }
+  }
+
+  return {HostCsrGraph(src.cols(),
+                       src.rows(),
+                       std::move(row_ptr),
+                       std::move(cols)),
+          std::move(perm)};
+}
+
+void updateTrVals(const HostCsrMatrix& src,
+                  const TransposeData& tr,
+                  HostCsrMatrix&       dst)
+{
+  require(src.nnz() == dst.nnz() && src.nnz() == tr.src_to_tr.size(),
+          "ReSolve Host transpose storage does not match source matrix");
+  for (Index k = 0; k < src.nnz(); ++k)
+  {
+    dst.valsData()[tr.src_to_tr[k]] = src.valsData()[k];
+  }
+}
+} // namespace
+
+#if defined(FEMX_RESOLVE_USE_CUDA)
+namespace detail
+{
+void* createCsrTransposeWorkspace();
+void  destroyCsrTransposeWorkspace(void* workspace) noexcept;
+void  transposeCsr(void*        workspace,
+                   Index        rows,
+                   Index        cols,
+                   Index        nnz,
+                   const Real*  src_vals,
+                   const Index* src_row_ptr,
+                   const Index* src_col_ind,
+                   Real*        dst_vals,
+                   Index*       dst_row_ptr,
+                   Index*       dst_col_ind,
+                   CudaContext& ctx);
+} // namespace detail
+#endif
+
 class ReSolveLinearSolver::Impl
 {
 public:
@@ -39,6 +112,13 @@ public:
     : opts_(std::move(opts))
   {
     checkOpts();
+  }
+
+  ~Impl()
+  {
+#if defined(FEMX_RESOLVE_USE_CUDA)
+    detail::destroyCsrTransposeWorkspace(cuda_tr_work_);
+#endif
   }
 
   void setOperator(const HostCsrMatrix& mat)
@@ -87,16 +167,10 @@ public:
 
   void solve(const HostVector& rhs, HostVector& sol)
   {
-    if (host_op_ == nullptr)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Host solve called before setOperator");
-    }
-    if (rhs.size() != host_op_->rows())
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Host RHS has incompatible dimensions");
-    }
+    require(host_op_ != nullptr,
+            "ReSolveLinearSolver Host solve called before setOperator");
+    require(rhs.size() == host_op_->rows(),
+            "ReSolveLinearSolver Host RHS has incompatible dimensions");
     checkHostAliases(*host_op_, rhs, sol);
 
     resizeOrZero(sol, host_op_->cols());
@@ -116,35 +190,23 @@ public:
 #endif
   }
 
-  void solve(const LinearOperator& op,
-             const HostVector&     rhs,
-             HostVector&           sol)
+  void solve(const HostCsrMatrix& mat,
+             const HostVector&    rhs,
+             HostVector&          sol)
   {
-    const MapCsrMatrix& csr = requireMapCsrMat(op);
-    if (op.numRows() != op.numCols() || rhs.size() != op.numRows())
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver received inconsistent Host solve dimensions");
-    }
-
-    setOperator(csr.mat());
+    setOperator(mat);
     solve(rhs, sol);
   }
 
-  void solveT(const LinearOperator& op,
-              const HostVector&     rhs,
-              HostVector&           sol)
+  void solveT(const HostCsrMatrix& mat,
+              const HostVector&    rhs,
+              HostVector&          sol)
   {
-    const MapCsrMatrix& csr = requireMapCsrMat(op);
-    if (op.numRows() != op.numCols() || rhs.size() != op.numCols())
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver received inconsistent transpose dimensions");
-    }
-    checkHostAliases(csr.mat(), rhs, sol);
-
+    require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
+            "ReSolveLinearSolver received inconsistent Host transpose dimensions");
+    checkHostAliases(mat, rhs, sol);
 #if defined(FEMX_HAS_RESOLVE)
-    solveTr(csr.mat(), rhs, sol);
+    solveTr(mat, rhs, sol);
 #else
     unavailableHost();
 #endif
@@ -166,11 +228,8 @@ public:
              CudaContext&        ctx)
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
-    if (cuda_work_ == nullptr)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device solve called before setOperator");
-    }
+    require(cuda_work_ != nullptr,
+            "ReSolveLinearSolver Device solve called before setOperator");
     solveDeviceWith(cuda_sys_, cuda_vecs_, rhs, sol, ctx);
 #else
     (void) rhs;
@@ -180,61 +239,80 @@ public:
 #endif
   }
 
-private:
-  static const MapCsrMatrix& requireMapCsrMat(const LinearOperator& op)
+  void solve(const DeviceCsrMatrix& mat,
+             const DeviceVector&    rhs,
+             DeviceVector&          sol,
+             CudaContext&           ctx)
   {
-    const auto* csr = dynamic_cast<const MapCsrMatrix*>(&op);
-    if (csr == nullptr)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver currently supports MapCsrMatrix only");
-    }
-    return *csr;
+    setOperator(mat);
+    solve(rhs, sol, ctx);
   }
 
+  void solveT(const DeviceCsrMatrix& mat,
+              const DeviceVector&    rhs,
+              DeviceVector&          sol,
+              CudaContext&           ctx)
+  {
+#if defined(FEMX_RESOLVE_USE_CUDA)
+    ensureCuda();
+    require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
+            "ReSolveLinearSolver received inconsistent Device transpose dimensions");
+    ensureCudaTranspose(mat);
+    detail::transposeCsr(cuda_tr_work_,
+                         mat.rows(),
+                         mat.cols(),
+                         mat.nnz(),
+                         mat.valsData(),
+                         mat.rowPtrData(),
+                         mat.colIndData(),
+                         cuda_tr_vals_.data(),
+                         cuda_tr_row_ptr_.data(),
+                         cuda_tr_col_ind_.data(),
+                         ctx);
+    bindCuda(cuda_tr_sys_,
+             mat.cols(),
+             mat.rows(),
+             mat.nnz(),
+             cuda_tr_row_ptr_.data(),
+             cuda_tr_col_ind_.data(),
+             cuda_tr_vals_.data(),
+             *cuda_work_);
+    solveDeviceWith(cuda_tr_sys_, cuda_tr_vecs_, rhs, sol, ctx);
+#else
+    (void) mat;
+    (void) rhs;
+    (void) sol;
+    (void) ctx;
+    unavailableCuda();
+#endif
+  }
+
+private:
   void checkOpts() const
   {
-    if (opts_.max_its <= 0 || opts_.restart <= 0
-        || !std::isfinite(opts_.rtol) || opts_.rtol <= 0.0)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver iteration options must be positive and finite");
-    }
-    if (opts_.pc_side != "left" && opts_.pc_side != "right")
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver preconditioner side must be left or right");
-    }
+    require(opts_.max_its > 0 && opts_.restart > 0
+                && std::isfinite(opts_.rtol) && opts_.rtol > 0.0,
+            "ReSolveLinearSolver iteration options must be positive and finite");
+    require(opts_.pc_side == "left" || opts_.pc_side == "right",
+            "ReSolveLinearSolver preconditioner side must be left or right");
   }
 
   void checkCudaOpts() const
   {
-    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device path supports fgmres and randgmres only");
-    }
-    if (opts_.precond != "ilu0")
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device path requires the ilu0 preconditioner");
-    }
-    if (opts_.factor != "none" || opts_.refactor != "none"
-        || opts_.ir != "none")
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device path does not stage Host direct data");
-    }
+    require(opts_.solve == "fgmres" || opts_.solve == "randgmres",
+            "ReSolveLinearSolver Device path supports fgmres and randgmres only");
+    require(opts_.precond == "ilu0",
+            "ReSolveLinearSolver Device path requires the ilu0 preconditioner");
+    require(opts_.factor == "none" && opts_.refactor == "none"
+                && opts_.ir == "none",
+            "ReSolveLinearSolver Device path does not stage Host direct data");
   }
 
   static void checkHostMat(const HostCsrMatrix& mat)
   {
-    if (mat.rows() != mat.cols() || mat.rows() <= 0 || mat.nnz() <= 0
-        || mat.vals().size() != mat.nnz())
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver requires a non-empty square Host matrix");
-    }
+    require(mat.rows() == mat.cols() && mat.rows() > 0 && mat.nnz() > 0
+                && mat.vals().size() == mat.nnz(),
+            "ReSolveLinearSolver requires a non-empty square Host matrix");
   }
 
   static void checkHostAliases(const HostCsrMatrix& mat,
@@ -247,11 +325,8 @@ private:
                          || (!rhs.empty() && rhs.data() == mat.valsData());
     const bool sol_mat = &sol == &mat.vals()
                          || (!sol.empty() && sol.data() == mat.valsData());
-    if (rhs_sol || rhs_mat || sol_mat)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Host vectors and matrix values must not alias");
-    }
+    require(!rhs_sol && !rhs_mat && !sol_mat,
+            "ReSolveLinearSolver Host vectors and matrix values must not alias");
   }
 
   static bool isZero(const HostVector& vals)
@@ -455,13 +530,13 @@ private:
   void setTrOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    if (tr_map_ == nullptr
-        || tr_map_->srcGraph().layoutId() != mat.graph().layoutId())
+    if (tr_src_layout_ != mat.graph().layoutId())
     {
-      tr_map_  = std::make_unique<HostCsrTransposeMap>(mat.graph());
-      tr_data_ = std::make_unique<HostCsrMatrix>(tr_map_->trGraph());
+      tr_data_       = makeTrData(mat.graph());
+      tr_mat_data_   = std::make_unique<HostCsrMatrix>(tr_data_.graph);
+      tr_src_layout_ = mat.graph().layoutId();
     }
-    trVals(mat, *tr_map_, *tr_data_);
+    updateTrVals(mat, tr_data_, *tr_mat_data_);
 
     const bool reuse = tr_mat_ != nullptr
                        && tr_rows_ == mat.cols()
@@ -481,7 +556,7 @@ private:
       tr_nnz_  = mat.nnz();
     }
 
-    updateHostMat(*tr_data_, *tr_mat_, "ReSolve transpose");
+    updateHostMat(*tr_mat_data_, *tr_mat_, "ReSolve transpose");
     if (reuse)
     {
       if (opts_.precond != "none")
@@ -541,6 +616,33 @@ private:
     ensureCudaWork(cuda_work_);
   }
 
+  void ensureCudaTranspose(const DeviceCsrMatrix& mat)
+  {
+    if (cuda_tr_work_ == nullptr)
+    {
+      cuda_tr_work_ = detail::createCsrTransposeWorkspace();
+    }
+    if (cuda_tr_src_layout_ == mat.graph().layoutId())
+    {
+      return;
+    }
+
+    if (cuda_tr_row_ptr_.size() != mat.cols() + 1)
+    {
+      cuda_tr_row_ptr_.resize(mat.cols() + 1);
+    }
+    if (cuda_tr_col_ind_.size() != mat.nnz())
+    {
+      cuda_tr_col_ind_.resize(mat.nnz());
+    }
+    if (cuda_tr_vals_.size() != mat.nnz())
+    {
+      cuda_tr_vals_.resize(mat.nnz());
+    }
+    resetCudaSystem(cuda_tr_sys_);
+    cuda_tr_src_layout_ = mat.graph().layoutId();
+  }
+
   static void resetCudaSystem(CudaSystem& sys)
   {
     sys.solver.reset();
@@ -558,33 +660,53 @@ private:
                 const DeviceCsrMatrix&        mat,
                 ReSolve::LinAlgWorkspaceCUDA& work)
   {
-    if (mat.rows() != mat.cols() || mat.rows() <= 0 || mat.nnz() <= 0
-        || mat.vals().size() != mat.nnz())
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver requires a non-empty square Device matrix");
-    }
+    require(mat.rows() == mat.cols() && mat.rows() > 0 && mat.nnz() > 0
+                && mat.vals().size() == mat.nnz(),
+            "ReSolveLinearSolver requires a non-empty square Device matrix");
+
+    bindCuda(sys,
+             mat.rows(),
+             mat.cols(),
+             mat.nnz(),
+             mat.rowPtrData(),
+             mat.colIndData(),
+             const_cast<Real*>(mat.valsData()),
+             work);
+  }
+
+  void bindCuda(CudaSystem&                   sys,
+                Index                         rows,
+                Index                         cols,
+                Index                         nnz,
+                const Index*                  row_ptr,
+                const Index*                  col_ind,
+                Real*                         vals,
+                ReSolve::LinAlgWorkspaceCUDA& work)
+  {
+    require(rows == cols && rows > 0 && nnz > 0 && row_ptr != nullptr
+                && col_ind != nullptr && vals != nullptr,
+            "ReSolveLinearSolver requires complete square Device CSR storage");
 
     const bool same_storage =
         sys.mat != nullptr && sys.solver != nullptr
-        && sys.rows == mat.rows() && sys.cols == mat.cols()
-        && sys.nnz == mat.nnz() && sys.row_ptr == mat.rowPtrData()
-        && sys.col_ind == mat.colIndData() && sys.vals == mat.valsData();
+        && sys.rows == rows && sys.cols == cols && sys.nnz == nnz
+        && sys.row_ptr == row_ptr && sys.col_ind == col_ind
+        && sys.vals == vals;
     if (same_storage)
     {
       return;
     }
 
     resetCudaSystem(sys);
-    sys.rows           = mat.rows();
-    sys.cols           = mat.cols();
-    sys.nnz            = mat.nnz();
-    sys.row_ptr        = mat.rowPtrData();
-    sys.col_ind        = mat.colIndData();
-    sys.vals           = const_cast<Real*>(mat.valsData());
+    sys.rows           = rows;
+    sys.cols           = cols;
+    sys.nnz            = nnz;
+    sys.row_ptr        = row_ptr;
+    sys.col_ind        = col_ind;
+    sys.vals           = vals;
     sys.setup_complete = false;
     sys.mat            = std::make_unique<ReSolve::matrix::Csr>(
-        mat.rows(), mat.cols(), mat.nnz());
+        rows, cols, nnz);
     check(sys.mat->setDataPointers(const_cast<Index*>(sys.row_ptr),
                                    const_cast<Index*>(sys.col_ind),
                                    sys.vals,
@@ -611,11 +733,8 @@ private:
                          || (!rhs.empty() && rhs.data() == sol.data());
     const bool rhs_mat = !rhs.empty() && rhs.data() == sys.vals;
     const bool sol_mat = !sol.empty() && sol.data() == sys.vals;
-    if (rhs_sol || rhs_mat || sol_mat)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device vectors and matrix values must not alias");
-    }
+    require(!rhs_sol && !rhs_mat && !sol_mat,
+            "ReSolveLinearSolver Device vectors and matrix values must not alias");
   }
 
   void bindCudaVecs(CudaVecs&           vecs,
@@ -646,16 +765,10 @@ private:
                        DeviceVector&       sol,
                        CudaContext&        ctx)
   {
-    if (sys.mat == nullptr || sys.solver == nullptr)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device solve called before setOperator");
-    }
-    if (rhs.size() != sys.rows)
-    {
-      throw std::runtime_error(
-          "ReSolveLinearSolver Device RHS has incompatible dimensions");
-    }
+    require(sys.mat != nullptr && sys.solver != nullptr,
+            "ReSolveLinearSolver Device solve called before setOperator");
+    require(rhs.size() == sys.rows,
+            "ReSolveLinearSolver Device RHS has incompatible dimensions");
     checkCudaAliases(sys, rhs, sol);
     if (sol.size() != sys.cols)
     {
@@ -692,16 +805,17 @@ private:
 
 #endif
 
-  ReSolveOptions                       opts_;
-  const HostCsrMatrix*                 host_op_{nullptr};
-  Index                                cpu_rows_{0};
-  Index                                cpu_cols_{0};
-  Index                                cpu_nnz_{0};
-  std::unique_ptr<HostCsrTransposeMap> tr_map_;
-  std::unique_ptr<HostCsrMatrix>       tr_data_;
-  Index                                tr_rows_{0};
-  Index                                tr_cols_{0};
-  Index                                tr_nnz_{0};
+  ReSolveOptions                 opts_;
+  const HostCsrMatrix*           host_op_{nullptr};
+  Index                          cpu_rows_{0};
+  Index                          cpu_cols_{0};
+  Index                          cpu_nnz_{0};
+  std::uint64_t                  tr_src_layout_{0};
+  TransposeData                  tr_data_;
+  std::unique_ptr<HostCsrMatrix> tr_mat_data_;
+  Index                          tr_rows_{0};
+  Index                          tr_cols_{0};
+  Index                          tr_nnz_{0};
 
 #if defined(FEMX_HAS_RESOLVE)
   std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_work_;
@@ -716,6 +830,13 @@ private:
   std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_work_;
   CudaSystem                                    cuda_sys_;
   CudaVecs                                      cuda_vecs_;
+  std::uint64_t                                 cuda_tr_src_layout_{0};
+  void*                                         cuda_tr_work_{nullptr};
+  DeviceIndexVector                             cuda_tr_row_ptr_;
+  DeviceIndexVector                             cuda_tr_col_ind_;
+  DeviceVector                                  cuda_tr_vals_;
+  CudaSystem                                    cuda_tr_sys_;
+  CudaVecs                                      cuda_tr_vecs_;
 #endif
 };
 
@@ -731,40 +852,36 @@ ReSolveLinearSolver::ReSolveLinearSolver(ReSolveOptions opts)
 
 ReSolveLinearSolver::~ReSolveLinearSolver() = default;
 
-void ReSolveLinearSolver::setOperator(const HostCsrMatrix& mat)
+void ReSolveLinearSolver::solve(const HostCsrMatrix& mat,
+                                const HostVector&    rhs,
+                                HostVector&          sol,
+                                CpuContext&)
 {
-  impl_->setOperator(mat);
+  impl_->solve(mat, rhs, sol);
 }
 
-void ReSolveLinearSolver::solve(const LinearOperator& op,
-                                const HostVector&     rhs,
-                                HostVector&           out)
+void ReSolveLinearSolver::solveT(const HostCsrMatrix& mat,
+                                 const HostVector&    rhs,
+                                 HostVector&          sol,
+                                 CpuContext&)
 {
-  impl_->solve(op, rhs, out);
+  impl_->solveT(mat, rhs, sol);
 }
 
-void ReSolveLinearSolver::solveT(const LinearOperator& op,
-                                 const HostVector&     rhs,
-                                 HostVector&           out)
+void ReSolveLinearSolver::solve(const DeviceCsrMatrix& mat,
+                                const DeviceVector&    rhs,
+                                DeviceVector&          sol,
+                                CudaContext&           ctx)
 {
-  impl_->solveT(op, rhs, out);
+  impl_->solve(mat, rhs, sol, ctx);
 }
 
-void ReSolveLinearSolver::solve(const HostVector& rhs, HostVector& sol)
+void ReSolveLinearSolver::solveT(const DeviceCsrMatrix& mat,
+                                 const DeviceVector&    rhs,
+                                 DeviceVector&          sol,
+                                 CudaContext&           ctx)
 {
-  impl_->solve(rhs, sol);
-}
-
-void ReSolveLinearSolver::setOperator(const DeviceCsrMatrix& mat)
-{
-  impl_->setOperator(mat);
-}
-
-void ReSolveLinearSolver::solve(const DeviceVector& rhs,
-                                DeviceVector&       sol,
-                                CudaContext&        ctx)
-{
-  impl_->solve(rhs, sol, ctx);
+  impl_->solveT(mat, rhs, sol, ctx);
 }
 
 } // namespace linalg

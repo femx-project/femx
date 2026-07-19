@@ -10,7 +10,6 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/LinearOperator.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx::examples
@@ -63,28 +62,6 @@ public:
   std::string name() const
   {
     return solver_ + "/" + memspaceName(memspace_);
-  }
-
-  /** @brief Compute `||A x - rhs||_2` through a linear-operator interface. */
-  Real resNorm(const linalg::LinearOperator& A,
-               const HostVector&             rhs,
-               const HostVector&             x) const
-  {
-    if (rhs.size() != A.numRows() || x.size() != A.numCols())
-    {
-      throw std::runtime_error("Residual dimensions are inconsistent");
-    }
-
-    HostVector Ax;
-    A.apply(x, Ax);
-
-    Real norm2 = 0.0;
-    for (Index i = 0; i < rhs.size(); ++i)
-    {
-      const Real r  = Ax[i] - rhs[i];
-      norm2        += r * r;
-    }
-    return std::sqrt(norm2);
   }
 
   /** @brief Compute `||A x - rhs||_2` directly from a host CSR matrix. */

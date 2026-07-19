@@ -89,14 +89,15 @@ TestOutcome hostFlatObserveAndTranspose()
   op.observe(1, state, prm, expected_obs);
 
   HostVector flat_obs(op.numObservations());
-  fem::observe(op.data().view(), state.view(), flat_obs.view());
+  CpuContext ctx;
+  apply(op.data().matrix(), state.view(), flat_obs.view(), ctx);
 
   HostVector expected_tr;
   op.applyStateJacT(1, state, prm, dir, expected_tr);
 
   HostVector flat_tr(op.numStates());
   flat_tr.setZero();
-  fem::addStateJacT(op.data().view(), dir.view(), flat_tr.view());
+  applyT(op.data().matrix(), dir.view(), flat_tr.view(), ctx, 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;

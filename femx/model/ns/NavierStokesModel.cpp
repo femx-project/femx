@@ -5,17 +5,19 @@
 #include <utility>
 
 #include <femx/assembly/Assembly.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/GmshReader.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixOperator.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/model/ns/Helper.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
+
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #endif
 
 namespace femx::model::ns
@@ -25,52 +27,35 @@ namespace
 
 constexpr Index kQuadratureOrder = 2;
 
-void requireModelParameters(Index              num_steps,
-                            Real               dt,
-                            const FluidParams& fluid)
+void requireModelPrm(Index nstep, Real dt, const FluidParams& fluid)
 {
-  if (num_steps <= 0)
-  {
-    throw std::runtime_error(
-        "NavierStokesModel requires a positive number of time steps");
-  }
-  if (dt <= 0.0 || !std::isfinite(dt))
-  {
-    throw std::runtime_error(
-        "NavierStokesModel requires a positive finite time step");
-  }
-  if (!std::isfinite(fluid.rho) || fluid.rho <= 0.0)
-  {
-    throw std::runtime_error(
-        "NavierStokesModel requires positive finite density");
-  }
-  if (!std::isfinite(fluid.mu) || fluid.mu <= 0.0)
-  {
-    throw std::runtime_error(
-        "NavierStokesModel requires positive finite viscosity");
-  }
+  require(nstep > 0,
+          "NavierStokesModel requires a positive number of time steps");
+  require(dt > 0.0 && std::isfinite(dt),
+          "NavierStokesModel requires a positive finite time step");
+  require(std::isfinite(fluid.rho) && fluid.rho > 0.0,
+          "NavierStokesModel requires positive finite density");
+  require(std::isfinite(fluid.mu) && fluid.mu > 0.0,
+          "NavierStokesModel requires positive finite viscosity");
 }
 
 fem::Mesh validatedModelMesh(fem::Mesh          mesh,
-                             Index              num_steps,
+                             Index              nstep,
                              Real               dt,
                              const FluidParams& fluid)
 {
-  requireModelParameters(num_steps, dt, fluid);
+  requireModelPrm(nstep, dt, fluid);
   return mesh;
 }
 
-fem::Mesh readModelMesh(const std::string& mesh_file,
-                        Index              num_steps,
+fem::Mesh readModelMesh(const std::string& path,
+                        Index              nstep,
                         Real               dt,
                         const FluidParams& fluid)
 {
-  requireModelParameters(num_steps, dt, fluid);
-  if (mesh_file.empty())
-  {
-    throw std::runtime_error("NavierStokesModel mesh file is required");
-  }
-  return fem::GmshReader::read(mesh_file);
+  requireModelPrm(nstep, dt, fluid);
+  require(!path.empty(), "NavierStokesModel mesh file is required");
+  return fem::GmshReader::read(path);
 }
 
 fem::GaussQuadrature makeVelocityQuadrature(
@@ -86,6 +71,45 @@ void add(HostVector& vec, Index i, Real val)
 #pragma omp atomic update
   vec[i] += val;
 }
+
+void resetMat(const assembly::HostAssemblyMap& map, HostCsrMatrix& mat)
+{
+  require(mat.graph().layoutId() == map.graph().layoutId(),
+          "Navier Host CSR matrix must use the model AssemblyMap");
+  mat.setZero();
+}
+
+void addElem(const assembly::HostAssemblyMap& map,
+             HostCsrMatrix&                   mat,
+             Index                            ie,
+             const Array<Index>&,
+             const Array<Index>&,
+             const DenseMatrix& elem_mat)
+{
+  assembly::addElem(map, ie, elem_mat, mat, true);
+}
+
+#if defined(FEMX_HAS_PETSC)
+void resetMat(const assembly::HostAssemblyMap& map,
+              linalg::PETScOperator&           mat)
+{
+  mat.resize(map.numRes(), map.numStates());
+  mat.setZero();
+}
+
+void addElem(const assembly::HostAssemblyMap&,
+             linalg::PETScOperator& mat,
+             Index,
+             const Array<Index>& rows,
+             const Array<Index>& cols,
+             const DenseMatrix&  elem_mat)
+{
+#pragma omp critical(femx_petsc_matrix_set_value)
+  {
+    mat.addBlock(rows, cols, elem_mat);
+  }
+}
+#endif
 
 #if defined(FEMX_HAS_PETSC)
 void allreduce(HostVector& vec)
@@ -105,22 +129,29 @@ void allreduce(HostVector& vec)
 
 } // namespace
 
-class NavierStokesModel::Residual final : public state::TimeResidual
+template <class Backend>
+class HostNavierResidual : public state::TimeResidual<Backend>
 {
 public:
-  Residual(Index                             nstep,
-           const assembly::HostAssemblyMap&  map,
-           NavierOperator<MemorySpace::Host> op)
+  using Base      = state::TimeResidual<Backend>;
+  using Mat       = typename Base::Mat;
+  using Ctx       = typename Base::Ctx;
+  using ConstView = typename Base::ConstView;
+
+  HostNavierResidual(Index                             nstep,
+                     const assembly::HostAssemblyMap&  map,
+                     NavierOperator<MemorySpace::Host> op)
     : nstep_(nstep), map_(map), op_(op), ie_end_(map.numElems())
   {
+    static_assert(Backend::space == MemorySpace::Host,
+                  "HostNavierResidual requires Host state storage");
   }
 
   void setElemRange(Index ie_begin, Index ie_end)
   {
-    if (ie_begin < 0 || ie_end < ie_begin || ie_end > map_.numElems())
-    {
-      throw std::runtime_error("Navier residual element range is invalid");
-    }
+    require(ie_begin >= 0 && ie_end >= ie_begin
+                && ie_end <= map_.numElems(),
+            "Navier residual element range is invalid");
 #if !defined(FEMX_HAS_PETSC)
     if (ie_begin != 0 || ie_end != map_.numElems())
     {
@@ -137,8 +168,26 @@ public:
     return {nstep_, map_.numStates(), 0, map_.numRes(), kNumHist};
   }
 
-  void res(const state::TimeContext& ctx,
-           HostVector&               out) const override
+  const HostCsrGraph& hostGraph() const override
+  {
+    return map_.graph();
+  }
+
+  const typename Base::Graph& graph() const override
+  {
+    return map_.graph();
+  }
+
+  void initialState(ConstView prm, HostVector& out, Ctx&) const override
+  {
+    require(prm.empty(),
+            "Navier physics residual is parameter-free");
+    resizeOrZero(out, map_.numStates());
+  }
+
+  void res(const state::HostTimeContext& ctx,
+           HostVector&                   out,
+           Ctx&) const override
   {
     checkCtx(ctx);
     resizeOrZero(out, map_.numRes());
@@ -170,17 +219,30 @@ public:
     reduce(out);
   }
 
-  void applyJac(const state::TimeContext& ctx,
-                state::VariableBlock      wrt,
-                const HostVector&         dir,
-                HostVector&               out) const override
+  void assemble(const state::HostTimeContext& ctx,
+                state::VariableBlock          wrt,
+                HostVector&                   res,
+                Mat&                          jac,
+                Ctx&) const override
   {
     checkCtx(ctx);
     checkWrt(wrt);
-    if (dir.size() != (wrt.isParam() ? 0 : map_.numStates()))
-    {
-      throw std::runtime_error("Navier residual direction size mismatch");
-    }
+    require(!wrt.isParam(),
+            "Navier parameter Jacobian is matrix-free");
+    resizeOrZero(res, map_.numRes());
+    assembleImpl(ctx, wrt, &res, jac);
+  }
+
+  void applyJac(const state::HostTimeContext& ctx,
+                state::VariableBlock          wrt,
+                ConstView                     dir,
+                HostVector&                   out,
+                Ctx&) const override
+  {
+    checkCtx(ctx);
+    checkWrt(wrt);
+    require(dir.size() == (wrt.isParam() ? 0 : map_.numStates()),
+            "Navier residual direction size mismatch");
 
     resizeOrZero(out, map_.numRes());
     if (wrt.isParam())
@@ -216,17 +278,16 @@ public:
     reduce(out);
   }
 
-  void applyJacT(const state::TimeContext& ctx,
-                 state::VariableBlock      wrt,
-                 const HostVector&         adj,
-                 HostVector&               out) const override
+  void applyJacT(const state::HostTimeContext& ctx,
+                 state::VariableBlock          wrt,
+                 ConstView                     adj,
+                 HostVector&                   out,
+                 Ctx&) const override
   {
     checkCtx(ctx);
     checkWrt(wrt);
-    if (adj.size() != map_.numRes())
-    {
-      throw std::runtime_error("Navier residual adjoint size mismatch");
-    }
+    require(adj.size() == map_.numRes(),
+            "Navier residual adjoint size mismatch");
     if (wrt.isParam())
     {
       out.resize(0);
@@ -263,53 +324,16 @@ public:
     reduce(out);
   }
 
-  bool assembleJac(const state::TimeContext& ctx,
-                   state::VariableBlock      wrt,
-                   linalg::MatrixOperator&   out) const override
+  void assembleJac(const state::HostTimeContext& ctx,
+                   state::VariableBlock          wrt,
+                   Mat&                          out,
+                   Ctx&) const override
   {
     checkCtx(ctx);
     checkWrt(wrt);
-    const Index nc = wrt.isParam() ? 0 : map_.numStates();
-    out.resize(map_.numRes(), nc);
-    out.setZero();
-    if (wrt.isParam())
-    {
-      return true;
-    }
-
-#pragma omp parallel
-    {
-      Work work;
-#pragma omp for
-      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
-      {
-        gather(ctx, ie, work);
-        const auto  e   = elem(ctx.step, ie, work);
-        const auto  map = map_.view();
-        const Index nr  = map.numResDofs(ie);
-        const Index ne  = map.numStateDofs(ie);
-        work.mat.resize(nr, ne);
-        work.rows.resize(nr);
-        work.cols.resize(ne);
-
-        for (Index row = 0; row < nr; ++row)
-        {
-          work.rows[row] = map.resDof(ie, row);
-          Real unused    = 0.0;
-          op_.evalRow(e,
-                      wrt,
-                      row,
-                      unused,
-                      {work.mat.data() + row * ne, ne});
-        }
-        for (Index col = 0; col < ne; ++col)
-        {
-          work.cols[col] = map.stateDof(ie, col);
-        }
-        out.addElem(ie, work.rows, work.cols, work.mat, true);
-      }
-    }
-    return true;
+    require(!wrt.isParam(),
+            "Navier parameter Jacobian is matrix-free");
+    assembleImpl(ctx, wrt, nullptr, out);
   }
 
 private:
@@ -325,34 +349,76 @@ private:
     Array<Index> cols;
   };
 
-  void checkCtx(const state::TimeContext& ctx) const
+  template <class Matrix>
+  void assembleImpl(const state::HostTimeContext& ctx,
+                    state::VariableBlock          wrt,
+                    HostVector*                   res,
+                    Matrix&                       mat) const
   {
-    if (ctx.step < 0 || ctx.step >= nstep_)
+    resetMat(map_, mat);
+
+#pragma omp parallel
     {
-      throw std::runtime_error("Navier residual step is out of range");
+      Work work;
+#pragma omp for
+      for (Index ie = ie_begin_; ie < ie_end_; ++ie)
+      {
+        gather(ctx, ie, work);
+        const auto  e     = elem(ctx.step, ie, work);
+        const auto  map_v = map_.view();
+        const Index nr    = map_v.numResDofs(ie);
+        const Index nc    = map_v.numStateDofs(ie);
+        work.mat.resize(nr, nc);
+        work.rows.resize(nr);
+        work.cols.resize(nc);
+
+        for (Index row = 0; row < nr; ++row)
+        {
+          work.rows[row] = map_v.resDof(ie, row);
+          Real val       = 0.0;
+          op_.evalRow(e,
+                      wrt,
+                      row,
+                      val,
+                      {work.mat.data() + row * nc, nc});
+          if (res != nullptr)
+          {
+            add(*res, work.rows[row], val);
+          }
+        }
+        for (Index col = 0; col < nc; ++col)
+        {
+          work.cols[col] = map_v.stateDof(ie, col);
+        }
+        addElem(map_, mat, ie, work.rows, work.cols, work.mat);
+      }
     }
-    if (ctx.hist.count() < kNumHist
-        || ctx.hist.stateSize() != map_.numStates()
-        || ctx.nxt == nullptr || ctx.nxt->size() != map_.numStates()
-        || ctx.prm == nullptr || !ctx.prm->empty())
+    if (res != nullptr)
     {
-      throw std::runtime_error("Navier residual vector size mismatch");
+      reduce(*res);
     }
+  }
+
+  void checkCtx(const state::HostTimeContext& ctx) const
+  {
+    require(ctx.step >= 0 && ctx.step < nstep_,
+            "Navier residual step is out of range");
+    require(ctx.hist.count() >= kNumHist
+                && ctx.hist.stateSize() == map_.numStates()
+                && ctx.nxt.size() == map_.numStates() && ctx.prm.empty(),
+            "Navier residual vector size mismatch");
   }
 
   static void checkWrt(state::VariableBlock wrt)
   {
-    if (wrt.isHistoryState()
-        && (wrt.historyLag() < 0 || wrt.historyLag() >= kNumHist))
-    {
-      throw std::runtime_error(
-          "Navier residual history lag is out of range");
-    }
+    require(!wrt.isHistoryState()
+                || (wrt.historyLag() >= 0 && wrt.historyLag() < kNumHist),
+            "Navier residual history lag is out of range");
   }
 
-  void gather(const state::TimeContext& ctx,
-              Index                     ie,
-              Work&                     work) const
+  void gather(const state::HostTimeContext& ctx,
+              Index                         ie,
+              Work&                         work) const
   {
     const auto  map = map_.view();
     const Index nc  = map.numStateDofs(ie);
@@ -368,7 +434,7 @@ private:
     }
     for (Index col = 0; col < nc; ++col)
     {
-      work.nxt[col] = (*ctx.nxt)[map.stateDof(ie, col)];
+      work.nxt[col] = ctx.nxt[map.stateDof(ie, col)];
     }
   }
 
@@ -399,25 +465,32 @@ private:
   Index                             ie_end_{0};
 };
 
-NavierStokesModel::NavierStokesModel(const std::string& mesh_file,
-                                     Index              num_steps,
+class NavierStokesModel::Residual final
+  : public HostNavierResidual<linalg::HostCsrBackend>
+{
+public:
+  using HostNavierResidual::HostNavierResidual;
+};
+
+NavierStokesModel::NavierStokesModel(const std::string& path,
+                                     Index              nstep,
                                      Real               dt,
                                      FluidParams        fluid)
   : NavierStokesModel(
-        readModelMesh(mesh_file, num_steps, dt, fluid),
-        num_steps,
+        readModelMesh(path, nstep, dt, fluid),
+        nstep,
         dt,
         fluid)
 {
 }
 
 NavierStokesModel::NavierStokesModel(fem::Mesh   mesh,
-                                     Index       num_steps,
+                                     Index       nstep,
                                      Real        dt,
                                      FluidParams fluid)
-  : num_steps_(num_steps),
+  : nstep_(nstep),
     dt_(dt),
-    mesh_(validatedModelMesh(std::move(mesh), num_steps_, dt_, fluid)),
+    mesh_(validatedModelMesh(std::move(mesh), nstep_, dt_, fluid)),
     element_(makeElement(mesh_)),
     space_(makeSpace(mesh_, *element_)),
     geometry_(fem::makeGeometry(mesh_)),
@@ -426,14 +499,15 @@ NavierStokesModel::NavierStokesModel(fem::Mesh   mesh,
                          makeVelocityQuadrature(space_))),
     map_(assembly::makeAssemblyMap(fem::DofLayout(space_)))
 {
-  res_ = std::make_unique<Residual>(num_steps_, map_, op());
+  ie_end_ = map_.numElems();
+  res_    = std::make_unique<Residual>(nstep_, map_, op());
 }
 
 NavierStokesModel::~NavierStokesModel() = default;
 
 Index NavierStokesModel::numSteps() const
 {
-  return num_steps_;
+  return nstep_;
 }
 
 Index NavierStokesModel::numStates() const
@@ -466,18 +540,20 @@ const fem::HostGeometry& NavierStokesModel::geometry() const
   return geometry_;
 }
 
-state::TimeResidual& NavierStokesModel::residual()
+state::HostTimeResidual& NavierStokesModel::residual()
 {
   return *res_;
 }
 
-const state::TimeResidual& NavierStokesModel::residual() const
+const state::HostTimeResidual& NavierStokesModel::residual() const
 {
   return *res_;
 }
 
 void NavierStokesModel::setElemRange(Index ie_begin, Index ie_end)
 {
+  ie_begin_ = ie_begin;
+  ie_end_   = ie_end;
   res_->setElemRange(ie_begin, ie_end);
 }
 
@@ -495,6 +571,17 @@ NavierOperator<MemorySpace::Host> NavierStokesModel::op() const
 {
   return {data_.view(), {fluid_.rho, fluid_.mu}, dt_};
 }
+
+#if defined(FEMX_HAS_PETSC)
+std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
+makePetscTimeResidual(const NavierStokesModel& model)
+{
+  auto res = std::make_unique<HostNavierResidual<linalg::PetscBackend>>(
+      model.numSteps(), model.map(), model.op());
+  res->setElemRange(model.ie_begin_, model.ie_end_);
+  return res;
+}
+#endif
 
 Array<Index> NavierStokesModel::velocityDofs() const
 {

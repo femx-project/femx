@@ -4,7 +4,7 @@
 #include <femx/common/Math.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 
 namespace femx
 {
@@ -13,85 +13,6 @@ namespace fem
 
 using inverse::DeviceTimeObservationOperator;
 using inverse::TimeObservationOperator;
-
-/** @brief Non-owning flat interpolation stencils in one memory space. */
-template <MemorySpace Space>
-class PointInterpolatorView
-{
-public:
-  FEMX_HOST_DEVICE PointInterpolatorView() = default;
-
-  FEMX_HOST_DEVICE PointInterpolatorView(
-      Index                          num_states,
-      VectorView<Space, const Index> offsets,
-      VectorView<Space, const Index> dofs,
-      VectorView<Space, const Real>  wts)
-    : num_states_(num_states),
-      offsets_(offsets),
-      dofs_(dofs),
-      wts_(wts)
-  {
-  }
-
-  /** @brief Number of entries in an input state vector. */
-  FEMX_HOST_DEVICE Index numStates() const
-  {
-    return num_states_;
-  }
-
-  /** @brief Number of point-component observations. */
-  FEMX_HOST_DEVICE Index numObservations() const
-  {
-    return offsets_.empty() ? 0 : offsets_.size() - 1;
-  }
-
-  /** @brief Number of flattened stencil entries. */
-  FEMX_HOST_DEVICE Index numEntries() const
-  {
-    return dofs_.size();
-  }
-
-  /** @brief First flat entry for observation `i`. */
-  FEMX_HOST_DEVICE Index begin(Index i) const
-  {
-    return offsets_[i];
-  }
-
-  /** @brief One-past-last flat entry for observation `i`. */
-  FEMX_HOST_DEVICE Index end(Index i) const
-  {
-    return offsets_[i + 1];
-  }
-
-  /** @brief State DOF used by flat entry `k`. */
-  FEMX_HOST_DEVICE Index dof(Index k) const
-  {
-    return dofs_[k];
-  }
-
-  /** @brief Interpolation weight used by flat entry `k`. */
-  FEMX_HOST_DEVICE Real wt(Index k) const
-  {
-    return wts_[k];
-  }
-
-  /** @brief Evaluate one stencil from an address in the same memory space. */
-  FEMX_HOST_DEVICE Real eval(Index i, const Real* state) const
-  {
-    Real val = 0.0;
-    for (Index k = begin(i); k < end(i); ++k)
-    {
-      val += wt(k) * state[dof(k)];
-    }
-    return val;
-  }
-
-private:
-  Index                          num_states_{0};
-  VectorView<Space, const Index> offsets_;
-  VectorView<Space, const Index> dofs_;
-  VectorView<Space, const Real>  wts_;
-};
 
 template <MemorySpace Space>
 class PointInterpolatorData;
@@ -104,7 +25,7 @@ using HostPointInterpolatorData =
 using DevicePointInterpolatorData =
     PointInterpolatorData<MemorySpace::Device>;
 
-/** @brief Memory-space owner of reusable flat interpolation stencils. */
+/** @brief Memory-space owner of the reusable observation CSR matrix. */
 template <MemorySpace Space>
 class PointInterpolatorData
 {
@@ -119,25 +40,25 @@ public:
   /** @brief Number of entries in one state vector. */
   Index numStates() const noexcept
   {
-    return num_states_;
+    return mat_.cols();
   }
 
   /** @brief Number of point-component observations. */
   Index numObservations() const noexcept
   {
-    return offsets_.empty() ? 0 : offsets_.size() - 1;
+    return mat_.rows();
   }
 
   /** @brief Number of flattened interpolation entries. */
   Index numEntries() const noexcept
   {
-    return dofs_.size();
+    return mat_.nnz();
   }
 
-  /** @brief Return a kernel view valid while this owner is alive. */
-  PointInterpolatorView<Space> view() const noexcept
+  /** @brief Return the interpolation matrix `H`. */
+  const CsrMatrix<Space>& matrix() const noexcept
   {
-    return {num_states_, offsets_.view(), dofs_.view(), wts_.view()};
+    return mat_;
   }
 
 private:
@@ -147,10 +68,7 @@ private:
                    DevicePointInterpolatorData&     dst,
                    CudaContext&                     ctx);
 
-  Index                num_states_{0};
-  Vector<Space, Index> offsets_;
-  Vector<Space, Index> dofs_;
-  Vector<Space, Real>  wts_;
+  CsrMatrix<Space> mat_;
 };
 
 /**
@@ -163,51 +81,12 @@ inline void copy(const HostPointInterpolatorData& src,
                  DevicePointInterpolatorData&     dst,
                  CudaContext&                     ctx)
 {
-  dst.num_states_ = src.num_states_;
-  femx::copy(src.offsets_, dst.offsets_, ctx);
-  femx::copy(src.dofs_, dst.dofs_, ctx);
-  femx::copy(src.wts_, dst.wts_, ctx);
+  DeviceCsrGraph graph;
+  femx::copy(src.mat_.graph(), graph, ctx);
+  DeviceCsrMatrix mat(graph);
+  femx::copy(src.mat_, mat, ctx);
+  dst.mat_ = std::move(mat);
 }
-
-/**
- * @brief Evaluate all Host observation stencils into preallocated `out`.
- *
- * Every output entry is overwritten. No storage is allocated or resized.
- */
-void observe(PointInterpolatorView<MemorySpace::Host> data,
-             HostConstVectorView                      state,
-             HostVectorView                           out);
-
-/**
- * @brief Add the Host state-transpose product to preallocated `out`.
- *
- * This operation accumulates `H^T dir`; callers choose when to zero `out`.
- */
-void addStateJacT(PointInterpolatorView<MemorySpace::Host> data,
-                  HostConstVectorView                      dir,
-                  HostVectorView                           out);
-
-/**
- * @brief Asynchronously evaluate Device stencils into preallocated `out`.
- *
- * Every output entry is overwritten on `ctx`. No storage is allocated,
- * resized, or mirrored.
- */
-void observe(PointInterpolatorView<MemorySpace::Device> data,
-             DeviceConstVectorView                      state,
-             DeviceVectorView                           out,
-             CudaContext&                               ctx);
-
-/**
- * @brief Asynchronously add the Device state-transpose product to `out`.
- *
- * `out` must already have `numStates()` entries. The kernel accumulates into
- * its current values, so callers explicitly control zeroing and reuse.
- */
-void addStateJacT(PointInterpolatorView<MemorySpace::Device> data,
-                  DeviceConstVectorView                      dir,
-                  DeviceVectorView                           out,
-                  CudaContext&                               ctx);
 
 /**
  * @brief Explicitly initialized Device point observation operator.

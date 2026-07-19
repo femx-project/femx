@@ -1,6 +1,8 @@
 #include <stdexcept>
+#include <utility>
 
 #include "TestHelper.hpp"
+#include <femx/state/EnsembleBasis.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -9,6 +11,37 @@ namespace tests
 {
 namespace
 {
+
+TestOutcome ensembleBasisUsesDenseProducts()
+{
+  TestStatus status(__func__);
+
+  DenseMatrix perturbations(3, 2);
+  perturbations(0, 0) = 1.0;
+  perturbations(0, 1) = 2.0;
+  perturbations(1, 0) = -1.0;
+  perturbations(1, 1) = 0.0;
+  perturbations(2, 0) = 0.5;
+  perturbations(2, 1) = 3.0;
+
+  const state::EnsembleBasis basis(
+      HostVector{1.0, 2.0, 3.0}, std::move(perturbations));
+
+  HostVector physical;
+  basis.apply(HostVector{2.0, -1.0}, physical);
+  status *= physical.size() == 3;
+  status *= std::abs(physical[0] - 1.0) < 1.0e-12;
+  status *= std::abs(physical[1] - 0.0) < 1.0e-12;
+  status *= std::abs(physical[2] - 1.0) < 1.0e-12;
+
+  HostVector coefficients;
+  basis.applyT(HostVector{4.0, -2.0, 1.0}, coefficients);
+  status *= coefficients.size() == 2;
+  status *= std::abs(coefficients[0] - 6.5) < 1.0e-12;
+  status *= std::abs(coefficients[1] - 11.0) < 1.0e-12;
+
+  return status.report();
+}
 
 TestOutcome trajectoryExposesContiguousDataAndLevels()
 {
@@ -87,6 +120,7 @@ TestOutcome trajectoryRejectsInvalidLevels()
 int main()
 {
   femx::tests::TestingResults results;
+  results += femx::tests::ensembleBasisUsesDenseProducts();
   results += femx::tests::trajectoryExposesContiguousDataAndLevels();
   results += femx::tests::trajectoryRejectsInvalidLevels();
   return results.summary();

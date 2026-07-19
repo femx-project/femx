@@ -1,5 +1,4 @@
-#include <stdexcept>
-
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 using namespace femx::state;
 
@@ -15,20 +14,15 @@ SumTimeObjective::SumTimeObjective(Index num_steps,
     num_states_(num_states),
     num_param_(num_param)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_param_ < 0)
-  {
-    throw std::runtime_error("SumTimeObjective received invalid dimensions");
-  }
+  require(num_steps_ >= 0 && num_states_ >= 0 && num_param_ >= 0,
+          "SumTimeObjective received invalid dimensions");
 }
 
 SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
 {
-  if (term.numSteps() != numSteps() || term.numStates() != numStates()
-      || term.numParams() != numParams())
-  {
-    throw std::runtime_error(
-        "SumTimeObjective received term with inconsistent dimensions");
-  }
+  require(term.numSteps() == numSteps() && term.numStates() == numStates()
+              && term.numParams() == numParams(),
+          "SumTimeObjective received term with inconsistent dimensions");
   terms_.push_back(&term);
   return *this;
 }
@@ -56,12 +50,12 @@ Index SumTimeObjective::numParams() const
 Real SumTimeObjective::value(const TimeTrajectory& tr,
                              const HostVector&     prm) const
 {
-  Real value_out = 0.0;
+  Real val = 0.0;
   for (const TimeObjective* term : terms_)
   {
-    value_out += term->value(tr, prm);
+    val += term->value(tr, prm);
   }
-  return value_out;
+  return val;
 }
 
 void SumTimeObjective::stateGrad(Index                 level,
@@ -91,23 +85,21 @@ void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
   }
 }
 
-void SumTimeObjective::addInto(const HostVector& input,
+void SumTimeObjective::addInto(const HostVector& src,
                                HostVector&       out,
                                Index             size)
 {
-  checkSize(input, size);
+  checkSize(src, size);
   for (Index i = 0; i < size; ++i)
   {
-    out[i] += input[i];
+    out[i] += src[i];
   }
 }
 
-void SumTimeObjective::checkSize(const HostVector& value, Index exp)
+void SumTimeObjective::checkSize(const HostVector& val, Index exp)
 {
-  if (value.size() != exp)
-  {
-    throw std::runtime_error("SumTimeObjective vector size mismatch");
-  }
+  require(val.size() == exp,
+          "SumTimeObjective vector size mismatch");
 }
 
 } // namespace inverse

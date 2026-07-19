@@ -35,17 +35,11 @@ target_link_libraries(
          femx_state)
 
 if(TARGET femx_linalg_petsc)
-  target_link_libraries(femx_model_ns PRIVATE femx_linalg_petsc)
+  target_link_libraries(femx_model_ns PUBLIC femx_linalg_petsc)
 endif()
 
-if(FEMX_HAS_CUDA
-   AND FEMX_HAS_RESOLVE_CUDA
-   AND TARGET femx_linalg_resolve
-   AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-  target_sources(femx_model_ns PRIVATE ResolveTimeIntegrator.cu
-                               PUBLIC ResolveTimeIntegrator.hpp)
-  target_link_libraries(femx_model_ns PUBLIC femx_linalg_resolve
-                                             femx_inverse)
+if(FEMX_HAS_CUDA)
+  target_sources(femx_model_ns PRIVATE NavierStokesModel.cu)
   set_target_properties(femx_model_ns PROPERTIES CUDA_STANDARD 17
                                                  CUDA_STANDARD_REQUIRED ON)
 endif()

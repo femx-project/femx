@@ -4,10 +4,11 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/linalg/native/DenseLinearSolver.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 
 using namespace femx;
+using namespace femx::assembly;
 using namespace femx::examples;
 using namespace femx::examples::poisson;
 using namespace femx::linalg;
@@ -29,20 +30,21 @@ int run(const Options& opts)
   ExampleHelper         helper("dense", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  MapCsrMatrix A(problem.map());
-  HostVector   rhs;
-  problem.assemble(A.mat(), rhs);
+  HostCsrMatrix A(problem.map().graph());
+  HostVector    rhs;
+  problem.assemble(A, rhs);
 
   DenseLinearSolver solver;
+  CpuContext        ctx;
 
   HostVector x;
-  solver.solve(A, rhs, x);
+  solver.solve(A, rhs, x, ctx);
 
   printReport(std::cout,
               helper.name(),
               problem,
               problem.errorReport(x),
-              helper.resNorm(A.mat(), rhs, x));
+              helper.resNorm(A, rhs, x));
 
   if (opts.write_output)
   {

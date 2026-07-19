@@ -10,7 +10,7 @@ namespace femx
 namespace inverse
 {
 
-class DeviceTimeObjective;
+class TimeObjectivePlan;
 
 class TimeRegularization final : public TimeObjective
 {
@@ -40,7 +40,7 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  friend class DeviceTimeObjective;
+  friend class TimeObjectivePlan;
 
   Index index(Index level, Index comp) const;
   Real  centered(const HostVector& prm, Index level, Index comp) const;

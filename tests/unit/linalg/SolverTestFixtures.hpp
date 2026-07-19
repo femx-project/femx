@@ -6,10 +6,9 @@
 
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
-#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 
 namespace femx::tests::solver
 {
@@ -50,50 +49,79 @@ inline assembly::HostAssemblyMap makeGrid5PointMap(Index nx, Index ny)
   return assembly::makeAssemblyMap(nx * ny, nx * ny, dofs, dofs);
 }
 
-template <typename MatrixOperator>
-void fillTestMat(MatrixOperator& mat)
+inline void setEntry(HostCsrMatrix& mat,
+                     Index          row,
+                     Index          col,
+                     Real           val)
 {
-  mat.set(0, 0, 4.0);
-  mat.set(0, 1, 1.0);
-  mat.set(0, 2, -1.0);
+  for (Index k = mat.rowPtrData()[row]; k < mat.rowPtrData()[row + 1]; ++k)
+  {
+    if (mat.colIndData()[k] == col)
+    {
+      mat.valsData()[k] = val;
+      return;
+    }
+  }
+  throw std::runtime_error("Test entry is outside the CSR graph");
+}
 
-  mat.set(1, 0, 2.0);
-  mat.set(1, 1, 5.0);
-  mat.set(1, 2, 1.0);
+template <class Matrix>
+void setEntry(Matrix& mat, Index row, Index col, Real val)
+{
+  mat.set(row, col, val);
+}
 
-  mat.set(2, 0, 1.0);
-  mat.set(2, 1, -2.0);
-  mat.set(2, 2, 3.0);
+inline void finalize(HostCsrMatrix&)
+{
+}
 
+template <class Matrix>
+void finalize(Matrix& mat)
+{
   mat.finalize();
 }
 
-template <typename MatrixOperator>
-void fillGrid5PointMat(MatrixOperator& mat, Index nx, Index ny)
+template <class Matrix>
+void fillTestMat(Matrix& mat)
+{
+  setEntry(mat, 0, 0, 4.0);
+  setEntry(mat, 0, 1, 1.0);
+  setEntry(mat, 0, 2, -1.0);
+
+  setEntry(mat, 1, 0, 2.0);
+  setEntry(mat, 1, 1, 5.0);
+  setEntry(mat, 1, 2, 1.0);
+
+  setEntry(mat, 2, 0, 1.0);
+  setEntry(mat, 2, 1, -2.0);
+  setEntry(mat, 2, 2, 3.0);
+
+  finalize(mat);
+}
+
+inline void fillGrid5PointMat(HostCsrMatrix& mat, Index nx, Index ny)
 {
   for (Index iy = 0; iy < ny; ++iy)
   {
     for (Index ix = 0; ix < nx; ++ix)
     {
       const Index row = gridNode(ix, iy, nx);
-      mat.set(row, row, 4.0);
+      setEntry(mat, row, row, 4.0);
 
       if (ix + 1 < nx)
       {
         const Index col = gridNode(ix + 1, iy, nx);
-        mat.set(row, col, -1.0);
-        mat.set(col, row, -1.0);
+        setEntry(mat, row, col, -1.0);
+        setEntry(mat, col, row, -1.0);
       }
       if (iy + 1 < ny)
       {
         const Index col = gridNode(ix, iy + 1, nx);
-        mat.set(row, col, -1.0);
-        mat.set(col, row, -1.0);
+        setEntry(mat, row, col, -1.0);
+        setEntry(mat, col, row, -1.0);
       }
     }
   }
-
-  mat.finalize();
 }
 
 inline HostVector expectedSolution()
@@ -155,28 +183,29 @@ inline bool vecNear(const HostVector& actual,
 }
 
 inline TestOutcome solvesForwardAndTranspose(
-    const char*                   name,
-    linalg::LinearSolver&         solver,
-    const linalg::LinearOperator& op,
-    const HostVector&             expected,
-    Real                          tol = 1.0e-8)
+    const char*                  name,
+    linalg::HostCsrLinearSolver& solver,
+    const HostCsrMatrix&         mat,
+    const HostVector&            expected,
+    Real                         tol = 1.0e-8)
 {
   TestStatus status(name);
 
   try
   {
-    HostVector rhs;
-    op.apply(expected, rhs);
+    CpuContext ctx;
+    HostVector rhs(mat.rows());
+    apply(mat, expected.view(), rhs.view(), ctx);
 
     HostVector x;
-    solver.solve(op, rhs, x);
+    solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
-    HostVector rhs_t;
-    op.applyT(expected, rhs_t);
+    HostVector rhs_t(mat.cols());
+    applyT(mat, expected.view(), rhs_t.view(), ctx);
 
     HostVector xt;
-    solver.solveT(op, rhs_t, xt);
+    solver.solveT(mat, rhs_t, xt, ctx);
     status *= vecNear(xt, expected, tol);
   }
   catch (const std::exception& e)
@@ -188,13 +217,14 @@ inline TestOutcome solvesForwardAndTranspose(
   return status.report();
 }
 
-inline TestOutcome solvesForwardAndTranspose(const char*                   name,
-                                             linalg::LinearSolver&         solver,
-                                             const linalg::LinearOperator& op,
-                                             Real                          tol = 1.0e-8)
+inline TestOutcome solvesForwardAndTranspose(
+    const char*                  name,
+    linalg::HostCsrLinearSolver& solver,
+    const HostCsrMatrix&         mat,
+    Real                         tol = 1.0e-8)
 {
   return solvesForwardAndTranspose(
-      name, solver, op, expectedSolution(), tol);
+      name, solver, mat, expectedSolution(), tol);
 }
 
 } // namespace femx::tests::solver

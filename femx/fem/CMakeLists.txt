@@ -36,7 +36,6 @@ target_sources(
          GmshReader.hpp
          Mesh.hpp
          ObservationGrid.hpp
-         Quadrature.hpp
          ReferenceElement.hpp
          TimePointInterpolator.hpp
          VelocityProfile.hpp
@@ -46,9 +45,3 @@ target_sources(
 
 target_link_libraries(femx_fem PUBLIC femx_config femx_common femx_linalg
                                       femx_inverse)
-
-if(FEMX_HAS_CUDA)
-  target_sources(femx_fem PRIVATE ControlMap.cu TimePointInterpolator.cu)
-  set_target_properties(femx_fem PROPERTIES CUDA_STANDARD 17
-                                             CUDA_STANDARD_REQUIRED ON)
-endif()

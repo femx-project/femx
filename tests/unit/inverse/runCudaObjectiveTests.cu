@@ -5,10 +5,10 @@
 #include <iostream>
 
 #include "TestHelper.hpp"
-#include <femx/inverse/DeviceTimeObjective.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
+#include <femx/inverse/TimeObjectivePlan.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
 
@@ -228,8 +228,8 @@ TestOutcome deviceObjectiveMatchesHostAndFiniteDifference()
     tr[2] = HostVector{-0.1, 0.8, 0.5};
     HostVector prm{0.6, -0.3, 0.9, 0.1};
 
-    CudaContext                  ctx;
-    inverse::DeviceTimeObjective dev_obj;
+    CudaContext                ctx;
+    inverse::TimeObjectivePlan dev_obj;
     dev_obj.add(obj, ctx);
 
     state::DeviceTimeTrajectory dev_tr;
@@ -328,8 +328,8 @@ TestOutcome deviceObjectiveOwnsCopiedObservation()
 
   try
   {
-    CudaContext                  ctx;
-    inverse::DeviceTimeObjective dev_obj;
+    CudaContext                ctx;
+    inverse::TimeObjectivePlan dev_obj;
     {
       LinearObservation            host_obs;
       inverse::TimeObservationData data(1, 2);

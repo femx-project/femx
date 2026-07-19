@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdexcept>
-
 #include <femx/assembly/AssemblyMap.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
@@ -11,6 +10,8 @@
 
 namespace femx
 {
+class DenseMatrix;
+
 namespace assembly
 {
 
@@ -66,11 +67,8 @@ void checkAssemblyAliases(const Vector<Space>& state,
                           const Vector<Space>& res,
                           const Vector<Space>& vals)
 {
-  if (&state == &res || &state == &vals || &res == &vals)
-  {
-    throw std::runtime_error(
-        "Assembly state, residual, and matrix values must not alias");
-  }
+  require(&state != &res && &state != &vals && &res != &vals,
+          "Assembly state, residual, and matrix values must not alias");
 }
 
 inline void checkAssemblyInputs(const fem::HostGeometry&              geom,
@@ -78,21 +76,12 @@ inline void checkAssemblyInputs(const fem::HostGeometry&              geom,
                                 const HostVector&                     state,
                                 const HostCsrMatrix&                  jac)
 {
-  if (geom.numElems() != map.numElems())
-  {
-    throw std::runtime_error(
-        "Geometry and AssemblyMap have different element counts");
-  }
-  if (state.size() != map.numStates())
-  {
-    throw std::runtime_error(
-        "Assembly state size does not match AssemblyMap");
-  }
-  if (jac.graph().layoutId() != map.graph().layoutId())
-  {
-    throw std::runtime_error(
-        "Assembly matrix must use the AssemblyMap CSR layout");
-  }
+  require(geom.numElems() == map.numElems(),
+          "Geometry and AssemblyMap have different element counts");
+  require(state.size() == map.numStates(),
+          "Assembly state size does not match AssemblyMap");
+  require(jac.graph().layoutId() == map.graph().layoutId(),
+          "Assembly matrix must use the AssemblyMap CSR layout");
 }
 
 inline void checkTimeAssemblyInputs(
@@ -103,23 +92,14 @@ inline void checkTimeAssemblyInputs(
     const HostVector&                     nxt,
     const HostCsrMatrix&                  jac)
 {
-  if (num_hist <= 0 || hist.size() != num_hist * map.numStates()
-      || nxt.size() != map.numStates())
-  {
-    throw std::runtime_error(
-        "Time assembly state dimensions do not match AssemblyMap");
-  }
-  if (wrt.isParam()
-      || (wrt.isHistoryState()
-          && (wrt.historyLag() < 0 || wrt.historyLag() >= num_hist)))
-  {
-    throw std::runtime_error("Time assembly variable block is invalid");
-  }
-  if (jac.graph().layoutId() != map.graph().layoutId())
-  {
-    throw std::runtime_error(
-        "Time assembly matrix must use the AssemblyMap CSR layout");
-  }
+  require(num_hist > 0 && hist.size() == num_hist * map.numStates()
+              && nxt.size() == map.numStates(),
+          "Time assembly state dimensions do not match AssemblyMap");
+  require(!wrt.isParam()
+              && (!wrt.isHistoryState() || (wrt.historyLag() >= 0 && wrt.historyLag() < num_hist)),
+          "Time assembly variable block is invalid");
+  require(jac.graph().layoutId() == map.graph().layoutId(),
+          "Time assembly matrix must use the AssemblyMap CSR layout");
 }
 
 template <MemorySpace Space>
@@ -128,16 +108,30 @@ void checkTimeAssemblyAliases(const Vector<Space>& hist,
                               const Vector<Space>& res,
                               const Vector<Space>& vals)
 {
-  if (&hist == &res || &hist == &vals || &nxt == &res || &nxt == &vals
-      || &res == &vals)
-  {
-    throw std::runtime_error(
-        "Time assembly outputs must not alias inputs or each other");
-  }
+  require(&hist != &res && &hist != &vals && &nxt != &res && &nxt != &vals
+              && &res != &vals,
+          "Time assembly outputs must not alias inputs or each other");
 }
 } // namespace detail
 
 /// @endcond
+
+/** @brief Accumulate one row-major element matrix into Host CSR values. */
+void addElem(const HostAssemblyMap& map,
+             Index                  ie,
+             const DenseMatrix&     elem_mat,
+             HostCsrMatrix&         mat,
+             bool                   atomic = false);
+
+/** @brief Replace selected Host CSR rows by diagonal rows. */
+void replaceRows(HostCsrMatrix&      mat,
+                 const Array<Index>& rows,
+                 Real                diag);
+
+/** @brief Eliminate selected Host CSR columns and correct the RHS. */
+void eliminateColumns(HostCsrMatrix&      mat,
+                      const Array<Index>& rows,
+                      HostVector&         rhs);
 
 /**
  * @brief Assemble residual and Jacobian on the CPU reference path.

@@ -5,7 +5,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -26,15 +26,15 @@ class TimeBlockRegularization;
  * Device observation operators are explicitly copied and owned by this object.
  * One instance is not reentrant and must be evaluated by one thread at a time.
  */
-class DeviceTimeObjective
+class TimeObjectivePlan
 {
 public:
-  DeviceTimeObjective() = default;
+  TimeObjectivePlan() = default;
 
-  DeviceTimeObjective(const DeviceTimeObjective&)                = delete;
-  DeviceTimeObjective& operator=(const DeviceTimeObjective&)     = delete;
-  DeviceTimeObjective(DeviceTimeObjective&&) noexcept            = default;
-  DeviceTimeObjective& operator=(DeviceTimeObjective&&) noexcept = default;
+  TimeObjectivePlan(const TimeObjectivePlan&)                = delete;
+  TimeObjectivePlan& operator=(const TimeObjectivePlan&)     = delete;
+  TimeObjectivePlan(TimeObjectivePlan&&) noexcept            = default;
+  TimeObjectivePlan& operator=(TimeObjectivePlan&&) noexcept = default;
 
   /**
    * @brief Recursively add a built-in objective and copy its data to Device.
@@ -113,7 +113,7 @@ private:
                        Real  val,
                        Real  row_ref,
                        Real  col_ref);
-  void setDimensions(const TimeObjective& obj);
+  void setDims(const TimeObjective& obj);
   void uploadQuadratic(CudaContext& ctx);
   void checkInputs(const state::DeviceTimeTrajectory& tr,
                    DeviceConstVectorView              prm) const;
@@ -129,14 +129,14 @@ private:
   HostIndexVector q_rows_h_;
   HostIndexVector q_cols_h_;
   HostVector      q_vals_h_;
-  HostVector      q_row_ref_h_;
-  HostVector      q_col_ref_h_;
+  HostVector      q_lin_h_;
+  Real            q_const_{0.0};
+  Index           q_terms_{0};
 
-  DeviceIndexVector q_rows_;
-  DeviceIndexVector q_cols_;
-  DeviceVector      q_vals_;
-  DeviceVector      q_row_ref_;
-  DeviceVector      q_col_ref_;
+  DeviceCsrMatrix      q_mat_;
+  DeviceVector         q_lin_;
+  mutable DeviceVector q_prod_;
+  mutable DeviceVector q_dot_;
 
   mutable DeviceVector lo_;
   mutable DeviceVector hi_;

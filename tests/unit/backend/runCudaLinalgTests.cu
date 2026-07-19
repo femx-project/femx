@@ -4,7 +4,8 @@
 #include <stdexcept>
 
 #include "TestHelper.hpp"
-#include <femx/linalg/CsrTranspose.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 
 namespace femx
 {
@@ -24,24 +25,6 @@ bool near(const HostVector& lhs,
   for (Index i = 0; i < lhs.size(); ++i)
   {
     if (std::abs(lhs[i] - rhs[i]) > tolerance)
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool near(const HostCsrMatrix& lhs,
-          const HostCsrMatrix& rhs,
-          Real                 tolerance = 1.0e-12)
-{
-  if (lhs.graph().layoutId() != rhs.graph().layoutId())
-  {
-    return false;
-  }
-  for (Index k = 0; k < lhs.nnz(); ++k)
-  {
-    if (std::abs(lhs.valsData()[k] - rhs.valsData()[k]) > tolerance)
     {
       return false;
     }
@@ -77,37 +60,20 @@ TestOutcome persistentCudaCsrOps()
     HostCsrMatrix host_mat(graph);
     host_mat.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
-    const HostCsrTransposeMap host_tr_map(graph);
-    HostCsrMatrix             expected_tr(host_tr_map.trGraph());
-    trVals(host_mat, host_tr_map, expected_tr);
-
     const HostVector host_input{1.0, 2.0, 3.0, 4.0};
     const HostVector host_affine_input{1.0, 2.0, 3.0};
     const HostVector host_tr_input{2.0, -1.0, 0.5};
 
+    CpuContext     cpu_ctx;
     CudaContext    ctx;
     DeviceCsrGraph device_graph;
     copy(graph, device_graph, ctx);
     DeviceCsrMatrix device_mat(device_graph);
     copy(host_mat, device_mat, ctx);
 
-    DeviceCsrTransposeMap device_tr_map;
-    copy(host_tr_map, device_graph, device_tr_map, ctx);
-    DeviceCsrMatrix device_tr(device_tr_map.trGraph());
-    trVals(device_mat, device_tr_map, device_tr, ctx);
-
-    record(status,
-           device_tr_map.srcGraph().rowPtrData()
-               == device_graph.rowPtrData(),
-           "transpose map retains the existing source graph");
-
     const Real*  mat_vals = device_mat.valsData();
     const Index* mat_rows = device_mat.rowPtrData();
     const Index* mat_cols = device_mat.colIndData();
-    const Real*  tr_vals  = device_tr.valsData();
-    const Index* tr_rows  = device_tr.rowPtrData();
-    const Index* tr_cols  = device_tr.colIndData();
-    const Index* tr_perm  = device_tr_map.srcToTr().data();
 
     DeviceVector input;
     copy(host_input, input, ctx);
@@ -135,13 +101,18 @@ TestOutcome persistentCudaCsrOps()
 
     DeviceVector tr_input;
     copy(host_tr_input, tr_input, ctx);
-    DeviceVector tr_product(4);
-    apply(device_tr, tr_input.view(), tr_product.view(), ctx);
-    HostVector actual_tr_product;
-    copy(tr_product, actual_tr_product, ctx);
-
-    HostCsrMatrix actual_tr(host_tr_map.trGraph());
-    copy(device_tr, actual_tr, ctx);
+    DeviceVector direct_tr_product(4);
+    applyT(device_mat,
+           tr_input.view(),
+           direct_tr_product.view(),
+           ctx);
+    HostVector actual_direct_tr_product;
+    copy(direct_tr_product, actual_direct_tr_product, ctx);
+    HostVector expected_tr_product(4);
+    applyT(host_mat,
+           host_tr_input.view(),
+           expected_tr_product.view(),
+           cpu_ctx);
     ctx.synchronize();
 
     record(status,
@@ -154,46 +125,87 @@ TestOutcome persistentCudaCsrOps()
     record(status,
            near(affine_result, HostVector{-2.5, 7.0, 2.5}),
            "device axpby");
+
+    const HostIndexVector host_indices{3, 0, 2};
+    DeviceIndexVector     indices;
+    copy(host_indices, indices, ctx);
+    DeviceVector gathered(3);
+    gather(input.view(), indices.view(), gathered.view(), ctx);
+    DeviceVector scattered(4);
+    scattered.setZero(ctx);
+    scatter(gathered.view(), indices.view(), scattered.view(), ctx);
+    HostVector actual_gathered;
+    HostVector actual_scattered;
+    copy(gathered, actual_gathered, ctx);
+    copy(scattered, actual_scattered, ctx);
+    ctx.synchronize();
     record(status,
-           near(actual_tr_product, HostVector{3.0, -3.0, 0.5, -3.5}),
+           near(actual_gathered, HostVector{4.0, 1.0, 3.0}),
+           "cuSPARSE gather");
+    record(status,
+           near(actual_scattered, HostVector{1.0, 0.0, 3.0, 4.0}),
+           "cuSPARSE scatter");
+
+    const HostVector host_dense{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    DeviceVector     device_dense;
+    copy(host_dense, device_dense, ctx);
+    DeviceVector dense_product(2);
+    femx::apply(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                input.view().subview(0, 3),
+                dense_product.view(),
+                ctx);
+    DeviceVector dense_tr_product(3);
+    femx::applyT(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                 dense_product.view(),
+                 dense_tr_product.view(),
+                 ctx);
+    HostVector actual_dense;
+    HostVector actual_dense_tr;
+    copy(dense_product, actual_dense, ctx);
+    copy(dense_tr_product, actual_dense_tr, ctx);
+    ctx.synchronize();
+    record(status,
+           near(actual_dense, HostVector{14.0, 32.0}),
+           "cuBLAS row-major dense apply");
+    record(status,
+           near(actual_dense_tr, HostVector{142.0, 188.0, 234.0}),
+           "cuBLAS row-major dense transpose");
+
+    record(status,
+           near(actual_direct_tr_product, expected_tr_product),
            "transposed CSR apply");
-    record(status, near(actual_tr, expected_tr), "transpose value update");
 
     host_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
-    trVals(host_mat, host_tr_map, expected_tr);
     copy(host_mat, device_mat, ctx);
-    trVals(device_mat, device_tr_map, device_tr, ctx);
     apply(device_mat,
           sliced_input.view().subview(3, 4),
           output.view(),
           ctx);
-    apply(device_tr, tr_input.view(), tr_product.view(), ctx);
+    applyT(device_mat,
+           tr_input.view(),
+           direct_tr_product.view(),
+           ctx);
 
-    HostVector    updated_product;
-    HostVector    updated_tr_product;
-    HostCsrMatrix updated_tr(host_tr_map.trGraph());
+    HostVector updated_product;
+    HostVector updated_direct_tr_product;
     copy(output, updated_product, ctx);
-    copy(tr_product, updated_tr_product, ctx);
-    copy(device_tr, updated_tr, ctx);
+    copy(direct_tr_product, updated_direct_tr_product, ctx);
+    applyT(host_mat,
+           host_tr_input.view(),
+           expected_tr_product.view(),
+           cpu_ctx);
     ctx.synchronize();
 
     record(status,
            near(updated_product, HostVector{5.0, -11.0, -1.0}),
            "updated CSR values");
     record(status,
-           near(updated_tr_product, HostVector{0.0, -0.5, 4.5, 2.0}),
+           near(updated_direct_tr_product, expected_tr_product),
            "updated transpose values");
-    record(status,
-           near(updated_tr, expected_tr),
-           "repeated transpose value update");
     record(status,
            mat_vals == device_mat.valsData()
                && mat_rows == device_mat.rowPtrData()
-               && mat_cols == device_mat.colIndData()
-               && tr_vals == device_tr.valsData()
-               && tr_rows == device_tr.rowPtrData()
-               && tr_cols == device_tr.colIndData()
-               && tr_perm == device_tr_map.srcToTr().data(),
+               && mat_cols == device_mat.colIndData(),
            "operations preserve all persistent allocations");
 
     bool overlap_rejected = false;

@@ -1,6 +1,6 @@
 #include <cmath>
-#include <stdexcept>
 
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
 using namespace femx::state;
 
@@ -23,32 +23,25 @@ TimeRegularization::TimeRegularization(Index             num_steps,
     beta_diff_(beta_diff),
     beta_value_(beta_value)
 {
-  if (num_steps_ < 0 || num_states_ < 0 || num_levels_ < 0
-      || block_size_ < 0 || !std::isfinite(beta_diff_)
-      || !std::isfinite(beta_value_) || beta_diff_ < 0.0
-      || beta_value_ < 0.0)
-  {
-    throw std::runtime_error("TimeRegularization received invalid inputs");
-  }
+  require(num_steps_ >= 0 && num_states_ >= 0 && num_levels_ >= 0
+              && block_size_ >= 0 && std::isfinite(beta_diff_)
+              && std::isfinite(beta_value_) && beta_diff_ >= 0.0
+              && beta_value_ >= 0.0,
+          "TimeRegularization received invalid inputs");
   if (reference.empty())
   {
     reference_.resize(numParams());
   }
-  else if (reference.size() == numParams())
-  {
-    for (const Real value : reference)
-    {
-      if (!std::isfinite(value))
-      {
-        throw std::runtime_error(
-            "TimeRegularization reference must be finite");
-      }
-    }
-    reference_ = reference;
-  }
   else
   {
-    throw std::runtime_error("TimeRegularization reference size mismatch");
+    require(reference.size() == numParams(),
+            "TimeRegularization reference size mismatch");
+    for (const Real val : reference)
+    {
+      require(std::isfinite(val),
+              "TimeRegularization reference must be finite");
+    }
+    reference_ = reference;
   }
 }
 
@@ -73,21 +66,21 @@ Real TimeRegularization::value(const TimeTrajectory& tr,
   (void) tr;
   checkParamSize(prm);
 
-  Real value_out = 0.0;
+  Real val = 0.0;
   for (Index i = 0; i < numParams(); ++i)
   {
     const Real diff  = prm[i] - reference_[i];
-    value_out       += 0.5 * beta_value_ * diff * diff;
+    val             += 0.5 * beta_value_ * diff * diff;
   }
   for (Index level = 1; level < num_levels_; ++level)
   {
     for (Index c = 0; c < block_size_; ++c)
     {
       const Real diff  = centered(prm, level, c) - centered(prm, level - 1, c);
-      value_out       += 0.5 * beta_diff_ * diff * diff;
+      val             += 0.5 * beta_diff_ * diff * diff;
     }
   }
-  return value_out;
+  return val;
 }
 
 void TimeRegularization::stateGrad(Index                 level,
@@ -139,10 +132,8 @@ Real TimeRegularization::centered(const HostVector& prm,
 
 void TimeRegularization::checkParamSize(const HostVector& prm) const
 {
-  if (prm.size() != numParams())
-  {
-    throw std::runtime_error("TimeRegularization parameter size mismatch");
-  }
+  require(prm.size() == numParams(),
+          "TimeRegularization parameter size mismatch");
 }
 
 } // namespace inverse

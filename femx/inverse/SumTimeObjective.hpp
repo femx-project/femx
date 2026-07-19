@@ -44,8 +44,8 @@ public:
                  HostVector&                  out) const override;
 
 private:
-  static void checkSize(const HostVector& value, Index exp);
-  static void addInto(const HostVector& input, HostVector& out, Index size);
+  static void checkSize(const HostVector& val, Index exp);
+  static void addInto(const HostVector& src, HostVector& out, Index size);
 
 private:
   Index                       num_steps_{0};

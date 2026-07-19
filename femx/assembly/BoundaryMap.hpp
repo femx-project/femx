@@ -230,6 +230,12 @@ void replaceRows(const DeviceBoundaryMap& map,
  * @param res Residual modified at constrained rows.
  */
 void replaceRes(const HostBoundaryMap& map,
+                HostConstVectorView    state,
+                HostConstVectorView    bc_vals,
+                HostVectorView         res);
+
+/** @brief Owning-vector convenience overload of replaceRes(). */
+void replaceRes(const HostBoundaryMap& map,
                 const HostVector&      state,
                 const HostVector&      bc_vals,
                 HostVector&            res);
@@ -243,9 +249,9 @@ void replaceRes(const HostBoundaryMap& map,
  * @param ctx CUDA stream on which work is enqueued.
  */
 void replaceRes(const DeviceBoundaryMap& map,
-                const DeviceVector&      state,
-                const DeviceVector&      bc_vals,
-                DeviceVector&            res,
+                DeviceConstVectorView    state,
+                DeviceConstVectorView    bc_vals,
+                DeviceVectorView         res,
                 CudaContext&             ctx);
 
 /**

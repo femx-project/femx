@@ -5,8 +5,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/ReferenceElement.hpp>
-#include <femx/linalg/MatrixView.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -60,7 +59,7 @@ public:
    * reference coordinate.
    */
   virtual void calcdNdr(const QuadraturePoint& qp,
-                        MatrixView<Real>       dNdxi) const = 0;
+                        HostMatrixView<Real>   dNdxi) const = 0;
 };
 
 } // namespace fem

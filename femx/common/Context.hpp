@@ -1,12 +1,18 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <utility>
 
 #include <femx/common/Types.hpp>
 
 namespace femx
 {
+
+namespace detail
+{
+struct CudaContextAccess;
+} // namespace detail
 
 /// @cond INTERNAL
 namespace device
@@ -36,6 +42,10 @@ void  checkLastError();
 /** @brief Tag selecting serial CPU execution. */
 struct CpuContext
 {
+  /** @brief Complete pending CPU work; serial execution is already complete. */
+  void synchronize() const noexcept
+  {
+  }
 };
 
 /** @brief Owner of the CUDA stream used by backend operations. */
@@ -51,6 +61,9 @@ public:
   /** @brief Destroy the owned stream after its queued work completes. */
   ~CudaContext()
   {
+    // Backend workspaces can own resources associated with this stream and
+    // therefore must be released before the stream itself.
+    sparse_state_.reset();
     device::destroyStream(stream_);
   }
 
@@ -59,7 +72,8 @@ public:
 
   /** @brief Transfer stream ownership from another context. */
   CudaContext(CudaContext&& other) noexcept
-    : stream_(std::exchange(other.stream_, nullptr))
+    : stream_(std::exchange(other.stream_, nullptr)),
+      sparse_state_(std::move(other.sparse_state_))
   {
   }
 
@@ -68,8 +82,10 @@ public:
   {
     if (this != &other)
     {
+      sparse_state_.reset();
       device::destroyStream(stream_);
-      stream_ = std::exchange(other.stream_, nullptr);
+      stream_       = std::exchange(other.stream_, nullptr);
+      sparse_state_ = std::move(other.sparse_state_);
     }
     return *this;
   }
@@ -93,7 +109,10 @@ public:
   }
 
 private:
-  void* stream_{nullptr};
+  friend struct detail::CudaContextAccess;
+
+  void*                         stream_{nullptr};
+  mutable std::shared_ptr<void> sparse_state_;
 };
 
 } // namespace femx

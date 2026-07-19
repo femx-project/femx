@@ -1,9 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/MatrixView.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -42,9 +41,9 @@ public:
   Index dim() const;
   Index numQuadraturePoints() const;
 
-  HostConstVectorView    N(Index iq) const;
-  MatrixView<const Real> dNdr(Index iq) const;
-  MatrixView<const Real> dNdx(Index iq) const;
+  HostConstVectorView        N(Index iq) const;
+  HostMatrixView<const Real> dNdr(Index iq) const;
+  HostMatrixView<const Real> dNdx(Index iq) const;
 
   Real detJ(Index iq) const;
   Real wt(Index iq) const;

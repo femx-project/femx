@@ -65,14 +65,14 @@ Real sampleVelocityConstant(const VelocityParams& velocity,
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
-    return velocity.value.front();
+    return velocity.vals.front();
   }
   if (time >= velocity.time.back())
   {
-    return velocity.value.back();
+    return velocity.vals.back();
   }
 
-  return velocity.value[lowerInterval(velocity.time, time)];
+  return velocity.vals[lowerInterval(velocity.time, time)];
 }
 
 Real sampleVelocityNearest(const VelocityParams& velocity,
@@ -80,19 +80,19 @@ Real sampleVelocityNearest(const VelocityParams& velocity,
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
-    return velocity.value.front();
+    return velocity.vals.front();
   }
   if (time >= velocity.time.back())
   {
-    return velocity.value.back();
+    return velocity.vals.back();
   }
 
   const Index i = lowerInterval(velocity.time, time);
   if (time - velocity.time[i] <= velocity.time[i + 1] - time)
   {
-    return velocity.value[i];
+    return velocity.vals[i];
   }
-  return velocity.value[i + 1];
+  return velocity.vals[i + 1];
 }
 
 Real sampleVelocityLinear(const VelocityParams& velocity,
@@ -100,19 +100,19 @@ Real sampleVelocityLinear(const VelocityParams& velocity,
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
-    return velocity.value.front();
+    return velocity.vals.front();
   }
   if (time >= velocity.time.back())
   {
-    return velocity.value.back();
+    return velocity.vals.back();
   }
 
   const Index i  = lowerInterval(velocity.time, time);
   const Real  t0 = velocity.time[i];
   const Real  t1 = velocity.time[i + 1];
   const Real  a  = (time - t0) / (t1 - t0);
-  return velocity.value[i]
-         + a * (velocity.value[i + 1] - velocity.value[i]);
+  return velocity.vals[i]
+         + a * (velocity.vals[i + 1] - velocity.vals[i]);
 }
 
 Real catmullRom(Real y0,
@@ -135,11 +135,11 @@ Real sampleVelocityCubic(const VelocityParams& velocity,
   }
   if (time <= velocity.time.front())
   {
-    return velocity.value.front();
+    return velocity.vals.front();
   }
   if (time >= velocity.time.back())
   {
-    return velocity.value.back();
+    return velocity.vals.back();
   }
 
   const Index i  = lowerInterval(velocity.time, time);
@@ -151,18 +151,18 @@ Real sampleVelocityCubic(const VelocityParams& velocity,
   const Index i1 = i;
   const Index i2 = i + 1;
   Index       i3 = i + 2;
-  if (i3 >= velocity.value.size())
+  if (i3 >= velocity.vals.size())
   {
-    i3 = velocity.per > 0.0 ? i3 - (velocity.value.size() - 1)
-                            : velocity.value.size() - 1;
+    i3 = velocity.per > 0.0 ? i3 - (velocity.vals.size() - 1)
+                            : velocity.vals.size() - 1;
   }
 
   const Real a = (time - velocity.time[i1])
                  / (velocity.time[i2] - velocity.time[i1]);
-  return catmullRom(velocity.value[i0],
-                    velocity.value[i1],
-                    velocity.value[i2],
-                    velocity.value[i3],
+  return catmullRom(velocity.vals[i0],
+                    velocity.vals[i1],
+                    velocity.vals[i2],
+                    velocity.vals[i3],
                     a);
 }
 

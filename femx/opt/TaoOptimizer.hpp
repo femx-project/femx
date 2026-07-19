@@ -9,7 +9,7 @@
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/VectorConversion.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 #include <femx/opt/TaoReducedFunctionalAdapter.hpp>
 
 namespace femx
@@ -264,7 +264,8 @@ public:
     {
       PetscCall(createVec(comm_, static_cast<PetscInt>(numParams()), prm));
       const HostVector opt_init = toOptimizerParam(init);
-      PetscCall(::femx::linalg::detail::copyToPETSc(opt_init, prm.get()));
+      PetscCall(
+          ::femx::linalg::detail::copyToPETSc(opt_init.view(), prm.get()));
 
       TaoReducedFunctionalAdapter adapter(
           num_param_,
@@ -293,8 +294,10 @@ public:
         PetscCall(VecDuplicate(prm.get(), upper.put()));
         const HostVector opt_lower = toOptimizerParam(bounds_.lower);
         const HostVector opt_upper = toOptimizerParam(bounds_.upper);
-        PetscCall(::femx::linalg::detail::copyToPETSc(opt_lower, lower.get()));
-        PetscCall(::femx::linalg::detail::copyToPETSc(opt_upper, upper.get()));
+        PetscCall(::femx::linalg::detail::copyToPETSc(opt_lower.view(),
+                                                      lower.get()));
+        PetscCall(::femx::linalg::detail::copyToPETSc(opt_upper.view(),
+                                                      upper.get()));
         PetscCall(TaoSetVariableBounds(tao.get(), lower.get(), upper.get()));
       }
       PetscCall(TaoSetTolerances(

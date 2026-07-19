@@ -67,17 +67,17 @@ HostConstVectorView ElementValues::N(Index iq) const
       num_dofs_);
 }
 
-MatrixView<const Real> ElementValues::dNdr(Index iq) const
+HostMatrixView<const Real> ElementValues::dNdr(Index iq) const
 {
-  return MatrixView<const Real>(
+  return HostMatrixView<const Real>(
       dNdr_.data() + iq * num_dofs_ * dim_,
       num_dofs_,
       dim_);
 }
 
-MatrixView<const Real> ElementValues::dNdx(Index iq) const
+HostMatrixView<const Real> ElementValues::dNdx(Index iq) const
 {
-  return MatrixView<const Real>(
+  return HostMatrixView<const Real>(
       dNdx_.data() + iq * num_dofs_ * dim_,
       num_dofs_,
       dim_);
@@ -123,7 +123,7 @@ void ElementValues::calcReferenceValues()
         N_.data() + iq * num_dofs_,
         num_dofs_);
 
-    MatrixView<Real> dNdr(
+    HostMatrixView<Real> dNdr(
         dNdr_.data() + iq * num_dofs_ * dim_,
         num_dofs_,
         dim_);
@@ -160,7 +160,7 @@ void ElementValues::calcPhysicalValues(const Element& elem)
     detJ_[iq]       = std::abs(detJ);
     JxW_[iq]        = detJ_[iq] * wts_[iq];
 
-    MatrixView<Real> dNdx(
+    HostMatrixView<Real> dNdx(
         dNdx_.data() + iq * num_dofs_ * dim_,
         num_dofs_,
         dim_);

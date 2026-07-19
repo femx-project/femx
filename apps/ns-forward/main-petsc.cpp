@@ -7,12 +7,11 @@
 
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
+#include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
 using namespace femx::model::ns;
 using namespace femx::state;
@@ -61,10 +60,10 @@ BuildInfo makeBuildInfo()
        {"cmake build type", FEMX_CMAKE_BUILD_TYPE},
        {"cmake cxx compiler", FEMX_CMAKE_CXX_COMPILER},
        {"FEMX_ENABLE_HDF5", FEMX_ENABLE_HDF5_OPTION},
-       {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
-       {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
-       {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
-       {"PETSc version",
+        {"FEMX_ENABLE_OPENMP", FEMX_ENABLE_OPENMP_OPTION},
+        {"FEMX_ENABLE_PETSC", FEMX_ENABLE_PETSC_OPTION},
+        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION},
+        {"PETSc version",
         std::to_string(PETSC_VERSION_MAJOR) + "."
             + std::to_string(PETSC_VERSION_MINOR) + "."
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
@@ -122,16 +121,17 @@ int run(const Params& prm)
   ForwardProblem fwd(prm);
   setElemRange(fwd.model, fwd.model.mesh().numElems());
 
-  PETScVector mat_row(PETSC_COMM_WORLD);
-  mat_row.resize(fwd.model.numStates());
-
   PETScOperator A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.map().graph(), mat_row);
+  A.resize(fwd.model.map().graph());
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  TimeLinearIntegrator integ(fwd.problem, A, solver);
+  auto                                   base_res = makePetscTimeResidual(fwd.model);
+  assembly::PetscConstrainedTimeResidual res(
+      *base_res, fwd.problem.controlMap());
+  PetscContext                 ctx{PETSC_COMM_WORLD};
+  TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
   integ.setInitialState(fwd.x0);
 
   std::ofstream log_out;
@@ -141,7 +141,6 @@ int run(const Params& prm)
   }
 
   ForwardSolveResult result;
-  integ.resetTiming();
   result = solve(integ,
                  fwd,
                  prm.time,

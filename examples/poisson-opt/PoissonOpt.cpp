@@ -26,12 +26,12 @@
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/SumObjective.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
-#include <femx/state/LinearStateSolver.hpp>
-#include <femx/state/Linearization.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -54,16 +54,44 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-/**
- * @brief AssemblyMap-backed residual for the optimization workflow.
- *
- * The finite-element work is performed by Geometry/AssemblyMap/ElementView,
- * while MatrixLinearization publishes the resulting state and control
- * operators to ReducedFunctional and TAO.
- */
-class PoissonMapResidual final : public Residual
+void setStateJac(const HostCsrMatrix& src,
+                 HostCsrMatrix&       dst,
+                 CpuContext&)
 {
+  require(src.graph().layoutId() == dst.graph().layoutId(),
+          "Poisson state Jacobian uses a different CSR graph");
+  dst.vals() = src.vals();
+}
+
+void setStateJac(const HostCsrMatrix&   src,
+                 linalg::PETScOperator& dst,
+                 linalg::PetscContext&)
+{
+  require(dst.rows() == src.rows() && dst.cols() == src.cols(),
+          "Poisson PETSc state Jacobian size mismatch");
+  dst.setZero();
+  for (Index row = 0; row < src.rows(); ++row)
+  {
+    for (Index k = src.rowPtrData()[row]; k < src.rowPtrData()[row + 1]; ++k)
+    {
+      dst.set(row, src.colIndData()[k], src.valsData()[k]);
+    }
+  }
+}
+
+/** @brief AssemblyMap residual written once for Host CSR and PETSc backends. */
+template <class Backend>
+class PoissonMapResidual final : public Residual<Backend>
+{
+  static_assert(Backend::space == MemorySpace::Host,
+                "Poisson optimization requires Host state storage");
+
 public:
+  using Vec   = typename Backend::Vec;
+  using Mat   = typename Backend::Mat;
+  using Graph = typename Backend::Graph;
+  using Ctx   = typename Backend::Ctx;
+
   PoissonMapResidual(const HostGeometry&    geom,
                      const HostAssemblyMap& map,
                      Array<Index>           control_dofs,
@@ -71,12 +99,11 @@ public:
     : geom_(&geom),
       map_(&map),
       control_dofs_(std::move(control_dofs)),
-      fixed_dofs_(std::move(fixed_dofs)),
       jac_(map.graph())
   {
     Array<Index> bc_dofs = control_dofs_;
-    bc_dofs.reserve(control_dofs_.size() + fixed_dofs_.size());
-    for (Index dof : fixed_dofs_)
+    bc_dofs.reserve(control_dofs_.size() + fixed_dofs.size());
+    for (Index dof : fixed_dofs)
     {
       bc_dofs.push_back(dof);
     }
@@ -90,37 +117,56 @@ public:
             map_->numRes()};
   }
 
-  void res(const HostVector& state,
-           const HostVector& prm,
-           HostVector&       out) const override
+  const HostCsrGraph& hostGraph() const override
+  {
+    return map_->graph();
+  }
+
+  const Graph& graph() const override
+  {
+    return map_->graph();
+  }
+
+  void res(const Vec& state,
+           const Vec& prm,
+           Vec&       out,
+           Ctx&) const override
   {
     checkVectors(state, prm);
     assembleRaw(state, out);
     replaceRes(bc_map_, state, bcVals(prm), out);
   }
 
-  void linearize(const HostVector& state,
-                 const HostVector& prm,
-                 Linearization&    out) const override
+  void assembleStateJac(const Vec& state,
+                        const Vec& prm,
+                        Mat&       out,
+                        Ctx&       ctx) const override
   {
     checkVectors(state, prm);
-    auto* mats = dynamic_cast<MatrixLinearization*>(&out);
-    if (mats == nullptr)
-    {
-      throw std::runtime_error(
-          "PoissonMapResidual requires MatrixLinearization output");
-    }
-
-    HostVector res;
-    assembleRaw(state, res);
+    HostVector unused;
+    assembleRaw(state, unused);
     replaceRows(bc_map_, jac_, 1.0);
-    copyStateJac(mats->stateMat());
-    assemblePrmJac(mats->paramMat());
+    setStateJac(jac_, out, ctx);
+  }
+
+  void applyParamJacT(const Vec& state,
+                      const Vec& prm,
+                      const Vec& adj,
+                      Vec&       out,
+                      Ctx&) const override
+  {
+    checkVectors(state, prm);
+    require(adj.size() == dims().num_res,
+            "Poisson adjoint size mismatch");
+    out.resize(dims().num_param);
+    for (Index col = 0; col < control_dofs_.size(); ++col)
+    {
+      out[col] = -adj[control_dofs_[col]];
+    }
   }
 
 private:
-  void checkVectors(const HostVector& state,
-                    const HostVector& prm) const
+  void checkVectors(const Vec& state, const Vec& prm) const
   {
     const Dimensions shape = dims();
     if (state.size() != shape.num_states || prm.size() != shape.num_param)
@@ -129,7 +175,7 @@ private:
     }
   }
 
-  void assembleRaw(const HostVector& state, HostVector& res) const
+  void assembleRaw(const Vec& state, Vec& res) const
   {
     CpuContext ctx;
     assembly::assemble(poisson::PoissonQuadQ1Operator{},
@@ -141,7 +187,7 @@ private:
                        ctx);
   }
 
-  HostVector bcVals(const HostVector& prm) const
+  HostVector bcVals(const Vec& prm) const
   {
     HostVector vals(bc_map_.numBcs(), 0.0);
     for (Index i = 0; i < control_dofs_.size(); ++i)
@@ -151,58 +197,9 @@ private:
     return vals;
   }
 
-  void copyStateJac(MatrixOperator& out) const
-  {
-    if (out.numRows() != jac_.rows()
-        || out.numCols() != jac_.cols())
-    {
-      throw std::runtime_error(
-          "PoissonMapResidual state matrix size mismatch");
-    }
-
-    if (auto* csr = dynamic_cast<MapCsrMatrix*>(&out))
-    {
-      HostCsrMatrix& dst = csr->mat();
-      if (dst.graph().layoutId() != jac_.graph().layoutId())
-      {
-        throw std::runtime_error(
-            "PoissonMapResidual state matrix uses a different CSR graph");
-      }
-      std::copy(jac_.valsData(),
-                jac_.valsData() + jac_.nnz(),
-                dst.valsData());
-    }
-    else
-    {
-      out.setZero();
-      for (Index row = 0; row < jac_.rows(); ++row)
-      {
-        for (Index k = jac_.rowPtrData()[row];
-             k < jac_.rowPtrData()[row + 1];
-             ++k)
-        {
-          out.set(row, jac_.colIndData()[k], jac_.valsData()[k]);
-        }
-      }
-    }
-    out.finalize();
-  }
-
-  void assemblePrmJac(MatrixOperator& out) const
-  {
-    out.resize(map_->numRes(), control_dofs_.size());
-    out.setZero();
-    for (Index col = 0; col < control_dofs_.size(); ++col)
-    {
-      out.set(control_dofs_[col], col, -1.0);
-    }
-    out.finalize();
-  }
-
   const HostGeometry*    geom_{nullptr};
   const HostAssemblyMap* map_{nullptr};
   Array<Index>           control_dofs_;
-  Array<Index>           fixed_dofs_;
   HostBoundaryMap        bc_map_;
   mutable HostCsrMatrix  jac_;
 };
@@ -387,7 +384,6 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
   initializeBoundaryDofs();
   initializeTrueControl();
   initializeObservationLayout();
-  initializeResidual();
 }
 
 const Options& PoissonOptProblem::options() const noexcept
@@ -399,11 +395,6 @@ const assembly::HostAssemblyMap&
 PoissonOptProblem::stateMap() const
 {
   return state_map_;
-}
-
-const Residual& PoissonOptProblem::residual() const
-{
-  return *res_;
 }
 
 const Objective& PoissonOptProblem::objective() const
@@ -672,14 +663,6 @@ void PoissonOptProblem::initializeObservationLayout()
   }
 }
 
-void PoissonOptProblem::initializeResidual()
-{
-  res_ = std::make_unique<PoissonMapResidual>(geom_,
-                                              state_map_,
-                                              ctr_dofs_,
-                                              fixed_dofs_);
-}
-
 Index PoissonOptProblem::effectiveObservationStride() const
 {
   if (opts_.obs_stride > 0)
@@ -705,14 +688,16 @@ HostVector PoissonOptProblem::observationWeights() const
   return weights;
 }
 
-void PoissonOptProblem::prepareObjective(state::StateSolver& state_solver)
+void PoissonOptProblem::prepareObjective(HostVector target_state)
 {
   if (obj_)
   {
     return;
   }
 
-  state_solver.solve(target_ctr_, target_state_);
+  require(target_state.size() == numStates(),
+          "Poisson target state size mismatch");
+  target_state_ = std::move(target_state);
 
   HostVector zero_ctr(numParams(), 0.0);
   HostVector reg_weights(numParams(), 0.0);
@@ -746,22 +731,30 @@ bool PoissonOptProblem::isControlNode(const Mesh::Node& p) const
          && p[0] < 1.0 - boundary_eps;
 }
 
-Result solve(PoissonOptProblem&    problem,
-             state::Linearization& lin,
-             linalg::LinearSolver& fwd_lin_solver,
-             linalg::LinearSolver& adj_lin_solver)
+template <class Backend>
+Result solve(PoissonOptProblem&             problem,
+             typename Backend::Mat&         fwd_jac,
+             linalg::LinearSolver<Backend>& fwd_solver,
+             typename Backend::Mat&         adj_jac,
+             linalg::LinearSolver<Backend>& adj_solver,
+             typename Backend::Ctx&         ctx)
 {
-  state::LinearStateSolver state_solver(problem.residual(),
-                                        lin,
-                                        fwd_lin_solver);
+  static_assert(Backend::space == MemorySpace::Host,
+                "Poisson optimization requires Host state storage");
+  PoissonMapResidual<Backend> res(problem.geom_,
+                                  problem.state_map_,
+                                  problem.ctr_dofs_,
+                                  problem.fixed_dofs_);
 
-  problem.prepareObjective(state_solver);
+  state::LinearStateSolver<Backend> state_solver(
+      res, fwd_jac, fwd_solver, ctx);
 
-  inverse::ReducedFunctional fn(problem.residual(),
-                                problem.objective(),
-                                state_solver,
-                                lin,
-                                adj_lin_solver);
+  HostVector target_state;
+  state_solver.solve(problem.target_ctr_, target_state);
+  problem.prepareObjective(std::move(target_state));
+
+  inverse::ReducedFunctional<Backend> fn(
+      state_solver, adj_jac, adj_solver, problem.objective());
 
   opt::TaoOptimizer tao(fn, PETSC_COMM_SELF);
   tao.opts().max_its = problem.options().max_its;
@@ -782,6 +775,22 @@ Result solve(PoissonOptProblem&    problem,
   out.converged  = result.converged();
   return out;
 }
+
+template Result solve<linalg::HostCsrBackend>(
+    PoissonOptProblem&,
+    HostCsrMatrix&,
+    linalg::LinearSolver<linalg::HostCsrBackend>&,
+    HostCsrMatrix&,
+    linalg::LinearSolver<linalg::HostCsrBackend>&,
+    CpuContext&);
+
+template Result solve<linalg::PetscBackend>(
+    PoissonOptProblem&,
+    linalg::PETScOperator&,
+    linalg::LinearSolver<linalg::PetscBackend>&,
+    linalg::PETScOperator&,
+    linalg::LinearSolver<linalg::PetscBackend>&,
+    linalg::PetscContext&);
 
 Options parseOptions(int    argc,
                      char** argv,

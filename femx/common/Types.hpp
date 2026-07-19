@@ -33,9 +33,6 @@ class CsrGraph;
 template <MemorySpace Space>
 class CsrMatrix;
 
-template <MemorySpace Space>
-class CsrTransposeMap;
-
 using HostVector   = Vector<MemorySpace::Host>;
 using DeviceVector = Vector<MemorySpace::Device>;
 
@@ -47,8 +44,6 @@ using DeviceCsrGraph = CsrGraph<MemorySpace::Device>;
 
 using HostCsrMatrix   = CsrMatrix<MemorySpace::Host>;
 using DeviceCsrMatrix = CsrMatrix<MemorySpace::Device>;
-
-using HostCsrTransposeMap = CsrTransposeMap<MemorySpace::Host>;
 
 template <class T>
 using HostArrayView = VectorView<MemorySpace::Host, T>;

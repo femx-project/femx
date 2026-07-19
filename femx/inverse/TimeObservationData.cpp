@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -24,11 +25,8 @@ TimeObservationData::TimeObservationData(Index num_levels,
 
 void TimeObservationData::resize(Index num_levels, Index num_obs)
 {
-  if (num_levels < 0 || num_obs < 0)
-  {
-    throw std::runtime_error(
-        "TimeObservationData received invalid dimensions");
-  }
+  require(num_levels >= 0 && num_obs >= 0,
+          "TimeObservationData received invalid dimensions");
   num_levels_ = num_levels;
   num_obs_    = num_obs;
   data_.resize(num_levels_ * num_obs_);
@@ -157,10 +155,8 @@ void TimeObservationData::setZero()
 
 void TimeObservationData::checkLevel(Index level) const
 {
-  if (level < 0 || level >= numTimeLevels())
-  {
-    throw std::runtime_error("TimeObservationData level is out of range");
-  }
+  require(level >= 0 && level < numTimeLevels(),
+          "TimeObservationData level is out of range");
 }
 
 void TimeObservationData::checkLayout() const
@@ -169,17 +165,11 @@ void TimeObservationData::checkLayout() const
   {
     return;
   }
-  if (pts_.empty() || comps_.empty())
-  {
-    throw std::runtime_error(
-        "TimeObservationData point layout is incomplete");
-  }
+  require(!pts_.empty() && !comps_.empty(),
+          "TimeObservationData point layout is incomplete");
   const Index exp = pts_.size() * comps_.size();
-  if (exp != numObservations())
-  {
-    throw std::runtime_error(
-        "TimeObservationData layout does not match observation count");
-  }
+  require(exp == numObservations(),
+          "TimeObservationData layout does not match observation count");
 }
 
 void TimeObservationData::checkTimeLevels() const
@@ -188,19 +178,13 @@ void TimeObservationData::checkTimeLevels() const
   {
     return;
   }
-  if (time_levels_.size() != numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeObservationData time level count does not match data");
-  }
+  require(time_levels_.size() == numTimeLevels(),
+          "TimeObservationData time level count does not match data");
   for (Index i = 0; i < time_levels_.size(); ++i)
   {
-    if (time_levels_[i] < 0
-        || (i > 0 && time_levels_[i] <= time_levels_[i - 1]))
-    {
-      throw std::runtime_error(
-          "TimeObservationData time levels must be strictly increasing");
-    }
+    require(time_levels_[i] >= 0
+                && (i == 0 || time_levels_[i] > time_levels_[i - 1]),
+            "TimeObservationData time levels must be strictly increasing");
   }
 }
 
@@ -210,19 +194,13 @@ void TimeObservationData::checkTimeValues() const
   {
     return;
   }
-  if (time_vals_.size() != numTimeLevels())
-  {
-    throw std::runtime_error(
-        "TimeObservationData time value count does not match data");
-  }
+  require(time_vals_.size() == numTimeLevels(),
+          "TimeObservationData time value count does not match data");
   for (Index i = 0; i < time_vals_.size(); ++i)
   {
-    if (!std::isfinite(time_vals_[i]) || time_vals_[i] < 0.0
-        || (i > 0 && time_vals_[i] <= time_vals_[i - 1]))
-    {
-      throw std::runtime_error(
-          "TimeObservationData time values must be finite and increasing");
-    }
+    require(std::isfinite(time_vals_[i]) && time_vals_[i] >= 0.0
+                && (i == 0 || time_vals_[i] > time_vals_[i - 1]),
+            "TimeObservationData time values must be finite and increasing");
   }
 }
 
@@ -230,11 +208,10 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
                                   const TimeTrajectory&          tr,
                                   const HostVector&              prm)
 {
-  if (tr.numSteps() != obs.numSteps() || tr.numStates() != obs.numStates()
-      || prm.size() != obs.numParams())
-  {
-    throw std::runtime_error("sampleTimeObs received inconsistent inputs");
-  }
+  require(tr.numSteps() == obs.numSteps()
+              && tr.numStates() == obs.numStates()
+              && prm.size() == obs.numParams(),
+          "sampleTimeObs received inconsistent inputs");
 
   TimeObservationData data(obs.numSteps() + 1, obs.numObservations());
   for (Index level = 0; level < data.numTimeLevels(); ++level)
@@ -248,11 +225,8 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
 
 void writeTimeObsData(const std::string& path, const TimeObservationData& data)
 {
-  if (!data.hasLayout())
-  {
-    throw std::runtime_error(
-        "Cannot write time observation data without point layout");
-  }
+  require(data.hasLayout(),
+          "Cannot write time observation data without point layout");
 
   std::ofstream out(path);
   if (!out)

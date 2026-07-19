@@ -6,19 +6,11 @@
 
 #include "Bindings.hpp"
 #include "PETScInit.hpp"
-#include <femx/assembly/AssemblyMap.hpp>
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/LinearOperator.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/MatrixOperator.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
 #ifdef FEMX_HAS_PETSC
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
 #ifdef FEMX_HAS_RESOLVE
@@ -26,9 +18,7 @@
 #endif
 #include <femx/state/EnsembleBasis.hpp>
 #include <femx/state/TimeIntegrator.hpp>
-#include <femx/state/TimeLinearIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
-#include <femx/state/TimeStateMonitor.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -39,34 +29,27 @@ namespace
 {
 
 using femx::DenseMatrix;
+using femx::HostConstVectorView;
 using femx::HostVector;
+using femx::HostVectorView;
 using femx::Index;
 using femx::Real;
-using femx::assembly::HostAssemblyMap;
 using femx::fem::HostInitialStateMap;
 using femx::linalg::DenseLinearSolver;
-using femx::linalg::LinearOperator;
-using femx::linalg::LinearSolver;
-using femx::linalg::MapCsrMatrix;
-using femx::linalg::MatrixOperator;
+using femx::linalg::HostCsrLinearSolver;
 #ifdef FEMX_HAS_PETSC
-using femx::linalg::KspLinearSolver;
-using femx::linalg::PETScOperator;
 #endif
 #ifdef FEMX_HAS_RESOLVE
 using femx::linalg::ReSolveLinearSolver;
 using femx::linalg::ReSolveOptions;
 #endif
 using femx::state::EnsembleBasis;
-using femx::state::TimeContext;
+using femx::state::HostTimeContext;
+using femx::state::HostTimeHistoryView;
+using femx::state::HostTimeIntegrator;
+using femx::state::HostTimeStepStateContext;
 using femx::state::TimeDims;
-using femx::state::TimeHistoryView;
-using femx::state::TimeIntegrator;
-using femx::state::TimeLinearIntegrator;
-using femx::state::TimeLinearization;
-using femx::state::TimeResidual;
-using femx::state::TimeStateMonitor;
-using femx::state::TimeStepStateContext;
+using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 using femx::state::VariableBlock;
 
@@ -101,53 +84,40 @@ py::array_t<Real> vectorArray(const HostVector& vals)
   return out;
 }
 
-class ScopedTimeStateMonitor
+py::array_t<Real> vectorArray(HostConstVectorView vals)
+{
+  py::array_t<Real> out(vals.size());
+  auto              data = out.mutable_unchecked<1>();
+  for (Index i = 0; i < vals.size(); ++i)
+  {
+    data(i) = vals[i];
+  }
+  return out;
+}
+
+class PythonTimeObserver
 {
 public:
-  ScopedTimeStateMonitor(TimeIntegrator&   integrator,
-                         TimeStateMonitor& monitor)
-    : integrator_(integrator)
-  {
-    integrator_.setMonitor(&monitor);
-  }
-
-  ScopedTimeStateMonitor(const ScopedTimeStateMonitor&)            = delete;
-  ScopedTimeStateMonitor& operator=(const ScopedTimeStateMonitor&) = delete;
-
-  ~ScopedTimeStateMonitor()
-  {
-    integrator_.clearMonitor();
-  }
-
-private:
-  TimeIntegrator& integrator_;
-};
-
-class PythonTimeStateMonitor final : public TimeStateMonitor
-{
-public:
-  explicit PythonTimeStateMonitor(py::object progress)
+  explicit PythonTimeObserver(py::object progress)
     : progress_(std::move(progress))
   {
   }
 
-  void observe(Index, const HostVector&) override
+  bool operator()(const HostTimeStepStateContext& ctx)
   {
     py::gil_scoped_acquire acquire;
     checkSignals();
-  }
-
-  bool observeStep(const TimeStepStateContext& ctx) override
-  {
-    py::gil_scoped_acquire acquire;
-    checkSignals();
+    if (ctx.level == 0)
+    {
+      return false;
+    }
     py::dict event;
     event["type"]                 = "solve";
     event["phase"]                = "forward";
     event["step"]                 = ctx.level;
     event["total"]                = ctx.total_steps;
-    event["assembly_seconds"]     = ctx.assembly_sec;
-    event["linear_solve_seconds"] = ctx.solve_sec;
+    event["assembly_seconds"]     = ctx.assm_sec;
+    event["linear_solve_seconds"] = ctx.lin_solve_sec;
     progress_(std::move(event));
     return false;
   }
@@ -187,90 +157,13 @@ DenseMatrix denseMatrixFromArray(const RealArray& vals,
   return out;
 }
 
-class AffineInitialStateIntegrator final : public TimeIntegrator
-{
-public:
-  AffineInitialStateIntegrator(TimeLinearIntegrator& integrator,
-                               HostInitialStateMap&  map)
-    : integrator_(integrator),
-      map_(map)
-  {
-    if (map_.numStates() != integrator_.numStates()
-        || map_.numParams() != integrator_.numParams())
-    {
-      throw std::runtime_error(
-          "initial-state map must match the time integrator");
-    }
-  }
-
-  Index numSteps() const override
-  {
-    return integrator_.numSteps();
-  }
-
-  Index numStates() const override
-  {
-    return integrator_.numStates();
-  }
-
-  Index numParams() const override
-  {
-    return integrator_.numParams();
-  }
-
-  void solve(const HostVector& param,
-             TimeTrajectory&   trajectory) override
-  {
-    if (param.size() != numParams())
-    {
-      throw std::runtime_error(
-          "initial-state integrator parameter size mismatch");
-    }
-
-    HostVector initial(map_.numStates());
-    femx::fem::initialState(
-        map_.view(), param.view(), initial.view());
-    integrator_.setInitialState(initial);
-    MonitorScope           monitor(*this);
-    ForwardMonitor         forward_monitor(*this);
-    ScopedTimeStateMonitor monitor_scope(integrator_, forward_monitor);
-    integrator_.solve(param, trajectory);
-  }
-
-private:
-  class ForwardMonitor final : public TimeStateMonitor
-  {
-  public:
-    explicit ForwardMonitor(AffineInitialStateIntegrator& integrator)
-      : integrator_(integrator)
-    {
-    }
-
-    void observe(Index level, const HostVector& state) override
-    {
-      integrator_.observeState(level, state);
-    }
-
-    bool observeStep(const TimeStepStateContext& ctx) override
-    {
-      return integrator_.observeStep(ctx);
-    }
-
-  private:
-    AffineInitialStateIntegrator& integrator_;
-  };
-
-  TimeLinearIntegrator& integrator_;
-  HostInitialStateMap&  map_;
-};
-
 py::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
 {
-  py::array_t<Real> out({vals.numRows(), vals.numCols()});
+  py::array_t<Real> out({vals.rows(), vals.cols()});
   auto              data = out.mutable_unchecked<2>();
-  for (Index row = 0; row < vals.numRows(); ++row)
+  for (Index row = 0; row < vals.rows(); ++row)
   {
-    for (Index col = 0; col < vals.numCols(); ++col)
+    for (Index col = 0; col < vals.cols(); ++col)
     {
       data(row, col) = vals(row, col);
     }
@@ -291,9 +184,9 @@ void checkFinite(const HostVector& vals, const char* name)
 
 void checkFinite(const DenseMatrix& vals, const char* name)
 {
-  for (Index row = 0; row < vals.numRows(); ++row)
+  for (Index row = 0; row < vals.rows(); ++row)
   {
-    for (Index col = 0; col < vals.numCols(); ++col)
+    for (Index col = 0; col < vals.cols(); ++col)
     {
       if (!std::isfinite(vals(row, col)))
       {
@@ -313,8 +206,8 @@ EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
   {
     throw std::runtime_error("mean must not be empty");
   }
-  if (perturb_vals.numRows() != mean_vals.size()
-      || perturb_vals.numCols() <= 0)
+  if (perturb_vals.rows() != mean_vals.size()
+      || perturb_vals.cols() <= 0)
   {
     throw std::runtime_error(
         "perturbations must have shape (value_size, num_coefficients)");
@@ -337,7 +230,7 @@ void copyArray(const py::handle& value,
   out = vectorFromArray(vals, name);
 }
 
-py::array_t<Real> historyArray(const TimeHistoryView& history)
+py::array_t<Real> historyArray(const HostTimeHistoryView& history)
 {
   py::array_t<Real> out({history.count(), history.stateSize()});
   auto              data = out.mutable_unchecked<2>();
@@ -352,17 +245,12 @@ py::array_t<Real> historyArray(const TimeHistoryView& history)
   return out;
 }
 
-py::dict ctxData(const TimeContext& ctx)
+py::dict ctxData(const HostTimeContext& ctx)
 {
-  if (ctx.nxt == nullptr || ctx.prm == nullptr)
-  {
-    throw std::runtime_error("TimeContext contains null state or parameter data");
-  }
-
   py::dict out;
   out["step"]       = ctx.step;
-  out["next_state"] = vectorArray(*ctx.nxt);
-  out["parameters"] = vectorArray(*ctx.prm);
+  out["next_state"] = vectorArray(ctx.nxt);
+  out["parameters"] = vectorArray(ctx.prm);
   out["history"]    = historyArray(ctx.hist);
   return out;
 }
@@ -382,8 +270,64 @@ public:
     PYBIND11_OVERRIDE_PURE(TimeDims, TimeResidual, dims);
   }
 
-  void res(const TimeContext& ctx,
-           HostVector&        out) const override
+  const femx::HostCsrGraph& hostGraph() const override
+  {
+    updateGraph();
+    return graph_;
+  }
+
+  const femx::HostCsrGraph& graph() const override
+  {
+    updateGraph();
+    return graph_;
+  }
+
+  void initialState(HostConstVectorView prm,
+                    HostVector&         out,
+                    femx::CpuContext&) const override
+  {
+    py::gil_scoped_acquire gil;
+    const py::function     override = py::get_override(this, "initial_state");
+    if (!override)
+    {
+      resizeOrZero(out, dims().num_states);
+      return;
+    }
+    copyArray(override(vectorArray(prm)), out, "initial state");
+  }
+
+  void addInitialStateJacobianTranspose(
+      HostConstVectorView state_grad,
+      HostVectorView      out,
+      femx::CpuContext&   ctx) const override
+  {
+    py::gil_scoped_acquire gil;
+    const py::function     override =
+        py::get_override(this, "add_initial_state_jacobian_transpose");
+    if (!override)
+    {
+      TimeResidual::addInitialStateJacobianTranspose(
+          state_grad, out, ctx);
+      return;
+    }
+    HostVector grad;
+    copyArray(override(vectorArray(state_grad)),
+              grad,
+              "initial-state transpose result");
+    if (grad.size() != out.size())
+    {
+      throw std::runtime_error(
+          "initial-state transpose result has invalid size");
+    }
+    for (Index i = 0; i < out.size(); ++i)
+    {
+      out[i] += grad[i];
+    }
+  }
+
+  void res(const HostTimeContext& ctx,
+           HostVector&            out,
+           femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "residual");
@@ -394,10 +338,11 @@ public:
     copyArray(override(ctxData(ctx)), out, "residual result");
   }
 
-  void applyJac(const TimeContext& ctx,
-                VariableBlock      wrt,
-                const HostVector&  dir,
-                HostVector&        out) const override
+  void applyJac(const HostTimeContext& ctx,
+                VariableBlock          wrt,
+                HostConstVectorView    dir,
+                HostVector&            out,
+                femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "apply_jacobian");
@@ -411,10 +356,11 @@ public:
               "Jacobian result");
   }
 
-  void applyJacT(const TimeContext& ctx,
-                 VariableBlock      wrt,
-                 const HostVector&  adj,
-                 HostVector&        out) const override
+  void applyJacT(const HostTimeContext& ctx,
+                 VariableBlock          wrt,
+                 HostConstVectorView    adj,
+                 HostVector&            out,
+                 femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -429,22 +375,47 @@ public:
               "transpose Jacobian result");
   }
 
-  bool assembleJac(const TimeContext& ctx,
-                   VariableBlock      wrt,
-                   MatrixOperator&    out) const override
+  void assemble(const HostTimeContext& ctx,
+                VariableBlock          wrt,
+                HostVector&            res_out,
+                femx::HostCsrMatrix&   jac,
+                femx::CpuContext&      cpu) const override
   {
+    res(ctx, res_out, cpu);
+    assembleJac(ctx, wrt, jac, cpu);
+  }
+
+  void assembleJac(const HostTimeContext& ctx,
+                   VariableBlock          wrt,
+                   femx::HostCsrMatrix&   out,
+                   femx::CpuContext&      cpu) const override
+  {
+    if (wrt.isParam())
+    {
+      throw std::runtime_error(
+          "Python TimeResidual parameter Jacobian is matrix-free");
+    }
+    updateGraph();
+    if (out.graph().layoutId() != graph_.layoutId())
+    {
+      throw std::runtime_error(
+          "Python TimeResidual Jacobian uses an incompatible graph");
+    }
+
     py::gil_scoped_acquire gil;
     const py::function     override =
         py::get_override(this, "assemble_jacobian");
     if (!override)
     {
-      return TimeResidual::assembleJac(ctx, wrt, out);
+      assembleJacFromProducts(ctx, wrt, out, cpu);
+      return;
     }
 
     const py::object value = override(ctxData(ctx), wrt);
     if (value.is_none())
     {
-      return false;
+      assembleJacFromProducts(ctx, wrt, out, cpu);
+      return;
     }
 
     const RealArray mat = RealArray::ensure(value);
@@ -463,41 +434,49 @@ public:
           "TimeResidual.assemble_jacobian() returned an array with invalid shape");
     }
 
-    if (out.numRows() != rows || out.numCols() != cols)
-    {
-      out.resize(rows, cols);
-    }
     out.setZero();
     const auto data = mat.unchecked<2>();
-    for (Index i = 0; i < rows; ++i)
+    for (Index row = 0; row < rows; ++row)
     {
-      for (Index j = 0; j < cols; ++j)
+      for (Index k = out.rowPtrData()[row];
+           k < out.rowPtrData()[row + 1];
+           ++k)
       {
-        out.set(i, j, data(i, j));
+        out.valsData()[k] = data(row, out.colIndData()[k]);
       }
     }
-    return true;
   }
 
-  void prepareLinearSolve(const TimeContext& ctx,
-                          VariableBlock      wrt,
-                          MatrixOperator&    jac,
-                          HostVector&        rhs) const override
+  void prepareLinearSolve(const HostTimeContext& ctx,
+                          VariableBlock          wrt,
+                          femx::HostCsrMatrix&   jac,
+                          HostVector&            rhs,
+                          femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
         py::get_override(this, "prepare_linear_solve");
     if (!override)
     {
-      TimeResidual::prepareLinearSolve(ctx, wrt, jac, rhs);
       return;
     }
 
+    DenseMatrix dense(jac.rows(), jac.cols());
+    for (Index row = 0; row < jac.rows(); ++row)
+    {
+      for (Index k = jac.rowPtrData()[row];
+           k < jac.rowPtrData()[row + 1];
+           ++k)
+      {
+        dense(row, jac.colIndData()[k]) = jac.valsData()[k];
+      }
+    }
+    py::array_t<Real> jac_array = denseMatrixArray(dense);
     py::array_t<Real> rhs_array = vectorArray(rhs);
     const py::object  result    = override(
         ctxData(ctx),
         wrt,
-        py::cast(&jac, py::return_value_policy::reference),
+        jac_array,
         rhs_array);
     if (result.is_none())
     {
@@ -507,7 +486,71 @@ public:
     {
       copyArray(result, rhs, "prepared right-hand side");
     }
+    if (jac_array.ndim() != 2 || jac_array.shape(0) != jac.rows()
+        || jac_array.shape(1) != jac.cols())
+    {
+      throw std::runtime_error(
+          "prepared Jacobian has an inconsistent shape");
+    }
+    const auto jac_vals = jac_array.unchecked<2>();
+    for (Index row = 0; row < jac.rows(); ++row)
+    {
+      for (Index k = jac.rowPtrData()[row];
+           k < jac.rowPtrData()[row + 1];
+           ++k)
+      {
+        jac.valsData()[k] = jac_vals(row, jac.colIndData()[k]);
+      }
+    }
   }
+
+private:
+  void updateGraph() const
+  {
+    const TimeDims dim = dims();
+    if (graph_.rows() == dim.num_res && graph_.cols() == dim.num_states)
+    {
+      return;
+    }
+    femx::HostIndexVector row_ptr(dim.num_res + 1);
+    femx::HostIndexVector col_ind(dim.num_res * dim.num_states);
+    for (Index row = 0; row <= dim.num_res; ++row)
+    {
+      row_ptr[row] = row * dim.num_states;
+    }
+    for (Index row = 0; row < dim.num_res; ++row)
+    {
+      for (Index col = 0; col < dim.num_states; ++col)
+      {
+        col_ind[row * dim.num_states + col] = col;
+      }
+    }
+    graph_ = femx::HostCsrGraph(
+        dim.num_res, dim.num_states, std::move(row_ptr), std::move(col_ind));
+  }
+
+  void assembleJacFromProducts(const HostTimeContext& ctx,
+                               VariableBlock          wrt,
+                               femx::HostCsrMatrix&   out,
+                               femx::CpuContext&      cpu) const
+  {
+    const TimeDims dim = dims();
+    HostVector     dir(dim.num_states);
+    HostVector     col;
+    out.setZero();
+    for (Index j = 0; j < dim.num_states; ++j)
+    {
+      dir.setZero();
+      dir[j] = 1.0;
+      applyJac(ctx, wrt, dir.view(), col, cpu);
+      for (Index row = 0; row < dim.num_res; ++row)
+      {
+        out.valsData()[row * dim.num_states + j] = col[row];
+      }
+    }
+  }
+
+  mutable femx::HostCsrGraph graph_;
 };
 
 py::array trajectoryValues(TimeTrajectory& trajectory)
@@ -535,39 +578,6 @@ py::array trajectoryLevel(TimeTrajectory& trajectory, Index level)
       vals.data(),
       py::cast(&trajectory, py::return_value_policy::reference));
 }
-
-py::array_t<Real> denseVals(const DenseMatrix& mat)
-{
-  py::array_t<Real> out({mat.numRows(), mat.numCols()});
-  auto              vals = out.mutable_unchecked<2>();
-  for (Index i = 0; i < mat.numRows(); ++i)
-  {
-    for (Index j = 0; j < mat.numCols(); ++j)
-    {
-      vals(i, j) = mat(i, j);
-    }
-  }
-  return out;
-}
-
-#ifdef FEMX_HAS_PETSC
-std::unique_ptr<PETScOperator> petscOperator(const HostAssemblyMap& map)
-{
-  femx::python::initializePETSc();
-
-  auto                      mat = std::make_unique<PETScOperator>(PETSC_COMM_WORLD);
-  femx::linalg::PETScVector lyt(PETSC_COMM_WORLD);
-  lyt.resize(map.numRes());
-  mat->resize(map.graph(), lyt);
-  return mat;
-}
-
-std::unique_ptr<KspLinearSolver> kspLinearSolver()
-{
-  femx::python::initializePETSc();
-  return std::make_unique<KspLinearSolver>(PETSC_COMM_WORLD);
-}
-#endif
 
 } // namespace
 
@@ -629,37 +639,9 @@ void bindState(py::module_& module)
           py::arg("mean"),
           py::arg("perturbations"));
 
-  py::class_<LinearOperator>(module, "LinearOperator")
-      .def_property_readonly("num_rows", &LinearOperator::numRows)
-      .def_property_readonly("num_cols", &LinearOperator::numCols);
-
-  py::class_<MatrixOperator, LinearOperator>(module, "MatrixOperator")
-      .def("resize", &MatrixOperator::resize)
-      .def("set_zero", &MatrixOperator::setZero)
-      .def("set", &MatrixOperator::set)
-      .def("add", &MatrixOperator::add)
-      .def("finalize", &MatrixOperator::finalize);
-
-  py::class_<HostAssemblyMap>(module, "_AssemblyMap");
-
-  py::class_<MapCsrMatrix, MatrixOperator>(module,
-                                           "_MapCsrMatrix")
-      .def(py::init<const HostAssemblyMap&>(), py::arg("map"));
-
-  py::class_<DenseMatrix, MatrixOperator>(module,
-                                          "DenseMatrix")
-      .def(py::init<>())
-      .def(py::init([](Index rows, Index cols)
-                    {
-                      auto mat = std::make_unique<DenseMatrix>();
-                      mat->resize(rows, cols);
-                      return mat; }),
-           py::arg("rows"),
-           py::arg("cols"))
-      .def_property_readonly("values", &denseVals);
-
-  py::class_<LinearSolver>(module, "LinearSolver");
-  py::class_<DenseLinearSolver, LinearSolver>(module, "DenseLinearSolver")
+  py::class_<HostCsrLinearSolver>(module, "HostCsrLinearSolver");
+  py::class_<DenseLinearSolver, HostCsrLinearSolver>(module,
+                                                     "DenseLinearSolver")
       .def(py::init<Real>(), py::arg("pivot_tolerance") = 1.0e-14);
 
 #ifdef FEMX_HAS_RESOLVE
@@ -678,8 +660,8 @@ void bindState(py::module_& module)
       .def_readwrite("rtol", &ReSolveOptions::rtol)
       .def_readwrite("flexible", &ReSolveOptions::flexible);
 
-  py::class_<ReSolveLinearSolver, LinearSolver>(module,
-                                                "_ReSolveLinearSolver")
+  py::class_<ReSolveLinearSolver, HostCsrLinearSolver>(
+      module, "_ReSolveLinearSolver")
       .def(py::init<>())
       .def(py::init<ReSolveOptions>(), py::arg("options"));
 #endif
@@ -725,12 +707,6 @@ void bindState(py::module_& module)
         }
       });
 
-  py::class_<PETScOperator, MatrixOperator>(module,
-                                            "_PETScOperator")
-      .def(py::init(&petscOperator), py::arg("map"));
-
-  py::class_<KspLinearSolver, LinearSolver>(module, "_KspLinearSolver")
-      .def(py::init(&kspLinearSolver));
 #endif
 
   py::class_<TimeDims>(module, "TimeDims")
@@ -753,9 +729,6 @@ void bindState(py::module_& module)
   py::class_<TimeResidual, PyTimeResidual>(module, "TimeResidual")
       .def(py::init<>())
       .def("dims", &TimeResidual::dims);
-
-  py::class_<TimeLinearization>(module, "TimeLinearization")
-      .def(py::init<>());
 
   py::class_<TimeTrajectory>(module,
                              "TimeTrajectory",
@@ -789,16 +762,34 @@ void bindState(py::module_& module)
                                                   * sizeof(Real)),
                          static_cast<py::ssize_t>(sizeof(Real))}); });
 
-  py::class_<TimeIntegrator>(module, "TimeIntegrator")
-      .def_property_readonly("num_steps", &TimeIntegrator::numSteps)
-      .def_property_readonly("num_states", &TimeIntegrator::numStates)
-      .def_property_readonly("num_param", &TimeIntegrator::numParams)
+  py::class_<PythonHostTimeIntegrator>(module, "TimeIntegrator")
+      .def(py::init([](const TimeResidual&  problem,
+                       HostCsrLinearSolver& solver)
+                    { return std::make_unique<PythonHostTimeIntegrator>(
+                          problem, solver); }),
+           py::arg("problem"),
+           py::arg("linear_solver"),
+           py::keep_alive<1, 2>(),
+           py::keep_alive<1, 3>())
+      .def_property_readonly(
+          "num_steps",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().numSteps(); })
+      .def_property_readonly(
+          "num_states",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().numStates(); })
+      .def_property_readonly(
+          "num_param",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().numParams(); })
       .def(
           "solve",
-          [](TimeIntegrator&   integrator,
-             const RealArray&  parameters,
-             const py::object& progress)
+          [](PythonHostTimeIntegrator& owner,
+             const RealArray&          parameters,
+             const py::object&         progress)
           {
+            auto& integrator = owner.get();
             if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
             {
               throw py::type_error("progress must be callable");
@@ -808,52 +799,53 @@ void bindState(py::module_& module)
             if (progress.is_none())
             {
               py::gil_scoped_release release;
-              integrator.solve(vals, trajectory);
+              integrator.solve(vals.view(), trajectory);
             }
             else
             {
-              PythonTimeStateMonitor monitor(progress);
-              ScopedTimeStateMonitor monitor_scope(integrator, monitor);
+              PythonTimeObserver           observer(progress);
+              HostTimeIntegrator::Observer callback =
+                  [&observer](const HostTimeStepStateContext& context)
+              {
+                return observer(context);
+              };
               py::gil_scoped_release release;
-              integrator.solve(vals, trajectory);
+              integrator.solve(vals.view(), trajectory, callback);
             }
             return trajectory;
           },
           py::arg("param"),
-          py::arg("progress") = py::none());
-
-  py::class_<TimeLinearIntegrator, TimeIntegrator>(
-      module, "TimeLinearIntegrator")
-      .def(py::init<const TimeResidual&, MatrixOperator&, LinearSolver&>(),
-           py::arg("problem"),
-           py::arg("matrix"),
-           py::arg("linear_solver"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>(),
-           py::keep_alive<1, 4>())
+          py::arg("progress") = py::none())
       .def(
           "set_initial_state",
-          [](TimeLinearIntegrator& integrator, const RealArray& state)
+          [](PythonHostTimeIntegrator& owner, const RealArray& state)
           {
-            integrator.setInitialState(
+            owner.get().setInitialState(
                 vectorFromArray(state, "initial_state"));
           },
           py::arg("initial_state"))
       .def("clear_initial_state",
-           &TimeLinearIntegrator::clearInitialState)
-      .def("reset_timing", &TimeLinearIntegrator::resetTiming)
-      .def_property_readonly("assembly_seconds",
-                             &TimeLinearIntegrator::assemblySeconds)
-      .def_property_readonly("solve_seconds",
-                             &TimeLinearIntegrator::solveSeconds)
-      .def_property_readonly("last_assembly_seconds",
-                             &TimeLinearIntegrator::lastAssemblySeconds)
-      .def_property_readonly("last_solve_seconds",
-                             &TimeLinearIntegrator::lastSolveSeconds)
-      .def_property_readonly("assembly_calls",
-                             &TimeLinearIntegrator::assemblyCalls)
-      .def_property_readonly("solve_calls",
-                             &TimeLinearIntegrator::solveCalls);
+           [](PythonHostTimeIntegrator& owner)
+           { owner.get().clearInitialState(); })
+      .def("reset_timing",
+           [](PythonHostTimeIntegrator& owner)
+           { owner.get().resetStats(); })
+      .def_property_readonly(
+          "assembly_seconds",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_sec; })
+      .def_property_readonly(
+          "solve_seconds",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_sec; })
+      .def_property_readonly(
+          "assembly_calls",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().lastStats().assm_calls; })
+      .def_property_readonly(
+          "solve_calls",
+          [](const PythonHostTimeIntegrator& owner)
+          { return owner.get().lastStats().lin_solve_calls; });
 
   py::class_<HostInitialStateMap>(module, "_InitialStateMap")
       .def_property_readonly(
@@ -869,17 +861,8 @@ void bindState(py::module_& module)
           {
             const HostVector prm = vectorFromArray(param, "param");
             HostVector       out(map.numStates());
-            femx::fem::initialState(
-                map.view(), prm.view(), out.view());
+            femx::fem::initialState(map, prm.view(), out.view());
             return vectorArray(out);
           },
           py::arg("param"));
-
-  py::class_<AffineInitialStateIntegrator, TimeIntegrator>(
-      module, "_AffineInitialStateIntegrator")
-      .def(py::init<TimeLinearIntegrator&, HostInitialStateMap&>(),
-           py::arg("integrator"),
-           py::arg("map"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>());
 }

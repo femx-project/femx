@@ -3,9 +3,9 @@ add_library(femx::inverse ALIAS femx_inverse)
 
 target_sources(
   femx_inverse
-  PRIVATE DeviceTimeObjective.cpp
+  PRIVATE TimeObjective.cpp
+          TimeObjectivePlan.hpp
           LeastSquaresObjective.cpp
-          ReducedFunctional.cpp
           SumObjective.cpp
           SumTimeObjective.cpp
           TimeBlockRegularization.cpp
@@ -13,8 +13,7 @@ target_sources(
           TimeObservationData.cpp
           TimeReducedFunctional.cpp
           TimeRegularization.cpp
-  PUBLIC DeviceTimeObjective.hpp
-         LeastSquaresObjective.hpp
+  PUBLIC LeastSquaresObjective.hpp
          Objective.hpp
          ReducedFunctional.hpp
          SumObjective.hpp
@@ -31,7 +30,7 @@ target_link_libraries(femx_inverse PUBLIC femx_config femx_common femx_linalg
                                           femx_state)
 
 if(FEMX_HAS_CUDA)
-  target_sources(femx_inverse PRIVATE DeviceTimeObjective.cu)
+  target_sources(femx_inverse PRIVATE TimeObjective.cu)
   set_target_properties(femx_inverse PROPERTIES CUDA_STANDARD 17
                                                 CUDA_STANDARD_REQUIRED ON)
 endif()

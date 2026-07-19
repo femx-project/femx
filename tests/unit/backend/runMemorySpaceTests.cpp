@@ -5,6 +5,7 @@
 
 #include "TestHelper.hpp"
 #include <femx/common/Context.hpp>
+#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -83,6 +84,25 @@ TestOutcome hostAndDeviceTypesAreDistinct()
   return status.report();
 }
 
+TestOutcome executionIsSeparateFromStorage()
+{
+  TestStatus status(__func__);
+
+  using linalg::CudaCsrBackend;
+  using linalg::HostCsrBackend;
+
+  status *= linalg::is_backend_v<HostCsrBackend>;
+  status *= linalg::is_backend_v<CudaCsrBackend>;
+  status *= HostCsrBackend::space == MemorySpace::Host;
+  status *= CudaCsrBackend::space == MemorySpace::Device;
+  status *= std::is_same<HostCsrBackend::Mat, HostCsrMatrix>::value;
+  status *= std::is_same<CudaCsrBackend::Mat, DeviceCsrMatrix>::value;
+  status *= std::is_same<HostCsrBackend::Ctx, CpuContext>::value;
+  status *= std::is_same<CudaCsrBackend::Ctx, CudaContext>::value;
+
+  return status.report();
+}
+
 TestOutcome deviceStorageRequiresExplicitStreamSemantics()
 {
   TestStatus status(__func__);
@@ -155,6 +175,7 @@ int main()
 {
   femx::tests::TestingResults results;
   results += femx::tests::hostAndDeviceTypesAreDistinct();
+  results += femx::tests::executionIsSeparateFromStorage();
   results += femx::tests::deviceStorageRequiresExplicitStreamSemantics();
   results += femx::tests::hostVectorOwnsOnlyHostValues();
   results += femx::tests::arrayUsesHostVectorStorage();

@@ -41,11 +41,11 @@ void checkKeys(const json&                        node,
 template <typename T>
 void assign(const json& node,
             const char* key,
-            T&          value)
+            T&          val)
 {
   if (node.contains(key))
   {
-    value = node.at(key).get<T>();
+    val = node.at(key).get<T>();
   }
 }
 
@@ -192,7 +192,7 @@ void parseVelocityTable(const std::filesystem::path& path,
   }
 
   velocity.time.clear();
-  velocity.value.clear();
+  velocity.vals.clear();
 
   std::string line;
   Index       line_no = 0;
@@ -216,7 +216,7 @@ void parseVelocityTable(const std::filesystem::path& path,
                                + path.string());
     }
     velocity.time.push_back(t);
-    velocity.value.push_back(v);
+    velocity.vals.push_back(v);
   }
 }
 
@@ -307,8 +307,8 @@ void parseVelocityTimeProfile(const json&                  node,
   }
   else if (type == "uniform")
   {
-    velocity.time  = {0.0};
-    velocity.value = {parseVelocityScalar(node)};
+    velocity.time = {0.0};
+    velocity.vals = {parseVelocityScalar(node)};
     assign(node, "period", velocity.per);
   }
   else if (type == "sine")
@@ -328,7 +328,7 @@ void parseVelocityTimeProfile(const json&                  node,
     velocity.per    = per;
     velocity.time =
         {0.0, 0.25 * per, 0.5 * per, 0.75 * per, per};
-    velocity.value =
+    velocity.vals =
         {base,
          base * (1.0 + amplitude),
          base,
@@ -425,7 +425,7 @@ VelocityParams parseVelocity(const json&                  node,
   }
   if (node.contains("value"))
   {
-    velocity.value =
+    velocity.vals =
         parseRealVector(node.at("value"), "Boundary velocity value");
   }
   else if (!node.contains("table")
@@ -486,7 +486,7 @@ void validateVelocity(const VelocityParams& velocity)
   {
     throw std::runtime_error("Boundary velocity time must not be empty");
   }
-  if (velocity.time.size() != velocity.value.size())
+  if (velocity.time.size() != velocity.vals.size())
   {
     throw std::runtime_error(
         "Boundary velocity time and value must have the same length");

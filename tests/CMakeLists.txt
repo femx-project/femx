@@ -174,7 +174,7 @@ if(TARGET femx_linalg_petsc)
   target_include_directories(runPETScSolverTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runPETScSolverTests
-                        PRIVATE femx::linalg_petsc femx::assembly)
+                        PRIVATE femx::linalg_petsc femx::assembly femx::inverse)
   add_test(NAME PETScSolverTests COMMAND runPETScSolverTests)
   set_tests_properties(PETScSolverTests PROPERTIES LABELS "petsc;optional")
 endif()

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <femx/assembly/BoundaryMap.hpp>
+#include <femx/common/Checks.hpp>
 
 namespace femx
 {
@@ -14,11 +15,8 @@ namespace
 template <MemorySpace Space>
 void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
 {
-  if (mat.graph().layoutId() != map.layoutId())
-  {
-    throw std::runtime_error(
-        "BoundaryMap matrix does not match the mapped CSR layout");
-  }
+  require(mat.graph().layoutId() == map.layoutId(),
+          "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
 void checkForward(const HostBoundaryMap& map,
@@ -27,22 +25,13 @@ void checkForward(const HostBoundaryMap& map,
                   const HostVector&      bc_vals)
 {
   checkMat(map, mat);
-  if (rhs.size() != map.rows() || bc_vals.size() != map.numBcs())
-  {
-    throw std::runtime_error(
-        "BoundaryMap forward vectors have incompatible sizes");
-  }
-  if (&rhs == &bc_vals)
-  {
-    throw std::runtime_error(
-        "BoundaryMap RHS and prescribed values must not alias");
-  }
+  require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
+          "BoundaryMap forward vectors have incompatible sizes");
+  require(&rhs != &bc_vals,
+          "BoundaryMap RHS and prescribed values must not alias");
   const HostVector& mat_vals = mat.vals();
-  if (&rhs == &mat_vals || &bc_vals == &mat_vals)
-  {
-    throw std::runtime_error(
-        "BoundaryMap vectors must not alias matrix values");
-  }
+  require(&rhs != &mat_vals && &bc_vals != &mat_vals,
+          "BoundaryMap vectors must not alias matrix values");
 }
 
 void replaceRowsRaw(const HostBoundaryMap& map,
@@ -69,10 +58,8 @@ void replaceRowsRaw(const HostBoundaryMap& map,
 HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
                                 const HostCsrGraph& graph)
 {
-  if (graph.rows() != graph.cols())
-  {
-    throw std::runtime_error("BoundaryMap requires a square CSR graph");
-  }
+  require(graph.rows() == graph.cols(),
+          "BoundaryMap requires a square CSR graph");
 
   const Index     num_bcs = dofs.size();
   HostIndexVector bc_rows(num_bcs);
@@ -84,16 +71,10 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
   for (Index ib = 0; ib < num_bcs; ++ib)
   {
     const Index dof = dofs[ib];
-    if (dof < 0 || dof >= graph.rows())
-    {
-      throw std::runtime_error(
-          "BoundaryMap constrained DOF is out of range");
-    }
-    if (bc_mask[dof] != 0)
-    {
-      throw std::runtime_error(
-          "BoundaryMap constrained DOFs must be unique");
-    }
+    require(dof >= 0 && dof < graph.rows(),
+            "BoundaryMap constrained DOF is out of range");
+    require(bc_mask[dof] == 0,
+            "BoundaryMap constrained DOFs must be unique");
     bc_rows[ib]    = dof;
     bc_mask[dof]   = 1;
     bc_by_col[dof] = ib;
@@ -112,11 +93,8 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
         ++col_offsets[ib + 1];
         if (row == col)
         {
-          if (diag[ib] >= 0)
-          {
-            throw std::runtime_error(
-                "BoundaryMap constrained row has duplicate diagonal entries");
-          }
+          require(diag[ib] < 0,
+                  "BoundaryMap constrained row has duplicate diagonal entries");
           diag[ib] = k;
         }
       }
@@ -125,11 +103,8 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
 
   for (Index ib = 0; ib < num_bcs; ++ib)
   {
-    if (diag[ib] < 0)
-    {
-      throw std::runtime_error(
-          "BoundaryMap constrained row has no diagonal entry");
-    }
+    require(diag[ib] >= 0,
+            "BoundaryMap constrained row has no diagonal entry");
     col_offsets[ib + 1] += col_offsets[ib];
   }
 
@@ -201,27 +176,30 @@ void replaceRows(const HostBoundaryMap& map,
 }
 
 void replaceRes(const HostBoundaryMap& map,
-                const HostVector&      state,
-                const HostVector&      bc_vals,
-                HostVector&            res)
+                HostConstVectorView    state,
+                HostConstVectorView    bc_vals,
+                HostVectorView         res)
 {
-  if (state.size() != map.rows() || res.size() != map.rows()
-      || bc_vals.size() != map.numBcs())
-  {
-    throw std::runtime_error(
-        "BoundaryMap residual vectors have incompatible sizes");
-  }
-  if (&state == &res || &bc_vals == &res)
-  {
-    throw std::runtime_error(
-        "BoundaryMap residual output must not alias its inputs");
-  }
+  require(state.size() == map.rows() && res.size() == map.rows()
+              && bc_vals.size() == map.numBcs(),
+          "BoundaryMap residual vectors have incompatible sizes");
+  require(!detail::overlaps(state, res)
+              && !detail::overlaps(bc_vals, res),
+          "BoundaryMap residual output must not alias its inputs");
   const auto view = map.view();
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     const Index row = view.bcRow(ib);
     res[row]        = state[row] - bc_vals[ib];
   }
+}
+
+void replaceRes(const HostBoundaryMap& map,
+                const HostVector&      state,
+                const HostVector&      bc_vals,
+                HostVector&            res)
+{
+  replaceRes(map, state.view(), bc_vals.view(), res.view());
 }
 
 void prepareForwardSolve(const HostBoundaryMap& map,
@@ -266,9 +244,9 @@ void replaceRows(const DeviceBoundaryMap&,
 }
 
 void replaceRes(const DeviceBoundaryMap&,
-                const DeviceVector&,
-                const DeviceVector&,
-                DeviceVector&,
+                DeviceConstVectorView,
+                DeviceConstVectorView,
+                DeviceVectorView,
                 CudaContext&)
 {
   throw std::runtime_error(

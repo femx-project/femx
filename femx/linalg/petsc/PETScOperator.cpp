@@ -1,17 +1,93 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/common/Checks.hpp>
 #include <femx/linalg/CsrGraph.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/linalg/petsc/PETScVector.hpp>
-#include <femx/linalg/petsc/VectorConversion.hpp>
 
 namespace femx
 {
 namespace linalg
 {
+
+void detail::check(PetscErrorCode ierr, const char* op)
+{
+  if (ierr != PETSC_SUCCESS)
+  {
+    throw std::runtime_error(std::string(op) + " failed");
+  }
+}
+
+void detail::checkMPI(int ierr, const char* op)
+{
+  if (ierr != MPI_SUCCESS)
+  {
+    throw std::runtime_error(std::string(op) + " failed");
+  }
+}
+
+void detail::checkInit()
+{
+  PetscBool init = PETSC_FALSE;
+  check(PetscInitialized(&init), "PetscInitialized");
+  require(init == PETSC_TRUE, "PETSc must be initialized");
+}
+
+PetscErrorCode detail::copyFromPETSc(Vec src, HostVector& dst)
+{
+  PetscInt size = 0;
+  PetscCall(VecGetSize(src, &size));
+  dst.resize(static_cast<Index>(size));
+
+  VecScatter scatter = nullptr;
+  Vec        all     = nullptr;
+  PetscCall(VecScatterCreateToAll(src, &scatter, &all));
+  PetscCall(VecScatterBegin(
+      scatter, src, all, INSERT_VALUES, SCATTER_FORWARD));
+  PetscCall(VecScatterEnd(
+      scatter, src, all, INSERT_VALUES, SCATTER_FORWARD));
+
+  const PetscScalar* vals = nullptr;
+  PetscCall(VecGetArrayRead(all, &vals));
+  for (PetscInt i = 0; i < size; ++i)
+  {
+    dst[static_cast<Index>(i)] = PetscRealPart(vals[i]);
+  }
+  PetscCall(VecRestoreArrayRead(all, &vals));
+  PetscCall(VecScatterDestroy(&scatter));
+  PetscCall(VecDestroy(&all));
+  return PETSC_SUCCESS;
+}
+
+PetscErrorCode detail::copyToPETSc(HostConstVectorView src, Vec dst)
+{
+  PetscInt size = 0;
+  PetscCall(VecGetSize(dst, &size));
+  if (src.size() != static_cast<Index>(size))
+  {
+    return PETSC_ERR_ARG_SIZ;
+  }
+
+  PetscInt begin = 0;
+  PetscInt end   = 0;
+  PetscCall(VecGetOwnershipRange(dst, &begin, &end));
+  PetscScalar* vals = nullptr;
+  PetscCall(VecGetArray(dst, &vals));
+  for (PetscInt i = begin; i < end; ++i)
+  {
+    vals[i - begin] =
+        static_cast<PetscScalar>(src[static_cast<Index>(i)]);
+  }
+  PetscCall(VecRestoreArray(dst, &vals));
+  return PETSC_SUCCESS;
+}
+
+using detail::check;
+using detail::checkInit;
+using detail::checkMPI;
 
 PETScOperator::PETScOperator(MPI_Comm comm)
   : comm_(comm)
@@ -26,37 +102,25 @@ PETScOperator::~PETScOperator()
   }
 }
 
-Index PETScOperator::numRows() const
+Index PETScOperator::rows() const
 {
   return rows_;
 }
 
-Index PETScOperator::numCols() const
+Index PETScOperator::cols() const
 {
   return cols_;
 }
 
 Mat PETScOperator::mat() const
 {
-  if (mat_ == nullptr)
-  {
-    throw std::runtime_error("PETScOperator is not initialized");
-  }
+  require(mat_ != nullptr, "PETScOperator is not initialized");
   return mat_;
 }
 
 MPI_Comm PETScOperator::comm() const
 {
   return comm_;
-}
-
-void PETScOperator::setDefaultNnzPerRow(Index nnz)
-{
-  if (nnz <= 0)
-  {
-    throw std::runtime_error("PETScOperator preallocation must be positive");
-  }
-  default_nnz_per_row_ = nnz;
 }
 
 void PETScOperator::resize(Index rows, Index cols)
@@ -86,7 +150,8 @@ void PETScOperator::resize(Index rows, Index cols)
   const PetscInt nrow_local = comm_size == 1 ? nrow : PETSC_DECIDE;
   const PetscInt ncol_local = comm_size == 1 ? ncol : PETSC_DECIDE;
 
-  Index nnz_per_row = cols_ > 0 ? default_nnz_per_row_ : 1;
+  constexpr Index kDefaultNnzPerRow = 32;
+  Index           nnz_per_row       = cols_ > 0 ? kDefaultNnzPerRow : 1;
   if (cols_ > 0 && cols_ < nnz_per_row)
   {
     nnz_per_row = cols_;
@@ -107,16 +172,9 @@ void PETScOperator::resize(Index rows, Index cols)
         "MatSetOption");
 }
 
-void PETScOperator::resize(const HostCsrGraph& graph,
-                           const PETScVector&  lyt)
+void PETScOperator::resize(const HostCsrGraph& graph)
 {
   checkInit();
-
-  if (lyt.size() != graph.rows())
-  {
-    throw std::runtime_error(
-        "PETScOperator row layout does not match CSR graph");
-  }
 
   if (mat_ != nullptr && rows_ == graph.rows() && cols_ == graph.cols())
   {
@@ -129,12 +187,29 @@ void PETScOperator::resize(const HostCsrGraph& graph,
     check(MatDestroy(&mat_), "MatDestroy");
   }
 
-  comm_ = lyt.comm();
   rows_ = graph.rows();
   cols_ = graph.cols();
 
-  const PetscInt begin = lyt.ownershipBegin();
-  const PetscInt end   = lyt.ownershipEnd();
+  PetscInt local_rows  = PETSC_DECIDE;
+  PetscInt global_rows = static_cast<PetscInt>(rows_);
+  check(PetscSplitOwnership(comm_, &local_rows, &global_rows),
+        "PetscSplitOwnership");
+
+  PetscInt begin = 0;
+  checkMPI(MPI_Exscan(&local_rows,
+                      &begin,
+                      1,
+                      MPIU_INT,
+                      MPI_SUM,
+                      comm_),
+           "MPI_Exscan");
+  PetscMPIInt rank = 0;
+  checkMPI(MPI_Comm_rank(comm_, &rank), "MPI_Comm_rank");
+  if (rank == 0)
+  {
+    begin = 0;
+  }
+  const PetscInt end = begin + local_rows;
 
   Array<PetscInt> d_nnz;
   Array<PetscInt> o_nnz;
@@ -168,46 +243,38 @@ void PETScOperator::setZero()
 
 void PETScOperator::set(Index row, Index col, Real val)
 {
-  setValue(row, col, val, INSERT_VALUES);
+  require(mat_ != nullptr, "PETScOperator is not initialized");
+  check(MatSetValue(mat_,
+                    static_cast<PetscInt>(row),
+                    static_cast<PetscInt>(col),
+                    static_cast<PetscScalar>(val),
+                    INSERT_VALUES),
+        "MatSetValue");
 }
 
-void PETScOperator::add(Index row, Index col, Real val)
+void PETScOperator::addBlock(const Array<Index>& rows,
+                             const Array<Index>& cols,
+                             const DenseMatrix&  mat_e)
 {
-  setValue(row, col, val, ADD_VALUES);
-}
-
-void PETScOperator::addAtomic(Index row, Index col, Real val)
-{
-#pragma omp critical(femx_petsc_matrix_set_value)
+  require(mat_e.rows() == rows.size() && mat_e.cols() == cols.size(),
+          "PETScOperator local block size does not match dofs");
+  static thread_local Array<PetscInt> petsc_rows;
+  static thread_local Array<PetscInt> petsc_cols;
+  petsc_rows.resize(rows.size());
+  petsc_cols.resize(cols.size());
+  for (Index i = 0; i < rows.size(); ++i)
   {
-    add(row, col, val);
+    petsc_rows[i] = static_cast<PetscInt>(rows[i]);
   }
-}
-
-void PETScOperator::addBlock(const PetscInt*    dofs,
-                             Index              num_dofs,
-                             const DenseMatrix& mat_e)
-{
-  addBlock(dofs, num_dofs, dofs, num_dofs, mat_e);
-}
-
-void PETScOperator::addBlock(const PetscInt* dofs, Index num_dofs, const Real* vals)
-{
-  addBlock(dofs, num_dofs, dofs, num_dofs, vals);
-}
-
-void PETScOperator::addBlock(const PetscInt*    rows,
-                             Index              num_rows,
-                             const PetscInt*    cols,
-                             Index              num_cols,
-                             const DenseMatrix& mat_e)
-{
-  if (mat_e.numRows() != num_rows || mat_e.numCols() != num_cols)
+  for (Index i = 0; i < cols.size(); ++i)
   {
-    throw std::runtime_error(
-        "PETScOperator local block size does not match dofs");
+    petsc_cols[i] = static_cast<PetscInt>(cols[i]);
   }
-  addBlock(rows, num_rows, cols, num_cols, mat_e.data());
+  addBlock(petsc_rows.data(),
+           petsc_rows.size(),
+           petsc_cols.data(),
+           petsc_cols.size(),
+           mat_e.data());
 }
 
 void PETScOperator::addBlock(const PetscInt* rows,
@@ -216,10 +283,7 @@ void PETScOperator::addBlock(const PetscInt* rows,
                              Index           num_cols,
                              const Real*     vals)
 {
-  if (mat_ == nullptr)
-  {
-    throw std::runtime_error("PETScOperator is not initialized");
-  }
+  require(mat_ != nullptr, "PETScOperator is not initialized");
   check(MatSetValues(mat_,
                      static_cast<PetscInt>(num_rows),
                      rows,
@@ -232,48 +296,15 @@ void PETScOperator::addBlock(const PetscInt* rows,
 
 void PETScOperator::finalize()
 {
-  if (mat_ == nullptr)
-  {
-    throw std::runtime_error("PETScOperator is not initialized");
-  }
+  require(mat_ != nullptr, "PETScOperator is not initialized");
   check(MatAssemblyBegin(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyBegin");
   check(MatAssemblyEnd(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyEnd");
 }
 
-void PETScOperator::zeroRowsCols(const Array<Index>& rows,
-                                 Real                diag,
-                                 const PETScVector&  vals,
-                                 PETScVector&        rhs)
+void PETScOperator::replaceRows(const Array<Index>& rows, Real diag)
 {
-  if (vals.size() != rows_ || rhs.size() != rows_)
-  {
-    throw std::runtime_error(
-        "PETScOperator zeroRowsCols received incompatible vectors");
-  }
-  if (rows.empty())
-  {
-    return;
-  }
-
-  Array<PetscInt> prows;
-  prows.reserve(rows.size());
-  for (Index row : rows)
-  {
-    if (row < 0 || row >= rows_)
-    {
-      throw std::runtime_error(
-          "PETScOperator zeroRowsCols row is out of range");
-    }
-    prows.push_back(static_cast<PetscInt>(row));
-  }
-
-  check(MatZeroRowsColumns(mat(),
-                           static_cast<PetscInt>(prows.size()),
-                           prows.data(),
-                           static_cast<PetscScalar>(diag),
-                           vals.vec(),
-                           rhs.vec()),
-        "MatZeroRowsColumns");
+  finalize();
+  zeroRows(rows, diag);
 }
 
 void PETScOperator::zeroRows(const Array<Index>& rows, Real diag)
@@ -287,10 +318,8 @@ void PETScOperator::zeroRows(const Array<Index>& rows, Real diag)
   prows.reserve(rows.size());
   for (Index row : rows)
   {
-    if (row < 0 || row >= rows_)
-    {
-      throw std::runtime_error("PETScOperator zeroRows row is out of range");
-    }
+    require(row >= 0 && row < rows_,
+            "PETScOperator zeroRows row is out of range");
     prows.push_back(static_cast<PetscInt>(row));
   }
 
@@ -303,35 +332,29 @@ void PETScOperator::zeroRows(const Array<Index>& rows, Real diag)
         "MatZeroRows");
 }
 
-void PETScOperator::apply(const HostVector& dir, HostVector& out) const
+void PETScOperator::apply(HostConstVectorView dir, HostVector& out) const
 {
-  if (dir.size() != numCols())
-  {
-    throw std::runtime_error(
-        "PETScOperator apply received incompatible vector");
-  }
+  require(dir.size() == cols(),
+          "PETScOperator apply received incompatible vector");
 
   ScopedVec x;
   ScopedVec y;
-  createVec(numCols(), x);
-  createVec(numRows(), y);
+  createVec(cols(), x);
+  createVec(rows(), y);
   check(detail::copyToPETSc(dir, x.get()), "copyToPETSc");
   check(MatMult(mat(), x.get(), y.get()), "MatMult");
   check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
 }
 
-void PETScOperator::applyT(const HostVector& dir, HostVector& out) const
+void PETScOperator::applyT(HostConstVectorView dir, HostVector& out) const
 {
-  if (dir.size() != numRows())
-  {
-    throw std::runtime_error(
-        "PETScOperator transpose apply received incompatible vector");
-  }
+  require(dir.size() == rows(),
+          "PETScOperator transpose apply received incompatible vector");
 
   ScopedVec x;
   ScopedVec y;
-  createVec(numRows(), x);
-  createVec(numCols(), y);
+  createVec(rows(), x);
+  createVec(cols(), y);
   check(detail::copyToPETSc(dir, x.get()), "copyToPETSc");
   check(MatMultTranspose(mat(), x.get(), y.get()), "MatMultTranspose");
   check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
@@ -366,46 +389,6 @@ void PETScOperator::createVec(Index size, ScopedVec& out) const
   check(VecCreate(comm_, out.put()), "VecCreate");
   check(VecSetSizes(out.get(), n_local, n), "VecSetSizes");
   check(VecSetFromOptions(out.get()), "VecSetFromOptions");
-}
-
-void PETScOperator::setValue(Index row, Index col, Real val, InsertMode mode)
-{
-  if (mat_ == nullptr)
-  {
-    throw std::runtime_error("PETScOperator is not initialized");
-  }
-  check(MatSetValue(mat_,
-                    static_cast<PetscInt>(row),
-                    static_cast<PetscInt>(col),
-                    static_cast<PetscScalar>(val),
-                    mode),
-        "MatSetValue");
-}
-
-void PETScOperator::checkInit()
-{
-  PetscBool init = PETSC_FALSE;
-  check(PetscInitialized(&init), "PetscInitialized");
-  if (init != PETSC_TRUE)
-  {
-    throw std::runtime_error("PETScOperator requires initialized PETSc");
-  }
-}
-
-void PETScOperator::check(PetscErrorCode ierr, const char* op)
-{
-  if (ierr != PETSC_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + " failed");
-  }
-}
-
-void PETScOperator::checkMPI(int ierr, const char* op)
-{
-  if (ierr != MPI_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + " failed");
-  }
 }
 
 void PETScOperator::computePrealloc(const HostCsrGraph& graph,

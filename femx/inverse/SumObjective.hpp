@@ -37,7 +37,7 @@ public:
                  HostVector&       out) const override;
 
 private:
-  static void addInto(const HostVector& input,
+  static void addInto(const HostVector& src,
                       HostVector&       out,
                       Index             size);
 

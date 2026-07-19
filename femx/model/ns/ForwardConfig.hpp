@@ -65,7 +65,7 @@ struct VelocityProfileParams
 struct VelocityParams
 {
   HostVector            time;                     ///< Time samples.
-  HostVector            value;                    ///< Velocity or flow-rate samples.
+  HostVector            vals;                     ///< Velocity or flow-rate samples.
   Real                  area   = 1.0;             ///< Boundary area for flow-rate input.
   Real                  per    = 0.0;             ///< Period for pulse inputs.
   std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0}; ///< Boundary normal.

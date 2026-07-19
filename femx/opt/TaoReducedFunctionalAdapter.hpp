@@ -9,7 +9,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/VectorConversion.hpp>
+#include <femx/linalg/petsc/PETScBackend.hpp>
 
 namespace femx
 {
@@ -86,7 +86,7 @@ public:
       if (grad != nullptr)
       {
         PetscCall(::femx::linalg::detail::copyToPETSc(
-            adapter->grad_, grad));
+            adapter->grad_.view(), grad));
       }
     }
     catch (const std::exception& e)

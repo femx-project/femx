@@ -5,6 +5,7 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/fem/ControlMap.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -13,6 +14,10 @@
 #include <femx/model/ns/Components.hpp>
 #include <femx/model/ns/Config.hpp>
 #include <femx/state/TimeResidual.hpp>
+
+#if defined(FEMX_HAS_PETSC)
+#include <femx/linalg/petsc/PETScBackend.hpp>
+#endif
 
 namespace femx::model::ns
 {
@@ -23,13 +28,13 @@ namespace femx::model::ns
 class NavierStokesModel
 {
 public:
-  NavierStokesModel(const std::string& mesh_file,
-                    Index              num_steps,
+  NavierStokesModel(const std::string& path,
+                    Index              nstep,
                     Real               dt,
                     FluidParams        fluid);
 
   NavierStokesModel(fem::Mesh   mesh,
-                    Index       num_steps,
+                    Index       nstep,
                     Real        dt,
                     FluidParams fluid);
 
@@ -54,8 +59,8 @@ public:
   const fem::HostGeometry& geometry() const;
 
   /** @brief Return the Host time residual assembled from the shared row operator. */
-  state::TimeResidual&       residual();
-  const state::TimeResidual& residual() const;
+  state::HostTimeResidual&       residual();
+  const state::HostTimeResidual& residual() const;
 
   /** @brief Restrict Host assembly to the half-open element range. */
   void setElemRange(Index ie_begin, Index ie_end);
@@ -70,13 +75,17 @@ public:
 
   Array<Index> velocityDofs() const;
   Array<Index> velocityBoundaryDofs(Index boundary_tag) const;
-  Array<Index> velocityBoundaryDofs(
-      const std::string& boundary_name) const;
+  Array<Index> velocityBoundaryDofs(const std::string& boundary_name) const;
 
 private:
   class Residual;
 
-  Index num_steps_{0};
+#if defined(FEMX_HAS_PETSC)
+  friend std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
+  makePetscTimeResidual(const NavierStokesModel& model);
+#endif
+
+  Index nstep_{0};
   Real  dt_{0.0};
 
   fem::Mesh                           mesh_;
@@ -87,6 +96,20 @@ private:
   HostNavierData                      data_;
   assembly::HostAssemblyMap           map_;
   std::unique_ptr<Residual>           res_;
+  Index                               ie_begin_{0};
+  Index                               ie_end_{0};
 };
+
+/** @brief Copy the parameter-free physics residual and add Device constraints. */
+std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
+    const NavierStokesModel& model,
+    fem::HostControlMap      control,
+    fem::HostInitialStateMap init_state = {});
+
+#if defined(FEMX_HAS_PETSC)
+/** @brief Create the PETSc-matrix Navier physics residual. */
+std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
+makePetscTimeResidual(const NavierStokesModel& model);
+#endif
 
 } // namespace femx::model::ns

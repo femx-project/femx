@@ -1,7 +1,7 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -36,11 +36,11 @@ public:
 private:
   void checkDims() const;
   void checkAlpha(const HostVector& alpha) const;
-  void checkPhysical(const HostVector& value) const;
+  void checkPhysical(const HostVector& val) const;
 
 private:
   HostVector  mean_;
-  DenseMatrix perturbations_;
+  DenseMatrix perts_ ;
 };
 
 } // namespace state

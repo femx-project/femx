@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 
 namespace femx
@@ -14,11 +15,8 @@ LeastSquaresObjective::LeastSquaresObjective(Index num_states,
   : num_states_(num_states),
     num_param_(num_param)
 {
-  if (num_states_ < 0 || num_param_ < 0)
-  {
-    throw std::runtime_error(
-        "LeastSquaresObjective received invalid dimensions");
-  }
+  require(num_states_ >= 0 && num_param_ >= 0,
+          "LeastSquaresObjective received invalid dimensions");
 }
 
 LeastSquaresObjective::LeastSquaresObjective(
@@ -116,11 +114,8 @@ void LeastSquaresObjective::paramGrad(const HostVector& state,
 
 HostVector LeastSquaresObjective::uniformWeights(Index size, Real weight)
 {
-  if (weight < 0.0 || !std::isfinite(weight))
-  {
-    throw std::runtime_error(
-        "LeastSquaresObjective received invalid weight");
-  }
+  require(weight >= 0.0 && std::isfinite(weight),
+          "LeastSquaresObjective received invalid weight");
   return HostVector(size, weight);
 }
 
@@ -133,13 +128,13 @@ Real LeastSquaresObjective::termValue(const HostVector& x,
     return 0.0;
   }
 
-  Real value = 0.0;
+  Real val = 0.0;
   for (Index i = 0; i < x.size(); ++i)
   {
     const Real diff  = x[i] - target[i];
-    value           += 0.5 * weights[i] * diff * diff;
+    val             += 0.5 * weights[i] * diff * diff;
   }
-  return value;
+  return val;
 }
 
 void LeastSquaresObjective::termGrad(const HostVector& x,
@@ -163,11 +158,8 @@ void LeastSquaresObjective::checkInputSizes(
     const HostVector& state,
     const HostVector& prm) const
 {
-  if (state.size() != num_states_ || prm.size() != num_param_)
-  {
-    throw std::runtime_error(
-        "LeastSquaresObjective received inconsistent vector sizes");
-  }
+  require(state.size() == num_states_ && prm.size() == num_param_,
+          "LeastSquaresObjective received inconsistent vector sizes");
 }
 
 void LeastSquaresObjective::checkTerm(const HostVector& target,
@@ -175,19 +167,14 @@ void LeastSquaresObjective::checkTerm(const HostVector& target,
                                       Index             size,
                                       const char*       name) const
 {
-  if (target.size() != size || weights.size() != size)
-  {
-    throw std::runtime_error(
-        std::string("LeastSquaresObjective ") + name + " term size mismatch");
-  }
+  require(target.size() == size && weights.size() == size,
+          std::string("LeastSquaresObjective ") + name
+              + " term size mismatch");
   for (Index i = 0; i < weights.size(); ++i)
   {
-    if (weights[i] < 0.0 || !std::isfinite(weights[i]))
-    {
-      throw std::runtime_error(
-          std::string("LeastSquaresObjective ") + name
-          + " weight must be nonnegative");
-    }
+    require(weights[i] >= 0.0 && std::isfinite(weights[i]),
+            std::string("LeastSquaresObjective ") + name
+                + " weight must be nonnegative");
   }
 }
 

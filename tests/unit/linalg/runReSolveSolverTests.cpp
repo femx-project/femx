@@ -38,28 +38,28 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
   constexpr Index nx = 16;
   constexpr Index ny = 16;
 
-  auto                 map = solver::makeGrid5PointMap(nx, ny);
-  linalg::MapCsrMatrix op(map);
-  solver::fillGrid5PointMat(op, nx, ny);
+  const auto    map = solver::makeGrid5PointMap(nx, ny);
+  HostCsrMatrix mat(map.graph());
+  solver::fillGrid5PointMat(mat, nx, ny);
 
   linalg::ReSolveLinearSolver lin_solver;
   return solver::solvesForwardAndTranspose(
-      __func__, lin_solver, op, solver::expectedGridSolution(nx, ny), 1.0e-7);
+      __func__, lin_solver, mat, solver::expectedGridSolution(nx, ny), 1.0e-7);
 }
 
 #if defined(RESOLVE_USE_KLU)
 TestOutcome resolveCpuKluSolvesForwardAndTranspose()
 {
-  auto                 map = solver::makeDense3Map();
-  linalg::MapCsrMatrix op(map);
-  solver::fillTestMat(op);
+  const auto    map = solver::makeDense3Map();
+  HostCsrMatrix mat(map.graph());
+  solver::fillTestMat(mat);
 
   linalg::ReSolveLinearSolver lin_solver(kluOptions());
-  return solver::solvesForwardAndTranspose(__func__, lin_solver, op);
+  return solver::solvesForwardAndTranspose(__func__, lin_solver, mat);
 }
 #endif
 
-TestOutcome resolveCpuStoredOperatorSolves()
+TestOutcome resolveCpuConcreteMatrixReusesStorage()
 {
   TestStatus status(__func__);
 
@@ -68,27 +68,25 @@ TestOutcome resolveCpuStoredOperatorSolves()
     constexpr Index nx = 16;
     constexpr Index ny = 16;
 
-    auto                 map = solver::makeGrid5PointMap(nx, ny);
-    linalg::MapCsrMatrix op(map);
-    solver::fillGrid5PointMat(op, nx, ny);
+    const auto    map = solver::makeGrid5PointMap(nx, ny);
+    HostCsrMatrix mat(map.graph());
+    solver::fillGrid5PointMat(mat, nx, ny);
 
     linalg::ReSolveLinearSolver lin_solver;
-    lin_solver.setOperator(op.mat());
+    CpuContext                  ctx;
 
     const HostVector expected = solver::expectedGridSolution(nx, ny);
-    HostVector       rhs;
-    op.apply(expected, rhs);
+    HostVector       rhs(expected.size());
+    apply(mat, expected.view(), rhs.view(), ctx);
 
     HostVector x;
-    lin_solver.solve(rhs, x);
+    lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
 
-    op.setZero();
-    solver::fillGrid5PointMat(op, nx, ny);
-    lin_solver.setOperator(op.mat());
-
-    op.apply(expected, rhs);
-    lin_solver.solve(rhs, x);
+    mat.setZero();
+    solver::fillGrid5PointMat(mat, nx, ny);
+    apply(mat, expected.view(), rhs.view(), ctx);
+    lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
   }
   catch (const std::exception& e)
@@ -106,17 +104,18 @@ TestOutcome resolveZeroRhsReturnsZero()
 
   try
   {
-    auto                 map = solver::makeDense3Map();
-    linalg::MapCsrMatrix op(map);
-    solver::fillTestMat(op);
+    const auto    map = solver::makeDense3Map();
+    HostCsrMatrix mat(map.graph());
+    solver::fillTestMat(mat);
     const HostVector rhs(3, 0.0);
     HostVector       sol{1.0, 2.0, 3.0};
+    CpuContext       ctx;
 
     linalg::ReSolveLinearSolver host_solver;
-    host_solver.solve(op, rhs, sol);
+    host_solver.solve(mat, rhs, sol, ctx);
     status *= solver::vecNear(sol, rhs, 0.0);
     sol     = {1.0, 2.0, 3.0};
-    host_solver.solveT(op, rhs, sol);
+    host_solver.solveT(mat, rhs, sol, ctx);
     status *= solver::vecNear(sol, rhs, 0.0);
   }
   catch (const std::exception& e)
@@ -140,7 +139,7 @@ int main(int, char**)
 #if defined(RESOLVE_USE_KLU)
   results += femx::tests::resolveCpuKluSolvesForwardAndTranspose();
 #endif
-  results += femx::tests::resolveCpuStoredOperatorSolves();
+  results += femx::tests::resolveCpuConcreteMatrixReusesStorage();
   results += femx::tests::resolveZeroRhsReturnsZero();
   return results.summary();
 }

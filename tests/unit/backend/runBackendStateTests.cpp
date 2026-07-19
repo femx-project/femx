@@ -6,7 +6,6 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/CsrTranspose.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -116,51 +115,24 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   return status.report();
 }
 
-TestOutcome persistentTransposeSupportsAdjointIdentity()
+TestOutcome csrTransposeApplySupportsAdjointIdentity()
 {
   TestStatus status(__func__);
 
   const HostCsrGraph graph = denseThreeByThreeGraph();
   HostCsrMatrix      mat(graph);
   setMatVals(mat);
-
-  const HostCsrTransposeMap tr_map(graph);
-  HostCsrMatrix             tr(tr_map.trGraph());
-  trVals(mat, tr_map, tr);
 
   const HostVector x{1.0, -2.0, 0.5};
   const HostVector y{0.25, 3.0, -1.0};
-  status *= near(dot(mul(mat, x), y),
-                 dot(x, mul(tr, y)));
+  HostVector       transpose_product(mat.cols());
+  CpuContext       ctx;
+  applyT(mat, y.view(), transpose_product.view(), ctx);
+  status *= near(dot(mul(mat, x), y), dot(x, transpose_product));
 
   mat.valsData()[1] = 11.0;
-  trVals(mat, tr_map, tr);
-  status *= near(dot(mul(mat, x), y),
-                 dot(x, mul(tr, y)));
-
-  return status.report();
-}
-
-TestOutcome trMatGraphSurvivesMapMove()
-{
-  TestStatus status(__func__);
-
-  const HostCsrGraph graph = denseThreeByThreeGraph();
-  HostCsrMatrix      mat(graph);
-  setMatVals(mat);
-
-  HostCsrTransposeMap map(graph);
-  HostCsrMatrix       tr(map.trGraph());
-  auto                moved_map = std::move(map);
-  trVals(mat, moved_map, tr);
-
-  status *= tr.rows() == mat.cols();
-  status *= near(tr.valsData()[0], 4.0);
-  status *= near(dot(mul(mat, HostVector{1.0, 2.0, 3.0}),
-                     HostVector{0.5, -1.0, 2.0}),
-                 dot(HostVector{1.0, 2.0, 3.0},
-                     mul(tr,
-                         HostVector{0.5, -1.0, 2.0})));
+  applyT(mat, y.view(), transpose_product.view(), ctx);
+  status *= near(dot(mul(mat, x), y), dot(x, transpose_product));
 
   return status.report();
 }
@@ -254,8 +226,7 @@ int main()
 {
   femx::tests::TestingResults results;
   results += femx::tests::boundaryRowsAndForwardEliminationStayDistinct();
-  results += femx::tests::persistentTransposeSupportsAdjointIdentity();
-  results += femx::tests::trMatGraphSurvivesMapMove();
+  results += femx::tests::csrTransposeApplySupportsAdjointIdentity();
   results += femx::tests::trajectoryOwnsContiguousStorage();
   results += femx::tests::boundaryRejectsWrongLayoutsAndAliasedResiduals();
   return results.summary();

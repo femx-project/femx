@@ -107,9 +107,8 @@ void solveDevice(const PoissonForwardProblem& problem,
   assembly::prepareForwardSolve(bc_map, mat, rhs, bc_vals, ctx);
 
   ReSolveLinearSolver solver;
-  solver.setOperator(mat);
   DeviceVector sol;
-  solver.solve(rhs, sol, ctx);
+  solver.solve(mat, rhs, sol, ctx);
 
   DeviceVector norm2(1);
   resNormKernel<<<cudaBlocks(mat.rows()),
@@ -147,8 +146,8 @@ int run(const Options& opts)
     problem.assemble(A, rhs);
 
     ReSolveLinearSolver solver;
-    solver.setOperator(A);
-    solver.solve(rhs, x);
+    CpuContext          ctx;
+    solver.solve(A, rhs, x, ctx);
     res_norm = helper.resNorm(A, rhs, x);
   }
   else

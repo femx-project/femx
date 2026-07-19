@@ -43,7 +43,8 @@ struct ReSolveOptions
  * not stage matrices or vectors through Host memory. Host and CUDA resources
  * are initialized independently on first use.
  */
-class ReSolveLinearSolver final : public LinearSolver
+class ReSolveLinearSolver final : public HostCsrLinearSolver,
+                                  public DeviceLinearSolver
 {
 public:
   /** @brief Create a lazy ReSolve linear solver with shared defaults. */
@@ -55,38 +56,29 @@ public:
   /** @brief Destroy the solver and owned ReSolve resources. */
   ~ReSolveLinearSolver() override;
 
-  /** @brief Solve op x = rhs for a MapCsrMatrix operator. */
-  void solve(const LinearOperator& op,
-             const HostVector&     rhs,
-             HostVector&           out) override;
+  /** @brief Solve a concrete Host CSR system. */
+  void solve(const HostCsrMatrix& mat,
+             const HostVector&    rhs,
+             HostVector&          sol,
+             CpuContext&          ctx) override;
 
-  /** @brief Solve op^T x = rhs for a MapCsrMatrix operator. */
-  void solveT(const LinearOperator& op,
-              const HostVector&     rhs,
-              HostVector&           out) override;
+  /** @brief Solve a concrete transposed Host CSR system. */
+  void solveT(const HostCsrMatrix& mat,
+              const HostVector&    rhs,
+              HostVector&          sol,
+              CpuContext&          ctx) override;
 
-  /** @brief Set the system matrix used by subsequent solves. */
-  void setOperator(const HostCsrMatrix& A);
+  /** @brief Solve a concrete Device CSR system without Host staging. */
+  void solve(const DeviceCsrMatrix& mat,
+             const DeviceVector&    rhs,
+             DeviceVector&          sol,
+             CudaContext&           ctx) override;
 
-  /** @brief Solve A x = b using the current operator. */
-  void solve(const HostVector& b, HostVector& x);
-
-  /**
-   * @brief Bind a Device CSR matrix without copying its graph or values.
-   *
-   * The matrix, graph, and their allocations must remain alive and unmoved
-   * until another Device matrix is bound or the solver is destroyed.
-   */
-  void setOperator(const DeviceCsrMatrix& mat);
-
-  /**
-   * @brief Solve the bound Device system without Host staging.
-   *
-   * `rhs`, `sol`, and the bound matrix values must use distinct storage.
-   */
-  void solve(const DeviceVector& rhs,
-             DeviceVector&       sol,
-             CudaContext&        ctx);
+  /** @brief Solve a concrete transposed Device CSR system on Device. */
+  void solveT(const DeviceCsrMatrix& mat,
+              const DeviceVector&    rhs,
+              DeviceVector&          sol,
+              CudaContext&           ctx) override;
 
   ReSolveLinearSolver(const ReSolveLinearSolver&)            = delete;
   ReSolveLinearSolver& operator=(const ReSolveLinearSolver&) = delete;

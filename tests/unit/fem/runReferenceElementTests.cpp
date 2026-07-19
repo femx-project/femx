@@ -8,10 +8,9 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/MatrixView.hpp>
+#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/VectorView.hpp>
+#include <femx/linalg/View.hpp>
 
 namespace femx
 {
@@ -58,8 +57,8 @@ DenseMatrix shapeGradients(const FiniteElement&   elem,
 {
   DenseMatrix gradients(elem.numDofsPerElement(), elem.dim());
   elem.calcdNdr(qp,
-                MatrixView<Real>(
-                    gradients.data(), gradients.numRows(), gradients.numCols()));
+                HostMatrixView<Real>(
+                    gradients.data(), gradients.rows(), gradients.cols()));
   return gradients;
 }
 

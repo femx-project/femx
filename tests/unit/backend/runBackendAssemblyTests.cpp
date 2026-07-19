@@ -12,8 +12,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/MapCsrMatrix.hpp>
+#include <femx/linalg/Dense.hpp>
 
 namespace femx
 {
@@ -337,7 +336,7 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
   return status.report();
 }
 
-TestOutcome mapCsrMatrixUsesAssemblyMapMapping()
+TestOutcome hostCsrAssemblyUsesAssemblyMapMapping()
 {
   TestStatus status(__func__);
 
@@ -346,7 +345,7 @@ TestOutcome mapCsrMatrixUsesAssemblyMapMapping()
       2,
       Array<Array<Index>>{{0, 1}, {1}},
       Array<Array<Index>>{{0}, {0, 1}});
-  linalg::MapCsrMatrix mat(map);
+  HostCsrMatrix mat(map.graph());
 
   DenseMatrix first(2, 1);
   first(0, 0) = 2.0;
@@ -355,11 +354,11 @@ TestOutcome mapCsrMatrixUsesAssemblyMapMapping()
   second(0, 0) = 5.0;
   second(0, 1) = 7.0;
 
-  mat.addElem(0, {0, 1}, {0}, first, false);
-  mat.addElem(1, {1}, {0, 1}, second, false);
-  status *= near(csrVal(mat.mat(), 0, 0), 2.0);
-  status *= near(csrVal(mat.mat(), 1, 0), 8.0);
-  status *= near(csrVal(mat.mat(), 1, 1), 7.0);
+  assembly::addElem(map, 0, first, mat);
+  assembly::addElem(map, 1, second, mat);
+  status *= near(csrVal(mat, 0, 0), 2.0);
+  status *= near(csrVal(mat, 1, 0), 8.0);
+  status *= near(csrVal(mat, 1, 1), 7.0);
 
   return status.report();
 }
@@ -444,7 +443,7 @@ int main()
   results += femx::tests::cpuAssemblySupportsRectangularLocalLayouts();
   results += femx::tests::cpuTimeAssemblyHandlesHistoryBlocks();
   results += femx::tests::matGraphSurvivesAssemblyMapMove();
-  results += femx::tests::mapCsrMatrixUsesAssemblyMapMapping();
+  results += femx::tests::hostCsrAssemblyUsesAssemblyMapMapping();
   results += femx::tests::malformedGraphsAndAssemblyAliasesAreRejected();
   return results.summary();
 }

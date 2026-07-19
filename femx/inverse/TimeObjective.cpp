@@ -1,7 +1,10 @@
+#include <algorithm>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
-#include <femx/inverse/DeviceTimeObjective.hpp>
+#include "TimeObjectivePlan.hpp"
+#include <femx/common/Checks.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
@@ -34,32 +37,11 @@ void launchLsDir(DeviceConstVectorView lo,
                  DeviceVectorView      dir,
                  CudaContext&          ctx);
 
-using DeviceConstIndexView =
-    VectorView<MemorySpace::Device, const Index>;
-
-void launchQuadraticValue(DeviceConstIndexView  rows,
-                          DeviceConstIndexView  cols,
-                          DeviceConstVectorView vals,
-                          DeviceConstVectorView row_ref,
-                          DeviceConstVectorView col_ref,
-                          DeviceConstVectorView prm,
-                          DeviceVectorView      scalar,
-                          CudaContext&          ctx);
-
-void launchQuadraticGrad(DeviceConstIndexView  rows,
-                         DeviceConstIndexView  cols,
-                         DeviceConstVectorView vals,
-                         DeviceConstVectorView row_ref,
-                         DeviceConstVectorView col_ref,
-                         DeviceConstVectorView prm,
-                         DeviceVectorView      out,
-                         CudaContext&          ctx);
-
 #if !defined(FEMX_HAS_CUDA)
 void noCuda()
 {
   throw std::runtime_error(
-      "DeviceTimeObjective requires FEMX_ENABLE_CUDA");
+      "Device objective execution requires FEMX_ENABLE_CUDA");
 }
 
 void launchLsValue(DeviceConstVectorView,
@@ -88,29 +70,6 @@ void launchLsDir(DeviceConstVectorView,
   noCuda();
 }
 
-void launchQuadraticValue(DeviceConstIndexView,
-                          DeviceConstIndexView,
-                          DeviceConstVectorView,
-                          DeviceConstVectorView,
-                          DeviceConstVectorView,
-                          DeviceConstVectorView,
-                          DeviceVectorView,
-                          CudaContext&)
-{
-  noCuda();
-}
-
-void launchQuadraticGrad(DeviceConstIndexView,
-                         DeviceConstIndexView,
-                         DeviceConstVectorView,
-                         DeviceConstVectorView,
-                         DeviceConstVectorView,
-                         DeviceConstVectorView,
-                         DeviceVectorView,
-                         CudaContext&)
-{
-  noCuda();
-}
 #endif
 
 } // namespace detail
@@ -135,18 +94,12 @@ DeviceConstVectorView row(const DeviceVector& vec,
   return {vec.data() + i * size, size};
 }
 
-detail::DeviceConstIndexView indices(
-    const DeviceIndexVector& vec)
-{
-  return vec.view();
-}
-
 } // namespace
 
-void DeviceTimeObjective::add(const TimeObjective& obj, CudaContext& ctx)
+void TimeObjectivePlan::add(const TimeObjective& obj, CudaContext& ctx)
 {
   const Index first_ls = ls_.size();
-  setDimensions(obj);
+  setDims(obj);
   flatten(obj, ctx);
   uploadLeastSquares(first_ls, ctx);
   uploadQuadratic(ctx);
@@ -158,24 +111,24 @@ void DeviceTimeObjective::add(const TimeObjective& obj, CudaContext& ctx)
   }
 }
 
-Index DeviceTimeObjective::numSteps() const noexcept
+Index TimeObjectivePlan::numSteps() const noexcept
 {
   return num_steps_ < 0 ? 0 : num_steps_;
 }
 
-Index DeviceTimeObjective::numStates() const noexcept
+Index TimeObjectivePlan::numStates() const noexcept
 {
   return num_states_ < 0 ? 0 : num_states_;
 }
 
-Index DeviceTimeObjective::numParams() const noexcept
+Index TimeObjectivePlan::numParams() const noexcept
 {
   return num_prm_ < 0 ? 0 : num_prm_;
 }
 
-Real DeviceTimeObjective::value(const state::DeviceTimeTrajectory& tr,
-                                DeviceConstVectorView              prm,
-                                CudaContext&                       ctx) const
+Real TimeObjectivePlan::value(const state::DeviceTimeTrajectory& tr,
+                              DeviceConstVectorView              prm,
+                              CudaContext&                       ctx) const
 {
   checkInputs(tr, prm);
   scalar_.setZero(ctx);
@@ -205,25 +158,21 @@ Real DeviceTimeObjective::value(const state::DeviceTimeTrajectory& tr,
     }
   }
 
-  if (!q_vals_.empty())
+  if (q_terms_ > 0)
   {
-    detail::launchQuadraticValue(
-        indices(q_rows_),
-        indices(q_cols_),
-        q_vals_.view(),
-        q_row_ref_.view(),
-        q_col_ref_.view(),
-        prm,
-        scalar_.view(),
-        ctx);
+    apply(q_mat_, prm, q_prod_.view(), ctx);
+    dot(prm, q_prod_.view(), q_dot_.view(), ctx);
+    axpby(0.5, q_dot_.view(), 1.0, scalar_.view(), ctx);
+    dot(prm, q_lin_.view(), q_dot_.view(), ctx);
+    axpby(1.0, q_dot_.view(), 1.0, scalar_.view(), ctx);
   }
 
   copy(scalar_, scalar_h_, ctx);
   ctx.synchronize();
-  return scalar_h_[0];
+  return scalar_h_[0] + q_const_;
 }
 
-void DeviceTimeObjective::stateGrad(
+void TimeObjectivePlan::stateGrad(
     Index                              level,
     const state::DeviceTimeTrajectory& tr,
     DeviceConstVectorView              prm,
@@ -232,17 +181,9 @@ void DeviceTimeObjective::stateGrad(
 {
   checkInputs(tr, prm);
   checkLevel(level);
-  if (out.size() != numStates())
-  {
-    throw std::runtime_error(
-        "DeviceTimeObjective state gradient size mismatch");
-  }
-  if (!out.empty())
-  {
-    device::zero(out.data(),
-                 static_cast<std::size_t>(out.size()) * sizeof(Real),
-                 ctx.stream());
-  }
+  require(out.size() == numStates(),
+          "Device objective state gradient size mismatch");
+  zero(out, ctx);
 
   for (const LeastSquaresTerm& term : ls_)
   {
@@ -287,46 +228,31 @@ void DeviceTimeObjective::stateGrad(
   }
 }
 
-void DeviceTimeObjective::paramGrad(
+void TimeObjectivePlan::paramGrad(
     const state::DeviceTimeTrajectory& tr,
     DeviceConstVectorView              prm,
     DeviceVectorView                   out,
     CudaContext&                       ctx) const
 {
   checkInputs(tr, prm);
-  if (out.size() != numParams())
+  require(out.size() == numParams(),
+          "Device objective parameter gradient size mismatch");
+  zero(out, ctx);
+  if (q_terms_ > 0)
   {
-    throw std::runtime_error(
-        "DeviceTimeObjective parameter gradient size mismatch");
-  }
-  if (!out.empty())
-  {
-    device::zero(out.data(),
-                 static_cast<std::size_t>(out.size()) * sizeof(Real),
-                 ctx.stream());
-  }
-  if (!q_vals_.empty())
-  {
-    detail::launchQuadraticGrad(
-        indices(q_rows_),
-        indices(q_cols_),
-        q_vals_.view(),
-        q_row_ref_.view(),
-        q_col_ref_.view(),
-        prm,
-        out,
-        ctx);
+    apply(q_mat_, prm, out, ctx);
+    axpby(1.0, q_lin_.view(), 1.0, out, ctx);
   }
 }
 
-void DeviceTimeObjective::flatten(const TimeObjective& obj,
-                                  CudaContext&         ctx)
+void TimeObjectivePlan::flatten(const TimeObjective& obj,
+                                CudaContext&         ctx)
 {
   if (const auto* sum = dynamic_cast<const SumTimeObjective*>(&obj))
   {
     for (const TimeObjective* term : sum->terms())
     {
-      setDimensions(*term);
+      setDims(*term);
       flatten(*term, ctx);
     }
     return;
@@ -335,11 +261,8 @@ void DeviceTimeObjective::flatten(const TimeObjective& obj,
           dynamic_cast<const TimeLeastSquaresObjective*>(&obj))
   {
     auto obs = ls->obs_.copyToDevice(ctx);
-    if (!obs)
-    {
-      throw std::runtime_error(
-          "DeviceTimeObjective observation has no Device operator");
-    }
+    require(obs != nullptr,
+            "Device objective observation has no Device operator");
     addLeastSquares(*ls, std::move(obs));
     return;
   }
@@ -355,19 +278,16 @@ void DeviceTimeObjective::flatten(const TimeObjective& obj,
     return;
   }
   throw std::runtime_error(
-      "DeviceTimeObjective does not support this objective type");
+      "Device objective plan does not support this objective type");
 }
 
-void DeviceTimeObjective::addLeastSquares(
+void TimeObjectivePlan::addLeastSquares(
     const TimeLeastSquaresObjective&               obj,
     std::unique_ptr<DeviceTimeObservationOperator> obs)
 {
-  if (obs->numSteps() != numSteps() || obs->numStates() != numStates()
-      || obs->numObservations() != obj.data_.numObservations())
-  {
-    throw std::runtime_error(
-        "DeviceTimeObjective observation size mismatch");
-  }
+  require(obs->numSteps() == numSteps() && obs->numStates() == numStates()
+              && obs->numObservations() == obj.data_.numObservations(),
+          "Device objective observation size mismatch");
 
   LeastSquaresTerm term;
   term.obs     = std::move(obs);
@@ -399,8 +319,8 @@ void DeviceTimeObjective::addLeastSquares(
   }
 }
 
-void DeviceTimeObjective::uploadLeastSquares(Index        first,
-                                             CudaContext& ctx)
+void TimeObjectivePlan::uploadLeastSquares(Index        first,
+                                           CudaContext& ctx)
 {
   for (Index i = first; i < ls_.size(); ++i)
   {
@@ -410,7 +330,7 @@ void DeviceTimeObjective::uploadLeastSquares(Index        first,
   }
 }
 
-void DeviceTimeObjective::addRegularization(
+void TimeObjectivePlan::addRegularization(
     const TimeRegularization& obj)
 {
   if (obj.beta_value_ != 0.0)
@@ -459,7 +379,7 @@ void DeviceTimeObjective::addRegularization(
   }
 }
 
-void DeviceTimeObjective::addRegularization(
+void TimeObjectivePlan::addRegularization(
     const TimeBlockRegularization& obj)
 {
   if (obj.weight_ == 0.0)
@@ -481,20 +401,27 @@ void DeviceTimeObjective::addRegularization(
   }
 }
 
-void DeviceTimeObjective::appendQuadratic(Index row,
-                                          Index col,
-                                          Real  val,
-                                          Real  row_ref,
-                                          Real  col_ref)
+void TimeObjectivePlan::appendQuadratic(Index row,
+                                        Index col,
+                                        Real  val,
+                                        Real  row_ref,
+                                        Real  col_ref)
 {
+  const Real half = 0.5 * val;
   q_rows_h_.push_back(row);
   q_cols_h_.push_back(col);
-  q_vals_h_.push_back(val);
-  q_row_ref_h_.push_back(row_ref);
-  q_col_ref_h_.push_back(col_ref);
+  q_vals_h_.push_back(half);
+  q_rows_h_.push_back(col);
+  q_cols_h_.push_back(row);
+  q_vals_h_.push_back(half);
+
+  q_lin_h_[row] -= half * col_ref;
+  q_lin_h_[col] -= half * row_ref;
+  q_const_      += half * row_ref * col_ref;
+  ++q_terms_;
 }
 
-void DeviceTimeObjective::setDimensions(const TimeObjective& obj)
+void TimeObjectivePlan::setDims(const TimeObjective& obj)
 {
   if (num_steps_ < 0)
   {
@@ -503,47 +430,98 @@ void DeviceTimeObjective::setDimensions(const TimeObjective& obj)
     num_prm_    = obj.numParams();
     scalar_.resize(1);
     scalar_h_.resize(1);
+    q_lin_h_.resize(num_prm_);
     return;
   }
-  if (obj.numSteps() != numSteps() || obj.numStates() != numStates()
-      || obj.numParams() != numParams())
-  {
-    throw std::runtime_error(
-        "DeviceTimeObjective received inconsistent dimensions");
-  }
+  require(obj.numSteps() == numSteps() && obj.numStates() == numStates()
+              && obj.numParams() == numParams(),
+          "Device objective plan received inconsistent dimensions");
 }
 
-void DeviceTimeObjective::uploadQuadratic(CudaContext& ctx)
+void TimeObjectivePlan::uploadQuadratic(CudaContext& ctx)
 {
-  copy(q_rows_h_, q_rows_, ctx);
-  copy(q_cols_h_, q_cols_, ctx);
-  copy(q_vals_h_, q_vals_, ctx);
-  copy(q_row_ref_h_, q_row_ref_, ctx);
-  copy(q_col_ref_h_, q_col_ref_, ctx);
+  if (q_terms_ == 0)
+  {
+    return;
+  }
+
+  struct Entry
+  {
+    Index row;
+    Index col;
+    Real  val;
+  };
+
+  Array<Entry> entries;
+  entries.reserve(q_vals_h_.size());
+  for (Index i = 0; i < q_vals_h_.size(); ++i)
+  {
+    entries.push_back({q_rows_h_[i], q_cols_h_[i], q_vals_h_[i]});
+  }
+  std::sort(entries.begin(),
+            entries.end(),
+            [](const Entry& lhs, const Entry& rhs)
+            {
+              return std::tie(lhs.row, lhs.col)
+                     < std::tie(rhs.row, rhs.col);
+            });
+
+  HostIndexVector row_ptr(numParams() + 1);
+  HostIndexVector col_ind;
+  HostVector      vals;
+  for (Index i = 0; i < entries.size();)
+  {
+    const Index row = entries[i].row;
+    const Index col = entries[i].col;
+    Real        val = 0.0;
+    do
+    {
+      val += entries[i].val;
+      ++i;
+    } while (i < entries.size() && entries[i].row == row
+             && entries[i].col == col);
+    if (val != 0.0)
+    {
+      ++row_ptr[row + 1];
+      col_ind.push_back(col);
+      vals.push_back(val);
+    }
+  }
+  for (Index row = 0; row < numParams(); ++row)
+  {
+    row_ptr[row + 1] += row_ptr[row];
+  }
+
+  HostCsrGraph  host_graph(numParams(),
+                          numParams(),
+                          std::move(row_ptr),
+                          std::move(col_ind));
+  HostCsrMatrix host_mat(host_graph);
+  host_mat.vals() = std::move(vals);
+  DeviceCsrGraph graph;
+  copy(host_graph, graph, ctx);
+  DeviceCsrMatrix mat(graph);
+  copy(host_mat, mat, ctx);
+  q_mat_ = std::move(mat);
+  copy(q_lin_h_, q_lin_, ctx);
+  q_prod_.resize(numParams());
+  q_dot_.resize(1);
 }
 
-void DeviceTimeObjective::checkInputs(
+void TimeObjectivePlan::checkInputs(
     const state::DeviceTimeTrajectory& tr,
     DeviceConstVectorView              prm) const
 {
-  if (num_steps_ < 0)
-  {
-    throw std::runtime_error("DeviceTimeObjective is empty");
-  }
-  if (tr.numSteps() != numSteps() || tr.numStates() != numStates()
-      || prm.size() != numParams())
-  {
-    throw std::runtime_error("DeviceTimeObjective input size mismatch");
-  }
+  require(num_steps_ >= 0, "Device objective plan is empty");
+  require(tr.numSteps() == numSteps() && tr.numStates() == numStates()
+              && prm.size() == numParams(),
+          "Device objective input size mismatch");
 }
 
-void DeviceTimeObjective::checkLevel(Index level) const
+void TimeObjectivePlan::checkLevel(Index level) const
 {
-  if (level < 0 || level > numSteps())
-  {
-    throw std::runtime_error(
-        "DeviceTimeObjective time level is out of range");
-  }
+  require(level >= 0 && level <= numSteps(),
+          "Device objective time level is out of range");
 }
 
 } // namespace inverse
