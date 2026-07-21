@@ -5,8 +5,6 @@
 #include <cuda_runtime_api.h>
 
 #include <cstddef>
-#include <stdexcept>
-#include <string>
 #include <type_traits>
 
 #include <femx/assembly/Assembly.hpp>
@@ -21,15 +19,6 @@ namespace assembly
 /// @cond INTERNAL
 namespace detail
 {
-
-inline void checkCudaStatus(cudaError_t status, const char* op)
-{
-  if (status != cudaSuccess)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cudaGetErrorString(status));
-  }
-}
 
 inline void checkAssemblyInputs(
     const fem::DeviceGeometry&              geom,
@@ -261,16 +250,16 @@ int configureAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
-  checkCudaStatus(cudaGetDevice(&dev), "cudaGetDevice failed for CUDA assembly");
+  cuda::check(cudaGetDevice(&dev), "cudaGetDevice failed for CUDA assembly");
 
   int default_smem = 0;
-  checkCudaStatus(
+  cuda::check(
       cudaDeviceGetAttribute(
           &default_smem, cudaDevAttrMaxSharedMemoryPerBlock, dev),
       "cudaDeviceGetAttribute(shared memory) failed for CUDA assembly");
   if (smem > static_cast<std::size_t>(default_smem))
   {
-    checkCudaStatus(
+    cuda::check(
         cudaFuncSetAttribute(
             assembleKernel<ElementOperator>,
             cudaFuncAttributeMaxDynamicSharedMemorySize,
@@ -286,16 +275,17 @@ int configureTimeAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
-  checkCudaStatus(cudaGetDevice(&dev), "cudaGetDevice failed for CUDA time assembly");
+  cuda::check(cudaGetDevice(&dev),
+              "cudaGetDevice failed for CUDA time assembly");
 
   int default_smem = 0;
-  checkCudaStatus(
+  cuda::check(
       cudaDeviceGetAttribute(
           &default_smem, cudaDevAttrMaxSharedMemoryPerBlock, dev),
       "cudaDeviceGetAttribute(shared memory) failed for CUDA time assembly");
   if (smem > static_cast<std::size_t>(default_smem))
   {
-    checkCudaStatus(
+    cuda::check(
         cudaFuncSetAttribute(
             assembleTimeKernel<ElementOperator>,
             cudaFuncAttributeMaxDynamicSharedMemorySize,

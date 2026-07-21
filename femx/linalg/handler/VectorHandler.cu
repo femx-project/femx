@@ -1,11 +1,8 @@
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
-#include <cstdint>
-#include <stdexcept>
-#include <string>
-
 #include <cublas_v2.h>
+#include <femx/linalg/handler/CudaHandles.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx::linalg
@@ -14,84 +11,8 @@ namespace
 {
 constexpr int kThreads = 256;
 
-void checkCusparse(cusparseStatus_t status, const char* op)
-{
-  if (status != CUSPARSE_STATUS_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cusparseGetErrorString(status));
-  }
-}
-
-void checkCublas(cublasStatus_t status, const char* op)
-{
-  if (status != CUBLAS_STATUS_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cublasGetStatusString(status));
-  }
-}
-
-class CublasHandle
-{
-public:
-  CublasHandle()
-  {
-    checkCublas(cublasCreate(&handle_), "cublasCreate failed");
-  }
-
-  ~CublasHandle()
-  {
-    if (handle_ != nullptr)
-    {
-      cublasDestroy(handle_);
-    }
-  }
-
-  cublasHandle_t get(void* stream)
-  {
-    checkCublas(cublasSetStream(handle_, static_cast<cudaStream_t>(stream)),
-                "cublasSetStream failed");
-    return handle_;
-  }
-
-private:
-  cublasHandle_t handle_{nullptr};
-};
-
-class CusparseHandle
-{
-public:
-  CusparseHandle()
-  {
-    checkCusparse(cusparseCreate(&handle_), "cusparseCreate failed");
-  }
-
-  ~CusparseHandle()
-  {
-    if (handle_ != nullptr)
-    {
-      cusparseDestroy(handle_);
-    }
-  }
-
-  cusparseHandle_t get(void* stream)
-  {
-    checkCusparse(
-        cusparseSetStream(handle_, static_cast<cudaStream_t>(stream)),
-        "cusparseSetStream failed");
-    return handle_;
-  }
-
-private:
-  cusparseHandle_t handle_{nullptr};
-};
-
-cusparseHandle_t cusparseHandle(void* stream)
-{
-  thread_local CusparseHandle handle;
-  return handle.get(stream);
-}
+using detail::checkCublas;
+using detail::checkCusparse;
 
 class SparseVectorDescriptor
 {
@@ -200,18 +121,6 @@ private:
   cusparseConstDnVecDescr_t const_descriptor_{nullptr};
 };
 
-template <class T>
-void checkView(const T* data, Index size, const char* name)
-{
-  require(size >= 0 && (size == 0 || data != nullptr), name);
-}
-
-unsigned int blocks(Index size)
-{
-  return static_cast<unsigned int>(
-      (static_cast<std::int64_t>(size) + kThreads - 1) / kThreads);
-}
-
 __global__ void axpbyKernel(Index       size,
                             Real        a,
                             const Real* x,
@@ -227,20 +136,11 @@ __global__ void axpbyKernel(Index       size,
 }
 } // namespace
 
-namespace detail
-{
-cublasHandle_t cublasHandle(void* stream)
-{
-  thread_local CublasHandle handle;
-  return handle.get(stream);
-}
-} // namespace detail
-
 void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
                                          DeviceVectorView      dst) const
 {
-  checkView(src.data(), src.size(), "Device copy has an invalid source view");
-  checkView(dst.data(), dst.size(), "Device copy has an invalid destination view");
+  require(src.isValid(), "Device copy has an invalid source view");
+  require(dst.isValid(), "Device copy has an invalid destination view");
   require(src.size() == dst.size(), "Device view copy requires equal sizes");
   if (src.empty() || src.data() == dst.data())
   {
@@ -266,8 +166,8 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
 void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
                                          DeviceVectorView    dst) const
 {
-  checkView(src.data(), src.size(), "Host-to-Device copy has an invalid source view");
-  checkView(dst.data(), dst.size(), "Host-to-Device copy has an invalid destination view");
+  require(src.isValid(), "Host-to-Device copy has an invalid source view");
+  require(dst.isValid(), "Host-to-Device copy has an invalid destination view");
   require(src.size() == dst.size(), "Host-to-Device view copy requires equal sizes");
   if (!src.empty())
   {
@@ -290,8 +190,8 @@ void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
 void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
                                          HostVectorView        dst) const
 {
-  checkView(src.data(), src.size(), "Device-to-Host copy has an invalid source view");
-  checkView(dst.data(), dst.size(), "Device-to-Host copy has an invalid destination view");
+  require(src.isValid(), "Device-to-Host copy has an invalid source view");
+  require(dst.isValid(), "Device-to-Host copy has an invalid destination view");
   require(src.size() == dst.size(), "Device-to-Host view copy requires equal sizes");
   if (!src.empty())
   {
@@ -313,7 +213,7 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
 
 void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView vals) const
 {
-  checkView(vals.data(), vals.size(), "zero has an invalid view");
+  require(vals.isValid(), "zero has an invalid view");
   if (!vals.empty())
   {
     cuda::zero(vals.data(),
@@ -327,8 +227,8 @@ void VectorHandler<CudaCsrBackend>::axpby(Real                  a,
                                           Real                  b,
                                           DeviceVectorView      y) const
 {
-  checkView(x.data(), x.size(), "axpby has an invalid input view");
-  checkView(y.data(), y.size(), "axpby has an invalid output view");
+  require(x.isValid(), "axpby has an invalid input view");
+  require(y.isValid(), "axpby has an invalid output view");
   require(x.size() == y.size(), "axpby requires equal vector sizes");
   if (x.empty())
   {
@@ -336,7 +236,7 @@ void VectorHandler<CudaCsrBackend>::axpby(Real                  a,
   }
   require(x.data() == y.data() || !femx::detail::overlaps(x, y),
           "axpby does not support partial overlap");
-  axpbyKernel<<<blocks(x.size()),
+  axpbyKernel<<<cuda::numBlocks(x.size(), kThreads),
                 kThreads,
                 0,
                 static_cast<cudaStream_t>(ctx_.stream())>>>(
@@ -348,9 +248,9 @@ void VectorHandler<CudaCsrBackend>::gather(DeviceConstVectorView src,
                                            DeviceConstIndexView  indices,
                                            DeviceVectorView      dst) const
 {
-  checkView(src.data(), src.size(), "gather has an invalid source view");
-  checkView(indices.data(), indices.size(), "gather has an invalid index view");
-  checkView(dst.data(), dst.size(), "gather has an invalid output view");
+  require(src.isValid(), "gather has an invalid source view");
+  require(indices.isValid(), "gather has an invalid index view");
+  require(dst.isValid(), "gather has an invalid output view");
   require(indices.size() == dst.size(), "gather output size mismatch");
   if (dst.empty())
   {
@@ -363,7 +263,7 @@ void VectorHandler<CudaCsrBackend>::gather(DeviceConstVectorView src,
                                 indices.size(),
                                 indices.data(),
                                 dst.data());
-  checkCusparse(cusparseGather(cusparseHandle(ctx_.stream()),
+  checkCusparse(cusparseGather(detail::cusparseHandle(ctx_.stream()),
                                dense.constDescriptor(),
                                sparse.mutableDescriptor()),
                 "cusparseGather failed");
@@ -373,9 +273,9 @@ void VectorHandler<CudaCsrBackend>::scatter(DeviceConstVectorView src,
                                             DeviceConstIndexView  indices,
                                             DeviceVectorView      dst) const
 {
-  checkView(src.data(), src.size(), "scatter has an invalid source view");
-  checkView(indices.data(), indices.size(), "scatter has an invalid index view");
-  checkView(dst.data(), dst.size(), "scatter has an invalid output view");
+  require(src.isValid(), "scatter has an invalid source view");
+  require(indices.isValid(), "scatter has an invalid index view");
+  require(dst.isValid(), "scatter has an invalid output view");
   require(src.size() == indices.size(), "scatter input size mismatch");
   if (src.empty())
   {
@@ -388,7 +288,7 @@ void VectorHandler<CudaCsrBackend>::scatter(DeviceConstVectorView src,
                                 indices.data(),
                                 src.data());
   DenseVectorDescriptor  dense(dst.size(), dst.data());
-  checkCusparse(cusparseScatter(cusparseHandle(ctx_.stream()),
+  checkCusparse(cusparseScatter(detail::cusparseHandle(ctx_.stream()),
                                 sparse.constDescriptor(),
                                 dense.mutableDescriptor()),
                 "cusparseScatter failed");
@@ -398,9 +298,9 @@ void VectorHandler<CudaCsrBackend>::dot(DeviceConstVectorView x,
                                         DeviceConstVectorView y,
                                         DeviceVectorView      out) const
 {
-  checkView(x.data(), x.size(), "dot has an invalid first input view");
-  checkView(y.data(), y.size(), "dot has an invalid second input view");
-  checkView(out.data(), out.size(), "dot has an invalid result view");
+  require(x.isValid(), "dot has an invalid first input view");
+  require(y.isValid(), "dot has an invalid second input view");
+  require(out.isValid(), "dot has an invalid result view");
   require(x.size() == y.size() && out.size() == 1,
           "dot vector size mismatch");
   auto handle = detail::cublasHandle(ctx_.stream());

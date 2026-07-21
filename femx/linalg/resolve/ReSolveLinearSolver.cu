@@ -3,26 +3,16 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
-#include <string>
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Context.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/CudaHandles.hpp>
 
 namespace femx::linalg::detail
 {
 namespace
 {
-void checkCusparse(cusparseStatus_t status, const char* op)
-{
-  if (status != CUSPARSE_STATUS_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cusparseGetErrorString(status));
-  }
-}
-
 struct CsrTransposeWorkspace
 {
   cusparseHandle_t handle{nullptr};
@@ -191,9 +181,7 @@ void transposeCsr(void*        workspace,
                   "cusparseCsr2cscEx2 symbolic transpose failed");
 
     constexpr unsigned int threads = 128;
-    const unsigned int     blocks  = static_cast<unsigned int>(
-        (rows + static_cast<Index>(threads) - 1)
-        / static_cast<Index>(threads));
+    const unsigned int     blocks  = cuda::numBlocks(rows, threads);
     buildTrMapKernel<<<blocks, threads, 0, stream>>>(rows,
                                                      src_row_ptr,
                                                      src_col_ind,
@@ -204,9 +192,7 @@ void transposeCsr(void*        workspace,
   }
 
   constexpr unsigned int threads = 256;
-  const unsigned int     blocks  = static_cast<unsigned int>(
-      (nnz + static_cast<Index>(threads) - 1)
-      / static_cast<Index>(threads));
+  const unsigned int     blocks  = cuda::numBlocks(nnz, threads);
   updateTrValsKernel<<<blocks, threads, 0, stream>>>(
       nnz, src_vals, src_to_tr, dst_vals);
   cuda::checkLastError();

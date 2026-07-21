@@ -2,14 +2,12 @@
 #include <cusparse.h>
 
 #include <algorithm>
-#include <cstdint>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
-#include <string>
 #include <vector>
 
 #include <cublas_v2.h>
+#include <femx/linalg/handler/CudaHandles.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
 
 namespace femx::detail
@@ -25,32 +23,12 @@ struct CudaContextAccess
 
 namespace femx::linalg
 {
-namespace detail
-{
-cublasHandle_t cublasHandle(void* stream);
-} // namespace detail
-
 namespace
 {
 constexpr int kThreads = 256;
 
-void checkCusparse(cusparseStatus_t status, const char* op)
-{
-  if (status != CUSPARSE_STATUS_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cusparseGetErrorString(status));
-  }
-}
-
-void checkCublas(cublasStatus_t status, const char* op)
-{
-  if (status != CUBLAS_STATUS_SUCCESS)
-  {
-    throw std::runtime_error(std::string(op) + ": "
-                             + cublasGetStatusString(status));
-  }
-}
+using detail::checkCublas;
+using detail::checkCusparse;
 
 struct SpmvOperation
 {
@@ -119,18 +97,6 @@ struct CsrSpmvState
   std::vector<std::unique_ptr<MatrixEntry>> matrices;
 };
 
-template <class T>
-void checkView(const T* data, Index size, const char* name)
-{
-  require(size >= 0 && (size == 0 || data != nullptr), name);
-}
-
-unsigned int blocks(Index size)
-{
-  return static_cast<unsigned int>(
-      (static_cast<std::int64_t>(size) + kThreads - 1) / kThreads);
-}
-
 __global__ void scaleKernel(Index size, Real scale, Real* vals)
 {
   const Index i =
@@ -146,8 +112,8 @@ void checkCsrMatvec(const DeviceCsrMatrix& mat,
                     DeviceVectorView       y,
                     bool                   transpose)
 {
-  checkView(x.data(), x.size(), "CSR matvec has an invalid input view");
-  checkView(y.data(), y.size(), "CSR matvec has an invalid output view");
+  require(x.isValid(), "CSR matvec has an invalid input view");
+  require(y.isValid(), "CSR matvec has an invalid output view");
   const Index in_size  = transpose ? mat.rows() : mat.cols();
   const Index out_size = transpose ? mat.cols() : mat.rows();
   require(x.size() == in_size && y.size() == out_size,
@@ -195,7 +161,7 @@ void scaleOutput(DeviceVectorView y, Real beta, CudaContext& ctx)
                ctx.stream());
     return;
   }
-  scaleKernel<<<blocks(y.size()),
+  scaleKernel<<<cuda::numBlocks(y.size(), kThreads),
                 kThreads,
                 0,
                 static_cast<cudaStream_t>(ctx.stream())>>>(
@@ -298,29 +264,9 @@ void spmv(const DeviceCsrMatrix& mat,
                                                     : entry.matvec;
   ensureDescriptors(operation, mat, x, y);
 
-  const auto op     = transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                                : CUSPARSE_OPERATION_NON_TRANSPOSE;
-  auto       handle = [&]()
-  {
-    class Handle
-    {
-    public:
-      Handle()
-      {
-        checkCusparse(cusparseCreate(&value), "cusparseCreate failed");
-      }
-      ~Handle()
-      {
-        cusparseDestroy(value);
-      }
-      cusparseHandle_t value{nullptr};
-    };
-    thread_local Handle storage;
-    checkCusparse(cusparseSetStream(storage.value,
-                                    static_cast<cudaStream_t>(ctx.stream())),
-                  "cusparseSetStream failed");
-    return storage.value;
-  }();
+  const auto  op             = transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                                         : CUSPARSE_OPERATION_NON_TRANSPOSE;
+  auto        handle         = detail::cusparseHandle(ctx.stream());
   std::size_t workspace_size = 0;
   checkCusparse(cusparseSpMV_bufferSize(handle,
                                         op,
