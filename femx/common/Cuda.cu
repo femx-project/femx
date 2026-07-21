@@ -3,11 +3,9 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/common/Context.hpp>
+#include <femx/common/Cuda.hpp>
 
-namespace femx
-{
-namespace device
+namespace femx::cuda
 {
 
 namespace
@@ -131,7 +129,7 @@ void destroyStream(void* stream) noexcept
   }
 }
 
-void synchronize(void* stream)
+void sync(void* stream)
 {
   check(cudaStreamSynchronize(asStream(stream)),
         "cudaStreamSynchronize failed");
@@ -142,5 +140,4 @@ void checkLastError()
   check(cudaGetLastError(), "CUDA kernel launch failed");
 }
 
-} // namespace device
-} // namespace femx
+} // namespace femx::cuda

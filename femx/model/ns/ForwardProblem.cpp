@@ -12,6 +12,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/model/ns/ForwardSolveMonitor.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/runtime/Cli.hpp>
@@ -228,10 +229,11 @@ ForwardSolveResult solve(DeviceTimeIntegrator& integ,
   configureMonitor(monitor, time, prm, terminal, log_out);
 
   monitor.start(integ.numSteps(), integ.numStates());
-  CudaContext  transfer;
-  DeviceVector parameters;
-  femx::copy(prob.prm0, parameters, transfer);
-  transfer.synchronize();
+  CudaContext               transfer;
+  DeviceVector              parameters;
+  linalg::CudaVectorHandler vec_handler(transfer);
+  vec_handler.copy(prob.prm0, parameters);
+  transfer.sync();
 
   DeviceTimeIntegrator::Observer observer =
       [&monitor](const TimeStepStateContext& ctx)

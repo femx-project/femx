@@ -1,5 +1,6 @@
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/SumObjective.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -47,7 +48,9 @@ void SumObjective::stateGrad(const HostVector& state,
                              const HostVector& prm,
                              HostVector&       out) const
 {
-  resizeOrZero(out, num_states_);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, num_states_);
 
   HostVector term_grad;
   for (const Objective* term : terms_)
@@ -61,7 +64,9 @@ void SumObjective::paramGrad(const HostVector& state,
                              const HostVector& prm,
                              HostVector&       out) const
 {
-  resizeOrZero(out, num_param_);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, num_param_);
 
   HostVector term_grad;
   for (const Objective* term : terms_)

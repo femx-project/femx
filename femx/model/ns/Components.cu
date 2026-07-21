@@ -4,6 +4,7 @@
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx::model::ns::detail
 {
@@ -33,12 +34,12 @@ __global__ void histVjpKernel(
 {
   constexpr Index ndof       = (Dim + 1) * NumNodes;
   constexpr Index elem_tasks = ndof * ndof;
-  const Index task = static_cast<Index>(blockIdx.x * blockDim.x
+  const Index     task       = static_cast<Index>(blockIdx.x * blockDim.x
                                         + threadIdx.x);
-  const Index ie    = task / elem_tasks;
-  const Index local = task - ie * elem_tasks;
-  const Index row   = local / ndof;
-  const Index col   = local - row * ndof;
+  const Index     ie         = task / elem_tasks;
+  const Index     local      = task - ie * elem_tasks;
+  const Index     row        = local / ndof;
+  const Index     col        = local - row * ndof;
   if (ie >= map.num_elems)
   {
     return;
@@ -62,7 +63,7 @@ __global__ void histVjpKernel(
     nxt_e[col] = nxt[map.stateDof(ie, col)];
   }
   const auto data = op.data();
-  const Real val = __enzyme_fwddiff<Real>(
+  const Real val  = __enzyme_fwddiff<Real>(
       reinterpret_cast<void*>(
           evalNavierRowAdj<MemorySpace::Device, NumQpts, NumNodes, Dim>),
       enzyme_const,
@@ -200,7 +201,8 @@ void applyNavierHistJacT(
   {
     out.resize(map.numStates());
   }
-  out.setZero(ctx);
+  linalg::CudaVectorHandler vec_handler(ctx);
+  vec_handler.zero(out.view());
 
 #if defined(FEMX_HAS_ENZYME)
   if (map.numElems() == 0)
@@ -227,7 +229,7 @@ void applyNavierHistJacT(
     throw std::runtime_error(
         "CUDA Navier history VJP received unsupported element dimensions");
   }
-  device::checkLastError();
+  cuda::checkLastError();
 #else
   (void) op;
   (void) step;

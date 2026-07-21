@@ -6,6 +6,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx::state
 {
@@ -87,7 +88,9 @@ public:
 
   void setZero()
   {
-    data_.setZero();
+    CpuContext                ctx;
+    linalg::HostVectorHandler vec_handler(ctx);
+    vec_handler.zero(data_.view());
   }
 
 private:

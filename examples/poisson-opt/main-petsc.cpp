@@ -31,8 +31,8 @@ int run(const Options& opts)
 
   PETScOperator fwd_jac(PETSC_COMM_SELF);
   PETScOperator adj_jac(PETSC_COMM_SELF);
-  fwd_jac.resize(problem.stateMap().graph());
-  adj_jac.resize(problem.stateMap().graph());
+  fwd_jac.resize(problem.stateMap().pattern());
+  adj_jac.resize(problem.stateMap().pattern());
 
   KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
   KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);

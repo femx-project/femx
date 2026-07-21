@@ -16,3 +16,5 @@ build/
 build-*/
 
 __pycache__/
+
+memo/

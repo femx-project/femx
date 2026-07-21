@@ -7,6 +7,7 @@
 #include <femx/common/Context.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -109,12 +110,16 @@ TestOutcome deviceStorageRequiresExplicitStreamSemantics()
   status *= !std::is_copy_assignable<DeviceVector>::value;
   status *= std::is_nothrow_move_constructible<DeviceVector>::value;
   status *= std::is_nothrow_move_assignable<DeviceVector>::value;
-  status *= HasContextlessSetZero<HostVector>::value;
+  status *= !HasContextlessSetZero<HostVector>::value;
   status *= !HasContextlessSetZero<DeviceVector>::value;
-  status *= HasContextSetZero<DeviceVector>::value;
-  status *= HasContextlessResizeOrZero<HostVector>::value;
+  status *= !HasContextSetZero<DeviceVector>::value;
+  status *= !HasContextlessResizeOrZero<HostVector>::value;
   status *= !HasContextlessResizeOrZero<DeviceVector>::value;
-  status *= HasContextResizeOrZero<DeviceVector>::value;
+  status *= !HasContextResizeOrZero<DeviceVector>::value;
+  status *= std::is_constructible<linalg::HostVectorHandler,
+                                  CpuContext&>::value;
+  status *= std::is_constructible<linalg::CudaVectorHandler,
+                                  CudaContext&>::value;
   status *= HasContextlessSetZero<state::TimeTrajectory>::value;
   status *= !HasContextSetZero<state::TimeTrajectory>::value;
   status *= std::is_copy_constructible<state::TimeTrajectory>::value;

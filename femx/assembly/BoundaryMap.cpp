@@ -4,6 +4,7 @@
 
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -15,7 +16,7 @@ namespace
 template <MemorySpace Space>
 void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
 {
-  require(mat.graph().layoutId() == map.layoutId(),
+  require(mat.pattern().layoutId() == map.layoutId(),
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
@@ -39,7 +40,7 @@ void replaceRowsRaw(const HostBoundaryMap& map,
                     Real                   diag)
 {
   const auto  view    = map.view();
-  const auto& row_ptr = mat.graph().rowPtr();
+  const auto& row_ptr = mat.pattern().rowPtr();
   Real*       vals    = mat.valsData();
 
   for (Index ib = 0; ib < view.num_bcs; ++ib)
@@ -55,23 +56,23 @@ void replaceRowsRaw(const HostBoundaryMap& map,
 
 } // namespace
 
-HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
-                                const HostCsrGraph& graph)
+HostBoundaryMap makeBoundaryMap(const Array<Index>&   dofs,
+                                const HostCsrPattern& pattern)
 {
-  require(graph.rows() == graph.cols(),
-          "BoundaryMap requires a square CSR graph");
+  require(pattern.rows() == pattern.cols(),
+          "BoundaryMap requires a square CSR pattern");
 
   const Index     num_bcs = dofs.size();
   HostIndexVector bc_rows(num_bcs);
   HostIndexVector diag(num_bcs, -1);
   HostIndexVector col_offsets(num_bcs + 1, 0);
-  HostIndexVector bc_mask(graph.rows(), 0);
-  Array<Index>    bc_by_col(graph.cols(), -1);
+  HostIndexVector bc_mask(pattern.rows(), 0);
+  Array<Index>    bc_by_col(pattern.cols(), -1);
 
   for (Index ib = 0; ib < num_bcs; ++ib)
   {
     const Index dof = dofs[ib];
-    require(dof >= 0 && dof < graph.rows(),
+    require(dof >= 0 && dof < pattern.rows(),
             "BoundaryMap constrained DOF is out of range");
     require(bc_mask[dof] == 0,
             "BoundaryMap constrained DOFs must be unique");
@@ -80,9 +81,9 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
     bc_by_col[dof] = ib;
   }
 
-  const auto& row_ptr = graph.rowPtr();
-  const auto& cols    = graph.colInd();
-  for (Index row = 0; row < graph.rows(); ++row)
+  const auto& row_ptr = pattern.rowPtr();
+  const auto& cols    = pattern.colInd();
+  for (Index row = 0; row < pattern.rows(); ++row)
   {
     for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
     {
@@ -111,7 +112,7 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
   HostIndexVector col_entries(col_offsets[num_bcs]);
   HostIndexVector col_rows(col_offsets[num_bcs]);
   HostIndexVector next = col_offsets;
-  for (Index row = 0; row < graph.rows(); ++row)
+  for (Index row = 0; row < pattern.rows(); ++row)
   {
     for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
     {
@@ -125,10 +126,10 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
     }
   }
 
-  return {graph.rows(),
-          graph.cols(),
-          graph.nnz(),
-          graph.layoutId(),
+  return {pattern.rows(),
+          pattern.cols(),
+          pattern.nnz(),
+          pattern.layoutId(),
           std::move(bc_rows),
           std::move(diag),
           std::move(col_offsets),
@@ -141,19 +142,20 @@ void copy(const HostBoundaryMap& src,
           DeviceBoundaryMap&     dst,
           CudaContext&           ctx)
 {
-  DeviceIndexVector bc_rows;
-  DeviceIndexVector diag;
-  DeviceIndexVector col_offsets;
-  DeviceIndexVector col_entries;
-  DeviceIndexVector col_rows;
-  DeviceIndexVector bc_mask;
+  linalg::CudaVectorHandler vec_handler(ctx);
+  DeviceIndexVector         bc_rows;
+  DeviceIndexVector         diag;
+  DeviceIndexVector         col_offsets;
+  DeviceIndexVector         col_entries;
+  DeviceIndexVector         col_rows;
+  DeviceIndexVector         bc_mask;
 
-  femx::copy(src.bc_rows_, bc_rows, ctx);
-  femx::copy(src.diag_, diag, ctx);
-  femx::copy(src.col_offsets_, col_offsets, ctx);
-  femx::copy(src.col_entries_, col_entries, ctx);
-  femx::copy(src.col_rows_, col_rows, ctx);
-  femx::copy(src.bc_mask_, bc_mask, ctx);
+  vec_handler.copy(src.bc_rows_, bc_rows);
+  vec_handler.copy(src.diag_, diag);
+  vec_handler.copy(src.col_offsets_, col_offsets);
+  vec_handler.copy(src.col_entries_, col_entries);
+  vec_handler.copy(src.col_rows_, col_rows);
+  vec_handler.copy(src.bc_mask_, bc_mask);
 
   dst = {src.num_rows_,
          src.num_cols_,

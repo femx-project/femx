@@ -42,8 +42,8 @@ public:
 
   /** @brief Allocate an AIJ matrix with fallback preallocation. */
   void resize(Index rows, Index cols);
-  /** @brief Allocate from an exact host CSR graph. */
-  void resize(const HostCsrGraph& graph);
+  /** @brief Allocate from an exact host CSR pattern. */
+  void resize(const HostCsrPattern& pattern);
 
   /** @brief Zero all numeric entries while retaining sparsity. */
   void setZero();
@@ -84,11 +84,11 @@ private:
                 const Real*     vals);
   void zeroRows(const Array<Index>& rows, Real diag);
 
-  static void computePrealloc(const HostCsrGraph& graph,
-                              PetscInt            begin,
-                              PetscInt            end,
-                              Array<PetscInt>&    d_nnz,
-                              Array<PetscInt>&    o_nnz);
+  static void computePrealloc(const HostCsrPattern& pattern,
+                              PetscInt              begin,
+                              PetscInt              end,
+                              Array<PetscInt>&      d_nnz,
+                              Array<PetscInt>&      o_nnz);
 
 private:
   MPI_Comm comm_{PETSC_COMM_SELF};

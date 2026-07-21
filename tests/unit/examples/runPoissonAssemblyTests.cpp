@@ -22,12 +22,12 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   options.num_y_cells = 2;
   examples::poisson::PoissonForwardProblem problem(options);
 
-  HostCsrMatrix mat(problem.map().graph());
+  HostCsrMatrix mat(problem.map().pattern());
   HostVector    rhs;
   problem.assemble(mat, rhs);
 
-  status *= mat.graph().layoutId()
-            == problem.map().graph().layoutId();
+  status *= mat.pattern().layoutId()
+            == problem.map().pattern().layoutId();
   status *= rhs.size() == problem.numDofs();
   status *= problem.geom().numElems() == 4;
 

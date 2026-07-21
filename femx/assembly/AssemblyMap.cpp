@@ -8,6 +8,7 @@
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Checks.hpp>
 #include <femx/fem/DofLayout.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -154,10 +155,10 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     row_ptr[row + 1] += row_ptr[row];
   }
 
-  HostCsrGraph graph(num_res,
-                     num_states,
-                     std::move(row_ptr),
-                     std::move(cols));
+  HostCsrPattern pattern(num_res,
+                         num_states,
+                         std::move(row_ptr),
+                         std::move(cols));
 
   return {num_elem,
           num_res,
@@ -168,7 +169,7 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
           std::move(state_dofs),
           std::move(jac_offsets),
           std::move(jac_map),
-          std::move(graph),
+          std::move(pattern),
           max_res,
           max_state,
           max_jac};
@@ -201,21 +202,22 @@ void copy(const AssemblyMap<MemorySpace::Host>& src,
           AssemblyMap<MemorySpace::Device>&     dst,
           CudaContext&                          ctx)
 {
-  DeviceIndexVector res_offsets;
-  DeviceIndexVector res_dofs;
-  DeviceIndexVector state_offsets;
-  DeviceIndexVector state_dofs;
-  DeviceIndexVector jac_offsets;
-  DeviceIndexVector jac_map;
-  DeviceCsrGraph    graph;
+  linalg::CudaVectorHandler vec_handler(ctx);
+  DeviceIndexVector         res_offsets;
+  DeviceIndexVector         res_dofs;
+  DeviceIndexVector         state_offsets;
+  DeviceIndexVector         state_dofs;
+  DeviceIndexVector         jac_offsets;
+  DeviceIndexVector         jac_map;
+  DeviceCsrPattern          pattern;
 
-  femx::copy(src.res_offsets_, res_offsets, ctx);
-  femx::copy(src.res_dofs_, res_dofs, ctx);
-  femx::copy(src.state_offsets_, state_offsets, ctx);
-  femx::copy(src.state_dofs_, state_dofs, ctx);
-  femx::copy(src.jac_offsets_, jac_offsets, ctx);
-  femx::copy(src.jac_map_, jac_map, ctx);
-  femx::copy(src.graph_, graph, ctx);
+  vec_handler.copy(src.res_offsets_, res_offsets);
+  vec_handler.copy(src.res_dofs_, res_dofs);
+  vec_handler.copy(src.state_offsets_, state_offsets);
+  vec_handler.copy(src.state_dofs_, state_dofs);
+  vec_handler.copy(src.jac_offsets_, jac_offsets);
+  vec_handler.copy(src.jac_map_, jac_map);
+  femx::copy(src.pattern_, pattern, ctx);
 
   dst = {src.num_elems_,
          src.num_res_,
@@ -226,7 +228,7 @@ void copy(const AssemblyMap<MemorySpace::Host>& src,
          std::move(state_dofs),
          std::move(jac_offsets),
          std::move(jac_map),
-         std::move(graph),
+         std::move(pattern),
          src.max_res_,
          src.max_state_,
          src.max_jac_};

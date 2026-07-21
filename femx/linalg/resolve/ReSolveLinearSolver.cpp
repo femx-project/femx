@@ -9,6 +9,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -34,11 +35,11 @@ namespace
 {
 struct TransposeData
 {
-  HostCsrGraph    graph;
+  HostCsrPattern  pattern;
   HostIndexVector src_to_tr;
 };
 
-TransposeData makeTrData(const HostCsrGraph& src)
+TransposeData makeTrData(const HostCsrPattern& src)
 {
   HostIndexVector row_ptr(src.cols() + 1, 0);
   for (Index k = 0; k < src.nnz(); ++k)
@@ -66,10 +67,10 @@ TransposeData makeTrData(const HostCsrGraph& src)
     }
   }
 
-  return {HostCsrGraph(src.cols(),
-                       src.rows(),
-                       std::move(row_ptr),
-                       std::move(cols)),
+  return {HostCsrPattern(src.cols(),
+                         src.rows(),
+                         std::move(row_ptr),
+                         std::move(cols)),
           std::move(perm)};
 }
 
@@ -175,7 +176,9 @@ public:
             "ReSolveLinearSolver Host RHS has incompatible dimensions");
     checkHostAliases(*host_op_, rhs, sol);
 
-    resizeOrZero(sol, host_op_->cols());
+    CpuContext        ctx;
+    HostVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(sol, host_op_->cols());
     if (isZero(rhs))
     {
       return;
@@ -517,7 +520,9 @@ private:
                const HostVector&    rhs,
                HostVector&          sol)
   {
-    resizeOrZero(sol, mat.rows());
+    CpuContext        ctx;
+    HostVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(sol, mat.rows());
     if (isZero(rhs))
     {
       return;
@@ -534,11 +539,11 @@ private:
   void setTrOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    if (tr_src_layout_ != mat.graph().layoutId())
+    if (tr_src_layout_ != mat.pattern().layoutId())
     {
-      tr_data_       = makeTrData(mat.graph());
-      tr_mat_data_   = std::make_unique<HostCsrMatrix>(tr_data_.graph);
-      tr_src_layout_ = mat.graph().layoutId();
+      tr_data_       = makeTrData(mat.pattern());
+      tr_mat_data_   = std::make_unique<HostCsrMatrix>(tr_data_.pattern);
+      tr_src_layout_ = mat.pattern().layoutId();
     }
     updateTrVals(mat, tr_data_, *tr_mat_data_);
 
@@ -626,7 +631,7 @@ private:
     {
       cuda_tr_work_ = detail::createCsrTransposeWorkspace();
     }
-    if (cuda_tr_src_layout_ == mat.graph().layoutId())
+    if (cuda_tr_src_layout_ == mat.pattern().layoutId())
     {
       return false;
     }
@@ -648,7 +653,7 @@ private:
       cuda_src_to_tr_.resize(mat.nnz());
     }
     resetCudaSystem(cuda_tr_sys_);
-    cuda_tr_src_layout_ = mat.graph().layoutId();
+    cuda_tr_src_layout_ = mat.pattern().layoutId();
     return true;
   }
 
@@ -779,15 +784,12 @@ private:
     require(rhs.size() == sys.rows,
             "ReSolveLinearSolver Device RHS has incompatible dimensions");
     checkCudaAliases(sys, rhs, sol);
-    if (sol.size() != sys.cols)
-    {
-      sol.resize(sys.cols);
-    }
-    sol.setZero(ctx);
+    CudaVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(sol, sys.cols);
 
     // femx assembly owns this stream. ReSolve currently has no complete stream
     // hand-off API, so this is the explicit producer/solver boundary.
-    ctx.synchronize();
+    ctx.sync();
 
     check(sys.mat->setUpdated(ReSolve::memory::DEVICE),
           "ReSolve Device Csr::setUpdated failed");
@@ -809,7 +811,7 @@ private:
 
     // ReSolve currently launches on its own/default stream. Complete it before
     // the caller resumes work on the femx non-blocking stream.
-    device::synchronize(nullptr);
+    cuda::sync(nullptr);
   }
 
 #endif

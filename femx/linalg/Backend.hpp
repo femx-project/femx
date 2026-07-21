@@ -19,7 +19,7 @@ struct HostCsrBackend
   using VecView   = HostVectorView;
   using ConstView = HostConstVectorView;
   using Mat       = HostCsrMatrix;
-  using Graph     = HostCsrGraph;
+  using Pattern   = HostCsrPattern;
   using Ctx       = CpuContext;
 };
 
@@ -32,9 +32,28 @@ struct CudaCsrBackend
   using VecView   = DeviceVectorView;
   using ConstView = DeviceConstVectorView;
   using Mat       = DeviceCsrMatrix;
-  using Graph     = DeviceCsrGraph;
+  using Pattern   = DeviceCsrPattern;
   using Ctx       = CudaContext;
 };
+
+template <MemorySpace Space>
+struct CsrBackendFor;
+
+template <>
+struct CsrBackendFor<MemorySpace::Host>
+{
+  using Type = HostCsrBackend;
+};
+
+template <>
+struct CsrBackendFor<MemorySpace::Device>
+{
+  using Type = CudaCsrBackend;
+};
+
+/** @brief Native CSR backend associated with a memory space. */
+template <MemorySpace Space>
+using CsrBackend = typename CsrBackendFor<Space>::Type;
 
 /** @brief Detect the minimal type contract required from a femx backend. */
 template <class Backend, class = void>
@@ -48,7 +67,7 @@ struct IsBackend<Backend,
                              typename Backend::VecView,
                              typename Backend::ConstView,
                              typename Backend::Mat,
-                             typename Backend::Graph,
+                             typename Backend::Pattern,
                              typename Backend::Ctx,
                              decltype(Backend::space)>> : std::true_type
 {

@@ -9,6 +9,8 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/linalg/View.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -304,7 +306,8 @@ void DeviceTimePointInterpolator::observe(Index                 level,
                                           CudaContext&          ctx) const
 {
   checkLevel(level);
-  femx::apply(data_.matrix(), state, out, ctx);
+  linalg::CudaMatrixHandler mat_handler(ctx);
+  mat_handler.matvec(data_.matrix(), state, out);
 }
 
 void DeviceTimePointInterpolator::addStateJacT(
@@ -314,7 +317,8 @@ void DeviceTimePointInterpolator::addStateJacT(
     CudaContext&          ctx) const
 {
   checkLevel(level);
-  femx::applyT(data_.matrix(), dir, out, ctx, 1.0, 1.0);
+  linalg::CudaMatrixHandler mat_handler(ctx);
+  mat_handler.matvecT(data_.matrix(), dir, out, 1.0, 1.0);
 }
 
 void DeviceTimePointInterpolator::checkLevel(Index level) const
@@ -394,8 +398,9 @@ void TimePointInterpolator::observe(Index             level,
   {
     out.resize(numObservations());
   }
-  CpuContext ctx;
-  femx::apply(data_.matrix(), state.view(), out.view(), ctx);
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.matvec(data_.matrix(), state.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJac(Index             level,
@@ -413,8 +418,9 @@ void TimePointInterpolator::applyStateJac(Index             level,
   {
     out.resize(numObservations());
   }
-  CpuContext ctx;
-  femx::apply(data_.matrix(), dir.view(), out.view(), ctx);
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.matvec(data_.matrix(), dir.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJacT(Index             level,
@@ -428,9 +434,11 @@ void TimePointInterpolator::applyStateJacT(Index             level,
   require(dir.size() == numObservations(),
           "TimePointInterpolator observation direction size mismatch");
 
-  resizeOrZero(out, numStates());
-  CpuContext ctx;
-  femx::applyT(data_.matrix(), dir.view(), out.view(), ctx, 1.0, 1.0);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostMatrixHandler mat_handler(ctx);
+  vec_handler.resizeOrZero(out, numStates());
+  mat_handler.matvecT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }
 
 void TimePointInterpolator::applyParamJac(Index             level,
@@ -444,7 +452,9 @@ void TimePointInterpolator::applyParamJac(Index             level,
   require(dir.size() == numParams(),
           "TimePointInterpolator parameter direction size mismatch");
 
-  resizeOrZero(out, numObservations());
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, numObservations());
 }
 
 void TimePointInterpolator::applyParamJacT(Index             level,
@@ -458,7 +468,9 @@ void TimePointInterpolator::applyParamJacT(Index             level,
   require(dir.size() == numObservations(),
           "TimePointInterpolator observation direction size mismatch");
 
-  resizeOrZero(out, numParams());
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, numParams());
 }
 
 const HostPointInterpolatorData& TimePointInterpolator::data() const noexcept
@@ -545,11 +557,11 @@ HostPointInterpolatorData TimePointInterpolator::buildData(
     }
   }
 
-  HostCsrGraph  graph(num_obs,
-                     num_states,
-                     std::move(offsets),
-                     std::move(dofs));
-  HostCsrMatrix mat(graph);
+  HostCsrPattern pattern(num_obs,
+                         num_states,
+                         std::move(offsets),
+                         std::move(dofs));
+  HostCsrMatrix  mat(pattern);
   mat.vals() = std::move(wts);
   HostPointInterpolatorData data;
   data.mat_ = std::move(mat);

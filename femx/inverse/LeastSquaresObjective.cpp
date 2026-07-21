@@ -4,6 +4,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -142,7 +143,9 @@ void LeastSquaresObjective::termGrad(const HostVector& x,
                                      const HostVector& weights,
                                      HostVector&       out)
 {
-  resizeOrZero(out, x.size());
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, x.size());
   if (target.empty())
   {
     return;

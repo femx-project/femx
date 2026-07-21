@@ -417,7 +417,6 @@ void TimeSeriesDataOut::addNodalVectorField(const std::string& name,
                                             const HostVector&  y)
 {
   HostVector z(x.size());
-  z.setZero();
   addNodalVectorField(name, x, y, z);
 }
 

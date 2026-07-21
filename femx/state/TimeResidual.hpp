@@ -182,7 +182,7 @@ public:
   using VecView   = typename Backend::VecView;
   using ConstView = typename Backend::ConstView;
   using Mat       = typename Backend::Mat;
-  using Graph     = typename Backend::Graph;
+  using Pattern   = typename Backend::Pattern;
   using Ctx       = typename Backend::Ctx;
   using StepCtx   = TimeContext<space>;
 
@@ -190,11 +190,11 @@ public:
 
   virtual TimeDims dims() const = 0;
 
-  /** @brief Return the Host graph used to construct boundary metadata. */
-  virtual const HostCsrGraph& hostGraph() const = 0;
+  /** @brief Return the Host pattern used to construct boundary metadata. */
+  virtual const HostCsrPattern& hostPattern() const = 0;
 
-  /** @brief Return the matrix graph in this backend's storage. */
-  virtual const Graph& graph() const = 0;
+  /** @brief Return the matrix pattern in this backend's storage. */
+  virtual const Pattern& pattern() const = 0;
 
   /** @brief Evaluate the parameter-dependent initial state. */
   virtual void initialState(ConstView prm, Vec& out, Ctx& ctx) const = 0;

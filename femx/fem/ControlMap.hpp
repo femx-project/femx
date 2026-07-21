@@ -6,7 +6,7 @@
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 
 namespace femx
 {

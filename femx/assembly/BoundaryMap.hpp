@@ -5,8 +5,8 @@
 
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/CsrGraph.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -107,8 +107,8 @@ private:
   }
 
   friend BoundaryMap<MemorySpace::Host> makeBoundaryMap(
-      const Array<Index>& dofs,
-      const HostCsrGraph& graph);
+      const Array<Index>&   dofs,
+      const HostCsrPattern& pattern);
 
   friend void copy(const BoundaryMap<MemorySpace::Host>& src,
                    BoundaryMap<MemorySpace::Device>&     dst,
@@ -178,12 +178,12 @@ using HostBoundaryMap   = BoundaryMap<MemorySpace::Host>;
 using DeviceBoundaryMap = BoundaryMap<MemorySpace::Device>;
 
 /**
- * @brief Build and validate boundary metadata for a host CSR graph.
+ * @brief Build and validate boundary metadata for a host CSR pattern.
  * @param dofs Unique constrained DOFs, whose order defines `bc_vals` order.
- * @param graph Square CSR graph used by all later boundary operations.
+ * @param pattern Square CSR pattern used by all later boundary operations.
  */
-HostBoundaryMap makeBoundaryMap(const Array<Index>& dofs,
-                                const HostCsrGraph& graph);
+HostBoundaryMap makeBoundaryMap(const Array<Index>&   dofs,
+                                const HostCsrPattern& pattern);
 
 /**
  * @brief Explicitly copy host boundary metadata to device storage.
@@ -202,7 +202,7 @@ void copy(const HostBoundaryMap& src,
  * are deliberately left unchanged so the matrix continues to represent the
  * Jacobian of the row-replaced residual and can be used by adjoint solves.
  * Use one for a next-state Jacobian and zero for a history Jacobian.
- * @param map Boundary map matching `jac.graph()`.
+ * @param map Boundary map matching `jac.pattern()`.
  * @param jac Matrix modified in place.
  * @param diag Replacement diagonal value.
  */
@@ -212,7 +212,7 @@ void replaceRows(const HostBoundaryMap& map,
 
 /**
  * @brief Asynchronous CUDA equivalent of replaceRows().
- * @param map Device boundary map matching `jac.graph()`.
+ * @param map Device boundary map matching `jac.pattern()`.
  * @param jac Device matrix modified in place.
  * @param diag Replacement diagonal value.
  * @param ctx CUDA stream on which work is enqueued.
@@ -269,7 +269,7 @@ void zeroBoundary(const DeviceBoundaryMap& map,
  * constrained rows are replaced by identity rows, and constrained RHS entries
  * are set to bc_vals. The input matrix must be a separate solve copy
  * when the authoritative row-replaced Jacobian is still needed.
- * @param map Boundary map matching `solve_mat.graph()`.
+ * @param map Boundary map matching `solve_mat.pattern()`.
  * @param solve_mat Matrix modified into the forward system.
  * @param rhs Right-hand side corrected and constrained in place.
  * @param bc_vals Prescribed values in map order.
@@ -281,7 +281,7 @@ void prepareForwardSolve(const HostBoundaryMap& map,
 
 /**
  * @brief Asynchronous CUDA equivalent of prepareForwardSolve().
- * @param map Device boundary map matching `solve_mat.graph()`.
+ * @param map Device boundary map matching `solve_mat.pattern()`.
  * @param solve_mat Device matrix modified into the forward system.
  * @param rhs Device right-hand side modified in place.
  * @param bc_vals Prescribed device values in map order.

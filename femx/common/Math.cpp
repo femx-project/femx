@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 #include <femx/common/Math.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -13,17 +14,16 @@ Real dot(const HostVector& x, const HostVector& y)
     throw std::runtime_error("dot received incompatible vectors");
   }
 
-  Real value = 0.0;
-  for (Index i = 0; i < x.size(); ++i)
-  {
-    value += x[i] * y[i];
-  }
-  return value;
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  return vec_handler.dot(x.view(), y.view());
 }
 
 Real squaredNorm(const HostVector& x)
 {
-  return dot(x, x);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  return vec_handler.squaredNorm(x.view());
 }
 
 Real norm(const HostVector& x)

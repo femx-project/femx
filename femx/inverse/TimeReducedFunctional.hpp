@@ -9,6 +9,8 @@
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -164,7 +166,7 @@ TimeReducedFunctional<Backend>::TimeReducedFunctional(
               && obj_.numStates() == numStates()
               && obj_.numParams() == numParams(),
           "TimeReducedFunctional objective dimensions do not match");
-  ctx_.synchronize();
+  ctx_.sync();
 }
 
 template <class Backend>
@@ -271,14 +273,16 @@ TimeReducedFunctional<Backend>::carry(Index lag)
 template <class Backend>
 void TimeReducedFunctional<Backend>::resetCarry()
 {
-  zero(carry_.view(), ctx_);
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  vec_handler.zero(carry_.view());
   carry_head_ = 0;
 }
 
 template <class Backend>
 void TimeReducedFunctional<Backend>::advanceCarry()
 {
-  zero(carry(0), ctx_);
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  vec_handler.zero(carry(0));
   carry_head_ = (carry_head_ + 1) % dims_.num_hist;
 }
 
@@ -295,12 +299,13 @@ TimeReducedFunctional<Backend>::timeCtx(Index step) const
 template <class Backend>
 void TimeReducedFunctional<Backend>::loadStep(Index step)
 {
-  const Tr& tr = tr_;
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  const Tr&                      tr = tr_;
   for (Index lag = 0; lag < dims_.num_hist; ++lag)
   {
-    copy(tr.level(detail::histLevel(step, lag)), histState(lag), ctx_);
+    vec_handler.copy(tr.level(detail::histLevel(step, lag)), histState(lag));
   }
-  copy(tr.level(step + 1), nxt_.view(), ctx_);
+  vec_handler.copy(tr.level(step + 1), nxt_.view());
 }
 
 template <class Backend>
@@ -308,10 +313,11 @@ void TimeReducedFunctional<Backend>::solveFwd(
     HostConstVectorView        prm,
     const TimeReducedProgress& progress)
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
   require(prm.size() == numParams(),
           "TimeReducedFunctional parameter size mismatch");
   host_prm_ = prm;
-  copy(host_prm_.view(), prm_.view(), ctx_);
+  vec_handler.copy(host_prm_.view(), prm_.view());
 
   notify(progress, "forward-begin", 0);
   Observer observer;
@@ -343,11 +349,12 @@ template <class Backend>
 typename TimeReducedFunctional<Backend>::Mat&
 TimeReducedFunctional<Backend>::assembleNext(Index step)
 {
-  const auto begin = detail::Clock::now();
+  linalg::MatrixHandler<Backend> mat_handler(ctx_);
+  const auto                     begin = detail::Clock::now();
   loadStep(step);
   res_.assembleNext(timeCtx(step), sol_, jac_, ctx_);
-  finalize(jac_, ctx_);
-  ctx_.synchronize();
+  mat_handler.finalize(jac_);
+  ctx_.sync();
   assm_sec_ += detail::elapsedSec(begin);
   ++assm_calls_;
   return jac_;
@@ -358,13 +365,14 @@ void TimeReducedFunctional<Backend>::solveAdj(
     HostVectorView             out,
     const TimeReducedProgress& progress)
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
   require(out.size() == numParams(),
           "TimeReducedFunctional gradient size mismatch");
   obj_.paramGrad(tr_, host_prm_, host_grad_);
-  copy(host_grad_.view(), grad_.view(), ctx_);
+  vec_handler.copy(host_grad_.view(), grad_.view());
   checkSize(grad_, numParams());
   obj_.stateGrad(0, tr_, host_prm_, host_rhs_);
-  copy(host_rhs_.view(), init_grad_.view(), ctx_);
+  vec_handler.copy(host_rhs_.view(), init_grad_.view());
   checkSize(init_grad_, numStates());
   resetCarry();
 
@@ -373,10 +381,10 @@ void TimeReducedFunctional<Backend>::solveAdj(
   {
     notify(progress, "adjoint-step", numSteps() - step);
     obj_.stateGrad(step + 1, tr_, host_prm_, host_rhs_);
-    copy(host_rhs_.view(), rhs_.view(), ctx_);
+    vec_handler.copy(host_rhs_.view(), rhs_.view());
     checkSize(rhs_, numStates());
 
-    axpby(1.0, carry(0), 1.0, rhs_.view(), ctx_);
+    vec_handler.axpby(1.0, carry(0), 1.0, rhs_.view());
     advanceCarry();
 
     Mat&       nxt_jac     = assembleNext(step);
@@ -396,11 +404,11 @@ void TimeReducedFunctional<Backend>::solveAdj(
       checkSize(rhs_, numStates());
       if (detail::histLevel(step, lag) == 0)
       {
-        axpby(-1.0, rhs_.view(), 1.0, init_grad_.view(), ctx_);
+        vec_handler.axpby(-1.0, rhs_.view(), 1.0, init_grad_.view());
       }
       else
       {
-        axpby(-1.0, rhs_.view(), 1.0, carry(lag), ctx_);
+        vec_handler.axpby(-1.0, rhs_.view(), 1.0, carry(lag));
       }
     }
 
@@ -410,12 +418,12 @@ void TimeReducedFunctional<Backend>::solveAdj(
                    prm_adj_,
                    ctx_);
     checkSize(prm_adj_, numParams());
-    axpby(-1.0, prm_adj_.view(), 1.0, grad_.view(), ctx_);
+    vec_handler.axpby(-1.0, prm_adj_.view(), 1.0, grad_.view());
   }
 
   res_.addInitialStateJacobianTranspose(init_grad_.view(), grad_.view(), ctx_);
-  copy(grad_.view(), out, ctx_);
-  ctx_.synchronize();
+  vec_handler.copy(grad_.view(), out);
+  ctx_.sync();
   notify(progress, "adjoint-end", numSteps());
 }
 

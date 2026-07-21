@@ -122,7 +122,7 @@ int run(const Params& prm)
   setElemRange(fwd.model, fwd.model.mesh().numElems());
 
   PETScOperator A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.map().graph());
+  A.resize(fwd.model.map().pattern());
 
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);

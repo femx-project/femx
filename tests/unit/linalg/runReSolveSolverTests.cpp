@@ -1,4 +1,5 @@
 #include "SolverTestFixtures.hpp"
+#include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <resolve/resolve_defs.hpp>
 
@@ -39,7 +40,7 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
   constexpr Index ny = 16;
 
   const auto    map = solver::makeGrid5PointMap(nx, ny);
-  HostCsrMatrix mat(map.graph());
+  HostCsrMatrix mat(map.pattern());
   solver::fillGrid5PointMat(mat, nx, ny);
 
   linalg::ReSolveLinearSolver lin_solver;
@@ -51,7 +52,7 @@ TestOutcome resolveCpuDefaultSolvesForwardAndTranspose()
 TestOutcome resolveCpuKluSolvesForwardAndTranspose()
 {
   const auto    map = solver::makeDense3Map();
-  HostCsrMatrix mat(map.graph());
+  HostCsrMatrix mat(map.pattern());
   solver::fillTestMat(mat);
 
   linalg::ReSolveLinearSolver lin_solver(kluOptions());
@@ -69,23 +70,24 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
     constexpr Index ny = 16;
 
     const auto    map = solver::makeGrid5PointMap(nx, ny);
-    HostCsrMatrix mat(map.graph());
+    HostCsrMatrix mat(map.pattern());
     solver::fillGrid5PointMat(mat, nx, ny);
 
     linalg::ReSolveLinearSolver lin_solver;
     CpuContext                  ctx;
+    linalg::HostMatrixHandler   mat_handler(ctx);
 
     const HostVector expected = solver::expectedGridSolution(nx, ny);
     HostVector       rhs(expected.size());
-    apply(mat, expected.view(), rhs.view(), ctx);
+    mat_handler.matvec(mat, expected.view(), rhs.view());
 
     HostVector x;
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
 
-    mat.setZero();
+    mat_handler.zero(mat);
     solver::fillGrid5PointMat(mat, nx, ny);
-    apply(mat, expected.view(), rhs.view(), ctx);
+    mat_handler.matvec(mat, expected.view(), rhs.view());
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
   }
@@ -105,7 +107,7 @@ TestOutcome resolveZeroRhsReturnsZero()
   try
   {
     const auto    map = solver::makeDense3Map();
-    HostCsrMatrix mat(map.graph());
+    HostCsrMatrix mat(map.pattern());
     solver::fillTestMat(mat);
     const HostVector rhs(3, 0.0);
     HostVector       sol{1.0, 2.0, 3.0};

@@ -28,7 +28,7 @@ template <MemorySpace Space, class T>
 class VectorView;
 
 template <MemorySpace Space>
-class CsrGraph;
+class CsrPattern;
 
 template <MemorySpace Space>
 class CsrMatrix;
@@ -39,8 +39,8 @@ using DeviceVector = Vector<MemorySpace::Device>;
 using HostIndexVector   = Vector<MemorySpace::Host, Index>;
 using DeviceIndexVector = Vector<MemorySpace::Device, Index>;
 
-using HostCsrGraph   = CsrGraph<MemorySpace::Host>;
-using DeviceCsrGraph = CsrGraph<MemorySpace::Device>;
+using HostCsrPattern   = CsrPattern<MemorySpace::Host>;
+using DeviceCsrPattern = CsrPattern<MemorySpace::Device>;
 
 using HostCsrMatrix   = CsrMatrix<MemorySpace::Host>;
 using DeviceCsrMatrix = CsrMatrix<MemorySpace::Device>;

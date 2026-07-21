@@ -56,27 +56,18 @@ constexpr Real boundary_eps = 1.0e-12;
 
 void setStateJac(const HostCsrMatrix& src,
                  HostCsrMatrix&       dst,
-                 CpuContext&)
+                 CpuContext&          ctx)
 {
-  require(src.graph().layoutId() == dst.graph().layoutId(),
-          "Poisson state Jacobian uses a different CSR graph");
-  dst.vals() = src.vals();
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.copy(src, dst);
 }
 
 void setStateJac(const HostCsrMatrix&   src,
                  linalg::PETScOperator& dst,
-                 linalg::PetscContext&)
+                 linalg::PetscContext&  ctx)
 {
-  require(dst.rows() == src.rows() && dst.cols() == src.cols(),
-          "Poisson PETSc state Jacobian size mismatch");
-  dst.setZero();
-  for (Index row = 0; row < src.rows(); ++row)
-  {
-    for (Index k = src.rowPtrData()[row]; k < src.rowPtrData()[row + 1]; ++k)
-    {
-      dst.set(row, src.colIndData()[k], src.valsData()[k]);
-    }
-  }
+  linalg::MatrixHandler<linalg::PetscBackend> mat_handler(ctx);
+  mat_handler.copy(src, dst);
 }
 
 /** @brief AssemblyMap residual written once for Host CSR and PETSc backends. */
@@ -87,10 +78,10 @@ class PoissonMapResidual final : public Residual<Backend>
                 "Poisson optimization requires Host state storage");
 
 public:
-  using Vec   = typename Backend::Vec;
-  using Mat   = typename Backend::Mat;
-  using Graph = typename Backend::Graph;
-  using Ctx   = typename Backend::Ctx;
+  using Vec     = typename Backend::Vec;
+  using Mat     = typename Backend::Mat;
+  using Pattern = typename Backend::Pattern;
+  using Ctx     = typename Backend::Ctx;
 
   PoissonMapResidual(const HostGeometry&    geom,
                      const HostAssemblyMap& map,
@@ -99,7 +90,7 @@ public:
     : geom_(&geom),
       map_(&map),
       control_dofs_(std::move(control_dofs)),
-      jac_(map.graph())
+      jac_(map.pattern())
   {
     Array<Index> bc_dofs = control_dofs_;
     bc_dofs.reserve(control_dofs_.size() + fixed_dofs.size());
@@ -107,7 +98,7 @@ public:
     {
       bc_dofs.push_back(dof);
     }
-    bc_map_ = makeBoundaryMap(bc_dofs, map.graph());
+    bc_map_ = makeBoundaryMap(bc_dofs, map.pattern());
   }
 
   Dimensions dims() const override
@@ -117,14 +108,14 @@ public:
             map_->numRes()};
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return map_->graph();
+    return map_->pattern();
   }
 
-  const Graph& graph() const override
+  const Pattern& pattern() const override
   {
-    return map_->graph();
+    return map_->pattern();
   }
 
   void res(const Vec& state,

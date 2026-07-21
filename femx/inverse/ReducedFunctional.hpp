@@ -5,6 +5,8 @@
 #include <femx/inverse/Objective.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -91,11 +93,13 @@ private:
 
   void gradAt(const Vec& prm, Vec& out)
   {
+    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    linalg::MatrixHandler<Backend> mat_handler(ctx_);
     obj_.stateGrad(state_, prm, state_grad_);
     checkSize(state_grad_, dims_.num_states);
 
     res_.assembleStateJac(state_, prm, adj_jac_, ctx_);
-    finalize(adj_jac_, ctx_);
+    mat_handler.finalize(adj_jac_);
     adj_solver_.solveT(adj_jac_, state_grad_, adj_, ctx_);
     checkSize(adj_, dims_.num_res);
 
@@ -104,13 +108,12 @@ private:
         state_, prm, adj_, res_prm_adj_, ctx_);
     checkSize(prm_grad_, numParams());
     checkSize(res_prm_adj_, numParams());
-    axpby(-1.0,
-          res_prm_adj_.view(),
-          1.0,
-          prm_grad_.view(),
-          ctx_);
-    copy(prm_grad_.view(), out, ctx_);
-    ctx_.synchronize();
+    vec_handler.axpby(-1.0,
+                      res_prm_adj_.view(),
+                      1.0,
+                      prm_grad_.view());
+    vec_handler.copy(prm_grad_.view(), out);
+    ctx_.sync();
   }
 
   static void checkSize(const Vec& vec, Index expected)

@@ -7,6 +7,8 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -65,7 +67,7 @@ HostCsrMatrix makeControlMatrix(
   }
 
   HostCsrMatrix mat(
-      HostCsrGraph(rows, cols, std::move(row_ptr), std::move(col_ind)));
+      HostCsrPattern(rows, cols, std::move(row_ptr), std::move(col_ind)));
   mat.vals() = std::move(vals);
   return mat;
 }
@@ -300,18 +302,22 @@ void DirichletControl::apply(const HostVector& dir,
                              HostVector&       out) const
 {
   checkControlVector(dir);
-  resizeOrZero(out, numStateDofs());
-  CpuContext ctx;
-  femx::apply(matrix_, dir.view(), out.view(), ctx);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostMatrixHandler mat_handler(ctx);
+  vec_handler.resizeOrZero(out, numStateDofs());
+  mat_handler.matvec(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::applyTranspose(const HostVector& dir,
                                       HostVector&       out) const
 {
   checkStateVector(dir);
-  resizeOrZero(out, numControlParams());
-  CpuContext ctx;
-  femx::applyT(matrix_, dir.view(), out.view(), ctx);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostMatrixHandler mat_handler(ctx);
+  vec_handler.resizeOrZero(out, numControlParams());
+  mat_handler.matvecT(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::checkDofIndex(Index i) const

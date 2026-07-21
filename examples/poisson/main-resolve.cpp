@@ -7,6 +7,7 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
@@ -75,7 +76,8 @@ void solveDevice(const PoissonForwardProblem& problem,
                  HostVector&                  x,
                  Real&                        res_norm)
 {
-  CudaContext ctx;
+  CudaContext       ctx;
+  CudaVectorHandler vec_handler(ctx);
 
   fem::DeviceGeometry         geom;
   assembly::DeviceAssemblyMap map;
@@ -88,9 +90,9 @@ void solveDevice(const PoissonForwardProblem& problem,
   DeviceVector res;
   DeviceVector rhs(problem.numDofs());
   DeviceVector bc_vals;
-  copy(problem.bcVals(), bc_vals, ctx);
+  vec_handler.copy(problem.bcVals(), bc_vals);
 
-  DeviceCsrMatrix mat(map.graph());
+  DeviceCsrMatrix mat(map.pattern());
   assembly::assemble(PoissonQuadQ1Operator{},
                      geom,
                      map,
@@ -103,11 +105,11 @@ void solveDevice(const PoissonForwardProblem& problem,
                  0,
                  static_cast<cudaStream_t>(ctx.stream())>>>(
       res.size(), res.data(), rhs.data());
-  device::checkLastError();
+  cuda::checkLastError();
   assembly::prepareForwardSolve(bc_map, mat, rhs, bc_vals, ctx);
 
   ReSolveLinearSolver solver;
-  DeviceVector sol;
+  DeviceVector        sol;
   solver.solve(mat, rhs, sol, ctx);
 
   DeviceVector norm2(1);
@@ -122,12 +124,12 @@ void solveDevice(const PoissonForwardProblem& problem,
       rhs.data(),
       sol.data(),
       norm2.data());
-  device::checkLastError();
+  cuda::checkLastError();
 
   HostVector host_norm2;
-  copy(sol, x, ctx);
-  copy(norm2, host_norm2, ctx);
-  ctx.synchronize();
+  vec_handler.copy(sol, x);
+  vec_handler.copy(norm2, host_norm2);
+  ctx.sync();
   res_norm = std::sqrt(host_norm2[0]);
 }
 #endif
@@ -141,7 +143,7 @@ int run(const Options& opts)
   Real       res_norm = 0.0;
   if (opts.backend == MemorySpace::Host)
   {
-    HostCsrMatrix A(problem.map().graph());
+    HostCsrMatrix A(problem.map().pattern());
     HostVector    rhs;
     problem.assemble(A, rhs);
 

@@ -1,14 +1,12 @@
 #pragma once
 
-#include <algorithm>
 #include <initializer_list>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <femx/common/Checks.hpp>
-#include <femx/common/Context.hpp>
+#include <femx/common/Cuda.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/View.hpp>
 
@@ -192,11 +190,6 @@ public:
     return {data(), size()};
   }
 
-  void setZero()
-  {
-    std::fill(vals_.begin(), vals_.end(), T{});
-  }
-
 private:
   static std::size_t checkedSize(Index size)
   {
@@ -221,7 +214,8 @@ private:
  * @brief Move-only owner of a contiguous CUDA device allocation.
  *
  * Resizing replaces the allocation and invalidates all views and borrowed
- * pointers. Host access requires an explicit `copy()` operation.
+ * pointers. Host access requires an explicit `CudaVectorHandler::copy()`
+ * operation.
  */
 template <class T>
 class Vector<MemorySpace::Device, T>
@@ -271,22 +265,22 @@ public:
     T* replacement = nullptr;
     if (size > 0)
     {
-      replacement = static_cast<T*>(device::allocate(bytesFor(size)));
+      replacement = static_cast<T*>(cuda::allocate(bytesFor(size)));
       try
       {
-        device::zero(replacement, bytesFor(size));
+        cuda::zero(replacement, bytesFor(size));
         // The context-free memset runs on the default stream. CudaContext uses
         // a non-blocking stream, so make initialization complete before the
         // replacement pointer becomes visible to work on another stream.
-        device::synchronize(nullptr);
+        cuda::sync(nullptr);
       }
       catch (...)
       {
-        device::release(replacement);
+        cuda::release(replacement);
         throw;
       }
     }
-    device::release(data_);
+    cuda::release(data_);
     data_ = replacement;
     size_ = size;
   }
@@ -294,7 +288,7 @@ public:
   /** @brief Release device storage and reset the size to zero. */
   void clear() noexcept
   {
-    device::release(data_);
+    cuda::release(data_);
     data_ = nullptr;
     size_ = 0;
   }
@@ -335,21 +329,7 @@ public:
     return {data_, size_};
   }
 
-  /** @brief Enqueue zeroing of all values on `ctx`. */
-  void setZero(CudaContext& ctx)
-  {
-    if (data_ != nullptr)
-    {
-      device::zero(data_, bytes(), ctx.stream());
-    }
-  }
-
 private:
-  std::size_t bytes() const noexcept
-  {
-    return bytesFor(size_);
-  }
-
   static std::size_t bytesFor(Index size) noexcept
   {
     return static_cast<std::size_t>(size) * sizeof(T);
@@ -358,366 +338,5 @@ private:
   T*    data_{nullptr};
   Index size_{0};
 };
-
-/** @brief Copy equal-sized Host views without changing storage. */
-inline void copy(HostConstVectorView src,
-                 HostVectorView      dst,
-                 CpuContext&)
-{
-  require(src.size() == dst.size(),
-          "Host view copy requires equal sizes");
-  if (src.empty() || src.data() == dst.data())
-  {
-    return;
-  }
-  require(!detail::overlaps(src, dst),
-          "Host view copy does not support partial overlap");
-  std::copy(src.begin(), src.end(), dst.begin());
-}
-
-/** @brief Resize and copy into owning Host storage. */
-inline void copy(HostConstVectorView src,
-                 HostVector&         dst,
-                 CpuContext&)
-{
-  dst = src;
-}
-
-/** @brief Set every entry of a Host view to zero. */
-inline void zero(HostVectorView vals, CpuContext&)
-{
-  std::fill(vals.begin(), vals.end(), Real{});
-}
-
-/** @brief Replace a Host view by `a * x + b * y`. */
-inline void axpby(Real                a,
-                  HostConstVectorView x,
-                  Real                b,
-                  HostVectorView      y,
-                  CpuContext&)
-{
-  require(x.size() == y.size(),
-          "Host axpby requires equal vector sizes");
-  require(x.data() == y.data() || !detail::overlaps(x, y),
-          "Host axpby does not support partial overlap");
-  for (Index i = 0; i < x.size(); ++i)
-  {
-    y[i] = a * x[i] + b * y[i];
-  }
-}
-
-/** @brief Set `dst[i] = src[indices[i]]` on Host. */
-inline void gather(HostConstVectorView src,
-                   HostConstIndexView  indices,
-                   HostVectorView      dst,
-                   CpuContext&)
-{
-  require(indices.size() == dst.size(),
-          "Host gather output size mismatch");
-  require(!detail::overlaps(src, dst),
-          "Host gather does not support aliased vectors");
-  for (Index i = 0; i < indices.size(); ++i)
-  {
-    require(indices[i] >= 0 && indices[i] < src.size(),
-            "Host gather index is out of range");
-    dst[i] = src[indices[i]];
-  }
-}
-
-/** @brief Set `dst[indices[i]] = src[i]` on Host. */
-inline void scatter(HostConstVectorView src,
-                    HostConstIndexView  indices,
-                    HostVectorView      dst,
-                    CpuContext&)
-{
-  require(src.size() == indices.size(),
-          "Host scatter input size mismatch");
-  require(!detail::overlaps(src, dst),
-          "Host scatter does not support aliased vectors");
-  for (Index i = 0; i < indices.size(); ++i)
-  {
-    require(indices[i] >= 0 && indices[i] < dst.size(),
-            "Host scatter index is out of range");
-    dst[indices[i]] = src[i];
-  }
-}
-
-/**
- * @brief Enqueue a same-sized device-view copy without changing storage.
- * @param src Read-only source view.
- * @param dst Destination view; it must not partially overlap `src`.
- * @param ctx CUDA stream on which the copy is enqueued.
- */
-void copy(DeviceConstVectorView src,
-          DeviceVectorView      dst,
-          CudaContext&          ctx);
-
-/** @brief Resize and enqueue a copy into owning Device storage. */
-inline void copy(DeviceConstVectorView src,
-                 DeviceVector&         dst,
-                 CudaContext&          ctx)
-{
-  if (dst.size() != src.size())
-  {
-    dst.resize(src.size());
-  }
-  copy(src, dst.view(), ctx);
-}
-
-/** @brief Enqueue an equal-sized Host-to-Device view copy. */
-void copy(HostConstVectorView src,
-          DeviceVectorView    dst,
-          CudaContext&        ctx);
-
-/** @brief Enqueue an equal-sized Device-to-Host view copy. */
-void copy(DeviceConstVectorView src,
-          HostVectorView        dst,
-          CudaContext&          ctx);
-
-/** @brief Enqueue zeroing of a Device view. */
-void zero(DeviceVectorView vals, CudaContext& ctx);
-
-/**
- * @brief Replace `y` by `a * x + b * y` without changing storage.
- * @param a Scale applied to `x`.
- * @param x Read-only input view.
- * @param b Scale applied to the previous values of `y`.
- * @param y Input/output view with the same size as `x`.
- * @param ctx CUDA stream on which the operation is enqueued.
- */
-void axpby(Real                  a,
-           DeviceConstVectorView x,
-           Real                  b,
-           DeviceVectorView      y,
-           CudaContext&          ctx);
-
-/**
- * @brief Enqueue `dst[i] = src[indices[i]]` using cuSPARSE.
- *
- * Indices must be distinct and in `[0, src.size())`.
- */
-void gather(DeviceConstVectorView src,
-            DeviceConstIndexView  indices,
-            DeviceVectorView      dst,
-            CudaContext&          ctx);
-
-/**
- * @brief Enqueue `dst[indices[i]] = src[i]` using cuSPARSE.
- *
- * Indices must be distinct and in `[0, dst.size())`; unindexed destination
- * entries are left unchanged.
- */
-void scatter(DeviceConstVectorView src,
-             DeviceConstIndexView  indices,
-             DeviceVectorView      dst,
-             CudaContext&          ctx);
-
-/** @brief Overwrite the one-entry Device `out` with `x^T y` via cuBLAS. */
-void dot(DeviceConstVectorView x,
-         DeviceConstVectorView y,
-         DeviceVectorView      out,
-         CudaContext&          ctx);
-
-#if !defined(FEMX_HAS_CUDA)
-namespace detail
-{
-[[noreturn]] inline void throwCudaVectorUnavailable()
-{
-  throw std::runtime_error(
-      "femx was built without the CUDA execution backend");
-}
-} // namespace detail
-
-inline void copy(DeviceConstVectorView,
-                 DeviceVectorView,
-                 CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void copy(HostConstVectorView,
-                 DeviceVectorView,
-                 CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void copy(DeviceConstVectorView,
-                 HostVectorView,
-                 CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void zero(DeviceVectorView, CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void axpby(Real,
-                  DeviceConstVectorView,
-                  Real,
-                  DeviceVectorView,
-                  CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void gather(DeviceConstVectorView,
-                   DeviceConstIndexView,
-                   DeviceVectorView,
-                   CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void scatter(DeviceConstVectorView,
-                    DeviceConstIndexView,
-                    DeviceVectorView,
-                    CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-
-inline void dot(DeviceConstVectorView,
-                DeviceConstVectorView,
-                DeviceVectorView,
-                CudaContext&)
-{
-  detail::throwCudaVectorUnavailable();
-}
-#endif
-
-/** @brief Return the squared Euclidean norm of a Host vector. */
-inline Real squaredNorm(HostConstVectorView x, CpuContext&)
-{
-  Real val = 0.0;
-  for (Index i = 0; i < x.size(); ++i)
-  {
-    val += x[i] * x[i];
-  }
-  return val;
-}
-
-/**
- * @brief Enqueue an explicit host-to-device copy on context's stream.
- *
- * The source and destination storage must remain alive until the context is
- * synchronized or later work on the same stream has consumed the copy.
- */
-template <class T>
-void copy(const Vector<MemorySpace::Host, T>& src,
-          Vector<MemorySpace::Device, T>&     dst,
-          CudaContext&                        ctx)
-{
-  if (dst.size() != src.size())
-  {
-    dst.resize(src.size());
-  }
-  if (!src.empty())
-  {
-    device::copy(dst.data(),
-                 MemorySpace::Device,
-                 src.data(),
-                 MemorySpace::Host,
-                 static_cast<std::size_t>(src.size()) * sizeof(T),
-                 ctx.stream());
-  }
-}
-
-template <class T>
-void copy(Vector<MemorySpace::Host, T>&&,
-          Vector<MemorySpace::Device, T>&,
-          CudaContext&) = delete;
-
-/**
- * @brief Enqueue an explicit device-to-device clone on context's stream.
- *
- * Source and destination storage must remain alive until the queued copy has
- * completed or later work on the same stream has consumed it.
- */
-template <class T>
-void copy(const Vector<MemorySpace::Device, T>& src,
-          Vector<MemorySpace::Device, T>&       dst,
-          CudaContext&                          ctx)
-{
-  if (&src == &dst)
-  {
-    return;
-  }
-  if (dst.size() != src.size())
-  {
-    dst.resize(src.size());
-  }
-  if (!src.empty())
-  {
-    device::copy(dst.data(),
-                 MemorySpace::Device,
-                 src.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(src.size()) * sizeof(T),
-                 ctx.stream());
-  }
-}
-
-template <class T>
-void copy(Vector<MemorySpace::Device, T>&&,
-          Vector<MemorySpace::Device, T>&,
-          CudaContext&) = delete;
-
-/**
- * @brief Enqueue an explicit device-to-host copy on context's stream.
- *
- * Do not consume or release either storage until the context is synchronized.
- */
-template <class T>
-void copy(const Vector<MemorySpace::Device, T>& src,
-          Vector<MemorySpace::Host, T>&         dst,
-          CudaContext&                          ctx)
-{
-  if (dst.size() != src.size())
-  {
-    dst.resize(src.size());
-  }
-  if (!src.empty())
-  {
-    device::copy(dst.data(),
-                 MemorySpace::Host,
-                 src.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(src.size()) * sizeof(T),
-                 ctx.stream());
-  }
-}
-
-template <class T>
-/** @brief Resize a host vector if needed, otherwise set its values to zero. */
-void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero();
-  }
-}
-
-template <class T>
-/** @brief Resize a device vector if needed, otherwise enqueue zeroing. */
-void resizeOrZero(Vector<MemorySpace::Device, T>& out,
-                  Index                           size,
-                  CudaContext&                    ctx)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    out.setZero(ctx);
-  }
-}
 
 } // namespace femx

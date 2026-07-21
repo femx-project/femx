@@ -69,7 +69,6 @@ TimeDirichletData makeTimeDirichletData(
 
   TimeDirichletData out;
   out.init_state.resize(nstate);
-  out.init_state.setZero();
   for (const auto& [dof, val] : init)
   {
     out.dofs.push_back(dof);

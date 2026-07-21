@@ -28,8 +28,8 @@ int run(const Options& opts)
   ExampleHelper     helper("resolve", MemorySpace::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  HostCsrMatrix       fwd_jac(problem.stateMap().graph());
-  HostCsrMatrix       adj_jac(problem.stateMap().graph());
+  HostCsrMatrix       fwd_jac(problem.stateMap().pattern());
+  HostCsrMatrix       adj_jac(problem.stateMap().pattern());
   ReSolveLinearSolver fwd_lin_solver;
   ReSolveLinearSolver adj_lin_solver;
   CpuContext          ctx;

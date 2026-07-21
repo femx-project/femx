@@ -3,6 +3,7 @@
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -181,13 +182,14 @@ inline void copy(const Geometry<MemorySpace::Host>& src,
                  Geometry<MemorySpace::Device>&     dst,
                  CudaContext&                       ctx)
 {
+  linalg::CudaVectorHandler vec_handler(ctx);
   dst.dim_            = src.dim_;
   dst.num_nodes_      = src.num_nodes_;
   dst.num_elems_      = src.num_elems_;
   dst.max_elem_nodes_ = src.max_elem_nodes_;
-  femx::copy(src.coords_, dst.coords_, ctx);
-  femx::copy(src.elem_offsets_, dst.elem_offsets_, ctx);
-  femx::copy(src.conn_, dst.conn_, ctx);
+  vec_handler.copy(src.coords_, dst.coords_);
+  vec_handler.copy(src.elem_offsets_, dst.elem_offsets_);
+  vec_handler.copy(src.conn_, dst.conn_);
 }
 
 } // namespace fem

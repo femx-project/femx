@@ -8,7 +8,7 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 

@@ -13,7 +13,7 @@
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -174,25 +174,25 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 
     assembly::HostConstrainedTimeResidual cpu_res(
         model.residual(), ctr, init);
-    HostCsrMatrix                      fwd_mat(model.map().graph());
+    HostCsrMatrix                      fwd_mat(model.map().pattern());
     linalg::ReSolveLinearSolver        fwd_solver;
     CpuContext                         cpu_ctx;
     state::HostTimeIntegrator          cpu_integ(cpu_res,
                                         fwd_mat,
                                         fwd_solver,
                                         cpu_ctx);
-    HostCsrMatrix                      adj_mat(model.map().graph());
+    HostCsrMatrix                      adj_mat(model.map().pattern());
     linalg::ReSolveLinearSolver        adj_solver;
     inverse::HostTimeReducedFunctional cpu(
         cpu_integ, adj_mat, adj_solver, obj);
 
     CudaContext                 cuda_ctx;
     auto                        cuda_res = model::ns::makeDeviceTimeResidual(model, ctr, init);
-    DeviceCsrMatrix             cuda_mat(cuda_res->graph());
+    DeviceCsrMatrix             cuda_mat(cuda_res->pattern());
     linalg::ReSolveLinearSolver cuda_fwd_solver;
     state::DeviceTimeIntegrator cuda_integ(
         *cuda_res, cuda_mat, cuda_fwd_solver, cuda_ctx);
-    DeviceCsrMatrix                      cuda_adj_mat(cuda_res->graph());
+    DeviceCsrMatrix                      cuda_adj_mat(cuda_res->pattern());
     linalg::ReSolveLinearSolver          cuda_adj_solver;
     inverse::DeviceTimeReducedFunctional cuda(
         cuda_integ, cuda_adj_mat, cuda_adj_solver, obj);

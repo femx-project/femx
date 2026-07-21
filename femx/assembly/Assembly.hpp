@@ -6,6 +6,8 @@
 #include <femx/fem/Geometry.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeResidual.hpp>
 
 namespace femx
@@ -80,7 +82,7 @@ inline void checkAssemblyInputs(const fem::HostGeometry&              geom,
           "Geometry and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
-  require(jac.graph().layoutId() == map.graph().layoutId(),
+  require(jac.pattern().layoutId() == map.pattern().layoutId(),
           "Assembly matrix must use the AssemblyMap CSR layout");
 }
 
@@ -98,7 +100,7 @@ inline void checkTimeAssemblyInputs(
   require(!wrt.isParam()
               && (!wrt.isHistoryState() || (wrt.historyLag() >= 0 && wrt.historyLag() < num_hist)),
           "Time assembly variable block is invalid");
-  require(jac.graph().layoutId() == map.graph().layoutId(),
+  require(jac.pattern().layoutId() == map.pattern().layoutId(),
           "Time assembly matrix must use the AssemblyMap CSR layout");
 }
 
@@ -155,14 +157,16 @@ void assemble(const ElementOperator&                op,
               const HostVector&                     state,
               HostVector&                           res,
               HostCsrMatrix&                        jac,
-              CpuContext&)
+              CpuContext&                           ctx)
 {
+  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostMatrixHandler mat_handler(ctx);
   detail::checkAssemblyInputs(geom, map, state, jac);
   const HostVector& mat_vals = jac.vals();
   detail::checkAssemblyAliases(state, res, mat_vals);
 
-  resizeOrZero(res, map.numRes());
-  jac.setZero();
+  vec_handler.resizeOrZero(res, map.numRes());
+  mat_handler.zero(jac);
 
   const auto geom_v = geom.view();
   const auto map_v  = map.view();
@@ -238,14 +242,16 @@ void assemble(const ElementOperator&                op,
               const HostVector&                     nxt,
               HostVector&                           res,
               HostCsrMatrix&                        jac,
-              CpuContext&)
+              CpuContext&                           ctx)
 {
+  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostMatrixHandler mat_handler(ctx);
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt, jac);
   const HostVector& vals = jac.vals();
   detail::checkTimeAssemblyAliases(hist, nxt, res, vals);
 
-  resizeOrZero(res, map.numRes());
-  jac.setZero();
+  vec_handler.resizeOrZero(res, map.numRes());
+  mat_handler.zero(jac);
 
   const auto map_v = map.view();
   auto&      work  = detail::cpuWork();

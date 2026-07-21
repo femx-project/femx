@@ -7,6 +7,8 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -88,16 +90,16 @@ TestOutcome hostFlatObserveAndTranspose()
   HostVector expected_obs;
   op.observe(1, state, prm, expected_obs);
 
-  HostVector flat_obs(op.numObservations());
-  CpuContext ctx;
-  apply(op.data().matrix(), state.view(), flat_obs.view(), ctx);
+  HostVector                flat_obs(op.numObservations());
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.matvec(op.data().matrix(), state.view(), flat_obs.view());
 
   HostVector expected_tr;
   op.applyStateJacT(1, state, prm, dir, expected_tr);
 
   HostVector flat_tr(op.numStates());
-  flat_tr.setZero();
-  applyT(op.data().matrix(), dir.view(), flat_tr.view(), ctx, 1.0, 1.0);
+  mat_handler.matvecT(op.data().matrix(), dir.view(), flat_tr.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;
@@ -130,6 +132,7 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   op.applyStateJacT(0, state, prm, dir, expected_tr);
 
   CudaContext                 ctx;
+  linalg::CudaVectorHandler   vec_handler(ctx);
   DeviceTimePointInterpolator dev_op;
   DeviceVector                dev_state;
   DeviceVector                dev_dir;
@@ -137,21 +140,21 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   DeviceVector                dev_tr(op.numStates());
 
   fem::copy(op, dev_op, ctx);
-  femx::copy(state, dev_state, ctx);
-  femx::copy(dir, dev_dir, ctx);
+  vec_handler.copy(state, dev_state);
+  vec_handler.copy(dir, dev_dir);
 
   const inverse::DeviceTimeObservationOperator& iface   = dev_op;
   const Real*                                   obs_ptr = dev_obs.data();
   const Real*                                   tr_ptr  = dev_tr.data();
   iface.observe(1, dev_state.view(), dev_obs.view(), ctx);
-  dev_tr.setZero(ctx);
+  vec_handler.zero(dev_tr.view());
   iface.addStateJacT(1, dev_dir.view(), dev_tr.view(), ctx);
 
   HostVector got_obs;
   HostVector got_tr;
-  femx::copy(dev_obs, got_obs, ctx);
-  femx::copy(dev_tr, got_tr, ctx);
-  ctx.synchronize();
+  vec_handler.copy(dev_obs, got_obs);
+  vec_handler.copy(dev_tr, got_tr);
+  ctx.sync();
 
   status *= near(got_obs, expected_obs);
   status *= near(got_tr, expected_tr);

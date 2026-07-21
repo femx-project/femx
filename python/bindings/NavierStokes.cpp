@@ -16,8 +16,9 @@
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/model/ns/Config.hpp>
 #include <femx/model/ns/Helper.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
@@ -989,7 +990,7 @@ public:
         *base_, std::move(control), std::move(init_map));
     jac_ = std::make_unique<femx::linalg::PETScOperator>(
         PETSC_COMM_WORLD);
-    jac_->resize(res_->graph());
+    jac_->resize(res_->pattern());
     solver_ = std::make_unique<femx::linalg::KspLinearSolver>(
         PETSC_COMM_WORLD);
     integ_ = std::make_unique<
@@ -1123,7 +1124,7 @@ public:
       const femx::inverse::TimeObjective& obj)
     : jac_(PETSC_COMM_WORLD), solver_(PETSC_COMM_WORLD)
   {
-    jac_.resize(owner.get().residual().graph());
+    jac_.resize(owner.get().residual().pattern());
     impl_ = std::make_unique<
         femx::inverse::TimeReducedFunctional<femx::linalg::PetscBackend>>(
         owner.get(), jac_, solver_, obj);
@@ -1203,7 +1204,7 @@ public:
       std::unique_ptr<femx::state::DeviceTimeResidual> res,
       femx::linalg::ReSolveOptions                     opts)
     : res_(std::move(res)),
-      jac_(res_->graph()),
+      jac_(res_->pattern()),
       solver_(std::move(opts)),
       integ_(*res_, jac_, solver_, ctx_)
   {
@@ -1221,9 +1222,10 @@ public:
 
   void setInitialState(const HostVector& init)
   {
-    femx::DeviceVector state;
-    femx::copy(init, state, ctx_);
-    ctx_.synchronize();
+    femx::DeviceVector              state;
+    femx::linalg::CudaVectorHandler vec_handler(ctx_);
+    vec_handler.copy(init, state);
+    ctx_.sync();
     integ_.setInitialState(state);
   }
 
@@ -1293,7 +1295,7 @@ public:
   PythonDeviceTimeReducedFunctional(
       PythonDeviceTimeIntegrator&         owner,
       const femx::inverse::TimeObjective& obj)
-    : jac_(owner.get().residual().graph()),
+    : jac_(owner.get().residual().pattern()),
       impl_(owner.get(), jac_, solver_, obj)
   {
   }
@@ -1641,11 +1643,12 @@ void bindNavierStokes(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            const HostVector   values = realVector(parameters, "parameters");
-            femx::CudaContext  transfer;
-            femx::DeviceVector device_values;
-            femx::copy(values, device_values, transfer);
-            transfer.synchronize();
+            const HostVector                values = realVector(parameters, "parameters");
+            femx::CudaContext               transfer;
+            femx::DeviceVector              device_values;
+            femx::linalg::CudaVectorHandler vec_handler(transfer);
+            vec_handler.copy(values, device_values);
+            transfer.sync();
             TimeTrajectory trajectory;
             if (progress.is_none())
             {

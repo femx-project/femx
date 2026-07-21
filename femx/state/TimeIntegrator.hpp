@@ -8,6 +8,8 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -128,9 +130,9 @@ TimeIntegrator<Backend>::TimeIntegrator(const Res& res,
           "TimeIntegrator requires square residual dimensions");
   require(dims_.num_hist > 0,
           "TimeIntegrator requires at least one history state");
-  require(res_.graph().rows() == dims_.num_res
-              && res_.graph().cols() == dims_.num_states,
-          "TimeIntegrator residual graph dimensions do not match");
+  require(res_.pattern().rows() == dims_.num_res
+              && res_.pattern().cols() == dims_.num_states,
+          "TimeIntegrator residual pattern dimensions do not match");
 
   init_.resize(numStates());
   hist_.resize(dims_.num_hist * numStates());
@@ -138,7 +140,7 @@ TimeIntegrator<Backend>::TimeIntegrator(const Res& res,
   res_vec_.resize(dims_.num_res);
   rhs_.resize(dims_.num_res);
   sol_.resize(numStates());
-  ctx_.synchronize();
+  ctx_.sync();
 }
 
 template <class Backend>
@@ -178,8 +180,9 @@ void TimeIntegrator<Backend>::setInitialState(ConstView state)
 {
   require(state.size() == numStates(),
           "TimeIntegrator initial state size mismatch");
-  copy(state, init_, ctx_);
-  ctx_.synchronize();
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  vec_handler.copy(state, init_);
+  ctx_.sync();
   has_init_ = true;
 }
 
@@ -241,46 +244,50 @@ TimeIntegrator<Backend>::timeCtx(Index step, ConstView prm) const
 template <class Backend>
 void TimeIntegrator<Backend>::initialize(ConstView prm)
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
   if (!has_init_)
   {
     res_.initialState(prm, init_, ctx_);
   }
-  copy(init_.view(), nxt_, ctx_);
+  vec_handler.copy(init_.view(), nxt_);
   for (Index lag = 0; lag < dims_.num_hist; ++lag)
   {
-    copy(init_.view(), histState(lag), ctx_);
+    vec_handler.copy(init_.view(), histState(lag));
   }
 }
 
 template <class Backend>
 void TimeIntegrator<Backend>::advanceHist()
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
   for (Index lag = dims_.num_hist - 1; lag > 0; --lag)
   {
-    copy(histState(lag - 1), histState(lag), ctx_);
+    vec_handler.copy(histState(lag - 1), histState(lag));
   }
-  copy(sol_.view(), histState(0), ctx_);
-  copy(sol_.view(), nxt_, ctx_);
+  vec_handler.copy(sol_.view(), histState(0));
+  vec_handler.copy(sol_.view(), nxt_);
 }
 
 template <class Backend>
 SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
 {
-  const TimeContext<space> time       = timeCtx(step, prm);
-  const auto               assm_begin = detail::TimeClock::now();
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  linalg::MatrixHandler<Backend> mat_handler(ctx_);
+  const TimeContext<space>       time       = timeCtx(step, prm);
+  const auto                     assm_begin = detail::TimeClock::now();
 
   res_.assembleNext(time, res_vec_, jac_, ctx_);
   require(res_vec_.size() == dims_.num_res, "TimeIntegrator residual size mismatch");
 
-  finalize(jac_, ctx_);
-  apply(jac_, nxt_.view(), rhs_, ctx_);
-  axpby(-1.0, res_vec_.view(), 1.0, rhs_.view(), ctx_);
+  mat_handler.finalize(jac_);
+  mat_handler.matvec(jac_, nxt_.view(), rhs_);
+  vec_handler.axpby(-1.0, res_vec_.view(), 1.0, rhs_.view());
 
   res_.prepareLinearSolve(time, jac_, rhs_, ctx_);
-  ctx_.synchronize();
+  ctx_.sync();
 
   const Real assm_sec = detail::elapsedSec(assm_begin);
-  
+
   const auto solve_begin = detail::TimeClock::now();
   solver_.solve(jac_, rhs_, sol_, ctx_);
   const Real lin_solve_sec = detail::elapsedSec(solve_begin);
@@ -295,6 +302,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
                                               Tr*       tr,
                                               Observer  observer)
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx_);
   require(prm.size() == numParams(),
           "TimeIntegrator parameter size mismatch");
 
@@ -307,7 +315,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
   initialize(prm);
   if (tr != nullptr)
   {
-    copy(nxt_.view(), tr->level(0), ctx_);
+    vec_handler.copy(nxt_.view(), tr->level(0));
   }
 
   HostVector obs_prev;
@@ -317,15 +325,15 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
     HostConstVectorView init;
     if (tr != nullptr)
     {
-      ctx_.synchronize();
+      ctx_.sync();
       init = static_cast<const Tr&>(*tr).level(0);
     }
     else
     {
       obs_prev.resize(numStates());
       obs_curr.resize(numStates());
-      copy(nxt_.view(), obs_prev.view(), ctx_);
-      ctx_.synchronize();
+      vec_handler.copy(nxt_.view(), obs_prev.view());
+      ctx_.sync();
       init = static_cast<const HostVector&>(obs_prev).view();
     }
     if (observer({0, numSteps(), init, init, 0.0, 0.0}))
@@ -344,7 +352,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
 
     if (tr != nullptr)
     {
-      copy(nxt_.view(), tr->level(step + 1), ctx_);
+      vec_handler.copy(nxt_.view(), tr->level(step + 1));
     }
 
     if (observer)
@@ -353,15 +361,15 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
       HostConstVectorView curr;
       if (tr != nullptr)
       {
-        ctx_.synchronize();
+        ctx_.sync();
         const Tr& const_tr = *tr;
         prev               = const_tr.level(step);
         curr               = const_tr.level(step + 1);
       }
       else
       {
-        copy(nxt_.view(), obs_curr.view(), ctx_);
-        ctx_.synchronize();
+        vec_handler.copy(nxt_.view(), obs_curr.view());
+        ctx_.sync();
         prev = static_cast<const HostVector&>(obs_prev).view();
         curr = static_cast<const HostVector&>(obs_curr).view();
       }
@@ -383,7 +391,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
     }
   }
 
-  ctx_.synchronize();
+  ctx_.sync();
   return stats_;
 }
 

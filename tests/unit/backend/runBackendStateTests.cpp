@@ -6,6 +6,7 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx
@@ -37,7 +38,7 @@ bool valsNear(const Values& vals, const std::array<Real, N>& expected)
   return true;
 }
 
-HostCsrGraph denseThreeByThreeGraph()
+HostCsrPattern denseThreeByThreeGraph()
 {
   return {3,
           3,
@@ -80,16 +81,16 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
 {
   TestStatus status(__func__);
 
-  const HostCsrGraph graph = denseThreeByThreeGraph();
-  const auto         map   = assembly::makeBoundaryMap(Array<Index>{1}, graph);
+  const HostCsrPattern pattern = denseThreeByThreeGraph();
+  const auto           map     = assembly::makeBoundaryMap(Array<Index>{1}, pattern);
 
-  HostCsrMatrix authoritative(graph);
+  HostCsrMatrix authoritative(pattern);
   setMatVals(authoritative);
   assembly::replaceRows(map, authoritative, 1.0);
   status *= valsNear(authoritative.vals(),
                      std::array<Real, 9>{{4.0, 1.0, 2.0, 0.0, 1.0, 0.0, 7.0, 8.0, 9.0}});
 
-  HostCsrMatrix hist_jac(graph);
+  HostCsrMatrix hist_jac(pattern);
   setMatVals(hist_jac);
   assembly::replaceRows(map, hist_jac, 0.0);
   status *= valsNear(hist_jac.vals(),
@@ -103,7 +104,7 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   status *= valsNear(res,
                      std::array<Real, 3>{{10.0, 4.5, 30.0}});
 
-  HostCsrMatrix solve_mat(graph);
+  HostCsrMatrix solve_mat(pattern);
   setMatVals(solve_mat);
   HostVector rhs{10.0, 20.0, 30.0};
   assembly::prepareForwardSolve(
@@ -119,19 +120,20 @@ TestOutcome csrTransposeApplySupportsAdjointIdentity()
 {
   TestStatus status(__func__);
 
-  const HostCsrGraph graph = denseThreeByThreeGraph();
-  HostCsrMatrix      mat(graph);
+  const HostCsrPattern pattern = denseThreeByThreeGraph();
+  HostCsrMatrix        mat(pattern);
   setMatVals(mat);
 
-  const HostVector x{1.0, -2.0, 0.5};
-  const HostVector y{0.25, 3.0, -1.0};
-  HostVector       transpose_product(mat.cols());
-  CpuContext       ctx;
-  applyT(mat, y.view(), transpose_product.view(), ctx);
+  const HostVector          x{1.0, -2.0, 0.5};
+  const HostVector          y{0.25, 3.0, -1.0};
+  HostVector                transpose_product(mat.cols());
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.matvecT(mat, y.view(), transpose_product.view());
   status *= near(dot(mul(mat, x), y), dot(x, transpose_product));
 
   mat.valsData()[1] = 11.0;
-  applyT(mat, y.view(), transpose_product.view(), ctx);
+  mat_handler.matvecT(mat, y.view(), transpose_product.view());
   status *= near(dot(mul(mat, x), y), dot(x, transpose_product));
 
   return status.report();
@@ -156,9 +158,9 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
 {
   TestStatus status(__func__);
 
-  const HostCsrGraph graph = denseThreeByThreeGraph();
-  const auto         map   = assembly::makeBoundaryMap(Array<Index>{0, 2}, graph);
-  const HostCsrGraph different_layout{
+  const HostCsrPattern pattern = denseThreeByThreeGraph();
+  const auto           map     = assembly::makeBoundaryMap(Array<Index>{0, 2}, pattern);
+  const HostCsrPattern different_layout{
       3,
       3,
       HostIndexVector{0, 3, 6, 9},
@@ -191,7 +193,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   }
   status *= alias_rejected;
 
-  const HostCsrGraph diagonal_graph{
+  const HostCsrPattern diagonal_graph{
       3,
       3,
       HostIndexVector{0, 1, 2, 3},

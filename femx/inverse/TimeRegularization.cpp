@@ -2,6 +2,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 using namespace femx::state;
 
 namespace femx
@@ -91,7 +92,9 @@ void TimeRegularization::stateGrad(Index                 level,
   (void) level;
   (void) tr;
   (void) prm;
-  resizeOrZero(out, numStates());
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, numStates());
 }
 
 void TimeRegularization::paramGrad(const TimeTrajectory& tr,
@@ -100,7 +103,9 @@ void TimeRegularization::paramGrad(const TimeTrajectory& tr,
 {
   (void) tr;
   checkParamSize(prm);
-  resizeOrZero(out, numParams());
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.resizeOrZero(out, numParams());
 
   for (Index i = 0; i < numParams(); ++i)
   {

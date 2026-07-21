@@ -9,6 +9,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
 
 namespace femx::tests::solver
 {
@@ -62,7 +63,7 @@ inline void setEntry(HostCsrMatrix& mat,
       return;
     }
   }
-  throw std::runtime_error("Test entry is outside the CSR graph");
+  throw std::runtime_error("Test entry is outside the CSR pattern");
 }
 
 template <class Matrix>
@@ -193,16 +194,17 @@ inline TestOutcome solvesForwardAndTranspose(
 
   try
   {
-    CpuContext ctx;
-    HostVector rhs(mat.rows());
-    apply(mat, expected.view(), rhs.view(), ctx);
+    CpuContext                ctx;
+    linalg::HostMatrixHandler mat_handler(ctx);
+    HostVector                rhs(mat.rows());
+    mat_handler.matvec(mat, expected.view(), rhs.view());
 
     HostVector x;
     solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
     HostVector rhs_t(mat.cols());
-    applyT(mat, expected.view(), rhs_t.view(), ctx);
+    mat_handler.matvecT(mat, expected.view(), rhs_t.view());
 
     HostVector xt;
     solver.solveT(mat, rhs_t, xt, ctx);
