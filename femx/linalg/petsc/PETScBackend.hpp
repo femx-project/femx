@@ -16,29 +16,33 @@ namespace femx::linalg
 namespace detail
 {
 void check(PetscErrorCode ierr, const char* op);
+
 void checkMPI(int ierr, const char* op);
+
 void checkInit();
 
 PetscErrorCode copyFromPETSc(Vec src, HostVector& dst);
+
 PetscErrorCode copyToPETSc(HostConstVectorView src, Vec dst);
 } // namespace detail
 
 /// @endcond
 
-/** @brief Explicit PETSc execution context. */
+/** @brief Provide an explicit PETSc execution context. */
 struct PetscContext
 {
-  MPI_Comm comm{PETSC_COMM_SELF};
+  MPI_Comm comm{PETSC_COMM_SELF}; ///< Communicator used by PETSc operations.
 
+  /** @brief Complete context synchronization immediately. */
   void sync() const noexcept
   {
   }
 };
 
-/** @brief PETSc matrix/vector execution independent of MemorySpace. */
+/** @brief Provide PETSc matrix and vector execution. */
 struct PetscBackend
 {
-  static constexpr MemorySpace space = MemorySpace::Host;
+  static constexpr MemorySpace space = MemorySpace::Host; ///< Vector storage memory space.
 
   using Vec       = HostVector;
   using VecView   = HostVectorView;
@@ -51,19 +55,40 @@ struct PetscBackend
 static_assert(is_backend_v<PetscBackend>,
               "PetscBackend does not satisfy the backend contract");
 
+/** @brief Provide Host vector operations for the PETSc backend. */
 template <>
 class VectorHandler<PetscBackend> final
 {
 public:
-  explicit VectorHandler(PetscContext&) noexcept
+  /**
+   * @brief Construct vector operations for a PETSc context.
+   *
+   * @param[in] ctx - PETSc execution context.
+   */
+  explicit VectorHandler(PetscContext& ctx) noexcept
   {
+    static_cast<void>(ctx);
   }
 
+  /**
+   * @brief Replace a Host vector by copying a view.
+   *
+   * @param[in] src - Source view.
+   * @param[out] dst - Destination vector.
+   * @throws std::runtime_error - If the view size is negative.
+   */
   void copy(HostConstVectorView src, HostVector& dst) const
   {
     dst = src;
   }
 
+  /**
+   * @brief Copy between same-sized Host views.
+   *
+   * @param[in] src - Source view.
+   * @param[out] dst - Destination view.
+   * @throws std::runtime_error - If sizes differ or views partially overlap.
+   */
   void copy(HostConstVectorView src, HostVectorView dst) const
   {
     require(src.size() == dst.size(),
@@ -77,11 +102,25 @@ public:
     std::copy(src.begin(), src.end(), dst.begin());
   }
 
+  /**
+   * @brief Set every value to zero.
+   *
+   * @param[out] vals - Values to clear.
+   */
   void zero(HostVectorView vals) const
   {
     std::fill(vals.begin(), vals.end(), Real{});
   }
 
+  /**
+   * @brief Compute `y = a * x + b * y`.
+   *
+   * @param[in] a - Input-vector scale.
+   * @param[in] x - Input vector.
+   * @param[in] b - Existing-output scale.
+   * @param[in,out] y - Output vector.
+   * @throws std::runtime_error - If sizes or storage overlap are invalid.
+   */
   void axpby(Real                a,
              HostConstVectorView x,
              Real                b,
@@ -97,11 +136,25 @@ public:
     }
   }
 
+  /**
+   * @brief Compute the squared Euclidean norm of a vector.
+   *
+   * @param[in] x - Input vector.
+   * @return Squared Euclidean norm of `x`.
+   */
   Real squaredNorm(HostConstVectorView x) const
   {
     return dot(x, x);
   }
 
+  /**
+   * @brief Compute the dot product of two vectors.
+   *
+   * @param[in] x - First input vector.
+   * @param[in] y - Second input vector.
+   * @return Dot product of `x` and `y`.
+   * @throws std::runtime_error - If vector sizes differ.
+   */
   Real dot(HostConstVectorView x, HostConstVectorView y) const
   {
     require(x.size() == y.size(),
@@ -114,6 +167,14 @@ public:
     return val;
   }
 
+  /**
+   * @brief Gather indexed source values into a contiguous destination.
+   *
+   * @param[in] src - Source values.
+   * @param[in] indices - Source indices in destination order.
+   * @param[out] dst - Contiguous destination values.
+   * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
+   */
   void gather(HostConstVectorView src,
               HostConstIndexView  indices,
               HostVectorView      dst) const
@@ -130,6 +191,14 @@ public:
     }
   }
 
+  /**
+   * @brief Scatter contiguous source values to indexed destinations.
+   *
+   * @param[in] src - Contiguous source values.
+   * @param[in] indices - Destination indices in source order.
+   * @param[out] dst - Indexed destination values.
+   * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
+   */
   void scatter(HostConstVectorView src,
                HostConstIndexView  indices,
                HostVectorView      dst) const
@@ -146,6 +215,13 @@ public:
     }
   }
 
+  /**
+   * @brief Resize a Host vector if needed and set every value to zero.
+   *
+   * @param[in,out] out - Vector to resize or clear.
+   * @param[in] size - Required vector size.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   template <class T>
   void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size) const
   {
@@ -160,14 +236,30 @@ public:
   }
 };
 
+/** @brief Provide PETSc matrix operations. */
 template <>
 class MatrixHandler<PetscBackend> final
 {
 public:
-  explicit MatrixHandler(PetscContext&) noexcept
+  /**
+   * @brief Construct matrix operations for a PETSc context.
+   *
+   * @param[in] ctx - PETSc execution context.
+   */
+  explicit MatrixHandler(PetscContext& ctx) noexcept
   {
+    static_cast<void>(ctx);
   }
 
+  /**
+   * @brief Compute `out = mat * dir`.
+   *
+   * @param[in] mat - PETSc matrix.
+   * @param[in] dir - Input vector.
+   * @param[out] out - Result vector.
+   * @throws std::runtime_error - If inputs are invalid or PETSc reports an
+   * error.
+   */
   void matvec(const PETScOperator& mat,
               HostConstVectorView  dir,
               HostVector&          out) const
@@ -175,6 +267,15 @@ public:
     mat.apply(dir, out);
   }
 
+  /**
+   * @brief Compute `out = mat^T * dir`.
+   *
+   * @param[in] mat - PETSc matrix.
+   * @param[in] dir - Input vector.
+   * @param[out] out - Result vector.
+   * @throws std::runtime_error - If inputs are invalid or PETSc reports an
+   * error.
+   */
   void matvecT(const PETScOperator& mat,
                HostConstVectorView  dir,
                HostVector&          out) const
@@ -182,11 +283,25 @@ public:
     mat.applyT(dir, out);
   }
 
+  /**
+   * @brief Set every numeric matrix entry to zero.
+   *
+   * @param[in,out] mat - Matrix whose values are cleared.
+   * @throws std::runtime_error - If PETSc reports an error.
+   */
   void zero(PETScOperator& mat) const
   {
     mat.setZero();
   }
 
+  /**
+   * @brief Copy Host CSR values into a compatible PETSc matrix.
+   *
+   * @param[in] src - Source Host CSR matrix.
+   * @param[out] dst - Destination PETSc matrix.
+   * @throws std::runtime_error - If dimensions differ or PETSc reports an
+   * error.
+   */
   void copy(const HostCsrMatrix& src, PETScOperator& dst) const
   {
     require(dst.rows() == src.rows() && dst.cols() == src.cols(),
@@ -203,6 +318,12 @@ public:
     }
   }
 
+  /**
+   * @brief Complete PETSc matrix assembly.
+   *
+   * @param[in,out] mat - Matrix to finalize.
+   * @throws std::runtime_error - If PETSc reports an error.
+   */
   void finalize(PETScOperator& mat) const
   {
     mat.finalize();

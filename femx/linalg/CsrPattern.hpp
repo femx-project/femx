@@ -33,7 +33,7 @@ inline std::uint64_t newCsrLayoutId() noexcept
 } // namespace detail
 
 /**
- * @brief Immutable compressed-sparse-row pattern in one memory space.
+ * @brief Own an immutable compressed-sparse-row pattern.
  *
  * CsrPattern owns only the row offsets and column indices. Numeric matrix values
  * are owned separately by CsrMatrix so one pattern can be reused by multiple
@@ -44,32 +44,36 @@ class CsrPattern
 {
   template <MemorySpace S>
   using HostOnly = std::enable_if_t<S == MemorySpace::Host, int>;
-
   template <MemorySpace S>
   using DeviceOnly = std::enable_if_t<S == MemorySpace::Device, int>;
 
 public:
-  /** @brief Index-vector type in this pattern's memory space. */
   using IndexVector = Vector<Space, Index>;
 
+  /** @brief Construct an empty zero-by-zero CSR pattern. */
   CsrPattern()
     : storage_(std::make_shared<Storage>())
   {
   }
 
-  CsrPattern(const CsrPattern&)                = default;
-  CsrPattern(CsrPattern&&) noexcept            = default;
-  CsrPattern& operator=(const CsrPattern&)     = default;
+  CsrPattern(const CsrPattern&) = default;
+
+  CsrPattern(CsrPattern&&) noexcept = default;
+
+  CsrPattern& operator=(const CsrPattern&) = default;
+
   CsrPattern& operator=(CsrPattern&&) noexcept = default;
 
-  template <MemorySpace S = Space, HostOnly<S> = 0>
   /**
-   * @brief Construct and validate a host CSR pattern.
-   * @param rows Number of rows.
-   * @param cols Number of columns.
-   * @param row_ptr CSR row offsets of size `rows + 1`.
-   * @param col_ind CSR column indices.
+   * @brief Construct and validate a Host CSR pattern.
+   *
+   * @param[in] rows - Number of rows.
+   * @param[in] cols - Number of columns.
+   * @param[in] row_ptr - CSR row offsets.
+   * @param[in] col_ind - CSR column indices.
+   * @throws std::runtime_error - If dimensions or CSR indices are invalid.
    */
+  template <MemorySpace S = Space, HostOnly<S> = 0>
   CsrPattern(Index       rows,
              Index       cols,
              IndexVector row_ptr,
@@ -83,49 +87,81 @@ public:
     checkSizes();
   }
 
-  /** @brief Return the number of rows. */
+  /**
+   * @brief Return the number of rows.
+   *
+   * @return Number of rows.
+   */
   Index rows() const noexcept
   {
     return storage_->rows;
   }
 
-  /** @brief Return the number of columns. */
+  /**
+   * @brief Return the number of columns.
+   *
+   * @return Number of columns.
+   */
   Index cols() const noexcept
   {
     return storage_->cols;
   }
 
-  /** @brief Return the number of structural nonzeros. */
+  /**
+   * @brief Return the number of stored column indices.
+   *
+   * @return Number of structurally nonzero entries.
+   */
   Index nnz() const noexcept
   {
     return storage_->col_ind.size();
   }
 
-  /** @brief Stable identifier for this exact CSR row/column layout. */
+  /**
+   * @brief Return the stable identity of this CSR layout.
+   *
+   * @return Nonzero layout identifier for a validated pattern.
+   */
   std::uint64_t layoutId() const noexcept
   {
     return storage_->layout_id;
   }
 
-  /** @brief Return the owned CSR row-offset vector. */
+  /**
+   * @brief Return the owned CSR row offsets.
+   *
+   * @return Read-only row-offset vector.
+   */
   const IndexVector& rowPtr() const noexcept
   {
     return storage_->row_ptr;
   }
 
-  /** @brief Return the owned CSR column-index vector. */
+  /**
+   * @brief Return the owned CSR column indices.
+   *
+   * @return Read-only column-index vector.
+   */
   const IndexVector& colInd() const noexcept
   {
     return storage_->col_ind;
   }
 
-  /** @brief Return a pointer to the CSR row offsets in `Space`. */
+  /**
+   * @brief Return the CSR row-offset data.
+   *
+   * @return Read-only pointer to row offsets.
+   */
   const Index* rowPtrData() const noexcept
   {
     return storage_->row_ptr.data();
   }
 
-  /** @brief Return a pointer to the CSR column indices in `Space`. */
+  /**
+   * @brief Return the CSR column-index data.
+   *
+   * @return Read-only pointer to column indices.
+   */
   const Index* colIndData() const noexcept
   {
     return storage_->col_ind.data();
@@ -149,11 +185,11 @@ private:
     {
     }
 
-    Index         rows{0};
-    Index         cols{0};
-    IndexVector   row_ptr;
-    IndexVector   col_ind;
-    std::uint64_t layout_id{0};
+    Index         rows{0};      ///< Number of rows.
+    Index         cols{0};      ///< Number of columns.
+    IndexVector   row_ptr;      ///< CSR row offsets.
+    IndexVector   col_ind;      ///< CSR column indices.
+    std::uint64_t layout_id{0}; ///< Stable CSR layout identifier.
   };
 
   template <MemorySpace S = Space, DeviceOnly<S> = 0>
@@ -205,14 +241,16 @@ private:
     }
   }
 
-  std::shared_ptr<Storage> storage_;
+  std::shared_ptr<Storage> storage_; ///< Shared immutable pattern storage.
 };
 
 /**
- * @brief Explicitly copy a host CSR pattern to device-owned storage.
- * @param src Validated host pattern.
- * @param dst Device pattern replaced by the copy.
- * @param ctx CUDA stream on which copies are enqueued.
+ * @brief Copy a Host CSR pattern to Device-owned storage.
+ *
+ * @param[in] src - Source Host pattern.
+ * @param[out] dst - Destination Device pattern.
+ * @param[in] ctx - CUDA context used to enqueue the copy.
+ * @throws std::runtime_error - If a CUDA allocation or copy fails.
  */
 inline void copy(const HostCsrPattern& src,
                  DeviceCsrPattern&     dst,

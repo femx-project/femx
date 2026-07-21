@@ -5,7 +5,7 @@
 namespace femx::linalg
 {
 
-/** @brief Linear solve contract over one concrete execution backend. */
+/** @brief Define the linear solve contract for an execution backend. */
 template <class Backend>
 class LinearSolver
 {
@@ -19,13 +19,27 @@ public:
 
   virtual ~LinearSolver() = default;
 
-  /** @brief Solve `mat * sol = rhs`. */
+  /**
+   * @brief Solve `mat * sol = rhs`.
+   *
+   * @param[in] mat - System matrix.
+   * @param[in] rhs - Right-hand side vector.
+   * @param[in,out] sol - Initial guess replaced by the solution.
+   * @param[in] ctx - Execution context.
+   */
   virtual void solve(const Matrix& mat,
                      const Vector& rhs,
                      Vector&       sol,
                      Context&      ctx) = 0;
 
-  /** @brief Solve `mat^T * sol = rhs`. */
+  /**
+   * @brief Solve `mat^T * sol = rhs`.
+   *
+   * @param[in] mat - System matrix.
+   * @param[in] rhs - Right-hand side vector.
+   * @param[in,out] sol - Initial guess replaced by the solution.
+   * @param[in] ctx - Execution context.
+   */
   virtual void solveT(const Matrix& mat,
                       const Vector& rhs,
                       Vector&       sol,

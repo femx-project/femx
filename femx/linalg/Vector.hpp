@@ -23,7 +23,7 @@ using HostConstIndexView    = VectorView<MemorySpace::Host, const Index>;
 using DeviceConstIndexView  = VectorView<MemorySpace::Device, const Index>;
 
 /**
- * @brief Owning contiguous host vector with the femx signed index type.
+ * @brief Own a contiguous Host vector with the femx signed index type.
  *
  * Its container interface follows `std::vector`; resizing value-initializes
  * all entries and host views remain valid only until storage is reallocated.
@@ -34,39 +34,78 @@ class Vector<MemorySpace::Host, T>
 public:
   Vector() = default;
 
+  /**
+   * @brief Construct a vector from initializer-list values.
+   *
+   * @param[in] vals - Values to copy.
+   */
   Vector(std::initializer_list<T> vals)
     : vals_(vals)
   {
   }
 
+  /**
+   * @brief Construct a value-initialized vector.
+   *
+   * @param[in] size - Number of values.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   explicit Vector(Index size)
     : vals_(checkedSize(size), T{})
   {
   }
 
+  /**
+   * @brief Construct a vector filled with one value.
+   *
+   * @param[in] size - Number of values.
+   * @param[in] val - Initial value for every entry.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   Vector(Index size, const T& val)
     : vals_(checkedSize(size), val)
   {
   }
 
+  /**
+   * @brief Construct a vector by copying a Host view.
+   *
+   * @param[in] view - Values to copy.
+   * @throws std::runtime_error - If the view size is negative.
+   */
   template <class U>
   Vector(VectorView<MemorySpace::Host, U> view)
   {
     assign(view);
   }
 
-  Vector(const Vector&)     = default;
+  Vector(const Vector&) = default;
+
   Vector(Vector&&) noexcept = default;
 
-  Vector& operator=(const Vector&)     = default;
+  Vector& operator=(const Vector&) = default;
+
   Vector& operator=(Vector&&) noexcept = default;
 
+  /**
+   * @brief Replace the vector with initializer-list values.
+   *
+   * @param[in] vals - Values to copy.
+   * @return This vector.
+   */
   Vector& operator=(std::initializer_list<T> vals)
   {
     vals_.assign(vals.begin(), vals.end());
     return *this;
   }
 
+  /**
+   * @brief Replace the vector by copying a Host view.
+   *
+   * @param[in] view - Values to copy.
+   * @return This vector.
+   * @throws std::runtime_error - If the view size is negative.
+   */
   template <class U>
   Vector& operator=(VectorView<MemorySpace::Host, U> view)
   {
@@ -74,117 +113,235 @@ public:
     return *this;
   }
 
+  /**
+   * @brief Replace storage with value-initialized entries.
+   *
+   * @param[in] size - New number of entries.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   void resize(Index size)
   {
     vals_.assign(checkedSize(size), T{});
   }
 
+  /**
+   * @brief Replace storage with copies of one value.
+   *
+   * @param[in] size - New number of entries.
+   * @param[in] val - Value assigned to every entry.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   void assign(Index size, const T& val)
   {
     vals_.assign(checkedSize(size), val);
   }
 
+  /**
+   * @brief Return the number of stored values.
+   *
+   * @return Number of values.
+   */
   Index size() const noexcept
   {
     return static_cast<Index>(vals_.size());
   }
 
+  /**
+   * @brief Report whether the vector is empty.
+   *
+   * @return `true` when the vector contains no values.
+   */
   bool empty() const noexcept
   {
     return vals_.empty();
   }
 
+  /** @brief Remove all values. */
   void clear() noexcept
   {
     vals_.clear();
   }
 
+  /**
+   * @brief Reserve storage for at least the requested number of values.
+   *
+   * @param[in] size - Requested capacity.
+   * @throws std::runtime_error - If `size` is negative.
+   */
   void reserve(Index size)
   {
     vals_.reserve(checkedSize(size));
   }
 
+  /**
+   * @brief Append a copied value.
+   *
+   * @param[in] val - Value to append.
+   */
   void push_back(const T& val)
   {
     vals_.push_back(val);
   }
 
+  /**
+   * @brief Append a moved value.
+   *
+   * @param[in] val - Value to move into the vector.
+   */
   void push_back(T&& val)
   {
     vals_.push_back(std::move(val));
   }
 
+  /**
+   * @brief Construct a value at the end of the vector.
+   *
+   * @param args - Arguments forwarded to the value constructor.
+   * @return Reference to the appended value.
+   */
   template <class... Args>
   T& emplace_back(Args&&... args)
   {
     return vals_.emplace_back(std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Access the first value.
+   *
+   * @return Reference to the first value.
+   */
   T& front()
   {
     return vals_.front();
   }
 
+  /**
+   * @brief Access the first value.
+   *
+   * @return Read-only reference to the first value.
+   */
   const T& front() const
   {
     return vals_.front();
   }
 
+  /**
+   * @brief Access the last value.
+   *
+   * @return Reference to the last value.
+   */
   T& back()
   {
     return vals_.back();
   }
 
+  /**
+   * @brief Access the last value.
+   *
+   * @return Read-only reference to the last value.
+   */
   const T& back() const
   {
     return vals_.back();
   }
 
+  /**
+   * @brief Access a value without bounds checking.
+   *
+   * @param[in] i - Value index.
+   * @return Reference to the indexed value.
+   */
   T& operator[](Index i)
   {
     return vals_[static_cast<std::size_t>(i)];
   }
 
+  /**
+   * @brief Access a value without bounds checking.
+   *
+   * @param[in] i - Value index.
+   * @return Read-only reference to the indexed value.
+   */
   const T& operator[](Index i) const
   {
     return vals_[static_cast<std::size_t>(i)];
   }
 
+  /**
+   * @brief Return the address of the first stored value.
+   *
+   * @return Pointer to the first value.
+   */
   T* data() noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return the address of the first stored value.
+   *
+   * @return Read-only pointer to the first value.
+   */
   const T* data() const noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return an iterator to the first value.
+   *
+   * @return Pointer to the first value.
+   */
   T* begin() noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return a read-only iterator to the first value.
+   *
+   * @return Read-only pointer to the first value.
+   */
   const T* begin() const noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return an iterator past the last value.
+   *
+   * @return Pointer past the last value.
+   */
   T* end() noexcept
   {
     return vals_.data() + vals_.size();
   }
 
+  /**
+   * @brief Return a read-only iterator past the last value.
+   *
+   * @return Read-only pointer past the last value.
+   */
   const T* end() const noexcept
   {
     return vals_.data() + vals_.size();
   }
 
+  /**
+   * @brief Return a mutable view of the stored values.
+   *
+   * @return Mutable Host view.
+   */
   VectorView<MemorySpace::Host, T> view() noexcept
   {
     return {data(), size()};
   }
 
+  /**
+   * @brief Return a read-only view of the stored values.
+   *
+   * @return Read-only Host view.
+   */
   VectorView<MemorySpace::Host, const T> view() const noexcept
   {
     return {data(), size()};
@@ -207,11 +364,11 @@ private:
     }
   }
 
-  std::vector<T> vals_;
+  std::vector<T> vals_; ///< Owned Host values.
 };
 
 /**
- * @brief Move-only owner of a contiguous CUDA device allocation.
+ * @brief Own a move-only contiguous CUDA Device allocation.
  *
  * Resizing replaces the allocation and invalidates all views and borrowed
  * pointers. Host access requires an explicit `CudaVectorHandler::copy()`
@@ -226,7 +383,12 @@ class Vector<MemorySpace::Device, T>
 public:
   Vector() = default;
 
-  /** @brief Allocate and zero `size` device values. */
+  /**
+   * @brief Construct a zeroed Device vector.
+   *
+   * @param[in] size - Number of values.
+   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   */
   explicit Vector(Index size)
   {
     resize(size);
@@ -258,7 +420,12 @@ public:
     return *this;
   }
 
-  /** @brief Replace storage with a zeroed allocation of `size` values. */
+  /**
+   * @brief Replace storage with a zeroed Device allocation.
+   *
+   * @param[in] size - New number of values.
+   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   */
   void resize(Index size)
   {
     require(size >= 0, "Vector size must be non-negative");
@@ -285,7 +452,7 @@ public:
     size_ = size;
   }
 
-  /** @brief Release device storage and reset the size to zero. */
+  /** @brief Release the Device allocation. */
   void clear() noexcept
   {
     cuda::release(data_);
@@ -293,37 +460,61 @@ public:
     size_ = 0;
   }
 
-  /** @brief Return the number of allocated values. */
+  /**
+   * @brief Return the number of allocated values.
+   *
+   * @return Number of values.
+   */
   Index size() const noexcept
   {
     return size_;
   }
 
-  /** @brief Return whether no values are allocated. */
+  /**
+   * @brief Report whether the vector is empty.
+   *
+   * @return `true` when the vector contains no values.
+   */
   bool empty() const noexcept
   {
     return size_ == 0;
   }
 
-  /** @brief Return the mutable device pointer. */
+  /**
+   * @brief Return the Device address of the first value.
+   *
+   * @return Device pointer to the first value.
+   */
   T* data() noexcept
   {
     return data_;
   }
 
-  /** @brief Return the device pointer. */
+  /**
+   * @brief Return the Device address of the first value.
+   *
+   * @return Read-only Device pointer to the first value.
+   */
   const T* data() const noexcept
   {
     return data_;
   }
 
-  /** @brief Return a mutable non-owning device view. */
+  /**
+   * @brief Return a mutable Device view of the allocation.
+   *
+   * @return Mutable Device view.
+   */
   VectorView<MemorySpace::Device, T> view() noexcept
   {
     return {data_, size_};
   }
 
-  /** @brief Return a read-only non-owning device view. */
+  /**
+   * @brief Return a read-only Device view of the allocation.
+   *
+   * @return Read-only Device view.
+   */
   VectorView<MemorySpace::Device, const T> view() const noexcept
   {
     return {data_, size_};
@@ -335,8 +526,8 @@ private:
     return static_cast<std::size_t>(size) * sizeof(T);
   }
 
-  T*    data_{nullptr};
-  Index size_{0};
+  T*    data_{nullptr}; ///< Owned Device allocation.
+  Index size_{0};       ///< Number of allocated values.
 };
 
 } // namespace femx

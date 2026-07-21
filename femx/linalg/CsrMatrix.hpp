@@ -8,11 +8,11 @@ namespace femx
 {
 
 /**
- * @brief Numeric values for an immutable CSR pattern in one memory space.
+ * @brief Own numeric values for an immutable CSR pattern.
  *
  * A matrix retains an immutable shared pattern handle, allowing multiple
  * matrices and maps to reuse one sparse structure without lifetime coupling.
- * Numeric values are owned exclusively by this matrix in Space.
+ * Numeric values are owned exclusively by this matrix in `Space`.
  */
 template <MemorySpace Space>
 class CsrMatrix
@@ -21,71 +21,127 @@ public:
   using Pattern = CsrPattern<Space>;
   using Vals    = Vector<Space>;
 
-  /** @brief Construct an empty matrix. */
+  /** @brief Construct an empty zero-by-zero matrix. */
   CsrMatrix()
     : pattern_(), vals_(0)
   {
   }
 
-  /** @brief Allocate zero-initialized values for `pattern`. */
+  /**
+   * @brief Construct a zero-valued matrix for a CSR pattern.
+   *
+   * @param[in] pattern - Immutable sparsity pattern.
+   * @throws std::runtime_error - If Device value allocation or initialization
+   * fails.
+   */
   explicit CsrMatrix(const Pattern& pattern)
     : pattern_(pattern), vals_(pattern.nnz())
   {
   }
 
+  /**
+   * @brief Return the number of rows.
+   *
+   * @return Number of rows.
+   */
   Index rows() const noexcept
   {
     return pattern_.rows();
   }
 
+  /**
+   * @brief Return the number of columns.
+   *
+   * @return Number of columns.
+   */
   Index cols() const noexcept
   {
     return pattern_.cols();
   }
 
+  /**
+   * @brief Return the number of stored entries.
+   *
+   * @return Number of structurally nonzero entries.
+   */
   Index nnz() const noexcept
   {
     return pattern_.nnz();
   }
 
+  /**
+   * @brief Return the immutable sparsity pattern.
+   *
+   * @return Shared CSR pattern.
+   */
   const Pattern& pattern() const noexcept
   {
     return pattern_;
   }
 
+  /**
+   * @brief Return the CSR row-offset data.
+   *
+   * @return Read-only pointer to row offsets.
+   */
   const Index* rowPtrData() const noexcept
   {
     return pattern_.rowPtrData();
   }
 
+  /**
+   * @brief Return the CSR column-index data.
+   *
+   * @return Read-only pointer to column indices.
+   */
   const Index* colIndData() const noexcept
   {
     return pattern_.colIndData();
   }
 
+  /**
+   * @brief Return the numeric CSR value data.
+   *
+   * @return Mutable pointer to numeric values.
+   */
   Real* valsData() noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return the numeric CSR value data.
+   *
+   * @return Read-only pointer to numeric values.
+   */
   const Real* valsData() const noexcept
   {
     return vals_.data();
   }
 
+  /**
+   * @brief Return the owned numeric values.
+   *
+   * @return Mutable vector of CSR values.
+   */
   Vals& vals() noexcept
   {
     return vals_;
   }
 
+  /**
+   * @brief Return the owned numeric values.
+   *
+   * @return Read-only vector of CSR values.
+   */
   const Vals& vals() const noexcept
   {
     return vals_;
   }
 
 private:
-  Pattern pattern_;
-  Vals    vals_;
+  Pattern pattern_; ///< Shared immutable CSR pattern.
+  Vals    vals_;    ///< Numeric values in CSR order.
 };
 
 } // namespace femx

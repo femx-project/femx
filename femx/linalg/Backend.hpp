@@ -10,10 +10,10 @@
 namespace femx::linalg
 {
 
-/** @brief Serial CPU execution over Host CSR storage. */
+/** @brief Provide serial CPU execution over Host CSR storage. */
 struct HostCsrBackend
 {
-  static constexpr MemorySpace space = MemorySpace::Host;
+  static constexpr MemorySpace space = MemorySpace::Host; ///< Storage memory space.
 
   using Vec       = HostVector;
   using VecView   = HostVectorView;
@@ -23,10 +23,10 @@ struct HostCsrBackend
   using Ctx       = CpuContext;
 };
 
-/** @brief CUDA execution over Device CSR storage. */
+/** @brief Provide CUDA execution over Device CSR storage. */
 struct CudaCsrBackend
 {
-  static constexpr MemorySpace space = MemorySpace::Device;
+  static constexpr MemorySpace space = MemorySpace::Device; ///< Storage memory space.
 
   using Vec       = DeviceVector;
   using VecView   = DeviceVectorView;
@@ -36,22 +36,25 @@ struct CudaCsrBackend
   using Ctx       = CudaContext;
 };
 
+/** @brief Map a memory space to its native CSR backend. */
 template <MemorySpace Space>
 struct CsrBackendFor;
 
+/** @brief Map Host memory to the Host CSR backend. */
 template <>
 struct CsrBackendFor<MemorySpace::Host>
 {
   using Type = HostCsrBackend;
 };
 
+/** @brief Map Device memory to the CUDA CSR backend. */
 template <>
 struct CsrBackendFor<MemorySpace::Device>
 {
   using Type = CudaCsrBackend;
 };
 
-/** @brief Native CSR backend associated with a memory space. */
+/** @brief Select the native CSR backend for a memory space. */
 template <MemorySpace Space>
 using CsrBackend = typename CsrBackendFor<Space>::Type;
 
@@ -61,6 +64,7 @@ struct IsBackend : std::false_type
 {
 };
 
+/** @brief Recognize a type that satisfies the femx backend contract. */
 template <class Backend>
 struct IsBackend<Backend,
                  std::void_t<typename Backend::Vec,
@@ -73,6 +77,7 @@ struct IsBackend<Backend,
 {
 };
 
+/** @brief Report whether a type satisfies the femx backend contract. */
 template <class Backend>
 inline constexpr bool is_backend_v = IsBackend<Backend>::value;
 
