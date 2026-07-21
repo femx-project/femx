@@ -4,7 +4,10 @@
 #include <string>
 
 #include "TestHelper.hpp"
+#include <femx/fem/ElementQuadratureData.hpp>
+#include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
@@ -99,6 +102,49 @@ Real quadratureWeightSum(const GaussQuadrature& quad)
     total += quad[iq].wt;
   }
   return total;
+}
+
+TestOutcome elementQuadratureDataMapsToPhysicalSpace()
+{
+  TestStatus status(__func__);
+
+  Mesh           mesh = Mesh::makeStructuredQuad(1, 1);
+  LagrangeQuadQ1 quad_element;
+  FESpace        space(&mesh, &quad_element);
+  space.setup();
+
+  const auto data = makeElementQuadratureData(
+      space,
+      GaussQuadrature::make(ReferenceElement::Quadrilateral, 2));
+  const auto view = data.view();
+
+  status *= data.numElems() == 1;
+  status *= data.numQuadraturePoints() == 4;
+  status *= data.numShapes() == 4;
+  status *= data.dim() == 2;
+
+  Real volume = 0.0;
+  for (Index iq = 0; iq < data.numQuadraturePoints(); ++iq)
+  {
+    Real shape_sum = 0.0;
+    Real grad_sum[2]{0.0, 0.0};
+    for (Index shape = 0; shape < data.numShapes(); ++shape)
+    {
+      shape_sum += view.N(iq, shape);
+      for (Index d = 0; d < data.dim(); ++d)
+      {
+        grad_sum[d] += view.dNdx(0, iq, shape, d);
+      }
+    }
+    status *= near(shape_sum, 1.0);
+    status *= near(grad_sum[0], 0.0);
+    status *= near(grad_sum[1], 0.0);
+    status *= near(view.JxW(0, iq), 0.25);
+    volume += view.JxW(0, iq);
+  }
+  status *= near(volume, 1.0);
+
+  return status.report();
 }
 
 TestOutcome elementMetadata()
@@ -282,6 +328,7 @@ int main(int, char**)
   results += femx::tests::quadQ1ShapeFunctions();
   results += femx::tests::tetrahedronP1ShapeFunctions();
   results += femx::tests::quadratureIntegratesConstants();
+  results += femx::tests::elementQuadratureDataMapsToPhysicalSpace();
 
   return results.summary();
 }

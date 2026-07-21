@@ -70,7 +70,8 @@ int run(const Options& opts)
   HostVector x;
   solver.solve(A_petsc, rhs, x, ctx);
 
-  const Real res_norm = helper.resNorm(A, rhs, x);
+  CpuContext host_ctx;
+  const Real res_norm = helper.resNorm(A, rhs, x, host_ctx);
 
   if (isRoot())
   {

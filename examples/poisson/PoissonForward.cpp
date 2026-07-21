@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "PoissonOperator.hpp"
+#include "PoissonComponents.hpp"
 #include <femx/assembly/Assembly.hpp>
 #include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/DofLayout.hpp>
@@ -178,8 +178,10 @@ PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
     space_(&mesh_, &fe_)
 {
   space_.setup();
-  geom_ = makeGeometry(mesh_);
-  map_  = assembly::makeAssemblyMap(DofLayout(space_));
+  geom_         = makeGeometry(mesh_);
+  element_data_ = makeElementQuadratureData(
+      space_, GaussQuadrature::make(fe_.referenceElement(), 2));
+  map_ = assembly::makeAssemblyMap(DofLayout(space_));
 
   DirichletBC boundary;
   boundary.addBoundary(space_, onBoundary, boundaryValue);
@@ -196,6 +198,12 @@ const Options& PoissonForwardProblem::options() const noexcept
 const HostGeometry& PoissonForwardProblem::geom() const noexcept
 {
   return geom_;
+}
+
+const HostElementQuadratureData&
+PoissonForwardProblem::elementData() const noexcept
+{
+  return element_data_;
 }
 
 const assembly::HostAssemblyMap&
@@ -231,7 +239,7 @@ void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
   HostVector zero_state(numDofs(), 0.0);
   HostVector res;
   CpuContext ctx;
-  assembly::assemble(PoissonQuadQ1Operator{},
+  assembly::assemble(PoissonComponents<MemorySpace::Host>(element_data_.view()),
                      geom_,
                      map_,
                      zero_state,

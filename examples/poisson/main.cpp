@@ -44,7 +44,7 @@ int run(const Options& opts)
               helper.name(),
               problem,
               problem.errorReport(x),
-              helper.resNorm(A, rhs, x));
+              helper.resNorm(A, rhs, x, ctx));
 
   if (opts.write_output)
   {
