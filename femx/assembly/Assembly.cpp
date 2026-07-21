@@ -1,6 +1,6 @@
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 
 namespace femx::assembly
 {
@@ -13,7 +13,7 @@ void addElem(const HostAssemblyMap& map,
 {
   require(ie >= 0 && ie < map.numElems(),
           "Host CSR element index is out of range");
-  require(mat.graph().layoutId() == map.graph().layoutId(),
+  require(mat.pattern().layoutId() == map.pattern().layoutId(),
           "Host CSR matrix must use the AssemblyMap layout");
 
   const auto map_v = map.view();

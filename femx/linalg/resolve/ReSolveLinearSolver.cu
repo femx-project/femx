@@ -7,6 +7,7 @@
 #include <string>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/Context.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx::linalg::detail
@@ -36,7 +37,7 @@ struct CsrTransposeWorkspace
 
   ~CsrTransposeWorkspace()
   {
-    device::release(buffer);
+    cuda::release(buffer);
     if (handle != nullptr)
     {
       cusparseDestroy(handle);
@@ -168,8 +169,8 @@ void transposeCsr(void*        workspace,
                   "cusparseCsr2cscEx2_bufferSize failed");
     if (size > work.capacity)
     {
-      device::release(work.buffer);
-      work.buffer   = device::allocate(size);
+      cuda::release(work.buffer);
+      work.buffer   = cuda::allocate(size);
       work.capacity = size;
     }
     checkCusparse(cusparseCsr2cscEx2(work.handle,
@@ -199,7 +200,7 @@ void transposeCsr(void*        workspace,
                                                      dst_row_ptr,
                                                      dst_col_ind,
                                                      src_to_tr);
-    device::checkLastError();
+    cuda::checkLastError();
   }
 
   constexpr unsigned int threads = 256;
@@ -208,7 +209,7 @@ void transposeCsr(void*        workspace,
       / static_cast<Index>(threads));
   updateTrValsKernel<<<blocks, threads, 0, stream>>>(
       nnz, src_vals, src_to_tr, dst_vals);
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 } // namespace femx::linalg::detail

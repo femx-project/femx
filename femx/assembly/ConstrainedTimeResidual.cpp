@@ -2,6 +2,7 @@
 
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <femx/linalg/petsc/PETScBackend.hpp>
@@ -192,14 +193,13 @@ void prepareForward(const HostBoundaryMap&,
 }
 #endif
 
-template <class Vec, class Ctx>
-void resizeAndZero(Vec& out, Index size, Ctx& ctx)
+template <class Backend>
+void resizeAndZero(typename Backend::Vec& out,
+                   Index                  size,
+                   typename Backend::Ctx& ctx)
 {
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  zero(out.view(), ctx);
+  linalg::VectorHandler<Backend> vec_handler(ctx);
+  vec_handler.resizeOrZero(out, size);
 }
 
 } // namespace
@@ -215,7 +215,7 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
   {
     initDims(control, init);
     control_  = std::move(control);
-    boundary_ = makeBoundaryMap(boundaryDofs(control_), base_->hostGraph());
+    boundary_ = makeBoundaryMap(boundaryDofs(control_), base_->hostPattern());
     setInitialStateMap(std::move(init));
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
@@ -242,7 +242,7 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
     initDims(control, init);
 
     const HostBoundaryMap host_boundary =
-        makeBoundaryMap(boundaryDofs(control), base_->hostGraph());
+        makeBoundaryMap(boundaryDofs(control), base_->hostPattern());
     copy(host_boundary, boundary_, ctx);
     fem::copy(control, control_, ctx);
     if (init.numStates() != 0)
@@ -266,16 +266,16 @@ state::TimeDims ConstrainedTimeResidual<Backend>::dims() const
 }
 
 template <class Backend>
-const HostCsrGraph& ConstrainedTimeResidual<Backend>::hostGraph() const
+const HostCsrPattern& ConstrainedTimeResidual<Backend>::hostPattern() const
 {
-  return base_->hostGraph();
+  return base_->hostPattern();
 }
 
 template <class Backend>
-const typename ConstrainedTimeResidual<Backend>::Graph&
-ConstrainedTimeResidual<Backend>::graph() const
+const typename ConstrainedTimeResidual<Backend>::Pattern&
+ConstrainedTimeResidual<Backend>::pattern() const
 {
-  return base_->graph();
+  return base_->pattern();
 }
 
 template <class Backend>
@@ -383,6 +383,7 @@ void ConstrainedTimeResidual<Backend>::applyJacT(
     Vec&                 out,
     Ctx&                 ctx) const
 {
+  linalg::VectorHandler<Backend> vec_handler(ctx);
   checkCtx(time);
   require(!wrt.isNextState(),
           "Constrained transpose apply supports only history and parameter blocks");
@@ -390,13 +391,13 @@ void ConstrainedTimeResidual<Backend>::applyJacT(
           "ConstrainedTimeResidual adjoint size mismatch");
   if (wrt.isParam())
   {
-    resizeAndZero(out, dims_.num_param, ctx);
+    resizeAndZero<Backend>(out, dims_.num_param, ctx);
     assembly::addControlJacT(
         control_, time.step, adj, out.view(), ctx);
     return;
   }
 
-  copy(adj, base_adj_.view(), ctx);
+  vec_handler.copy(adj, base_adj_.view());
   zeroBoundaryVals(boundary_, base_adj_.view(), ctx);
   base_->applyJacT(baseCtx(time), wrt, base_adj_.view(), out, ctx);
   require(out.size() == dims_.num_states,

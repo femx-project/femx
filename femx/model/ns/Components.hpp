@@ -6,6 +6,7 @@
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -23,10 +24,10 @@ namespace ns
 // NavierStokesModel currently accepts Q1 quadrilaterals, P1 triangles, and P1
 // tetrahedra. A tetrahedron therefore has the largest local system: four
 // nodes times three velocity components plus pressure.
-constexpr Index kMaxNn  = 4;
-constexpr Index kMaxNd  = 16;
-constexpr Index kMaxNq  = 4;
-constexpr Index kMaxDim = 3;
+constexpr Index kMaxNn   = 4;
+constexpr Index kMaxNd   = 16;
+constexpr Index kMaxNq   = 4;
+constexpr Index kMaxDim  = 3;
 constexpr Index kNumHist = 2;
 
 template <MemorySpace Space>
@@ -207,13 +208,14 @@ inline void copy(const HostNavierData& src,
                  DeviceNavierData&     dst,
                  CudaContext&          ctx)
 {
+  linalg::CudaVectorHandler vec_handler(ctx);
   dst.num_elems_ = src.num_elems_;
   dst.num_qpts_  = src.num_qpts_;
   dst.num_nodes_ = src.num_nodes_;
   dst.dim_       = src.dim_;
-  femx::copy(src.N_, dst.N_, ctx);
-  femx::copy(src.dNdx_, dst.dNdx_, ctx);
-  femx::copy(src.JxW_, dst.JxW_, ctx);
+  vec_handler.copy(src.N_, dst.N_);
+  vec_handler.copy(src.dNdx_, dst.dNdx_);
+  vec_handler.copy(src.JxW_, dst.JxW_);
 }
 
 struct KernelFluid

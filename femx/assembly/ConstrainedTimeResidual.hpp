@@ -25,7 +25,7 @@ public:
   using VecView   = typename Base::VecView;
   using ConstView = typename Base::ConstView;
   using Mat       = typename Base::Mat;
-  using Graph     = typename Base::Graph;
+  using Pattern   = typename Base::Pattern;
   using Ctx       = typename Base::Ctx;
   using StepCtx   = typename Base::StepCtx;
   using Boundary  = BoundaryMap<Backend::space>;
@@ -45,8 +45,8 @@ public:
 
   state::TimeDims dims() const override;
 
-  const HostCsrGraph& hostGraph() const override;
-  const Graph&        graph() const override;
+  const HostCsrPattern& hostPattern() const override;
+  const Pattern&        pattern() const override;
 
   const Control& controlMap() const noexcept;
 

@@ -198,7 +198,7 @@ system $K\mathbf{x}^{n+1}=F$ once per time step. It does not perform a Newton
 iteration on the fully nonlinear Navier-Stokes residual.
 
 The model publishes flattened element data and an immutable `AssemblyMap`.
-Both app entry points allocate their matrix from the map's CSR graph. PETSc
+Both app entry points allocate their matrix from the map's CSR pattern. PETSc
 uses Host assembly and exact distributed preallocation. In a CUDA ReSolve
 build, the `resolve` entry point keeps the trajectory, residual, Jacobian,
 boundary work, and linear solve on Device and assembles through

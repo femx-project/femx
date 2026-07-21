@@ -95,7 +95,7 @@ __global__ void zeroBoundaryKernel(
 
 void checkMat(const DeviceBoundaryMap& map, const DeviceCsrMatrix& mat)
 {
-  require(mat.graph().layoutId() == map.layoutId(),
+  require(mat.pattern().layoutId() == map.layoutId(),
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
@@ -139,7 +139,7 @@ void launchRows(const DeviceBoundaryMap& map,
       diag,
       rhs == nullptr ? nullptr : rhs->data(),
       bc_vals == nullptr ? nullptr : bc_vals->data());
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 } // namespace
@@ -172,7 +172,7 @@ void replaceRes(const DeviceBoundaryMap& map,
       (map.numBcs() + kThreads - 1) / kThreads);
   replaceResKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(
       map.view(), state.data(), bc_vals.data(), res.data());
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 void zeroBoundary(const DeviceBoundaryMap& map,
@@ -189,7 +189,7 @@ void zeroBoundary(const DeviceBoundaryMap& map,
       (map.numBcs() + kThreads - 1) / kThreads);
   zeroBoundaryKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(map.view(),
                                                                vals.data());
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 void prepareForwardSolve(const DeviceBoundaryMap& map,
@@ -209,7 +209,7 @@ void prepareForwardSolve(const DeviceBoundaryMap& map,
                         0,
                         cudaStream(ctx)>>>(
       map.view(), solve_mat.valsData(), rhs.data(), bc_vals.data());
-  device::checkLastError();
+  cuda::checkLastError();
   launchRows(map, solve_mat, 1.0, &rhs, &bc_vals, ctx);
 }
 

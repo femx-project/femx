@@ -5,7 +5,8 @@
 
 #include "TestHelper.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -52,72 +53,82 @@ TestOutcome persistentCudaCsrOps()
 
   try
   {
-    const HostCsrGraph graph{
+    const HostCsrPattern pattern{
         3,
         4,
         HostIndexVector{0, 2, 4, 7},
         HostIndexVector{0, 2, 1, 3, 0, 2, 3}};
-    HostCsrMatrix host_mat(graph);
+    HostCsrMatrix host_mat(pattern);
     host_mat.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
     const HostVector host_input{1.0, 2.0, 3.0, 4.0};
     const HostVector host_affine_input{1.0, 2.0, 3.0};
     const HostVector host_tr_input{2.0, -1.0, 0.5};
 
-    CpuContext     cpu_ctx;
-    CudaContext    ctx;
-    DeviceCsrGraph device_graph;
-    copy(graph, device_graph, ctx);
+    CpuContext                cpu_ctx;
+    CudaContext               ctx;
+    linalg::HostMatrixHandler host_mat_handler(cpu_ctx);
+    linalg::CudaVectorHandler vec_handler(ctx);
+    linalg::CudaMatrixHandler mat_handler(ctx);
+    DeviceCsrPattern          device_graph;
+    copy(pattern, device_graph, ctx);
+    record(status,
+           device_graph.layoutId() == pattern.layoutId(),
+           "Device pattern preserves its Host layout identity");
     DeviceCsrMatrix device_mat(device_graph);
-    copy(host_mat, device_mat, ctx);
+    mat_handler.copy(host_mat, device_mat);
 
     const Real*  mat_vals = device_mat.valsData();
     const Index* mat_rows = device_mat.rowPtrData();
     const Index* mat_cols = device_mat.colIndData();
 
     DeviceVector input;
-    copy(host_input, input, ctx);
+    vec_handler.copy(host_input, input);
+    DeviceVector squared_norm(1);
+    vec_handler.squaredNorm(input.view(), squared_norm.view());
+    HostVector actual_squared_norm;
+    vec_handler.copy(squared_norm, actual_squared_norm);
     DeviceVector sliced_input(9);
-    copy(input.view(), sliced_input.view().subview(3, 4), ctx);
+    vec_handler.copy(input.view(), sliced_input.view().subview(3, 4));
 
     DeviceVector output(3);
-    apply(device_mat,
-          sliced_input.view().subview(3, 4),
-          output.view(),
-          ctx);
+    mat_handler.matvec(device_mat,
+                       sliced_input.view().subview(3, 4),
+                       output.view());
     HostVector first_product;
-    copy(output, first_product, ctx);
+    vec_handler.copy(output, first_product);
 
     DeviceVector copied_product(7);
-    copy(output.view(), copied_product.view().subview(2, 3), ctx);
+    vec_handler.copy(output.view(), copied_product.view().subview(2, 3));
     HostVector copied_storage;
-    copy(copied_product, copied_storage, ctx);
+    vec_handler.copy(copied_product, copied_storage);
 
     DeviceVector affine_input;
-    copy(host_affine_input, affine_input, ctx);
-    axpby(-2.0, affine_input.view(), 0.5, output.view(), ctx);
+    vec_handler.copy(host_affine_input, affine_input);
+    vec_handler.axpby(-2.0, affine_input.view(), 0.5, output.view());
     HostVector affine_result;
-    copy(output, affine_result, ctx);
+    vec_handler.copy(output, affine_result);
 
     DeviceVector tr_input;
-    copy(host_tr_input, tr_input, ctx);
+    vec_handler.copy(host_tr_input, tr_input);
     DeviceVector direct_tr_product(4);
-    applyT(device_mat,
-           tr_input.view(),
-           direct_tr_product.view(),
-           ctx);
+    mat_handler.matvecT(device_mat,
+                        tr_input.view(),
+                        direct_tr_product.view());
     HostVector actual_direct_tr_product;
-    copy(direct_tr_product, actual_direct_tr_product, ctx);
+    vec_handler.copy(direct_tr_product, actual_direct_tr_product);
     HostVector expected_tr_product(4);
-    applyT(host_mat,
-           host_tr_input.view(),
-           expected_tr_product.view(),
-           cpu_ctx);
-    ctx.synchronize();
+    host_mat_handler.matvecT(host_mat,
+                             host_tr_input.view(),
+                             expected_tr_product.view());
+    ctx.sync();
 
     record(status,
            near(first_product, HostVector{-1.0, 22.0, 17.0}),
            "rectangular CSR apply");
+    record(status,
+           std::abs(actual_squared_norm[0] - 30.0) <= 1.0e-12,
+           "cuBLAS squared norm");
     record(status,
            near(HostVector(copied_storage.view().subview(2, 3)),
                 first_product),
@@ -128,17 +139,17 @@ TestOutcome persistentCudaCsrOps()
 
     const HostIndexVector host_indices{3, 0, 2};
     DeviceIndexVector     indices;
-    copy(host_indices, indices, ctx);
+    vec_handler.copy(host_indices, indices);
     DeviceVector gathered(3);
-    gather(input.view(), indices.view(), gathered.view(), ctx);
+    vec_handler.gather(input.view(), indices.view(), gathered.view());
     DeviceVector scattered(4);
-    scattered.setZero(ctx);
-    scatter(gathered.view(), indices.view(), scattered.view(), ctx);
+    vec_handler.zero(scattered.view());
+    vec_handler.scatter(gathered.view(), indices.view(), scattered.view());
     HostVector actual_gathered;
     HostVector actual_scattered;
-    copy(gathered, actual_gathered, ctx);
-    copy(scattered, actual_scattered, ctx);
-    ctx.synchronize();
+    vec_handler.copy(gathered, actual_gathered);
+    vec_handler.copy(scattered, actual_scattered);
+    ctx.sync();
     record(status,
            near(actual_gathered, HostVector{4.0, 1.0, 3.0}),
            "cuSPARSE gather");
@@ -148,22 +159,20 @@ TestOutcome persistentCudaCsrOps()
 
     const HostVector host_dense{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     DeviceVector     device_dense;
-    copy(host_dense, device_dense, ctx);
+    vec_handler.copy(host_dense, device_dense);
     DeviceVector dense_product(2);
-    femx::apply(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
-                input.view().subview(0, 3),
-                dense_product.view(),
-                ctx);
+    mat_handler.matvec(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                       input.view().subview(0, 3),
+                       dense_product.view());
     DeviceVector dense_tr_product(3);
-    femx::applyT(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
-                 dense_product.view(),
-                 dense_tr_product.view(),
-                 ctx);
+    mat_handler.matvecT(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                        dense_product.view(),
+                        dense_tr_product.view());
     HostVector actual_dense;
     HostVector actual_dense_tr;
-    copy(dense_product, actual_dense, ctx);
-    copy(dense_tr_product, actual_dense_tr, ctx);
-    ctx.synchronize();
+    vec_handler.copy(dense_product, actual_dense);
+    vec_handler.copy(dense_tr_product, actual_dense_tr);
+    ctx.sync();
     record(status,
            near(actual_dense, HostVector{14.0, 32.0}),
            "cuBLAS row-major dense apply");
@@ -176,25 +185,22 @@ TestOutcome persistentCudaCsrOps()
            "transposed CSR apply");
 
     host_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
-    copy(host_mat, device_mat, ctx);
-    apply(device_mat,
-          sliced_input.view().subview(3, 4),
-          output.view(),
-          ctx);
-    applyT(device_mat,
-           tr_input.view(),
-           direct_tr_product.view(),
-           ctx);
+    mat_handler.copy(host_mat, device_mat);
+    mat_handler.matvec(device_mat,
+                       sliced_input.view().subview(3, 4),
+                       output.view());
+    mat_handler.matvecT(device_mat,
+                        tr_input.view(),
+                        direct_tr_product.view());
 
     HostVector updated_product;
     HostVector updated_direct_tr_product;
-    copy(output, updated_product, ctx);
-    copy(direct_tr_product, updated_direct_tr_product, ctx);
-    applyT(host_mat,
-           host_tr_input.view(),
-           expected_tr_product.view(),
-           cpu_ctx);
-    ctx.synchronize();
+    vec_handler.copy(output, updated_product);
+    vec_handler.copy(direct_tr_product, updated_direct_tr_product);
+    host_mat_handler.matvecT(host_mat,
+                             host_tr_input.view(),
+                             expected_tr_product.view());
+    ctx.sync();
 
     record(status,
            near(updated_product, HostVector{5.0, -11.0, -1.0}),
@@ -211,10 +217,9 @@ TestOutcome persistentCudaCsrOps()
     bool overlap_rejected = false;
     try
     {
-      apply(device_mat,
-            sliced_input.view().subview(3, 4),
-            sliced_input.view().subview(4, 3),
-            ctx);
+      mat_handler.matvec(device_mat,
+                         sliced_input.view().subview(3, 4),
+                         sliced_input.view().subview(4, 3));
     }
     catch (const std::runtime_error&)
     {

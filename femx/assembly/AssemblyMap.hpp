@@ -4,7 +4,7 @@
 
 #include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/CsrGraph.hpp>
+#include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -88,19 +88,19 @@ public:
   AssemblyMap& operator=(AssemblyMap&&) noexcept = default;
 
 private:
-  AssemblyMap(Index           num_elems,
-              Index           num_res,
-              Index           num_states,
-              IndexVector     res_offsets,
-              IndexVector     res_dofs,
-              IndexVector     state_offsets,
-              IndexVector     state_dofs,
-              IndexVector     jac_offsets,
-              IndexVector     jac_map,
-              CsrGraph<Space> graph,
-              Index           max_res,
-              Index           max_state,
-              Index           max_jac)
+  AssemblyMap(Index             num_elems,
+              Index             num_res,
+              Index             num_states,
+              IndexVector       res_offsets,
+              IndexVector       res_dofs,
+              IndexVector       state_offsets,
+              IndexVector       state_dofs,
+              IndexVector       jac_offsets,
+              IndexVector       jac_map,
+              CsrPattern<Space> pattern,
+              Index             max_res,
+              Index             max_state,
+              Index             max_jac)
     : num_elems_(num_elems),
       num_res_(num_res),
       num_states_(num_states),
@@ -110,7 +110,7 @@ private:
       state_dofs_(std::move(state_dofs)),
       jac_offsets_(std::move(jac_offsets)),
       jac_map_(std::move(jac_map)),
-      graph_(std::move(graph)),
+      pattern_(std::move(pattern)),
       max_res_(max_res),
       max_state_(max_state),
       max_jac_(max_jac)
@@ -164,10 +164,10 @@ public:
     return max_jac_;
   }
 
-  /** @brief Return the immutable global Jacobian sparsity graph. */
-  const CsrGraph<Space>& graph() const noexcept
+  /** @brief Return the immutable global Jacobian sparsity pattern. */
+  const CsrPattern<Space>& pattern() const noexcept
   {
-    return graph_;
+    return pattern_;
   }
 
   /** @brief Return a non-owning kernel view valid while this map is alive. */
@@ -192,13 +192,13 @@ private:
   Index num_res_{0};
   Index num_states_{0};
 
-  IndexVector     res_offsets_;
-  IndexVector     res_dofs_;
-  IndexVector     state_offsets_;
-  IndexVector     state_dofs_;
-  IndexVector     jac_offsets_;
-  IndexVector     jac_map_;
-  CsrGraph<Space> graph_;
+  IndexVector       res_offsets_;
+  IndexVector       res_dofs_;
+  IndexVector       state_offsets_;
+  IndexVector       state_dofs_;
+  IndexVector       jac_offsets_;
+  IndexVector       jac_map_;
+  CsrPattern<Space> pattern_;
 
   Index max_res_{0};
   Index max_state_{0};
@@ -215,7 +215,7 @@ using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
  * @param num_states Global state size.
  * @param res_dofs Residual DOFs for each element.
  * @param state_dofs State DOFs for each element.
- * @return Validated map and its immutable CSR graph.
+ * @return Validated map and its immutable CSR pattern.
  */
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(
     Index                      num_res,
@@ -236,7 +236,7 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
 AssemblyMap<MemorySpace::Host> makeAssemblyMap(fem::DofLayout layout);
 
 /**
- * @brief Copy a host assembly map and graph to device-owned storage.
+ * @brief Copy a host assembly map and pattern to device-owned storage.
  *
  * The copy is enqueued on `ctx`; keep `src` alive until earlier queued reads
  * have completed.

@@ -11,6 +11,8 @@
 
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -39,7 +41,7 @@ inline void checkAssemblyInputs(
           "Geometry and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
-  require(jac.graph().layoutId() == map.graph().layoutId(),
+  require(jac.pattern().layoutId() == map.pattern().layoutId(),
           "Assembly matrix must use the AssemblyMap CSR layout");
 }
 
@@ -67,7 +69,7 @@ inline void checkTimeAssemblyInputs(
     const DeviceCsrMatrix&                  jac)
 {
   checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
-  require(jac.graph().layoutId() == map.graph().layoutId(),
+  require(jac.pattern().layoutId() == map.pattern().layoutId(),
           "CUDA time assembly matrix must use the AssemblyMap CSR layout");
 }
 
@@ -333,6 +335,8 @@ void assemble(const ElementOperator&                  op,
               DeviceCsrMatrix&                        jac,
               CudaContext&                            ctx)
 {
+  linalg::CudaVectorHandler vec_handler(ctx);
+  linalg::CudaMatrixHandler mat_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementOperator>::value,
                 "CUDA ElementOperator must be trivially copyable");
 
@@ -344,8 +348,8 @@ void assemble(const ElementOperator&                  op,
   {
     res.resize(map.numRes());
   }
-  res.setZero(ctx);
-  jac.setZero(ctx);
+  vec_handler.zero(res.view());
+  mat_handler.zero(jac);
 
   if (map.numElems() == 0)
   {
@@ -366,7 +370,7 @@ void assemble(const ElementOperator&                  op,
                    state.data(),
                    res.data(),
                    jac.valsData());
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 /** @brief Assemble one time residual and state Jacobian on CUDA. */
@@ -382,6 +386,8 @@ void assemble(const ElementOperator&                  op,
               DeviceCsrMatrix&                        jac,
               CudaContext&                            ctx)
 {
+  linalg::CudaVectorHandler vec_handler(ctx);
+  linalg::CudaMatrixHandler mat_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementOperator>::value,
                 "CUDA time ElementOperator must be trivially copyable");
 
@@ -393,8 +399,8 @@ void assemble(const ElementOperator&                  op,
   {
     res.resize(map.numRes());
   }
-  res.setZero(ctx);
-  jac.setZero(ctx);
+  vec_handler.zero(res.view());
+  mat_handler.zero(jac);
   if (map.numElems() == 0)
   {
     return;
@@ -417,7 +423,7 @@ void assemble(const ElementOperator&                  op,
                    nxt.data(),
                    res.data(),
                    jac.valsData());
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 /** @brief Assemble one time residual on CUDA without allocating a Jacobian. */
@@ -432,6 +438,7 @@ void assembleResidual(
     DeviceVector&                           res,
     CudaContext&                            ctx)
 {
+  linalg::CudaVectorHandler vec_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementOperator>::value,
                 "CUDA time ElementOperator must be trivially copyable");
 
@@ -447,7 +454,7 @@ void assembleResidual(
   {
     res.resize(map.numRes());
   }
-  res.setZero(ctx);
+  vec_handler.zero(res.view());
   if (map.numElems() == 0)
   {
     return;
@@ -471,7 +478,7 @@ void assembleResidual(
                    nxt.data(),
                    res.data(),
                    nullptr);
-  device::checkLastError();
+  cuda::checkLastError();
 }
 
 } // namespace assembly

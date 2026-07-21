@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -15,50 +16,60 @@ namespace femx
 {
 
 /**
- * @brief Immutable compressed-sparse-row graph in one memory space.
+ * @brief Immutable compressed-sparse-row pattern in one memory space.
  *
- * CsrGraph owns only the row offsets and column indices. Numeric matrix values
- * are owned separately by CsrMatrix so one graph can be reused by multiple
+ * CsrPattern owns only the row offsets and column indices. Numeric matrix values
+ * are owned separately by CsrMatrix so one pattern can be reused by multiple
  * matrices with the same sparsity structure.
  */
 template <MemorySpace Space>
-class CsrGraph
+class CsrPattern
 {
+  static std::uint64_t newLayoutId() noexcept
+  {
+    static std::atomic<std::uint64_t> next_id{1};
+    return next_id++;
+  }
+
+  template <MemorySpace S>
+  using HostOnly = std::enable_if_t<S == MemorySpace::Host, int>;
+
+  template <MemorySpace S>
+  using DeviceOnly = std::enable_if_t<S == MemorySpace::Device, int>;
+
 public:
-  /** @brief Index-vector type in this graph's memory space. */
+  /** @brief Index-vector type in this pattern's memory space. */
   using IndexVector = Vector<Space, Index>;
 
-  CsrGraph()
+  CsrPattern()
     : storage_(std::make_shared<Storage>())
   {
   }
 
-  CsrGraph(const CsrGraph&)                = default;
-  CsrGraph(CsrGraph&&) noexcept            = default;
-  CsrGraph& operator=(const CsrGraph&)     = default;
-  CsrGraph& operator=(CsrGraph&&) noexcept = default;
+  CsrPattern(const CsrPattern&)                = default;
+  CsrPattern(CsrPattern&&) noexcept            = default;
+  CsrPattern& operator=(const CsrPattern&)     = default;
+  CsrPattern& operator=(CsrPattern&&) noexcept = default;
 
-  template <MemorySpace S                                              = Space,
-            typename std::enable_if<S == MemorySpace::Host, int>::type = 0>
+  template <MemorySpace S = Space, HostOnly<S> = 0>
   /**
-   * @brief Construct and validate a host CSR graph.
+   * @brief Construct and validate a host CSR pattern.
    * @param rows Number of rows.
    * @param cols Number of columns.
    * @param row_ptr CSR row offsets of size `rows + 1`.
    * @param col_ind CSR column indices.
    */
-  CsrGraph(Index       rows,
-           Index       cols,
-           IndexVector row_ptr,
-           IndexVector col_ind)
+  CsrPattern(Index       rows,
+             Index       cols,
+             IndexVector row_ptr,
+             IndexVector col_ind)
     : storage_(std::make_shared<Storage>(rows,
                                          cols,
                                          std::move(row_ptr),
                                          std::move(col_ind),
-                                         0))
+                                         newLayoutId()))
   {
     checkSizes();
-    initLayoutId();
   }
 
   /** @brief Return the number of rows. */
@@ -134,13 +145,12 @@ private:
     std::uint64_t layout_id{0};
   };
 
-  template <MemorySpace S                                                = Space,
-            typename std::enable_if<S == MemorySpace::Device, int>::type = 0>
-  CsrGraph(Index         rows,
-           Index         cols,
-           IndexVector   row_ptr,
-           IndexVector   col_ind,
-           std::uint64_t layout_id)
+  template <MemorySpace S = Space, DeviceOnly<S> = 0>
+  CsrPattern(Index         rows,
+             Index         cols,
+             IndexVector   row_ptr,
+             IndexVector   col_ind,
+             std::uint64_t layout_id)
     : storage_(std::make_shared<Storage>(rows,
                                          cols,
                                          std::move(row_ptr),
@@ -148,79 +158,38 @@ private:
                                          layout_id))
   {
     checkSizes();
-    initLayoutId();
+    require(storage_->layout_id != 0,
+            "Device CsrPattern must be created by copying a host pattern");
   }
 
-  friend void copy(const HostCsrGraph&,
-                   DeviceCsrGraph&,
+  friend void copy(const HostCsrPattern&,
+                   DeviceCsrPattern&,
                    CudaContext&);
 
   void checkSizes() const
   {
     require(rows() >= 0 && cols() >= 0
                 && rows() != std::numeric_limits<Index>::max(),
-            "CsrGraph dimensions must be non-negative");
+            "CsrPattern dimensions must be non-negative");
     require(rowPtr().size() == rows() + 1,
-            "CsrGraph row-offset size does not match its row count");
+            "CsrPattern row-offset size does not match its row count");
 
     if constexpr (Space == MemorySpace::Host)
     {
       require(rowPtr()[0] == 0 && rowPtr()[rows()] == nnz(),
-              "CsrGraph row offsets must begin at zero and end at nnz");
+              "CsrPattern row offsets must begin at zero and end at nnz");
       for (Index row = 0; row < rows(); ++row)
       {
         require(rowPtr()[row] >= 0
                     && rowPtr()[row] <= rowPtr()[row + 1]
                     && rowPtr()[row + 1] <= nnz(),
-                "CsrGraph row offsets must be monotone and in range");
+                "CsrPattern row offsets must be monotone and in range");
       }
       for (Index k = 0; k < nnz(); ++k)
       {
         require(colInd()[k] >= 0 && colInd()[k] < cols(),
-                "CsrGraph column index is out of range");
+                "CsrPattern column index is out of range");
       }
-    }
-  }
-
-  static std::uint64_t mix(std::uint64_t hash, std::uint64_t val) noexcept
-  {
-    // FNV-1a over the eight bytes of each normalized integer value.
-    for (int i = 0; i < 8; ++i)
-    {
-      hash  ^= val & 0xffu;
-      hash  *= UINT64_C(1099511628211);
-      val  >>= 8;
-    }
-    return hash;
-  }
-
-  std::uint64_t hostLayoutId() const noexcept
-  {
-    std::uint64_t hash = UINT64_C(1469598103934665603);
-    hash               = mix(hash, static_cast<std::uint32_t>(rows()));
-    hash               = mix(hash, static_cast<std::uint32_t>(cols()));
-    hash               = mix(hash, static_cast<std::uint32_t>(nnz()));
-    for (Index ptr : rowPtr())
-    {
-      hash = mix(hash, static_cast<std::uint32_t>(ptr));
-    }
-    for (Index col : colInd())
-    {
-      hash = mix(hash, static_cast<std::uint32_t>(col));
-    }
-    return hash == 0 ? 1 : hash;
-  }
-
-  void initLayoutId()
-  {
-    if constexpr (Space == MemorySpace::Host)
-    {
-      storage_->layout_id = hostLayoutId();
-    }
-    else
-    {
-      require(storage_->layout_id != 0,
-              "Device CsrGraph must be created by copying a validated host graph");
     }
   }
 
@@ -228,24 +197,42 @@ private:
 };
 
 /**
- * @brief Explicitly copy a host CSR graph to device-owned storage.
- * @param src Validated host graph.
- * @param dst Device graph replaced by the copy.
+ * @brief Explicitly copy a host CSR pattern to device-owned storage.
+ * @param src Validated host pattern.
+ * @param dst Device pattern replaced by the copy.
  * @param ctx CUDA stream on which copies are enqueued.
  */
-inline void copy(const HostCsrGraph& src,
-                 DeviceCsrGraph&     dst,
-                 CudaContext&        ctx)
+inline void copy(const HostCsrPattern& src,
+                 DeviceCsrPattern&     dst,
+                 CudaContext&          ctx)
 {
   DeviceIndexVector row_ptr;
   DeviceIndexVector col_ind;
-  copy(src.rowPtr(), row_ptr, ctx);
-  copy(src.colInd(), col_ind, ctx);
-  dst = DeviceCsrGraph(src.rows(),
-                       src.cols(),
-                       std::move(row_ptr),
-                       std::move(col_ind),
-                       src.layoutId());
+  row_ptr.resize(src.rowPtr().size());
+  col_ind.resize(src.colInd().size());
+  if (!row_ptr.empty())
+  {
+    cuda::copy(row_ptr.data(),
+                 MemorySpace::Device,
+                 src.rowPtrData(),
+                 MemorySpace::Host,
+                 static_cast<std::size_t>(row_ptr.size()) * sizeof(Index),
+                 ctx.stream());
+  }
+  if (!col_ind.empty())
+  {
+    cuda::copy(col_ind.data(),
+                 MemorySpace::Device,
+                 src.colIndData(),
+                 MemorySpace::Host,
+                 static_cast<std::size_t>(col_ind.size()) * sizeof(Index),
+                 ctx.stream());
+  }
+  dst = DeviceCsrPattern(src.rows(),
+                         src.cols(),
+                         std::move(row_ptr),
+                         std::move(col_ind),
+                         src.layoutId());
 }
 
 } // namespace femx

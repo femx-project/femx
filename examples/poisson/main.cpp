@@ -5,7 +5,7 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -30,7 +30,7 @@ int run(const Options& opts)
   ExampleHelper         helper("dense", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix A(problem.map().graph());
+  HostCsrMatrix A(problem.map().pattern());
   HostVector    rhs;
   problem.assemble(A, rhs);
 

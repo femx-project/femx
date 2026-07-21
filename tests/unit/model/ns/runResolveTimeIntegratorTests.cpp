@@ -9,6 +9,7 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -91,7 +92,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         model.residual(),
         fem::makeControlMap(
             steps, model.numStates(), {}, dofs, vals, {}, 0, 0));
-    HostCsrMatrix               cpu_mat(model.map().graph());
+    HostCsrMatrix               cpu_mat(model.map().pattern());
     linalg::ReSolveLinearSolver cpu_solver;
     CpuContext                  cpu_ctx;
     state::HostTimeIntegrator   cpu(
@@ -105,15 +106,16 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     CudaContext cuda_ctx;
     auto        cuda_res = model::ns::makeDeviceTimeResidual(
         model, std::move(control));
-    DeviceCsrMatrix             cuda_mat(cuda_res->graph());
+    DeviceCsrMatrix             cuda_mat(cuda_res->pattern());
     linalg::ReSolveLinearSolver cuda_solver;
     state::DeviceTimeIntegrator cuda(
         *cuda_res, cuda_mat, cuda_solver, cuda_ctx);
-    DeviceVector device_initial;
-    DeviceVector device_parameters;
-    femx::copy(init, device_initial, cuda_ctx);
-    femx::copy(prm, device_parameters, cuda_ctx);
-    cuda_ctx.synchronize();
+    DeviceVector              device_initial;
+    DeviceVector              device_parameters;
+    linalg::CudaVectorHandler vec_handler(cuda_ctx);
+    vec_handler.copy(init, device_initial);
+    vec_handler.copy(prm, device_parameters);
+    cuda_ctx.sync();
     cuda.setInitialState(device_initial);
 
     state::TimeTrajectory actual;

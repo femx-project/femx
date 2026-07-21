@@ -11,7 +11,7 @@ namespace femx::tests::stationary
 inline void setScalar(HostCsrMatrix& mat, Real val)
 {
   require(mat.rows() == 1 && mat.cols() == 1 && mat.nnz() == 1,
-          "Scalar Host matrix has an invalid graph");
+          "Scalar Host matrix has an invalid pattern");
   mat.valsData()[0] = val;
 }
 
@@ -22,14 +22,14 @@ class AffineResidual final : public state::Residual<Backend>
                 "Affine test residual requires Host storage");
 
 public:
-  using Vec   = typename Backend::Vec;
-  using Mat   = typename Backend::Mat;
-  using Graph = typename Backend::Graph;
-  using Ctx   = typename Backend::Ctx;
+  using Vec     = typename Backend::Vec;
+  using Mat     = typename Backend::Mat;
+  using Pattern = typename Backend::Pattern;
+  using Ctx     = typename Backend::Ctx;
 
   explicit AffineResidual(Real coeff)
     : coeff_(coeff),
-      graph_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
+      pattern_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
   {
     require(coeff_ != 0.0, "Affine residual coefficient must be nonzero");
   }
@@ -39,14 +39,14 @@ public:
     return {1, 1, 1};
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
-  const Graph& graph() const override
+  const Pattern& pattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
   void res(const Vec& state,
@@ -85,8 +85,8 @@ private:
             "Affine residual vector size mismatch");
   }
 
-  Real         coeff_{1.0};
-  HostCsrGraph graph_;
+  Real           coeff_{1.0};
+  HostCsrPattern pattern_;
 };
 
 class QuadraticObjective final : public inverse::Objective
@@ -138,7 +138,7 @@ class QuadraticResidual final
 {
 public:
   QuadraticResidual()
-    : graph_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
+    : pattern_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
   {
   }
 
@@ -147,14 +147,14 @@ public:
     return {1, 1, 1};
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
-  const HostCsrGraph& graph() const override
+  const HostCsrPattern& pattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
   void res(const HostVector& state,
@@ -183,7 +183,7 @@ public:
   }
 
 private:
-  HostCsrGraph graph_;
+  HostCsrPattern pattern_;
 };
 
 } // namespace femx::tests::stationary

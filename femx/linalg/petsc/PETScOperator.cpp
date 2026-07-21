@@ -2,8 +2,8 @@
 #include <string>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/CsrGraph.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/CsrPattern.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScBackend.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
@@ -172,11 +172,11 @@ void PETScOperator::resize(Index rows, Index cols)
         "MatSetOption");
 }
 
-void PETScOperator::resize(const HostCsrGraph& graph)
+void PETScOperator::resize(const HostCsrPattern& pattern)
 {
   checkInit();
 
-  if (mat_ != nullptr && rows_ == graph.rows() && cols_ == graph.cols())
+  if (mat_ != nullptr && rows_ == pattern.rows() && cols_ == pattern.cols())
   {
     setZero();
     return;
@@ -187,8 +187,8 @@ void PETScOperator::resize(const HostCsrGraph& graph)
     check(MatDestroy(&mat_), "MatDestroy");
   }
 
-  rows_ = graph.rows();
-  cols_ = graph.cols();
+  rows_ = pattern.rows();
+  cols_ = pattern.cols();
 
   PetscInt local_rows  = PETSC_DECIDE;
   PetscInt global_rows = static_cast<PetscInt>(rows_);
@@ -213,7 +213,7 @@ void PETScOperator::resize(const HostCsrGraph& graph)
 
   Array<PetscInt> d_nnz;
   Array<PetscInt> o_nnz;
-  computePrealloc(graph, begin, end, d_nnz, o_nnz);
+  computePrealloc(pattern, begin, end, d_nnz, o_nnz);
 
   check(MatCreateAIJ(comm_,
                      end - begin,
@@ -391,18 +391,18 @@ void PETScOperator::createVec(Index size, ScopedVec& out) const
   check(VecSetFromOptions(out.get()), "VecSetFromOptions");
 }
 
-void PETScOperator::computePrealloc(const HostCsrGraph& graph,
-                                    PetscInt            begin,
-                                    PetscInt            end,
-                                    Array<PetscInt>&    d_nnz,
-                                    Array<PetscInt>&    o_nnz)
+void PETScOperator::computePrealloc(const HostCsrPattern& pattern,
+                                    PetscInt              begin,
+                                    PetscInt              end,
+                                    Array<PetscInt>&      d_nnz,
+                                    Array<PetscInt>&      o_nnz)
 {
   const PetscInt nrow = end - begin;
   d_nnz.assign(nrow, 0);
   o_nnz.assign(nrow, 0);
 
-  const Index* rp = graph.rowPtrData();
-  const Index* ci = graph.colIndData();
+  const Index* rp = pattern.rowPtrData();
+  const Index* ci = pattern.colIndData();
   for (PetscInt row = begin; row < end; ++row)
   {
     PetscInt diag = 0;

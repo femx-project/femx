@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
@@ -124,15 +125,16 @@ int run(const Params& prm)
   CudaContext ctx;
   auto        res = makeDeviceTimeResidual(fwd.model, fwd.problem.controlMap());
 
-  DeviceCsrMatrix     mat(res->graph());
+  DeviceCsrMatrix     mat(res->pattern());
   ReSolveLinearSolver solver(opts);
 
   DeviceTimeIntegrator integ(*res, mat, solver, ctx);
 
-  DeviceVector initial;
-  femx::copy(fwd.x0, initial, ctx);
+  DeviceVector      initial;
+  CudaVectorHandler vec_handler(ctx);
+  vec_handler.copy(fwd.x0, initial);
 
-  ctx.synchronize();
+  ctx.sync();
 
   integ.setInitialState(initial);
   result = solve(integ,
@@ -142,7 +144,7 @@ int run(const Params& prm)
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
 #else
-  HostCsrMatrix       mat(fwd.model.map().graph());
+  HostCsrMatrix       mat(fwd.model.map().pattern());
   ReSolveLinearSolver solver(opts);
   CpuContext          ctx;
 

@@ -6,6 +6,8 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state
@@ -87,19 +89,21 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    require(prm.size() == numParams(),"LinearStateSolver parameter size mismatch");
+    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    require(prm.size() == numParams(), "LinearStateSolver parameter size mismatch");
 
     res_.res(zero_, prm, res_vec_, ctx_);
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
 
-    axpby(-1.0, res_vec_.view(), 0.0, rhs_.view(), ctx_);
+    vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
     res_.assembleStateJac(zero_, prm, jac_, ctx_);
 
-    finalize(jac_, ctx_);
+    mat_handler.finalize(jac_);
     solver_.solve(jac_, rhs_, state, ctx_);
 
-    ctx_.synchronize();
-    require(state.size() == numStates(),"LinearStateSolver solution size mismatch");
+    ctx_.sync();
+    require(state.size() == numStates(), "LinearStateSolver solution size mismatch");
   }
 
 private:
@@ -163,8 +167,9 @@ public:
   {
     require(state.size() == numStates(),
             "NewtonStateSolver initial state size mismatch");
-    copy(state.view(), init_, ctx_);
-    ctx_.synchronize();
+    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    vec_handler.copy(state.view(), init_);
+    ctx_.sync();
     has_init_ = true;
   }
 
@@ -200,8 +205,10 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    require(prm.size() == numParams(),
-            "NewtonStateSolver parameter size mismatch");
+    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+
+    require(prm.size() == numParams(), "NewtonStateSolver parameter size mismatch");
     initState(state);
 
     for (Index i = 0; i <= opts_.max_its; ++i)
@@ -209,7 +216,8 @@ public:
       res_.res(state, prm, res_vec_, ctx_);
       require(res_vec_.size() == numRes(),
               "NewtonStateSolver residual size mismatch");
-      if (squaredNorm(res_vec_.view(), ctx_)
+
+      if (vec_handler.squaredNorm(res_vec_.view())
           <= opts_.res_tol * opts_.res_tol)
       {
         return;
@@ -219,16 +227,18 @@ public:
         break;
       }
 
-      axpby(-1.0, res_vec_.view(), 0.0, rhs_.view(), ctx_);
+      vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
       res_.assembleStateJac(state, prm, jac_, ctx_);
-      finalize(jac_, ctx_);
+      mat_handler.finalize(jac_);
+
       solver_.solve(jac_, rhs_, step_, ctx_);
       require(step_.size() == numStates(),
               "NewtonStateSolver step size mismatch");
-      axpby(1.0, step_.view(), 1.0, state.view(), ctx_);
-      ctx_.synchronize();
 
-      if (squaredNorm(step_.view(), ctx_)
+      vec_handler.axpby(1.0, step_.view(), 1.0, state.view());
+      ctx_.sync();
+
+      if (vec_handler.squaredNorm(step_.view())
           <= opts_.step_tol * opts_.step_tol)
       {
         return;
@@ -240,17 +250,18 @@ public:
 private:
   void initState(Vec& state)
   {
+    linalg::VectorHandler<Backend> vec_handler(ctx_);
     if (state.size() != numStates())
     {
       state.resize(numStates());
     }
     if (has_init_)
     {
-      copy(init_.view(), state, ctx_);
+      vec_handler.copy(init_.view(), state);
     }
     else
     {
-      axpby(0.0, state.view(), 0.0, state.view(), ctx_);
+      vec_handler.zero(state.view());
     }
   }
 

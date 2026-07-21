@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstddef>
 #include <memory>
 #include <utility>
 
-#include <femx/common/Types.hpp>
+#include <femx/common/Cuda.hpp>
 
 namespace femx
 {
@@ -14,36 +13,11 @@ namespace detail
 struct CudaContextAccess;
 } // namespace detail
 
-/// @cond INTERNAL
-namespace device
-{
-bool available() noexcept;
-
-void* allocate(std::size_t bytes);
-void  release(void* ptr) noexcept;
-
-void copy(void*       dst,
-          MemorySpace dst_memspace,
-          const void* src,
-          MemorySpace src_memspace,
-          std::size_t bytes,
-          void*       stream = nullptr);
-
-void zero(void* ptr, std::size_t bytes, void* stream = nullptr);
-
-void* createStream();
-void  destroyStream(void* stream) noexcept;
-void  synchronize(void* stream);
-void  checkLastError();
-} // namespace device
-
-/// @endcond
-
 /** @brief Tag selecting serial CPU execution. */
 struct CpuContext
 {
   /** @brief Complete pending CPU work; serial execution is already complete. */
-  void synchronize() const noexcept
+  void sync() const noexcept
   {
   }
 };
@@ -54,7 +28,7 @@ class CudaContext
 public:
   /** @brief Create a context owning one non-blocking CUDA stream. */
   CudaContext()
-    : stream_(device::createStream())
+    : stream_(cuda::createStream())
   {
   }
 
@@ -64,7 +38,7 @@ public:
     // Backend workspaces can own resources associated with this stream and
     // therefore must be released before the stream itself.
     sparse_state_.reset();
-    device::destroyStream(stream_);
+    cuda::destroyStream(stream_);
   }
 
   CudaContext(const CudaContext&)            = delete;
@@ -83,7 +57,7 @@ public:
     if (this != &other)
     {
       sparse_state_.reset();
-      device::destroyStream(stream_);
+      cuda::destroyStream(stream_);
       stream_       = std::exchange(other.stream_, nullptr);
       sparse_state_ = std::move(other.sparse_state_);
     }
@@ -97,15 +71,15 @@ public:
   }
 
   /** @brief Wait for all work queued on this context. */
-  void synchronize() const
+  void sync() const
   {
-    device::synchronize(stream_);
+    cuda::sync(stream_);
   }
 
   /** @brief Return whether a usable CUDA device is available. */
   static bool available() noexcept
   {
-    return device::available();
+    return cuda::available();
   }
 
 private:

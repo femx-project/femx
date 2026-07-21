@@ -52,12 +52,12 @@ int run(const Options& opts)
   ExampleHelper         helper("petsc", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix A(problem.map().graph());
+  HostCsrMatrix A(problem.map().pattern());
   HostVector    rhs;
   problem.assemble(A, rhs);
 
   PETScOperator A_petsc(PETSC_COMM_WORLD);
-  A_petsc.resize(problem.map().graph());
+  A_petsc.resize(problem.map().pattern());
   if (isRoot())
   {
     copyToPETSc(A, A_petsc);

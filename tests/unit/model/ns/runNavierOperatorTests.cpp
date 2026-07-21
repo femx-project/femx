@@ -11,6 +11,8 @@
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/model/ns/NavierStokesModel.hpp>
 
 #if defined(FEMX_HAS_CUDA)
@@ -236,11 +238,11 @@ TestOutcome navierModelResidualMatchesRowAssembly()
 
     CpuContext    ctx;
     HostVector    model_res;
-    HostCsrMatrix model_jac(model.map().graph());
+    HostCsrMatrix model_jac(model.map().pattern());
     model.residual().assembleNext(time, model_res, model_jac, ctx);
 
     HostVector    row_res;
-    HostCsrMatrix row_jac(model.map().graph());
+    HostCsrMatrix row_jac(model.map().pattern());
     assembly::assemble(model.op(),
                        1,
                        2,
@@ -260,7 +262,7 @@ TestOutcome navierModelResidualMatchesRowAssembly()
 
     HostVector    zero_nxt(model.numStates(), 0.0);
     HostVector    zero_res;
-    HostCsrMatrix zero_jac(model.map().graph());
+    HostCsrMatrix zero_jac(model.map().pattern());
     assembly::assemble(model.op(),
                        1,
                        2,
@@ -399,7 +401,7 @@ TestOutcome navierAssemblyMatchesPetsc()
     CpuContext            csr_ctx;
     linalg::PetscContext  petsc_ctx{PETSC_COMM_SELF};
     auto                  petsc_residual = model::ns::makePetscTimeResidual(model);
-    HostCsrMatrix         csr(model.map().graph());
+    HostCsrMatrix         csr(model.map().pattern());
     linalg::PETScOperator petsc(PETSC_COMM_SELF);
     HostVector            csr_res;
     HostVector            petsc_res;
@@ -445,14 +447,16 @@ TestOutcome navierRowAssemblyMatchesDevice()
     CpuContext cpu;
 
     CudaContext                 ctx;
+    linalg::CudaVectorHandler   vec_handler(ctx);
+    linalg::CudaMatrixHandler   mat_handler(ctx);
     assembly::DeviceAssemblyMap map;
     model::ns::DeviceNavierData data;
     DeviceVector                dev_hist;
     DeviceVector                dev_nxt;
     assembly::copy(model.map(), map, ctx);
     model::ns::copy(model.data(), data, ctx);
-    femx::copy(hist, dev_hist, ctx);
-    femx::copy(nxt, dev_nxt, ctx);
+    vec_handler.copy(hist, dev_hist);
+    vec_handler.copy(nxt, dev_nxt);
 
     DeviceVector   dev_res;
     const DeviceOp op(
@@ -464,7 +468,7 @@ TestOutcome navierRowAssemblyMatchesDevice()
     for (const auto wrt : blocks)
     {
       HostVector    host_res;
-      HostCsrMatrix host_jac(model.map().graph());
+      HostCsrMatrix host_jac(model.map().pattern());
       assembly::assemble(model.op(),
                          1,
                          2,
@@ -476,7 +480,7 @@ TestOutcome navierRowAssemblyMatchesDevice()
                          host_jac,
                          cpu);
 
-      DeviceCsrMatrix dev_jac(map.graph());
+      DeviceCsrMatrix dev_jac(map.pattern());
       assembly::assemble(op,
                          1,
                          2,
@@ -489,10 +493,10 @@ TestOutcome navierRowAssemblyMatchesDevice()
                          ctx);
 
       HostVector    got_res;
-      HostCsrMatrix got_jac(model.map().graph());
-      femx::copy(dev_res, got_res, ctx);
-      femx::copy(dev_jac, got_jac, ctx);
-      ctx.synchronize();
+      HostCsrMatrix got_jac(model.map().pattern());
+      vec_handler.copy(dev_res, got_res);
+      mat_handler.copy(dev_jac, got_jac);
+      ctx.sync();
       status *= vecNear(got_res, host_res, 1.0e-9);
       status *= matNear(got_jac, host_jac, 1.0e-9);
     }
@@ -520,7 +524,8 @@ TestOutcome navierHistoryVjpMatchesDevice()
 
   try
   {
-    const auto check = [&status](fem::Mesh mesh) {
+    const auto check = [&status](fem::Mesh mesh)
+    {
       model::ns::FluidParams fluid;
       fluid.rho = 1.2;
       fluid.mu  = 0.03;
@@ -535,17 +540,18 @@ TestOutcome navierHistoryVjpMatchesDevice()
         adj[i] = -0.08 + 0.009 * i;
       }
 
-      auto        control = makeEmptyControl(model);
-      CudaContext ctx;
-      auto        dev_res = model::ns::makeDeviceTimeResidual(
+      auto                      control = makeEmptyControl(model);
+      CudaContext               ctx;
+      linalg::CudaVectorHandler vec_handler(ctx);
+      auto                      dev_res = model::ns::makeDeviceTimeResidual(
           model, std::move(control));
       DeviceVector dev_hist;
       DeviceVector dev_nxt;
       DeviceVector dev_adj;
       DeviceVector dev_prm;
-      femx::copy(hist, dev_hist, ctx);
-      femx::copy(nxt, dev_nxt, ctx);
-      femx::copy(adj, dev_adj, ctx);
+      vec_handler.copy(hist, dev_hist);
+      vec_handler.copy(nxt, dev_nxt);
+      vec_handler.copy(adj, dev_adj);
       const state::DeviceTimeContext dev_time{
           1,
           dev_nxt.view(),
@@ -574,8 +580,8 @@ TestOutcome navierHistoryVjpMatchesDevice()
                            dev_vjp,
                            ctx);
         HostVector got;
-        femx::copy(dev_vjp, got, ctx);
-        ctx.synchronize();
+        vec_handler.copy(dev_vjp, got);
+        ctx.sync();
         status *= vecNear(got, host_vjp, 2.0e-9);
       }
     };

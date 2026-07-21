@@ -38,8 +38,8 @@ TestOutcome modelOwnsReusableDiscretization()
   status                     *= dims.num_param == 0;
   status                     *= dims.num_res == model.numStates();
 
-  status *= model.map().graph().rows() == model.numStates();
-  status *= model.map().graph().cols() == model.numStates();
+  status *= model.map().pattern().rows() == model.numStates();
+  status *= model.map().pattern().cols() == model.numStates();
   status *= model.map().numElems() == model.mesh().numElems();
   status *= model.velocityDofs().size()
             == model.mesh().numNodes() * model.mesh().dim();
@@ -56,7 +56,7 @@ TestOutcome modelPublishesBackendAssemblyInputs()
 
   const auto&   geometry = model.geometry();
   const auto&   map      = model.map();
-  HostCsrMatrix mat(map.graph());
+  HostCsrMatrix mat(map.pattern());
 
   status *= geometry.dim() == model.mesh().dim();
   status *= geometry.numNodes() == model.mesh().numNodes();
@@ -65,7 +65,7 @@ TestOutcome modelPublishesBackendAssemblyInputs()
   status *= map.numStates() == model.numStates();
   status *= mat.rows() == model.numStates();
   status *= mat.cols() == model.numStates();
-  status *= mat.nnz() == map.graph().nnz();
+  status *= mat.nnz() == map.pattern().nnz();
 
   return status.report();
 }

@@ -7,8 +7,8 @@
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/state/StateSolver.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -195,8 +195,8 @@ TestOutcome hostBackendRunsStationarySolversAndAdjoint()
 
   stationary::AffineResidual<linalg::HostCsrBackend> res(2.0);
   stationary::QuadraticObjective                     obj(1.0, 0.25);
-  HostCsrMatrix                                      fwd_jac(res.graph());
-  HostCsrMatrix                                      adj_jac(res.graph());
+  HostCsrMatrix                                      fwd_jac(res.pattern());
+  HostCsrMatrix                                      adj_jac(res.pattern());
   linalg::DenseLinearSolver                          fwd_solver;
   linalg::DenseLinearSolver                          adj_solver;
   CpuContext                                         ctx;
@@ -220,7 +220,7 @@ TestOutcome hostBackendRunsStationarySolversAndAdjoint()
   status *= std::abs(grad[0] - fd) < 1.0e-9;
 
   stationary::QuadraticResidual                    nonlinear_res;
-  HostCsrMatrix                                    nonlinear_jac(nonlinear_res.graph());
+  HostCsrMatrix                                    nonlinear_jac(nonlinear_res.pattern());
   linalg::DenseLinearSolver                        nonlinear_solver;
   state::NewtonStateSolver<linalg::HostCsrBackend> newton(
       nonlinear_res, nonlinear_jac, nonlinear_solver, ctx);

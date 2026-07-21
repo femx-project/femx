@@ -7,9 +7,10 @@
 #include "Bindings.hpp"
 #include "PETScInit.hpp"
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/Dense.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/DenseLinearSolver.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
@@ -265,27 +266,28 @@ public:
     PYBIND11_OVERRIDE_PURE(TimeDims, TimeResidual, dims);
   }
 
-  const femx::HostCsrGraph& hostGraph() const override
+  const femx::HostCsrPattern& hostPattern() const override
   {
     updateGraph();
-    return graph_;
+    return pattern_;
   }
 
-  const femx::HostCsrGraph& graph() const override
+  const femx::HostCsrPattern& pattern() const override
   {
     updateGraph();
-    return graph_;
+    return pattern_;
   }
 
   void initialState(HostConstVectorView prm,
                     HostVector&         out,
-                    femx::CpuContext&) const override
+                    femx::CpuContext&   ctx) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "initial_state");
     if (!override)
     {
-      resizeOrZero(out, dims().num_states);
+      femx::linalg::HostVectorHandler vec_handler(ctx);
+      vec_handler.resizeOrZero(out, dims().num_states);
       return;
     }
     copyArray(override(vectorArray(prm)), out, "initial state");
@@ -359,10 +361,10 @@ public:
   {
     res(ctx, res_out, cpu);
     updateGraph();
-    if (jac.graph().layoutId() != graph_.layoutId())
+    if (jac.pattern().layoutId() != pattern_.layoutId())
     {
       throw std::runtime_error(
-          "Python TimeResidual Jacobian uses an incompatible graph");
+          "Python TimeResidual Jacobian uses an incompatible pattern");
     }
 
     py::gil_scoped_acquire gil;
@@ -391,7 +393,8 @@ public:
           "TimeResidual.assemble_next() returned an array with invalid shape");
     }
 
-    jac.setZero();
+    femx::linalg::HostMatrixHandler mat_handler(cpu);
+    mat_handler.zero(jac);
     const auto data = mat.unchecked<2>();
     for (Index row = 0; row < rows; ++row)
     {
@@ -463,7 +466,7 @@ private:
   void updateGraph() const
   {
     const TimeDims dim = dims();
-    if (graph_.rows() == dim.num_res && graph_.cols() == dim.num_states)
+    if (pattern_.rows() == dim.num_res && pattern_.cols() == dim.num_states)
     {
       return;
     }
@@ -480,11 +483,11 @@ private:
         col_ind[row * dim.num_states + col] = col;
       }
     }
-    graph_ = femx::HostCsrGraph(
+    pattern_ = femx::HostCsrPattern(
         dim.num_res, dim.num_states, std::move(row_ptr), std::move(col_ind));
   }
 
-  mutable femx::HostCsrGraph graph_;
+  mutable femx::HostCsrPattern pattern_;
 };
 
 py::array trajectoryValues(TimeTrajectory& trajectory)

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -87,14 +86,6 @@ public:
       data_[i] = vals[i];
     }
     return *this;
-  }
-
-  /** @brief Set all viewed host values to zero. */
-  void setZero() const
-  {
-    static_assert(Space == MemorySpace::Host,
-                  "Zero device views through a CudaContext");
-    std::fill(begin(), end(), T{});
   }
 
 private:

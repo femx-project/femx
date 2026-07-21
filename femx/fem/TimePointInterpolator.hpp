@@ -5,6 +5,7 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
 
 namespace femx
 {
@@ -81,10 +82,11 @@ inline void copy(const HostPointInterpolatorData& src,
                  DevicePointInterpolatorData&     dst,
                  CudaContext&                     ctx)
 {
-  DeviceCsrGraph graph;
-  femx::copy(src.mat_.graph(), graph, ctx);
-  DeviceCsrMatrix mat(graph);
-  femx::copy(src.mat_, mat, ctx);
+  linalg::CudaMatrixHandler mat_handler(ctx);
+  DeviceCsrPattern          pattern;
+  femx::copy(src.mat_.pattern(), pattern, ctx);
+  DeviceCsrMatrix mat(pattern);
+  mat_handler.copy(src.mat_, mat);
   dst.mat_ = std::move(mat);
 }
 

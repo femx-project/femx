@@ -1,10 +1,8 @@
 #include <stdexcept>
 
-#include <femx/common/Context.hpp>
+#include <femx/common/Cuda.hpp>
 
-namespace femx
-{
-namespace device
+namespace femx::cuda
 {
 
 namespace
@@ -55,7 +53,7 @@ void destroyStream(void*) noexcept
 {
 }
 
-void synchronize(void*)
+void sync(void*)
 {
   unavailable();
 }
@@ -65,5 +63,4 @@ void checkLastError()
   unavailable();
 }
 
-} // namespace device
-} // namespace femx
+} // namespace femx::cuda

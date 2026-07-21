@@ -14,7 +14,7 @@ public:
   PythonHostTimeIntegrator(
       const femx::state::HostTimeResidual& res,
       femx::linalg::HostCsrLinearSolver&   solver)
-    : jac_(res.graph()), integ_(res, jac_, solver, ctx_)
+    : jac_(res.pattern()), integ_(res, jac_, solver, ctx_)
   {
   }
 

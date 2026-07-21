@@ -1,7 +1,7 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx
@@ -40,7 +40,7 @@ private:
 
 private:
   HostVector  mean_;
-  DenseMatrix perts_ ;
+  DenseMatrix perts_;
 };
 
 } // namespace state

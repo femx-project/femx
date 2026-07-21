@@ -49,10 +49,10 @@ class ScalarTimeResidual final
 public:
   explicit ScalarTimeResidual(Index num_steps)
     : dims_{num_steps, 1, 1, 1, 1},
-      graph_(1,
-             1,
-             HostIndexVector{0, 1},
-             HostIndexVector{0})
+      pattern_(1,
+               1,
+               HostIndexVector{0, 1},
+               HostIndexVector{0})
   {
   }
 
@@ -61,14 +61,14 @@ public:
     return dims_;
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
-  const HostCsrGraph& graph() const override
+  const HostCsrPattern& pattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
   void initialState(ConstView,
@@ -112,7 +112,7 @@ public:
 
 private:
   state::TimeDims dims_;
-  HostCsrGraph    graph_;
+  HostCsrPattern  pattern_;
 };
 
 class FinalStateObjective final : public inverse::TimeObjective

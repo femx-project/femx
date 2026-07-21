@@ -7,6 +7,8 @@
 
 #include "TestHelper.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 namespace femx
@@ -26,7 +28,7 @@ Index gridNode(Index x, Index y, Index nx)
   return y * nx + x;
 }
 
-HostCsrGraph gridGraph(Index nx, Index ny)
+HostCsrPattern gridGraph(Index nx, Index ny)
 {
   HostIndexVector row_ptr(nx * ny + 1, 0);
   HostIndexVector cols;
@@ -143,23 +145,26 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     std::cout << "    ReSolve build: " << FEMX_RESOLVE_BUILD_ID << '\n';
 #endif
 
-    constexpr Index    nx     = 16;
-    constexpr Index    ny     = 16;
-    const HostCsrGraph hgraph = gridGraph(nx, ny);
-    HostCsrMatrix      hmat(hgraph);
+    constexpr Index      nx     = 16;
+    constexpr Index      ny     = 16;
+    const HostCsrPattern hgraph = gridGraph(nx, ny);
+    HostCsrMatrix        hmat(hgraph);
     fillGridMat(hmat);
     HostCsrMatrix hmat_tr_source(hgraph);
     fillGridMat(hmat_tr_source);
 
-    CpuContext     cpu_ctx;
-    CudaContext    ctx;
-    DeviceCsrGraph dgraph;
+    CpuContext                cpu_ctx;
+    CudaContext               ctx;
+    linalg::HostMatrixHandler host_mat_handler(cpu_ctx);
+    linalg::CudaVectorHandler vec_handler(ctx);
+    linalg::CudaMatrixHandler mat_handler(ctx);
+    DeviceCsrPattern          dgraph;
     copy(hgraph, dgraph, ctx);
 
     DeviceCsrMatrix dmat(dgraph);
-    copy(hmat, dmat, ctx);
+    mat_handler.copy(hmat, dmat);
     DeviceCsrMatrix dmat_tr_source(dgraph);
-    copy(hmat_tr_source, dmat_tr_source, ctx);
+    mat_handler.copy(hmat_tr_source, dmat_tr_source);
     linalg::ReSolveLinearSolver solver;
     linalg::ReSolveLinearSolver tr_solver;
 
@@ -167,7 +172,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     const HostVector hrhs     = mul(hmat, expected);
     DeviceVector     drhs;
     DeviceVector     dsol;
-    copy(hrhs, drhs, ctx);
+    vec_handler.copy(hrhs, drhs);
 
     bool alias_rejected = false;
     try
@@ -182,19 +187,18 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
 
     solver.solve(dmat, drhs, dsol, ctx);
     HostVector fwd_sol;
-    copy(dsol, fwd_sol, ctx);
-    ctx.synchronize();
+    vec_handler.copy(dsol, fwd_sol);
+    ctx.sync();
     status *= vecNear(fwd_sol, expected);
 
     HostVector tr_rhs(hmat_tr_source.cols());
-    applyT(hmat_tr_source,
-           expected.view(),
-           tr_rhs.view(),
-           cpu_ctx);
+    host_mat_handler.matvecT(hmat_tr_source,
+                             expected.view(),
+                             tr_rhs.view());
 
     DeviceVector dtr_rhs;
     DeviceVector dtr_sol;
-    copy(tr_rhs, dtr_rhs, ctx);
+    vec_handler.copy(tr_rhs, dtr_rhs);
 
     bool tr_alias_rejected = false;
     try
@@ -209,8 +213,8 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
 
     tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_sol, ctx);
     HostVector device_tr_sol;
-    copy(dtr_sol, device_tr_sol, ctx);
-    ctx.synchronize();
+    vec_handler.copy(dtr_sol, device_tr_sol);
+    ctx.sync();
     status *= vecNear(device_tr_sol, expected);
 
     const Real*  source_vals    = dmat.valsData();
@@ -220,10 +224,10 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     const Real*  tr_sol_data    = dtr_sol.data();
 
     HostVector zero_rhs(hrhs.size(), 0.0);
-    copy(zero_rhs, drhs, ctx);
+    vec_handler.copy(zero_rhs, drhs);
     solver.solve(dmat, drhs, dsol, ctx);
-    copy(dsol, fwd_sol, ctx);
-    ctx.synchronize();
+    vec_handler.copy(dsol, fwd_sol);
+    ctx.sync();
     status *= vecNear(fwd_sol, zero_rhs);
 
     // Update vals in the same femx allocations and solve again. Give the
@@ -231,21 +235,20 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     // rather than the bound forward matrix, must be authoritative.
     fillGridMat(hmat, 0.25);
     fillGridMat(hmat_tr_source, 0.5);
-    copy(hmat, dmat, ctx);
-    copy(hmat_tr_source, dmat_tr_source, ctx);
+    mat_handler.copy(hmat, dmat);
+    mat_handler.copy(hmat_tr_source, dmat_tr_source);
     const HostVector rhs2 = mul(hmat, expected);
     HostVector       tr_rhs2(hmat_tr_source.cols());
-    applyT(hmat_tr_source,
-           expected.view(),
-           tr_rhs2.view(),
-           cpu_ctx);
-    copy(rhs2, drhs, ctx);
-    copy(tr_rhs2, dtr_rhs, ctx);
+    host_mat_handler.matvecT(hmat_tr_source,
+                             expected.view(),
+                             tr_rhs2.view());
+    vec_handler.copy(rhs2, drhs);
+    vec_handler.copy(tr_rhs2, dtr_rhs);
     solver.solve(dmat, drhs, dsol, ctx);
     tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_sol, ctx);
-    copy(dsol, fwd_sol, ctx);
-    copy(dtr_sol, device_tr_sol, ctx);
-    ctx.synchronize();
+    vec_handler.copy(dsol, fwd_sol);
+    vec_handler.copy(dtr_sol, device_tr_sol);
+    ctx.sync();
     status *= vecNear(fwd_sol, expected);
     status *= vecNear(device_tr_sol, expected);
     status *= source_vals == dmat.valsData();

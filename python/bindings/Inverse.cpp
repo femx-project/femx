@@ -15,7 +15,7 @@
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #ifdef FEMX_HAS_PETSC
@@ -61,7 +61,7 @@ public:
   PythonHostTimeReducedFunctional(PythonHostTimeIntegrator& owner,
                                   HostCsrLinearSolver&      solver,
                                   const TimeObjective&      obj)
-    : jac_(owner.get().residual().graph()),
+    : jac_(owner.get().residual().pattern()),
       impl_(owner.get(), jac_, solver, obj)
   {
   }

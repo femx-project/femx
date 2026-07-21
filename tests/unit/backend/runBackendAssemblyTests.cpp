@@ -12,7 +12,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 
 namespace femx
 {
@@ -169,7 +169,7 @@ TestOutcome rectangularMapBuildsExactCsrMapping()
       assembly::makeAssemblyMap(2, 2, res_dofs, state_dofs);
 
   status          *= map.numElems() == 2;
-  status          *= map.graph().nnz() == 3;
+  status          *= map.pattern().nnz() == 3;
   const auto view  = map.view();
   status          *= valsEqual(view.res_offsets,
                       std::array<Index, 3>{{0, 2, 3}});
@@ -177,9 +177,9 @@ TestOutcome rectangularMapBuildsExactCsrMapping()
                       std::array<Index, 3>{{0, 1, 3}});
   status          *= valsEqual(view.jac_offsets,
                       std::array<Index, 3>{{0, 2, 4}});
-  status          *= valsEqual(map.graph().rowPtr(),
+  status          *= valsEqual(map.pattern().rowPtr(),
                       std::array<Index, 3>{{0, 1, 3}});
-  status          *= valsEqual(map.graph().colInd(),
+  status          *= valsEqual(map.pattern().colInd(),
                       std::array<Index, 3>{{0, 0, 1}});
   status          *= valsEqual(view.jac_map,
                       std::array<Index, 4>{{0, 1, 1, 2}});
@@ -199,7 +199,7 @@ TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
   const fem::HostGeometry geom = fem::makeGeometry(mesh);
   const auto              map  = assembly::makeAssemblyMap(fem::DofLayout(space));
 
-  HostCsrMatrix    jac(map.graph());
+  HostCsrMatrix    jac(map.pattern());
   HostVector       res;
   const HostVector state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   CpuContext       ctx;
@@ -238,7 +238,7 @@ TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
 
   const HostVector state{2.0, 3.0};
   HostVector       res;
-  HostCsrMatrix    jac(map.graph());
+  HostCsrMatrix    jac(map.pattern());
   CpuContext       ctx;
   assembly::assemble(RectangularRowOperator{},
                      geom,
@@ -268,7 +268,7 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   const HostVector nxt{7.0, 8.0, 9.0};
   HostVector       res;
-  HostCsrMatrix    jac(map.graph());
+  HostCsrMatrix    jac(map.pattern());
   CpuContext       ctx;
 
   assembly::assemble(TimeRowOperator{},
@@ -314,7 +314,7 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
       4,
       Array<Array<Index>>{{0, 1, 2, 3}},
       Array<Array<Index>>{{0, 1, 2, 3}});
-  HostCsrMatrix jac(map.graph());
+  HostCsrMatrix jac(map.pattern());
   auto          moved_map = std::move(map);
 
   HostVector       res;
@@ -345,7 +345,7 @@ TestOutcome hostCsrAssemblyUsesAssemblyMapMapping()
       2,
       Array<Array<Index>>{{0, 1}, {1}},
       Array<Array<Index>>{{0}, {0, 1}});
-  HostCsrMatrix mat(map.graph());
+  HostCsrMatrix mat(map.pattern());
 
   DenseMatrix first(2, 1);
   first(0, 0) = 2.0;
@@ -370,10 +370,10 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   bool malformed_rejected = false;
   try
   {
-    HostCsrGraph invalid(2,
-                         2,
-                         HostIndexVector{0, 2, 1},
-                         HostIndexVector{0});
+    HostCsrPattern invalid(2,
+                           2,
+                           HostIndexVector{0, 2, 1},
+                           HostIndexVector{0});
     (void) invalid;
   }
   catch (const std::runtime_error&)
@@ -388,7 +388,7 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   space.setup();
   const auto    geom = fem::makeGeometry(mesh);
   const auto    map  = assembly::makeAssemblyMap(fem::DofLayout(space));
-  HostCsrMatrix jac(map.graph());
+  HostCsrMatrix jac(map.pattern());
   HostVector    alias_vec{1.0, 2.0, 3.0, 4.0};
   CpuContext    ctx;
 

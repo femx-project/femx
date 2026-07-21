@@ -5,9 +5,11 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -55,7 +57,9 @@ assembly::HostAssemblyMap makeSharedElementMap()
 
 TestOutcome vectorBasics()
 {
-  TestStatus status(__func__);
+  TestStatus                status(__func__);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
 
   HostVector v(3, 2.0);
   status *= v.size() == 3;
@@ -65,14 +69,14 @@ TestOutcome vectorBasics()
   status *= v.size() == 3;
   status *= near(v.front(), 1.0) && near(v.back(), 3.0);
 
-  v.setZero();
+  vec_handler.zero(v.view());
   status *= valsNear(v.data(), std::array<Real, 3>{{0.0, 0.0, 0.0}});
 
-  resizeOrZero(v, 3);
+  vec_handler.resizeOrZero(v, 3);
   status *= v.size() == 3;
   status *= valsNear(v.data(), std::array<Real, 3>{{0.0, 0.0, 0.0}});
 
-  resizeOrZero(v, 5);
+  vec_handler.resizeOrZero(v, 5);
   status *= v.size() == 5;
   status *= valsNear(v.data(), std::array<Real, 5>{{0.0, 0.0, 0.0, 0.0, 0.0}});
 
@@ -92,7 +96,9 @@ TestOutcome vectorBasics()
 
 TestOutcome vectorViewCopiesAndAssigns()
 {
-  TestStatus status(__func__);
+  TestStatus                status(__func__);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
 
   Real           raw[3] = {1.0, 2.0, 3.0};
   HostVectorView view(raw, 3);
@@ -105,7 +111,7 @@ TestOutcome vectorViewCopiesAndAssigns()
   view    = src;
   status *= valsNear(raw, std::array<Real, 3>{{4.0, 5.0, 6.0}});
 
-  view.setZero();
+  vec_handler.zero(view);
   status *= valsNear(raw, std::array<Real, 3>{{0.0, 0.0, 0.0}});
 
   bool threw = false;
@@ -127,16 +133,17 @@ TestOutcome vectorGatherScatter()
 {
   TestStatus status(__func__);
 
-  const HostVector      source{10.0, 20.0, 30.0, 40.0, 50.0};
-  const HostIndexVector indices{4, 1, 3};
-  HostVector            compact(3);
-  CpuContext            ctx;
-  gather(source.view(), indices.view(), compact.view(), ctx);
+  const HostVector          source{10.0, 20.0, 30.0, 40.0, 50.0};
+  const HostIndexVector     indices{4, 1, 3};
+  HostVector                compact(3);
+  CpuContext                ctx;
+  linalg::HostVectorHandler vec_handler(ctx);
+  vec_handler.gather(source.view(), indices.view(), compact.view());
   status *= valsNear(compact.data(),
                      std::array<Real, 3>{{50.0, 20.0, 40.0}});
 
   HostVector expanded(5, -1.0);
-  scatter(compact.view(), indices.view(), expanded.view(), ctx);
+  vec_handler.scatter(compact.view(), indices.view(), expanded.view());
   status *= valsNear(expanded.data(),
                      std::array<Real, 5>{{-1.0, 20.0, -1.0, 40.0, 50.0}});
 
@@ -145,7 +152,9 @@ TestOutcome vectorGatherScatter()
 
 TestOutcome denseMatrixBasics()
 {
-  TestStatus status(__func__);
+  TestStatus                status(__func__);
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
 
   DenseMatrix empty;
   status *= empty.rows() == 0;
@@ -168,7 +177,7 @@ TestOutcome denseMatrixBasics()
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{1.0, 2.0, 3.0, 4.0, 5.0, 6.0}});
 
-  mat.setZero();
+  mat_handler.zero(mat);
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
@@ -195,23 +204,24 @@ TestOutcome denseMatrixApplies()
   mat(1, 1) = 5.0;
   mat(1, 2) = 6.0;
 
-  const HostVector x{1.0, 2.0, 3.0};
-  CpuContext       ctx;
+  const HostVector          x{1.0, 2.0, 3.0};
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
 
   HostVector y(2);
-  apply(mat.view(), x.view(), y.view(), ctx);
+  mat_handler.matvec(mat.view(), x.view(), y.view());
   status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
 
   const HostVector xt{2.0, -1.0};
   HostVector       yt(3);
-  applyT(mat.view(), xt.view(), yt.view(), ctx);
+  mat_handler.matvecT(mat.view(), xt.view(), yt.view());
   status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
 
   bool threw = false;
   try
   {
     HostVector wrong_input(2);
-    apply(mat.view(), wrong_input.view(), y.view(), ctx);
+    mat_handler.matvec(mat.view(), wrong_input.view(), y.view());
   }
   catch (const std::runtime_error&)
   {
@@ -229,15 +239,15 @@ TestOutcome assemblyMapBuildsSharedElementSparsity()
   const auto map  = makeSharedElementMap();
   const auto view = map.view();
 
-  status *= map.graph().rows() == 3;
-  status *= map.graph().cols() == 3;
+  status *= map.pattern().rows() == 3;
+  status *= map.pattern().cols() == 3;
   status *= map.numElems() == 2;
   status *= view.jac_offsets[map.numElems()] == 8;
-  status *= map.graph().nnz() == 7;
+  status *= map.pattern().nnz() == 7;
 
-  status *= valsEqual(map.graph().rowPtrData(),
+  status *= valsEqual(map.pattern().rowPtrData(),
                       std::array<Index, 4>{{0, 2, 5, 7}});
-  status *= valsEqual(map.graph().colIndData(),
+  status *= valsEqual(map.pattern().colIndData(),
                       std::array<Index, 7>{{0, 1, 0, 1, 2, 1, 2}});
   status *= valsEqual(view.jac_offsets,
                       std::array<Index, 3>{{0, 4, 8}});
@@ -261,10 +271,12 @@ TestOutcome assemblyMapBuildsSharedElementSparsity()
 
 TestOutcome csrMatrixOwnsValuesForGraph()
 {
-  TestStatus status(__func__);
+  TestStatus                status(__func__);
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
 
   const auto    map = makeSharedElementMap();
-  HostCsrMatrix mat(map.graph());
+  HostCsrMatrix mat(map.pattern());
 
   status *= mat.rows() == 3;
   status *= mat.cols() == 3;
@@ -280,9 +292,37 @@ TestOutcome csrMatrixOwnsValuesForGraph()
   status            *= valsNear(mat.valsData(),
                      std::array<Real, 7>{{1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0}});
 
-  mat.setZero();
+  HostCsrMatrix copied(map.pattern());
+  mat_handler.copy(mat, copied);
+  status *= valsNear(copied.valsData(),
+                     std::array<Real, 7>{{1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0}});
+
+  mat_handler.zero(mat);
   status *= valsNear(mat.valsData(),
                      std::array<Real, 7>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+
+  return status.report();
+}
+
+TestOutcome csrPatternUsesLayoutIdentity()
+{
+  TestStatus status(__func__);
+
+  const HostCsrPattern pattern{
+      2,
+      2,
+      HostIndexVector{0, 1, 2},
+      HostIndexVector{0, 1}};
+  const HostCsrPattern shared = pattern;
+  const HostCsrPattern separate{
+      2,
+      2,
+      HostIndexVector{0, 1, 2},
+      HostIndexVector{0, 1}};
+
+  status *= pattern.layoutId() != 0;
+  status *= shared.layoutId() == pattern.layoutId();
+  status *= separate.layoutId() != pattern.layoutId();
 
   return status.report();
 }
@@ -302,6 +342,7 @@ int main(int, char**)
   results += femx::tests::denseMatrixApplies();
   results += femx::tests::assemblyMapBuildsSharedElementSparsity();
   results += femx::tests::csrMatrixOwnsValuesForGraph();
+  results += femx::tests::csrPatternUsesLayoutIdentity();
 
   return results.summary();
 }

@@ -6,8 +6,10 @@
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -22,12 +24,12 @@ class IdentityTimeResidual final : public state::HostTimeResidual
 {
 public:
   IdentityTimeResidual()
-    : graph_(assembly::makeAssemblyMap(
-                 3,
-                 3,
-                 Array<Array<Index>>{{0, 1, 2}},
-                 Array<Array<Index>>{{0, 1, 2}})
-                 .graph())
+    : pattern_(assembly::makeAssemblyMap(
+                   3,
+                   3,
+                   Array<Array<Index>>{{0, 1, 2}},
+                   Array<Array<Index>>{{0, 1, 2}})
+                   .pattern())
   {
   }
 
@@ -36,22 +38,23 @@ public:
     return {2, 3, 0, 3, 1};
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
-  const HostCsrGraph& graph() const override
+  const HostCsrPattern& pattern() const override
   {
-    return graph_;
+    return pattern_;
   }
 
   void initialState(HostConstVectorView prm,
                     HostVector&         out,
-                    CpuContext&) const override
+                    CpuContext&         ctx) const override
   {
     require(prm.empty(), "Identity residual is parameter-free");
-    resizeOrZero(out, 3);
+    linalg::HostVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(out, 3);
   }
 
   void res(const state::HostTimeContext& ctx,
@@ -65,7 +68,7 @@ public:
                  state::VariableBlock wrt,
                  HostConstVectorView  adj,
                  HostVector&          out,
-                 CpuContext&) const override
+                 CpuContext&          ctx) const override
   {
     require(!wrt.isNextState(),
             "Identity transpose apply supports history and parameters");
@@ -74,16 +77,18 @@ public:
       out.resize(0);
       return;
     }
-    resizeOrZero(out, 3);
+    linalg::HostVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(out, 3);
   }
 
-  void assembleNext(const state::HostTimeContext& ctx,
+  void assembleNext(const state::HostTimeContext& time,
                     HostVector&                   res,
                     HostCsrMatrix&                out,
-                    CpuContext&) const override
+                    CpuContext&                   ctx) const override
   {
-    res = ctx.nxt;
-    out.setZero();
+    res = time.nxt;
+    linalg::HostMatrixHandler mat_handler(ctx);
+    mat_handler.zero(out);
     for (Index i = 0; i < 3; ++i)
     {
       for (Index k = out.rowPtrData()[i]; k < out.rowPtrData()[i + 1]; ++k)
@@ -97,7 +102,7 @@ public:
   }
 
 private:
-  HostCsrGraph graph_;
+  HostCsrPattern pattern_;
 };
 
 bool near(Real a, Real b)

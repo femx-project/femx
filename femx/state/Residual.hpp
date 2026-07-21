@@ -24,20 +24,20 @@ class Residual
 public:
   static constexpr MemorySpace space = Backend::space;
 
-  using Vec   = typename Backend::Vec;
-  using Mat   = typename Backend::Mat;
-  using Graph = typename Backend::Graph;
-  using Ctx   = typename Backend::Ctx;
+  using Vec     = typename Backend::Vec;
+  using Mat     = typename Backend::Mat;
+  using Pattern = typename Backend::Pattern;
+  using Ctx     = typename Backend::Ctx;
 
   virtual ~Residual() = default;
 
   virtual Dimensions dims() const = 0;
 
-  /** @brief Return the Host graph used for metadata and backend conversion. */
-  virtual const HostCsrGraph& hostGraph() const = 0;
+  /** @brief Return the Host pattern used for metadata and backend conversion. */
+  virtual const HostCsrPattern& hostPattern() const = 0;
 
-  /** @brief Return the state-Jacobian graph in backend storage. */
-  virtual const Graph& graph() const = 0;
+  /** @brief Return the state-Jacobian pattern in backend storage. */
+  virtual const Pattern& pattern() const = 0;
 
   /** @brief Evaluate R(state, prm). */
   virtual void res(const Vec& state,

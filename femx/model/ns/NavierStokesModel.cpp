@@ -1,7 +1,9 @@
 #include "NavierStokesModel.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include <femx/ad/Enzyme.hpp>
@@ -13,7 +15,9 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/GmshReader.hpp>
-#include <femx/linalg/Dense.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/model/ns/Helper.hpp>
 
 #if defined(FEMX_HAS_PETSC)
@@ -76,9 +80,11 @@ void add(HostVector& vec, Index i, Real val)
 
 void resetMat(const assembly::HostAssemblyMap& map, HostCsrMatrix& mat)
 {
-  require(mat.graph().layoutId() == map.graph().layoutId(),
+  require(mat.pattern().layoutId() == map.pattern().layoutId(),
           "Navier Host CSR matrix must use the model AssemblyMap");
-  mat.setZero();
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  mat_handler.zero(mat);
 }
 
 void addElem(const assembly::HostAssemblyMap& map,
@@ -146,11 +152,22 @@ struct NavierWork
 template <class Vec, class Ctx>
 void resizeAndZero(Vec& out, Index size, Ctx& ctx)
 {
-  if (out.size() != size)
+  if constexpr (std::is_same_v<Vec, DeviceVector>)
   {
-    out.resize(size);
+    linalg::CudaVectorHandler vec_handler(ctx);
+    vec_handler.resizeOrZero(out, size);
   }
-  zero(out.view(), ctx);
+  else
+  {
+    if (out.size() != size)
+    {
+      out.resize(size);
+    }
+    else
+    {
+      std::fill(out.begin(), out.end(), Real{});
+    }
+  }
 }
 
 void gather(const assembly::HostAssemblyMap& map,
@@ -355,7 +372,7 @@ public:
   using Vec       = typename Base::Vec;
   using ConstView = typename Base::ConstView;
   using Mat       = typename Base::Mat;
-  using Graph     = typename Base::Graph;
+  using Pattern   = typename Base::Pattern;
   using Ctx       = typename Base::Ctx;
   using StepCtx   = typename Base::StepCtx;
   using Map       = assembly::AssemblyMap<Backend::space>;
@@ -369,10 +386,10 @@ public:
   {
     if constexpr (Backend::space == MemorySpace::Host)
     {
-      map_ptr_    = &map;
-      host_graph_ = &map.graph();
-      op_         = op;
-      ie_end_     = map.numElems();
+      map_ptr_      = &map;
+      host_pattern_ = &map.pattern();
+      op_           = op;
+      ie_end_       = map.numElems();
     }
     else
     {
@@ -394,11 +411,11 @@ public:
       copy(map, *owned_map_, ctx);
       owned_data_ = std::make_unique<Data>();
       ns::copy(data, *owned_data_, ctx);
-      host_graph_store_ = map.graph();
-      map_ptr_          = owned_map_.get();
-      host_graph_       = &host_graph_store_;
-      op_               = Op(owned_data_->view(), fluid, dt);
-      ie_end_           = map.numElems();
+      host_pattern_store_ = map.pattern();
+      map_ptr_            = owned_map_.get();
+      host_pattern_       = &host_pattern_store_;
+      op_                 = Op(owned_data_->view(), fluid, dt);
+      ie_end_             = map.numElems();
     }
     else
     {
@@ -432,14 +449,14 @@ public:
     return {nstep_, map().numStates(), 0, map().numRes(), kNumHist};
   }
 
-  const HostCsrGraph& hostGraph() const override
+  const HostCsrPattern& hostPattern() const override
   {
-    return *host_graph_;
+    return *host_pattern_;
   }
 
-  const Graph& graph() const override
+  const Pattern& pattern() const override
   {
-    return map().graph();
+    return map().pattern();
   }
 
   void initialState(ConstView prm, Vec& out, Ctx& ctx) const override
@@ -544,8 +561,8 @@ private:
   std::unique_ptr<Map>  owned_map_;
   std::unique_ptr<Data> owned_data_;
   const Map*            map_ptr_{nullptr};
-  HostCsrGraph          host_graph_store_;
-  const HostCsrGraph*   host_graph_{nullptr};
+  HostCsrPattern        host_pattern_store_;
+  const HostCsrPattern* host_pattern_{nullptr};
   Op                    op_;
   Index                 ie_begin_{0};
   Index                 ie_end_{0};
@@ -674,7 +691,7 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
       ctx);
   auto out = std::make_unique<assembly::DeviceConstrainedTimeResidual>(
       std::move(base), std::move(control), std::move(init_state), ctx);
-  ctx.synchronize();
+  ctx.sync();
   return out;
 }
 #endif

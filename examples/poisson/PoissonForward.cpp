@@ -185,7 +185,7 @@ PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
   boundary.addBoundary(space_, onBoundary, boundaryValue);
   bc_vals_ = boundary.vals();
   bc_map_  = assembly::makeBoundaryMap(boundary.dofs(),
-                                      map_.graph());
+                                      map_.pattern());
 }
 
 const Options& PoissonForwardProblem::options() const noexcept
