@@ -112,9 +112,7 @@ void launchHistVjp(
   constexpr Index        ndof    = (Dim + 1) * NumNodes;
   constexpr unsigned int threads = 128;
   const Index            tasks   = map.numElems() * ndof * ndof;
-  const unsigned int     blocks  = static_cast<unsigned int>(
-      (tasks + static_cast<Index>(threads) - 1)
-      / static_cast<Index>(threads));
+  const unsigned int     blocks  = cuda::numBlocks(tasks, threads);
   const auto stream = static_cast<cudaStream_t>(ctx.stream());
   histVjpKernel<NumQpts, NumNodes, Dim>
       <<<blocks, threads, 0, stream>>>(op,

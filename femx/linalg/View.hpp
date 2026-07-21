@@ -53,6 +53,12 @@ public:
     return size_ == 0;
   }
 
+  /** @brief Return whether size and storage form a usable view. */
+  FEMX_HOST_DEVICE bool isValid() const
+  {
+    return size_ >= 0 && (size_ == 0 || data_ != nullptr);
+  }
+
   /** @brief Return a subview without bounds checking. */
   FEMX_HOST_DEVICE VectorView subview(Index offset, Index count) const
   {

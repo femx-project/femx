@@ -8,17 +8,17 @@
 namespace femx::cuda
 {
 
-namespace
-{
-void check(cudaError_t status, const char* op)
+void check(cudaError_t status, const char* operation)
 {
   if (status != cudaSuccess)
   {
-    throw std::runtime_error(std::string(op) + ": "
+    throw std::runtime_error(std::string(operation) + ": "
                              + cudaGetErrorString(status));
   }
 }
 
+namespace
+{
 cudaStream_t asStream(void* stream)
 {
   return static_cast<cudaStream_t>(stream);

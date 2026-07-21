@@ -130,8 +130,7 @@ void launchRows(const DeviceBoundaryMap& map,
   {
     return;
   }
-  const unsigned int blocks = static_cast<unsigned int>(
-      (map.numBcs() + kThreads - 1) / kThreads);
+  const unsigned int blocks = cuda::numBlocks(map.numBcs(), kThreads);
   replaceRowsKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(
       map.view(),
       mat.rowPtrData(),
@@ -168,8 +167,7 @@ void replaceRes(const DeviceBoundaryMap& map,
   {
     return;
   }
-  const unsigned int blocks = static_cast<unsigned int>(
-      (map.numBcs() + kThreads - 1) / kThreads);
+  const unsigned int blocks = cuda::numBlocks(map.numBcs(), kThreads);
   replaceResKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(
       map.view(), state.data(), bc_vals.data(), res.data());
   cuda::checkLastError();
@@ -185,8 +183,7 @@ void zeroBoundary(const DeviceBoundaryMap& map,
   {
     return;
   }
-  const unsigned int blocks = static_cast<unsigned int>(
-      (map.numBcs() + kThreads - 1) / kThreads);
+  const unsigned int blocks = cuda::numBlocks(map.numBcs(), kThreads);
   zeroBoundaryKernel<<<blocks, kThreads, 0, cudaStream(ctx)>>>(map.view(),
                                                                vals.data());
   cuda::checkLastError();

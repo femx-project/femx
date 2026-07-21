@@ -22,6 +22,7 @@ target_link_libraries(femx_linalg PUBLIC femx_config femx_common)
 
 if(FEMX_HAS_CUDA)
   target_sources(femx_linalg PRIVATE ../common/Cuda.cu
+                                      handler/CudaHandles.cu
                                       handler/VectorHandler.cu
                                       handler/MatrixHandler.cu)
   target_link_libraries(femx_linalg PUBLIC CUDA::cudart CUDA::cusparse
