@@ -50,3 +50,77 @@ Prefer the full name when an abbreviation would be ambiguous.
 
 Do not shorten words in documentation, comments, diagnostics, or user-facing
 messages.
+
+## Declaration spacing
+
+Place a blank line between class declarations and between function
+declarations. Do not add blank lines between consecutive type aliases.
+
+```cpp
+using Index = int;
+using Value = double;
+
+void initialize();
+
+void finalize();
+```
+
+## Doxygen documentation
+
+Document public classes and functions at their declarations in header files.
+Private APIs do not require Doxygen comments. Use `/** ... */` blocks and write
+`@brief` as a short imperative sentence, such as `Compute ...`, `Return ...`,
+or `Set ...`.
+
+Every public function, including getters and setters, requires documentation.
+Documentation may be omitted for trivial default constructors, destructors,
+and copy or move operations.
+
+When a function or class has no documentation tags and a brief description is
+sufficient, write the entire comment on one line:
+
+```cpp
+/** @brief Clear all cached data. */
+void clear();
+```
+
+Use the following tags whenever the corresponding element is present:
+
+- `@param` for every function parameter;
+- `@return` for every non-`void` return value;
+- `@throws` for each exception that is important to the public contract.
+
+Separate `@brief` or a detailed description from the first tag with one blank
+comment line. Do not add blank lines between tags.
+
+```cpp
+/**
+ * @brief Return the value at an index.
+ *
+ * @param[in] index - Value index.
+ * @return Value at `index`.
+ * @throws std::runtime_error - If `index` is out of range.
+ */
+Real value(Index index) const;
+```
+
+Use the form `@param[direction] name - Description.`, where the optional
+direction is:
+
+- `[in]` for values read without being modified;
+- `[out]` for values replaced by the function;
+- `[in,out]` for values both read and modified.
+
+Order tags as `@param`, `@return`, `@throws`, `@note`, and `@warning`. Do not add
+`@throws` to `noexcept` functions or list incidental allocation failures unless
+they are part of the public contract.
+
+Do not use `@pre` or `@post`. Describe important constraints, side effects,
+ownership, allocation, aliasing, and synchronization in the detailed
+description instead. Omit implementation details.
+
+Document each class member variable with a trailing `///<` comment:
+
+```cpp
+int rows_; ///< Number of rows.
+```

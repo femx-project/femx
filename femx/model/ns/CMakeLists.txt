@@ -45,10 +45,16 @@ if(FEMX_HAS_CUDA)
 endif()
 
 if(FEMX_HAS_ENZYME)
-  # Enzyme's reverse lowering relies on the scalarized local work arrays.
-  # Keep these two translation units optimized in Debug/default builds too.
-  set_property(SOURCE Components.cpp APPEND PROPERTY COMPILE_OPTIONS -O2)
+  # Enzyme's reverse lowering relies on the scalarized local work arrays. Keep
+  # these two translation units optimized in Debug/default builds too.
+  set_property(
+    SOURCE Components.cpp
+    APPEND
+    PROPERTY COMPILE_OPTIONS -O2)
   if(FEMX_HAS_CUDA)
-    set_property(SOURCE Components.cu APPEND PROPERTY COMPILE_OPTIONS -O2)
+    set_property(
+      SOURCE Components.cu
+      APPEND
+      PROPERTY COMPILE_OPTIONS -O2)
   endif()
 endif()

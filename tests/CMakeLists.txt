@@ -4,19 +4,20 @@ target_link_libraries(runLinalgTests PRIVATE femx::femx)
 add_test(NAME LinalgTests COMMAND runLinalgTests)
 
 add_executable(runMemorySpaceTests unit/backend/runMemorySpaceTests.cpp)
-target_include_directories(runMemorySpaceTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runMemorySpaceTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runMemorySpaceTests PRIVATE femx::state)
 add_test(NAME MemorySpaceTests COMMAND runMemorySpaceTests)
 
-add_executable(runBackendAssemblyTests
-               unit/backend/runBackendAssemblyTests.cpp)
+add_executable(runBackendAssemblyTests unit/backend/runBackendAssemblyTests.cpp)
 target_include_directories(runBackendAssemblyTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runBackendAssemblyTests PRIVATE femx::femx)
 add_test(NAME BackendAssemblyTests COMMAND runBackendAssemblyTests)
 
 add_executable(runBackendStateTests unit/backend/runBackendStateTests.cpp)
-target_include_directories(runBackendStateTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runBackendStateTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runBackendStateTests PRIVATE femx::femx)
 add_test(NAME BackendStateTests COMMAND runBackendStateTests)
 
@@ -32,13 +33,12 @@ target_link_libraries(runPoissonAssemblyTests PRIVATE femx::femx)
 add_test(NAME PoissonAssemblyTests COMMAND runPoissonAssemblyTests)
 
 if(FEMX_HAS_CUDA)
-  add_executable(runCudaAssemblyTests
-                 unit/backend/runCudaAssemblyTests.cu)
+  add_executable(runCudaAssemblyTests unit/backend/runCudaAssemblyTests.cu)
   target_include_directories(runCudaAssemblyTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runCudaAssemblyTests PRIVATE femx::femx)
-  set_target_properties(runCudaAssemblyTests PROPERTIES CUDA_STANDARD 17
-                                                        CUDA_STANDARD_REQUIRED ON)
+  set_target_properties(runCudaAssemblyTests
+                        PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
   add_test(NAME CudaAssemblyTests COMMAND runCudaAssemblyTests)
   set_tests_properties(CudaAssemblyTests PROPERTIES LABELS "cuda;optional")
 
@@ -57,18 +57,16 @@ if(FEMX_HAS_CUDA
    AND FEMX_HAS_RESOLVE_CUDA
    AND TARGET femx_linalg_resolve
    AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-  add_executable(runReSolveDeviceTests
-                 unit/backend/runReSolveDeviceTests.cpp)
+  add_executable(runReSolveDeviceTests unit/backend/runReSolveDeviceTests.cpp)
   target_include_directories(runReSolveDeviceTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runReSolveDeviceTests PRIVATE femx::linalg_resolve)
   add_test(NAME ReSolveDeviceTests COMMAND runReSolveDeviceTests)
-  set_tests_properties(ReSolveDeviceTests
-                       PROPERTIES LABELS "resolve;cuda;optional")
+  set_tests_properties(ReSolveDeviceTests PROPERTIES LABELS
+                                                     "resolve;cuda;optional")
 
-  add_executable(
-    runResolveTimeIntegratorTests
-    unit/model/ns/runResolveTimeIntegratorTests.cpp)
+  add_executable(runResolveTimeIntegratorTests
+                 unit/model/ns/runResolveTimeIntegratorTests.cpp)
   target_include_directories(runResolveTimeIntegratorTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runResolveTimeIntegratorTests
@@ -78,16 +76,14 @@ if(FEMX_HAS_CUDA
   set_tests_properties(ResolveTimeIntegratorTests
                        PROPERTIES LABELS "resolve;cuda;optional")
 
-  add_executable(
-    runResolveTimeReducedTests
-    unit/model/ns/runResolveTimeReducedTests.cpp)
+  add_executable(runResolveTimeReducedTests
+                 unit/model/ns/runResolveTimeReducedTests.cpp)
   target_include_directories(runResolveTimeReducedTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runResolveTimeReducedTests
-                        PRIVATE femx::model::ns femx::inverse
-                                femx::linalg_resolve)
-  add_test(NAME ResolveTimeReducedTests
-           COMMAND runResolveTimeReducedTests)
+  target_link_libraries(
+    runResolveTimeReducedTests PRIVATE femx::model::ns femx::inverse
+                                       femx::linalg_resolve)
+  add_test(NAME ResolveTimeReducedTests COMMAND runResolveTimeReducedTests)
   set_tests_properties(ResolveTimeReducedTests
                        PROPERTIES LABELS "resolve;cuda;inverse;optional")
 endif()
@@ -113,7 +109,8 @@ add_test(NAME TimePointInterpolatorTests COMMAND runTimePointInterpolatorTests)
 set_tests_properties(TimePointInterpolatorTests PROPERTIES LABELS "fem;focused")
 
 add_executable(runControlMapTests unit/fem/runControlMapTests.cpp)
-target_include_directories(runControlMapTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runControlMapTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runControlMapTests PRIVATE femx::fem)
 if(FEMX_HAS_CUDA)
   set_source_files_properties(unit/fem/runControlMapTests.cpp
@@ -143,8 +140,8 @@ if(TARGET femx_linalg_resolve)
   add_executable(runReSolveSolverTests unit/linalg/runReSolveSolverTests.cpp)
   target_include_directories(runReSolveSolverTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runReSolveSolverTests
-                        PRIVATE femx::linalg_resolve femx::assembly)
+  target_link_libraries(runReSolveSolverTests PRIVATE femx::linalg_resolve
+                                                      femx::assembly)
   add_test(NAME ReSolveSolverTests COMMAND runReSolveSolverTests)
   set_tests_properties(ReSolveSolverTests PROPERTIES LABELS "resolve;optional")
 endif()
@@ -176,19 +173,16 @@ target_include_directories(runNavierStokesModelTests
 target_link_libraries(runNavierStokesModelTests PRIVATE femx::femx)
 add_test(NAME NavierStokesModelTests COMMAND runNavierStokesModelTests)
 
-add_executable(runForwardConfigTests
-               unit/model/ns/runForwardConfigTests.cpp)
+add_executable(runForwardConfigTests unit/model/ns/runForwardConfigTests.cpp)
 target_include_directories(runForwardConfigTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(
-  runForwardConfigTests
-  PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_compile_definitions(runForwardConfigTests
+                           PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(runForwardConfigTests PRIVATE femx::model::ns)
 add_test(NAME ForwardConfigTests COMMAND runForwardConfigTests)
 set_tests_properties(ForwardConfigTests PROPERTIES LABELS "ns;focused")
 
-add_executable(runNavierOperatorTests
-               unit/model/ns/runNavierOperatorTests.cpp)
+add_executable(runNavierOperatorTests unit/model/ns/runNavierOperatorTests.cpp)
 target_include_directories(runNavierOperatorTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runNavierOperatorTests PRIVATE femx::femx)
@@ -196,8 +190,7 @@ if(FEMX_HAS_CUDA)
   set_source_files_properties(unit/model/ns/runNavierOperatorTests.cpp
                               PROPERTIES LANGUAGE CUDA)
   set_target_properties(runNavierOperatorTests
-                        PROPERTIES CUDA_STANDARD 17
-                                   CUDA_STANDARD_REQUIRED ON)
+                        PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
 endif()
 add_test(NAME NavierOperatorTests COMMAND runNavierOperatorTests)
 set_tests_properties(NavierOperatorTests PROPERTIES LABELS "ns;focused")
