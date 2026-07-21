@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.4.0
+
+v0.4.0 refactors the linear algebra API by separating storage from
+backend-specific operations and adds explicit CSR transpose support for Host
+and CUDA backends.
+
+### Added
+
+- Host and CUDA `VectorHandler` and `MatrixHandler` APIs for vector operations.
+- CSR transpose support on Host and CUDA, with cached structure and value 
+  mappings for efficient repeated updates.
+- Memory-space-to-backend mappings, stronger view validation, and expanded
+  Host and CUDA linear algebra test coverage.
+
+### Changed
+
+- Renamed `CsrGraph` to `CsrPattern` and reorganized dense and CSR matrices,
+  vectors, and linear solvers around separate storage and backend-specific
+  handler interfaces.
+- Centralized shared cuBLAS and cuSPARSE handle management and migrated
+  assembly, state, inverse, Navier-Stokes, examples, and Python bindings to
+  the revised linear algebra API.
+
 ## v0.3.0
 
 This is a major pre-1.0 architectural update that introduces built-in CPU
