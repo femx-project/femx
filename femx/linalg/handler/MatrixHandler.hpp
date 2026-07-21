@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
 
@@ -23,6 +25,8 @@ public:
   void zero(HostCsrMatrix& mat) const;
   void zero(DenseMatrix& mat) const;
   void copy(const HostCsrMatrix& src, HostCsrMatrix& dst) const;
+  /** @brief Construct or update the explicit CSR transpose of `src`. */
+  void transpose(const HostCsrMatrix& src, HostCsrMatrix& dst) const;
 
   void matvec(const HostCsrMatrix& mat,
               HostConstVectorView  x,
@@ -68,8 +72,9 @@ private:
             "CsrMatrix copy requires compatible source and destination graphs");
   }
 
-  CpuContext&       ctx_;
-  HostVectorHandler vec_handler_;
+  CpuContext&                   ctx_;
+  HostVectorHandler             vec_handler_;
+  mutable std::shared_ptr<void> transpose_state_;
 };
 
 /** @brief CUDA sparse and dense matrix operations. */
@@ -86,6 +91,8 @@ public:
   void copy(const HostCsrMatrix& src, DeviceCsrMatrix& dst) const;
   void copy(const DeviceCsrMatrix& src, DeviceCsrMatrix& dst) const;
   void copy(const DeviceCsrMatrix& src, HostCsrMatrix& dst) const;
+  /** @brief Construct or update the explicit CSR transpose of `src`. */
+  void transpose(const DeviceCsrMatrix& src, DeviceCsrMatrix& dst) const;
 
   void matvec(const DeviceCsrMatrix& mat,
               DeviceConstVectorView  x,

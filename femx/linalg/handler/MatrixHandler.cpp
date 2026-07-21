@@ -1,4 +1,7 @@
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include <femx/linalg/handler/MatrixHandler.hpp>
 
@@ -6,6 +9,84 @@ namespace femx::linalg
 {
 namespace
 {
+struct HostCsrTransposeEntry
+{
+  std::uint64_t   source_layout{0};
+  HostCsrPattern  pattern;
+  HostIndexVector source_to_transpose;
+};
+
+struct HostCsrTransposeState
+{
+  std::vector<HostCsrTransposeEntry> entries;
+};
+
+HostCsrTransposeState& transposeState(std::shared_ptr<void>& storage)
+{
+  if (!storage)
+  {
+    storage = std::shared_ptr<void>(
+        new HostCsrTransposeState,
+        [](void* state)
+        { delete static_cast<HostCsrTransposeState*>(state); });
+  }
+  return *static_cast<HostCsrTransposeState*>(storage.get());
+}
+
+HostCsrTransposeEntry makeTransposeEntry(const HostCsrPattern& src)
+{
+  HostIndexVector row_ptr(src.cols() + 1, 0);
+  for (Index k = 0; k < src.nnz(); ++k)
+  {
+    ++row_ptr[src.colIndData()[k] + 1];
+  }
+  for (Index row = 0; row < src.cols(); ++row)
+  {
+    row_ptr[row + 1] += row_ptr[row];
+  }
+
+  HostIndexVector next = row_ptr;
+  HostIndexVector col_ind(src.nnz());
+  HostIndexVector source_to_transpose(src.nnz());
+  for (Index row = 0; row < src.rows(); ++row)
+  {
+    for (Index k = src.rowPtrData()[row];
+         k < src.rowPtrData()[row + 1];
+         ++k)
+    {
+      const Index transpose_row   = src.colIndData()[k];
+      const Index transpose_index = next[transpose_row]++;
+      col_ind[transpose_index]    = row;
+      source_to_transpose[k]      = transpose_index;
+    }
+  }
+
+  return {src.layoutId(),
+          HostCsrPattern(src.cols(),
+                         src.rows(),
+                         std::move(row_ptr),
+                         std::move(col_ind)),
+          std::move(source_to_transpose)};
+}
+
+HostCsrTransposeEntry& findOrCreateTransposeEntry(
+    HostCsrTransposeState& state,
+    const HostCsrPattern&  src)
+{
+  const auto iter = std::find_if(
+      state.entries.begin(),
+      state.entries.end(),
+      [&src](const HostCsrTransposeEntry& entry)
+      { return entry.source_layout == src.layoutId(); });
+  if (iter != state.entries.end())
+  {
+    return *iter;
+  }
+
+  state.entries.push_back(makeTransposeEntry(src));
+  return state.entries.back();
+}
+
 void checkCsrMatvec(const HostCsrMatrix& mat,
                     HostConstVectorView  x,
                     HostVectorView       y,
@@ -54,6 +135,23 @@ void MatrixHandler<HostCsrBackend>::copy(const HostCsrMatrix& src,
 {
   checkCopy(src, dst);
   vec_handler_.copy(src.vals().view(), dst.vals().view());
+}
+
+void MatrixHandler<HostCsrBackend>::transpose(
+    const HostCsrMatrix& src,
+    HostCsrMatrix&       dst) const
+{
+  require(&src != &dst, "CSR transpose does not support in-place output");
+  auto& state = transposeState(transpose_state_);
+  auto& entry = findOrCreateTransposeEntry(state, src.pattern());
+  if (dst.pattern().layoutId() != entry.pattern.layoutId())
+  {
+    dst = HostCsrMatrix(entry.pattern);
+  }
+  for (Index k = 0; k < src.nnz(); ++k)
+  {
+    dst.valsData()[entry.source_to_transpose[k]] = src.valsData()[k];
+  }
 }
 
 void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix& mat,
@@ -229,6 +327,13 @@ void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&,
                                             DeviceVectorView,
                                             Real,
                                             Real) const
+{
+  cudaUnavailable();
+}
+
+void MatrixHandler<CudaCsrBackend>::transpose(
+    const DeviceCsrMatrix&,
+    DeviceCsrMatrix&) const
 {
   cudaUnavailable();
 }

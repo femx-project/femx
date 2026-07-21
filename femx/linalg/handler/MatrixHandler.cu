@@ -2,6 +2,8 @@
 #include <cusparse.h>
 
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -91,10 +93,25 @@ struct MatrixEntry
   }
 };
 
-struct CsrSpmvState
+struct CsrTransposeEntry
 {
-  std::mutex                                mutex;
-  std::vector<std::unique_ptr<MatrixEntry>> matrices;
+  std::uint64_t     source_layout{0};
+  DeviceCsrPattern  pattern;
+  DeviceIndexVector source_to_transpose;
+};
+
+struct CsrState
+{
+  ~CsrState()
+  {
+    cuda::release(transpose_workspace);
+  }
+
+  std::mutex                                      mutex;
+  std::vector<std::unique_ptr<MatrixEntry>>       matrices;
+  std::vector<std::unique_ptr<CsrTransposeEntry>> transposes;
+  void*                                           transpose_workspace{nullptr};
+  std::size_t                                     transpose_workspace_capacity{0};
 };
 
 __global__ void scaleKernel(Index size, Real scale, Real* vals)
@@ -104,6 +121,61 @@ __global__ void scaleKernel(Index size, Real scale, Real* vals)
   if (i < size)
   {
     vals[i] *= scale;
+  }
+}
+
+__global__ void buildTransposeMapKernel(Index        rows,
+                                        const Index* source_row_ptr,
+                                        const Index* source_col_ind,
+                                        const Index* transpose_row_ptr,
+                                        const Index* transpose_col_ind,
+                                        Index*       source_to_transpose)
+{
+  const Index stride = static_cast<Index>(blockDim.x * gridDim.x);
+  for (Index row = static_cast<Index>(blockIdx.x * blockDim.x
+                                      + threadIdx.x);
+       row < rows;
+       row += stride)
+  {
+    for (Index k = source_row_ptr[row]; k < source_row_ptr[row + 1]; ++k)
+    {
+      const Index transpose_row = source_col_ind[k];
+      Index       rank          = 0;
+      for (Index previous = source_row_ptr[row]; previous < k; ++previous)
+      {
+        rank += source_col_ind[previous] == transpose_row ? 1 : 0;
+      }
+      for (Index transpose_index = transpose_row_ptr[transpose_row];
+           transpose_index < transpose_row_ptr[transpose_row + 1];
+           ++transpose_index)
+      {
+        if (transpose_col_ind[transpose_index] == row)
+        {
+          if (rank == 0)
+          {
+            source_to_transpose[k] = transpose_index;
+            break;
+          }
+          --rank;
+        }
+      }
+    }
+  }
+}
+
+__global__ void updateTransposeValuesKernel(
+    Index        nnz,
+    const Real*  source_vals,
+    const Index* source_to_transpose,
+    Real*        transpose_vals)
+{
+  const Index stride = static_cast<Index>(blockDim.x * gridDim.x);
+  for (Index k = static_cast<Index>(blockIdx.x * blockDim.x
+                                    + threadIdx.x);
+       k < nnz;
+       k += stride)
+  {
+    transpose_vals[source_to_transpose[k]] = source_vals[k];
   }
 }
 
@@ -169,20 +241,20 @@ void scaleOutput(DeviceVectorView y, Real beta, CudaContext& ctx)
   cuda::checkLastError();
 }
 
-CsrSpmvState& spmvState(CudaContext& ctx)
+CsrState& csrState(CudaContext& ctx)
 {
   auto& storage = femx::detail::CudaContextAccess::sparseState(ctx);
   if (!storage)
   {
     storage = std::shared_ptr<void>(
-        new CsrSpmvState,
+        new CsrState,
         [](void* state)
-        { delete static_cast<CsrSpmvState*>(state); });
+        { delete static_cast<CsrState*>(state); });
   }
-  return *static_cast<CsrSpmvState*>(storage.get());
+  return *static_cast<CsrState*>(storage.get());
 }
 
-MatrixEntry& findOrCreateEntry(CsrSpmvState&          state,
+MatrixEntry& findOrCreateEntry(CsrState&              state,
                                const DeviceCsrMatrix& mat)
 {
   const auto iter = std::find_if(
@@ -197,6 +269,17 @@ MatrixEntry& findOrCreateEntry(CsrSpmvState&          state,
 
   state.matrices.push_back(std::make_unique<MatrixEntry>(mat));
   return *state.matrices.back();
+}
+
+CsrTransposeEntry* findTransposeEntry(CsrState&              state,
+                                      const DeviceCsrMatrix& src)
+{
+  const auto iter = std::find_if(
+      state.transposes.begin(),
+      state.transposes.end(),
+      [&src](const std::unique_ptr<CsrTransposeEntry>& entry)
+      { return entry->source_layout == src.pattern().layoutId(); });
+  return iter == state.transposes.end() ? nullptr : iter->get();
 }
 
 void ensureDescriptors(SpmvOperation&         op,
@@ -257,7 +340,7 @@ void spmv(const DeviceCsrMatrix& mat,
           Real                   beta,
           bool                   transpose)
 {
-  CsrSpmvState&               state = spmvState(ctx);
+  CsrState&                   state = csrState(ctx);
   std::lock_guard<std::mutex> lock(state.mutex);
   MatrixEntry&                entry     = findOrCreateEntry(state, mat);
   SpmvOperation&              operation = transpose ? entry.matvecT
@@ -314,6 +397,119 @@ void spmv(const DeviceCsrMatrix& mat,
                 "cusparseSpMV failed");
 }
 } // namespace
+
+void MatrixHandler<CudaCsrBackend>::transpose(
+    const DeviceCsrMatrix& src,
+    DeviceCsrMatrix&       dst) const
+{
+  require(&src != &dst, "CSR transpose does not support in-place output");
+  require(src.cols() != std::numeric_limits<Index>::max(),
+          "CSR transpose row count is too large");
+
+  CsrState&                   state = csrState(ctx_);
+  std::lock_guard<std::mutex> lock(state.mutex);
+  CsrTransposeEntry*          entry           = findTransposeEntry(state, src);
+  const bool                  rebuild_pattern = entry == nullptr;
+
+  if (rebuild_pattern)
+  {
+    DeviceIndexVector transpose_row_ptr(src.cols() + 1);
+    DeviceIndexVector transpose_col_ind(src.nnz());
+    DeviceIndexVector source_to_transpose(src.nnz());
+
+    auto created           = std::make_unique<CsrTransposeEntry>();
+    created->source_layout = src.pattern().layoutId();
+    created->pattern       = DeviceCsrPattern(
+        src.cols(),
+        src.rows(),
+        std::move(transpose_row_ptr),
+        std::move(transpose_col_ind),
+        femx::detail::newCsrLayoutId());
+    created->source_to_transpose = std::move(source_to_transpose);
+    state.transposes.push_back(std::move(created));
+    entry = state.transposes.back().get();
+  }
+
+  if (dst.pattern().layoutId() != entry->pattern.layoutId())
+  {
+    dst = DeviceCsrMatrix(entry->pattern);
+  }
+  if (src.nnz() == 0)
+  {
+    return;
+  }
+
+  auto handle = detail::cusparseHandle(ctx_.stream());
+  if (rebuild_pattern)
+  {
+    std::size_t workspace_size = 0;
+    checkCusparse(cusparseCsr2cscEx2_bufferSize(
+                      handle,
+                      src.rows(),
+                      src.cols(),
+                      src.nnz(),
+                      src.valsData(),
+                      src.rowPtrData(),
+                      src.colIndData(),
+                      dst.valsData(),
+                      const_cast<Index*>(dst.rowPtrData()),
+                      const_cast<Index*>(dst.colIndData()),
+                      CUDA_R_64F,
+                      CUSPARSE_ACTION_SYMBOLIC,
+                      CUSPARSE_INDEX_BASE_ZERO,
+                      CUSPARSE_CSR2CSC_ALG1,
+                      &workspace_size),
+                  "cusparseCsr2cscEx2_bufferSize failed");
+    if (workspace_size > state.transpose_workspace_capacity)
+    {
+      void* replacement = cuda::allocate(workspace_size);
+      cuda::release(state.transpose_workspace);
+      state.transpose_workspace          = replacement;
+      state.transpose_workspace_capacity = workspace_size;
+    }
+    checkCusparse(cusparseCsr2cscEx2(
+                      handle,
+                      src.rows(),
+                      src.cols(),
+                      src.nnz(),
+                      src.valsData(),
+                      src.rowPtrData(),
+                      src.colIndData(),
+                      dst.valsData(),
+                      const_cast<Index*>(dst.rowPtrData()),
+                      const_cast<Index*>(dst.colIndData()),
+                      CUDA_R_64F,
+                      CUSPARSE_ACTION_SYMBOLIC,
+                      CUSPARSE_INDEX_BASE_ZERO,
+                      CUSPARSE_CSR2CSC_ALG1,
+                      state.transpose_workspace),
+                  "cusparseCsr2cscEx2 symbolic transpose failed");
+
+    constexpr unsigned int threads = 128;
+    buildTransposeMapKernel<<<cuda::numBlocks(src.rows(), threads),
+                              threads,
+                              0,
+                              static_cast<cudaStream_t>(ctx_.stream())>>>(
+        src.rows(),
+        src.rowPtrData(),
+        src.colIndData(),
+        dst.rowPtrData(),
+        dst.colIndData(),
+        entry->source_to_transpose.data());
+    cuda::checkLastError();
+  }
+
+  constexpr unsigned int threads = 256;
+  updateTransposeValuesKernel<<<cuda::numBlocks(src.nnz(), threads),
+                                threads,
+                                0,
+                                static_cast<cudaStream_t>(ctx_.stream())>>>(
+      src.nnz(),
+      src.valsData(),
+      entry->source_to_transpose.data(),
+      dst.valsData());
+  cuda::checkLastError();
+}
 
 void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix& mat,
                                            DeviceConstVectorView  x,
