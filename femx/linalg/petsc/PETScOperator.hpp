@@ -34,18 +34,10 @@ public:
 
   ~PETScOperator();
 
-  /**
-   * @brief Return the global number of rows.
-   *
-   * @return Number of rows.
-   */
+  /** @brief Return the global number of rows. */
   Index rows() const;
 
-  /**
-   * @brief Return the global number of columns.
-   *
-   * @return Number of columns.
-   */
+  /** @brief Return the global number of columns. */
   Index cols() const;
 
   /**
@@ -56,11 +48,7 @@ public:
    */
   Mat mat() const;
 
-  /**
-   * @brief Return the PETSc communicator.
-   *
-   * @return Communicator used by the matrix.
-   */
+  /** @brief Return the PETSc communicator used by the matrix. */
   MPI_Comm comm() const;
 
   /**

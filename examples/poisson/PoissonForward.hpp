@@ -51,11 +51,7 @@ public:
 
   /** @brief Return flattened host geometry. */
   const fem::HostGeometry&              geom() const noexcept;
-  /**
-   * @brief Return reusable Host element quadrature data.
-   *
-   * @return Shape values, physical gradients, and weighted Jacobians.
-   */
+  /** @brief Return reusable Host element quadrature data. */
   const fem::HostElementQuadratureData& elementData() const noexcept;
   /** @brief Return the element assembly map. */
   const assembly::HostAssemblyMap&      map() const noexcept;

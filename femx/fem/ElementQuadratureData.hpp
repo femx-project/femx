@@ -87,41 +87,25 @@ public:
   {
   }
 
-  /**
-   * @brief Return the number of elements.
-   *
-   * @return Number of elements represented by this view.
-   */
+  /** @brief Return the number of elements. */
   FEMX_HOST_DEVICE Index numElems() const
   {
     return num_elems_;
   }
 
-  /**
-   * @brief Return the number of quadrature points per element.
-   *
-   * @return Number of quadrature points on each element.
-   */
+  /** @brief Return the number of quadrature points per element. */
   FEMX_HOST_DEVICE Index numQuadraturePoints() const
   {
     return num_qpts_;
   }
 
-  /**
-   * @brief Return the number of scalar shape functions per element.
-   *
-   * @return Number of scalar shape functions on each element.
-   */
+  /** @brief Return the number of scalar shape functions per element. */
   FEMX_HOST_DEVICE Index numShapes() const
   {
     return num_shapes_;
   }
 
-  /**
-   * @brief Return the spatial dimension.
-   *
-   * @return Number of physical coordinate components.
-   */
+  /** @brief Return the spatial dimension. */
   FEMX_HOST_DEVICE Index dim() const
   {
     return dim_;
@@ -195,51 +179,31 @@ public:
   ElementQuadratureData& operator=(const ElementQuadratureData&)     = default;
   ElementQuadratureData& operator=(ElementQuadratureData&&) noexcept = default;
 
-  /**
-   * @brief Return the number of elements.
-   *
-   * @return Number of represented elements.
-   */
+  /** @brief Return the number of elements. */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
-  /**
-   * @brief Return the number of quadrature points per element.
-   *
-   * @return Number of quadrature points on each element.
-   */
+  /** @brief Return the number of quadrature points per element. */
   Index numQuadraturePoints() const noexcept
   {
     return num_qpts_;
   }
 
-  /**
-   * @brief Return the number of scalar shape functions per element.
-   *
-   * @return Number of scalar shape functions on each element.
-   */
+  /** @brief Return the number of scalar shape functions per element. */
   Index numShapes() const noexcept
   {
     return num_shapes_;
   }
 
-  /**
-   * @brief Return the spatial dimension.
-   *
-   * @return Number of physical coordinate components.
-   */
+  /** @brief Return the spatial dimension. */
   Index dim() const noexcept
   {
     return dim_;
   }
 
-  /**
-   * @brief Return a non-owning view valid while this object is alive.
-   *
-   * @return View over the owned element quadrature data.
-   */
+  /** @brief Return a non-owning view valid while this object is alive. */
   ElementQuadratureDataView<Space> view() const noexcept
   {
     return {num_elems_,

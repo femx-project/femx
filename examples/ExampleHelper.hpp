@@ -78,11 +78,7 @@ public:
   {
   }
 
-  /**
-   * @brief Return the `solver/memory-space` display name.
-   *
-   * @return Combined solver and memory-space name.
-   */
+  /** @brief Return the `solver/memory-space` display name. */
   std::string name() const
   {
     return solver_ + "/" + memspaceName(memspace_);

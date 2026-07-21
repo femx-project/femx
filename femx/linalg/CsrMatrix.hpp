@@ -39,101 +39,61 @@ public:
   {
   }
 
-  /**
-   * @brief Return the number of rows.
-   *
-   * @return Number of rows.
-   */
+  /** @brief Return the number of rows. */
   Index rows() const noexcept
   {
     return pattern_.rows();
   }
 
-  /**
-   * @brief Return the number of columns.
-   *
-   * @return Number of columns.
-   */
+  /** @brief Return the number of columns. */
   Index cols() const noexcept
   {
     return pattern_.cols();
   }
 
-  /**
-   * @brief Return the number of stored entries.
-   *
-   * @return Number of structurally nonzero entries.
-   */
+  /** @brief Return the number of stored entries. */
   Index nnz() const noexcept
   {
     return pattern_.nnz();
   }
 
-  /**
-   * @brief Return the immutable sparsity pattern.
-   *
-   * @return Shared CSR pattern.
-   */
+  /** @brief Return the immutable sparsity pattern. */
   const Pattern& pattern() const noexcept
   {
     return pattern_;
   }
 
-  /**
-   * @brief Return the CSR row-offset data.
-   *
-   * @return Read-only pointer to row offsets.
-   */
+  /** @brief Return the CSR row-offset data. */
   const Index* rowPtrData() const noexcept
   {
     return pattern_.rowPtrData();
   }
 
-  /**
-   * @brief Return the CSR column-index data.
-   *
-   * @return Read-only pointer to column indices.
-   */
+  /** @brief Return the CSR column-index data. */
   const Index* colIndData() const noexcept
   {
     return pattern_.colIndData();
   }
 
-  /**
-   * @brief Return the numeric CSR value data.
-   *
-   * @return Mutable pointer to numeric values.
-   */
+  /** @brief Return the numeric CSR value data. */
   Real* valsData() noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return the numeric CSR value data.
-   *
-   * @return Read-only pointer to numeric values.
-   */
+  /** @brief Return the numeric CSR value data. */
   const Real* valsData() const noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return the owned numeric values.
-   *
-   * @return Mutable vector of CSR values.
-   */
+  /** @brief Return the owned numeric values. */
   Vals& vals() noexcept
   {
     return vals_;
   }
 
-  /**
-   * @brief Return the owned numeric values.
-   *
-   * @return Read-only vector of CSR values.
-   */
+  /** @brief Return the owned numeric values. */
   const Vals& vals() const noexcept
   {
     return vals_;
