@@ -7,7 +7,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(_core, module)
 {
   module.doc()               = "Native Python bindings for the femx finite-element engine.";
-  module.attr("__version__") = "0.3.0";
+  module.attr("__version__") = "0.4.0";
 #if defined(FEMX_RESOLVE_USE_CUDA)
   module.attr("_resolve_uses_cuda") = true;
 #else
