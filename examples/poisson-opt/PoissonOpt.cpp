@@ -11,12 +11,14 @@
 #include <string>
 #include <utility>
 
-#include "../poisson/PoissonOperator.hpp"
+#include "../poisson/PoissonComponents.hpp"
 #include <femx/assembly/Assembly.hpp>
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/fem/DofLayout.hpp>
+#include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/fem/FESpace.hpp>
+#include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/ObservationGrid.hpp>
@@ -83,11 +85,13 @@ public:
   using Pattern = typename Backend::Pattern;
   using Ctx     = typename Backend::Ctx;
 
-  PoissonMapResidual(const HostGeometry&    geom,
-                     const HostAssemblyMap& map,
-                     Array<Index>           control_dofs,
-                     Array<Index>           fixed_dofs)
+  PoissonMapResidual(const HostGeometry&              geom,
+                     const HostElementQuadratureData& element_data,
+                     const HostAssemblyMap&           map,
+                     Array<Index>                     control_dofs,
+                     Array<Index>                     fixed_dofs)
     : geom_(&geom),
+      element_data_(&element_data),
       map_(&map),
       control_dofs_(std::move(control_dofs)),
       jac_(map.pattern())
@@ -169,7 +173,8 @@ private:
   void assembleRaw(const Vec& state, Vec& res) const
   {
     CpuContext ctx;
-    assembly::assemble(poisson::PoissonQuadQ1Operator{},
+    assembly::assemble(poisson::PoissonComponents<MemorySpace::Host>(
+                           element_data_->view()),
                        *geom_,
                        *map_,
                        state,
@@ -188,11 +193,12 @@ private:
     return vals;
   }
 
-  const HostGeometry*    geom_{nullptr};
-  const HostAssemblyMap* map_{nullptr};
-  Array<Index>           control_dofs_;
-  HostBoundaryMap        bc_map_;
-  mutable HostCsrMatrix  jac_;
+  const HostGeometry*              geom_{nullptr};
+  const HostElementQuadratureData* element_data_{nullptr};
+  const HostAssemblyMap*           map_{nullptr};
+  Array<Index>                     control_dofs_;
+  HostBoundaryMap                  bc_map_;
+  mutable HostCsrMatrix            jac_;
 };
 
 Mesh makePoissonMesh(const Options& opts)
@@ -370,7 +376,9 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
     space_(&mesh_, &fe_)
 {
   space_.setup();
-  geom_      = makeGeometry(mesh_);
+  geom_         = makeGeometry(mesh_);
+  element_data_ = makeElementQuadratureData(
+      space_, GaussQuadrature::make(fe_.referenceElement(), 2));
   state_map_ = assembly::makeAssemblyMap(DofLayout(space_));
   initializeBoundaryDofs();
   initializeTrueControl();
@@ -733,6 +741,7 @@ Result solve(PoissonOptProblem&             problem,
   static_assert(Backend::space == MemorySpace::Host,
                 "Poisson optimization requires Host state storage");
   PoissonMapResidual<Backend> res(problem.geom_,
+                                  problem.element_data_,
                                   problem.state_map_,
                                   problem.ctr_dofs_,
                                   problem.fixed_dofs_);

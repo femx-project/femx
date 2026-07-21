@@ -6,6 +6,7 @@
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -49,13 +50,19 @@ public:
   const Options& options() const noexcept;
 
   /** @brief Return flattened host geometry. */
-  const fem::HostGeometry&         geom() const noexcept;
+  const fem::HostGeometry&              geom() const noexcept;
+  /**
+   * @brief Return reusable Host element quadrature data.
+   *
+   * @return Shape values, physical gradients, and weighted Jacobians.
+   */
+  const fem::HostElementQuadratureData& elementData() const noexcept;
   /** @brief Return the element assembly map. */
-  const assembly::HostAssemblyMap& map() const noexcept;
+  const assembly::HostAssemblyMap&      map() const noexcept;
   /** @brief Return essential-boundary CSR metadata. */
-  const assembly::HostBoundaryMap& bcMap() const noexcept;
+  const assembly::HostBoundaryMap&      bcMap() const noexcept;
   /** @brief Return prescribed values in boundary-map order. */
-  const HostVector&                bcVals() const noexcept;
+  const HostVector&                     bcVals() const noexcept;
 
   /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept;
@@ -83,14 +90,15 @@ private:
   static bool onBoundary(const fem::Mesh::Node& p, Real time);
 
 private:
-  Options                   opts_;
-  fem::Mesh                 mesh_;
-  fem::LagrangeQuadQ1       fe_;
-  fem::FESpace              space_;
-  fem::HostGeometry         geom_;
-  assembly::HostAssemblyMap map_;
-  assembly::HostBoundaryMap bc_map_;
-  HostVector                bc_vals_;
+  Options                        opts_;
+  fem::Mesh                      mesh_;
+  fem::LagrangeQuadQ1            fe_;
+  fem::FESpace                   space_;
+  fem::HostGeometry              geom_;
+  fem::HostElementQuadratureData element_data_;
+  assembly::HostAssemblyMap      map_;
+  assembly::HostBoundaryMap      bc_map_;
+  HostVector                     bc_vals_;
 };
 
 /** @brief Parse forward Poisson command-line options. */

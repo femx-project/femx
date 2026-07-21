@@ -10,6 +10,7 @@ target_sources(
           DirichletControl.cpp
           DofLayout.cpp
           DofMap.cpp
+          ElementQuadratureData.cpp
           ElementValues.cpp
           FESpace.cpp
           Geometry.cpp
@@ -28,6 +29,7 @@ target_sources(
          DofLayout.hpp
          MixedFESpace.hpp
          DofMap.hpp
+         ElementQuadratureData.hpp
          ElementValues.hpp
          FESpace.hpp
          FiniteElement.hpp

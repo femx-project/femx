@@ -8,6 +8,7 @@
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -129,12 +130,13 @@ private:
   bool isControlNode(const fem::Mesh::Node& p) const;
 
 private:
-  Options                   opts_;
-  fem::Mesh                 mesh_;
-  fem::LagrangeQuadQ1       fe_;
-  fem::FESpace              space_;
-  fem::HostGeometry         geom_;
-  assembly::HostAssemblyMap state_map_;
+  Options                        opts_;
+  fem::Mesh                      mesh_;
+  fem::LagrangeQuadQ1            fe_;
+  fem::FESpace                   space_;
+  fem::HostGeometry              geom_;
+  fem::HostElementQuadratureData element_data_; ///< Element integration data.
+  assembly::HostAssemblyMap      state_map_;
 
   Array<Index>  ctr_dofs_;
   Array<Index>  fixed_dofs_;
