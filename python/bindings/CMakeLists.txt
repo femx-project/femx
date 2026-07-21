@@ -38,17 +38,18 @@ endif()
 pybind11_add_module(_core Inverse.cpp Mesh.cpp Module.cpp NavierStokes.cpp
                     State.cpp)
 
-foreach(_target
-        femx_linalg
-        femx_linalg_petsc
-        femx_linalg_resolve
-        femx_state
-        femx_inverse
-        femx_fem
-        femx_assembly
-        femx_io
-        femx_runtime
-        femx_model_ns)
+foreach(
+  _target
+  femx_linalg
+  femx_linalg_petsc
+  femx_linalg_resolve
+  femx_state
+  femx_inverse
+  femx_fem
+  femx_assembly
+  femx_io
+  femx_runtime
+  femx_model_ns)
   if(TARGET "${_target}")
     set_target_properties("${_target}" PROPERTIES POSITION_INDEPENDENT_CODE ON)
   endif()
@@ -70,9 +71,10 @@ set_target_properties(
                    INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 install(TARGETS _core LIBRARY DESTINATION femx COMPONENT python)
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../femx/"
-        DESTINATION femx
-        COMPONENT python
-        FILES_MATCHING
-        PATTERN "*.py"
-        PATTERN "__pycache__" EXCLUDE)
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../femx/"
+  DESTINATION femx
+  COMPONENT python
+  FILES_MATCHING
+  PATTERN "*.py"
+  PATTERN "__pycache__" EXCLUDE)

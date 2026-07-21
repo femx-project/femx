@@ -149,11 +149,11 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
   require(!femx::detail::overlaps(src, dst),
           "Device view copy does not support partial overlap");
   cuda::copy(dst.data(),
-               MemorySpace::Device,
-               src.data(),
-               MemorySpace::Device,
-               static_cast<std::size_t>(src.size()) * sizeof(Real),
-               ctx_.stream());
+             MemorySpace::Device,
+             src.data(),
+             MemorySpace::Device,
+             static_cast<std::size_t>(src.size()) * sizeof(Real),
+             ctx_.stream());
 }
 
 void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
@@ -172,11 +172,11 @@ void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
   if (!src.empty())
   {
     cuda::copy(dst.data(),
-                 MemorySpace::Device,
-                 src.data(),
-                 MemorySpace::Host,
-                 static_cast<std::size_t>(src.size()) * sizeof(Real),
-                 ctx_.stream());
+               MemorySpace::Device,
+               src.data(),
+               MemorySpace::Host,
+               static_cast<std::size_t>(src.size()) * sizeof(Real),
+               ctx_.stream());
   }
 }
 
@@ -196,11 +196,11 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
   if (!src.empty())
   {
     cuda::copy(dst.data(),
-                 MemorySpace::Host,
-                 src.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(src.size()) * sizeof(Real),
-                 ctx_.stream());
+               MemorySpace::Host,
+               src.data(),
+               MemorySpace::Device,
+               static_cast<std::size_t>(src.size()) * sizeof(Real),
+               ctx_.stream());
   }
 }
 
@@ -217,8 +217,8 @@ void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView vals) const
   if (!vals.empty())
   {
     cuda::zero(vals.data(),
-                 static_cast<std::size_t>(vals.size()) * sizeof(Real),
-                 ctx_.stream());
+               static_cast<std::size_t>(vals.size()) * sizeof(Real),
+               ctx_.stream());
   }
 }
 

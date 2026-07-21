@@ -51,7 +51,8 @@ string(TOUPPER "${FEMX_RESOLVE_BACKEND}" FEMX_RESOLVE_BACKEND_MODE)
 
 set(FEMX_RESOLVE_REVISION
     ""
-    CACHE STRING "Optional revision label for the installed ReSolve development tree")
+    CACHE STRING
+          "Optional revision label for the installed ReSolve development tree")
 
 if(NOT FEMX_RESOLVE_BACKEND_MODE MATCHES "^(AUTO|CPU|CUDA)$")
   message(FATAL_ERROR "FEMX_RESOLVE_BACKEND must be AUTO, CPU, or CUDA.")
@@ -60,8 +61,9 @@ endif()
 if(FEMX_ENABLE_RESOLVE
    AND FEMX_RESOLVE_BACKEND_MODE STREQUAL "CUDA"
    AND NOT FEMX_ENABLE_CUDA)
-  set(FEMX_ENABLE_CUDA ON CACHE BOOL
-      "Enable CUDA memory and assembly backends" FORCE)
+  set(FEMX_ENABLE_CUDA
+      ON
+      CACHE BOOL "Enable CUDA memory and assembly backends" FORCE)
 endif()
 
 set(FEMX_HAS_ENZYME OFF)
@@ -277,8 +279,7 @@ if(FEMX_ENABLE_RESOLVE)
   if(FEMX_RESOLVE_REVISION)
     set(FEMX_RESOLVE_BUILD_ID "${FEMX_RESOLVE_REVISION}")
   else()
-    get_target_property(FEMX_RESOLVE_LIBRARY ReSolve::ReSolve
-                        IMPORTED_LOCATION)
+    get_target_property(FEMX_RESOLVE_LIBRARY ReSolve::ReSolve IMPORTED_LOCATION)
     if(NOT FEMX_RESOLVE_LIBRARY)
       get_target_property(FEMX_RESOLVE_LIBRARY ReSolve::ReSolve
                           IMPORTED_LOCATION_NOCONFIG)
@@ -286,7 +287,7 @@ if(FEMX_ENABLE_RESOLVE)
     if(FEMX_RESOLVE_LIBRARY AND EXISTS "${FEMX_RESOLVE_LIBRARY}")
       file(SHA256 "${FEMX_RESOLVE_LIBRARY}" FEMX_RESOLVE_LIBRARY_SHA256)
       string(SUBSTRING "${FEMX_RESOLVE_LIBRARY_SHA256}" 0 16
-             FEMX_RESOLVE_LIBRARY_SHA256_SHORT)
+                       FEMX_RESOLVE_LIBRARY_SHA256_SHORT)
       set(FEMX_RESOLVE_BUILD_ID
           "libReSolve-sha256:${FEMX_RESOLVE_LIBRARY_SHA256_SHORT}")
     else()
