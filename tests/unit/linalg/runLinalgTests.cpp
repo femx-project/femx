@@ -304,6 +304,56 @@ TestOutcome csrMatrixOwnsValuesForGraph()
   return status.report();
 }
 
+TestOutcome csrMatrixTranspose()
+{
+  TestStatus status(__func__);
+
+  const HostCsrPattern pattern{
+      3,
+      4,
+      HostIndexVector{0, 2, 4, 7},
+      HostIndexVector{0, 2, 1, 3, 0, 2, 3}};
+  HostCsrMatrix src(pattern);
+  src.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
+
+  CpuContext                ctx;
+  linalg::HostMatrixHandler mat_handler(ctx);
+  HostCsrMatrix             dst;
+  mat_handler.transpose(src, dst);
+
+  status *= dst.rows() == 4 && dst.cols() == 3 && dst.nnz() == 7;
+  status *= valsEqual(dst.rowPtrData(),
+                      std::array<Index, 5>{{0, 2, 3, 5, 7}});
+  status *= valsEqual(dst.colIndData(),
+                      std::array<Index, 7>{{0, 2, 1, 0, 2, 1, 2}});
+  status *= valsNear(dst.valsData(),
+                     std::array<Real, 7>{{2.0, -2.0, 3.0, -1.0, 5.0, 4.0, 1.0}});
+
+  const Index* row_ptr = dst.rowPtrData();
+  const Index* col_ind = dst.colIndData();
+  Real*        vals    = dst.valsData();
+  src.vals()           = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
+  mat_handler.transpose(src, dst);
+
+  status *= row_ptr == dst.rowPtrData() && col_ind == dst.colIndData()
+            && vals == dst.valsData();
+  status *= valsNear(dst.valsData(),
+                     std::array<Real, 7>{{-1.0, 4.0, 0.5, 2.0, 1.0, -3.0, -2.0}});
+
+  bool alias_rejected = false;
+  try
+  {
+    mat_handler.transpose(src, src);
+  }
+  catch (const std::runtime_error&)
+  {
+    alias_rejected = true;
+  }
+  status *= alias_rejected;
+
+  return status.report();
+}
+
 TestOutcome csrPatternUsesLayoutIdentity()
 {
   TestStatus status(__func__);
@@ -342,6 +392,7 @@ int main(int, char**)
   results += femx::tests::denseMatrixApplies();
   results += femx::tests::assemblyMapBuildsSharedElementSparsity();
   results += femx::tests::csrMatrixOwnsValuesForGraph();
+  results += femx::tests::csrMatrixTranspose();
   results += femx::tests::csrPatternUsesLayoutIdentity();
 
   return results.summary();

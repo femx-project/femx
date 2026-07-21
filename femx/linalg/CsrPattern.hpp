@@ -15,6 +15,23 @@
 namespace femx
 {
 
+namespace linalg
+{
+struct CudaCsrBackend;
+
+template <class Backend>
+class MatrixHandler;
+} // namespace linalg
+
+namespace detail
+{
+inline std::uint64_t newCsrLayoutId() noexcept
+{
+  static std::atomic<std::uint64_t> next_id{1};
+  return next_id++;
+}
+} // namespace detail
+
 /**
  * @brief Immutable compressed-sparse-row pattern in one memory space.
  *
@@ -25,12 +42,6 @@ namespace femx
 template <MemorySpace Space>
 class CsrPattern
 {
-  static std::uint64_t newLayoutId() noexcept
-  {
-    static std::atomic<std::uint64_t> next_id{1};
-    return next_id++;
-  }
-
   template <MemorySpace S>
   using HostOnly = std::enable_if_t<S == MemorySpace::Host, int>;
 
@@ -67,7 +78,7 @@ public:
                                          cols,
                                          std::move(row_ptr),
                                          std::move(col_ind),
-                                         newLayoutId()))
+                                         detail::newCsrLayoutId()))
   {
     checkSizes();
   }
@@ -159,12 +170,13 @@ private:
   {
     checkSizes();
     require(storage_->layout_id != 0,
-            "Device CsrPattern must be created by copying a host pattern");
+            "Device CsrPattern requires a valid layout identity");
   }
 
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
                    CudaContext&);
+  friend class linalg::MatrixHandler<linalg::CudaCsrBackend>;
 
   void checkSizes() const
   {
@@ -213,20 +225,20 @@ inline void copy(const HostCsrPattern& src,
   if (!row_ptr.empty())
   {
     cuda::copy(row_ptr.data(),
-                 MemorySpace::Device,
-                 src.rowPtrData(),
-                 MemorySpace::Host,
-                 static_cast<std::size_t>(row_ptr.size()) * sizeof(Index),
-                 ctx.stream());
+               MemorySpace::Device,
+               src.rowPtrData(),
+               MemorySpace::Host,
+               static_cast<std::size_t>(row_ptr.size()) * sizeof(Index),
+               ctx.stream());
   }
   if (!col_ind.empty())
   {
     cuda::copy(col_ind.data(),
-                 MemorySpace::Device,
-                 src.colIndData(),
-                 MemorySpace::Host,
-                 static_cast<std::size_t>(col_ind.size()) * sizeof(Index),
-                 ctx.stream());
+               MemorySpace::Device,
+               src.colIndData(),
+               MemorySpace::Host,
+               static_cast<std::size_t>(col_ind.size()) * sizeof(Index),
+               ctx.stream());
   }
   dst = DeviceCsrPattern(src.rows(),
                          src.cols(),

@@ -33,6 +33,22 @@ bool near(const HostVector& lhs,
   return true;
 }
 
+bool equal(const HostIndexVector& lhs, const HostIndexVector& rhs)
+{
+  if (lhs.size() != rhs.size())
+  {
+    return false;
+  }
+  for (Index i = 0; i < lhs.size(); ++i)
+  {
+    if (lhs[i] != rhs[i])
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 void record(TestStatus& status, bool condition, const char* label)
 {
   if (!condition)
@@ -77,6 +93,41 @@ TestOutcome persistentCudaCsrOps()
            "Device pattern preserves its Host layout identity");
     DeviceCsrMatrix device_mat(device_graph);
     mat_handler.copy(host_mat, device_mat);
+
+    DeviceCsrMatrix device_transpose;
+    mat_handler.transpose(device_mat, device_transpose);
+    const Index* transpose_row_ptr = device_transpose.rowPtrData();
+    const Index* transpose_col_ind = device_transpose.colIndData();
+    Real*        transpose_vals    = device_transpose.valsData();
+
+    HostIndexVector actual_transpose_row_ptr;
+    HostIndexVector actual_transpose_col_ind;
+    HostVector      actual_transpose_vals;
+    vec_handler.copy(device_transpose.pattern().rowPtr(),
+                     actual_transpose_row_ptr);
+    vec_handler.copy(device_transpose.pattern().colInd(),
+                     actual_transpose_col_ind);
+    vec_handler.copy(device_transpose.vals(), actual_transpose_vals);
+    ctx.sync();
+    record(status,
+           device_transpose.rows() == 4 && device_transpose.cols() == 3
+               && device_transpose.nnz() == 7,
+           "CUDA CSR transpose dimensions");
+    record(status,
+           device_transpose.pattern().layoutId() != device_graph.layoutId(),
+           "CUDA CSR transpose has a distinct layout identity");
+    record(status,
+           equal(actual_transpose_row_ptr,
+                 HostIndexVector{0, 2, 3, 5, 7}),
+           "CUDA CSR transpose row offsets");
+    record(status,
+           equal(actual_transpose_col_ind,
+                 HostIndexVector{0, 2, 1, 0, 2, 1, 2}),
+           "CUDA CSR transpose column indices");
+    record(status,
+           near(actual_transpose_vals,
+                HostVector{2.0, -2.0, 3.0, -1.0, 5.0, 4.0, 1.0}),
+           "CUDA CSR transpose values");
 
     const Real*  mat_vals = device_mat.valsData();
     const Index* mat_rows = device_mat.rowPtrData();
@@ -186,6 +237,7 @@ TestOutcome persistentCudaCsrOps()
 
     host_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
     mat_handler.copy(host_mat, device_mat);
+    mat_handler.transpose(device_mat, device_transpose);
     mat_handler.matvec(device_mat,
                        sliced_input.view().subview(3, 4),
                        output.view());
@@ -195,8 +247,10 @@ TestOutcome persistentCudaCsrOps()
 
     HostVector updated_product;
     HostVector updated_direct_tr_product;
+    HostVector updated_transpose_vals;
     vec_handler.copy(output, updated_product);
     vec_handler.copy(direct_tr_product, updated_direct_tr_product);
+    vec_handler.copy(device_transpose.vals(), updated_transpose_vals);
     host_mat_handler.matvecT(host_mat,
                              host_tr_input.view(),
                              expected_tr_product.view());
@@ -209,9 +263,16 @@ TestOutcome persistentCudaCsrOps()
            near(updated_direct_tr_product, expected_tr_product),
            "updated transpose values");
     record(status,
+           near(updated_transpose_vals,
+                HostVector{-1.0, 4.0, 0.5, 2.0, 1.0, -3.0, -2.0}),
+           "updated explicit transpose values");
+    record(status,
            mat_vals == device_mat.valsData()
                && mat_rows == device_mat.rowPtrData()
-               && mat_cols == device_mat.colIndData(),
+               && mat_cols == device_mat.colIndData()
+               && transpose_row_ptr == device_transpose.rowPtrData()
+               && transpose_col_ind == device_transpose.colIndData()
+               && transpose_vals == device_transpose.valsData(),
            "operations preserve all persistent allocations");
 
     bool overlap_rejected = false;

@@ -9,6 +9,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
@@ -31,83 +32,6 @@ namespace femx
 namespace linalg
 {
 
-namespace
-{
-struct TransposeData
-{
-  HostCsrPattern  pattern;
-  HostIndexVector src_to_tr;
-};
-
-TransposeData makeTrData(const HostCsrPattern& src)
-{
-  HostIndexVector row_ptr(src.cols() + 1, 0);
-  for (Index k = 0; k < src.nnz(); ++k)
-  {
-    ++row_ptr[src.colIndData()[k] + 1];
-  }
-  for (Index row = 0; row < src.cols(); ++row)
-  {
-    row_ptr[row + 1] += row_ptr[row];
-  }
-
-  HostIndexVector next = row_ptr;
-  HostIndexVector cols(src.nnz());
-  HostIndexVector perm(src.nnz());
-  for (Index row = 0; row < src.rows(); ++row)
-  {
-    for (Index k = src.rowPtrData()[row];
-         k < src.rowPtrData()[row + 1];
-         ++k)
-    {
-      const Index tr_row = src.colIndData()[k];
-      const Index tr_k   = next[tr_row]++;
-      cols[tr_k]         = row;
-      perm[k]            = tr_k;
-    }
-  }
-
-  return {HostCsrPattern(src.cols(),
-                         src.rows(),
-                         std::move(row_ptr),
-                         std::move(cols)),
-          std::move(perm)};
-}
-
-void updateTrVals(const HostCsrMatrix& src,
-                  const TransposeData& tr,
-                  HostCsrMatrix&       dst)
-{
-  require(src.nnz() == dst.nnz() && src.nnz() == tr.src_to_tr.size(),
-          "ReSolve Host transpose storage does not match source matrix");
-  for (Index k = 0; k < src.nnz(); ++k)
-  {
-    dst.valsData()[tr.src_to_tr[k]] = src.valsData()[k];
-  }
-}
-} // namespace
-
-#if defined(FEMX_RESOLVE_USE_CUDA)
-namespace detail
-{
-void* createCsrTransposeWorkspace();
-void  destroyCsrTransposeWorkspace(void* workspace) noexcept;
-void  transposeCsr(void*        workspace,
-                   Index        rows,
-                   Index        cols,
-                   Index        nnz,
-                   const Real*  src_vals,
-                   const Index* src_row_ptr,
-                   const Index* src_col_ind,
-                   Real*        dst_vals,
-                   Index*       dst_row_ptr,
-                   Index*       dst_col_ind,
-                   Index*       src_to_tr,
-                   bool         rebuild_graph,
-                   CudaContext& ctx);
-} // namespace detail
-#endif
-
 class ReSolveLinearSolver::Impl
 {
 public:
@@ -115,13 +39,6 @@ public:
     : opts_(std::move(opts))
   {
     checkOpts();
-  }
-
-  ~Impl()
-  {
-#if defined(FEMX_RESOLVE_USE_CUDA)
-    detail::destroyCsrTransposeWorkspace(cuda_tr_work_);
-#endif
   }
 
   void setOperator(const HostCsrMatrix& mat)
@@ -262,28 +179,9 @@ public:
     ensureCuda();
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Device transpose dimensions");
-    const bool rebuild_graph = ensureCudaTranspose(mat);
-    detail::transposeCsr(cuda_tr_work_,
-                         mat.rows(),
-                         mat.cols(),
-                         mat.nnz(),
-                         mat.valsData(),
-                         mat.rowPtrData(),
-                         mat.colIndData(),
-                         cuda_tr_vals_.data(),
-                         cuda_tr_row_ptr_.data(),
-                         cuda_tr_col_ind_.data(),
-                         cuda_src_to_tr_.data(),
-                         rebuild_graph,
-                         ctx);
-    bindCuda(cuda_tr_sys_,
-             mat.cols(),
-             mat.rows(),
-             mat.nnz(),
-             cuda_tr_row_ptr_.data(),
-             cuda_tr_col_ind_.data(),
-             cuda_tr_vals_.data(),
-             *cuda_work_);
+    CudaMatrixHandler mat_handler(ctx);
+    mat_handler.transpose(mat, cuda_tr_mat_);
+    bindCuda(cuda_tr_sys_, cuda_tr_mat_, *cuda_work_);
     solveDeviceWith(cuda_tr_sys_, cuda_vecs_, rhs, sol, ctx);
 #else
     (void) mat;
@@ -539,13 +437,7 @@ private:
   void setTrOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    if (tr_src_layout_ != mat.pattern().layoutId())
-    {
-      tr_data_       = makeTrData(mat.pattern());
-      tr_mat_data_   = std::make_unique<HostCsrMatrix>(tr_data_.pattern);
-      tr_src_layout_ = mat.pattern().layoutId();
-    }
-    updateTrVals(mat, tr_data_, *tr_mat_data_);
+    host_mat_handler_.transpose(mat, tr_mat_data_);
 
     const bool reuse = tr_mat_ != nullptr
                        && tr_rows_ == mat.cols()
@@ -565,7 +457,7 @@ private:
       tr_nnz_  = mat.nnz();
     }
 
-    updateHostMat(*tr_mat_data_, *tr_mat_, "ReSolve transpose");
+    updateHostMat(tr_mat_data_, *tr_mat_, "ReSolve transpose");
     if (reuse)
     {
       if (opts_.precond != "none")
@@ -623,38 +515,6 @@ private:
   void ensureCuda()
   {
     ensureCudaWork(cuda_work_);
-  }
-
-  bool ensureCudaTranspose(const DeviceCsrMatrix& mat)
-  {
-    if (cuda_tr_work_ == nullptr)
-    {
-      cuda_tr_work_ = detail::createCsrTransposeWorkspace();
-    }
-    if (cuda_tr_src_layout_ == mat.pattern().layoutId())
-    {
-      return false;
-    }
-
-    if (cuda_tr_row_ptr_.size() != mat.cols() + 1)
-    {
-      cuda_tr_row_ptr_.resize(mat.cols() + 1);
-    }
-    if (cuda_tr_col_ind_.size() != mat.nnz())
-    {
-      cuda_tr_col_ind_.resize(mat.nnz());
-    }
-    if (cuda_tr_vals_.size() != mat.nnz())
-    {
-      cuda_tr_vals_.resize(mat.nnz());
-    }
-    if (cuda_src_to_tr_.size() != mat.nnz())
-    {
-      cuda_src_to_tr_.resize(mat.nnz());
-    }
-    resetCudaSystem(cuda_tr_sys_);
-    cuda_tr_src_layout_ = mat.pattern().layoutId();
-    return true;
   }
 
   static void resetCudaSystem(CudaSystem& sys)
@@ -816,17 +676,17 @@ private:
 
 #endif
 
-  ReSolveOptions                 opts_;
-  const HostCsrMatrix*           host_op_{nullptr};
-  Index                          cpu_rows_{0};
-  Index                          cpu_cols_{0};
-  Index                          cpu_nnz_{0};
-  std::uint64_t                  tr_src_layout_{0};
-  TransposeData                  tr_data_;
-  std::unique_ptr<HostCsrMatrix> tr_mat_data_;
-  Index                          tr_rows_{0};
-  Index                          tr_cols_{0};
-  Index                          tr_nnz_{0};
+  ReSolveOptions       opts_;
+  CpuContext           host_mat_ctx_;
+  HostMatrixHandler    host_mat_handler_{host_mat_ctx_};
+  const HostCsrMatrix* host_op_{nullptr};
+  Index                cpu_rows_{0};
+  Index                cpu_cols_{0};
+  Index                cpu_nnz_{0};
+  HostCsrMatrix        tr_mat_data_;
+  Index                tr_rows_{0};
+  Index                tr_cols_{0};
+  Index                tr_nnz_{0};
 
 #if defined(FEMX_HAS_RESOLVE)
   std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_work_;
@@ -841,12 +701,7 @@ private:
   std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_work_;
   CudaSystem                                    cuda_sys_;
   CudaVecs                                      cuda_vecs_;
-  std::uint64_t                                 cuda_tr_src_layout_{0};
-  void*                                         cuda_tr_work_{nullptr};
-  DeviceIndexVector                             cuda_tr_row_ptr_;
-  DeviceIndexVector                             cuda_tr_col_ind_;
-  DeviceIndexVector                             cuda_src_to_tr_;
-  DeviceVector                                  cuda_tr_vals_;
+  DeviceCsrMatrix                               cuda_tr_mat_;
   CudaSystem                                    cuda_tr_sys_;
 #endif
 };
