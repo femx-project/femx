@@ -90,6 +90,8 @@ Use the following tags whenever the corresponding element is present:
 - `@return` for every non-`void` return value;
 - `@throws` for each exception that is important to the public contract.
 
+Document accessors with only a one-line `@brief`.
+
 Separate `@brief` or a detailed description from the first tag with one blank
 comment line. Do not add blank lines between tags.
 
@@ -114,10 +116,6 @@ direction is:
 Order tags as `@param`, `@return`, `@throws`, `@note`, and `@warning`. Do not add
 `@throws` to `noexcept` functions or list incidental allocation failures unless
 they are part of the public contract.
-
-Do not use `@pre` or `@post`. Describe important constraints, side effects,
-ownership, allocation, aliasing, and synchronization in the detailed
-description instead. Omit implementation details.
 
 Document each class member variable with a trailing `///<` comment:
 

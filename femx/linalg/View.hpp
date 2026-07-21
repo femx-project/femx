@@ -59,21 +59,13 @@ public:
     return data_;
   }
 
-  /**
-   * @brief Return the number of viewed values.
-   *
-   * @return Number of values.
-   */
+  /** @brief Return the number of viewed values. */
   FEMX_HOST_DEVICE Index size() const
   {
     return size_;
   }
 
-  /**
-   * @brief Report whether the view is empty.
-   *
-   * @return `true` when the view contains no values.
-   */
+  /** @brief Report whether the view is empty. */
   FEMX_HOST_DEVICE bool empty() const
   {
     return size_ == 0;
@@ -101,11 +93,7 @@ public:
     return VectorView(data_ + offset, count);
   }
 
-  /**
-   * @brief Return a Host iterator to the first viewed value.
-   *
-   * @return Pointer to the first value.
-   */
+  /** @brief Return a Host iterator to the first viewed value. */
   T* begin() const
   {
     static_assert(Space == MemorySpace::Host,
@@ -113,11 +101,7 @@ public:
     return data_;
   }
 
-  /**
-   * @brief Return a Host iterator past the last viewed value.
-   *
-   * @return Pointer past the last value.
-   */
+  /** @brief Return a Host iterator past the last viewed value. */
   T* end() const
   {
     return begin() + size_;
@@ -193,51 +177,31 @@ public:
     return {data_ + i * block_size_, block_size_};
   }
 
-  /**
-   * @brief Return a flat view of all values.
-   *
-   * @return Contiguous view of all blocks.
-   */
+  /** @brief Return a flat view of all values. */
   FEMX_HOST_DEVICE VectorView<Space, T> flat() const
   {
     return {data_, size()};
   }
 
-  /**
-   * @brief Return the address of the first viewed value.
-   *
-   * @return Pointer to the first value.
-   */
+  /** @brief Return the address of the first viewed value. */
   FEMX_HOST_DEVICE T* data() const
   {
     return data_;
   }
 
-  /**
-   * @brief Return the number of blocks.
-   *
-   * @return Number of blocks.
-   */
+  /** @brief Return the number of blocks. */
   FEMX_HOST_DEVICE Index blocks() const
   {
     return blocks_;
   }
 
-  /**
-   * @brief Return the number of values per block.
-   *
-   * @return Block size.
-   */
+  /** @brief Return the number of values per block. */
   FEMX_HOST_DEVICE Index blockSize() const
   {
     return block_size_;
   }
 
-  /**
-   * @brief Return the total number of values.
-   *
-   * @return Number of values across all blocks.
-   */
+  /** @brief Return the total number of values. */
   FEMX_HOST_DEVICE Index size() const
   {
     return blocks_ * block_size_;
@@ -291,31 +255,19 @@ public:
     return data_[i * cols_ + j];
   }
 
-  /**
-   * @brief Return the address of the first viewed entry.
-   *
-   * @return Pointer to the first entry.
-   */
+  /** @brief Return the address of the first viewed entry. */
   T* data() const
   {
     return data_;
   }
 
-  /**
-   * @brief Return the number of rows.
-   *
-   * @return Number of rows.
-   */
+  /** @brief Return the number of rows. */
   Index rows() const
   {
     return rows_;
   }
 
-  /**
-   * @brief Return the number of columns.
-   *
-   * @return Number of columns.
-   */
+  /** @brief Return the number of columns. */
   Index cols() const
   {
     return cols_;

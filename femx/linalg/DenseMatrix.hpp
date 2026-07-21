@@ -44,41 +44,25 @@ public:
     vals_.resize(size);
   }
 
-  /**
-   * @brief Return the number of rows.
-   *
-   * @return Number of rows.
-   */
+  /** @brief Return the number of rows. */
   Index rows() const noexcept
   {
     return rows_;
   }
 
-  /**
-   * @brief Return the number of columns.
-   *
-   * @return Number of columns.
-   */
+  /** @brief Return the number of columns. */
   Index cols() const noexcept
   {
     return cols_;
   }
 
-  /**
-   * @brief Return the number of entries.
-   *
-   * @return Number of matrix entries.
-   */
+  /** @brief Return the number of entries. */
   Index size() const noexcept
   {
     return vals_.size();
   }
 
-  /**
-   * @brief Report whether the matrix has no entries.
-   *
-   * @return `true` when the matrix contains no entries.
-   */
+  /** @brief Report whether the matrix has no entries. */
   bool empty() const noexcept
   {
     return vals_.empty();
@@ -108,61 +92,37 @@ public:
     return vals_[row * cols_ + col];
   }
 
-  /**
-   * @brief Return the address of the first entry.
-   *
-   * @return Pointer to the first entry.
-   */
+  /** @brief Return the address of the first entry. */
   Real* data() noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return the address of the first entry.
-   *
-   * @return Read-only pointer to the first entry.
-   */
+  /** @brief Return the address of the first entry. */
   const Real* data() const noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return a mutable view of the matrix.
-   *
-   * @return Mutable row-major Host matrix view.
-   */
+  /** @brief Return a mutable row-major Host view of the matrix. */
   HostMatrixView<Real> view() noexcept
   {
     return {data(), rows_, cols_};
   }
 
-  /**
-   * @brief Return a read-only view of the matrix.
-   *
-   * @return Read-only row-major Host matrix view.
-   */
+  /** @brief Return a read-only row-major Host view of the matrix. */
   HostMatrixView<const Real> view() const noexcept
   {
     return {data(), rows_, cols_};
   }
 
-  /**
-   * @brief Return the owned entry storage.
-   *
-   * @return Mutable vector of row-major entries.
-   */
+  /** @brief Return the owned row-major entry storage. */
   HostVector& vals() noexcept
   {
     return vals_;
   }
 
-  /**
-   * @brief Return the owned entry storage.
-   *
-   * @return Read-only vector of row-major entries.
-   */
+  /** @brief Return the owned row-major entry storage. */
   const HostVector& vals() const noexcept
   {
     return vals_;

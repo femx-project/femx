@@ -57,18 +57,10 @@ public:
 
   ~KspLinearSolver() override;
 
-  /**
-   * @brief Return mutable solver options.
-   *
-   * @return Solver configuration.
-   */
+  /** @brief Return mutable solver options. */
   KspOptions& opts();
 
-  /**
-   * @brief Return solver options.
-   *
-   * @return Read-only solver configuration.
-   */
+  /** @brief Return read-only solver options. */
   const KspOptions& opts() const;
 
   /**
@@ -101,25 +93,13 @@ public:
               HostVector&          sol,
               PetscContext&        ctx) override;
 
-  /**
-   * @brief Return the most recent KSP convergence reason.
-   *
-   * @return PETSc convergence reason.
-   */
+  /** @brief Return the most recent KSP convergence reason. */
   KSPConvergedReason convergedReason() const;
 
-  /**
-   * @brief Return the most recent iteration count.
-   *
-   * @return Number of KSP iterations.
-   */
+  /** @brief Return the most recent KSP iteration count. */
   PetscInt its() const;
 
-  /**
-   * @brief Return the most recent residual norm.
-   *
-   * @return KSP residual norm.
-   */
+  /** @brief Return the most recent KSP residual norm. */
   PetscReal rnorm() const;
 
 private:

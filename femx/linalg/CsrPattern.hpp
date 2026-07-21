@@ -87,31 +87,19 @@ public:
     checkSizes();
   }
 
-  /**
-   * @brief Return the number of rows.
-   *
-   * @return Number of rows.
-   */
+  /** @brief Return the number of rows. */
   Index rows() const noexcept
   {
     return storage_->rows;
   }
 
-  /**
-   * @brief Return the number of columns.
-   *
-   * @return Number of columns.
-   */
+  /** @brief Return the number of columns. */
   Index cols() const noexcept
   {
     return storage_->cols;
   }
 
-  /**
-   * @brief Return the number of stored column indices.
-   *
-   * @return Number of structurally nonzero entries.
-   */
+  /** @brief Return the number of stored column indices. */
   Index nnz() const noexcept
   {
     return storage_->col_ind.size();
@@ -127,41 +115,25 @@ public:
     return storage_->layout_id;
   }
 
-  /**
-   * @brief Return the owned CSR row offsets.
-   *
-   * @return Read-only row-offset vector.
-   */
+  /** @brief Return the owned CSR row offsets. */
   const IndexVector& rowPtr() const noexcept
   {
     return storage_->row_ptr;
   }
 
-  /**
-   * @brief Return the owned CSR column indices.
-   *
-   * @return Read-only column-index vector.
-   */
+  /** @brief Return the owned CSR column indices. */
   const IndexVector& colInd() const noexcept
   {
     return storage_->col_ind;
   }
 
-  /**
-   * @brief Return the CSR row-offset data.
-   *
-   * @return Read-only pointer to row offsets.
-   */
+  /** @brief Return the CSR row-offset data. */
   const Index* rowPtrData() const noexcept
   {
     return storage_->row_ptr.data();
   }
 
-  /**
-   * @brief Return the CSR column-index data.
-   *
-   * @return Read-only pointer to column indices.
-   */
+  /** @brief Return the CSR column-index data. */
   const Index* colIndData() const noexcept
   {
     return storage_->col_ind.data();

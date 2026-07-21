@@ -136,21 +136,13 @@ public:
     vals_.assign(checkedSize(size), val);
   }
 
-  /**
-   * @brief Return the number of stored values.
-   *
-   * @return Number of values.
-   */
+  /** @brief Return the number of stored values. */
   Index size() const noexcept
   {
     return static_cast<Index>(vals_.size());
   }
 
-  /**
-   * @brief Report whether the vector is empty.
-   *
-   * @return `true` when the vector contains no values.
-   */
+  /** @brief Report whether the vector is empty. */
   bool empty() const noexcept
   {
     return vals_.empty();
@@ -205,41 +197,25 @@ public:
     return vals_.emplace_back(std::forward<Args>(args)...);
   }
 
-  /**
-   * @brief Access the first value.
-   *
-   * @return Reference to the first value.
-   */
+  /** @brief Access the first value. */
   T& front()
   {
     return vals_.front();
   }
 
-  /**
-   * @brief Access the first value.
-   *
-   * @return Read-only reference to the first value.
-   */
+  /** @brief Access the first value. */
   const T& front() const
   {
     return vals_.front();
   }
 
-  /**
-   * @brief Access the last value.
-   *
-   * @return Reference to the last value.
-   */
+  /** @brief Access the last value. */
   T& back()
   {
     return vals_.back();
   }
 
-  /**
-   * @brief Access the last value.
-   *
-   * @return Read-only reference to the last value.
-   */
+  /** @brief Access the last value. */
   const T& back() const
   {
     return vals_.back();
@@ -267,81 +243,49 @@ public:
     return vals_[static_cast<std::size_t>(i)];
   }
 
-  /**
-   * @brief Return the address of the first stored value.
-   *
-   * @return Pointer to the first value.
-   */
+  /** @brief Return the address of the first stored value. */
   T* data() noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return the address of the first stored value.
-   *
-   * @return Read-only pointer to the first value.
-   */
+  /** @brief Return the address of the first stored value. */
   const T* data() const noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return an iterator to the first value.
-   *
-   * @return Pointer to the first value.
-   */
+  /** @brief Return an iterator to the first value. */
   T* begin() noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return a read-only iterator to the first value.
-   *
-   * @return Read-only pointer to the first value.
-   */
+  /** @brief Return a read-only iterator to the first value. */
   const T* begin() const noexcept
   {
     return vals_.data();
   }
 
-  /**
-   * @brief Return an iterator past the last value.
-   *
-   * @return Pointer past the last value.
-   */
+  /** @brief Return an iterator past the last value. */
   T* end() noexcept
   {
     return vals_.data() + vals_.size();
   }
 
-  /**
-   * @brief Return a read-only iterator past the last value.
-   *
-   * @return Read-only pointer past the last value.
-   */
+  /** @brief Return a read-only iterator past the last value. */
   const T* end() const noexcept
   {
     return vals_.data() + vals_.size();
   }
 
-  /**
-   * @brief Return a mutable view of the stored values.
-   *
-   * @return Mutable Host view.
-   */
+  /** @brief Return a mutable view of the stored values. */
   VectorView<MemorySpace::Host, T> view() noexcept
   {
     return {data(), size()};
   }
 
-  /**
-   * @brief Return a read-only view of the stored values.
-   *
-   * @return Read-only Host view.
-   */
+  /** @brief Return a read-only view of the stored values. */
   VectorView<MemorySpace::Host, const T> view() const noexcept
   {
     return {data(), size()};
@@ -460,61 +404,37 @@ public:
     size_ = 0;
   }
 
-  /**
-   * @brief Return the number of allocated values.
-   *
-   * @return Number of values.
-   */
+  /** @brief Return the number of allocated values. */
   Index size() const noexcept
   {
     return size_;
   }
 
-  /**
-   * @brief Report whether the vector is empty.
-   *
-   * @return `true` when the vector contains no values.
-   */
+  /** @brief Report whether the vector is empty. */
   bool empty() const noexcept
   {
     return size_ == 0;
   }
 
-  /**
-   * @brief Return the Device address of the first value.
-   *
-   * @return Device pointer to the first value.
-   */
+  /** @brief Return the Device address of the first value. */
   T* data() noexcept
   {
     return data_;
   }
 
-  /**
-   * @brief Return the Device address of the first value.
-   *
-   * @return Read-only Device pointer to the first value.
-   */
+  /** @brief Return the Device address of the first value. */
   const T* data() const noexcept
   {
     return data_;
   }
 
-  /**
-   * @brief Return a mutable Device view of the allocation.
-   *
-   * @return Mutable Device view.
-   */
+  /** @brief Return a mutable Device view of the allocation. */
   VectorView<MemorySpace::Device, T> view() noexcept
   {
     return {data_, size_};
   }
 
-  /**
-   * @brief Return a read-only Device view of the allocation.
-   *
-   * @return Read-only Device view.
-   */
+  /** @brief Return a read-only Device view of the allocation. */
   VectorView<MemorySpace::Device, const T> view() const noexcept
   {
     return {data_, size_};
