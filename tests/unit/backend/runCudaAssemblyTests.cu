@@ -24,7 +24,7 @@ namespace tests
 namespace
 {
 
-struct AffineRowOperator
+struct AffineElementKernel
 {
   template <MemorySpace Space>
   FEMX_HOST_DEVICE void evalRow(
@@ -42,7 +42,7 @@ struct AffineRowOperator
   }
 };
 
-struct TimeRowOperator
+struct TimeElementKernel
 {
   template <MemorySpace Space>
   FEMX_HOST_DEVICE void evalRow(
@@ -157,7 +157,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     HostVector    cpu_res;
     HostCsrMatrix cpu_jac(host_map.pattern());
     CpuContext    cpu_ctx;
-    assembly::assemble(AffineRowOperator{},
+    assembly::assemble(AffineElementKernel{},
                        hgeom,
                        host_map,
                        host_state,
@@ -165,12 +165,12 @@ TestOutcome cudaAssemblyMatchesCpuReference()
                        cpu_jac,
                        cpu_ctx);
 
-    CudaContext                                cuda_ctx;
-    linalg::CudaVectorHandler                  vec_handler(cuda_ctx);
-    linalg::CudaMatrixHandler                  mat_handler(cuda_ctx);
-    fem::DeviceGeometry                        dgeom;
-    assembly::AssemblyMap<MemorySpace::Device> device_map;
-    DeviceVector                               device_state;
+    CudaContext                 cuda_ctx;
+    linalg::CudaVectorHandler   vec_handler(cuda_ctx);
+    linalg::CudaMatrixHandler   mat_handler(cuda_ctx);
+    fem::DeviceGeometry         dgeom;
+    assembly::DeviceAssemblyMap device_map;
+    DeviceVector                device_state;
 
     fem::copy(hgeom, dgeom, cuda_ctx);
     assembly::copy(host_map, device_map, cuda_ctx);
@@ -181,7 +181,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     DeviceVector    device_res;
     DeviceCsrMatrix device_jac(device_map.pattern());
     auto            moved_device_map = std::move(device_map);
-    assembly::assemble(AffineRowOperator{},
+    assembly::assemble(AffineElementKernel{},
                        dgeom,
                        moved_device_map,
                        state_clone,
@@ -208,7 +208,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     bool mat_alias_rejected = false;
     try
     {
-      assembly::assemble(AffineRowOperator{},
+      assembly::assemble(AffineElementKernel{},
                          dgeom,
                          moved_device_map,
                          state_clone,
@@ -253,7 +253,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     const HostVector initial_rhs{10.0, 20.0, 30.0};
     HostVector       expected_rhs = initial_rhs;
     const HostVector bc_vals{2.0, -1.0};
-    assembly::prepareForwardSolve(
+    assembly::applyDirichletConditions(
         host_map, expected_mat, expected_rhs, bc_vals);
 
     CudaContext                 ctx;
@@ -273,11 +273,11 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     vec_handler.copy(initial_rhs, device_rhs);
     vec_handler.copy(bc_vals, device_bc);
 
-    assembly::prepareForwardSolve(device_map,
-                                  device_mat,
-                                  device_rhs,
-                                  device_bc,
-                                  ctx);
+    assembly::applyDirichletConditions(device_map,
+                                       device_mat,
+                                       device_rhs,
+                                       device_bc,
+                                       ctx);
 
     HostCsrMatrix actual_mat(host_graph);
     HostVector    actual_rhs;
@@ -379,11 +379,11 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     bool mat_alias_rejected = false;
     try
     {
-      assembly::prepareForwardSolve(diagonal_device_map,
-                                    diag_mat,
-                                    diag_mat.vals(),
-                                    diagonal_prescribed,
-                                    ctx);
+      assembly::applyDirichletConditions(diagonal_device_map,
+                                         diag_mat,
+                                         diag_mat.vals(),
+                                         diagonal_prescribed,
+                                         ctx);
     }
     catch (const std::runtime_error&)
     {
@@ -423,13 +423,15 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     HostVector       cpu_res;
     HostCsrMatrix    cpu_jac(map.pattern());
     CpuContext       cpu_ctx;
-    assembly::assemble(TimeRowOperator{},
+    assembly::assemble(TimeElementKernel{},
                        3,
                        2,
                        state::VariableBlock::hist(1),
                        map,
-                       hist,
-                       nxt,
+                       0,
+                       map.numElems(),
+                       hist.view(),
+                       nxt.view(),
                        cpu_res,
                        cpu_jac,
                        cpu_ctx);
@@ -445,7 +447,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     vec_handler.copy(hist, dhist);
     vec_handler.copy(nxt, dnxt);
     DeviceCsrMatrix djac(dmap.pattern());
-    assembly::assemble(TimeRowOperator{},
+    assembly::assemble(TimeElementKernel{},
                        3,
                        2,
                        state::VariableBlock::hist(1),
@@ -464,7 +466,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     recordCheck(status, vecsNear(gpu_res, cpu_res), "CUDA time res");
     recordCheck(status, matsNear(gpu_jac, cpu_jac), "CUDA time jac");
 
-    assembly::assembleResidual(TimeRowOperator{},
+    assembly::assembleResidual(TimeElementKernel{},
                                3,
                                2,
                                dmap,

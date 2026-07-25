@@ -145,22 +145,22 @@ void replaceJacRows(const DeviceBoundaryMap& boundary,
 }
 
 template <class Ctx>
-void prepareForward(const HostBoundaryMap& boundary,
-                    HostCsrMatrix&         jac,
-                    HostVector&            rhs,
-                    const HostVector&      vals,
-                    Ctx&)
+void applyDirichletConditionsCtx(const HostBoundaryMap& boundary,
+                                 HostCsrMatrix&         jac,
+                                 HostVector&            rhs,
+                                 const HostVector&      vals,
+                                 Ctx&)
 {
-  prepareForwardSolve(boundary, jac, rhs, vals);
+  applyDirichletConditions(boundary, jac, rhs, vals);
 }
 
-void prepareForward(const DeviceBoundaryMap& boundary,
-                    DeviceCsrMatrix&         jac,
-                    DeviceVector&            rhs,
-                    const DeviceVector&      vals,
-                    CudaContext&             ctx)
+void applyDirichletConditionsCtx(const DeviceBoundaryMap& boundary,
+                                 DeviceCsrMatrix&         jac,
+                                 DeviceVector&            rhs,
+                                 const DeviceVector&      vals,
+                                 CudaContext&             ctx)
 {
-  prepareForwardSolve(boundary, jac, rhs, vals, ctx);
+  applyDirichletConditions(boundary, jac, rhs, vals, ctx);
 }
 
 #if defined(FEMX_HAS_PETSC)
@@ -183,11 +183,11 @@ void replaceJacRows(const HostBoundaryMap& boundary,
   jac.replaceRows(boundaryRows(boundary), diag);
 }
 
-void prepareForward(const HostBoundaryMap&,
-                    linalg::PETScOperator&,
-                    HostVector&,
-                    const HostVector&,
-                    linalg::PetscContext&)
+void applyDirichletConditionsCtx(const HostBoundaryMap&,
+                                 linalg::PETScOperator&,
+                                 HostVector&,
+                                 const HostVector&,
+                                 linalg::PetscContext&)
 {
   // PETSc row replacement already gives the exact nonsymmetric system.
 }
@@ -342,22 +342,6 @@ void ConstrainedTimeResidual<Backend>::addInitialStateJacobianTranspose(
 }
 
 template <class Backend>
-void ConstrainedTimeResidual<Backend>::res(const StepCtx& time,
-                                           Vec&           out,
-                                           Ctx&           ctx) const
-{
-  checkCtx(time);
-  base_->res(baseCtx(time), out, ctx);
-  require(out.size() == dims_.num_res,
-          "ConstrainedTimeResidual base residual size mismatch");
-
-  assembly::controlVals(
-      control_, time.step, time.prm, boundary_vals_.view(), ctx);
-  replaceResCtx(
-      boundary_, time.nxt, boundary_vals_.view(), out.view(), ctx);
-}
-
-template <class Backend>
 void ConstrainedTimeResidual<Backend>::assembleNext(const StepCtx& time,
                                                     Vec&           res,
                                                     Mat&           jac,
@@ -415,7 +399,8 @@ void ConstrainedTimeResidual<Backend>::prepareLinearSolve(
   base_->prepareLinearSolve(baseCtx(time), jac, rhs, ctx);
   assembly::controlVals(
       control_, time.step, time.prm, boundary_vals_.view(), ctx);
-  prepareForward(boundary_, jac, rhs, boundary_vals_, ctx);
+  applyDirichletConditionsCtx(
+      boundary_, jac, rhs, boundary_vals_, ctx);
 }
 
 template <class Backend>

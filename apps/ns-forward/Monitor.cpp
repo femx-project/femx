@@ -1,21 +1,20 @@
-#include "ForwardSolveMonitor.hpp"
+#include "Monitor.hpp"
 
 #include <cmath>
-#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
 
-#include "Helper.hpp"
 #include <femx/common/Math.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/model/ns/StateFields.hpp>
 #include <femx/runtime/Output.hpp>
 
-namespace femx::model::ns
+namespace femx::apps::ns_forward
 {
 using namespace io;
 
@@ -105,7 +104,7 @@ std::string stepVtuFile(const std::string& directory,
 
 } // namespace
 
-struct ForwardSolveMonitor::FieldOutput
+struct Monitor::FieldOutput
 {
   explicit FieldOutput(const fem::Mesh& mesh)
     : velocity(3 * mesh.numNodes()),
@@ -128,93 +127,45 @@ struct ForwardSolveMonitor::FieldOutput
   HostVector        p;
 };
 
-ForwardSolveMonitor::ForwardSolveMonitor(const fem::MixedFESpace& space,
-                                         Real                     dt,
-                                         Index                    steps)
+Monitor::Monitor(const fem::MixedFESpace& space,
+                 Real                     dt,
+                 Index                    steps)
   : space_(&space),
     dt_(dt),
     num_steps_(steps)
 {
 }
 
-ForwardSolveMonitor::~ForwardSolveMonitor() = default;
+Monitor::~Monitor() = default;
 
-void ForwardSolveMonitor::setFieldOutput(std::string dir,
-                                         Index       interval)
+void Monitor::setFieldOutput(std::string dir,
+                             Index       interval)
 {
   field_dir_      = std::move(dir);
   field_interval_ = interval;
 }
 
-void ForwardSolveMonitor::clearFieldOutput()
-{
-  field_out_.reset();
-  field_dir_.clear();
-  field_interval_  = 0;
-  last_field_step_ = 0;
-}
-
-void ForwardSolveMonitor::setDiagnosticsCsv(std::string file_name)
-{
-  diag_file_name_ = std::move(file_name);
-}
-
-void ForwardSolveMonitor::clearDiagnosticsCsv()
-{
-  diag_file_name_.clear();
-  diag_file_.reset();
-  diag_out_ = nullptr;
-}
-
-void ForwardSolveMonitor::setProgress(std::ostream* out,
-                                      std::string   label)
-{
-  prog_out_   = out;
-  prog_label_ = std::move(label);
-}
-
-void ForwardSolveMonitor::setProgressLabel(std::string label)
-{
-  prog_label_ = std::move(label);
-}
-
-void ForwardSolveMonitor::clearProgress()
-{
-  prog_out_ = nullptr;
-}
-
-void ForwardSolveMonitor::setDetailedLog(std::ostream* terminal,
-                                         std::ostream* log_out,
-                                         bool          show_velocity_change)
+void Monitor::setDetailedLog(std::ostream* terminal,
+                             std::ostream* log_out,
+                             bool          show_velocity_change)
 {
   log_terminal_    = terminal;
   log_out_         = log_out;
   show_vel_change_ = show_velocity_change;
 }
 
-void ForwardSolveMonitor::clearDetailedLog()
+void Monitor::setConvergence(ConvergenceConfig params)
 {
-  log_terminal_ = nullptr;
-  log_out_      = nullptr;
+  convergence_ = params;
 }
 
-void ForwardSolveMonitor::setConvergence(ForwardConvergenceParams params)
-{
-  conv_ = params;
-}
-
-void ForwardSolveMonitor::clearConvergence()
-{
-  conv_ = ForwardConvergenceParams{};
-}
-
-const ForwardSolveResult& ForwardSolveMonitor::result() const
+const SolveResult& Monitor::result() const
 {
   return result_;
 }
 
-void ForwardSolveMonitor::start(Index num_steps,
-                                Index num_states)
+void Monitor::start(Index num_steps,
+                    Index num_states)
 {
   (void) num_states;
 
@@ -222,7 +173,7 @@ void ForwardSolveMonitor::start(Index num_steps,
   {
     num_steps_ = num_steps;
   }
-  result_            = ForwardSolveResult{};
+  result_            = SolveResult{};
   result_.vel_change = std::numeric_limits<Real>::quiet_NaN();
   last_field_step_   = 0;
 
@@ -231,23 +182,10 @@ void ForwardSolveMonitor::start(Index num_steps,
     runtime::ensureDirectory(field_dir_);
     field_out_ = std::make_unique<FieldOutput>(space_->mesh());
   }
-  if (diagnosticsEnabled())
-  {
-    runtime::ensureParentDirectory(diag_file_name_);
-    auto file = std::make_unique<std::ofstream>(diag_file_name_);
-    if (!*file)
-    {
-      throw std::runtime_error("Failed to open diagnostics file: "
-                               + diag_file_name_);
-    }
-    diag_out_  = file.get();
-    diag_file_ = std::move(file);
-    writeDiagnosticsHeader();
-  }
 }
 
-void ForwardSolveMonitor::observe(Index             level,
-                                  const HostVector& state)
+void Monitor::observe(Index             level,
+                      const HostVector& state)
 {
   if (level > 0)
   {
@@ -255,39 +193,35 @@ void ForwardSolveMonitor::observe(Index             level,
     result_.final_time  = static_cast<Real>(level) * dt_;
     result_.final_state = state;
     if (fieldOutputEnabled()
-        && shouldWriteForwardOutput(level, num_steps_, field_interval_))
+        && shouldWriteOutput(level, num_steps_, field_interval_))
     {
       writeFieldOutput(level, state, result_.final_time);
     }
   }
-  writeDiagnosticsRow(level,
-                      state,
-                      static_cast<Real>(level) * dt_);
 }
 
-bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
+bool Monitor::observeStep(const state::TimeStepStateContext& ctx)
 {
   result_.final_step  = ctx.level;
   result_.final_time  = static_cast<Real>(ctx.level) * dt_;
   result_.final_state = ctx.curr;
 
-  const bool need_velocity_change = conv_.enabled || show_vel_change_;
+  const bool need_velocity_change =
+      convergence_.enabled || show_vel_change_;
   if (need_velocity_change)
   {
     result_.vel_change = velocityRelativeChange(*space_, ctx.prev, ctx.curr);
   }
 
-  result_.converged = conv_.enabled
-                      && ctx.level >= conv_.min_steps
-                      && result_.vel_change < conv_.vel_rel_tol;
+  result_.converged =
+      convergence_.enabled
+      && ctx.level >= convergence_.min_steps
+      && result_.vel_change < convergence_.vel_rel_tol;
 
-  if (fieldOutputEnabled() && shouldWriteForwardOutput(ctx.level, num_steps_, field_interval_))
+  if (fieldOutputEnabled() && shouldWriteOutput(ctx.level, num_steps_, field_interval_))
   {
     writeFieldOutput(ctx.level, ctx.curr, result_.final_time);
   }
-
-  writeDiagnosticsRow(ctx.level, ctx.curr, result_.final_time);
-  writeProgress(ctx.level, ctx.total_steps);
 
   if (detailedLogEnabled()
       && shouldWriteDetailedLog(ctx.level, ctx.total_steps))
@@ -308,57 +242,47 @@ bool ForwardSolveMonitor::observeStep(const state::TimeStepStateContext& ctx)
   return result_.converged;
 }
 
-void ForwardSolveMonitor::stop()
+void Monitor::stop()
 {
   writeFinalFieldOutput();
-  if (diag_out_ != nullptr)
-  {
-    diag_out_->flush();
-  }
-  diag_file_.reset();
-  diag_out_ = nullptr;
 }
 
-bool ForwardSolveMonitor::fieldOutputEnabled() const
+bool Monitor::fieldOutputEnabled() const
 {
   return !field_dir_.empty() && field_interval_ > 0;
 }
 
-bool ForwardSolveMonitor::diagnosticsEnabled() const
-{
-  return !diag_file_name_.empty();
-}
-
-bool ForwardSolveMonitor::detailedLogEnabled() const
+bool Monitor::detailedLogEnabled() const
 {
   return log_terminal_ != nullptr || log_out_ != nullptr;
 }
 
-bool ForwardSolveMonitor::shouldWriteDetailedLog(Index step,
-                                                 Index total) const
+bool Monitor::shouldWriteDetailedLog(Index step,
+                                     Index total) const
 {
   if (fieldOutputEnabled())
   {
-    return shouldWriteForwardOutput(step, total, field_interval_);
+    return shouldWriteOutput(step, total, field_interval_);
   }
   return true;
 }
 
-void ForwardSolveMonitor::writeFieldOutput(Index             level,
-                                           const HostVector& state,
-                                           Real              time)
+void Monitor::writeFieldOutput(Index             level,
+                               const HostVector& state,
+                               Real              time)
 {
   if (field_out_ == nullptr)
   {
     return;
   }
 
-  splitStateFields(HostConstVectorView(state.data(), state.size()),
-                   *space_,
-                   field_out_->ux,
-                   field_out_->uy,
-                   field_out_->uz,
-                   field_out_->p);
+  model::ns::splitStateFields(
+      HostConstVectorView(state.data(), state.size()),
+      *space_,
+      field_out_->ux,
+      field_out_->uy,
+      field_out_->uz,
+      field_out_->p);
 
 #ifdef FEMX_HAS_HDF5
   field_out_->vel_out.beginStep(time);
@@ -389,7 +313,7 @@ void ForwardSolveMonitor::writeFieldOutput(Index             level,
   last_field_step_ = level;
 }
 
-void ForwardSolveMonitor::writeFinalFieldOutput()
+void Monitor::writeFinalFieldOutput()
 {
   if (!fieldOutputEnabled()
       || result_.final_step <= 0
@@ -402,58 +326,12 @@ void ForwardSolveMonitor::writeFinalFieldOutput()
                    result_.final_time);
 }
 
-void ForwardSolveMonitor::writeDiagnosticsHeader()
-{
-  if (diag_out_ != nullptr)
-  {
-    *diag_out_ << "level,time,state_l2\n";
-  }
-}
-
-void ForwardSolveMonitor::writeDiagnosticsRow(Index             level,
-                                              const HostVector& state,
-                                              Real              time)
-{
-  if (diag_out_ == nullptr)
-  {
-    return;
-  }
-
-  const auto prec = diag_out_->precision();
-  *diag_out_ << std::setprecision(std::numeric_limits<Real>::digits10 + 1)
-             << level << ',' << time << ',' << norm(state) << '\n';
-  diag_out_->precision(prec);
-}
-
-void ForwardSolveMonitor::writeProgress(Index step,
-                                        Index total)
-{
-  if (prog_out_ == nullptr)
-  {
-    return;
-  }
-
-  const Index stride = std::max<Index>(Index{1}, total / 5);
-  if (step % stride != 0 && step < total)
-  {
-    return;
-  }
-
-  *prog_out_ << "\r    " << prog_label_ << " step "
-             << std::setw(4) << step << " / "
-             << std::setw(4) << total << std::flush;
-  if (step >= total)
-  {
-    *prog_out_ << '\n';
-  }
-}
-
-void ForwardSolveMonitor::writeDetailedStepLog(Index step,
-                                               Real  time,
-                                               Real  max_cfl,
-                                               Real  vel_change,
-                                               Real  assembly_sec,
-                                               Real  solve_sec)
+void Monitor::writeDetailedStepLog(Index step,
+                                   Real  time,
+                                   Real  max_cfl,
+                                   Real  vel_change,
+                                   Real  assembly_sec,
+                                   Real  solve_sec)
 {
   writeLine(stepLogLine(step,
                         time,
@@ -541,11 +419,11 @@ Real maxVelocityCfl(const fem::MixedFESpace& space,
   return max_cfl;
 }
 
-bool shouldWriteForwardOutput(Index step,
-                              Index total_steps,
-                              Index interval)
+bool shouldWriteOutput(Index step,
+                       Index total_steps,
+                       Index interval)
 {
   return interval > 0 && (step % interval == 0 || step == total_steps);
 }
 
-} // namespace femx::model::ns
+} // namespace femx::apps::ns_forward

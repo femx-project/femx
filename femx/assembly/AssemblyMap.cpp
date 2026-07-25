@@ -51,7 +51,7 @@ void checkDofs(const Array<Index>& dofs, Index size, const char* kind)
 
 } // namespace
 
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(
+HostAssemblyMap makeAssemblyMap(
     Index                      num_res,
     Index                      num_states,
     const Array<Array<Index>>& elem_res,
@@ -175,9 +175,8 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
           max_jac};
 }
 
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(
-    fem::DofLayout res_lyt,
-    fem::DofLayout state_lyt)
+HostAssemblyMap makeAssemblyMap(fem::DofLayout res_lyt,
+                                fem::DofLayout state_lyt)
 {
   require(res_lyt.numElems() == state_lyt.numElems(),
           "AssemblyMap residual/state layouts have different element counts");
@@ -193,14 +192,14 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
       res_lyt.numDofs(), state_lyt.numDofs(), res_dofs, state_dofs);
 }
 
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(fem::DofLayout layout)
+HostAssemblyMap makeAssemblyMap(fem::DofLayout layout)
 {
   return makeAssemblyMap(layout, layout);
 }
 
-void copy(const AssemblyMap<MemorySpace::Host>& src,
-          AssemblyMap<MemorySpace::Device>&     dst,
-          CudaContext&                          ctx)
+void copy(const HostAssemblyMap& src,
+          DeviceAssemblyMap&     dst,
+          CudaContext&           ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   DeviceIndexVector         res_offsets;

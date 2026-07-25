@@ -78,19 +78,12 @@ public:
     out.assign(1, 0.0);
   }
 
-  void res(const StepCtx& time,
-           HostVector&    out,
-           Ctx&) const override
-  {
-    out.assign(1, time.nxt[0] - time.hist.state(0)[0] - time.prm[0]);
-  }
-
   void assembleNext(const StepCtx&         time,
                     HostVector&            out,
                     linalg::PETScOperator& jac,
-                    Ctx&                   ctx) const override
+                    Ctx&) const override
   {
-    res(time, out, ctx);
+    out.assign(1, time.nxt[0] - time.hist.state(0)[0] - time.prm[0]);
     if (jac.rows() != 1 || jac.cols() != 1)
     {
       jac.resize(1, 1);

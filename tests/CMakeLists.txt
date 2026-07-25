@@ -166,31 +166,36 @@ target_include_directories(runInverseTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runInverseTests PRIVATE femx::inverse)
 add_test(NAME InverseTests COMMAND runInverseTests)
 
-add_executable(runNavierStokesModelTests
-               unit/model/ns/runNavierStokesModelTests.cpp)
-target_include_directories(runNavierStokesModelTests
+add_executable(runNsModelTests
+               unit/model/ns/runModelTests.cpp)
+target_include_directories(runNsModelTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runNavierStokesModelTests PRIVATE femx::femx)
-add_test(NAME NavierStokesModelTests COMMAND runNavierStokesModelTests)
+target_link_libraries(runNsModelTests PRIVATE femx::femx)
+add_test(NAME NsModelTests COMMAND runNsModelTests)
 
-add_executable(runForwardConfigTests unit/model/ns/runForwardConfigTests.cpp)
-target_include_directories(runForwardConfigTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(runForwardConfigTests
-                           PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-target_link_libraries(runForwardConfigTests PRIVATE femx::model::ns)
-add_test(NAME ForwardConfigTests COMMAND runForwardConfigTests)
-set_tests_properties(ForwardConfigTests PROPERTIES LABELS "ns;focused")
+if(TARGET femx_ns_forward_support)
+  add_executable(runNsForwardConfigTests
+                 unit/apps/ns-forward/runConfigTests.cpp)
+  target_include_directories(runNsForwardConfigTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_definitions(
+    runNsForwardConfigTests
+    PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  target_link_libraries(runNsForwardConfigTests
+                        PRIVATE femx::apps::ns_forward)
+  add_test(NAME NsForwardConfigTests COMMAND runNsForwardConfigTests)
+  set_tests_properties(NsForwardConfigTests PROPERTIES LABELS "ns;app;focused")
+endif()
 
-add_executable(runNavierOperatorTests unit/model/ns/runNavierOperatorTests.cpp)
-target_include_directories(runNavierOperatorTests
+add_executable(runElementKernelTests unit/model/ns/runElementKernelTests.cpp)
+target_include_directories(runElementKernelTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runNavierOperatorTests PRIVATE femx::femx)
+target_link_libraries(runElementKernelTests PRIVATE femx::femx)
 if(FEMX_HAS_CUDA)
-  set_source_files_properties(unit/model/ns/runNavierOperatorTests.cpp
+  set_source_files_properties(unit/model/ns/runElementKernelTests.cpp
                               PROPERTIES LANGUAGE CUDA)
-  set_target_properties(runNavierOperatorTests
+  set_target_properties(runElementKernelTests
                         PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
 endif()
-add_test(NAME NavierOperatorTests COMMAND runNavierOperatorTests)
-set_tests_properties(NavierOperatorTests PROPERTIES LABELS "ns;focused")
+add_test(NAME ElementKernelTests COMMAND runElementKernelTests)
+set_tests_properties(ElementKernelTests PROPERTIES LABELS "ns;focused")

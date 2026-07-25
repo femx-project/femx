@@ -10,14 +10,17 @@
 #include <string>
 #include <utility>
 
+#include "CommandLine.hpp"
+#include "Config.hpp"
+#include "Problem.hpp"
+#include "Solve.hpp"
 #include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
-using namespace femx::model::ns;
+using namespace femx::apps::ns_forward;
 using namespace femx::state;
 using namespace femx::linalg;
 using namespace femx::runtime;
@@ -74,7 +77,7 @@ BuildInfo makeBuildInfo()
        {"FEMX_ENABLE_ENZYME", FEMX_ENABLE_ENZYME_OPTION}}};
 }
 
-void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
+void setSolverOptions(ReSolveOptions& opts, const SolverConfig& solver)
 {
   if (solver.method == "direct")
   {
@@ -100,7 +103,7 @@ void setSolverOptions(ReSolveOptions& opts, const SolverParams& solver)
   opts.flexible     = solver.flexible;
 }
 
-int run(const Params& prm)
+int run(const Config& prm)
 {
   const bool output_enabled = prm.output.enabled;
 
@@ -109,7 +112,7 @@ int run(const Params& prm)
     writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
 
-  ForwardProblem fwd(prm);
+  Problem fwd(prm);
 
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
@@ -120,10 +123,11 @@ int run(const Params& prm)
     log_out = openOutputFile(prm.output.directory, "run-info.txt");
   }
 
-  ForwardSolveResult result;
+  SolveResult result;
 #if defined(FEMX_RESOLVE_USE_CUDA)
   CudaContext ctx;
-  auto        res = makeDeviceTimeResidual(fwd.model, fwd.problem.controlMap());
+  auto        res = model::ns::makeDeviceTimeResidual(
+      fwd.model, fwd.residual.controlMap());
 
   DeviceCsrMatrix     mat(res->pattern());
   ReSolveLinearSolver solver(opts);
@@ -132,7 +136,7 @@ int run(const Params& prm)
 
   DeviceVector      initial;
   CudaVectorHandler vec_handler(ctx);
-  vec_handler.copy(fwd.x0, initial);
+  vec_handler.copy(fwd.initial_state, initial);
 
   ctx.sync();
 
@@ -148,9 +152,9 @@ int run(const Params& prm)
   ReSolveLinearSolver solver(opts);
   CpuContext          ctx;
 
-  HostTimeIntegrator integ(fwd.problem, mat, solver, ctx);
+  HostTimeIntegrator integ(fwd.residual, mat, solver, ctx);
 
-  integ.setInitialState(fwd.x0);
+  integ.setInitialState(fwd.initial_state);
   result = solve(integ,
                  fwd,
                  prm.time,
@@ -159,7 +163,7 @@ int run(const Params& prm)
                  output_enabled ? &log_out : nullptr);
 #endif
 
-  if (!isFinite(result.final_state))
+  if (!hasFiniteValues(result.final_state))
   {
     throw std::runtime_error("Linear solve produced non-finite values in x");
   }
@@ -173,14 +177,14 @@ int main(int argc, char* argv[])
 {
   try
   {
-    const AppOptions opts = parseAppOptions(argc, argv, false);
+    const CommandLineOptions opts = parseCommandLine(argc, argv, false);
     if (opts.help)
     {
       printUsage(std::cout, FEMX_NS_FORWARD_APP_NAME);
       return 0;
     }
 
-    Params prm = loadConfig(opts.config_file);
+    Config prm = loadConfig(opts.config_file);
     return run(prm);
   }
   catch (const std::exception& e)

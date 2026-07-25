@@ -5,15 +5,18 @@
 #include <stdexcept>
 #include <string>
 
+#include "CommandLine.hpp"
+#include "Config.hpp"
+#include "Problem.hpp"
+#include "Solve.hpp"
 #include <femx/linalg/petsc/KspLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/model/ns/ForwardProblem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
-using namespace femx::model::ns;
+using namespace femx::apps::ns_forward;
 using namespace femx::state;
 using namespace femx::linalg;
 using namespace femx::runtime;
@@ -69,7 +72,7 @@ BuildInfo makeBuildInfo()
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
 }
 
-void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
+void setKspOptions(KspLinearSolver& solver, const SolverConfig& prm)
 {
   auto& opts       = solver.opts();
   opts.restart     = prm.restart;
@@ -107,10 +110,10 @@ void setKspOptions(KspLinearSolver& solver, const SolverParams& prm)
   }
 }
 
-int run(const Params& prm)
+int run(const Config& prm)
 {
   const PetscMPIInt rank   = commRank(PETSC_COMM_WORLD);
-  OutputParams      output = prm.output;
+  OutputConfig      output = prm.output;
   output.enabled           = rank == 0 && prm.output.enabled;
 
   if (output.enabled)
@@ -118,7 +121,7 @@ int run(const Params& prm)
     writeBuildInfo(output.directory, makeBuildInfo());
   }
 
-  ForwardProblem fwd(prm);
+  Problem fwd(prm);
   setElemRange(fwd.model, fwd.model.mesh().numElems());
 
   PETScOperator A(PETSC_COMM_WORLD);
@@ -127,13 +130,13 @@ int run(const Params& prm)
   KspLinearSolver solver(PETSC_COMM_WORLD);
   setKspOptions(solver, prm.solver);
 
-  auto                                   base_res = makePetscTimeResidual(fwd.model);
-  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.problem.controlMap());
+  auto                                   base_res = model::ns::makePetscTimeResidual(fwd.model);
+  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.residual.controlMap());
 
   PetscContext ctx{PETSC_COMM_WORLD};
 
   TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
-  integ.setInitialState(fwd.x0);
+  integ.setInitialState(fwd.initial_state);
 
   std::ofstream log_out;
   if (output.enabled)
@@ -141,7 +144,7 @@ int run(const Params& prm)
     log_out = openOutputFile(output.directory, "run-info.txt");
   }
 
-  ForwardSolveResult result;
+  SolveResult result;
   result = solve(integ,
                  fwd,
                  prm.time,
@@ -149,7 +152,7 @@ int run(const Params& prm)
                  rank == 0 ? &std::cout : nullptr,
                  output.enabled ? &log_out : nullptr);
 
-  if (!isFinite(result.final_state))
+  if (!hasFiniteValues(result.final_state))
   {
     throw std::runtime_error("Linear solve produced non-finite values in x");
   }
@@ -169,7 +172,7 @@ int main(int argc, char* argv[])
 
     try
     {
-      const AppOptions opts = parseAppOptions(argc, argv, true);
+      const CommandLineOptions opts = parseCommandLine(argc, argv, true);
       if (opts.help)
       {
         if (isRoot())
@@ -183,7 +186,7 @@ int main(int argc, char* argv[])
       }
       else
       {
-        Params prm = loadConfig(opts.config_file);
+        Config prm = loadConfig(opts.config_file);
         status     = run(prm);
       }
     }

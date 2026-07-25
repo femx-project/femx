@@ -1,4 +1,4 @@
-#include "ForwardConfig.hpp"
+#include "Config.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +12,7 @@
 #include <nlohmann/json.hpp>
 using nlohmann::json;
 
-namespace femx::model::ns
+namespace femx::apps::ns_forward
 {
 
 void checkKeys(const json&                        node,
@@ -131,7 +131,7 @@ Index stepsForEndTime(Real end_time,
 }
 
 void parseConvergenceConfig(const json&        node,
-                            ConvergenceParams& convergence)
+                            ConvergenceConfig& convergence)
 {
   if (node.is_boolean())
   {
@@ -153,7 +153,7 @@ void parseConvergenceConfig(const json&        node,
 }
 
 void parseTimeConfig(const json& node,
-                     TimeParams& time)
+                     TimeConfig& time)
 {
   if (!node.is_object())
   {
@@ -183,7 +183,7 @@ void parseTimeConfig(const json& node,
 }
 
 void parseVelocityTable(const std::filesystem::path& path,
-                        VelocityParams&              velocity)
+                        VelocityBoundaryConfig&      velocity)
 {
   std::ifstream input(path);
   if (!input)
@@ -220,9 +220,9 @@ void parseVelocityTable(const std::filesystem::path& path,
   }
 }
 
-VelocityProfileParams parseVelocityProfile(const json& node)
+VelocityProfileConfig parseVelocityProfile(const json& node)
 {
-  VelocityProfileParams prof;
+  VelocityProfileConfig prof;
   if (node.is_string())
   {
     prof.type = node.get<std::string>();
@@ -255,8 +255,8 @@ VelocityProfileParams parseVelocityProfile(const json& node)
   return prof;
 }
 
-void assignVelocityInterpolation(const json&     node,
-                                 VelocityParams& velocity)
+void assignVelocityInterpolation(const json&             node,
+                                 VelocityBoundaryConfig& velocity)
 {
   assign(node, "interpolate", velocity.interp);
 }
@@ -273,7 +273,7 @@ Real parseVelocityScalar(const json& node)
 
 void parseVelocityTimeProfile(const json&                  node,
                               const std::filesystem::path& cfg_dir,
-                              VelocityParams&              velocity)
+                              VelocityBoundaryConfig&      velocity)
 {
   if (!node.is_object())
   {
@@ -345,8 +345,8 @@ void parseVelocityTimeProfile(const json&                  node,
   assignVelocityInterpolation(node, velocity);
 }
 
-void parseVelocitySpaceProfile(const json&     node,
-                               VelocityParams& velocity)
+void parseVelocitySpaceProfile(const json&             node,
+                               VelocityBoundaryConfig& velocity)
 {
   velocity.prof = parseVelocityProfile(node);
   if (!node.is_object())
@@ -366,8 +366,8 @@ void parseVelocitySpaceProfile(const json&     node,
   }
 }
 
-VelocityParams parseVelocity(const json&                  node,
-                             const std::filesystem::path& cfg_dir)
+VelocityBoundaryConfig parseVelocity(const json&                  node,
+                                     const std::filesystem::path& cfg_dir)
 {
   if (!node.is_object())
   {
@@ -386,7 +386,7 @@ VelocityParams parseVelocity(const json&                  node,
              "interpolate"},
             "Boundary velocity");
 
-  VelocityParams velocity;
+  VelocityBoundaryConfig velocity;
   assign(node, "area", velocity.area);
   assign(node, "period", velocity.per);
   assign(node, "quantity", velocity.qty);
@@ -443,8 +443,8 @@ VelocityParams parseVelocity(const json&                  node,
   return velocity;
 }
 
-BCsParams parseDirichletBC(const json&                  node,
-                           const std::filesystem::path& cfg_dir)
+BoundaryConditionConfig parseDirichletBC(const json&                  node,
+                                         const std::filesystem::path& cfg_dir)
 {
   if (!node.is_object())
   {
@@ -454,7 +454,7 @@ BCsParams parseDirichletBC(const json&                  node,
             {"name", "physical", "type", "ux", "uy", "uz", "p", "velocity"},
             "Boundary condition");
 
-  BCsParams cond;
+  BoundaryConditionConfig cond;
   if (!node.contains("physical"))
   {
     throw std::runtime_error(
@@ -480,7 +480,7 @@ BCsParams parseDirichletBC(const json&                  node,
   return cond;
 }
 
-void validateVelocity(const VelocityParams& velocity)
+void validateVelocity(const VelocityBoundaryConfig& velocity)
 {
   if (velocity.time.empty())
   {
@@ -544,7 +544,7 @@ void validateVelocity(const VelocityParams& velocity)
   }
 }
 
-void validate(const Params& prm)
+void validate(const Config& prm)
 {
   if (prm.mesh_file.empty())
   {
@@ -610,12 +610,12 @@ void validate(const Params& prm)
   {
     throw std::runtime_error("Solver relative_tolerance must be positive");
   }
-  if (prm.bcs.empty())
+  if (prm.boundary_conditions.empty())
   {
     throw std::runtime_error("Config bcs must contain at least one boundary");
   }
 
-  for (const auto& cond : prm.bcs)
+  for (const auto& cond : prm.boundary_conditions)
   {
     if (cond.tag <= 0)
     {
@@ -633,7 +633,7 @@ void validate(const Params& prm)
   }
 }
 
-Params loadConfig(const std::string& path)
+Config loadConfig(const std::string& path)
 {
   std::ifstream input(path);
   if (!input)
@@ -641,7 +641,7 @@ Params loadConfig(const std::string& path)
     throw std::runtime_error("Failed to open config file: " + path);
   }
 
-  Params     prm;
+  Config     prm;
   const auto root    = json::parse(input, nullptr, true, true);
   const auto cfg_dir = std::filesystem::path(path).parent_path();
   if (!root.is_object())
@@ -736,7 +736,7 @@ Params loadConfig(const std::string& path)
     }
     for (const auto& item : boundaries)
     {
-      prm.bcs.push_back(parseDirichletBC(item, cfg_dir));
+      prm.boundary_conditions.push_back(parseDirichletBC(item, cfg_dir));
     }
   }
 
@@ -753,4 +753,4 @@ Params loadConfig(const std::string& path)
   return prm;
 }
 
-} // namespace femx::model::ns
+} // namespace femx::apps::ns_forward

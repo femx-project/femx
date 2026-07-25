@@ -12,30 +12,30 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/Config.hpp>
+#include <femx/model/ns/FluidProperties.hpp>
 
-#ifndef FEMX_NAVIERSTOKES_OUTPUT_DIR
-#define FEMX_NAVIERSTOKES_OUTPUT_DIR "."
+#ifndef FEMX_NS_FORWARD_OUTPUT_DIR
+#define FEMX_NS_FORWARD_OUTPUT_DIR "."
 #endif
 
-namespace femx::model::ns
+namespace femx::apps::ns_forward
 {
 
-struct ConvergenceParams
+struct ConvergenceConfig
 {
   bool  enabled     = false;  ///< Enable steady-state convergence check.
   Real  vel_rel_tol = 1.0e-8; ///< Relative velocity-change tolerance.
   Index min_steps   = 1;      ///< Minimum steps before convergence can stop.
 };
 
-struct TimeParams
+struct TimeConfig
 {
   Index             steps = 100;  ///< Number of time steps.
   Real              dt    = 0.01; ///< Time-step size.
-  ConvergenceParams convergence;  ///< Optional convergence stopping criteria.
+  ConvergenceConfig convergence;  ///< Optional convergence stopping criteria.
 };
 
-struct SolverParams
+struct SolverConfig
 {
   std::string method             = "iterative"; ///< Solver method family.
   std::string solve              = "fgmres";    ///< Krylov solve method.
@@ -48,21 +48,21 @@ struct SolverParams
   bool        flexible           = true;        ///< Enable flexible Krylov methods.
 };
 
-struct OutputParams
+struct OutputConfig
 {
   bool        enabled   = true;                         ///< Enable field and log output.
   Index       interval  = 10;                           ///< Field-output interval in time steps.
-  std::string directory = FEMX_NAVIERSTOKES_OUTPUT_DIR; ///< Output directory.
+  std::string directory = FEMX_NS_FORWARD_OUTPUT_DIR; ///< Output directory.
 };
 
-struct VelocityProfileParams
+struct VelocityProfileConfig
 {
   std::string                        type = "uniform"; ///< Profile type.
   Real                               rad  = 0.0;       ///< Profile radius.
   std::optional<std::array<Real, 3>> cen;              ///< Profile center.
 };
 
-struct VelocityParams
+struct VelocityBoundaryConfig
 {
   HostVector            time;                     ///< Time samples.
   HostVector            vals;                     ///< Velocity or flow-rate samples.
@@ -71,30 +71,30 @@ struct VelocityParams
   std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0}; ///< Boundary normal.
   std::string           interp = "linear";        ///< Time interpolation method.
   std::string           qty    = "flowrate";      ///< Input quantity type.
-  VelocityProfileParams prof;                     ///< Spatial velocity profile.
+  VelocityProfileConfig prof;                     ///< Spatial velocity profile.
 };
 
-struct BCsParams
+struct BoundaryConditionConfig
 {
-  Index                         tag  = 0;           ///< Physical boundary tag.
-  std::string                   type = "dirichlet"; ///< Boundary-condition type.
-  std::optional<Real>           ux;                 ///< Prescribed x velocity.
-  std::optional<Real>           uy;                 ///< Prescribed y velocity.
-  std::optional<Real>           uz;                 ///< Prescribed z velocity.
-  std::optional<Real>           p;                  ///< Prescribed pressure.
-  std::optional<VelocityParams> velocity;           ///< Time-dependent velocity input.
+  Index                                 tag  = 0;           ///< Physical boundary tag.
+  std::string                           type = "dirichlet"; ///< Boundary-condition type.
+  std::optional<Real>                   ux;                 ///< Prescribed x velocity.
+  std::optional<Real>                   uy;                 ///< Prescribed y velocity.
+  std::optional<Real>                   uz;                 ///< Prescribed z velocity.
+  std::optional<Real>                   p;                  ///< Prescribed pressure.
+  std::optional<VelocityBoundaryConfig> velocity;           ///< Time-dependent velocity input.
 };
 
-struct Params
+struct Config
 {
-  std::string      mesh_file; ///< Mesh file path.
-  TimeParams       time;      ///< Time-integration settings.
-  FluidParams      fluid;     ///< Fluid material parameters.
-  SolverParams     solver;    ///< Linear-solver settings.
-  OutputParams     output;    ///< Output settings.
-  Array<BCsParams> bcs;       ///< Boundary-condition settings.
+  std::string                    mesh_file;           ///< Mesh file path.
+  TimeConfig                     time;                ///< Time-integration settings.
+  model::ns::FluidProperties     fluid;               ///< Fluid material properties.
+  SolverConfig                   solver;              ///< Linear-solver settings.
+  OutputConfig                   output;              ///< Output settings.
+  Array<BoundaryConditionConfig> boundary_conditions; ///< Boundary settings.
 };
 
-Params loadConfig(const std::string& path);
+Config loadConfig(const std::string& path);
 
-} // namespace femx::model::ns
+} // namespace femx::apps::ns_forward

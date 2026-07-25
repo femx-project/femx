@@ -3,7 +3,7 @@
 #include "TestHelper.hpp"
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/model/ns/NavierStokesModel.hpp>
+#include <femx/model/ns/Model.hpp>
 
 namespace femx
 {
@@ -14,11 +14,11 @@ namespace tests
 namespace
 {
 
-TestOutcome modelOwnsReusableDiscretization()
+TestOutcome ownsReusableDiscretization()
 {
   TestStatus status(__func__);
 
-  model::ns::FluidParams fluid;
+  model::ns::FluidProperties fluid;
   fluid.rho = 1.2;
   fluid.mu  = 0.03;
 
@@ -108,7 +108,7 @@ TestOutcome modelRejectsInvalidTimeConfiguration()
 int main()
 {
   femx::tests::TestingResults results;
-  results += femx::tests::modelOwnsReusableDiscretization();
+  results += femx::tests::ownsReusableDiscretization();
   results += femx::tests::modelPublishesBackendAssemblyInputs();
   results += femx::tests::modelRejectsInvalidTimeConfiguration();
   return results.summary();

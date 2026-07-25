@@ -211,8 +211,6 @@ public:
             "TimeResidual initial-state transpose size mismatch");
   }
 
-  virtual void res(const StepCtx& time, Vec& out, Ctx& ctx) const = 0;
-
   /** @brief Assemble the residual and next-state Jacobian together. */
   virtual void assembleNext(const StepCtx& time,
                             Vec&           res,

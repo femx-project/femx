@@ -74,7 +74,7 @@ void solveDevice(const ExampleHelper&         helper,
                      mat,
                      ctx);
   vec_handler.axpby(-1.0, res.view(), 0.0, rhs.view());
-  assembly::prepareForwardSolve(bc_map, mat, rhs, bc_vals, ctx);
+  assembly::applyDirichletConditions(bc_map, mat, rhs, bc_vals, ctx);
 
   ReSolveLinearSolver solver;
   DeviceVector        sol;

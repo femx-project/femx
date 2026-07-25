@@ -252,7 +252,7 @@ void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
   {
     rhs[row] = -res[row];
   }
-  assembly::prepareForwardSolve(bc_map_, mat, rhs, bc_vals_);
+  assembly::applyDirichletConditions(bc_map_, mat, rhs, bc_vals_);
 }
 
 ErrorReport PoissonForwardProblem::errorReport(const HostVector& x) const

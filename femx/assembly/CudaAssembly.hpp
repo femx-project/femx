@@ -21,10 +21,10 @@ namespace detail
 {
 
 inline void checkAssemblyInputs(
-    const fem::DeviceGeometry&              geom,
-    const AssemblyMap<MemorySpace::Device>& map,
-    const DeviceVector&                     state,
-    const DeviceCsrMatrix&                  jac)
+    const fem::DeviceGeometry& geom,
+    const DeviceAssemblyMap&   map,
+    const DeviceVector&        state,
+    const DeviceCsrMatrix&     jac)
 {
   require(geom.numElems() == map.numElems(),
           "Geometry and AssemblyMap have different element counts");
@@ -35,11 +35,11 @@ inline void checkAssemblyInputs(
 }
 
 inline void checkTimeAssemblyInputs(
-    Index                                   num_hist,
-    state::VariableBlock                    wrt,
-    const AssemblyMap<MemorySpace::Device>& map,
-    DeviceConstVectorView                   hist,
-    DeviceConstVectorView                   nxt)
+    Index                    num_hist,
+    state::VariableBlock     wrt,
+    const DeviceAssemblyMap& map,
+    DeviceConstVectorView    hist,
+    DeviceConstVectorView    nxt)
 {
   require(num_hist > 0 && hist.size() == num_hist * map.numStates()
               && nxt.size() == map.numStates(),
@@ -50,12 +50,12 @@ inline void checkTimeAssemblyInputs(
 }
 
 inline void checkTimeAssemblyInputs(
-    Index                                   num_hist,
-    state::VariableBlock                    wrt,
-    const AssemblyMap<MemorySpace::Device>& map,
-    DeviceConstVectorView                   hist,
-    DeviceConstVectorView                   nxt,
-    const DeviceCsrMatrix&                  jac)
+    Index                    num_hist,
+    state::VariableBlock     wrt,
+    const DeviceAssemblyMap& map,
+    DeviceConstVectorView    hist,
+    DeviceConstVectorView    nxt,
+    const DeviceCsrMatrix&   jac)
 {
   checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   require(jac.pattern().layoutId() == map.pattern().layoutId(),
@@ -74,8 +74,8 @@ inline void checkTimeAssemblyAliases(DeviceConstVectorView hist,
 }
 
 inline std::size_t assemblySharedBytes(
-    const fem::DeviceGeometry&              geom,
-    const AssemblyMap<MemorySpace::Device>& map)
+    const fem::DeviceGeometry& geom,
+    const DeviceAssemblyMap&   map)
 {
   const auto count = static_cast<std::size_t>(map.maxState())
                      + static_cast<std::size_t>(geom.maxElemNodes())
@@ -86,8 +86,8 @@ inline std::size_t assemblySharedBytes(
 }
 
 inline std::size_t timeAssemblySharedBytes(
-    Index                                   num_hist,
-    const AssemblyMap<MemorySpace::Device>& map)
+    Index                    num_hist,
+    const DeviceAssemblyMap& map)
 {
   const auto count =
       static_cast<std::size_t>(num_hist + 1)
@@ -97,11 +97,11 @@ inline std::size_t timeAssemblySharedBytes(
   return count * sizeof(Real);
 }
 
-template <class ElementOperator>
+template <class ElementKernel>
 __global__ void assembleKernel(
-    ElementOperator                        op,
+    ElementKernel                          kernel,
     fem::GeometryView<MemorySpace::Device> geom,
-    AssemblyMapView<MemorySpace::Device>   map,
+    DeviceAssemblyMapView                  map,
     const Real*                            state,
     Real*                                  res,
     Real*                                  jac)
@@ -147,14 +147,14 @@ __global__ void assembleKernel(
   }
   __syncthreads();
 
-  const ElementView<MemorySpace::Device> elem{
+  const DeviceElementView elem{
       ie, geom.dim(), num_nodes, {state_e, num_cols}, {coords_e, num_coords}};
 
   for (Index row = tid; row < num_rows; row += stride)
   {
     VectorView<MemorySpace::Device, Real> jac_row(jac_e + row * num_cols,
                                                   num_cols);
-    op.evalRow(elem, row, res_e[row], jac_row);
+    kernel.evalRow(elem, row, res_e[row], jac_row);
   }
   __syncthreads();
 
@@ -168,17 +168,17 @@ __global__ void assembleKernel(
   }
 }
 
-template <class ElementOperator>
+template <class ElementKernel>
 __global__ void assembleTimeKernel(
-    ElementOperator                      op,
-    Index                                step,
-    Index                                num_hist,
-    state::VariableBlock                 wrt,
-    AssemblyMapView<MemorySpace::Device> map,
-    const Real*                          hist,
-    const Real*                          nxt,
-    Real*                                res,
-    Real*                                jac)
+    ElementKernel         kernel,
+    Index                 step,
+    Index                 num_hist,
+    state::VariableBlock  wrt,
+    DeviceAssemblyMapView map,
+    const Real*           hist,
+    const Real*           nxt,
+    Real*                 res,
+    Real*                 jac)
 {
   const Index ie = static_cast<Index>(blockIdx.x);
   if (ie >= map.num_elems)
@@ -219,7 +219,7 @@ __global__ void assembleTimeKernel(
   }
   __syncthreads();
 
-  const TimeElementView<MemorySpace::Device> elem{
+  const DeviceTimeElementView elem{
       ie,
       step,
       num_hist,
@@ -228,7 +228,7 @@ __global__ void assembleTimeKernel(
   for (Index row = tid; row < nrow; row += stride)
   {
     VectorView<MemorySpace::Device, Real> jac_row(jac_e + row * ncol, ncol);
-    op.evalRow(elem, wrt, row, res_e[row], jac_row);
+    kernel.evalRow(elem, wrt, row, res_e[row], jac_row);
   }
   __syncthreads();
 
@@ -245,7 +245,7 @@ __global__ void assembleTimeKernel(
   }
 }
 
-template <class ElementOperator>
+template <class ElementKernel>
 int configureAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
@@ -261,7 +261,7 @@ int configureAssemblyLaunch(std::size_t smem)
   {
     cuda::check(
         cudaFuncSetAttribute(
-            assembleKernel<ElementOperator>,
+            assembleKernel<ElementKernel>,
             cudaFuncAttributeMaxDynamicSharedMemorySize,
             static_cast<int>(smem)),
         "cudaFuncSetAttribute failed for CUDA assembly");
@@ -270,7 +270,7 @@ int configureAssemblyLaunch(std::size_t smem)
   return threads;
 }
 
-template <class ElementOperator>
+template <class ElementKernel>
 int configureTimeAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
@@ -287,7 +287,7 @@ int configureTimeAssemblyLaunch(std::size_t smem)
   {
     cuda::check(
         cudaFuncSetAttribute(
-            assembleTimeKernel<ElementOperator>,
+            assembleTimeKernel<ElementKernel>,
             cudaFuncAttributeMaxDynamicSharedMemorySize,
             static_cast<int>(smem)),
         "cudaFuncSetAttribute failed for CUDA time assembly");
@@ -302,13 +302,13 @@ int configureTimeAssemblyLaunch(std::size_t smem)
 /**
  * @brief Assemble residual and Jacobian with one CUDA block per element.
  *
- * ElementOperator is the only template parameter. It implements the same
+ * ElementKernel is the only template parameter. It implements the same
  * row-wise `evalRow` contract as the CPU overload, with device ElementView and
  * VectorView arguments. All zeroing and the assembly launch are enqueued on
  * the CudaContext stream; callers synchronize only at an explicit boundary.
  *
- * @tparam ElementOperator Trivially copyable row-wise element evaluator.
- * @param op Element evaluator copied into the kernel launch.
+ * @tparam ElementKernel Trivially copyable row-wise element evaluator.
+ * @param kernel Element evaluator copied into the kernel launch.
  * @param geom Device geometry matching the map's element order.
  * @param map Device element-to-global assembly map.
  * @param state Global device state vector.
@@ -316,19 +316,19 @@ int configureTimeAssemblyLaunch(std::size_t smem)
  * @param jac Device CSR matrix zeroed and assembled in place.
  * @param ctx CUDA stream on which all work is enqueued.
  */
-template <class ElementOperator>
-void assemble(const ElementOperator&                  op,
-              const fem::DeviceGeometry&              geom,
-              const AssemblyMap<MemorySpace::Device>& map,
-              const DeviceVector&                     state,
-              DeviceVector&                           res,
-              DeviceCsrMatrix&                        jac,
-              CudaContext&                            ctx)
+template <class ElementKernel>
+void assemble(const ElementKernel&       kernel,
+              const fem::DeviceGeometry& geom,
+              const DeviceAssemblyMap&   map,
+              const DeviceVector&        state,
+              DeviceVector&              res,
+              DeviceCsrMatrix&           jac,
+              CudaContext&               ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
-  static_assert(std::is_trivially_copyable<ElementOperator>::value,
-                "CUDA ElementOperator must be trivially copyable");
+  static_assert(std::is_trivially_copyable<ElementKernel>::value,
+                "CUDA element kernel must be trivially copyable");
 
   detail::checkAssemblyInputs(geom, map, state, jac);
   const DeviceVector& mat_vals = jac.vals();
@@ -347,14 +347,14 @@ void assemble(const ElementOperator&                  op,
   }
 
   const std::size_t smem    = detail::assemblySharedBytes(geom, map);
-  const int         threads = detail::configureAssemblyLaunch<ElementOperator>(smem);
+  const int         threads = detail::configureAssemblyLaunch<ElementKernel>(smem);
   const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
-  detail::assembleKernel<ElementOperator>
+  detail::assembleKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
          static_cast<unsigned int>(threads),
          smem,
-         stream>>>(op,
+         stream>>>(kernel,
                    geom.view(),
                    map.view(),
                    state.data(),
@@ -364,22 +364,22 @@ void assemble(const ElementOperator&                  op,
 }
 
 /** @brief Assemble one time residual and state Jacobian on CUDA. */
-template <class ElementOperator>
-void assemble(const ElementOperator&                  op,
-              Index                                   step,
-              Index                                   num_hist,
-              state::VariableBlock                    wrt,
-              const AssemblyMap<MemorySpace::Device>& map,
-              DeviceConstVectorView                   hist,
-              DeviceConstVectorView                   nxt,
-              DeviceVector&                           res,
-              DeviceCsrMatrix&                        jac,
-              CudaContext&                            ctx)
+template <class ElementKernel>
+void assemble(const ElementKernel&     kernel,
+              Index                    step,
+              Index                    num_hist,
+              state::VariableBlock     wrt,
+              const DeviceAssemblyMap& map,
+              DeviceConstVectorView    hist,
+              DeviceConstVectorView    nxt,
+              DeviceVector&            res,
+              DeviceCsrMatrix&         jac,
+              CudaContext&             ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
-  static_assert(std::is_trivially_copyable<ElementOperator>::value,
-                "CUDA time ElementOperator must be trivially copyable");
+  static_assert(std::is_trivially_copyable<ElementKernel>::value,
+                "CUDA time element kernel must be trivially copyable");
 
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt, jac);
   const DeviceVector& vals = jac.vals();
@@ -396,15 +396,16 @@ void assemble(const ElementOperator&                  op,
     return;
   }
 
-  const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
-  const int         threads = detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
-  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem = detail::timeAssemblySharedBytes(num_hist, map);
+  const int         threads =
+      detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
+  const auto stream = static_cast<cudaStream_t>(ctx.stream());
 
-  detail::assembleTimeKernel<ElementOperator>
+  detail::assembleTimeKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
          static_cast<unsigned int>(threads),
          smem,
-         stream>>>(op,
+         stream>>>(kernel,
                    step,
                    num_hist,
                    wrt,
@@ -417,20 +418,20 @@ void assemble(const ElementOperator&                  op,
 }
 
 /** @brief Assemble one time residual on CUDA without allocating a Jacobian. */
-template <class ElementOperator>
+template <class ElementKernel>
 void assembleResidual(
-    const ElementOperator&                  op,
-    Index                                   step,
-    Index                                   num_hist,
-    const AssemblyMap<MemorySpace::Device>& map,
-    DeviceConstVectorView                   hist,
-    DeviceConstVectorView                   nxt,
-    DeviceVector&                           res,
-    CudaContext&                            ctx)
+    const ElementKernel&     kernel,
+    Index                    step,
+    Index                    num_hist,
+    const DeviceAssemblyMap& map,
+    DeviceConstVectorView    hist,
+    DeviceConstVectorView    nxt,
+    DeviceVector&            res,
+    CudaContext&             ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
-  static_assert(std::is_trivially_copyable<ElementOperator>::value,
-                "CUDA time ElementOperator must be trivially copyable");
+  static_assert(std::is_trivially_copyable<ElementKernel>::value,
+                "CUDA time element kernel must be trivially copyable");
 
   detail::checkTimeAssemblyInputs(num_hist,
                                   state::VariableBlock::NextState,
@@ -452,14 +453,14 @@ void assembleResidual(
 
   const std::size_t smem = detail::timeAssemblySharedBytes(num_hist, map);
   const int         threads =
-      detail::configureTimeAssemblyLaunch<ElementOperator>(smem);
+      detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
   const auto stream = static_cast<cudaStream_t>(ctx.stream());
 
-  detail::assembleTimeKernel<ElementOperator>
+  detail::assembleTimeKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
          static_cast<unsigned int>(threads),
          smem,
-         stream>>>(op,
+         stream>>>(kernel,
                    step,
                    num_hist,
                    state::VariableBlock::NextState,

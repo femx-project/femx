@@ -2,6 +2,7 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <stdexcept>
 #include <type_traits>
 
 #include "TestHelper.hpp"
@@ -13,7 +14,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
-#include <femx/model/ns/NavierStokesModel.hpp>
+#include <femx/model/ns/Model.hpp>
 
 #if defined(FEMX_HAS_CUDA)
 #include <femx/assembly/CudaAssembly.hpp>
@@ -33,13 +34,13 @@ namespace tests
 namespace
 {
 
-using HostOp   = model::ns::NavierOperator<MemorySpace::Host>;
-using DeviceOp = model::ns::NavierOperator<MemorySpace::Device>;
+using model::ns::DeviceElementKernel;
+using model::ns::HostElementKernel;
 
-static_assert(std::is_trivially_copyable<HostOp>::value,
-              "Host NavierOperator must be trivially copyable");
-static_assert(std::is_trivially_copyable<DeviceOp>::value,
-              "Device NavierOperator must be trivially copyable");
+static_assert(std::is_trivially_copyable<HostElementKernel>::value,
+              "Host ElementKernel must be trivially copyable");
+static_assert(std::is_trivially_copyable<DeviceElementKernel>::value,
+              "Device ElementKernel must be trivially copyable");
 
 bool near(Real lhs, Real rhs, Real tol = 1.0e-11)
 {
@@ -120,7 +121,7 @@ Real dot(const HostVector& lhs, const HostVector& rhs)
 
 model::ns::NavierStokesModel makeModel()
 {
-  model::ns::FluidParams fluid;
+  model::ns::FluidProperties fluid;
   fluid.rho = 1.2;
   fluid.mu  = 0.03;
   return {fem::Mesh::makeStructuredQuad(2, 1), 3, 0.05, fluid};
@@ -177,7 +178,7 @@ void fillStates(Index num_states, HostVector& hist, HostVector& nxt)
   }
 }
 
-TestOutcome navierDataFlattensEveryElement()
+TestOutcome elementQuadratureDataFlattensEveryElement()
 {
   TestStatus status(__func__);
   try
@@ -190,18 +191,19 @@ TestOutcome navierDataFlattensEveryElement()
     fem::ElementValues vals(vel.finiteElement(), quad);
 
     status *= data.numElems() == model.mesh().numElems();
-    status *= data.numQpts() == quad.size();
-    status *= data.numNodes() == vel.numShapesPerElem();
+    status *= data.numQuadraturePoints() == quad.size();
+    status *= data.numShapes() == vel.numShapesPerElem();
     status *= data.dim() == model.mesh().dim();
-    status *= data.numDofs() == model.space().numDofsPerElem();
+    status *= (data.dim() + 1) * data.numShapes()
+              == model.space().numDofsPerElem();
 
     for (Index ie = 0; ie < data.numElems(); ++ie)
     {
       vals.reinit(model.mesh().elem(ie));
-      for (Index iq = 0; iq < data.numQpts(); ++iq)
+      for (Index iq = 0; iq < data.numQuadraturePoints(); ++iq)
       {
         status *= near(data.JxW(ie, iq), vals.JxW(iq));
-        for (Index in = 0; in < data.numNodes(); ++in)
+        for (Index in = 0; in < data.numShapes(); ++in)
         {
           status *= near(data.N(iq, in), vals.N(iq)[in]);
           for (Index d = 0; d < data.dim(); ++d)
@@ -243,13 +245,15 @@ TestOutcome navierModelResidualMatchesRowAssembly()
 
     HostVector    row_res;
     HostCsrMatrix row_jac(model.map().pattern());
-    assembly::assemble(model.op(),
+    assembly::assemble(model.elementKernel(),
                        1,
                        2,
                        state::VariableBlock::NextState,
                        model.map(),
-                       hist,
-                       nxt,
+                       0,
+                       model.map().numElems(),
+                       hist.view(),
+                       nxt.view(),
                        row_res,
                        row_jac,
                        ctx);
@@ -263,13 +267,15 @@ TestOutcome navierModelResidualMatchesRowAssembly()
     HostVector    zero_nxt(model.numStates(), 0.0);
     HostVector    zero_res;
     HostCsrMatrix zero_jac(model.map().pattern());
-    assembly::assemble(model.op(),
+    assembly::assemble(model.elementKernel(),
                        1,
                        2,
                        state::VariableBlock::NextState,
                        model.map(),
-                       hist,
-                       zero_nxt,
+                       0,
+                       model.map().numElems(),
+                       hist.view(),
+                       zero_nxt.view(),
                        zero_res,
                        zero_jac,
                        ctx);
@@ -354,8 +360,26 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
           {minus_hist.data(), 2, model.numStates()}};
       HostVector plus;
       HostVector minus;
-      model.residual().res(plus_time, plus, ctx);
-      model.residual().res(minus_time, minus, ctx);
+      assembly::assembleResidual(model.elementKernel(),
+                                 plus_time.step,
+                                 plus_time.hist.count(),
+                                 model.map(),
+                                 0,
+                                 model.map().numElems(),
+                                 plus_hist.view(),
+                                 plus_time.nxt,
+                                 plus,
+                                 ctx);
+      assembly::assembleResidual(model.elementKernel(),
+                                 minus_time.step,
+                                 minus_time.hist.count(),
+                                 model.map(),
+                                 0,
+                                 model.map().numElems(),
+                                 minus_hist.view(),
+                                 minus_time.nxt,
+                                 minus,
+                                 ctx);
 
       HostVector adj(model.numStates());
       for (Index i = 0; i < adj.size(); ++i)
@@ -387,7 +411,20 @@ TestOutcome navierAssemblyMatchesPetsc()
 #if defined(FEMX_HAS_PETSC)
   try
   {
-    auto       model = makeModel();
+    auto reference = makeModel();
+    auto model     = makeModel();
+    int  rank      = 0;
+    int  comm_size = 1;
+    if (MPI_Comm_rank(PETSC_COMM_WORLD, &rank) != MPI_SUCCESS
+        || MPI_Comm_size(PETSC_COMM_WORLD, &comm_size) != MPI_SUCCESS)
+    {
+      throw std::runtime_error("Navier PETSc test communicator query failed");
+    }
+    const Index element_begin =
+        model.map().numElems() * rank / comm_size;
+    const Index element_end =
+        model.map().numElems() * (rank + 1) / comm_size;
+    model.setElemRange(element_begin, element_end);
     HostVector hist;
     HostVector nxt;
     fillStates(model.numStates(), hist, nxt);
@@ -399,14 +436,14 @@ TestOutcome navierAssemblyMatchesPetsc()
         {hist.data(), 2, model.numStates()}};
 
     CpuContext            csr_ctx;
-    linalg::PetscContext  petsc_ctx{PETSC_COMM_SELF};
+    linalg::PetscContext  petsc_ctx{PETSC_COMM_WORLD};
     auto                  petsc_residual = model::ns::makePetscTimeResidual(model);
-    HostCsrMatrix         csr(model.map().pattern());
-    linalg::PETScOperator petsc(PETSC_COMM_SELF);
+    HostCsrMatrix         csr(reference.map().pattern());
+    linalg::PETScOperator petsc(PETSC_COMM_WORLD);
     HostVector            csr_res;
     HostVector            petsc_res;
 
-    model.residual().assembleNext(time, csr_res, csr, csr_ctx);
+    reference.residual().assembleNext(time, csr_res, csr, csr_ctx);
     petsc_residual->assembleNext(time, petsc_res, petsc, petsc_ctx);
     petsc.finalize();
     status *= vecNear(csr_res, petsc_res);
@@ -446,20 +483,20 @@ TestOutcome navierRowAssemblyMatchesDevice()
 
     CpuContext cpu;
 
-    CudaContext                 ctx;
-    linalg::CudaVectorHandler   vec_handler(ctx);
-    linalg::CudaMatrixHandler   mat_handler(ctx);
-    assembly::DeviceAssemblyMap map;
-    model::ns::DeviceNavierData data;
-    DeviceVector                dev_hist;
-    DeviceVector                dev_nxt;
+    CudaContext                      ctx;
+    linalg::CudaVectorHandler        vec_handler(ctx);
+    linalg::CudaMatrixHandler        mat_handler(ctx);
+    assembly::DeviceAssemblyMap      map;
+    fem::DeviceElementQuadratureData data;
+    DeviceVector                     dev_hist;
+    DeviceVector                     dev_nxt;
     assembly::copy(model.map(), map, ctx);
-    model::ns::copy(model.data(), data, ctx);
+    fem::copy(model.data(), data, ctx);
     vec_handler.copy(hist, dev_hist);
     vec_handler.copy(nxt, dev_nxt);
 
-    DeviceVector   dev_res;
-    const DeviceOp op(
+    DeviceVector              dev_res;
+    const DeviceElementKernel kernel(
         data.view(),
         {model.fluid().rho, model.fluid().mu},
         model.dt());
@@ -469,19 +506,21 @@ TestOutcome navierRowAssemblyMatchesDevice()
     {
       HostVector    host_res;
       HostCsrMatrix host_jac(model.map().pattern());
-      assembly::assemble(model.op(),
+      assembly::assemble(model.elementKernel(),
                          1,
                          2,
                          wrt,
                          model.map(),
-                         hist,
-                         nxt,
+                         0,
+                         model.map().numElems(),
+                         hist.view(),
+                         nxt.view(),
                          host_res,
                          host_jac,
                          cpu);
 
       DeviceCsrMatrix dev_jac(map.pattern());
-      assembly::assemble(op,
+      assembly::assemble(kernel,
                          1,
                          2,
                          wrt,
@@ -526,7 +565,7 @@ TestOutcome navierHistoryVjpMatchesDevice()
   {
     const auto check = [&status](fem::Mesh mesh)
     {
-      model::ns::FluidParams fluid;
+      model::ns::FluidProperties fluid;
       fluid.rho = 1.2;
       fluid.mu  = 0.03;
       model::ns::NavierStokesModel model(
@@ -623,7 +662,7 @@ int main(int argc, char** argv)
 #endif
 
   femx::tests::TestingResults results;
-  results            += femx::tests::navierDataFlattensEveryElement();
+  results            += femx::tests::elementQuadratureDataFlattensEveryElement();
   results            += femx::tests::navierModelResidualMatchesRowAssembly();
   results            += femx::tests::navierHistVjpMatchesFiniteDiff();
   results            += femx::tests::navierAssemblyMatchesPetsc();

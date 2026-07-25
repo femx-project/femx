@@ -1,4 +1,4 @@
-#include "Boundary.hpp"
+#include "BoundaryConditions.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,7 +11,7 @@
 using namespace femx;
 using namespace femx::fem;
 
-namespace femx::model::ns
+namespace femx::apps::ns_forward
 {
 namespace
 {
@@ -43,8 +43,8 @@ Index lowerInterval(const HostVector& pts,
       distance(pts.begin(), upper) - 1);
 }
 
-Real periodicTime(const VelocityParams& velocity,
-                  Real                  time)
+Real periodicTime(const VelocityBoundaryConfig& velocity,
+                  Real                          time)
 {
   if (velocity.per <= 0.0)
   {
@@ -60,8 +60,8 @@ Real periodicTime(const VelocityParams& velocity,
   return start + local;
 }
 
-Real sampleVelocityConstant(const VelocityParams& velocity,
-                            Real                  time)
+Real sampleVelocityConstant(const VelocityBoundaryConfig& velocity,
+                            Real                          time)
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
@@ -75,8 +75,8 @@ Real sampleVelocityConstant(const VelocityParams& velocity,
   return velocity.vals[lowerInterval(velocity.time, time)];
 }
 
-Real sampleVelocityNearest(const VelocityParams& velocity,
-                           Real                  time)
+Real sampleVelocityNearest(const VelocityBoundaryConfig& velocity,
+                           Real                          time)
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
@@ -95,8 +95,8 @@ Real sampleVelocityNearest(const VelocityParams& velocity,
   return velocity.vals[i + 1];
 }
 
-Real sampleVelocityLinear(const VelocityParams& velocity,
-                          Real                  time)
+Real sampleVelocityLinear(const VelocityBoundaryConfig& velocity,
+                          Real                          time)
 {
   if (velocity.time.size() == 1 || time <= velocity.time.front())
   {
@@ -126,8 +126,8 @@ Real catmullRom(Real y0,
   return 0.5 * ((2.0 * y1) + (-y0 + y2) * a + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2 + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
 }
 
-Real sampleVelocityCubic(const VelocityParams& velocity,
-                         Real                  time)
+Real sampleVelocityCubic(const VelocityBoundaryConfig& velocity,
+                         Real                          time)
 {
   if (velocity.time.size() < 4)
   {
@@ -166,8 +166,8 @@ Real sampleVelocityCubic(const VelocityParams& velocity,
                     a);
 }
 
-Real sampleVelocityValue(const VelocityParams& velocity,
-                         Real                  time)
+Real sampleVelocityValue(const VelocityBoundaryConfig& velocity,
+                         Real                          time)
 {
   const Real sample_time = periodicTime(velocity, time);
   if (velocity.interp == "constant")
@@ -196,10 +196,10 @@ struct VelocityEvalContext
   Real                      peak_speed = 0.0;
 };
 
-VelocityEvalContext makeVelocityEvalContext(const VelocityParams& velocity,
-                                            const fem::Mesh&      mesh,
-                                            Index                 ptag,
-                                            Real                  time)
+VelocityEvalContext makeVelocityEvalContext(const VelocityBoundaryConfig& velocity,
+                                            const fem::Mesh&              mesh,
+                                            Index                         ptag,
+                                            Real                          time)
 {
   VelocityEvalContext ctx;
   ctx.peak_speed = peakSpeed(velocity.qty,
@@ -230,10 +230,10 @@ Real velocityComponent(const VelocityEvalContext& ctx,
       ctx.prof, point, ctx.peak_speed, comp);
 }
 
-fem::DirichletBC makeDirichletBC(
-    const fem::MixedFESpace& space,
-    const Array<BCsParams>&  bcs,
-    Real                     time)
+fem::DirichletBC makeDirichletBoundaryConditions(
+    const fem::MixedFESpace&              space,
+    const Array<BoundaryConditionConfig>& bcs,
+    Real                                  time)
 {
   const auto u_dof = space.field(0);
   const auto p_dof = space.field(1);
@@ -297,4 +297,4 @@ fem::DirichletBC makeDirichletBC(
   return orderedBC(bc);
 }
 
-} // namespace femx::model::ns
+} // namespace femx::apps::ns_forward
