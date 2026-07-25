@@ -65,7 +65,7 @@ struct BoundaryMapView
  * @brief Precomputed CSR locations used to enforce essential boundaries.
  *
  * The map preserves the constrained-DOF input order. Prescribed values passed
- * to prepareForwardSolve() use the same order. The map refers to one CSR
+ * to applyDirichletConditions() use the same order. The map refers to one CSR
  * layout; matrices passed to the operations must use that layout.
  */
 template <MemorySpace Space>
@@ -263,35 +263,35 @@ void zeroBoundary(const DeviceBoundaryMap& map,
                   CudaContext&             ctx);
 
 /**
- * @brief Prepare a separate forward-solve matrix and right-hand side.
+ * @brief Apply Dirichlet conditions to a Host linear system.
  *
  * Constrained columns are eliminated with the corresponding RHS correction,
  * constrained rows are replaced by identity rows, and constrained RHS entries
  * are set to bc_vals. The input matrix must be a separate solve copy
  * when the authoritative row-replaced Jacobian is still needed.
- * @param map Boundary map matching `solve_mat.pattern()`.
- * @param solve_mat Matrix modified into the forward system.
+ * @param map Boundary map matching `mat.pattern()`.
+ * @param mat Matrix modified in place.
  * @param rhs Right-hand side corrected and constrained in place.
  * @param bc_vals Prescribed values in map order.
  */
-void prepareForwardSolve(const HostBoundaryMap& map,
-                         HostCsrMatrix&         solve_mat,
-                         HostVector&            rhs,
-                         const HostVector&      bc_vals);
+void applyDirichletConditions(const HostBoundaryMap& map,
+                              HostCsrMatrix&         mat,
+                              HostVector&            rhs,
+                              const HostVector&      bc_vals);
 
 /**
- * @brief Asynchronous CUDA equivalent of prepareForwardSolve().
- * @param map Device boundary map matching `solve_mat.pattern()`.
- * @param solve_mat Device matrix modified into the forward system.
+ * @brief Asynchronously apply Dirichlet conditions to a CUDA linear system.
+ * @param map Device boundary map matching `mat.pattern()`.
+ * @param mat Device matrix modified in place.
  * @param rhs Device right-hand side modified in place.
  * @param bc_vals Prescribed device values in map order.
  * @param ctx CUDA stream on which work is enqueued.
  */
-void prepareForwardSolve(const DeviceBoundaryMap& map,
-                         DeviceCsrMatrix&         solve_mat,
-                         DeviceVector&            rhs,
-                         const DeviceVector&      bc_vals,
-                         CudaContext&             ctx);
+void applyDirichletConditions(const DeviceBoundaryMap& map,
+                              DeviceCsrMatrix&         mat,
+                              DeviceVector&            rhs,
+                              const DeviceVector&      bc_vals,
+                              CudaContext&             ctx);
 
 } // namespace assembly
 } // namespace femx

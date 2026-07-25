@@ -59,7 +59,6 @@ public:
                                         VecView   out,
                                         Ctx&      ctx) const override;
 
-  void res(const StepCtx& time, Vec& out, Ctx& ctx) const override;
   void assembleNext(const StepCtx& time,
                     Vec&           res,
                     Mat&           jac,

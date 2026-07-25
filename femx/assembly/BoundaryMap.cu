@@ -99,14 +99,14 @@ void checkMat(const DeviceBoundaryMap& map, const DeviceCsrMatrix& mat)
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
-void checkForward(const DeviceBoundaryMap& map,
-                  const DeviceCsrMatrix&   mat,
-                  const DeviceVector&      rhs,
-                  const DeviceVector&      bc_vals)
+void checkDirichletSystem(const DeviceBoundaryMap& map,
+                          const DeviceCsrMatrix&   mat,
+                          const DeviceVector&      rhs,
+                          const DeviceVector&      bc_vals)
 {
   checkMat(map, mat);
   require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
-          "BoundaryMap forward vectors have incompatible sizes");
+          "BoundaryMap Dirichlet vectors have incompatible sizes");
   require(&rhs != &bc_vals,
           "BoundaryMap RHS and prescribed values must not alias");
   const DeviceVector& mat_vals = mat.vals();
@@ -189,13 +189,13 @@ void zeroBoundary(const DeviceBoundaryMap& map,
   cuda::checkLastError();
 }
 
-void prepareForwardSolve(const DeviceBoundaryMap& map,
-                         DeviceCsrMatrix&         solve_mat,
-                         DeviceVector&            rhs,
-                         const DeviceVector&      bc_vals,
-                         CudaContext&             ctx)
+void applyDirichletConditions(const DeviceBoundaryMap& map,
+                              DeviceCsrMatrix&         mat,
+                              DeviceVector&            rhs,
+                              const DeviceVector&      bc_vals,
+                              CudaContext&             ctx)
 {
-  checkForward(map, solve_mat, rhs, bc_vals);
+  checkDirichletSystem(map, mat, rhs, bc_vals);
   if (map.numBcs() == 0)
   {
     return;
@@ -205,9 +205,9 @@ void prepareForwardSolve(const DeviceBoundaryMap& map,
                         kThreads,
                         0,
                         cudaStream(ctx)>>>(
-      map.view(), solve_mat.valsData(), rhs.data(), bc_vals.data());
+      map.view(), mat.valsData(), rhs.data(), bc_vals.data());
   cuda::checkLastError();
-  launchRows(map, solve_mat, 1.0, &rhs, &bc_vals, ctx);
+  launchRows(map, mat, 1.0, &rhs, &bc_vals, ctx);
 }
 
 } // namespace assembly

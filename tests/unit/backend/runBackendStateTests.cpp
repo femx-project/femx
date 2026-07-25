@@ -107,7 +107,7 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   HostCsrMatrix solve_mat(pattern);
   setMatVals(solve_mat);
   HostVector rhs{10.0, 20.0, 30.0};
-  assembly::prepareForwardSolve(
+  assembly::applyDirichletConditions(
       map, solve_mat, rhs, HostVector{2.0});
   status *= valsNear(solve_mat.vals(),
                      std::array<Real, 9>{{4.0, 0.0, 2.0, 0.0, 1.0, 0.0, 7.0, 0.0, 9.0}});
@@ -206,10 +206,8 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   bool mat_alias_rejected = false;
   try
   {
-    assembly::prepareForwardSolve(diagonal_map,
-                                  diag_mat,
-                                  diag_mat.vals(),
-                                  HostVector{1.0});
+    assembly::applyDirichletConditions(
+        diagonal_map, diag_mat, diag_mat.vals(), HostVector{1.0});
   }
   catch (const std::runtime_error&)
   {

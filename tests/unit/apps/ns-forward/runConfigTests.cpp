@@ -3,9 +3,9 @@
 #include <set>
 #include <string>
 
+#include "Config.hpp"
+#include "Problem.hpp"
 #include "TestHelper.hpp"
-#include <femx/model/ns/ForwardConfig.hpp>
-#include <femx/model/ns/ForwardProblem.hpp>
 
 #ifndef FEMX_TEST_SOURCE_DIR
 #error "FEMX_TEST_SOURCE_DIR must name the femx source directory"
@@ -35,26 +35,27 @@ TestOutcome shippedConfigsUseCanonicalOptions()
   {
     for (const char* problem : problems)
     {
-      const auto prm  = model::ns::loadConfig(configPath(backend, problem));
-      status         *= prm.solver.max_itrs == 5000;
-      status         *= std::abs(prm.solver.relative_tolerance - 1.0e-8)
+      const auto prm =
+          apps::ns_forward::loadConfig(configPath(backend, problem));
+      status *= prm.solver.max_itrs == 5000;
+      status *= std::abs(prm.solver.relative_tolerance - 1.0e-8)
                 <= 1.0e-16;
       status *= !prm.mesh_file.empty();
-      status *= !prm.bcs.empty();
+      status *= !prm.boundary_conditions.empty();
     }
   }
 
-  const auto straight = model::ns::loadConfig(
+  const auto straight = apps::ns_forward::loadConfig(
       configPath("resolve", "straighttube"));
-  status *= straight.bcs.size() == 3;
-  status *= straight.bcs[0].tag == 4;
-  status *= straight.bcs[1].tag == 5;
-  status *= straight.bcs[2].tag == 6;
-  status *= straight.bcs[0].velocity.has_value();
-  if (straight.bcs[0].velocity)
+  status *= straight.boundary_conditions.size() == 3;
+  status *= straight.boundary_conditions[0].tag == 4;
+  status *= straight.boundary_conditions[1].tag == 5;
+  status *= straight.boundary_conditions[2].tag == 6;
+  status *= straight.boundary_conditions[0].velocity.has_value();
+  if (straight.boundary_conditions[0].velocity)
   {
-    status *= straight.bcs[0].velocity->qty == "mean_velocity";
-    status *= straight.bcs[0].velocity->time.size() == 5;
+    status *= straight.boundary_conditions[0].velocity->qty == "mean_velocity";
+    status *= straight.boundary_conditions[0].velocity->time.size() == 5;
   }
 
   return status.report();
@@ -64,14 +65,15 @@ TestOutcome shippedCavityResolvesSharedCorners()
 {
   TestStatus status(__func__);
 
-  auto prm       = model::ns::loadConfig(configPath("resolve", "cavity"));
+  auto prm =
+      apps::ns_forward::loadConfig(configPath("resolve", "cavity"));
   prm.time.steps = 1;
-  const model::ns::ForwardProblem prob(prm);
+  const apps::ns_forward::Problem prob(prm);
 
-  const std::set<Index> dofs(prob.fixed.dofs.begin(),
-                             prob.fixed.dofs.end());
+  const std::set<Index> dofs(prob.boundary_data.dofs.begin(),
+                             prob.boundary_data.dofs.end());
   status *= !dofs.empty();
-  status *= static_cast<Index>(dofs.size()) == prob.fixed.dofs.size();
+  status *= static_cast<Index>(dofs.size()) == prob.boundary_data.dofs.size();
 
   return status.report();
 }

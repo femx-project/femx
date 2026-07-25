@@ -11,13 +11,49 @@ if(GIT_FOUND AND EXISTS "${FEMX_APP_SOURCE_DIR}/.git")
     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 endif()
 
+add_library(femx_ns_forward_support)
+add_library(femx::apps::ns_forward ALIAS femx_ns_forward_support)
+
+target_sources(
+  femx_ns_forward_support
+  PRIVATE BoundaryConditions.cpp
+          CommandLine.cpp
+          Config.cpp
+          Monitor.cpp
+          Problem.cpp
+          Solve.cpp
+  PUBLIC BoundaryConditions.hpp
+         CommandLine.hpp
+         Config.hpp
+         Monitor.hpp
+         Problem.hpp
+         Solve.hpp)
+
+target_include_directories(
+  femx_ns_forward_support
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${FEMX_NLOHMANN_JSON_INCLUDE_DIR})
+
+target_compile_definitions(
+  femx_ns_forward_support
+  PUBLIC FEMX_NS_FORWARD_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}")
+
+target_link_libraries(
+  femx_ns_forward_support
+  PUBLIC femx::assembly
+         femx::fem
+         femx::io
+         femx::linalg
+         femx::model::ns
+         femx::runtime
+         femx::state)
+
 function(configure_ns_fwd_app target)
-  target_link_libraries(${target} PRIVATE femx::model::ns femx::femx)
+  target_link_libraries(${target} PRIVATE femx::apps::ns_forward)
 
   target_compile_definitions(
     ${target}
-    PRIVATE FEMX_NAVIERSTOKES_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}"
-            FEMX_GIT_COMMIT="${FEMX_NS_FORWARD_GIT_COMMIT}"
+    PRIVATE FEMX_GIT_COMMIT="${FEMX_NS_FORWARD_GIT_COMMIT}"
             FEMX_CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
             FEMX_CMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
             FEMX_CMAKE_CUDA_ARCHITECTURES="${CMAKE_CUDA_ARCHITECTURES}"

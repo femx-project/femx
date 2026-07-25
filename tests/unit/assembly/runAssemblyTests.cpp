@@ -57,13 +57,6 @@ public:
     vec_handler.resizeOrZero(out, 3);
   }
 
-  void res(const state::HostTimeContext& ctx,
-           HostVector&                   out,
-           CpuContext&) const override
-  {
-    out = ctx.nxt;
-  }
-
   void applyJacT(const state::HostTimeContext&,
                  state::VariableBlock wrt,
                  HostConstVectorView  adj,
@@ -175,7 +168,8 @@ TestOutcome mappedTimeDirichletResidual()
       state::HostTimeHistoryView(history.data(), 1, 3)};
   CpuContext cpu;
 
-  HostVector out;
+  HostVector    out;
+  HostCsrMatrix jac(res.pattern());
   res.initialState(parameters.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{8.0, 14.0, -4.0}});
   const HostVector initial_adj{1.0, 2.0, 3.0};
@@ -184,7 +178,7 @@ TestOutcome mappedTimeDirichletResidual()
       initial_adj.view(), initial_grad.view(), cpu);
   status *= valsNear(initial_grad, std::array<Real, 2>{{5.0, 0.0}});
 
-  res.res(ctx, out, cpu);
+  res.assembleNext(ctx, out, jac, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 
   const HostVector adj{1.0, 5.0, 3.0};

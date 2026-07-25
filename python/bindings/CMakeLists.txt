@@ -55,8 +55,8 @@ foreach(
   endif()
 endforeach()
 
-target_link_libraries(_core PRIVATE femx::fem femx::inverse femx::state
-                                    femx::model::ns)
+target_link_libraries(_core PRIVATE femx::fem femx::inverse femx::io
+                                    femx::state femx::model::ns)
 
 if(TARGET femx_linalg_resolve)
   target_link_libraries(_core PRIVATE femx::linalg_resolve)

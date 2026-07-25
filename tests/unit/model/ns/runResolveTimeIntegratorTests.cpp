@@ -11,7 +11,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/model/ns/NavierStokesModel.hpp>
+#include <femx/model/ns/Model.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 

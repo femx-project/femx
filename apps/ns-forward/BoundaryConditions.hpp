@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ForwardConfig.hpp"
+#include "Config.hpp"
 #include <femx/fem/DirichletBC.hpp>
 
 namespace femx
@@ -11,7 +11,7 @@ class MixedFESpace;
 } // namespace fem
 } // namespace femx
 
-namespace femx::model::ns
+namespace femx::apps::ns_forward
 {
 
 /**
@@ -20,9 +20,9 @@ namespace femx::model::ns
  * Later entries replace earlier values at shared boundary nodes. This lets a
  * wall condition define inlet/outlet rims and cavity corners explicitly.
  */
-fem::DirichletBC makeDirichletBC(
-    const fem::MixedFESpace& space,
-    const Array<BCsParams>&  bcs,
-    Real                     time);
+fem::DirichletBC makeDirichletBoundaryConditions(
+    const fem::MixedFESpace&              space,
+    const Array<BoundaryConditionConfig>& bcs,
+    Real                                  time);
 
-} // namespace femx::model::ns
+} // namespace femx::apps::ns_forward

@@ -67,6 +67,15 @@ struct AssemblyMapView
   }
 };
 
+using HostAssemblyMapView   = AssemblyMapView<MemorySpace::Host>;
+using DeviceAssemblyMapView = AssemblyMapView<MemorySpace::Device>;
+
+template <MemorySpace Space>
+class AssemblyMap;
+
+using HostAssemblyMap   = AssemblyMap<MemorySpace::Host>;
+using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
+
 /**
  * @brief Runtime element DOFs and local-entry-to-CSR mappings.
  *
@@ -117,15 +126,15 @@ private:
   {
   }
 
-  friend AssemblyMap<MemorySpace::Host> makeAssemblyMap(
+  friend HostAssemblyMap makeAssemblyMap(
       Index                      num_res,
       Index                      num_states,
       const Array<Array<Index>>& res_dofs,
       const Array<Array<Index>>& state_dofs);
 
-  friend void copy(const AssemblyMap<MemorySpace::Host>& src,
-                   AssemblyMap<MemorySpace::Device>&     dst,
-                   CudaContext&                          ctx);
+  friend void copy(const HostAssemblyMap& src,
+                   DeviceAssemblyMap&     dst,
+                   CudaContext&           ctx);
 
 public:
   /** @brief Return the number of mapped elements. */
@@ -205,9 +214,6 @@ private:
   Index max_jac_{0};
 };
 
-using HostAssemblyMap   = AssemblyMap<MemorySpace::Host>;
-using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
-
 /**
  * @brief Build a host assembly map from explicit element DOF tables.
  *
@@ -217,7 +223,7 @@ using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
  * @param state_dofs State DOFs for each element.
  * @return Validated map and its immutable CSR pattern.
  */
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(
+HostAssemblyMap makeAssemblyMap(
     Index                      num_res,
     Index                      num_states,
     const Array<Array<Index>>& res_dofs,
@@ -228,12 +234,11 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(
  * @param res_lyt Element layout for residual rows.
  * @param state_lyt Element layout for state columns.
  */
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(
-    fem::DofLayout res_lyt,
-    fem::DofLayout state_lyt);
+HostAssemblyMap makeAssemblyMap(fem::DofLayout res_lyt,
+                                fem::DofLayout state_lyt);
 
 /** @brief Build a square assembly map using one layout for rows and columns. */
-AssemblyMap<MemorySpace::Host> makeAssemblyMap(fem::DofLayout layout);
+HostAssemblyMap makeAssemblyMap(fem::DofLayout layout);
 
 /**
  * @brief Copy a host assembly map and pattern to device-owned storage.
@@ -241,9 +246,9 @@ AssemblyMap<MemorySpace::Host> makeAssemblyMap(fem::DofLayout layout);
  * The copy is enqueued on `ctx`; keep `src` alive until earlier queued reads
  * have completed.
  */
-void copy(const AssemblyMap<MemorySpace::Host>& src,
-          AssemblyMap<MemorySpace::Device>&     dst,
-          CudaContext&                          ctx);
+void copy(const HostAssemblyMap& src,
+          DeviceAssemblyMap&     dst,
+          CudaContext&           ctx);
 
 } // namespace assembly
 } // namespace femx

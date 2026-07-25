@@ -16,10 +16,8 @@ class GaussQuadrature;
 template <MemorySpace Space>
 class ElementQuadratureData;
 
-using HostElementQuadratureData =
-    ElementQuadratureData<MemorySpace::Host>;
-using DeviceElementQuadratureData =
-    ElementQuadratureData<MemorySpace::Device>;
+using HostElementQuadratureData = ElementQuadratureData<MemorySpace::Host>;
+using DeviceElementQuadratureData = ElementQuadratureData<MemorySpace::Device>;
 
 /**
  * @brief Compute reusable element quadrature data on the Host.
@@ -151,6 +149,24 @@ public:
   FEMX_HOST_DEVICE Real JxW(Index ie, Index iq) const
   {
     return JxW_[ie * num_qpts_ + iq];
+  }
+
+  /** @brief Return the shape-function value storage. */
+  FEMX_HOST_DEVICE const Real* NData() const
+  {
+    return N_.data();
+  }
+
+  /** @brief Return the physical-gradient storage. */
+  FEMX_HOST_DEVICE const Real* dNdxData() const
+  {
+    return dNdx_.data();
+  }
+
+  /** @brief Return the weighted-Jacobian storage. */
+  FEMX_HOST_DEVICE const Real* JxWData() const
+  {
+    return JxW_.data();
   }
 
 private:

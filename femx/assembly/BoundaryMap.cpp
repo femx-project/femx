@@ -20,14 +20,14 @@ void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
-void checkForward(const HostBoundaryMap& map,
-                  const HostCsrMatrix&   mat,
-                  const HostVector&      rhs,
-                  const HostVector&      bc_vals)
+void checkDirichletSystem(const HostBoundaryMap& map,
+                          const HostCsrMatrix&   mat,
+                          const HostVector&      rhs,
+                          const HostVector&      bc_vals)
 {
   checkMat(map, mat);
   require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
-          "BoundaryMap forward vectors have incompatible sizes");
+          "BoundaryMap Dirichlet vectors have incompatible sizes");
   require(&rhs != &bc_vals,
           "BoundaryMap RHS and prescribed values must not alias");
   const HostVector& mat_vals = mat.vals();
@@ -215,15 +215,15 @@ void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals)
   }
 }
 
-void prepareForwardSolve(const HostBoundaryMap& map,
-                         HostCsrMatrix&         solve_mat,
-                         HostVector&            rhs,
-                         const HostVector&      bc_vals)
+void applyDirichletConditions(const HostBoundaryMap& map,
+                              HostCsrMatrix&         mat,
+                              HostVector&            rhs,
+                              const HostVector&      bc_vals)
 {
-  checkForward(map, solve_mat, rhs, bc_vals);
+  checkDirichletSystem(map, mat, rhs, bc_vals);
 
   const auto view = map.view();
-  Real*      vals = solve_mat.valsData();
+  Real*      vals = mat.valsData();
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     const Real bc = bc_vals[ib];
@@ -239,7 +239,7 @@ void prepareForwardSolve(const HostBoundaryMap& map,
     }
   }
 
-  replaceRowsRaw(map, solve_mat, 1.0);
+  replaceRowsRaw(map, mat, 1.0);
   for (Index ib = 0; ib < view.num_bcs; ++ib)
   {
     rhs[view.bcRow(ib)] = bc_vals[ib];
@@ -274,11 +274,11 @@ void zeroBoundary(const DeviceBoundaryMap&,
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
 }
 
-void prepareForwardSolve(const DeviceBoundaryMap&,
-                         DeviceCsrMatrix&,
-                         DeviceVector&,
-                         const DeviceVector&,
-                         CudaContext&)
+void applyDirichletConditions(const DeviceBoundaryMap&,
+                              DeviceCsrMatrix&,
+                              DeviceVector&,
+                              const DeviceVector&,
+                              CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");

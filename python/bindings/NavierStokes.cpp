@@ -19,9 +19,9 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/handler/VectorHandler.hpp>
-#include <femx/model/ns/Config.hpp>
-#include <femx/model/ns/Helper.hpp>
-#include <femx/model/ns/NavierStokesModel.hpp>
+#include <femx/model/ns/FluidProperties.hpp>
+#include <femx/model/ns/StateFields.hpp>
+#include <femx/model/ns/Model.hpp>
 #ifdef FEMX_RESOLVE_USE_CUDA
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
@@ -48,7 +48,7 @@ using femx::HostVector;
 using femx::Index;
 using femx::Real;
 using femx::assembly::HostConstrainedTimeResidual;
-using femx::model::ns::FluidParams;
+using femx::model::ns::FluidProperties;
 using femx::model::ns::NavierStokesModel;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
@@ -1361,17 +1361,17 @@ private:
 
 void bindNavierStokes(py::module_& module)
 {
-  py::class_<FluidParams>(module, "FluidParams")
+  py::class_<FluidProperties>(module, "FluidParams")
       .def(py::init<>())
-      .def_readwrite("density", &FluidParams::rho)
-      .def_readwrite("dynamic_viscosity", &FluidParams::mu);
+      .def_readwrite("density", &FluidProperties::rho)
+      .def_readwrite("dynamic_viscosity", &FluidProperties::mu);
 
   py::class_<NavierStokesModel>(module, "NavierStokesModel")
-      .def(py::init<const std::string&, Index, Real, FluidParams>(),
+      .def(py::init<const std::string&, Index, Real, FluidProperties>(),
            py::arg("mesh_file"),
            py::arg("num_steps"),
            py::arg("dt"),
-           py::arg("fluid") = FluidParams{})
+           py::arg("fluid") = FluidProperties{})
       .def_property_readonly("num_steps", &NavierStokesModel::numSteps)
       .def_property_readonly("num_states", &NavierStokesModel::numStates)
       .def_property_readonly("dt", &NavierStokesModel::dt)

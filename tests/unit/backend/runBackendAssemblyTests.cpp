@@ -70,12 +70,12 @@ Real csrVal(const HostCsrMatrix& mat, Index row, Index col)
   return 0.0;
 }
 
-struct AffineRowOperator
+struct AffineElementKernel
 {
-  void evalRow(const assembly::ElementView<MemorySpace::Host>& in,
-               Index                                           row,
-               Real&                                           res,
-               HostVectorView                                  jac) const
+  void evalRow(const assembly::HostElementView& in,
+               Index                            row,
+               Real&                            res,
+               HostVectorView                   jac) const
   {
     res = in.state[row] + static_cast<Real>(in.ie + 1)
           + in.coords[0];
@@ -86,12 +86,12 @@ struct AffineRowOperator
   }
 };
 
-struct RectangularRowOperator
+struct RectangularElementKernel
 {
-  void evalRow(const assembly::ElementView<MemorySpace::Host>& in,
-               Index                                           row,
-               Real&                                           res,
-               HostVectorView                                  jac) const
+  void evalRow(const assembly::HostElementView& in,
+               Index                            row,
+               Real&                            res,
+               HostVectorView                   jac) const
   {
     res = static_cast<Real>(row + 1);
     for (Index col = 0; col < in.state.size(); ++col)
@@ -103,7 +103,7 @@ struct RectangularRowOperator
   }
 };
 
-struct TimeRowOperator
+struct TimeElementKernel
 {
   template <MemorySpace Space>
   FEMX_HOST_DEVICE void evalRow(
@@ -204,7 +204,7 @@ TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
   const HostVector state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   CpuContext       ctx;
 
-  assembly::assemble(AffineRowOperator{},
+  assembly::assemble(AffineElementKernel{},
                      geom,
                      map,
                      state,
@@ -240,7 +240,7 @@ TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
   HostVector       res;
   HostCsrMatrix    jac(map.pattern());
   CpuContext       ctx;
-  assembly::assemble(RectangularRowOperator{},
+  assembly::assemble(RectangularElementKernel{},
                      geom,
                      map,
                      state,
@@ -271,13 +271,15 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   HostCsrMatrix    jac(map.pattern());
   CpuContext       ctx;
 
-  assembly::assemble(TimeRowOperator{},
+  assembly::assemble(TimeElementKernel{},
                      3,
                      2,
                      state::VariableBlock::NextState,
                      map,
-                     hist,
-                     nxt,
+                     0,
+                     map.numElems(),
+                     hist.view(),
+                     nxt.view(),
                      res,
                      jac,
                      ctx);
@@ -286,19 +288,80 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   status *= near(csrVal(jac, 1, 1), 2.0);
   status *= near(csrVal(jac, 2, 2), 1.0);
 
-  assembly::assemble(TimeRowOperator{},
+  assembly::assemble(TimeElementKernel{},
                      3,
                      2,
                      state::VariableBlock::hist(0),
                      map,
-                     hist,
-                     nxt,
+                     0,
+                     map.numElems(),
+                     hist.view(),
+                     nxt.view(),
                      res,
                      jac,
                      ctx);
   status *= near(csrVal(jac, 0, 0), -2.0);
   status *= near(csrVal(jac, 1, 1), -4.0);
   status *= near(csrVal(jac, 2, 2), -2.0);
+
+  return status.report();
+}
+
+TestOutcome cpuTimeAssemblySupportsElementRangesAndResidualOnly()
+{
+  TestStatus status(__func__);
+
+  const auto map = assembly::makeAssemblyMap(
+      3,
+      3,
+      Array<Array<Index>>{{0, 1}, {1, 2}},
+      Array<Array<Index>>{{0, 1}, {1, 2}});
+  const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector nxt{7.0, 8.0, 9.0};
+  HostVector       res;
+  HostCsrMatrix    jac(map.pattern());
+  CpuContext       ctx;
+
+  assembly::assemble(TimeElementKernel{},
+                     3,
+                     2,
+                     state::VariableBlock::NextState,
+                     map,
+                     0,
+                     1,
+                     hist.view(),
+                     nxt.view(),
+                     res,
+                     jac,
+                     ctx);
+  status *= valsEqual(res, std::array<Real, 3>{{10.0, 9.5, 0.0}});
+  status *= near(csrVal(jac, 0, 0), 1.0);
+  status *= near(csrVal(jac, 1, 1), 1.0);
+  status *= near(csrVal(jac, 2, 2), 0.0);
+
+  assembly::assembleResidual(TimeElementKernel{},
+                             3,
+                             2,
+                             map,
+                             0,
+                             1,
+                             hist.view(),
+                             nxt.view(),
+                             res,
+                             ctx);
+  status *= valsEqual(res, std::array<Real, 3>{{10.0, 9.5, 0.0}});
+
+  assembly::assembleResidual(TimeElementKernel{},
+                             3,
+                             2,
+                             map,
+                             0,
+                             map.numElems(),
+                             hist.view(),
+                             nxt.view(),
+                             res,
+                             ctx);
+  status *= valsEqual(res, std::array<Real, 3>{{10.0, 20.0, 10.0}});
 
   return status.report();
 }
@@ -320,7 +383,7 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
   HostVector       res;
   const HostVector state{1.0, 2.0, 3.0, 4.0};
   CpuContext       ctx;
-  assembly::assemble(AffineRowOperator{},
+  assembly::assemble(AffineElementKernel{},
                      geom,
                      moved_map,
                      state,
@@ -395,7 +458,7 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   bool alias_rejected = false;
   try
   {
-    assembly::assemble(AffineRowOperator{},
+    assembly::assemble(AffineElementKernel{},
                        geom,
                        map,
                        alias_vec,
@@ -413,7 +476,7 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   bool       mat_alias_rejected = false;
   try
   {
-    assembly::assemble(AffineRowOperator{},
+    assembly::assemble(AffineElementKernel{},
                        geom,
                        map,
                        distinct_state,
@@ -442,6 +505,8 @@ int main()
   results += femx::tests::cpuAssemblyUsesRuntimeMapAndSharedGraph();
   results += femx::tests::cpuAssemblySupportsRectangularLocalLayouts();
   results += femx::tests::cpuTimeAssemblyHandlesHistoryBlocks();
+  results +=
+      femx::tests::cpuTimeAssemblySupportsElementRangesAndResidualOnly();
   results += femx::tests::matGraphSurvivesAssemblyMapMove();
   results += femx::tests::hostCsrAssemblyUsesAssemblyMapMapping();
   results += femx::tests::malformedGraphsAndAssemblyAliasesAreRejected();

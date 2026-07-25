@@ -322,19 +322,6 @@ public:
     }
   }
 
-  void res(const HostTimeContext& ctx,
-           HostVector&            out,
-           femx::CpuContext&) const override
-  {
-    py::gil_scoped_acquire gil;
-    const py::function     override = py::get_override(this, "residual");
-    if (!override)
-    {
-      throw std::runtime_error("TimeResidual.residual() is not implemented");
-    }
-    copyArray(override(ctxData(ctx)), out, "residual result");
-  }
-
   void applyJacT(const HostTimeContext& ctx,
                  VariableBlock          wrt,
                  HostConstVectorView    adj,
@@ -359,7 +346,7 @@ public:
                     femx::HostCsrMatrix&   jac,
                     femx::CpuContext&      cpu) const override
   {
-    res(ctx, res_out, cpu);
+    evaluateResidual(ctx, res_out);
     updateGraph();
     if (jac.pattern().layoutId() != pattern_.layoutId())
     {
@@ -463,6 +450,17 @@ public:
   }
 
 private:
+  void evaluateResidual(const HostTimeContext& ctx, HostVector& out) const
+  {
+    py::gil_scoped_acquire gil;
+    const py::function     override = py::get_override(this, "residual");
+    if (!override)
+    {
+      throw std::runtime_error("TimeResidual.residual() is not implemented");
+    }
+    copyArray(override(ctxData(ctx)), out, "residual result");
+  }
+
   void updateGraph() const
   {
     const TimeDims dim = dims();

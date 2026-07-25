@@ -6,13 +6,14 @@
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
+#include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Geometry.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/Components.hpp>
-#include <femx/model/ns/Config.hpp>
+#include <femx/model/ns/ElementKernel.hpp>
+#include <femx/model/ns/FluidProperties.hpp>
 #include <femx/state/TimeResidual.hpp>
 
 #if defined(FEMX_HAS_PETSC)
@@ -31,12 +32,12 @@ public:
   NavierStokesModel(const std::string& path,
                     Index              nstep,
                     Real               dt,
-                    FluidParams        fluid);
+                    FluidProperties    fluid);
 
-  NavierStokesModel(fem::Mesh   mesh,
-                    Index       nstep,
-                    Real        dt,
-                    FluidParams fluid);
+  NavierStokesModel(fem::Mesh       mesh,
+                    Index           nstep,
+                    Real            dt,
+                    FluidProperties fluid);
 
   /** @brief Release the model-owned residual implementation. */
   ~NavierStokesModel();
@@ -50,7 +51,7 @@ public:
   Index numStates() const;
   Real  dt() const;
 
-  const FluidParams& fluid() const;
+  const FluidProperties& fluid() const;
 
   const fem::Mesh& mesh() const;
 
@@ -68,10 +69,10 @@ public:
   const assembly::HostAssemblyMap& map() const;
 
   /** @brief Return flattened element values reusable by either backend. */
-  const HostNavierData& data() const;
+  const fem::HostElementQuadratureData& data() const;
 
   /** @brief Return the Host row operator for generic time assembly. */
-  NavierOperator<MemorySpace::Host> op() const;
+  HostElementKernel elementKernel() const;
 
   Array<Index> velocityDofs() const;
   Array<Index> velocityBoundaryDofs(Index boundary_tag) const;
@@ -92,8 +93,8 @@ private:
   std::unique_ptr<fem::FiniteElement> element_;
   fem::MixedFESpace                   space_;
   fem::HostGeometry                   geometry_;
-  FluidParams                         fluid_;
-  HostNavierData                      data_;
+  FluidProperties                     fluid_;
+  fem::HostElementQuadratureData      data_;
   assembly::HostAssemblyMap           map_;
   std::unique_ptr<Residual>           res_;
   Index                               ie_begin_{0};

@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "Components.hpp"
+#include "ElementKernel.hpp"
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/common/Checks.hpp>
@@ -23,14 +23,14 @@ void checkRange(Index                              ie_begin,
 
 template <Index NumQpts, Index NumNodes, Index Dim>
 __global__ void histVjpKernel(
-    NavierOperator<MemorySpace::Device>            op,
-    Index                                          step,
-    Index                                          lag,
-    assembly::AssemblyMapView<MemorySpace::Device> map,
-    const Real*                                    hist,
-    const Real*                                    nxt,
-    const Real*                                    adj,
-    Real*                                          out)
+    DeviceElementKernel             kernel,
+    Index                           step,
+    Index                           lag,
+    assembly::DeviceAssemblyMapView map,
+    const Real*                     hist,
+    const Real*                     nxt,
+    const Real*                     adj,
+    Real*                           out)
 {
   constexpr Index ndof       = (Dim + 1) * NumNodes;
   constexpr Index elem_tasks = ndof * ndof;
@@ -62,10 +62,10 @@ __global__ void histVjpKernel(
   {
     nxt_e[col] = nxt[map.stateDof(ie, col)];
   }
-  const auto data = op.data();
+  const auto data = kernel.data();
   const Real val  = __enzyme_fwddiff<Real>(
       reinterpret_cast<void*>(
-          evalNavierRowAdj<MemorySpace::Device, NumQpts, NumNodes, Dim>),
+          evalResRowAdj<MemorySpace::Device, NumQpts, NumNodes, Dim>),
       enzyme_const,
       data.numElems(),
       enzyme_const,
@@ -75,11 +75,11 @@ __global__ void histVjpKernel(
       enzyme_const,
       data.JxWData(),
       enzyme_const,
-      op.fluid().rho,
+      kernel.fluid().rho,
       enzyme_const,
-      op.fluid().mu,
+      kernel.fluid().mu,
       enzyme_const,
-      op.dt(),
+      kernel.dt(),
       enzyme_const,
       ie,
       enzyme_const,
@@ -99,15 +99,15 @@ __global__ void histVjpKernel(
 
 template <Index NumQpts, Index NumNodes, Index Dim>
 void launchHistVjp(
-    const NavierOperator<MemorySpace::Device>& op,
-    Index                                      step,
-    Index                                      lag,
-    const assembly::DeviceAssemblyMap&         map,
-    DeviceConstVectorView                      hist,
-    DeviceConstVectorView                      nxt,
-    DeviceConstVectorView                      adj,
-    DeviceVector&                              out,
-    CudaContext&                               ctx)
+    const DeviceElementKernel&         kernel,
+    Index                              step,
+    Index                              lag,
+    const assembly::DeviceAssemblyMap& map,
+    DeviceConstVectorView              hist,
+    DeviceConstVectorView              nxt,
+    DeviceConstVectorView              adj,
+    DeviceVector&                      out,
+    CudaContext&                       ctx)
 {
   constexpr Index        ndof    = (Dim + 1) * NumNodes;
   constexpr unsigned int threads = 128;
@@ -115,7 +115,7 @@ void launchHistVjp(
   const unsigned int     blocks  = cuda::numBlocks(tasks, threads);
   const auto             stream  = static_cast<cudaStream_t>(ctx.stream());
   histVjpKernel<NumQpts, NumNodes, Dim>
-      <<<blocks, threads, 0, stream>>>(op,
+      <<<blocks, threads, 0, stream>>>(kernel,
                                        step,
                                        lag,
                                        map.view(),
@@ -129,21 +129,21 @@ void launchHistVjp(
 
 } // namespace
 
-void assembleNavierNext(
-    const NavierOperator<MemorySpace::Device>& op,
-    Index                                      step,
-    Index                                      num_hist,
-    Index                                      ie_begin,
-    Index                                      ie_end,
-    const assembly::DeviceAssemblyMap&         map,
-    DeviceConstVectorView                      hist,
-    DeviceConstVectorView                      nxt,
-    DeviceVector&                              res,
-    DeviceCsrMatrix&                           jac,
-    CudaContext&                               ctx)
+void assembleNext(
+    const DeviceElementKernel&         kernel,
+    Index                              step,
+    Index                              num_hist,
+    Index                              ie_begin,
+    Index                              ie_end,
+    const assembly::DeviceAssemblyMap& map,
+    DeviceConstVectorView              hist,
+    DeviceConstVectorView              nxt,
+    DeviceVector&                      res,
+    DeviceCsrMatrix&                   jac,
+    CudaContext&                       ctx)
 {
   checkRange(ie_begin, ie_end, map);
-  assembly::assemble(op,
+  assembly::assemble(kernel,
                      step,
                      num_hist,
                      state::VariableBlock::NextState,
@@ -155,36 +155,19 @@ void assembleNavierNext(
                      ctx);
 }
 
-void evalNavierRes(
-    const NavierOperator<MemorySpace::Device>& op,
-    Index                                      step,
-    Index                                      num_hist,
-    Index                                      ie_begin,
-    Index                                      ie_end,
-    const assembly::DeviceAssemblyMap&         map,
-    DeviceConstVectorView                      hist,
-    DeviceConstVectorView                      nxt,
-    DeviceVector&                              out,
-    CudaContext&                               ctx)
-{
-  checkRange(ie_begin, ie_end, map);
-  assembly::assembleResidual(
-      op, step, num_hist, map, hist, nxt, out, ctx);
-}
-
-void applyNavierHistJacT(
-    const NavierOperator<MemorySpace::Device>& op,
-    Index                                      step,
-    Index                                      num_hist,
-    Index                                      lag,
-    Index                                      ie_begin,
-    Index                                      ie_end,
-    const assembly::DeviceAssemblyMap&         map,
-    DeviceConstVectorView                      hist,
-    DeviceConstVectorView                      nxt,
-    DeviceConstVectorView                      adj,
-    DeviceVector&                              out,
-    CudaContext&                               ctx)
+void applyHistJacT(
+    const DeviceElementKernel&         kernel,
+    Index                              step,
+    Index                              num_hist,
+    Index                              lag,
+    Index                              ie_begin,
+    Index                              ie_end,
+    const assembly::DeviceAssemblyMap& map,
+    DeviceConstVectorView              hist,
+    DeviceConstVectorView              nxt,
+    DeviceConstVectorView              adj,
+    DeviceVector&                      out,
+    CudaContext&                       ctx)
 {
   checkRange(ie_begin, ie_end, map);
   require(num_hist == 2 && lag >= 0 && lag < num_hist,
@@ -207,20 +190,21 @@ void applyNavierHistJacT(
   {
     return;
   }
-  const auto data = op.data();
-  if (data.numQpts() == 4 && data.numNodes() == 4 && data.dim() == 2)
+  const auto data = kernel.data();
+  if (data.numQuadraturePoints() == 4 && data.numShapes() == 4 && data.dim() == 2)
   {
-    launchHistVjp<4, 4, 2>(op, step, lag, map, hist, nxt, adj, out, ctx);
+    launchHistVjp<4, 4, 2>(
+        kernel, step, lag, map, hist, nxt, adj, out, ctx);
   }
-  else if (data.numQpts() == 3 && data.numNodes() == 3
-           && data.dim() == 2)
+  else if (data.numQuadraturePoints() == 3 && data.numShapes() == 3 && data.dim() == 2)
   {
-    launchHistVjp<3, 3, 2>(op, step, lag, map, hist, nxt, adj, out, ctx);
+    launchHistVjp<3, 3, 2>(
+        kernel, step, lag, map, hist, nxt, adj, out, ctx);
   }
-  else if (data.numQpts() == 4 && data.numNodes() == 4
-           && data.dim() == 3)
+  else if (data.numQuadraturePoints() == 4 && data.numShapes() == 4 && data.dim() == 3)
   {
-    launchHistVjp<4, 4, 3>(op, step, lag, map, hist, nxt, adj, out, ctx);
+    launchHistVjp<4, 4, 3>(
+        kernel, step, lag, map, hist, nxt, adj, out, ctx);
   }
   else
   {
@@ -229,7 +213,7 @@ void applyNavierHistJacT(
   }
   cuda::checkLastError();
 #else
-  (void) op;
+  (void) kernel;
   (void) step;
   throw std::runtime_error(
       "CUDA Navier history VJP requires Enzyme. Configure with "
