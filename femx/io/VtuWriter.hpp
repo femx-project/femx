@@ -33,9 +33,9 @@ public:
    */
   struct PointField
   {
-    std::string       name;          ///< VTK field name.
-    Index             num_comp = 1;  ///< Number of components per point.
-    const HostVector* vals{nullptr}; ///< Field values.
+    std::string             name;          ///< VTK field name.
+    Index                   num_comp = 1;  ///< Number of components per point.
+    const HostVector<Real>* vals{nullptr}; ///< Field values.
   };
 
   /**
@@ -46,9 +46,9 @@ public:
    * @param[in] fields - Point data fields with mesh.numNodes() entries per
    * component.
    */
-  void writePointData(const std::string&       fname,
-                      const fem::Mesh&         mesh,
-                      const Array<PointField>& fields) const;
+  void writePointData(const std::string&            fname,
+                      const fem::Mesh&              mesh,
+                      const HostVector<PointField>& fields) const;
 
   /**
    * @brief Write a point cloud as vertex cells with optional point fields.
@@ -58,9 +58,9 @@ public:
    * @param[in] fields - Point data fields with points.size() entries per
    * component.
    */
-  void writePointCloud(const std::string&       fname,
-                       const Array<Point3>&     points,
-                       const Array<PointField>& fields) const;
+  void writePointCloud(const std::string&            fname,
+                       const HostVector<Point3>&     points,
+                       const HostVector<PointField>& fields) const;
 };
 
 } // namespace io

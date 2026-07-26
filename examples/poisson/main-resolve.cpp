@@ -28,11 +28,11 @@ namespace
 
 void solveHost(const ExampleHelper&         helper,
                const PoissonForwardProblem& problem,
-               HostVector&                  x,
+               HostVector<Real>&            x,
                Real&                        res_norm)
 {
-  HostCsrMatrix mat(problem.map().pattern());
-  HostVector    rhs;
+  HostCsrMatrix    mat(problem.map().pattern());
+  HostVector<Real> rhs;
   problem.assemble(mat, rhs);
 
   ReSolveLinearSolver solver;
@@ -44,7 +44,7 @@ void solveHost(const ExampleHelper&         helper,
 #if defined(FEMX_RESOLVE_USE_CUDA)
 void solveDevice(const ExampleHelper&         helper,
                  const PoissonForwardProblem& problem,
-                 HostVector&                  x,
+                 HostVector<Real>&            x,
                  Real&                        res_norm)
 {
   CudaContext       ctx;
@@ -59,10 +59,10 @@ void solveDevice(const ExampleHelper&         helper,
   assembly::copy(problem.map(), map, ctx);
   assembly::copy(problem.bcMap(), bc_map, ctx);
 
-  DeviceVector state(problem.numDofs());
-  DeviceVector res;
-  DeviceVector rhs(problem.numDofs());
-  DeviceVector bc_vals;
+  DeviceVector<Real> state(problem.numDofs());
+  DeviceVector<Real> res;
+  DeviceVector<Real> rhs(problem.numDofs());
+  DeviceVector<Real> bc_vals;
   vec_handler.copy(problem.bcVals(), bc_vals);
 
   DeviceCsrMatrix mat(map.pattern());
@@ -77,7 +77,7 @@ void solveDevice(const ExampleHelper&         helper,
   assembly::applyDirichletConditions(bc_map, mat, rhs, bc_vals, ctx);
 
   ReSolveLinearSolver solver;
-  DeviceVector        sol;
+  DeviceVector<Real>  sol;
   solver.solve(mat, rhs, sol, ctx);
 
   res_norm = helper.resNorm(mat, rhs, sol, ctx);
@@ -91,8 +91,8 @@ int run(const Options& opts)
   ExampleHelper         helper("resolve", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostVector x;
-  Real       res_norm = 0.0;
+  HostVector<Real> x;
+  Real             res_norm = 0.0;
   if (opts.backend == MemorySpace::Host)
   {
     solveHost(helper, problem, x, res_norm);

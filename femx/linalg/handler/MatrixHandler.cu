@@ -95,9 +95,9 @@ struct MatrixEntry
 
 struct CsrTransposeEntry
 {
-  std::uint64_t     source_layout{0};
-  DeviceCsrPattern  pattern;
-  DeviceIndexVector source_to_transpose;
+  std::uint64_t       source_layout{0};
+  DeviceCsrPattern    pattern;
+  DeviceVector<Index> source_to_transpose;
 };
 
 struct CsrState
@@ -179,10 +179,10 @@ __global__ void updateTransposeValuesKernel(
   }
 }
 
-void checkCsrMatvec(const DeviceCsrMatrix& mat,
-                    DeviceConstVectorView  x,
-                    DeviceVectorView       y,
-                    bool                   transpose)
+void checkCsrMatvec(const DeviceCsrMatrix&       mat,
+                    DeviceVectorView<const Real> x,
+                    DeviceVectorView<Real>       y,
+                    bool                         transpose)
 {
   require(x.isValid(), "CSR matvec has an invalid input view");
   require(y.isValid(), "CSR matvec has an invalid output view");
@@ -202,8 +202,8 @@ void checkCsrMatvec(const DeviceCsrMatrix& mat,
 }
 
 void checkDenseMatvec(DeviceMatrixView<const Real> mat,
-                      DeviceConstVectorView        x,
-                      DeviceVectorView             y,
+                      DeviceVectorView<const Real> x,
+                      DeviceVectorView<Real>       y,
                       bool                         transpose)
 {
   const Index in_size  = transpose ? mat.rows() : mat.cols();
@@ -220,7 +220,7 @@ void checkDenseMatvec(DeviceMatrixView<const Real> mat,
           "Device dense matvec does not support aliased vectors");
 }
 
-void scaleOutput(DeviceVectorView y, Real beta, CudaContext& ctx)
+void scaleOutput(DeviceVectorView<Real> y, Real beta, CudaContext& ctx)
 {
   if (y.empty() || beta == 1.0)
   {
@@ -282,10 +282,10 @@ CsrTransposeEntry* findTransposeEntry(CsrState&              state,
   return iter == state.transposes.end() ? nullptr : iter->get();
 }
 
-void ensureDescriptors(SpmvOperation&         op,
-                       const DeviceCsrMatrix& mat,
-                       DeviceConstVectorView  x,
-                       DeviceVectorView       y)
+void ensureDescriptors(SpmvOperation&               op,
+                       const DeviceCsrMatrix&       mat,
+                       DeviceVectorView<const Real> x,
+                       DeviceVectorView<Real>       y)
 {
   if (op.matrix == nullptr)
   {
@@ -332,13 +332,13 @@ void ensureDescriptors(SpmvOperation&         op,
   }
 }
 
-void spmv(const DeviceCsrMatrix& mat,
-          DeviceConstVectorView  x,
-          DeviceVectorView       y,
-          CudaContext&           ctx,
-          Real                   alpha,
-          Real                   beta,
-          bool                   transpose)
+void spmv(const DeviceCsrMatrix&       mat,
+          DeviceVectorView<const Real> x,
+          DeviceVectorView<Real>       y,
+          CudaContext&                 ctx,
+          Real                         alpha,
+          Real                         beta,
+          bool                         transpose)
 {
   CsrState&                   state = csrState(ctx);
   std::lock_guard<std::mutex> lock(state.mutex);
@@ -413,9 +413,9 @@ void MatrixHandler<CudaCsrBackend>::transpose(
 
   if (rebuild_pattern)
   {
-    DeviceIndexVector transpose_row_ptr(src.cols() + 1);
-    DeviceIndexVector transpose_col_ind(src.nnz());
-    DeviceIndexVector source_to_transpose(src.nnz());
+    DeviceVector<Index> transpose_row_ptr(src.cols() + 1);
+    DeviceVector<Index> transpose_col_ind(src.nnz());
+    DeviceVector<Index> source_to_transpose(src.nnz());
 
     auto created           = std::make_unique<CsrTransposeEntry>();
     created->source_layout = src.pattern().layoutId();
@@ -511,11 +511,11 @@ void MatrixHandler<CudaCsrBackend>::transpose(
   cuda::checkLastError();
 }
 
-void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix& mat,
-                                           DeviceConstVectorView  x,
-                                           DeviceVectorView       y,
-                                           Real                   alpha,
-                                           Real                   beta) const
+void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&       mat,
+                                           DeviceVectorView<const Real> x,
+                                           DeviceVectorView<Real>       y,
+                                           Real                         alpha,
+                                           Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, false);
   if (mat.rows() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -526,11 +526,11 @@ void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix& mat,
   spmv(mat, x, y, ctx_, alpha, beta, false);
 }
 
-void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix& mat,
-                                            DeviceConstVectorView  x,
-                                            DeviceVectorView       y,
-                                            Real                   alpha,
-                                            Real                   beta) const
+void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&       mat,
+                                            DeviceVectorView<const Real> x,
+                                            DeviceVectorView<Real>       y,
+                                            Real                         alpha,
+                                            Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, true);
   if (mat.cols() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -542,8 +542,8 @@ void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix& mat,
 }
 
 void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real> mat,
-                                           DeviceConstVectorView        x,
-                                           DeviceVectorView             y,
+                                           DeviceVectorView<const Real> x,
+                                           DeviceVectorView<Real>       y,
                                            Real                         alpha,
                                            Real                         beta) const
 {
@@ -576,8 +576,8 @@ void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real> mat,
 }
 
 void MatrixHandler<CudaCsrBackend>::matvecT(DeviceMatrixView<const Real> mat,
-                                            DeviceConstVectorView        x,
-                                            DeviceVectorView             y,
+                                            DeviceVectorView<const Real> x,
+                                            DeviceVectorView<Real>       y,
                                             Real                         alpha,
                                             Real                         beta) const
 {

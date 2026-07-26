@@ -7,12 +7,12 @@ using namespace femx;
 namespace femx::model::ns
 {
 
-void splitStateFields(HostConstVectorView      state,
-                      const fem::MixedFESpace& space,
-                      HostVector&              ux,
-                      HostVector&              uy,
-                      HostVector&              uz,
-                      HostVector&              pressure)
+void splitStateFields(HostVectorView<const Real> state,
+                      const fem::MixedFESpace&   space,
+                      HostVector<Real>&          ux,
+                      HostVector<Real>&          uy,
+                      HostVector<Real>&          uz,
+                      HostVector<Real>&          pressure)
 {
   const fem::Mesh& mesh      = space.mesh();
   const Index      num_nodes = mesh.numNodes();

@@ -79,15 +79,15 @@ std::array<Real, 3> parseVector3(const json&        node,
   return vals;
 }
 
-HostVector parseRealVector(const json&        node,
-                           const std::string& name)
+HostVector<Real> parseRealVector(const json&        node,
+                                 const std::string& name)
 {
   if (!node.is_array())
   {
     throw std::runtime_error(name + " must be an array");
   }
 
-  HostVector vals(static_cast<Index>(node.size()));
+  HostVector<Real> vals(static_cast<Index>(node.size()));
   for (Index i = 0; i < vals.size(); ++i)
   {
     vals[i] = node.at(i).get<Real>();

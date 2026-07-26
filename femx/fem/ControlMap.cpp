@@ -13,19 +13,19 @@ namespace fem
 {
 namespace
 {
-void checkInitVecs(Index               num_states,
-                   Index               num_prm,
-                   HostConstVectorView in,
-                   HostVectorView      out)
+void checkInitVecs(Index                      num_states,
+                   Index                      num_prm,
+                   HostVectorView<const Real> in,
+                   HostVectorView<Real>       out)
 {
   require(in.size() == num_prm && out.size() == num_states,
           "InitialStateMap vector size mismatch");
 }
 
-void checkInitVecs(Index                 num_states,
-                   Index                 num_prm,
-                   DeviceConstVectorView in,
-                   DeviceVectorView      out)
+void checkInitVecs(Index                        num_states,
+                   Index                        num_prm,
+                   DeviceVectorView<const Real> in,
+                   DeviceVectorView<Real>       out)
 {
   require(in.size() == num_prm && out.size() == num_states,
           "InitialStateMap Device vector size mismatch");
@@ -34,21 +34,21 @@ void checkInitVecs(Index                 num_states,
 } // namespace
 
 HostControlMap makeControlMap(
-    Index                      num_steps,
-    Index                      num_states,
-    const DirichletControl&    ctr,
-    Array<Index>               fixed_dofs,
-    HostVector                 fixed_vals,
-    Array<LinearInterpolation> time,
-    Index                      ctr_off,
-    Index                      num_prm)
+    Index                           num_steps,
+    Index                           num_states,
+    const DirichletControl&         ctr,
+    HostVector<Index>               fixed_dofs,
+    HostVector<Real>                fixed_vals,
+    HostVector<LinearInterpolation> time,
+    Index                           ctr_off,
+    Index                           num_prm)
 {
   require(num_steps > 0 && num_states > 0 && ctr_off >= 0,
           "ControlMap received invalid dimensions");
 
-  HostIndexVector dofs;
+  HostVector<Index> dofs;
   dofs.reserve(ctr.numStateDofs() + fixed_dofs.size());
-  Array<char> used(num_states, 0);
+  HostVector<char> used(num_states, 0);
   for (Index dof : ctr.stateDofs())
   {
     require(dof >= 0 && dof < num_states && used[dof] == 0,
@@ -75,10 +75,10 @@ HostControlMap makeControlMap(
   require(time.size() == num_steps,
           "ControlMap time stencil count mismatch");
 
-  HostIndexVector lower(num_steps);
-  HostIndexVector upper(num_steps);
-  HostVector      upper_wts(num_steps);
-  Index           num_levels = 0;
+  HostVector<Index> lower(num_steps);
+  HostVector<Index> upper(num_steps);
+  HostVector<Real>  upper_wts(num_steps);
+  Index             num_levels = 0;
   for (Index step = 0; step < num_steps; ++step)
   {
     require(time[step].isValid(),
@@ -106,7 +106,7 @@ HostControlMap makeControlMap(
   {
     CpuContext                ctx;
     linalg::HostVectorHandler vec_handler(ctx);
-    HostVector                vals(num_steps * num_fixed);
+    HostVector<Real>          vals(num_steps * num_fixed);
     for (Index step = 0; step < num_steps; ++step)
     {
       vec_handler.copy(fixed_vals.view(),
@@ -162,10 +162,10 @@ void copy(const HostControlMap& src,
   dst.compact_.resize(src.control_.rows());
 }
 
-void controlVals(const HostControlMap& map,
-                 Index                 step,
-                 HostConstVectorView   prm,
-                 HostVectorView        out)
+void controlVals(const HostControlMap&      map,
+                 Index                      step,
+                 HostVectorView<const Real> prm,
+                 HostVectorView<Real>       out)
 {
   require(step >= 0 && step < map.num_steps_ && prm.size() == map.num_prm_
               && out.size() == map.numBcs(),
@@ -176,7 +176,7 @@ void controlVals(const HostControlMap& map,
   const Real                hi_wt      = map.upper_wts_[step];
   const Real                lo_wt      = 1.0 - hi_wt;
   const Index               block      = map.control_.cols();
-  HostVectorView            controlled = out.subview(0, map.control_.rows());
+  HostVectorView<Real>      controlled = out.subview(0, map.control_.rows());
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   linalg::HostMatrixHandler mat_handler(ctx);
@@ -198,11 +198,11 @@ void controlVals(const HostControlMap& map,
                    out.subview(map.control_.rows(), map.num_fixed_));
 }
 
-void controlVals(const DeviceControlMap& map,
-                 Index                   step,
-                 DeviceConstVectorView   prm,
-                 DeviceVectorView        out,
-                 CudaContext&            ctx)
+void controlVals(const DeviceControlMap&      map,
+                 Index                        step,
+                 DeviceVectorView<const Real> prm,
+                 DeviceVectorView<Real>       out,
+                 CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -210,12 +210,12 @@ void controlVals(const DeviceControlMap& map,
               && out.size() == map.numBcs(),
           "ControlMap Device vector size mismatch");
 
-  const Index      lo         = map.lower_[step];
-  const Index      hi         = map.upper_[step];
-  const Real       hi_wt      = map.upper_wts_[step];
-  const Real       lo_wt      = 1.0 - hi_wt;
-  const Index      block      = map.control_.cols();
-  DeviceVectorView controlled = out.subview(0, map.control_.rows());
+  const Index            lo         = map.lower_[step];
+  const Index            hi         = map.upper_[step];
+  const Real             hi_wt      = map.upper_wts_[step];
+  const Real             lo_wt      = 1.0 - hi_wt;
+  const Index            block      = map.control_.cols();
+  DeviceVectorView<Real> controlled = out.subview(0, map.control_.rows());
   mat_handler.matvec(map.control_,
                      prm.subview(map.ctr_off_ + lo * block, block),
                      controlled,
@@ -234,10 +234,10 @@ void controlVals(const DeviceControlMap& map,
                    out.subview(map.control_.rows(), map.num_fixed_));
 }
 
-void controlJac(const HostControlMap& map,
-                Index                 step,
-                HostConstVectorView   dir,
-                HostVectorView        out)
+void controlJac(const HostControlMap&      map,
+                Index                      step,
+                HostVectorView<const Real> dir,
+                HostVectorView<Real>       out)
 {
   require(step >= 0 && step < map.num_steps_ && dir.size() == map.num_prm_
               && out.size() == map.num_states_,
@@ -270,11 +270,11 @@ void controlJac(const HostControlMap& map,
                       out);
 }
 
-void controlJac(const DeviceControlMap& map,
-                Index                   step,
-                DeviceConstVectorView   dir,
-                DeviceVectorView        out,
-                CudaContext&            ctx)
+void controlJac(const DeviceControlMap&      map,
+                Index                        step,
+                DeviceVectorView<const Real> dir,
+                DeviceVectorView<Real>       out,
+                CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -306,10 +306,10 @@ void controlJac(const DeviceControlMap& map,
                       out);
 }
 
-void addControlJacT(const HostControlMap& map,
-                    Index                 step,
-                    HostConstVectorView   adj,
-                    HostVectorView        grad)
+void addControlJacT(const HostControlMap&      map,
+                    Index                      step,
+                    HostVectorView<const Real> adj,
+                    HostVectorView<Real>       grad)
 {
   require(step >= 0 && step < map.num_steps_ && adj.size() == map.num_states_
               && grad.size() == map.num_prm_,
@@ -341,11 +341,11 @@ void addControlJacT(const HostControlMap& map,
   }
 }
 
-void addControlJacT(const DeviceControlMap& map,
-                    Index                   step,
-                    DeviceConstVectorView   adj,
-                    DeviceVectorView        grad,
-                    CudaContext&            ctx)
+void addControlJacT(const DeviceControlMap&      map,
+                    Index                        step,
+                    DeviceVectorView<const Real> adj,
+                    DeviceVectorView<Real>       grad,
+                    CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -376,7 +376,7 @@ void addControlJacT(const DeviceControlMap& map,
   }
 }
 
-HostInitialStateMap makeInitialStateMap(HostVector              mean,
+HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
                                         DenseMatrix             modes,
                                         const DirichletControl& ctr,
                                         Index                   init_off,
@@ -400,10 +400,10 @@ HostInitialStateMap makeInitialStateMap(HostVector              mean,
     }
   }
 
-  HostVector                flat_modes(modes.size());
+  HostVector<Real>          flat_modes(modes.size());
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
-  vec_handler.copy(HostConstVectorView(modes.data(), modes.size()),
+  vec_handler.copy(HostVectorView<const Real>(modes.data(), modes.size()),
                    flat_modes.view());
   HostInitialStateMap out;
   out.num_states_ = mean.size();
@@ -444,8 +444,8 @@ void copy(const HostInitialStateMap& src,
 }
 
 void initialState(const HostInitialStateMap& map,
-                  HostConstVectorView        prm,
-                  HostVectorView             out)
+                  HostVectorView<const Real> prm,
+                  HostVectorView<Real>       out)
 {
   checkInitVecs(map.num_states_, map.num_prm_, prm, out);
   CpuContext                ctx;
@@ -472,8 +472,8 @@ void initialState(const HostInitialStateMap& map,
 }
 
 void initialState(const DeviceInitialStateMap& map,
-                  DeviceConstVectorView        prm,
-                  DeviceVectorView             out,
+                  DeviceVectorView<const Real> prm,
+                  DeviceVectorView<Real>       out,
                   CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
@@ -500,8 +500,8 @@ void initialState(const DeviceInitialStateMap& map,
 }
 
 void addInitialJacT(const HostInitialStateMap& map,
-                    HostConstVectorView        adj,
-                    HostVectorView             grad)
+                    HostVectorView<const Real> adj,
+                    HostVectorView<Real>       grad)
 {
   checkInitVecs(map.num_prm_, map.num_states_, adj, grad);
   CpuContext                ctx;
@@ -529,8 +529,8 @@ void addInitialJacT(const HostInitialStateMap& map,
 }
 
 void addInitialJacT(const DeviceInitialStateMap& map,
-                    DeviceConstVectorView        adj,
-                    DeviceVectorView             grad,
+                    DeviceVectorView<const Real> adj,
+                    DeviceVectorView<Real>       grad,
                     CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);

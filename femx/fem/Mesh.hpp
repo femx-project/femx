@@ -35,12 +35,12 @@ public:
    */
   struct BoundaryFacet
   {
-    Index          dim  = 0;                        ///< Topological dimension of the facet.
-    Index          etag = 0;                        ///< Element tag from the mesh file.
-    Index          ptag = 0;                        ///< Physical boundary tag.
-    std::string    pname;                           ///< Physical boundary name.
-    Element::Shape shape = Element::Shape::Unknown; ///< Facet element shape.
-    Array<Index>   nids;                            ///< Mesh-node ids on the facet.
+    Index             dim  = 0;                        ///< Topological dimension of the facet.
+    Index             etag = 0;                        ///< Element tag from the mesh file.
+    Index             ptag = 0;                        ///< Physical boundary tag.
+    std::string       pname;                           ///< Physical boundary name.
+    Element::Shape    shape = Element::Shape::Unknown; ///< Facet element shape.
+    HostVector<Index> nids;                            ///< Mesh-node ids on the facet.
   };
 
   Mesh() = default;
@@ -83,7 +83,7 @@ public:
     return elems_.size();
   }
 
-  const Array<Element>& elems() const noexcept
+  const HostVector<Element>& elems() const noexcept
   {
     return elems_;
   }
@@ -93,14 +93,14 @@ public:
     return elems_[ie];
   }
 
-  const Array<BoundaryFacet>& boundaryFacets() const noexcept
+  const HostVector<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;
   }
 
-  Array<BoundaryFacet> boundaryFacets(const std::string& pname) const
+  HostVector<BoundaryFacet> boundaryFacets(const std::string& pname) const
   {
-    Array<BoundaryFacet> facets;
+    HostVector<BoundaryFacet> facets;
     for (const auto& facet : boundary_facets_)
     {
       if (facet.pname == pname)
@@ -143,7 +143,7 @@ public:
   }
 
   /** @brief Add one element using mesh node ids. */
-  void addElem(const Array<Index>& nids)
+  void addElem(const HostVector<Index>& nids)
   {
     addElem(nids, Element::Shape::Unknown, dim_, 0, 0, {});
   }
@@ -158,14 +158,14 @@ public:
    * @param[in] ptag - Physical group tag.
    * @param[in] pname - Physical group name.
    */
-  void addElem(const Array<Index>& nids,
-               Element::Shape      shape,
-               Index               edim,
-               Index               etag,
-               Index               ptag,
-               std::string         pname)
+  void addElem(const HostVector<Index>& nids,
+               Element::Shape           shape,
+               Index                    edim,
+               Index                    etag,
+               Index                    ptag,
+               std::string              pname)
   {
-    Array<Node> cn;
+    HostVector<Node> cn;
     cn.reserve(nids.size());
     for (Index in : nids)
     {
@@ -193,10 +193,10 @@ public:
   }
 
 private:
-  Index                dim_{0};
-  Array<Node>          nodes_;
-  Array<Element>       elems_;
-  Array<BoundaryFacet> boundary_facets_;
+  Index                     dim_{0};
+  HostVector<Node>          nodes_;
+  HostVector<Element>       elems_;
+  HostVector<BoundaryFacet> boundary_facets_;
   std::map<std::pair<Index, Index>, std::string>
       physical_names_;
 };

@@ -28,10 +28,10 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
-  void solve(const HostCsrMatrix& mat,
-             const HostVector&    rhs,
-             HostVector&          out,
-             CpuContext&          ctx) override;
+  void solve(const HostCsrMatrix&    mat,
+             const HostVector<Real>& rhs,
+             HostVector<Real>&       out,
+             CpuContext&             ctx) override;
 
   /**
    * @brief Solve a transposed Host CSR system through dense factorization.
@@ -43,20 +43,20 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
-  void solveT(const HostCsrMatrix& mat,
-              const HostVector&    rhs,
-              HostVector&          out,
-              CpuContext&          ctx) override;
+  void solveT(const HostCsrMatrix&    mat,
+              const HostVector<Real>& rhs,
+              HostVector<Real>&       out,
+              CpuContext&             ctx) override;
 
 private:
   void sample(const HostCsrMatrix& mat,
               bool                 transpose,
               DenseMatrix&         dense) const;
 
-  void solveDense(DenseMatrix       mat,
-                  const HostVector& rhs,
-                  HostVector&       out,
-                  CpuContext&       ctx) const;
+  void solveDense(DenseMatrix             mat,
+                  const HostVector<Real>& rhs,
+                  HostVector<Real>&       out,
+                  CpuContext&             ctx) const;
 
   Real pivot_tolerance_{1.0e-14}; ///< Minimum accepted pivot magnitude.
 };

@@ -127,8 +127,8 @@ Index bufferSize(uint64_t bytes, const char* label)
 template <typename T>
 std::string binaryBase64(const T* data, Index count, const char* label)
 {
-  const uint64_t       bytes = dataBytes(count, sizeof(T), label);
-  Array<unsigned char> buffer(bufferSize(bytes, label));
+  const uint64_t            bytes = dataBytes(count, sizeof(T), label);
+  HostVector<unsigned char> buffer(bufferSize(bytes, label));
   std::memcpy(buffer.data(), &bytes, sizeof(bytes));
   if (bytes > 0)
   {
@@ -145,9 +145,9 @@ std::string binaryBase64(const Vals& vals, const char* label)
   return binaryBase64(vals.data(), vals.size(), label);
 }
 
-HostVector pointVals(const Mesh& mesh)
+HostVector<Real> pointVals(const Mesh& mesh)
 {
-  HostVector vals(mesh.numNodes() * 3);
+  HostVector<Real> vals(mesh.numNodes() * 3);
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
     const auto& node = mesh.node(in);
@@ -158,9 +158,9 @@ HostVector pointVals(const Mesh& mesh)
   return vals;
 }
 
-HostVector pointVals(const Array<Point3>& points)
+HostVector<Real> pointVals(const HostVector<Point3>& points)
 {
-  HostVector vals(points.size() * 3);
+  HostVector<Real> vals(points.size() * 3);
   for (Index in = 0; in < points.size(); ++in)
   {
     vals[3 * in]     = points[in][0];
@@ -170,7 +170,7 @@ HostVector pointVals(const Array<Point3>& points)
   return vals;
 }
 
-Array<int64_t> connectivityVals(const Mesh& mesh)
+HostVector<int64_t> connectivityVals(const Mesh& mesh)
 {
   Index num_node_ids = 0;
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
@@ -178,7 +178,7 @@ Array<int64_t> connectivityVals(const Mesh& mesh)
     num_node_ids += mesh.elem(ie).numNodes();
   }
 
-  Array<int64_t> vals;
+  HostVector<int64_t> vals;
   vals.reserve(num_node_ids);
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
@@ -191,9 +191,9 @@ Array<int64_t> connectivityVals(const Mesh& mesh)
   return vals;
 }
 
-Array<int64_t> vertexConnectivityVals(Index num_points)
+HostVector<int64_t> vertexConnectivityVals(Index num_points)
 {
-  Array<int64_t> vals(num_points);
+  HostVector<int64_t> vals(num_points);
   for (Index i = 0; i < num_points; ++i)
   {
     vals[i] = static_cast<int64_t>(i);
@@ -201,10 +201,10 @@ Array<int64_t> vertexConnectivityVals(Index num_points)
   return vals;
 }
 
-Array<int64_t> offsetVals(const Mesh& mesh)
+HostVector<int64_t> offsetVals(const Mesh& mesh)
 {
-  Array<int64_t> vals(mesh.numElems());
-  int64_t        offset = 0;
+  HostVector<int64_t> vals(mesh.numElems());
+  int64_t             offset = 0;
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     offset   += static_cast<int64_t>(mesh.elem(ie).numNodes());
@@ -213,9 +213,9 @@ Array<int64_t> offsetVals(const Mesh& mesh)
   return vals;
 }
 
-Array<int64_t> vertexOffsetVals(Index num_points)
+HostVector<int64_t> vertexOffsetVals(Index num_points)
 {
-  Array<int64_t> vals(num_points);
+  HostVector<int64_t> vals(num_points);
   for (Index i = 0; i < num_points; ++i)
   {
     vals[i] = static_cast<int64_t>(i + 1);
@@ -223,9 +223,9 @@ Array<int64_t> vertexOffsetVals(Index num_points)
   return vals;
 }
 
-Array<uint8_t> cellTypeVals(const Mesh& mesh)
+HostVector<uint8_t> cellTypeVals(const Mesh& mesh)
 {
-  Array<uint8_t> vals(mesh.numElems());
+  HostVector<uint8_t> vals(mesh.numElems());
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     vals[ie] = static_cast<uint8_t>(vtkCellType(mesh.elem(ie).shape()));
@@ -233,9 +233,9 @@ Array<uint8_t> cellTypeVals(const Mesh& mesh)
   return vals;
 }
 
-Array<uint8_t> vertexCellTypeVals(Index num_points)
+HostVector<uint8_t> vertexCellTypeVals(Index num_points)
 {
-  return Array<uint8_t>(num_points, 1);
+  return HostVector<uint8_t>(num_points, 1);
 }
 
 void checkField(Index num_points, const VtuWriter::PointField& field)
@@ -258,14 +258,14 @@ void checkField(Index num_points, const VtuWriter::PointField& field)
   }
 }
 
-void writeUnstructuredGrid(const std::string&                  fname,
-                           const HostVector&                   points,
-                           const Array<int64_t>&               connectivity,
-                           const Array<int64_t>&               offsets,
-                           const Array<uint8_t>&               cell_types,
-                           Index                               num_points,
-                           Index                               num_cells,
-                           const Array<VtuWriter::PointField>& fields)
+void writeUnstructuredGrid(const std::string&                       fname,
+                           const HostVector<Real>&                  points,
+                           const HostVector<int64_t>&               connectivity,
+                           const HostVector<int64_t>&               offsets,
+                           const HostVector<uint8_t>&               cell_types,
+                           Index                                    num_points,
+                           Index                                    num_cells,
+                           const HostVector<VtuWriter::PointField>& fields)
 {
   std::ofstream out(fname, std::ios::binary);
   if (!out)
@@ -329,9 +329,9 @@ void writeUnstructuredGrid(const std::string&                  fname,
 
 } // namespace
 
-void VtuWriter::writePointData(const std::string&       fname,
-                               const Mesh&              mesh,
-                               const Array<PointField>& fields) const
+void VtuWriter::writePointData(const std::string&            fname,
+                               const Mesh&                   mesh,
+                               const HostVector<PointField>& fields) const
 {
   if (!isLittleEndian())
   {
@@ -348,10 +348,10 @@ void VtuWriter::writePointData(const std::string&       fname,
     checkField(mesh.numNodes(), field);
   }
 
-  const HostVector     points       = pointVals(mesh);
-  const Array<int64_t> connectivity = connectivityVals(mesh);
-  const Array<int64_t> offsets      = offsetVals(mesh);
-  const Array<uint8_t> cell_types   = cellTypeVals(mesh);
+  const HostVector<Real>    points       = pointVals(mesh);
+  const HostVector<int64_t> connectivity = connectivityVals(mesh);
+  const HostVector<int64_t> offsets      = offsetVals(mesh);
+  const HostVector<uint8_t> cell_types   = cellTypeVals(mesh);
 
   writeUnstructuredGrid(fname,
                         points,
@@ -363,9 +363,9 @@ void VtuWriter::writePointData(const std::string&       fname,
                         fields);
 }
 
-void VtuWriter::writePointCloud(const std::string&       fname,
-                                const Array<Point3>&     points,
-                                const Array<PointField>& fields) const
+void VtuWriter::writePointCloud(const std::string&            fname,
+                                const HostVector<Point3>&     points,
+                                const HostVector<PointField>& fields) const
 {
   if (!isLittleEndian())
   {
@@ -382,10 +382,10 @@ void VtuWriter::writePointCloud(const std::string&       fname,
     checkField(points.size(), field);
   }
 
-  const HostVector     point_data   = pointVals(points);
-  const Array<int64_t> connectivity = vertexConnectivityVals(points.size());
-  const Array<int64_t> offsets      = vertexOffsetVals(points.size());
-  const Array<uint8_t> cell_types   = vertexCellTypeVals(points.size());
+  const HostVector<Real>    point_data   = pointVals(points);
+  const HostVector<int64_t> connectivity = vertexConnectivityVals(points.size());
+  const HostVector<int64_t> offsets      = vertexOffsetVals(points.size());
+  const HostVector<uint8_t> cell_types   = vertexCellTypeVals(points.size());
 
   writeUnstructuredGrid(fname,
                         point_data,

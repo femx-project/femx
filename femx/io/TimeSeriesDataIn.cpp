@@ -101,9 +101,9 @@ Element::Shape inferShape(Index cn,
 
 struct XdmfInfo
 {
-  HostVector         times;
-  Array<std::string> vec_fields;
-  Element::Shape     shape = Element::Shape::Unknown;
+  HostVector<Real>        times;
+  HostVector<std::string> vec_fields;
+  Element::Shape          shape = Element::Shape::Unknown;
 };
 
 std::string xmlAttribute(const std::string& text,
@@ -118,8 +118,8 @@ std::string xmlAttribute(const std::string& text,
   return {};
 }
 
-void addUnique(Array<std::string>& vals,
-               const std::string&  value)
+void addUnique(HostVector<std::string>& vals,
+               const std::string&       value)
 {
   for (const std::string& existing : vals)
   {
@@ -174,8 +174,8 @@ XdmfInfo readXdmfInfo(const std::string& path)
   return info;
 }
 
-Index meshDim(const HostVector& geometry,
-              Element::Shape    shape)
+Index meshDim(const HostVector<Real>& geometry,
+              Element::Shape          shape)
 {
   if (shape == Element::Shape::Tetrahedron)
   {
@@ -215,8 +215,8 @@ bool linkExists(hid_t file, const std::string& path)
   return H5Lexists(file, path.c_str(), H5P_DEFAULT) > 0;
 }
 
-Array<hsize_t> datasetDims(hid_t              dset,
-                           const std::string& path)
+HostVector<hsize_t> datasetDims(hid_t              dset,
+                                const std::string& path)
 {
   hid_t space = H5Dget_space(dset);
   checkHdf5Id(space, "Failed to get dataspace for " + path);
@@ -227,16 +227,16 @@ Array<hsize_t> datasetDims(hid_t              dset,
     throw std::runtime_error("Dataset has invalid rank: " + path);
   }
 
-  Array<hsize_t> dims(ndims);
+  HostVector<hsize_t> dims(ndims);
   checkHdf5(H5Sget_simple_extent_dims(space, dims.data(), nullptr),
             "Failed to read dimensions for " + path);
   checkHdf5(H5Sclose(space), "Failed to close dataspace for " + path);
   return dims;
 }
 
-HostVector readDoubleDataset(hid_t              file,
-                             const std::string& path,
-                             Array<hsize_t>&    dims)
+HostVector<Real> readDoubleDataset(hid_t                file,
+                                   const std::string&   path,
+                                   HostVector<hsize_t>& dims)
 {
   hid_t dset = H5Dopen2(file, path.c_str(), H5P_DEFAULT);
   checkHdf5Id(dset, "Failed to open dataset " + path);
@@ -247,7 +247,7 @@ HostVector readDoubleDataset(hid_t              file,
   {
     count *= dim;
   }
-  HostVector data(static_cast<Index>(count));
+  HostVector<Real> data(static_cast<Index>(count));
   checkHdf5(H5Dread(dset,
                     H5T_NATIVE_DOUBLE,
                     H5S_ALL,
@@ -259,9 +259,9 @@ HostVector readDoubleDataset(hid_t              file,
   return data;
 }
 
-Array<Index> readIntDataset(hid_t              file,
-                            const std::string& path,
-                            Array<hsize_t>&    dims)
+HostVector<Index> readIntDataset(hid_t                file,
+                                 const std::string&   path,
+                                 HostVector<hsize_t>& dims)
 {
   hid_t dset = H5Dopen2(file, path.c_str(), H5P_DEFAULT);
   checkHdf5Id(dset, "Failed to open dataset " + path);
@@ -272,7 +272,7 @@ Array<Index> readIntDataset(hid_t              file,
   {
     count *= dim;
   }
-  Array<Index> data(static_cast<Index>(count));
+  HostVector<Index> data(static_cast<Index>(count));
   checkHdf5(H5Dread(dset,
                     H5T_NATIVE_INT,
                     H5S_ALL,
@@ -286,16 +286,16 @@ Array<Index> readIntDataset(hid_t              file,
 
 Mesh readMesh(hid_t file, Element::Shape shape)
 {
-  Array<hsize_t> geom_dims;
-  const auto     geometry =
+  HostVector<hsize_t> geom_dims;
+  const auto          geometry =
       readDoubleDataset(file, "/Mesh/Geometry", geom_dims);
   if (geom_dims.size() != 2 || geom_dims[1] != 3)
   {
     throw std::runtime_error("TimeSeriesDataIn expects /Mesh/Geometry as N x 3");
   }
 
-  Array<hsize_t> topo_dims;
-  const auto     topology =
+  HostVector<hsize_t> topo_dims;
+  const auto          topology =
       readIntDataset(file, "/Mesh/Topology", topo_dims);
   if (topo_dims.size() != 2)
   {
@@ -321,7 +321,7 @@ Mesh readMesh(hid_t file, Element::Shape shape)
 
   for (Index ie = 0; ie < elems; ++ie)
   {
-    Array<Index> nids;
+    HostVector<Index> nids;
     nids.reserve(cn);
     for (Index i = 0; i < cn; ++i)
     {
@@ -332,12 +332,12 @@ Mesh readMesh(hid_t file, Element::Shape shape)
   return mesh;
 }
 
-std::array<HostVector, 3> readVectorField(hid_t              file,
-                                          const std::string& path,
-                                          Index              num_nodes)
+std::array<HostVector<Real>, 3> readVectorField(hid_t              file,
+                                                const std::string& path,
+                                                Index              num_nodes)
 {
-  Array<hsize_t> dims;
-  const auto     data = readDoubleDataset(file, path, dims);
+  HostVector<hsize_t> dims;
+  const auto          data = readDoubleDataset(file, path, dims);
   if (dims.size() != 2 || dims[0] != static_cast<hsize_t>(num_nodes)
       || dims[1] != 3)
   {
@@ -345,8 +345,8 @@ std::array<HostVector, 3> readVectorField(hid_t              file,
         "TimeSeriesDataIn expects vector field as num_nodes x 3: " + path);
   }
 
-  std::array<HostVector, 3> out{
-      HostVector(num_nodes), HostVector(num_nodes), HostVector(num_nodes)};
+  std::array<HostVector<Real>, 3> out{
+      HostVector<Real>(num_nodes), HostVector<Real>(num_nodes), HostVector<Real>(num_nodes)};
   for (Index in = 0; in < num_nodes; ++in)
   {
     for (Index d = 0; d < 3; ++d)
@@ -401,7 +401,7 @@ TimeSeriesDataIn TimeSeriesDataIn::read(const std::string& path)
   }
 
   out.steps_.resize(hdf5_steps);
-  Array<std::string> vec_fields = xdmf.vec_fields;
+  HostVector<std::string> vec_fields = xdmf.vec_fields;
   if (vec_fields.empty())
   {
     vec_fields.push_back("velocity");
@@ -446,7 +446,7 @@ Real TimeSeriesDataIn::time(Index step) const
   return steps_[step].time;
 }
 
-const std::array<HostVector, 3>& TimeSeriesDataIn::vectorField(
+const std::array<HostVector<Real>, 3>& TimeSeriesDataIn::vectorField(
     Index              step,
     const std::string& name) const
 {

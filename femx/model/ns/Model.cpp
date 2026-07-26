@@ -116,13 +116,13 @@ fem::HostElementQuadratureData makeNavierElementData(
   return data;
 }
 
-void add(HostVector& vec, Index i, Real val)
+void add(HostVector<Real>& vec, Index i, Real val)
 {
 #pragma omp atomic update
   vec[i] += val;
 }
 
-void resizeOrZero(HostVector& out, Index size)
+void resizeOrZero(HostVector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -135,7 +135,7 @@ void resizeOrZero(HostVector& out, Index size)
 }
 
 #if defined(FEMX_HAS_PETSC)
-void allreduce(HostVector& vec, MPI_Comm comm)
+void allreduce(HostVector<Real>& vec, MPI_Comm comm)
 {
   const int ierr = MPI_Allreduce(MPI_IN_PLACE,
                                  vec.data(),
@@ -154,16 +154,16 @@ void allreduce(HostVector& vec, MPI_Comm comm)
 
 struct NavierWork
 {
-  HostVector hist;
-  HostVector nxt;
-  HostVector adj;
-  HostVector vjp;
+  HostVector<Real> hist;
+  HostVector<Real> nxt;
+  HostVector<Real> adj;
+  HostVector<Real> vjp;
 };
 
 void gather(const assembly::HostAssemblyMap& map,
             Index                            num_hist,
-            HostConstVectorView              hist,
-            HostConstVectorView              nxt,
+            HostVectorView<const Real>       hist,
+            HostVectorView<const Real>       nxt,
             Index                            ie,
             NavierWork&                      work)
 {
@@ -193,7 +193,7 @@ assembly::HostTimeElementView elem(Index             step,
   return {ie, step, num_hist, work.hist.view(), work.nxt.view()};
 }
 
-void reduce(HostVector&,
+void reduce(HostVector<Real>&,
             Index,
             Index,
             Index,
@@ -202,7 +202,7 @@ void reduce(HostVector&,
 }
 
 #if defined(FEMX_HAS_PETSC)
-void reduce(HostVector& vec,
+void reduce(HostVector<Real>& vec,
             Index,
             Index,
             Index,
@@ -234,10 +234,10 @@ void applyHistJacT(
     Index                            ie_begin,
     Index                            ie_end,
     const assembly::HostAssemblyMap& map,
-    HostConstVectorView              hist,
-    HostConstVectorView              nxt,
-    HostConstVectorView              adj,
-    HostVector&                      out,
+    HostVectorView<const Real>       hist,
+    HostVectorView<const Real>       nxt,
+    HostVectorView<const Real>       adj,
+    HostVector<Real>&                out,
     Ctx&                             ctx)
 {
   resizeOrZero(out, map.numStates());
@@ -617,13 +617,13 @@ makePetscTimeResidual(const NavierStokesModel& model)
 }
 #endif
 
-Array<Index> NavierStokesModel::velocityDofs() const
+HostVector<Index> NavierStokesModel::velocityDofs() const
 {
   const auto  velocity  = space_.field(0);
   const Index num_nodes = mesh_.numNodes();
   const Index num_comps = velocity.numComponents();
 
-  Array<Index> dofs;
+  HostVector<Index> dofs;
   dofs.reserve(num_nodes * num_comps);
   for (Index node = 0; node < num_nodes; ++node)
   {
@@ -635,13 +635,13 @@ Array<Index> NavierStokesModel::velocityDofs() const
   return dofs;
 }
 
-Array<Index> NavierStokesModel::velocityBoundaryDofs(
+HostVector<Index> NavierStokesModel::velocityBoundaryDofs(
     Index boundary_tag) const
 {
   return fem::makeVelocityControl(space_, boundary_tag).stateDofs();
 }
 
-Array<Index> NavierStokesModel::velocityBoundaryDofs(
+HostVector<Index> NavierStokesModel::velocityBoundaryDofs(
     const std::string& boundary_name) const
 {
   return fem::makeVelocityControl(space_, boundary_name).stateDofs();

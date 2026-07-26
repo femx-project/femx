@@ -88,15 +88,15 @@ public:
   PoissonMapResidual(const HostGeometry&              geom,
                      const HostElementQuadratureData& element_data,
                      const HostAssemblyMap&           map,
-                     Array<Index>                     control_dofs,
-                     Array<Index>                     fixed_dofs)
+                     HostVector<Index>                control_dofs,
+                     HostVector<Index>                fixed_dofs)
     : geom_(&geom),
       element_data_(&element_data),
       map_(&map),
       control_dofs_(std::move(control_dofs)),
       jac_(map.pattern())
   {
-    Array<Index> bc_dofs = control_dofs_;
+    HostVector<Index> bc_dofs = control_dofs_;
     bc_dofs.reserve(control_dofs_.size() + fixed_dofs.size());
     for (Index dof : fixed_dofs)
     {
@@ -138,7 +138,7 @@ public:
                         Ctx&       ctx) const override
   {
     checkVectors(state, prm);
-    HostVector unused;
+    HostVector<Real> unused;
     assembleRaw(state, unused);
     replaceRows(bc_map_, jac_, 1.0);
     setStateJac(jac_, out, ctx);
@@ -183,9 +183,9 @@ private:
                        ctx);
   }
 
-  HostVector bcVals(const Vec& prm) const
+  HostVector<Real> bcVals(const Vec& prm) const
   {
-    HostVector vals(bc_map_.numBcs(), 0.0);
+    HostVector<Real> vals(bc_map_.numBcs(), 0.0);
     for (Index i = 0; i < control_dofs_.size(); ++i)
     {
       vals[i] = prm[i];
@@ -196,7 +196,7 @@ private:
   const HostGeometry*              geom_{nullptr};
   const HostElementQuadratureData* element_data_{nullptr};
   const HostAssemblyMap*           map_{nullptr};
-  Array<Index>                     control_dofs_;
+  HostVector<Index>                control_dofs_;
   HostBoundaryMap                  bc_map_;
   mutable HostCsrMatrix            jac_;
 };
@@ -425,10 +425,10 @@ Index PoissonOptProblem::numObservations() const noexcept
   return obs_dofs_.size();
 }
 
-Report PoissonOptProblem::report(const HostVector& prm,
-                                 const HostVector& state,
-                                 Real              value,
-                                 const HostVector& grad) const
+Report PoissonOptProblem::report(const HostVector<Real>& prm,
+                                 const HostVector<Real>& state,
+                                 Real                    value,
+                                 const HostVector<Real>& grad) const
 {
   if (state.size() != numStates() || prm.size() != numParams()
       || grad.size() != numParams())
@@ -461,9 +461,9 @@ Report PoissonOptProblem::report(const HostVector& prm,
   return out;
 }
 
-void PoissonOptProblem::writeSolution(const HostVector&  prm,
-                                      const HostVector&  state,
-                                      const std::string& base) const
+void PoissonOptProblem::writeSolution(const HostVector<Real>& prm,
+                                      const HostVector<Real>& state,
+                                      const std::string&      base) const
 {
   if (base.empty())
   {
@@ -487,13 +487,13 @@ void PoissonOptProblem::writeSolution(const HostVector&  prm,
   writeObs(state, path.string());
 }
 
-void PoissonOptProblem::writeFields(const HostVector&  prm,
-                                    const HostVector&  state,
-                                    const std::string& path) const
+void PoissonOptProblem::writeFields(const HostVector<Real>& prm,
+                                    const HostVector<Real>& state,
+                                    const std::string&      path) const
 {
-  HostVector state_field(mesh_.numNodes());
-  HostVector target_state_field(mesh_.numNodes());
-  HostVector state_err(mesh_.numNodes());
+  HostVector<Real> state_field(mesh_.numNodes());
+  HostVector<Real> target_state_field(mesh_.numNodes());
+  HostVector<Real> state_err(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     const Index dof        = space_.globalDof(in, 0);
@@ -502,10 +502,10 @@ void PoissonOptProblem::writeFields(const HostVector&  prm,
     state_err[in]          = state_field[in] - target_state_field[in];
   }
 
-  HostVector ctr(mesh_.numNodes(), 0.0);
-  HostVector target_ctr(mesh_.numNodes(), 0.0);
-  HostVector ctr_err(mesh_.numNodes(), 0.0);
-  HostVector ctr_mask(mesh_.numNodes(), 0.0);
+  HostVector<Real> ctr(mesh_.numNodes(), 0.0);
+  HostVector<Real> target_ctr(mesh_.numNodes(), 0.0);
+  HostVector<Real> ctr_err(mesh_.numNodes(), 0.0);
+  HostVector<Real> ctr_mask(mesh_.numNodes(), 0.0);
   for (Index i = 0; i < ctr_dofs_.size(); ++i)
   {
     const Index node = ctr_dofs_[i];
@@ -531,20 +531,20 @@ void PoissonOptProblem::writeFields(const HostVector&  prm,
                       {"ctr_mask", 1, &ctr_mask}});
 }
 
-void PoissonOptProblem::writeObs(const HostVector&  state,
-                                 const std::string& path) const
+void PoissonOptProblem::writeObs(const HostVector<Real>& state,
+                                 const std::string&      path) const
 {
   if (obs_points_.size() != obs_dofs_.size())
   {
     throw std::runtime_error("Poisson optimization observation layout is inconsistent");
   }
 
-  const Index comps = space_.numComponents();
-  HostVector  obs_point_value(obs_dofs_.size(), 0.0);
-  HostVector  obs_point_pred(obs_dofs_.size(), 0.0);
-  HostVector  obs_point_misfit(obs_dofs_.size(), 0.0);
-  HostVector  obs_weight(obs_dofs_.size(), 0.0);
-  const Real  weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  const Index      comps = space_.numComponents();
+  HostVector<Real> obs_point_value(obs_dofs_.size(), 0.0);
+  HostVector<Real> obs_point_pred(obs_dofs_.size(), 0.0);
+  HostVector<Real> obs_point_misfit(obs_dofs_.size(), 0.0);
+  HostVector<Real> obs_weight(obs_dofs_.size(), 0.0);
+  const Real       weight = 1.0 / static_cast<Real>(obs_dofs_.size());
   for (Index i = 0; i < obs_dofs_.size(); ++i)
   {
     const Index dof = obs_dofs_[i];
@@ -671,15 +671,15 @@ Index PoissonOptProblem::effectiveObservationStride() const
   return std::max<Index>(1, std::min(opts_.num_x_cells, opts_.num_y_cells) / 8);
 }
 
-HostVector PoissonOptProblem::observationWeights() const
+HostVector<Real> PoissonOptProblem::observationWeights() const
 {
   if (obs_dofs_.empty())
   {
     throw std::runtime_error("Poisson optimization has no observation dofs");
   }
 
-  HostVector weights(numStates(), 0.0);
-  const Real weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  HostVector<Real> weights(numStates(), 0.0);
+  const Real       weight = 1.0 / static_cast<Real>(obs_dofs_.size());
   for (Index dof : obs_dofs_)
   {
     weights[dof] = weight;
@@ -687,7 +687,7 @@ HostVector PoissonOptProblem::observationWeights() const
   return weights;
 }
 
-void PoissonOptProblem::prepareObjective(HostVector target_state)
+void PoissonOptProblem::prepareObjective(HostVector<Real> target_state)
 {
   if (obj_)
   {
@@ -698,8 +698,8 @@ void PoissonOptProblem::prepareObjective(HostVector target_state)
           "Poisson target state size mismatch");
   target_state_ = std::move(target_state);
 
-  HostVector zero_ctr(numParams(), 0.0);
-  HostVector reg_weights(numParams(), 0.0);
+  HostVector<Real> zero_ctr(numParams(), 0.0);
+  HostVector<Real> reg_weights(numParams(), 0.0);
   for (Index i = 0; i < reg_weights.size(); ++i)
   {
     reg_weights[i] = opts_.alpha * ctr_weights_[i];
@@ -749,7 +749,7 @@ Result solve(PoissonOptProblem&             problem,
   state::LinearStateSolver<Backend> state_solver(
       res, fwd_jac, fwd_solver, ctx);
 
-  HostVector target_state;
+  HostVector<Real> target_state;
   state_solver.solve(problem.target_ctr_, target_state);
   problem.prepareObjective(std::move(target_state));
 
@@ -759,11 +759,12 @@ Result solve(PoissonOptProblem&             problem,
   opt::TaoOptimizer tao(fn, PETSC_COMM_SELF);
   tao.opts().max_its = problem.options().max_its;
 
-  opt::TaoResult   result;
-  const HostVector init_ctr(problem.numParams(), 0.0);
+  opt::TaoResult         result;
+  const HostVector<Real> init_ctr(problem.numParams(), 0.0);
+
   runtime::checkPetsc(tao.solve(init_ctr, result), "TaoOptimizer::solve");
 
-  HostVector state;
+  HostVector<Real> state;
   state_solver.solve(result.prm, state);
 
   Result out;

@@ -45,13 +45,13 @@ TestOutcome vtuWriterWritesMeshPointData()
   const std::string fname = "femx_io_unit_mesh.vtu";
   std::remove(fname.c_str());
 
-  const Mesh mesh = Mesh::makeStructuredQuad(1, 1);
-  HostVector vals{0.0, 1.0, 2.0, 3.0};
+  const Mesh       mesh = Mesh::makeStructuredQuad(1, 1);
+  HostVector<Real> vals{0.0, 1.0, 2.0, 3.0};
 
   VtuWriter writer;
   writer.writePointData(fname,
                         mesh,
-                        Array<VtuWriter::PointField>{
+                        HostVector<VtuWriter::PointField>{
                             {"u&v", 1, &vals}});
 
   const std::string text  = readFile(fname);
@@ -67,7 +67,7 @@ TestOutcome vtuWriterWritesMeshPointData()
   {
     writer.writePointData("femx_io_unit_bad.vtu",
                           mesh,
-                          Array<VtuWriter::PointField>{
+                          HostVector<VtuWriter::PointField>{
                               {"bad", 1, nullptr}});
   }
   catch (const std::runtime_error&)
@@ -93,12 +93,12 @@ TestOutcome vtiWriterWritesImageCellData()
   image.spacing     = {0.5, 0.25, 1.0};
   image.time        = 1.25;
 
-  HostVector vals{4.0, 5.0};
+  HostVector<Real> vals{4.0, 5.0};
 
   VtiWriter writer;
   writer.writeElemData(fname,
                        image,
-                       Array<VtiWriter::ElemField>{
+                       HostVector<VtiWriter::ElemField>{
                            {"cell<value>", 1, &vals}});
 
   const std::string text  = readFile(fname);
@@ -115,7 +115,7 @@ TestOutcome vtiWriterWritesImageCellData()
   {
     writer.writeElemData("femx_io_unit_bad.vti",
                          image,
-                         Array<VtiWriter::ElemField>{
+                         HostVector<VtiWriter::ElemField>{
                              {"bad", 1, nullptr}});
   }
   catch (const std::runtime_error&)
@@ -138,7 +138,7 @@ TestOutcome timeSeriesDataOutValidatesInputs()
   bool              threw = false;
   try
   {
-    out.addNodalScalarField("u", HostVector{1.0});
+    out.addNodalScalarField("u", HostVector<Real>{1.0});
   }
   catch (const std::runtime_error&)
   {
@@ -148,7 +148,7 @@ TestOutcome timeSeriesDataOutValidatesInputs()
 
   out.attachMesh(mesh);
   out.beginStep(0.0);
-  out.addNodalScalarField("u", HostVector{1.0, 2.0});
+  out.addNodalScalarField("u", HostVector<Real>{1.0, 2.0});
 
   threw = false;
   try

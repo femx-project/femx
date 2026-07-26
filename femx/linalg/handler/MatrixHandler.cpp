@@ -11,9 +11,9 @@ namespace
 {
 struct HostCsrTransposeEntry
 {
-  std::uint64_t   source_layout{0};
-  HostCsrPattern  pattern;
-  HostIndexVector source_to_transpose;
+  std::uint64_t     source_layout{0};
+  HostCsrPattern    pattern;
+  HostVector<Index> source_to_transpose;
 };
 
 struct HostCsrTransposeState
@@ -35,7 +35,7 @@ HostCsrTransposeState& transposeState(std::shared_ptr<void>& storage)
 
 HostCsrTransposeEntry makeTransposeEntry(const HostCsrPattern& src)
 {
-  HostIndexVector row_ptr(src.cols() + 1, 0);
+  HostVector<Index> row_ptr(src.cols() + 1, 0);
   for (Index k = 0; k < src.nnz(); ++k)
   {
     ++row_ptr[src.colIndData()[k] + 1];
@@ -45,9 +45,9 @@ HostCsrTransposeEntry makeTransposeEntry(const HostCsrPattern& src)
     row_ptr[row + 1] += row_ptr[row];
   }
 
-  HostIndexVector next = row_ptr;
-  HostIndexVector col_ind(src.nnz());
-  HostIndexVector source_to_transpose(src.nnz());
+  HostVector<Index> next = row_ptr;
+  HostVector<Index> col_ind(src.nnz());
+  HostVector<Index> source_to_transpose(src.nnz());
   for (Index row = 0; row < src.rows(); ++row)
   {
     for (Index k = src.rowPtrData()[row];
@@ -87,10 +87,10 @@ HostCsrTransposeEntry& findOrCreateTransposeEntry(
   return state.entries.back();
 }
 
-void checkCsrMatvec(const HostCsrMatrix& mat,
-                    HostConstVectorView  x,
-                    HostVectorView       y,
-                    bool                 transpose)
+void checkCsrMatvec(const HostCsrMatrix&       mat,
+                    HostVectorView<const Real> x,
+                    HostVectorView<Real>       y,
+                    bool                       transpose)
 {
   const Index in_size  = transpose ? mat.rows() : mat.cols();
   const Index out_size = transpose ? mat.cols() : mat.rows();
@@ -101,8 +101,8 @@ void checkCsrMatvec(const HostCsrMatrix& mat,
 }
 
 void checkDenseMatvec(HostMatrixView<const Real> mat,
-                      HostConstVectorView        x,
-                      HostVectorView             y,
+                      HostVectorView<const Real> x,
+                      HostVectorView<Real>       y,
                       bool                       transpose)
 {
   const Index in_size  = transpose ? mat.rows() : mat.cols();
@@ -154,11 +154,11 @@ void MatrixHandler<HostCsrBackend>::transpose(
   }
 }
 
-void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix& mat,
-                                           HostConstVectorView  x,
-                                           HostVectorView       y,
-                                           Real                 alpha,
-                                           Real                 beta) const
+void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix&       mat,
+                                           HostVectorView<const Real> x,
+                                           HostVectorView<Real>       y,
+                                           Real                       alpha,
+                                           Real                       beta) const
 {
   checkCsrMatvec(mat, x, y, false);
   for (Index row = 0; row < mat.rows(); ++row)
@@ -174,11 +174,11 @@ void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix& mat,
   }
 }
 
-void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix& mat,
-                                            HostConstVectorView  x,
-                                            HostVectorView       y,
-                                            Real                 alpha,
-                                            Real                 beta) const
+void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix&       mat,
+                                            HostVectorView<const Real> x,
+                                            HostVectorView<Real>       y,
+                                            Real                       alpha,
+                                            Real                       beta) const
 {
   checkCsrMatvec(mat, x, y, true);
   for (Index col = 0; col < mat.cols(); ++col)
@@ -197,9 +197,9 @@ void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix& mat,
   }
 }
 
-void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix& mat,
-                                           HostConstVectorView  x,
-                                           HostVector&          out) const
+void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix&       mat,
+                                           HostVectorView<const Real> x,
+                                           HostVector<Real>&          out) const
 {
   if (out.size() != mat.rows())
   {
@@ -208,9 +208,9 @@ void MatrixHandler<HostCsrBackend>::matvec(const HostCsrMatrix& mat,
   matvec(mat, x, out.view());
 }
 
-void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix& mat,
-                                            HostConstVectorView  x,
-                                            HostVector&          out) const
+void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix&       mat,
+                                            HostVectorView<const Real> x,
+                                            HostVector<Real>&          out) const
 {
   if (out.size() != mat.cols())
   {
@@ -220,8 +220,8 @@ void MatrixHandler<HostCsrBackend>::matvecT(const HostCsrMatrix& mat,
 }
 
 void MatrixHandler<HostCsrBackend>::matvec(HostMatrixView<const Real> mat,
-                                           HostConstVectorView        x,
-                                           HostVectorView             y,
+                                           HostVectorView<const Real> x,
+                                           HostVectorView<Real>       y,
                                            Real                       alpha,
                                            Real                       beta) const
 {
@@ -238,8 +238,8 @@ void MatrixHandler<HostCsrBackend>::matvec(HostMatrixView<const Real> mat,
 }
 
 void MatrixHandler<HostCsrBackend>::matvecT(HostMatrixView<const Real> mat,
-                                            HostConstVectorView        x,
-                                            HostVectorView             y,
+                                            HostVectorView<const Real> x,
+                                            HostVectorView<Real>       y,
                                             Real                       alpha,
                                             Real                       beta) const
 {
@@ -281,9 +281,9 @@ void MatrixHandler<CudaCsrBackend>::copy(const DeviceCsrMatrix& src,
   vec_handler_.copy(src.vals(), dst.vals());
 }
 
-void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix& mat,
-                                           DeviceConstVectorView  x,
-                                           DeviceVector&          out) const
+void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&       mat,
+                                           DeviceVectorView<const Real> x,
+                                           DeviceVector<Real>&          out) const
 {
   if (out.size() != mat.rows())
   {
@@ -292,9 +292,9 @@ void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix& mat,
   matvec(mat, x, out.view());
 }
 
-void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix& mat,
-                                            DeviceConstVectorView  x,
-                                            DeviceVector&          out) const
+void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&       mat,
+                                            DeviceVectorView<const Real> x,
+                                            DeviceVector<Real>&          out) const
 {
   if (out.size() != mat.cols())
   {
@@ -314,8 +314,8 @@ namespace
 } // namespace
 
 void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&,
-                                           DeviceConstVectorView,
-                                           DeviceVectorView,
+                                           DeviceVectorView<const Real>,
+                                           DeviceVectorView<Real>,
                                            Real,
                                            Real) const
 {
@@ -323,8 +323,8 @@ void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&,
 }
 
 void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&,
-                                            DeviceConstVectorView,
-                                            DeviceVectorView,
+                                            DeviceVectorView<const Real>,
+                                            DeviceVectorView<Real>,
                                             Real,
                                             Real) const
 {
@@ -339,8 +339,8 @@ void MatrixHandler<CudaCsrBackend>::transpose(
 }
 
 void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real>,
-                                           DeviceConstVectorView,
-                                           DeviceVectorView,
+                                           DeviceVectorView<const Real>,
+                                           DeviceVectorView<Real>,
                                            Real,
                                            Real) const
 {
@@ -348,8 +348,8 @@ void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real>,
 }
 
 void MatrixHandler<CudaCsrBackend>::matvecT(DeviceMatrixView<const Real>,
-                                            DeviceConstVectorView,
-                                            DeviceVectorView,
+                                            DeviceVectorView<const Real>,
+                                            DeviceVectorView<Real>,
                                             Real,
                                             Real) const
 {

@@ -48,9 +48,9 @@ bool near(Real lhs, Real rhs, Real tol = 1.0e-11)
          <= tol * std::max<Real>({1.0, std::abs(lhs), std::abs(rhs)});
 }
 
-bool vecNear(const HostVector& lhs,
-             const HostVector& rhs,
-             Real              tol = 1.0e-11)
+bool vecNear(const HostVector<Real>& lhs,
+             const HostVector<Real>& rhs,
+             Real                    tol = 1.0e-11)
 {
   if (lhs.size() != rhs.size())
   {
@@ -96,9 +96,9 @@ bool matNear(const HostCsrMatrix& lhs,
   return true;
 }
 
-HostVector apply(const HostCsrMatrix& mat, const HostVector& vec)
+HostVector<Real> apply(const HostCsrMatrix& mat, const HostVector<Real>& vec)
 {
-  HostVector out(mat.rows());
+  HostVector<Real> out(mat.rows());
   for (Index row = 0; row < mat.rows(); ++row)
   {
     for (Index k = mat.rowPtrData()[row]; k < mat.rowPtrData()[row + 1]; ++k)
@@ -109,7 +109,7 @@ HostVector apply(const HostCsrMatrix& mat, const HostVector& vec)
   return out;
 }
 
-Real dot(const HostVector& lhs, const HostVector& rhs)
+Real dot(const HostVector<Real>& lhs, const HostVector<Real>& rhs)
 {
   Real out = 0.0;
   for (Index i = 0; i < lhs.size(); ++i)
@@ -166,7 +166,7 @@ fem::Mesh makeTetrahedronMesh()
   return mesh;
 }
 
-void fillStates(Index num_states, HostVector& hist, HostVector& nxt)
+void fillStates(Index num_states, HostVector<Real>& hist, HostVector<Real>& nxt)
 {
   hist.resize(2 * num_states);
   nxt.resize(num_states);
@@ -227,24 +227,24 @@ TestOutcome navierModelResidualMatchesRowAssembly()
   TestStatus status(__func__);
   try
   {
-    auto       model = makeModel();
-    HostVector hist;
-    HostVector nxt;
+    auto             model = makeModel();
+    HostVector<Real> hist;
+    HostVector<Real> nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector             prm;
+    const HostVector<Real>       prm;
     const state::HostTimeContext time{
         1,
         nxt.view(),
         prm.view(),
         {hist.data(), 2, model.numStates()}};
 
-    CpuContext    ctx;
-    HostVector    model_res;
-    HostCsrMatrix model_jac(model.map().pattern());
+    CpuContext       ctx;
+    HostVector<Real> model_res;
+    HostCsrMatrix    model_jac(model.map().pattern());
     model.residual().assembleNext(time, model_res, model_jac, ctx);
 
-    HostVector    row_res;
-    HostCsrMatrix row_jac(model.map().pattern());
+    HostVector<Real> row_res;
+    HostCsrMatrix    row_jac(model.map().pattern());
     assembly::assemble(model.elementKernel(),
                        1,
                        2,
@@ -261,12 +261,12 @@ TestOutcome navierModelResidualMatchesRowAssembly()
     status *= vecNear(row_res, model_res);
     status *= matNear(row_jac, model_jac);
 
-    const HostVector sparse_vec  = apply(model_jac, nxt);
-    status                      *= vecNear(sparse_vec, apply(row_jac, nxt));
+    const HostVector<Real> sparse_vec  = apply(model_jac, nxt);
+    status                            *= vecNear(sparse_vec, apply(row_jac, nxt));
 
-    HostVector    zero_nxt(model.numStates(), 0.0);
-    HostVector    zero_res;
-    HostCsrMatrix zero_jac(model.map().pattern());
+    HostVector<Real> zero_nxt(model.numStates(), 0.0);
+    HostVector<Real> zero_res;
+    HostCsrMatrix    zero_jac(model.map().pattern());
     assembly::assemble(model.elementKernel(),
                        1,
                        2,
@@ -279,7 +279,7 @@ TestOutcome navierModelResidualMatchesRowAssembly()
                        zero_res,
                        zero_jac,
                        ctx);
-    HostVector delta = apply(model_jac, nxt);
+    HostVector<Real> delta = apply(model_jac, nxt);
     for (Index i = 0; i < delta.size(); ++i)
     {
       delta[i] += zero_res[i];
@@ -300,11 +300,11 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
   TestStatus status(__func__);
   try
   {
-    auto       model = makeModel();
-    HostVector hist;
-    HostVector nxt;
+    auto             model = makeModel();
+    HostVector<Real> hist;
+    HostVector<Real> nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector             prm;
+    const HostVector<Real>       prm;
     const state::HostTimeContext time{
         1,
         nxt.view(),
@@ -312,7 +312,7 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
         {hist.data(), 2, model.numStates()}};
     CpuContext ctx;
 
-    HostVector dir(model.numStates());
+    HostVector<Real> dir(model.numStates());
     for (Index i = 0; i < dir.size(); ++i)
     {
       dir[i] = 0.2 - 0.01 * i;
@@ -320,8 +320,8 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
 
     for (Index lag = 0; lag < 2; ++lag)
     {
-      const auto wrt = state::VariableBlock::hist(lag);
-      HostVector jtw;
+      const auto       wrt = state::VariableBlock::hist(lag);
+      HostVector<Real> jtw;
 
       if (!ad::has_enzyme)
       {
@@ -339,9 +339,9 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
         continue;
       }
 
-      constexpr Real eps        = 1.0e-6;
-      HostVector     plus_hist  = hist;
-      HostVector     minus_hist = hist;
+      constexpr Real   eps        = 1.0e-6;
+      HostVector<Real> plus_hist  = hist;
+      HostVector<Real> minus_hist = hist;
       for (Index i = 0; i < model.numStates(); ++i)
       {
         plus_hist[lag * model.numStates() + i]  += eps * dir[i];
@@ -358,8 +358,8 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
           nxt.view(),
           prm.view(),
           {minus_hist.data(), 2, model.numStates()}};
-      HostVector plus;
-      HostVector minus;
+      HostVector<Real> plus;
+      HostVector<Real> minus;
       assembly::assembleResidual(model.elementKernel(),
                                  plus_time.step,
                                  plus_time.hist.count(),
@@ -381,7 +381,7 @@ TestOutcome navierHistVjpMatchesFiniteDiff()
                                  minus,
                                  ctx);
 
-      HostVector adj(model.numStates());
+      HostVector<Real> adj(model.numStates());
       for (Index i = 0; i < adj.size(); ++i)
       {
         adj[i] = -0.15 + 0.013 * i;
@@ -425,10 +425,10 @@ TestOutcome navierAssemblyMatchesPetsc()
     const Index element_end =
         model.map().numElems() * (rank + 1) / comm_size;
     model.setElemRange(element_begin, element_end);
-    HostVector hist;
-    HostVector nxt;
+    HostVector<Real> hist;
+    HostVector<Real> nxt;
     fillStates(model.numStates(), hist, nxt);
-    const HostVector             prm;
+    const HostVector<Real>       prm;
     const state::HostTimeContext time{
         1,
         nxt.view(),
@@ -440,16 +440,16 @@ TestOutcome navierAssemblyMatchesPetsc()
     auto                  petsc_residual = model::ns::makePetscTimeResidual(model);
     HostCsrMatrix         csr(reference.map().pattern());
     linalg::PETScOperator petsc(PETSC_COMM_WORLD);
-    HostVector            csr_res;
-    HostVector            petsc_res;
+    HostVector<Real>      csr_res;
+    HostVector<Real>      petsc_res;
 
     reference.residual().assembleNext(time, csr_res, csr, csr_ctx);
     petsc_residual->assembleNext(time, petsc_res, petsc, petsc_ctx);
     petsc.finalize();
     status *= vecNear(csr_res, petsc_res);
 
-    const HostVector csr_out = apply(csr, nxt);
-    HostVector       petsc_out;
+    const HostVector<Real> csr_out = apply(csr, nxt);
+    HostVector<Real>       petsc_out;
     petsc.apply(nxt.view(), petsc_out);
     status *= vecNear(csr_out, petsc_out);
   }
@@ -476,9 +476,9 @@ TestOutcome navierRowAssemblyMatchesDevice()
 
   try
   {
-    auto       model = makeModel();
-    HostVector hist;
-    HostVector nxt;
+    auto             model = makeModel();
+    HostVector<Real> hist;
+    HostVector<Real> nxt;
     fillStates(model.numStates(), hist, nxt);
 
     CpuContext cpu;
@@ -488,14 +488,14 @@ TestOutcome navierRowAssemblyMatchesDevice()
     linalg::CudaMatrixHandler        mat_handler(ctx);
     assembly::DeviceAssemblyMap      map;
     fem::DeviceElementQuadratureData data;
-    DeviceVector                     dev_hist;
-    DeviceVector                     dev_nxt;
+    DeviceVector<Real>               dev_hist;
+    DeviceVector<Real>               dev_nxt;
     assembly::copy(model.map(), map, ctx);
     fem::copy(model.data(), data, ctx);
     vec_handler.copy(hist, dev_hist);
     vec_handler.copy(nxt, dev_nxt);
 
-    DeviceVector              dev_res;
+    DeviceVector<Real>        dev_res;
     const DeviceElementKernel kernel(
         data.view(),
         {model.fluid().rho, model.fluid().mu},
@@ -504,8 +504,8 @@ TestOutcome navierRowAssemblyMatchesDevice()
         state::VariableBlock::NextState};
     for (const auto wrt : blocks)
     {
-      HostVector    host_res;
-      HostCsrMatrix host_jac(model.map().pattern());
+      HostVector<Real> host_res;
+      HostCsrMatrix    host_jac(model.map().pattern());
       assembly::assemble(model.elementKernel(),
                          1,
                          2,
@@ -531,8 +531,8 @@ TestOutcome navierRowAssemblyMatchesDevice()
                          dev_jac,
                          ctx);
 
-      HostVector    got_res;
-      HostCsrMatrix got_jac(model.map().pattern());
+      HostVector<Real> got_res;
+      HostCsrMatrix    got_jac(model.map().pattern());
       vec_handler.copy(dev_res, got_res);
       mat_handler.copy(dev_jac, got_jac);
       ctx.sync();
@@ -570,10 +570,10 @@ TestOutcome navierHistoryVjpMatchesDevice()
       fluid.mu  = 0.03;
       model::ns::NavierStokesModel model(
           std::move(mesh), 3, 0.05, fluid);
-      HostVector hist;
-      HostVector nxt;
+      HostVector<Real> hist;
+      HostVector<Real> nxt;
       fillStates(model.numStates(), hist, nxt);
-      HostVector adj(model.numStates());
+      HostVector<Real> adj(model.numStates());
       for (Index i = 0; i < adj.size(); ++i)
       {
         adj[i] = -0.08 + 0.009 * i;
@@ -584,10 +584,10 @@ TestOutcome navierHistoryVjpMatchesDevice()
       linalg::CudaVectorHandler vec_handler(ctx);
       auto                      dev_res = model::ns::makeDeviceTimeResidual(
           model, std::move(control));
-      DeviceVector dev_hist;
-      DeviceVector dev_nxt;
-      DeviceVector dev_adj;
-      DeviceVector dev_prm;
+      DeviceVector<Real> dev_hist;
+      DeviceVector<Real> dev_nxt;
+      DeviceVector<Real> dev_adj;
+      DeviceVector<Real> dev_prm;
       vec_handler.copy(hist, dev_hist);
       vec_handler.copy(nxt, dev_nxt);
       vec_handler.copy(adj, dev_adj);
@@ -597,7 +597,7 @@ TestOutcome navierHistoryVjpMatchesDevice()
           dev_prm.view(),
           {dev_hist.data(), 2, model.numStates()}};
 
-      const HostVector             prm;
+      const HostVector<Real>       prm;
       const state::HostTimeContext host_time{
           1,
           nxt.view(),
@@ -606,8 +606,8 @@ TestOutcome navierHistoryVjpMatchesDevice()
       CpuContext cpu;
       for (Index lag = 0; lag < 2; ++lag)
       {
-        DeviceVector dev_vjp;
-        HostVector   host_vjp;
+        DeviceVector<Real> dev_vjp;
+        HostVector<Real>   host_vjp;
         model.residual().applyJacT(host_time,
                                    state::VariableBlock::hist(lag),
                                    adj.view(),
@@ -618,7 +618,7 @@ TestOutcome navierHistoryVjpMatchesDevice()
                            dev_adj.view(),
                            dev_vjp,
                            ctx);
-        HostVector got;
+        HostVector<Real> got;
         vec_handler.copy(dev_vjp, got);
         ctx.sync();
         status *= vecNear(got, host_vjp, 2.0e-9);

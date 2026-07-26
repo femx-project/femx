@@ -118,8 +118,8 @@ Index MixedFESpace::numDofsPerElem() const noexcept
   return num_dofs_per_elem_;
 }
 
-void MixedFESpace::elemDofs(Index         ie,
-                            Array<Index>& dofs) const
+void MixedFESpace::elemDofs(Index              ie,
+                            HostVector<Index>& dofs) const
 {
   dofs.resize(num_dofs_per_elem_);
 
@@ -136,9 +136,9 @@ void MixedFESpace::elemDofs(Index         ie,
   }
 }
 
-Array<Index> MixedFESpace::elemDofs(Index ie) const
+HostVector<Index> MixedFESpace::elemDofs(Index ie) const
 {
-  Array<Index> dofs;
+  HostVector<Index> dofs;
   elemDofs(ie, dofs);
   return dofs;
 }

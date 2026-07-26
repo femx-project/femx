@@ -72,13 +72,13 @@ public:
 
   Index numParams() const noexcept;
 
-  Real value(HostConstVectorView prm, TimeReducedProgress progress = {});
-  void grad(HostConstVectorView prm,
-            HostVectorView      out,
-            TimeReducedProgress progress = {});
-  Real valueGrad(HostConstVectorView prm,
-                 HostVectorView      out,
-                 TimeReducedProgress progress = {});
+  Real value(HostVectorView<const Real> prm, TimeReducedProgress progress = {});
+  void grad(HostVectorView<const Real> prm,
+            HostVectorView<Real>       out,
+            TimeReducedProgress        progress = {});
+  Real valueGrad(HostVectorView<const Real> prm,
+                 HostVectorView<Real>       out,
+                 TimeReducedProgress        progress = {});
 
   void  resetTiming() noexcept;
   Real  assemblySeconds() const noexcept;
@@ -97,10 +97,10 @@ private:
 
   state::TimeContext<space> timeCtx(Index step) const;
   void                      loadStep(Index step);
-  void                      solveFwd(HostConstVectorView        prm,
+  void                      solveFwd(HostVectorView<const Real> prm,
                                      const TimeReducedProgress& progress);
   Mat&                      assembleNext(Index step);
-  void                      solveAdj(HostVectorView             out,
+  void                      solveAdj(HostVectorView<Real>       out,
                                      const TimeReducedProgress& progress);
   void                      notify(const TimeReducedProgress& progress,
                                    const char*                phase,
@@ -115,9 +115,9 @@ private:
   const TimeObjective& obj_;
   state::TimeDims      dims_;
   Tr                   tr_;
-  HostVector           host_prm_;
-  HostVector           host_rhs_;
-  HostVector           host_grad_;
+  HostVector<Real>     host_prm_;
+  HostVector<Real>     host_rhs_;
+  HostVector<Real>     host_grad_;
   Vec                  prm_;
   Vec                  hist_;
   Vec                  nxt_;
@@ -177,8 +177,8 @@ Index TimeReducedFunctional<Backend>::numParams() const noexcept
 
 template <class Backend>
 Real TimeReducedFunctional<Backend>::value(
-    HostConstVectorView prm,
-    TimeReducedProgress progress)
+    HostVectorView<const Real> prm,
+    TimeReducedProgress        progress)
 {
   resetTiming();
   solveFwd(prm, progress);
@@ -186,9 +186,9 @@ Real TimeReducedFunctional<Backend>::value(
 }
 
 template <class Backend>
-void TimeReducedFunctional<Backend>::grad(HostConstVectorView prm,
-                                          HostVectorView      out,
-                                          TimeReducedProgress progress)
+void TimeReducedFunctional<Backend>::grad(HostVectorView<const Real> prm,
+                                          HostVectorView<Real>       out,
+                                          TimeReducedProgress        progress)
 {
   resetTiming();
   solveFwd(prm, progress);
@@ -197,9 +197,9 @@ void TimeReducedFunctional<Backend>::grad(HostConstVectorView prm,
 
 template <class Backend>
 Real TimeReducedFunctional<Backend>::valueGrad(
-    HostConstVectorView prm,
-    HostVectorView      out,
-    TimeReducedProgress progress)
+    HostVectorView<const Real> prm,
+    HostVectorView<Real>       out,
+    TimeReducedProgress        progress)
 {
   resetTiming();
   solveFwd(prm, progress);
@@ -310,7 +310,7 @@ void TimeReducedFunctional<Backend>::loadStep(Index step)
 
 template <class Backend>
 void TimeReducedFunctional<Backend>::solveFwd(
-    HostConstVectorView        prm,
+    HostVectorView<const Real> prm,
     const TimeReducedProgress& progress)
 {
   linalg::VectorHandler<Backend> vec_handler(ctx_);
@@ -362,7 +362,7 @@ TimeReducedFunctional<Backend>::assembleNext(Index step)
 
 template <class Backend>
 void TimeReducedFunctional<Backend>::solveAdj(
-    HostVectorView             out,
+    HostVectorView<Real>       out,
     const TimeReducedProgress& progress)
 {
   linalg::VectorHandler<Backend> vec_handler(ctx_);

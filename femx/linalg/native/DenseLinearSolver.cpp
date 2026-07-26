@@ -16,10 +16,10 @@ DenseLinearSolver::DenseLinearSolver(Real pivot_tolerance)
           "DenseLinearSolver pivot tolerance must be non-negative");
 }
 
-void DenseLinearSolver::solve(const HostCsrMatrix& mat,
-                              const HostVector&    rhs,
-                              HostVector&          out,
-                              CpuContext&          ctx)
+void DenseLinearSolver::solve(const HostCsrMatrix&    mat,
+                              const HostVector<Real>& rhs,
+                              HostVector<Real>&       out,
+                              CpuContext&             ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.rows(),
           "DenseLinearSolver received inconsistent CSR dimensions");
@@ -28,10 +28,10 @@ void DenseLinearSolver::solve(const HostCsrMatrix& mat,
   solveDense(std::move(dense), rhs, out, ctx);
 }
 
-void DenseLinearSolver::solveT(const HostCsrMatrix& mat,
-                               const HostVector&    rhs,
-                               HostVector&          out,
-                               CpuContext&          ctx)
+void DenseLinearSolver::solveT(const HostCsrMatrix&    mat,
+                               const HostVector<Real>& rhs,
+                               HostVector<Real>&       out,
+                               CpuContext&             ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
           "DenseLinearSolver received inconsistent transposed CSR dimensions");
@@ -62,13 +62,13 @@ void DenseLinearSolver::sample(const HostCsrMatrix& mat,
   }
 }
 
-void DenseLinearSolver::solveDense(DenseMatrix       mat,
-                                   const HostVector& rhs,
-                                   HostVector&       out,
-                                   CpuContext&       ctx) const
+void DenseLinearSolver::solveDense(DenseMatrix             mat,
+                                   const HostVector<Real>& rhs,
+                                   HostVector<Real>&       out,
+                                   CpuContext&             ctx) const
 {
-  const Index size = mat.rows();
-  HostVector  b(rhs);
+  const Index      size = mat.rows();
+  HostVector<Real> b(rhs);
 
   for (Index k = 0; k < size; ++k)
   {

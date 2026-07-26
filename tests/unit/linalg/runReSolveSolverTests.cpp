@@ -77,11 +77,11 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
     CpuContext                  ctx;
     linalg::HostMatrixHandler   mat_handler(ctx);
 
-    const HostVector expected = solver::expectedGridSolution(nx, ny);
-    HostVector       rhs(expected.size());
+    const HostVector<Real> expected = solver::expectedGridSolution(nx, ny);
+    HostVector<Real>       rhs(expected.size());
     mat_handler.matvec(mat, expected.view(), rhs.view());
 
-    HostVector x;
+    HostVector<Real> x;
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
 
@@ -109,9 +109,9 @@ TestOutcome resolveZeroRhsReturnsZero()
     const auto    map = solver::makeDense3Map();
     HostCsrMatrix mat(map.pattern());
     solver::fillTestMat(mat);
-    const HostVector rhs(3, 0.0);
-    HostVector       sol{1.0, 2.0, 3.0};
-    CpuContext       ctx;
+    const HostVector<Real> rhs(3, 0.0);
+    HostVector<Real>       sol{1.0, 2.0, 3.0};
+    CpuContext             ctx;
 
     linalg::ReSolveLinearSolver host_solver;
     host_solver.solve(mat, rhs, sol, ctx);

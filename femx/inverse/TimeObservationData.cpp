@@ -32,10 +32,10 @@ void TimeObservationData::resize(Index num_levels, Index num_obs)
   num_obs_    = num_obs;
   data_.resize(num_levels_ * num_obs_);
   sampler_.clear();
-  pts_         = Array<Point3>{};
-  comps_       = Array<Index>{};
-  time_levels_ = Array<Index>{};
-  time_vals_   = HostVector{};
+  pts_         = HostVector<Point3>{};
+  comps_       = HostVector<Index>{};
+  time_levels_ = HostVector<Index>{};
+  time_vals_   = HostVector<Real>{};
 }
 
 bool TimeObservationData::empty() const
@@ -73,22 +73,22 @@ const std::string& TimeObservationData::sampler() const
   return sampler_;
 }
 
-const Array<Point3>& TimeObservationData::pts() const
+const HostVector<Point3>& TimeObservationData::pts() const
 {
   return pts_;
 }
 
-const Array<Index>& TimeObservationData::comps() const
+const HostVector<Index>& TimeObservationData::comps() const
 {
   return comps_;
 }
 
-const Array<Index>& TimeObservationData::timeLevels() const
+const HostVector<Index>& TimeObservationData::timeLevels() const
 {
   return time_levels_;
 }
 
-const HostVector& TimeObservationData::timeValues() const
+const HostVector<Real>& TimeObservationData::timeValues() const
 {
   return time_vals_;
 }
@@ -113,9 +113,9 @@ Real TimeObservationData::timeValue(Index row) const
   return time_vals_[row];
 }
 
-void TimeObservationData::setLayout(std::string   sampler,
-                                    Array<Point3> pts,
-                                    Array<Index>  comps)
+void TimeObservationData::setLayout(std::string        sampler,
+                                    HostVector<Point3> pts,
+                                    HostVector<Index>  comps)
 {
   sampler_ = std::move(sampler);
   pts_     = std::move(pts);
@@ -123,30 +123,30 @@ void TimeObservationData::setLayout(std::string   sampler,
   checkLayout();
 }
 
-void TimeObservationData::setTimeLevels(Array<Index> levels)
+void TimeObservationData::setTimeLevels(HostVector<Index> levels)
 {
   time_levels_ = std::move(levels);
-  time_vals_   = HostVector{};
+  time_vals_   = HostVector<Real>{};
   checkTimeLevels();
 }
 
-void TimeObservationData::setTimeValues(HostVector vals)
+void TimeObservationData::setTimeValues(HostVector<Real> vals)
 {
   time_vals_   = std::move(vals);
-  time_levels_ = Array<Index>{};
+  time_levels_ = HostVector<Index>{};
   checkTimeValues();
 }
 
-HostVectorView TimeObservationData::operator[](Index level)
+HostVectorView<Real> TimeObservationData::operator[](Index level)
 {
   checkLevel(level);
-  return HostVectorView(data_.data() + level * num_obs_, num_obs_);
+  return HostVectorView<Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
-HostConstVectorView TimeObservationData::operator[](Index level) const
+HostVectorView<const Real> TimeObservationData::operator[](Index level) const
 {
   checkLevel(level);
-  return HostConstVectorView(data_.data() + level * num_obs_, num_obs_);
+  return HostVectorView<const Real>(data_.data() + level * num_obs_, num_obs_);
 }
 
 void TimeObservationData::setZero()
@@ -209,7 +209,7 @@ void TimeObservationData::checkTimeValues() const
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
                                   const TimeTrajectory&          tr,
-                                  const HostVector&              prm)
+                                  const HostVector<Real>&        prm)
 {
   require(tr.numSteps() == obs.numSteps()
               && tr.numStates() == obs.numStates()
@@ -219,7 +219,7 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   TimeObservationData data(obs.numSteps() + 1, obs.numObservations());
   for (Index level = 0; level < data.numTimeLevels(); ++level)
   {
-    HostVector vals(obs.numObservations());
+    HostVector<Real> vals(obs.numObservations());
     obs.observe(level, tr[level], prm, vals);
     data[level] = vals;
   }
@@ -279,7 +279,7 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
   const Index num_points = data.pts().size();
   for (Index level = 0; level < data.numTimeLevels(); ++level)
   {
-    const HostVector vals = data[level];
+    const HostVector<Real> vals = data[level];
     out << "  level " << level << '\n';
     for (Index point = 0; point < num_points; ++point)
     {
@@ -332,8 +332,8 @@ TimeObservationData readTimeObsData(const std::string& path)
   in >> key >> num_levels;
   requireKey(key, "num_levels");
 
-  Array<Index> time_levels;
-  HostVector   time_vals;
+  HostVector<Index> time_levels;
+  HostVector<Real>  time_vals;
   in >> key;
   if (key == "time_values")
   {
@@ -360,7 +360,7 @@ TimeObservationData readTimeObsData(const std::string& path)
 
   in >> key;
   requireKey(key, "points");
-  Array<Point3> pts;
+  HostVector<Point3> pts;
   pts.reserve(num_points);
   for (Index i = 0; i < num_points; ++i)
   {
@@ -375,7 +375,7 @@ TimeObservationData readTimeObsData(const std::string& path)
 
   in >> key;
   requireKey(key, "components");
-  Array<Index> comps(num_comp);
+  HostVector<Index> comps(num_comp);
   for (Index i = 0; i < num_comp; ++i)
   {
     in >> comps[i];
@@ -406,7 +406,7 @@ TimeObservationData readTimeObsData(const std::string& path)
           "Time observation data has unexpected level label");
     }
 
-    HostVectorView vals = data[level];
+    HostVectorView<Real> vals = data[level];
     for (Index i = 0; i < vals.size(); ++i)
     {
       if (!(in >> vals[i]))

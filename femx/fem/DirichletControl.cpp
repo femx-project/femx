@@ -18,9 +18,9 @@ namespace fem
 namespace
 {
 
-Array<DirichletControlMapEntry> identityEntries(Index size)
+HostVector<DirichletControlMapEntry> identityEntries(Index size)
 {
-  Array<DirichletControlMapEntry> entries;
+  HostVector<DirichletControlMapEntry> entries;
   entries.reserve(size);
   for (Index i = 0; i < size; ++i)
   {
@@ -30,14 +30,14 @@ Array<DirichletControlMapEntry> identityEntries(Index size)
 }
 
 HostCsrMatrix makeControlMatrix(
-    Index                                  rows,
-    Index                                  cols,
-    const Array<DirichletControlMapEntry>& entries)
+    Index                                       rows,
+    Index                                       cols,
+    const HostVector<DirichletControlMapEntry>& entries)
 {
   require(cols >= 0,
           "DirichletControl received negative control parameter count");
 
-  HostIndexVector                   row_ptr(rows + 1);
+  HostVector<Index>                 row_ptr(rows + 1);
   std::set<std::pair<Index, Index>> seen;
   for (const DirichletControlMapEntry& entry : entries)
   {
@@ -56,9 +56,9 @@ HostCsrMatrix makeControlMatrix(
     row_ptr[row + 1] += row_ptr[row];
   }
 
-  HostIndexVector col_ind(entries.size());
-  HostVector      vals(entries.size());
-  HostIndexVector next = row_ptr;
+  HostVector<Index> col_ind(entries.size());
+  HostVector<Real>  vals(entries.size());
+  HostVector<Index> next = row_ptr;
   for (const DirichletControlMapEntry& entry : entries)
   {
     const Index k = next[entry.state_row]++;
@@ -99,7 +99,7 @@ DirichletControl makeVelocityControlFromPredicate(
   require(!dof_set.empty(),
           "DirichletControl found no velocity boundary dofs");
 
-  Array<Index> dofs;
+  HostVector<Index> dofs;
   for (Index id : dof_set)
   {
     dofs.push_back(id);
@@ -108,8 +108,8 @@ DirichletControl makeVelocityControlFromPredicate(
   return DirichletControl(std::move(dofs));
 }
 
-HostVector normalizedVelocityDirection(const MixedFESpace& space,
-                                       const HostVector&   nrm)
+HostVector<Real> normalizedVelocityDirection(const MixedFESpace&     space,
+                                             const HostVector<Real>& nrm)
 {
   const Index ncomp = space.field(0).numComponents();
   require(nrm.size() == ncomp,
@@ -125,8 +125,8 @@ HostVector normalizedVelocityDirection(const MixedFESpace& space,
   require(norm2 > 0.0 && std::isfinite(norm2),
           "Normal velocity control direction must be nonzero");
 
-  HostVector dir(ncomp);
-  const Real inv_norm = 1.0 / std::sqrt(norm2);
+  HostVector<Real> dir(ncomp);
+  const Real       inv_norm = 1.0 / std::sqrt(norm2);
   for (Index comp = 0; comp < ncomp; ++comp)
   {
     dir[comp] = inv_norm * nrm[comp];
@@ -136,13 +136,13 @@ HostVector normalizedVelocityDirection(const MixedFESpace& space,
 
 template <typename Match>
 DirichletControl makeNormalVelocityControlFromPredicate(
-    const MixedFESpace& space,
-    Match               match,
-    const HostVector&   nrm)
+    const MixedFESpace&     space,
+    Match                   match,
+    const HostVector<Real>& nrm)
 {
-  const auto       u_dof = space.field(0);
-  const HostVector dir   = normalizedVelocityDirection(space, nrm);
-  std::set<Index>  nodes;
+  const auto             u_dof = space.field(0);
+  const HostVector<Real> dir   = normalizedVelocityDirection(space, nrm);
+  std::set<Index>        nodes;
 
   for (const auto& facet : space.mesh().boundaryFacets())
   {
@@ -154,8 +154,8 @@ DirichletControl makeNormalVelocityControlFromPredicate(
   require(!nodes.empty(),
           "Normal velocity control found no boundary nodes");
 
-  Array<Index>                    state_dofs;
-  Array<DirichletControlMapEntry> entries;
+  HostVector<Index>                    state_dofs;
+  HostVector<DirichletControlMapEntry> entries;
   state_dofs.reserve(nodes.size() * u_dof.numComponents());
   entries.reserve(nodes.size() * u_dof.numComponents());
   Index col = 0;
@@ -184,7 +184,7 @@ DirichletControl::DirichletControl()
 {
 }
 
-DirichletControl::DirichletControl(Array<Index> dofs)
+DirichletControl::DirichletControl(HostVector<Index> dofs)
   : DirichletControl(dofs,
                      dofs.size(),
                      identityEntries(dofs.size()))
@@ -192,9 +192,9 @@ DirichletControl::DirichletControl(Array<Index> dofs)
 }
 
 DirichletControl::DirichletControl(
-    Array<Index>                    state_dofs,
-    Index                           num_ctr_params,
-    Array<DirichletControlMapEntry> map_entries)
+    HostVector<Index>                    state_dofs,
+    Index                                num_ctr_params,
+    HostVector<DirichletControlMapEntry> map_entries)
   : dofs_(std::move(state_dofs)),
     matrix_(makeControlMatrix(
         dofs_.size(), num_ctr_params, map_entries))
@@ -224,7 +224,7 @@ Index DirichletControl::stateDof(Index i) const
   return dofs_[i];
 }
 
-const Array<Index>& DirichletControl::stateDofs() const
+const HostVector<Index>& DirichletControl::stateDofs() const
 {
   return dofs_;
 }
@@ -235,11 +235,11 @@ const HostCsrMatrix& DirichletControl::matrix() const noexcept
 }
 
 DirichletControl DirichletControl::withoutStateDofs(
-    const Array<Index>& excluded) const
+    const HostVector<Index>& excluded) const
 {
-  std::set<Index> excluded_set(excluded.begin(), excluded.end());
-  Array<Index>    old_to_new_row(numStateDofs(), -1);
-  Array<Index>    state_dofs;
+  std::set<Index>   excluded_set(excluded.begin(), excluded.end());
+  HostVector<Index> old_to_new_row(numStateDofs(), -1);
+  HostVector<Index> state_dofs;
   state_dofs.reserve(numStateDofs());
   for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
   {
@@ -250,7 +250,7 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Array<char> used_cols(numControlParams(), 0);
+  HostVector<char> used_cols(numControlParams(), 0);
   for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
   {
     if (old_to_new_row[old_row] < 0)
@@ -265,8 +265,8 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Array<Index> old_to_new_col(numControlParams(), -1);
-  Index        num_ctr_params = 0;
+  HostVector<Index> old_to_new_col(numControlParams(), -1);
+  Index             num_ctr_params = 0;
   for (Index old_column = 0; old_column < numControlParams(); ++old_column)
   {
     if (used_cols[old_column] != 0)
@@ -275,7 +275,7 @@ DirichletControl DirichletControl::withoutStateDofs(
     }
   }
 
-  Array<DirichletControlMapEntry> entries;
+  HostVector<DirichletControlMapEntry> entries;
   entries.reserve(matrix_.nnz());
   for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
   {
@@ -298,8 +298,8 @@ DirichletControl DirichletControl::withoutStateDofs(
       std::move(state_dofs), num_ctr_params, std::move(entries));
 }
 
-void DirichletControl::apply(const HostVector& dir,
-                             HostVector&       out) const
+void DirichletControl::apply(const HostVector<Real>& dir,
+                             HostVector<Real>&       out) const
 {
   checkControlVector(dir);
   CpuContext                ctx;
@@ -309,8 +309,8 @@ void DirichletControl::apply(const HostVector& dir,
   mat_handler.matvec(matrix_, dir.view(), out.view());
 }
 
-void DirichletControl::applyTranspose(const HostVector& dir,
-                                      HostVector&       out) const
+void DirichletControl::applyTranspose(const HostVector<Real>& dir,
+                                      HostVector<Real>&       out) const
 {
   checkStateVector(dir);
   CpuContext                ctx;
@@ -327,13 +327,13 @@ void DirichletControl::checkDofIndex(Index i) const
 }
 
 void DirichletControl::checkControlVector(
-    const HostVector& ctr) const
+    const HostVector<Real>& ctr) const
 {
   require(ctr.size() == numControlParams(),
           "DirichletControl control vector size mismatch");
 }
 
-void DirichletControl::checkStateVector(const HostVector& state) const
+void DirichletControl::checkStateVector(const HostVector<Real>& state) const
 {
   require(state.size() == numStateDofs(),
           "DirichletControl state vector size mismatch");
@@ -364,9 +364,9 @@ DirichletControl makeVelocityControl(
 }
 
 DirichletControl makeNormalVelocityControl(
-    const MixedFESpace& space,
-    Index               ptag,
-    const HostVector&   nrm)
+    const MixedFESpace&     space,
+    Index                   ptag,
+    const HostVector<Real>& nrm)
 {
   return makeNormalVelocityControlFromPredicate(
       space,
@@ -378,9 +378,9 @@ DirichletControl makeNormalVelocityControl(
 }
 
 DirichletControl makeNormalVelocityControl(
-    const MixedFESpace& space,
-    const std::string&  pname,
-    const HostVector&   nrm)
+    const MixedFESpace&     space,
+    const std::string&      pname,
+    const HostVector<Real>& nrm)
 {
   return makeNormalVelocityControlFromPredicate(
       space,

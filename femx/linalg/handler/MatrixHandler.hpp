@@ -78,11 +78,11 @@ public:
    * @param[in] beta - Existing-output scale.
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
-  void matvec(const HostCsrMatrix& mat,
-              HostConstVectorView  x,
-              HostVectorView       y,
-              Real                 alpha = 1.0,
-              Real                 beta  = 0.0) const;
+  void matvec(const HostCsrMatrix&       mat,
+              HostVectorView<const Real> x,
+              HostVectorView<Real>       y,
+              Real                       alpha = 1.0,
+              Real                       beta  = 0.0) const;
 
   /**
    * @brief Compute `y = alpha * mat^T * x + beta * y` for a CSR matrix.
@@ -94,11 +94,11 @@ public:
    * @param[in] beta - Existing-output scale.
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
-  void matvecT(const HostCsrMatrix& mat,
-               HostConstVectorView  x,
-               HostVectorView       y,
-               Real                 alpha = 1.0,
-               Real                 beta  = 0.0) const;
+  void matvecT(const HostCsrMatrix&       mat,
+               HostVectorView<const Real> x,
+               HostVectorView<Real>       y,
+               Real                       alpha = 1.0,
+               Real                       beta  = 0.0) const;
 
   /**
    * @brief Resize the output if needed and compute `out = mat * x`.
@@ -108,9 +108,9 @@ public:
    * @param[out] out - Resized output vector.
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
-  void matvec(const HostCsrMatrix& mat,
-              HostConstVectorView  x,
-              HostVector&          out) const;
+  void matvec(const HostCsrMatrix&       mat,
+              HostVectorView<const Real> x,
+              HostVector<Real>&          out) const;
 
   /**
    * @brief Resize the output if needed and compute `out = mat^T * x`.
@@ -120,9 +120,9 @@ public:
    * @param[out] out - Resized output vector.
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
-  void matvecT(const HostCsrMatrix& mat,
-               HostConstVectorView  x,
-               HostVector&          out) const;
+  void matvecT(const HostCsrMatrix&       mat,
+               HostVectorView<const Real> x,
+               HostVector<Real>&          out) const;
 
   /**
    * @brief Compute `y = alpha * mat * x + beta * y` for a dense view.
@@ -135,8 +135,8 @@ public:
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
   void matvec(HostMatrixView<const Real> mat,
-              HostConstVectorView        x,
-              HostVectorView             y,
+              HostVectorView<const Real> x,
+              HostVectorView<Real>       y,
               Real                       alpha = 1.0,
               Real                       beta  = 0.0) const;
 
@@ -151,8 +151,8 @@ public:
    * @throws std::runtime_error - If dimensions or storage overlap are invalid.
    */
   void matvecT(HostMatrixView<const Real> mat,
-               HostConstVectorView        x,
-               HostVectorView             y,
+               HostVectorView<const Real> x,
+               HostVectorView<Real>       y,
                Real                       alpha = 1.0,
                Real                       beta  = 0.0) const;
 
@@ -267,11 +267,11 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void matvec(const DeviceCsrMatrix& mat,
-              DeviceConstVectorView  x,
-              DeviceVectorView       y,
-              Real                   alpha = 1.0,
-              Real                   beta  = 0.0) const;
+  void matvec(const DeviceCsrMatrix&       mat,
+              DeviceVectorView<const Real> x,
+              DeviceVectorView<Real>       y,
+              Real                         alpha = 1.0,
+              Real                         beta  = 0.0) const;
 
   /**
    * @brief Enqueue `y = alpha * mat^T * x + beta * y` for a CSR matrix.
@@ -284,11 +284,11 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void matvecT(const DeviceCsrMatrix& mat,
-               DeviceConstVectorView  x,
-               DeviceVectorView       y,
-               Real                   alpha = 1.0,
-               Real                   beta  = 0.0) const;
+  void matvecT(const DeviceCsrMatrix&       mat,
+               DeviceVectorView<const Real> x,
+               DeviceVectorView<Real>       y,
+               Real                         alpha = 1.0,
+               Real                         beta  = 0.0) const;
 
   /**
    * @brief Resize the output if needed and enqueue `out = mat * x`.
@@ -299,9 +299,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void matvec(const DeviceCsrMatrix& mat,
-              DeviceConstVectorView  x,
-              DeviceVector&          out) const;
+  void matvec(const DeviceCsrMatrix&       mat,
+              DeviceVectorView<const Real> x,
+              DeviceVector<Real>&          out) const;
 
   /**
    * @brief Resize the output if needed and enqueue `out = mat^T * x`.
@@ -312,9 +312,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void matvecT(const DeviceCsrMatrix& mat,
-               DeviceConstVectorView  x,
-               DeviceVector&          out) const;
+  void matvecT(const DeviceCsrMatrix&       mat,
+               DeviceVectorView<const Real> x,
+               DeviceVector<Real>&          out) const;
 
   /**
    * @brief Enqueue `y = alpha * mat * x + beta * y` for a dense view.
@@ -328,8 +328,8 @@ public:
    * fails.
    */
   void matvec(DeviceMatrixView<const Real> mat,
-              DeviceConstVectorView        x,
-              DeviceVectorView             y,
+              DeviceVectorView<const Real> x,
+              DeviceVectorView<Real>       y,
               Real                         alpha = 1.0,
               Real                         beta  = 0.0) const;
 
@@ -345,8 +345,8 @@ public:
    * fails.
    */
   void matvecT(DeviceMatrixView<const Real> mat,
-               DeviceConstVectorView        x,
-               DeviceVectorView             y,
+               DeviceVectorView<const Real> x,
+               DeviceVectorView<Real>       y,
                Real                         alpha = 1.0,
                Real                         beta  = 0.0) const;
 

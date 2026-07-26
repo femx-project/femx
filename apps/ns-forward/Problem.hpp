@@ -27,8 +27,8 @@ struct Problem
   model::ns::NavierStokesModel          model;
   fem::TimeDirichletData                boundary_data;
   assembly::HostConstrainedTimeResidual residual;
-  HostVector                            initial_state;
-  HostVector                            parameters;
+  HostVector<Real>                      initial_state;
+  HostVector<Real>                      parameters;
 };
 
 } // namespace femx::apps::ns_forward

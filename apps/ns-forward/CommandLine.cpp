@@ -41,10 +41,10 @@ CommandLineOptions parseCommandLine(int   argc,
   return options;
 }
 
-void printUsage(std::ostream&             out,
-                const std::string&        executable,
-                const std::string&        option_suffix,
-                const Array<std::string>& extra_lines)
+void printUsage(std::ostream&                  out,
+                const std::string&             executable,
+                const std::string&             option_suffix,
+                const HostVector<std::string>& extra_lines)
 {
   out << "Usage: " << executable << " --config FILE" << option_suffix << '\n';
   for (const std::string& line : extra_lines)

@@ -23,7 +23,7 @@ namespace detail
 inline void checkAssemblyInputs(
     const fem::DeviceGeometry& geom,
     const DeviceAssemblyMap&   map,
-    const DeviceVector&        state,
+    const DeviceVector<Real>&  state,
     const DeviceCsrMatrix&     jac)
 {
   require(geom.numElems() == map.numElems(),
@@ -35,11 +35,11 @@ inline void checkAssemblyInputs(
 }
 
 inline void checkTimeAssemblyInputs(
-    Index                    num_hist,
-    state::VariableBlock     wrt,
-    const DeviceAssemblyMap& map,
-    DeviceConstVectorView    hist,
-    DeviceConstVectorView    nxt)
+    Index                        num_hist,
+    state::VariableBlock         wrt,
+    const DeviceAssemblyMap&     map,
+    DeviceVectorView<const Real> hist,
+    DeviceVectorView<const Real> nxt)
 {
   require(num_hist > 0 && hist.size() == num_hist * map.numStates()
               && nxt.size() == map.numStates(),
@@ -50,22 +50,22 @@ inline void checkTimeAssemblyInputs(
 }
 
 inline void checkTimeAssemblyInputs(
-    Index                    num_hist,
-    state::VariableBlock     wrt,
-    const DeviceAssemblyMap& map,
-    DeviceConstVectorView    hist,
-    DeviceConstVectorView    nxt,
-    const DeviceCsrMatrix&   jac)
+    Index                        num_hist,
+    state::VariableBlock         wrt,
+    const DeviceAssemblyMap&     map,
+    DeviceVectorView<const Real> hist,
+    DeviceVectorView<const Real> nxt,
+    const DeviceCsrMatrix&       jac)
 {
   checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   require(jac.pattern().layoutId() == map.pattern().layoutId(),
           "CUDA time assembly matrix must use the AssemblyMap CSR layout");
 }
 
-inline void checkTimeAssemblyAliases(DeviceConstVectorView hist,
-                                     DeviceConstVectorView nxt,
-                                     const DeviceVector&   res,
-                                     const DeviceVector&   vals)
+inline void checkTimeAssemblyAliases(DeviceVectorView<const Real> hist,
+                                     DeviceVectorView<const Real> nxt,
+                                     const DeviceVector<Real>&    res,
+                                     const DeviceVector<Real>&    vals)
 {
   require(hist.data() != res.data() && hist.data() != vals.data()
               && nxt.data() != res.data() && nxt.data() != vals.data()
@@ -320,8 +320,8 @@ template <class ElementKernel>
 void assemble(const ElementKernel&       kernel,
               const fem::DeviceGeometry& geom,
               const DeviceAssemblyMap&   map,
-              const DeviceVector&        state,
-              DeviceVector&              res,
+              const DeviceVector<Real>&  state,
+              DeviceVector<Real>&        res,
               DeviceCsrMatrix&           jac,
               CudaContext&               ctx)
 {
@@ -331,7 +331,7 @@ void assemble(const ElementKernel&       kernel,
                 "CUDA element kernel must be trivially copyable");
 
   detail::checkAssemblyInputs(geom, map, state, jac);
-  const DeviceVector& mat_vals = jac.vals();
+  const DeviceVector<Real>& mat_vals = jac.vals();
   detail::checkAssemblyAliases(state, res, mat_vals);
 
   if (res.size() != map.numRes())
@@ -365,16 +365,16 @@ void assemble(const ElementKernel&       kernel,
 
 /** @brief Assemble one time residual and state Jacobian on CUDA. */
 template <class ElementKernel>
-void assemble(const ElementKernel&     kernel,
-              Index                    step,
-              Index                    num_hist,
-              state::VariableBlock     wrt,
-              const DeviceAssemblyMap& map,
-              DeviceConstVectorView    hist,
-              DeviceConstVectorView    nxt,
-              DeviceVector&            res,
-              DeviceCsrMatrix&         jac,
-              CudaContext&             ctx)
+void assemble(const ElementKernel&         kernel,
+              Index                        step,
+              Index                        num_hist,
+              state::VariableBlock         wrt,
+              const DeviceAssemblyMap&     map,
+              DeviceVectorView<const Real> hist,
+              DeviceVectorView<const Real> nxt,
+              DeviceVector<Real>&          res,
+              DeviceCsrMatrix&             jac,
+              CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -382,7 +382,7 @@ void assemble(const ElementKernel&     kernel,
                 "CUDA time element kernel must be trivially copyable");
 
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt, jac);
-  const DeviceVector& vals = jac.vals();
+  const DeviceVector<Real>& vals = jac.vals();
   detail::checkTimeAssemblyAliases(hist, nxt, res, vals);
 
   if (res.size() != map.numRes())
@@ -420,14 +420,14 @@ void assemble(const ElementKernel&     kernel,
 /** @brief Assemble one time residual on CUDA without allocating a Jacobian. */
 template <class ElementKernel>
 void assembleResidual(
-    const ElementKernel&     kernel,
-    Index                    step,
-    Index                    num_hist,
-    const DeviceAssemblyMap& map,
-    DeviceConstVectorView    hist,
-    DeviceConstVectorView    nxt,
-    DeviceVector&            res,
-    CudaContext&             ctx)
+    const ElementKernel&         kernel,
+    Index                        step,
+    Index                        num_hist,
+    const DeviceAssemblyMap&     map,
+    DeviceVectorView<const Real> hist,
+    DeviceVectorView<const Real> nxt,
+    DeviceVector<Real>&          res,
+    CudaContext&                 ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementKernel>::value,

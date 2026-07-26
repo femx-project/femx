@@ -27,8 +27,8 @@ public:
     : pattern_(assembly::makeAssemblyMap(
                    3,
                    3,
-                   Array<Array<Index>>{{0, 1, 2}},
-                   Array<Array<Index>>{{0, 1, 2}})
+                   HostVector<HostVector<Index>>{{0, 1, 2}},
+                   HostVector<HostVector<Index>>{{0, 1, 2}})
                    .pattern())
   {
   }
@@ -48,9 +48,9 @@ public:
     return pattern_;
   }
 
-  void initialState(HostConstVectorView prm,
-                    HostVector&         out,
-                    CpuContext&         ctx) const override
+  void initialState(HostVectorView<const Real> prm,
+                    HostVector<Real>&          out,
+                    CpuContext&                ctx) const override
   {
     require(prm.empty(), "Identity residual is parameter-free");
     linalg::HostVectorHandler vec_handler(ctx);
@@ -58,10 +58,10 @@ public:
   }
 
   void applyJacT(const state::HostTimeContext&,
-                 state::VariableBlock wrt,
-                 HostConstVectorView  adj,
-                 HostVector&          out,
-                 CpuContext&          ctx) const override
+                 state::VariableBlock       wrt,
+                 HostVectorView<const Real> adj,
+                 HostVector<Real>&          out,
+                 CpuContext&                ctx) const override
   {
     require(!wrt.isNextState(),
             "Identity transpose apply supports history and parameters");
@@ -75,7 +75,7 @@ public:
   }
 
   void assembleNext(const state::HostTimeContext& time,
-                    HostVector&                   res,
+                    HostVector<Real>&             res,
                     HostCsrMatrix&                out,
                     CpuContext&                   ctx) const override
   {
@@ -104,7 +104,7 @@ bool near(Real a, Real b)
 }
 
 template <std::size_t N>
-bool valsNear(const HostVector&          actual,
+bool valsNear(const HostVector<Real>&    actual,
               const std::array<Real, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
@@ -124,10 +124,10 @@ bool valsNear(const HostVector&          actual,
 fem::DirichletControl mappedControl()
 {
   return fem::DirichletControl(
-      Array<Index>{0, 2},
+      HostVector<Index>{0, 2},
       1,
-      Array<fem::DirichletControlMapEntry>{{0, 0, 2.0},
-                                           {1, 0, -1.0}});
+      HostVector<fem::DirichletControlMapEntry>{{0, 0, 2.0},
+                                                {1, 0, -1.0}});
 }
 
 TestOutcome mappedTimeDirichletResidual()
@@ -137,7 +137,7 @@ TestOutcome mappedTimeDirichletResidual()
   DenseMatrix modes(3, 1);
   modes(1, 0)        = 3.0;
   const auto initial = fem::makeInitialStateMap(
-      HostVector{1.0, 2.0, 3.0},
+      HostVector<Real>{1.0, 2.0, 3.0},
       std::move(modes),
       mappedControl(),
       0,
@@ -152,15 +152,15 @@ TestOutcome mappedTimeDirichletResidual()
           mappedControl(),
           {},
           {},
-          Array<LinearInterpolation>{{0, 1, 0.25}, {1, 1, 0.0}},
+          HostVector<LinearInterpolation>{{0, 1, 0.25}, {1, 1, 0.0}},
           0),
       initial);
 
   status *= res.dims().num_param == 2;
 
-  const HostVector             history{1.0, 2.0, 3.0};
-  const HostVector             next{10.0, 20.0, 30.0};
-  const HostVector             parameters{4.0, 8.0};
+  const HostVector<Real>       history{1.0, 2.0, 3.0};
+  const HostVector<Real>       next{10.0, 20.0, 30.0};
+  const HostVector<Real>       parameters{4.0, 8.0};
   const state::HostTimeContext ctx{
       0,
       next.view(),
@@ -168,12 +168,12 @@ TestOutcome mappedTimeDirichletResidual()
       state::HostTimeHistoryView(history.data(), 1, 3)};
   CpuContext cpu;
 
-  HostVector    out;
-  HostCsrMatrix jac(res.pattern());
+  HostVector<Real> out;
+  HostCsrMatrix    jac(res.pattern());
   res.initialState(parameters.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{8.0, 14.0, -4.0}});
-  const HostVector initial_adj{1.0, 2.0, 3.0};
-  HostVector       initial_grad(2);
+  const HostVector<Real> initial_adj{1.0, 2.0, 3.0};
+  HostVector<Real>       initial_grad(2);
   res.addInitialStateJacobianTranspose(
       initial_adj.view(), initial_grad.view(), cpu);
   status *= valsNear(initial_grad, std::array<Real, 2>{{5.0, 0.0}});
@@ -181,7 +181,7 @@ TestOutcome mappedTimeDirichletResidual()
   res.assembleNext(ctx, out, jac, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 
-  const HostVector adj{1.0, 5.0, 3.0};
+  const HostVector<Real> adj{1.0, 5.0, 3.0};
   res.applyJacT(ctx, state::VariableBlock::Param, adj.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 2>{{0.75, 0.25}});
 

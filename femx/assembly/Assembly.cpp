@@ -40,9 +40,9 @@ void addElem(const HostAssemblyMap& map,
   }
 }
 
-void replaceRows(HostCsrMatrix&      mat,
-                 const Array<Index>& rows,
-                 Real                diag)
+void replaceRows(HostCsrMatrix&           mat,
+                 const HostVector<Index>& rows,
+                 Real                     diag)
 {
   for (Index row : rows)
   {
@@ -64,14 +64,14 @@ void replaceRows(HostCsrMatrix&      mat,
   }
 }
 
-void eliminateColumns(HostCsrMatrix&      mat,
-                      const Array<Index>& rows,
-                      HostVector&         rhs)
+void eliminateColumns(HostCsrMatrix&           mat,
+                      const HostVector<Index>& rows,
+                      HostVector<Real>&        rhs)
 {
   require(rhs.size() == mat.rows(),
           "Host CSR column elimination RHS size mismatch");
 
-  Array<char> constrained(mat.cols(), 0);
+  HostVector<char> constrained(mat.cols(), 0);
   for (Index row : rows)
   {
     require(row >= 0 && row < mat.cols(),

@@ -97,9 +97,9 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void addBlock(const Array<Index>& rows,
-                const Array<Index>& cols,
-                const DenseMatrix&  mat_e);
+  void addBlock(const HostVector<Index>& rows,
+                const HostVector<Index>& cols,
+                const DenseMatrix&       mat_e);
 
   /**
    * @brief Complete PETSc matrix assembly.
@@ -116,7 +116,7 @@ public:
    * @param[in] diag - Replacement diagonal value.
    * @throws std::runtime_error - If a row is invalid or PETSc reports an error.
    */
-  void replaceRows(const Array<Index>& rows, Real diag);
+  void replaceRows(const HostVector<Index>& rows, Real diag);
 
   /**
    * @brief Apply the matrix to a replicated Host vector.
@@ -126,7 +126,7 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void apply(HostConstVectorView dir, HostVector& out) const;
+  void apply(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
   /**
    * @brief Apply the transpose to a replicated Host vector.
@@ -136,7 +136,7 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void applyT(HostConstVectorView dir, HostVector& out) const;
+  void applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
 private:
   class ScopedVec
@@ -160,13 +160,13 @@ private:
                 Index           num_cols,
                 const Real*     vals);
 
-  void zeroRows(const Array<Index>& rows, Real diag);
+  void zeroRows(const HostVector<Index>& rows, Real diag);
 
   static void computePrealloc(const HostCsrPattern& pattern,
                               PetscInt              begin,
                               PetscInt              end,
-                              Array<PetscInt>&      d_nnz,
-                              Array<PetscInt>&      o_nnz);
+                              HostVector<PetscInt>& d_nnz,
+                              HostVector<PetscInt>& o_nnz);
 
 private:
   MPI_Comm comm_{PETSC_COMM_SELF}; ///< Communicator used by the matrix.

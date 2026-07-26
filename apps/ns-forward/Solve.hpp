@@ -11,7 +11,7 @@ namespace femx::apps::ns_forward
 {
 
 /** @brief Return whether every vector entry is finite. */
-bool hasFiniteValues(const HostVector& values);
+bool hasFiniteValues(const HostVector<Real>& values);
 
 SolveResult solve(state::HostTimeIntegrator& integrator,
                   const Problem&             problem,

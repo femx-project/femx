@@ -28,7 +28,7 @@ SumTimeObjective& SumTimeObjective::add(const TimeObjective& term)
   return *this;
 }
 
-const Array<const TimeObjective*>& SumTimeObjective::terms() const noexcept
+const HostVector<const TimeObjective*>& SumTimeObjective::terms() const noexcept
 {
   return terms_;
 }
@@ -48,8 +48,8 @@ Index SumTimeObjective::numParams() const
   return num_param_;
 }
 
-Real SumTimeObjective::value(const TimeTrajectory& tr,
-                             const HostVector&     prm) const
+Real SumTimeObjective::value(const TimeTrajectory&   tr,
+                             const HostVector<Real>& prm) const
 {
   Real val = 0.0;
   for (const TimeObjective* term : terms_)
@@ -59,15 +59,15 @@ Real SumTimeObjective::value(const TimeTrajectory& tr,
   return val;
 }
 
-void SumTimeObjective::stateGrad(Index                 level,
-                                 const TimeTrajectory& tr,
-                                 const HostVector&     prm,
-                                 HostVector&           out) const
+void SumTimeObjective::stateGrad(Index                   level,
+                                 const TimeTrajectory&   tr,
+                                 const HostVector<Real>& prm,
+                                 HostVector<Real>&       out) const
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, numStates());
-  HostVector term_grad;
+  HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
     term->stateGrad(level, tr, prm, term_grad);
@@ -75,14 +75,14 @@ void SumTimeObjective::stateGrad(Index                 level,
   }
 }
 
-void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
-                                 const HostVector&     prm,
-                                 HostVector&           out) const
+void SumTimeObjective::paramGrad(const TimeTrajectory&   tr,
+                                 const HostVector<Real>& prm,
+                                 HostVector<Real>&       out) const
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, numParams());
-  HostVector term_grad;
+  HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
     term->paramGrad(tr, prm, term_grad);
@@ -90,9 +90,9 @@ void SumTimeObjective::paramGrad(const TimeTrajectory& tr,
   }
 }
 
-void SumTimeObjective::addInto(const HostVector& src,
-                               HostVector&       out,
-                               Index             size)
+void SumTimeObjective::addInto(const HostVector<Real>& src,
+                               HostVector<Real>&       out,
+                               Index                   size)
 {
   checkSize(src, size);
   for (Index i = 0; i < size; ++i)
@@ -101,7 +101,7 @@ void SumTimeObjective::addInto(const HostVector& src,
   }
 }
 
-void SumTimeObjective::checkSize(const HostVector& val, Index exp)
+void SumTimeObjective::checkSize(const HostVector<Real>& val, Index exp)
 {
   require(val.size() == exp,
           "SumTimeObjective vector size mismatch");

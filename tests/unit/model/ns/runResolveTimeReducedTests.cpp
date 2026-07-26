@@ -29,9 +29,9 @@ bool near(Real lhs, Real rhs, Real tol)
          <= tol * (1.0 + std::max(std::abs(lhs), std::abs(rhs)));
 }
 
-bool vectorsNear(const HostVector& lhs,
-                 const HostVector& rhs,
-                 Real              tol)
+bool vectorsNear(const HostVector<Real>& lhs,
+                 const HostVector<Real>& rhs,
+                 Real                    tol)
 {
   if (lhs.size() != rhs.size())
   {
@@ -48,14 +48,14 @@ bool vectorsNear(const HostVector& lhs,
 }
 
 Real deviceValue(inverse::DeviceTimeReducedFunctional& functional,
-                 const HostVector&                     parameters)
+                 const HostVector<Real>&               parameters)
 {
   return functional.value(parameters.view());
 }
 
 Real deviceValueGrad(inverse::DeviceTimeReducedFunctional& functional,
-                     const HostVector&                     parameters,
-                     HostVector&                           gradient)
+                     const HostVector<Real>&               parameters,
+                     HostVector<Real>&                     gradient)
 {
   gradient.resize(functional.numParams());
   return functional.valueGrad(parameters.view(), gradient.view());
@@ -63,11 +63,11 @@ Real deviceValueGrad(inverse::DeviceTimeReducedFunctional& functional,
 
 struct ProblemData
 {
-  fem::DirichletControl      ctr;
-  Array<Index>               fixed_dofs;
-  HostVector                 fixed_vals;
-  Array<LinearInterpolation> time;
-  Index                      init_dof{-1};
+  fem::DirichletControl           ctr;
+  HostVector<Index>               fixed_dofs;
+  HostVector<Real>                fixed_vals;
+  HostVector<LinearInterpolation> time;
+  Index                           init_dof{-1};
 };
 
 ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
@@ -75,9 +75,9 @@ ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
   const auto vel = model.space().field(0);
   const auto pre = model.space().field(1);
 
-  Index        ctr_dof  = -1;
-  Index        init_dof = -1;
-  Array<Index> fixed;
+  Index             ctr_dof  = -1;
+  Index             init_dof = -1;
+  HostVector<Index> fixed;
   for (Index in = 0; in < model.mesh().numNodes(); ++in)
   {
     const auto& pt = model.mesh().node(in);
@@ -105,13 +105,13 @@ ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
   }
   fixed.push_back(pre.globalDof(0));
 
-  HostVector                 vals(model.numSteps() * fixed.size());
-  Array<LinearInterpolation> time(model.numSteps());
+  HostVector<Real>                vals(model.numSteps() * fixed.size());
+  HostVector<LinearInterpolation> time(model.numSteps());
   for (Index step = 0; step < model.numSteps(); ++step)
   {
     time[step] = {step, step, 0.0};
   }
-  return {fem::DirichletControl(Array<Index>{ctr_dof}),
+  return {fem::DirichletControl(HostVector<Index>{ctr_dof}),
           std::move(fixed),
           std::move(vals),
           std::move(time),
@@ -150,8 +150,8 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         data.time,
         1,
         num_prm);
-    HostVector  mean(model.numStates());
-    DenseMatrix modes(model.numStates(), 1);
+    HostVector<Real> mean(model.numStates());
+    DenseMatrix      modes(model.numStates(), 1);
     modes(data.init_dof, 0)       = 0.2;
     fem::HostInitialStateMap init = fem::makeInitialStateMap(
         mean, modes, data.ctr, 0, 1, num_prm);
@@ -160,8 +160,8 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         steps,
         model.space(),
         0,
-        Array<Point3>{{0.5, 0.5, 0.0}},
-        Array<Index>{0},
+        HostVector<Point3>{{0.5, 0.5, 0.0}},
+        HostVector<Index>{0},
         num_prm);
     inverse::TimeObservationData obs_data(steps + 1, 1);
     obs_data.setZero();
@@ -197,32 +197,32 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
     inverse::DeviceTimeReducedFunctional cuda(
         cuda_integ, cuda_adj_mat, cuda_adj_solver, obj);
 
-    const HostVector prm{0.25, 0.35, 0.65};
-    HostVector       cpu_grad(num_prm);
-    HostVector       cuda_grad;
-    const Real       cpu_val   = cpu.valueGrad(prm.view(), cpu_grad.view());
-    const Real       cuda_val  = deviceValueGrad(cuda, prm, cuda_grad);
-    status                    *= near(cuda_val, cpu_val, 2.0e-6);
-    status                    *= vectorsNear(cuda_grad, cpu_grad, 2.0e-5);
-    status                    *= cpu.assemblyCalls() == 2 * steps;
-    status                    *= cpu.solveCalls() == 2 * steps;
-    status                    *= cuda.assemblyCalls() == 2 * steps;
-    status                    *= cuda.solveCalls() == 2 * steps;
+    const HostVector<Real> prm{0.25, 0.35, 0.65};
+    HostVector<Real>       cpu_grad(num_prm);
+    HostVector<Real>       cuda_grad;
+    const Real             cpu_val   = cpu.valueGrad(prm.view(), cpu_grad.view());
+    const Real             cuda_val  = deviceValueGrad(cuda, prm, cuda_grad);
+    status                          *= near(cuda_val, cpu_val, 2.0e-6);
+    status                          *= vectorsNear(cuda_grad, cpu_grad, 2.0e-5);
+    status                          *= cpu.assemblyCalls() == 2 * steps;
+    status                          *= cpu.solveCalls() == 2 * steps;
+    status                          *= cuda.assemblyCalls() == 2 * steps;
+    status                          *= cuda.solveCalls() == 2 * steps;
 
-    HostVector repeat_grad;
-    const Real repeat_val  = deviceValueGrad(cuda, prm, repeat_grad);
-    status                *= near(repeat_val, cuda_val, 1.0e-12);
-    status                *= vectorsNear(repeat_grad, cuda_grad, 1.0e-12);
+    HostVector<Real> repeat_grad;
+    const Real       repeat_val  = deviceValueGrad(cuda, prm, repeat_grad);
+    status                      *= near(repeat_val, cuda_val, 1.0e-12);
+    status                      *= vectorsNear(repeat_grad, cuda_grad, 1.0e-12);
 
-    HostVector     fd(num_prm);
-    constexpr Real eps = 1.0e-6;
+    HostVector<Real> fd(num_prm);
+    constexpr Real   eps = 1.0e-6;
     for (Index i = 0; i < num_prm; ++i)
     {
-      HostVector plus   = prm;
-      HostVector minus  = prm;
-      plus[i]          += eps;
-      minus[i]         -= eps;
-      fd[i]             = (deviceValue(cuda, plus)
+      HostVector<Real> plus   = prm;
+      HostVector<Real> minus  = prm;
+      plus[i]                += eps;
+      minus[i]               -= eps;
+      fd[i]                   = (deviceValue(cuda, plus)
                - deviceValue(cuda, minus))
               / (2.0 * eps);
     }

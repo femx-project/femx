@@ -10,10 +10,10 @@ namespace
 {
 
 fem::TimeDirichletData makeBoundaryData(
-    const fem::MixedFESpace&              space,
-    const Array<BoundaryConditionConfig>& conditions,
-    Index                                 num_steps,
-    Real                                  dt)
+    const fem::MixedFESpace&                   space,
+    const HostVector<BoundaryConditionConfig>& conditions,
+    Index                                      num_steps,
+    Real                                       dt)
 {
   return fem::makeTimeDirichletData(
       space.numDofs(),

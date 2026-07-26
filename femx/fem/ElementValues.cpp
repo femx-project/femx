@@ -60,9 +60,9 @@ Index ElementValues::numQuadraturePoints() const
   return num_qpts_;
 }
 
-HostConstVectorView ElementValues::N(Index iq) const
+HostVectorView<const Real> ElementValues::N(Index iq) const
 {
-  return HostConstVectorView(
+  return HostVectorView<const Real>(
       N_.data() + iq * num_dofs_,
       num_dofs_);
 }
@@ -119,7 +119,7 @@ void ElementValues::calcReferenceValues()
   {
     const QuadraturePoint& qp = (*quad_)[iq];
 
-    HostVectorView N(
+    HostVectorView<Real> N(
         N_.data() + iq * num_dofs_,
         num_dofs_);
 
@@ -180,9 +180,9 @@ void ElementValues::calcPhysicalValues(const Element& elem)
   }
 }
 
-Real ElementValues::invJacobian(const HostVector& J,
-                                HostVector&       invJ,
-                                Index             dim)
+Real ElementValues::invJacobian(const HostVector<Real>& J,
+                                HostVector<Real>&       invJ,
+                                Index                   dim)
 {
   constexpr Real eps = 1.0e-30;
 

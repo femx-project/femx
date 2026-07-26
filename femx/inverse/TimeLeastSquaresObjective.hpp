@@ -28,23 +28,23 @@ public:
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            HostVector                     wts);
+                            HostVector<Real>               wts);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            HostVector                     wts,
+                            HostVector<Real>               wts,
                             Real                           dt);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            HostVector                     wts,
+                            HostVector<Real>               wts,
                             Real                           dt,
                             Real                           time_offset);
 
   TimeLeastSquaresObjective(const TimeObservationOperator& obs,
                             TimeObservationData            data,
-                            HostVector                     wts,
-                            HostVector                     obs_wts,
+                            HostVector<Real>               wts,
+                            HostVector<Real>               obs_wts,
                             Real                           dt,
                             Real                           time_offset = 0.0);
 
@@ -53,16 +53,16 @@ public:
   Index numParams() const override;
 
   Real value(const state::TimeTrajectory& tr,
-             const HostVector&            prm) const override;
+             const HostVector<Real>&      prm) const override;
 
   void stateGrad(Index                        level,
                  const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
   void paramGrad(const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
 private:
   Index               numTimeLevels() const;
@@ -75,27 +75,27 @@ private:
   void observeInterpolated(Index                        data_row,
                            const LinearInterpolation&   interp,
                            const state::TimeTrajectory& tr,
-                           const HostVector&            prm,
-                           HostVector&                  out) const;
+                           const HostVector<Real>&      prm,
+                           HostVector<Real>&            out) const;
 
   void obsResidual(Index                        data_row,
                    const LinearInterpolation&   interp,
                    const state::TimeTrajectory& tr,
-                   const HostVector&            prm,
-                   HostVector&                  out) const;
+                   const HostVector<Real>&      prm,
+                   HostVector<Real>&            out) const;
 
-  static void checkSize(const HostVector& val, Index exp);
-  static void scale(HostVector& out, Real factor);
-  void        scaleObservationResidual(Index       row,
-                                       HostVector& out,
-                                       Real        factor) const;
+  static void checkSize(const HostVector<Real>& val, Index exp);
+  static void scale(HostVector<Real>& out, Real factor);
+  void        scaleObservationResidual(Index             row,
+                                       HostVector<Real>& out,
+                                       Real              factor) const;
   void        setUniformObservationWeights();
 
 private:
   const TimeObservationOperator& obs_;
   TimeObservationData            data_;
-  HostVector                     wts_;
-  HostVector                     obs_wts_;
+  HostVector<Real>               wts_;
+  HostVector<Real>               obs_wts_;
   Real                           dt_{1.0};
   Real                           time_offset_{0.0};
 };

@@ -64,24 +64,24 @@ public:
     return data_.data();
   }
 
-  HostVectorView level(Index level)
+  HostVectorView<Real> level(Index level)
   {
     checkLevel(level);
     return {data() + level * num_states_, num_states_};
   }
 
-  HostConstVectorView level(Index level) const
+  HostVectorView<const Real> level(Index level) const
   {
     checkLevel(level);
     return {data() + level * num_states_, num_states_};
   }
 
-  HostVectorView operator[](Index level)
+  HostVectorView<Real> operator[](Index level)
   {
     return this->level(level);
   }
 
-  HostConstVectorView operator[](Index level) const
+  HostVectorView<const Real> operator[](Index level) const
   {
     return this->level(level);
   }
@@ -112,9 +112,9 @@ private:
             "TimeTrajectory level is out of range");
   }
 
-  HostVector data_;
-  Index      num_steps_{0};
-  Index      num_states_{0};
+  HostVector<Real> data_;
+  Index            num_steps_{0};
+  Index            num_states_{0};
 };
 
 } // namespace femx::state

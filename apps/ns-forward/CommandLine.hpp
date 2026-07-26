@@ -36,9 +36,9 @@ CommandLineOptions parseCommandLine(int   argc,
  * @param[in] option_suffix - Additional backend option syntax.
  * @param[in] extra_lines - Additional usage lines.
  */
-void printUsage(std::ostream&             out,
-                const std::string&        executable,
-                const std::string&        option_suffix = {},
-                const Array<std::string>& extra_lines   = {});
+void printUsage(std::ostream&                  out,
+                const std::string&             executable,
+                const std::string&             option_suffix = {},
+                const HostVector<std::string>& extra_lines   = {});
 
 } // namespace femx::apps::ns_forward

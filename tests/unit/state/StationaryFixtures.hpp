@@ -29,7 +29,7 @@ public:
 
   explicit AffineResidual(Real coeff)
     : coeff_(coeff),
-      pattern_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
+      pattern_(1, 1, HostVector<Index>{0, 1}, HostVector<Index>{0})
   {
     require(coeff_ != 0.0, "Affine residual coefficient must be nonzero");
   }
@@ -107,23 +107,23 @@ public:
     return 1;
   }
 
-  Real value(const HostVector& state,
-             const HostVector& prm) const override
+  Real value(const HostVector<Real>& state,
+             const HostVector<Real>& prm) const override
   {
     const Real diff = state[0] - target_;
     return 0.5 * diff * diff + 0.5 * beta_ * prm[0] * prm[0];
   }
 
-  void stateGrad(const HostVector& state,
-                 const HostVector&,
-                 HostVector& out) const override
+  void stateGrad(const HostVector<Real>& state,
+                 const HostVector<Real>&,
+                 HostVector<Real>& out) const override
   {
     out.assign(1, state[0] - target_);
   }
 
-  void paramGrad(const HostVector&,
-                 const HostVector& prm,
-                 HostVector&       out) const override
+  void paramGrad(const HostVector<Real>&,
+                 const HostVector<Real>& prm,
+                 HostVector<Real>&       out) const override
   {
     out.assign(1, beta_ * prm[0]);
   }
@@ -138,7 +138,7 @@ class QuadraticResidual final
 {
 public:
   QuadraticResidual()
-    : pattern_(1, 1, HostIndexVector{0, 1}, HostIndexVector{0})
+    : pattern_(1, 1, HostVector<Index>{0, 1}, HostVector<Index>{0})
   {
   }
 
@@ -157,26 +157,26 @@ public:
     return pattern_;
   }
 
-  void res(const HostVector& state,
-           const HostVector& prm,
-           HostVector&       out,
+  void res(const HostVector<Real>& state,
+           const HostVector<Real>& prm,
+           HostVector<Real>&       out,
            CpuContext&) const override
   {
     out.assign(1, state[0] * state[0] - prm[0]);
   }
 
-  void assembleStateJac(const HostVector& state,
-                        const HostVector&,
+  void assembleStateJac(const HostVector<Real>& state,
+                        const HostVector<Real>&,
                         HostCsrMatrix& out,
                         CpuContext&) const override
   {
     setScalar(out, 2.0 * state[0]);
   }
 
-  void applyParamJacT(const HostVector&,
-                      const HostVector&,
-                      const HostVector& adj,
-                      HostVector&       out,
+  void applyParamJacT(const HostVector<Real>&,
+                      const HostVector<Real>&,
+                      const HostVector<Real>& adj,
+                      HostVector<Real>&       out,
                       CpuContext&) const override
   {
     out.assign(1, -adj[0]);

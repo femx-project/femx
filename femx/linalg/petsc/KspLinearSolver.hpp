@@ -73,10 +73,10 @@ public:
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
-  void solve(const PETScOperator& mat,
-             const HostVector&    rhs,
-             HostVector&          sol,
-             PetscContext&        ctx) override;
+  void solve(const PETScOperator&    mat,
+             const HostVector<Real>& rhs,
+             HostVector<Real>&       sol,
+             PetscContext&           ctx) override;
 
   /**
    * @brief Solve `mat^T * sol = rhs`.
@@ -88,10 +88,10 @@ public:
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
-  void solveT(const PETScOperator& mat,
-              const HostVector&    rhs,
-              HostVector&          sol,
-              PetscContext&        ctx) override;
+  void solveT(const PETScOperator&    mat,
+              const HostVector<Real>& rhs,
+              HostVector<Real>&       sol,
+              PetscContext&           ctx) override;
 
   /** @brief Return the most recent KSP convergence reason. */
   KSPConvergedReason convergedReason() const;

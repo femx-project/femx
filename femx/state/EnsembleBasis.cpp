@@ -9,14 +9,14 @@ namespace femx
 namespace state
 {
 
-EnsembleBasis::EnsembleBasis(HostVector mean, DenseMatrix perturbations)
+EnsembleBasis::EnsembleBasis(HostVector<Real> mean, DenseMatrix perturbations)
   : mean_(std::move(mean)),
     perts_(std::move(perturbations))
 {
   checkDims();
 }
 
-void EnsembleBasis::reset(HostVector mean, DenseMatrix perturbations)
+void EnsembleBasis::reset(HostVector<Real> mean, DenseMatrix perturbations)
 {
   mean_  = std::move(mean);
   perts_ = std::move(perturbations);
@@ -33,7 +33,7 @@ Index EnsembleBasis::numCoefficients() const
   return perts_.cols();
 }
 
-const HostVector& EnsembleBasis::mean() const
+const HostVector<Real>& EnsembleBasis::mean() const
 {
   return mean_;
 }
@@ -43,8 +43,8 @@ const DenseMatrix& EnsembleBasis::perturbations() const
   return perts_;
 }
 
-void EnsembleBasis::apply(const HostVector& alpha,
-                          HostVector&       out) const
+void EnsembleBasis::apply(const HostVector<Real>& alpha,
+                          HostVector<Real>&       out) const
 {
   checkAlpha(alpha);
   out = mean_;
@@ -53,8 +53,8 @@ void EnsembleBasis::apply(const HostVector& alpha,
   mat_handler.matvec(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
 }
 
-void EnsembleBasis::applyT(const HostVector& grad,
-                           HostVector&       out) const
+void EnsembleBasis::applyT(const HostVector<Real>& grad,
+                           HostVector<Real>&       out) const
 {
   checkPhysical(grad);
   out.resize(numCoefficients());
@@ -70,14 +70,14 @@ void EnsembleBasis::checkDims() const
           "EnsembleBasis received inconsistent dimensions");
 }
 
-void EnsembleBasis::checkAlpha(const HostVector& alpha) const
+void EnsembleBasis::checkAlpha(const HostVector<Real>& alpha) const
 {
   checkDims();
   require(alpha.size() == numCoefficients(),
           "EnsembleBasis coefficient size mismatch");
 }
 
-void EnsembleBasis::checkPhysical(const HostVector& val) const
+void EnsembleBasis::checkPhysical(const HostVector<Real>& val) const
 {
   checkDims();
   require(val.size() == numPhysicalParams(),

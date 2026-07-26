@@ -16,9 +16,9 @@ bool near(Real lhs, Real rhs, Real tol = 1.0e-11)
   return std::abs(lhs - rhs) <= tol;
 }
 
-bool near(const HostVector& lhs,
-          const HostVector& rhs,
-          Real              tol = 1.0e-11)
+bool near(const HostVector<Real>& lhs,
+          const HostVector<Real>& rhs,
+          Real                    tol = 1.0e-11)
 {
   if (lhs.size() != rhs.size())
   {
@@ -34,7 +34,7 @@ bool near(const HostVector& lhs,
   return true;
 }
 
-bool same(const HostIndexVector& lhs, const HostIndexVector& rhs)
+bool same(const HostVector<Index>& lhs, const HostVector<Index>& rhs)
 {
   if (lhs.size() != rhs.size())
   {
@@ -50,7 +50,7 @@ bool same(const HostIndexVector& lhs, const HostIndexVector& rhs)
   return true;
 }
 
-Real dot(const HostVector& lhs, const HostVector& rhs)
+Real dot(const HostVector<Real>& lhs, const HostVector<Real>& rhs)
 {
   Real val = 0.0;
   for (Index i = 0; i < lhs.size(); ++i)
@@ -63,9 +63,9 @@ Real dot(const HostVector& lhs, const HostVector& rhs)
 fem::DirichletControl makeControl()
 {
   return fem::DirichletControl(
-      Array<Index>{1, 4},
+      HostVector<Index>{1, 4},
       2,
-      Array<fem::DirichletControlMapEntry>{
+      HostVector<fem::DirichletControlMapEntry>{
           {0, 0, 2.0}, {0, 1, -1.0}, {1, 0, 0.5}, {1, 1, 3.0}});
 }
 
@@ -75,9 +75,9 @@ fem::HostControlMap makeTimeMap()
       3,
       5,
       makeControl(),
-      Array<Index>{0, 3},
-      HostVector{10.0, 11.0, 12.0, 13.0, 14.0, 15.0},
-      Array<LinearInterpolation>{
+      HostVector<Index>{0, 3},
+      HostVector<Real>{10.0, 11.0, 12.0, 13.0, 14.0, 15.0},
+      HostVector<LinearInterpolation>{
           {0, 0, 0.0}, {0, 1, 0.25}, {1, 2, 0.5}},
       2,
       9);
@@ -93,7 +93,7 @@ fem::HostInitialStateMap makeInitialMap()
   modes(3, 0) = -1.0;
   modes(3, 1) = 0.25;
   return fem::makeInitialStateMap(
-      HostVector{5.0, 6.0, 7.0, 8.0, 9.0},
+      HostVector<Real>{5.0, 6.0, 7.0, 8.0, 9.0},
       std::move(modes),
       makeControl(),
       0,
@@ -101,11 +101,11 @@ fem::HostInitialStateMap makeInitialMap()
       9);
 }
 
-HostVector boundaryRes(const fem::HostControlMap& map,
-                       const HostVector&          state,
-                       const HostVector&          vals)
+HostVector<Real> boundaryRes(const fem::HostControlMap& map,
+                             const HostVector<Real>&    state,
+                             const HostVector<Real>&    vals)
 {
-  HostVector res(map.numStates());
+  HostVector<Real> res(map.numStates());
   for (Index ib = 0; ib < map.numBcs(); ++ib)
   {
     res[map.dofs()[ib]] = state[map.dofs()[ib]] - vals[ib];
@@ -117,40 +117,40 @@ TestOutcome hostControlMapJacobian()
 {
   TestStatus                status(__func__);
   const fem::HostControlMap map = makeTimeMap();
-  const HostVector          prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
-  const HostVector          dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
-  const HostVector          adj{0.4, -1.25, 2.0, 0.75, -0.5};
+  const HostVector<Real>    prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
+  const HostVector<Real>    dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
+  const HostVector<Real>    adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
-  HostVector vals(map.numBcs());
+  HostVector<Real> vals(map.numBcs());
   fem::controlVals(map, 1, prm.view(), vals.view());
-  status *= near(vals, HostVector{2.0, 3.75, 12.0, 13.0});
-  status *= same(map.dofs(), HostIndexVector{1, 4, 0, 3});
+  status *= near(vals, HostVector<Real>{2.0, 3.75, 12.0, 13.0});
+  status *= same(map.dofs(), HostVector<Index>{1, 4, 0, 3});
 
-  HostVector jac(map.numStates());
+  HostVector<Real> jac(map.numStates());
   fem::controlJac(map, 1, dir.view(), jac.view());
 
-  constexpr Real eps   = 1.0e-6;
-  HostVector     plus  = prm;
-  HostVector     minus = prm;
+  constexpr Real   eps   = 1.0e-6;
+  HostVector<Real> plus  = prm;
+  HostVector<Real> minus = prm;
   for (Index i = 0; i < prm.size(); ++i)
   {
     plus[i]  += eps * dir[i];
     minus[i] -= eps * dir[i];
   }
-  HostVector plus_vals(map.numBcs());
-  HostVector minus_vals(map.numBcs());
+  HostVector<Real> plus_vals(map.numBcs());
+  HostVector<Real> minus_vals(map.numBcs());
   fem::controlVals(map, 1, plus.view(), plus_vals.view());
   fem::controlVals(map, 1, minus.view(), minus_vals.view());
-  const HostVector state{2.0, 3.0, 4.0, 5.0, 6.0};
-  const HostVector plus_res  = boundaryRes(map, state, plus_vals);
-  const HostVector minus_res = boundaryRes(map, state, minus_vals);
-  HostVector       fd(map.numStates());
+  const HostVector<Real> state{2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector<Real> plus_res  = boundaryRes(map, state, plus_vals);
+  const HostVector<Real> minus_res = boundaryRes(map, state, minus_vals);
+  HostVector<Real>       fd(map.numStates());
   for (Index i = 0; i < fd.size(); ++i)
   {
     fd[i] = (plus_res[i] - minus_res[i]) / (2.0 * eps);
   }
 
-  HostVector grad(map.numParams());
+  HostVector<Real> grad(map.numParams());
   fem::addControlJacT(map, 1, adj.view(), grad.view());
   status *= near(jac, fd, 2.0e-9);
   status *= near(dot(jac, adj), dot(dir, grad));
@@ -161,33 +161,33 @@ TestOutcome hostInitialStateTranspose()
 {
   TestStatus                     status(__func__);
   const fem::HostInitialStateMap map = makeInitialMap();
-  const HostVector               prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
-  const HostVector               dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
-  const HostVector               adj{0.4, -1.25, 2.0, 0.75, -0.5};
+  const HostVector<Real>         prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
+  const HostVector<Real>         dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
+  const HostVector<Real>         adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
-  HostVector state(map.numStates());
+  HostVector<Real> state(map.numStates());
   fem::initialState(map, prm.view(), state.view());
-  status *= near(state, HostVector{6.375, 0.0, 6.625, 6.9375, 6.5});
+  status *= near(state, HostVector<Real>{6.375, 0.0, 6.625, 6.9375, 6.5});
 
-  constexpr Real eps   = 1.0e-6;
-  HostVector     plus  = prm;
-  HostVector     minus = prm;
+  constexpr Real   eps   = 1.0e-6;
+  HostVector<Real> plus  = prm;
+  HostVector<Real> minus = prm;
   for (Index i = 0; i < prm.size(); ++i)
   {
     plus[i]  += eps * dir[i];
     minus[i] -= eps * dir[i];
   }
-  HostVector plus_state(map.numStates());
-  HostVector minus_state(map.numStates());
+  HostVector<Real> plus_state(map.numStates());
+  HostVector<Real> minus_state(map.numStates());
   fem::initialState(map, plus.view(), plus_state.view());
   fem::initialState(map, minus.view(), minus_state.view());
-  HostVector jac(map.numStates());
+  HostVector<Real> jac(map.numStates());
   for (Index i = 0; i < jac.size(); ++i)
   {
     jac[i] = (plus_state[i] - minus_state[i]) / (2.0 * eps);
   }
 
-  HostVector grad(map.numParams());
+  HostVector<Real> grad(map.numParams());
   fem::addInitialJacT(map, adj.view(), grad.view());
   status *= near(dot(jac, adj), dot(dir, grad), 2.0e-9);
   return status.report();
@@ -205,15 +205,15 @@ TestOutcome cudaMapsMatchHost()
 
   const fem::HostControlMap      host_ctr  = makeTimeMap();
   const fem::HostInitialStateMap host_init = makeInitialMap();
-  const HostVector               prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
-  const HostVector               dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
-  const HostVector               adj{0.4, -1.25, 2.0, 0.75, -0.5};
+  const HostVector<Real>         prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
+  const HostVector<Real>         dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
+  const HostVector<Real>         adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
-  HostVector expected_vals(host_ctr.numBcs());
-  HostVector expected_jac(host_ctr.numStates());
-  HostVector expected_ctr_grad(host_ctr.numParams());
-  HostVector expected_state(host_init.numStates());
-  HostVector expected_init_grad(host_init.numParams());
+  HostVector<Real> expected_vals(host_ctr.numBcs());
+  HostVector<Real> expected_jac(host_ctr.numStates());
+  HostVector<Real> expected_ctr_grad(host_ctr.numParams());
+  HostVector<Real> expected_state(host_init.numStates());
+  HostVector<Real> expected_init_grad(host_init.numParams());
   fem::controlVals(host_ctr, 2, prm.view(), expected_vals.view());
   fem::controlJac(host_ctr, 2, dir.view(), expected_jac.view());
   fem::addControlJacT(
@@ -226,14 +226,14 @@ TestOutcome cudaMapsMatchHost()
   linalg::CudaVectorHandler  vec_handler(ctx);
   fem::DeviceControlMap      ctr;
   fem::DeviceInitialStateMap init;
-  DeviceVector               dev_prm;
-  DeviceVector               dev_dir;
-  DeviceVector               dev_adj;
-  DeviceVector               vals(host_ctr.numBcs());
-  DeviceVector               jac(host_ctr.numStates());
-  DeviceVector               ctr_grad(host_ctr.numParams());
-  DeviceVector               state(host_init.numStates());
-  DeviceVector               init_grad(host_init.numParams());
+  DeviceVector<Real>         dev_prm;
+  DeviceVector<Real>         dev_dir;
+  DeviceVector<Real>         dev_adj;
+  DeviceVector<Real>         vals(host_ctr.numBcs());
+  DeviceVector<Real>         jac(host_ctr.numStates());
+  DeviceVector<Real>         ctr_grad(host_ctr.numParams());
+  DeviceVector<Real>         state(host_init.numStates());
+  DeviceVector<Real>         init_grad(host_init.numParams());
   fem::copy(host_ctr, ctr, ctx);
   fem::copy(host_init, init, ctx);
   vec_handler.copy(prm, dev_prm);
@@ -255,11 +255,11 @@ TestOutcome cudaMapsMatchHost()
   fem::addInitialJacT(
       init, dev_adj.view(), init_grad.view(), ctx);
 
-  HostVector got_vals;
-  HostVector got_jac;
-  HostVector got_ctr_grad;
-  HostVector got_state;
-  HostVector got_init_grad;
+  HostVector<Real> got_vals;
+  HostVector<Real> got_jac;
+  HostVector<Real> got_ctr_grad;
+  HostVector<Real> got_state;
+  HostVector<Real> got_init_grad;
   vec_handler.copy(vals, got_vals);
   vec_handler.copy(jac, got_jac);
   vec_handler.copy(ctr_grad, got_ctr_grad);

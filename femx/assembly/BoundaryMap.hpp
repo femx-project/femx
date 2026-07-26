@@ -72,9 +72,6 @@ template <MemorySpace Space>
 class BoundaryMap
 {
 public:
-  /** @brief Index-vector type in this map's memory space. */
-  using IndexVector = Vector<Space, Index>;
-
   BoundaryMap() = default;
 
   BoundaryMap(const BoundaryMap&)                = default;
@@ -83,16 +80,16 @@ public:
   BoundaryMap& operator=(BoundaryMap&&) noexcept = default;
 
 private:
-  BoundaryMap(Index         num_rows,
-              Index         num_cols,
-              Index         nnz,
-              std::uint64_t layout_id,
-              IndexVector   bc_rows,
-              IndexVector   diag,
-              IndexVector   col_offsets,
-              IndexVector   col_entries,
-              IndexVector   col_rows,
-              IndexVector   bc_mask)
+  BoundaryMap(Index                num_rows,
+              Index                num_cols,
+              Index                nnz,
+              std::uint64_t        layout_id,
+              Vector<Space, Index> bc_rows,
+              Vector<Space, Index> diag,
+              Vector<Space, Index> col_offsets,
+              Vector<Space, Index> col_entries,
+              Vector<Space, Index> col_rows,
+              Vector<Space, Index> bc_mask)
     : num_rows_(num_rows),
       num_cols_(num_cols),
       nnz_(nnz),
@@ -107,8 +104,8 @@ private:
   }
 
   friend BoundaryMap<MemorySpace::Host> makeBoundaryMap(
-      const Array<Index>&   dofs,
-      const HostCsrPattern& pattern);
+      const HostVector<Index>& dofs,
+      const HostCsrPattern&    pattern);
 
   friend void copy(const BoundaryMap<MemorySpace::Host>& src,
                    BoundaryMap<MemorySpace::Device>&     dst,
@@ -166,12 +163,12 @@ private:
   Index         nnz_{0};
   std::uint64_t layout_id_{0};
 
-  IndexVector bc_rows_;
-  IndexVector diag_;
-  IndexVector col_offsets_;
-  IndexVector col_entries_;
-  IndexVector col_rows_;
-  IndexVector bc_mask_;
+  Vector<Space, Index> bc_rows_;
+  Vector<Space, Index> diag_;
+  Vector<Space, Index> col_offsets_;
+  Vector<Space, Index> col_entries_;
+  Vector<Space, Index> col_rows_;
+  Vector<Space, Index> bc_mask_;
 };
 
 using HostBoundaryMap   = BoundaryMap<MemorySpace::Host>;
@@ -182,8 +179,8 @@ using DeviceBoundaryMap = BoundaryMap<MemorySpace::Device>;
  * @param dofs Unique constrained DOFs, whose order defines `bc_vals` order.
  * @param pattern Square CSR pattern used by all later boundary operations.
  */
-HostBoundaryMap makeBoundaryMap(const Array<Index>&   dofs,
-                                const HostCsrPattern& pattern);
+HostBoundaryMap makeBoundaryMap(const HostVector<Index>& dofs,
+                                const HostCsrPattern&    pattern);
 
 /**
  * @brief Explicitly copy host boundary metadata to device storage.
@@ -229,16 +226,16 @@ void replaceRows(const DeviceBoundaryMap& map,
  * @param bc_vals Prescribed values in map order.
  * @param res Residual modified at constrained rows.
  */
-void replaceRes(const HostBoundaryMap& map,
-                HostConstVectorView    state,
-                HostConstVectorView    bc_vals,
-                HostVectorView         res);
+void replaceRes(const HostBoundaryMap&     map,
+                HostVectorView<const Real> state,
+                HostVectorView<const Real> bc_vals,
+                HostVectorView<Real>       res);
 
 /** @brief Owning-vector convenience overload of replaceRes(). */
-void replaceRes(const HostBoundaryMap& map,
-                const HostVector&      state,
-                const HostVector&      bc_vals,
-                HostVector&            res);
+void replaceRes(const HostBoundaryMap&  map,
+                const HostVector<Real>& state,
+                const HostVector<Real>& bc_vals,
+                HostVector<Real>&       res);
 
 /**
  * @brief Asynchronous CUDA equivalent of replaceRes().
@@ -248,18 +245,18 @@ void replaceRes(const HostBoundaryMap& map,
  * @param res Device residual modified at constrained rows.
  * @param ctx CUDA stream on which work is enqueued.
  */
-void replaceRes(const DeviceBoundaryMap& map,
-                DeviceConstVectorView    state,
-                DeviceConstVectorView    bc_vals,
-                DeviceVectorView         res,
-                CudaContext&             ctx);
+void replaceRes(const DeviceBoundaryMap&     map,
+                DeviceVectorView<const Real> state,
+                DeviceVectorView<const Real> bc_vals,
+                DeviceVectorView<Real>       res,
+                CudaContext&                 ctx);
 
 /** @brief Set constrained entries of a Host vector to zero. */
-void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals);
+void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> vals);
 
 /** @brief Asynchronous CUDA equivalent of zeroBoundary(). */
 void zeroBoundary(const DeviceBoundaryMap& map,
-                  DeviceVectorView         vals,
+                  DeviceVectorView<Real>   vals,
                   CudaContext&             ctx);
 
 /**
@@ -274,10 +271,10 @@ void zeroBoundary(const DeviceBoundaryMap& map,
  * @param rhs Right-hand side corrected and constrained in place.
  * @param bc_vals Prescribed values in map order.
  */
-void applyDirichletConditions(const HostBoundaryMap& map,
-                              HostCsrMatrix&         mat,
-                              HostVector&            rhs,
-                              const HostVector&      bc_vals);
+void applyDirichletConditions(const HostBoundaryMap&  map,
+                              HostCsrMatrix&          mat,
+                              HostVector<Real>&       rhs,
+                              const HostVector<Real>& bc_vals);
 
 /**
  * @brief Asynchronously apply Dirichlet conditions to a CUDA linear system.
@@ -287,11 +284,11 @@ void applyDirichletConditions(const HostBoundaryMap& map,
  * @param bc_vals Prescribed device values in map order.
  * @param ctx CUDA stream on which work is enqueued.
  */
-void applyDirichletConditions(const DeviceBoundaryMap& map,
-                              DeviceCsrMatrix&         mat,
-                              DeviceVector&            rhs,
-                              const DeviceVector&      bc_vals,
-                              CudaContext&             ctx);
+void applyDirichletConditions(const DeviceBoundaryMap&  map,
+                              DeviceCsrMatrix&          mat,
+                              DeviceVector<Real>&       rhs,
+                              const DeviceVector<Real>& bc_vals,
+                              CudaContext&              ctx);
 
 } // namespace assembly
 } // namespace femx

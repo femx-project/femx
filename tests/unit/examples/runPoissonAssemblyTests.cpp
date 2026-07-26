@@ -22,8 +22,8 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   options.num_y_cells = 2;
   examples::poisson::PoissonForwardProblem problem(options);
 
-  HostCsrMatrix mat(problem.map().pattern());
-  HostVector    rhs;
+  HostCsrMatrix    mat(problem.map().pattern());
+  HostVector<Real> rhs;
   problem.assemble(mat, rhs);
 
   status *= mat.pattern().layoutId()

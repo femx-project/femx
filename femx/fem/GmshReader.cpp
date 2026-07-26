@@ -29,16 +29,16 @@ struct EntityKey
 
 struct EntityData
 {
-  Array<Index> ptags;
+  HostVector<Index> ptags;
 };
 
 struct ElemRecord
 {
-  Index          edim  = 0;
-  Index          etag  = 0;
-  Index          ptag  = 0;
-  Element::Shape shape = Element::Shape::Unknown;
-  Array<Index>   nids;
+  Index             edim  = 0;
+  Index             etag  = 0;
+  Index             ptag  = 0;
+  Element::Shape    shape = Element::Shape::Unknown;
+  HostVector<Index> nids;
 };
 
 std::string stripQuotes(std::string value)
@@ -260,7 +260,7 @@ void readNodesV4(std::istream&           in,
     Index num_nodes_block = 0;
     in >> edim >> etag >> parametric >> num_nodes_block;
 
-    Array<Index> ntags(num_nodes_block);
+    HostVector<Index> ntags(num_nodes_block);
     for (Index i = 0; i < num_nodes_block; ++i)
     {
       in >> ntags[i];
@@ -290,7 +290,7 @@ void readNodesV4(std::istream&           in,
 
 void readElemsV2(std::istream&                 in,
                  const std::map<Index, Index>& nid_by_tag,
-                 Array<ElemRecord>&            elems)
+                 HostVector<ElemRecord>&       elems)
 {
   Index num_elems = 0;
   in >> num_elems;
@@ -303,7 +303,7 @@ void readElemsV2(std::istream&                 in,
     Index num_tags  = 0;
     in >> elem_tag >> elem_type >> num_tags;
 
-    Array<Index> tags(num_tags);
+    HostVector<Index> tags(num_tags);
     for (Index j = 0; j < num_tags; ++j)
     {
       in >> tags[j];
@@ -342,7 +342,7 @@ void readElemsV2(std::istream&                 in,
 
 void readElemsV4(std::istream&                 in,
                  const std::map<Index, Index>& nid_by_tag,
-                 Array<ElemRecord>&            elems)
+                 HostVector<ElemRecord>&       elems)
 {
   Index num_blocks   = 0;
   Index num_elems    = 0;
@@ -396,7 +396,7 @@ void readElemsV4(std::istream&                 in,
   expectMarker(in, "$EndElements");
 }
 
-Index meshDim(const Array<ElemRecord>& elems)
+Index meshDim(const HostVector<ElemRecord>& elems)
 {
   Index dim = 0;
   for (Index ie = 0; ie < elems.size(); ++ie)
@@ -424,7 +424,7 @@ Index meshDim(const Array<ElemRecord>& elems)
 }
 
 void addElemsToMesh(Mesh&                                  mesh,
-                    const Array<ElemRecord>&               elems,
+                    const HostVector<ElemRecord>&          elems,
                     const std::map<EntityKey, EntityData>& entities)
 {
   for (Index ie = 0; ie < elems.size(); ++ie)
@@ -474,7 +474,7 @@ Mesh GmshReader::read(const std::string& path)
   Mesh                            mesh;
   std::map<EntityKey, EntityData> entities;
   std::map<Index, Index>          nid_by_tag;
-  Array<ElemRecord>               elems;
+  HostVector<ElemRecord>          elems;
   Real                            version = 0.0;
 
   std::string mark;

@@ -55,18 +55,18 @@ public:
   Index          numDofsPerElem() const noexcept;
 
   /** @brief Fill the mixed-space global id indices used by one elem. */
-  void elemDofs(Index         ie,
-                Array<Index>& dofs) const;
+  void elemDofs(Index              ie,
+                HostVector<Index>& dofs) const;
 
   /** @brief Return the mixed-space global id indices used by one elem. */
-  Array<Index> elemDofs(Index ie) const;
+  HostVector<Index> elemDofs(Index ie) const;
 
 private:
-  Array<FESpace> fields_;
-  Array<Index>   local_offsets_;
-  Array<Index>   global_offsets_;
-  Index          num_dofs_per_elem_{0};
-  Index          num_dofs_{0};
+  HostVector<FESpace> fields_;
+  HostVector<Index>   local_offsets_;
+  HostVector<Index>   global_offsets_;
+  Index               num_dofs_per_elem_{0};
+  Index               num_dofs_{0};
 };
 
 } // namespace fem
