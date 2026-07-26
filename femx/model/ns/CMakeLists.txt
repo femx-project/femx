@@ -4,22 +4,11 @@ add_library(femx::model::ns ALIAS femx_model_ns)
 
 target_sources(
   femx_model_ns
-  PRIVATE ElementKernel.cpp
-          Model.cpp
-          StateFields.cpp
-  PUBLIC ElementKernel.hpp
-         FluidProperties.hpp
-         Model.hpp
-         StateFields.hpp)
+  PRIVATE ElementKernel.cpp Model.cpp StateFields.cpp
+  PUBLIC ElementKernel.hpp FluidProperties.hpp Model.hpp StateFields.hpp)
 
-target_link_libraries(
-  femx_model_ns
-  PUBLIC femx_config
-         femx_common
-         femx_linalg
-         femx_fem
-         femx_assembly
-         femx_state)
+target_link_libraries(femx_model_ns PUBLIC femx_config femx_common femx_linalg
+                                           femx_fem femx_assembly femx_state)
 
 if(TARGET femx_linalg_petsc)
   target_link_libraries(femx_model_ns PUBLIC femx_linalg_petsc)

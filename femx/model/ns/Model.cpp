@@ -349,6 +349,7 @@ public:
             "Navier transpose apply supports only history and parameter blocks");
     require(adj.size() == map().numRes(),
             "Navier residual adjoint size mismatch");
+
     if (wrt.isParam())
     {
       out.resize(0);
@@ -423,8 +424,7 @@ private:
   Kernel                kernel_;
 };
 
-class NavierStokesModel::Residual final
-  : public NavierResidual<MemorySpace::Host>
+class NavierStokesModel::Residual final : public NavierResidual<MemorySpace::Host>
 {
 public:
   using NavierResidual::NavierResidual;

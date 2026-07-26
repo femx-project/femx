@@ -18,9 +18,8 @@ class PETScMatrix;
 /** @brief Configure the PETSc KSP linear solver. */
 struct KspOptions
 {
-  std::string type = KSPGMRES; ///< PETSc KSP type.
-  std::string pc_type =
-      PCILU; ///< PETSc PC type; block Jacobi with ILU in parallel.
+  std::string type    = KSPGMRES; ///< PETSc KSP type.
+  std::string pc_type = PCILU;    ///< PETSc PC type; block Jacobi with ILU in parallel.
 
   Real  rtol          = 1.0e-8;  ///< Relative residual tolerance.
   Real  atol          = 1.0e-50; ///< Absolute tolerance; disabled by default.

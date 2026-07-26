@@ -144,10 +144,8 @@ target_include_directories(runInverseTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runInverseTests PRIVATE femx::inverse)
 add_test(NAME InverseTests COMMAND runInverseTests)
 
-add_executable(runNsModelTests
-               unit/model/ns/runModelTests.cpp)
-target_include_directories(runNsModelTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(runNsModelTests unit/model/ns/runModelTests.cpp)
+target_include_directories(runNsModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runNsModelTests PRIVATE femx::femx)
 add_test(NAME NsModelTests COMMAND runNsModelTests)
 
@@ -159,8 +157,7 @@ if(TARGET femx_ns_forward_support)
   target_compile_definitions(
     runNsForwardConfigTests
     PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  target_link_libraries(runNsForwardConfigTests
-                        PRIVATE femx::apps::ns_forward)
+  target_link_libraries(runNsForwardConfigTests PRIVATE femx::apps::ns_forward)
   add_test(NAME NsForwardConfigTests COMMAND runNsForwardConfigTests)
   set_tests_properties(NsForwardConfigTests PROPERTIES LABELS "ns;app;focused")
 endif()

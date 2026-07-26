@@ -130,8 +130,10 @@ int run(const Config& prm)
     throw std::runtime_error(
         "Requested PETSc Host linear system is unavailable");
   }
+
   auto  system       = makeHostLinearSystem(solver);
   auto& petsc_system = dynamic_cast<PETScLinearSystem&>(*system);
+
   setKspOptions(petsc_system.solver(), prm.solver);
 
   HostTimeIntegrator integ(fwd.residual, *system);

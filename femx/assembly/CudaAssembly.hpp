@@ -318,12 +318,6 @@ int configureTimeAssemblyLaunch(std::size_t smem)
 /**
  * @brief Assemble residual and Jacobian with one CUDA block per element.
  *
- * ElementKernel is the only template parameter. It implements the same
- * row-wise `evalRow` contract as the CPU overload, with device ElementView and
- * VectorView arguments. All zeroing and the assembly launch are enqueued on
- * the linalg::CudaContext stream; callers synchronize only at an explicit boundary.
- *
- * @tparam ElementKernel Trivially copyable row-wise element evaluator.
  * @param kernel Element evaluator copied into the kernel launch.
  * @param geom Device geometry matching the map's element order.
  * @param map Device element-to-global assembly map.
@@ -463,10 +457,9 @@ void assemble(const ElementKernel&         kernel,
     return;
   }
 
-  const std::size_t smem = detail::timeAssemblySharedBytes(num_hist, map);
-  const int         threads =
-      detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
+  const int         threads = detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
+  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleTimeKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
@@ -518,10 +511,9 @@ void assembleResidual(
     return;
   }
 
-  const std::size_t smem = detail::timeAssemblySharedBytes(num_hist, map);
-  const int         threads =
-      detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
+  const int         threads = detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
+  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleTimeKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),

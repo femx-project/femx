@@ -54,9 +54,9 @@ private:
   friend struct detail::CudaContextAccess;
 
   void*                                stream_{nullptr}; ///< Owned CUDA stream.
-  std::unique_ptr<detail::CudaHandles> handles_;        ///< Owned CUDA library handles.
-  std::shared_ptr<void>                sparse_state_;   ///< Cached sparse operation state.
-  CudaVectorHandler                    vectors_;        ///< Owned CUDA vector operations.
+  std::unique_ptr<detail::CudaHandles> handles_;         ///< Owned CUDA library handles.
+  std::shared_ptr<void>                sparse_state_;    ///< Cached sparse operation state.
+  CudaVectorHandler                    vectors_;         ///< Owned CUDA vector operations.
 };
 
 } // namespace femx::linalg
