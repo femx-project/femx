@@ -16,7 +16,6 @@
 #include <femx/inverse/Objective.hpp>
 #include <femx/inverse/SumObjective.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/runtime/LinearSystemSelection.hpp>
 
 namespace femx::examples::poisson_opt
 {
@@ -24,14 +23,14 @@ namespace femx::examples::poisson_opt
 /** @brief Configure the Poisson boundary-control optimization example. */
 struct Options
 {
-  Index                    num_x_cells = 32; ///< Number of cells in x.
-  Index                    num_y_cells = 32; ///< Number of cells in y.
-  runtime::ExecutionDevice execution_device =
-      runtime::ExecutionDevice::Host; ///< Selected execution device.
-  bool  write_output       = false;   ///< Write VTU output.
-  Real  alpha              = 1.0e-6;  ///< Control regularization weight.
-  Index observation_stride = 0;       ///< Observation spacing in mesh cells.
-  Index max_iterations     = 50;      ///< Maximum TAO iterations.
+  Index       num_x_cells = 32; ///< Number of cells in x.
+  Index       num_y_cells = 32; ///< Number of cells in y.
+  MemorySpace memspace =
+      MemorySpace::Host;             ///< Selected memory space.
+  bool  write_output       = false;  ///< Write VTU output.
+  Real  alpha              = 1.0e-6; ///< Control regularization weight.
+  Index observation_stride = 0;      ///< Observation spacing in mesh cells.
+  Index max_iterations     = 50;     ///< Maximum TAO iterations.
 };
 
 /** @brief Report final Poisson optimization metrics. */
@@ -146,25 +145,25 @@ private:
   bool             isBoundaryNode(const fem::Mesh::Node& p) const;
   bool             isControlNode(const fem::Mesh::Node& p) const;
 
-  Options                        opts_;            ///< Validated options.
-  fem::Mesh                      mesh_;            ///< Finite-element mesh.
-  fem::LagrangeQuadQ1            fe_;              ///< Scalar finite element.
-  fem::FESpace                   space_;           ///< Scalar finite-element space.
-  fem::HostElementQuadData elem_data_;       ///< Host integration data.
-  assembly::HostAssemblyMap      assm_map_;        ///< Element assembly mapping.
-  assembly::HostBoundaryMap      boundary_map_;    ///< All constrained rows.
-  HostVector<Index>              control_dofs_;    ///< Parameter-controlled rows.
-  HostVector<Real>               control_weights_; ///< Boundary quadrature weights.
-  HostVector<Real>               target_state_;    ///< Discrete target state.
-  HostVector<Real>               target_control_;  ///< Manufactured target control.
-  HostVector<Index>              obs_dofs_;        ///< Observed state entries.
-  HostVector<Point3>             obs_points_;      ///< Observation coordinates.
-  std::unique_ptr<inverse::LeastSquaresObjective>
-      misfit_; ///< Sparse state misfit.
-  std::unique_ptr<inverse::LeastSquaresObjective>
-      regularization_; ///< Boundary-control regularization.
-  std::unique_ptr<inverse::SumObjective>
-      obj_; ///< Complete objective.
+  Options                  opts_;      ///< Validated options.
+  fem::Mesh                mesh_;      ///< Finite-element mesh.
+  fem::LagrangeQuadQ1      fe_;        ///< Scalar finite element.
+  fem::FESpace             space_;     ///< Scalar finite-element space.
+  fem::HostElementQuadData elem_data_; ///< Host integration data.
+
+  assembly::HostAssemblyMap assm_map_;     ///< Element assembly mapping.
+  assembly::HostBoundaryMap boundary_map_; ///< All constrained rows.
+
+  HostVector<Index>  control_dofs_;    ///< Parameter-controlled rows.
+  HostVector<Real>   control_weights_; ///< Boundary quadrature weights.
+  HostVector<Real>   target_state_;    ///< Discrete target state.
+  HostVector<Real>   target_control_;  ///< Manufactured target control.
+  HostVector<Index>  obs_dofs_;        ///< Observed state entries.
+  HostVector<Point3> obs_points_;      ///< Observation coordinates.
+
+  std::unique_ptr<inverse::LeastSquaresObjective> misfit_; ///< Sparse state misfit.
+  std::unique_ptr<inverse::LeastSquaresObjective> reg_;    ///< Boundary-control regularization.
+  std::unique_ptr<inverse::SumObjective>          obj_;    ///< Complete objective.
 };
 
 /**

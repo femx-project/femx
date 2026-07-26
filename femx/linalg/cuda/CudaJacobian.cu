@@ -148,7 +148,7 @@ __global__ void replaceConstraintRowsKernel(
     Real*        matrix_values,
     Real         diagonal,
     Real*        rhs,
-    const Real*  prescribed_values)
+    const Real*  vals)
 {
   const Index ib = static_cast<Index>(blockIdx.x);
   if (ib >= count)
@@ -161,12 +161,11 @@ __global__ void replaceConstraintRowsKernel(
        entry < row_offsets[row + 1];
        entry += blockDim.x)
   {
-    matrix_values[entry] =
-        column_indices[entry] == row ? diagonal : 0.0;
+    matrix_values[entry] = column_indices[entry] == row ? diagonal : 0.0;
   }
   if (threadIdx.x == 0 && rhs != nullptr)
   {
-    rhs[row] = prescribed_values[ib];
+    rhs[row] = vals[ib];
   }
 }
 
@@ -175,7 +174,7 @@ __global__ void eliminateConstraintColumnsKernel(
     const Index* row_offsets,
     const Index* column_indices,
     const Index* row_to_constraint,
-    const Real*  prescribed_values,
+    const Real*  vals,
     Real*        matrix_values,
     Real*        rhs)
 {
@@ -195,7 +194,7 @@ __global__ void eliminateConstraintColumnsKernel(
       const Real value = matrix_values[entry];
       if (row_to_constraint[row] < 0)
       {
-        atomicAdd(rhs + row, -value * prescribed_values[ib]);
+        atomicAdd(rhs + row, -value * vals[ib]);
       }
       matrix_values[entry] = 0.0;
     }
@@ -607,6 +606,7 @@ void CudaJacobian::transpose(
         std::move(transpose_row_ptr),
         std::move(transpose_col_ind),
         femx::detail::newCsrLayoutId());
+
     created->source_to_transpose = std::move(source_to_transpose);
     state.transposes.push_back(std::move(created));
     entry = state.transposes.back().get();
@@ -642,6 +642,7 @@ void CudaJacobian::transpose(
                       CUSPARSE_CSR2CSC_ALG1,
                       &workspace_size),
                   "cusparseCsr2cscEx2_bufferSize failed");
+
     if (workspace_size > state.transpose_workspace_capacity)
     {
       void* replacement = cuda::allocate(workspace_size);
@@ -649,6 +650,7 @@ void CudaJacobian::transpose(
       state.transpose_workspace          = replacement;
       state.transpose_workspace_capacity = workspace_size;
     }
+
     checkCusparse(cusparseCsr2cscEx2(
                       handle,
                       src.rows(),
@@ -678,6 +680,7 @@ void CudaJacobian::transpose(
         dst.rowPtrData(),
         dst.colIndData(),
         entry->source_to_transpose.data());
+
     cuda::checkLastError();
   }
 
@@ -690,6 +693,7 @@ void CudaJacobian::transpose(
       src.valsData(),
       entry->source_to_transpose.data(),
       dst.valsData());
+
   cuda::checkLastError();
 }
 

@@ -42,6 +42,7 @@ Result optimizeImpl(
 
   inverse::ReducedFunctional<Space> functional(
       state_solver, adj_system, prob.objective());
+
   opt::TaoOptimizer optimizer(functional, comm);
   optimizer.opts().max_its = prob.options().max_iterations;
 
@@ -54,15 +55,17 @@ Result optimizeImpl(
 
   HostVector<Real> final_state = solveState(state_solver, tao_res.prm);
 
-  Result sol;
-  sol.report     = prob.report(tao_res.prm, final_state, tao_res.value, tao_res.grad);
-  sol.control    = std::move(tao_res.prm);
-  sol.state      = std::move(final_state);
-  sol.gradient   = std::move(tao_res.grad);
-  sol.iterations = tao_res.its;
-  sol.reason     = static_cast<int>(tao_res.reason);
-  sol.converged  = tao_res.converged();
-  return sol;
+  Result result;
+
+  result.report     = prob.report(tao_res.prm, final_state, tao_res.value, tao_res.grad);
+  result.control    = std::move(tao_res.prm);
+  result.state      = std::move(final_state);
+  result.gradient   = std::move(tao_res.grad);
+  result.iterations = tao_res.its;
+  result.reason     = static_cast<int>(tao_res.reason);
+  result.converged  = tao_res.converged();
+
+  return result;
 }
 
 } // namespace

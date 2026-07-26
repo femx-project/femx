@@ -14,7 +14,7 @@ __global__ void applyDirichletConditionsKernel(
     const Index* rows,
     Index        count,
     const Real*  state,
-    const Real*  prescribed_values,
+    const Real*  vals,
     Real*        residual)
 {
   const Index i =
@@ -22,7 +22,7 @@ __global__ void applyDirichletConditionsKernel(
   if (i < count)
   {
     const Index row = rows[i];
-    residual[row]   = state[row] - prescribed_values[i];
+    residual[row]   = state[row] - vals[i];
   }
 }
 
@@ -48,15 +48,15 @@ cudaStream_t stream(linalg::CudaContext& ctx)
 void applyDirichletConditions(
     const DeviceBoundaryMap&     map,
     DeviceVectorView<const Real> state,
-    DeviceVectorView<const Real> prescribed_values,
+    DeviceVectorView<const Real> vals,
     DeviceVectorView<Real>       residual,
     linalg::CudaContext&         ctx)
 {
   const auto rows = map.view().constrained_rows;
-  require(prescribed_values.size() == rows.size(),
+  require(vals.size() == rows.size(),
           "BoundaryMap prescribed-value size mismatch");
   require(state.data() != residual.data()
-              && prescribed_values.data() != residual.data(),
+              && vals.data() != residual.data(),
           "BoundaryMap residual output must not alias its inputs");
   if (rows.empty())
   {
@@ -68,7 +68,7 @@ void applyDirichletConditions(
                                    stream(ctx)>>>(rows.data(),
                                                   rows.size(),
                                                   state.data(),
-                                                  prescribed_values.data(),
+                                                  vals.data(),
                                                   residual.data());
   cuda::checkLastError();
 }

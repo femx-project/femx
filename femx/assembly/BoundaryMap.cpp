@@ -34,31 +34,31 @@ void copy(const HostBoundaryMap& source,
 void applyDirichletConditions(
     const HostBoundaryMap&     map,
     HostVectorView<const Real> state,
-    HostVectorView<const Real> prescribed_values,
+    HostVectorView<const Real> vals,
     HostVectorView<Real>       residual)
 {
   const auto rows = map.view().constrained_rows;
-  require(prescribed_values.size() == rows.size(),
+  require(vals.size() == rows.size(),
           "BoundaryMap prescribed-value size mismatch");
   require(!detail::overlaps(state, residual)
-              && !detail::overlaps(prescribed_values, residual),
+              && !detail::overlaps(vals, residual),
           "BoundaryMap residual output must not alias its inputs");
   for (Index i = 0; i < rows.size(); ++i)
   {
     require(rows[i] < state.size() && rows[i] < residual.size(),
             "BoundaryMap constrained row is out of vector range");
-    residual[rows[i]] = state[rows[i]] - prescribed_values[i];
+    residual[rows[i]] = state[rows[i]] - vals[i];
   }
 }
 
 void applyDirichletConditions(
     const HostBoundaryMap&  map,
     const HostVector<Real>& state,
-    const HostVector<Real>& prescribed_values,
+    const HostVector<Real>& vals,
     HostVector<Real>&       residual)
 {
   applyDirichletConditions(
-      map, state.view(), prescribed_values.view(), residual.view());
+      map, state.view(), vals.view(), residual.view());
 }
 
 void zeroBoundary(const HostBoundaryMap& map,

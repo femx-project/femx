@@ -26,13 +26,13 @@ namespace
 int run(const Options& opts)
 {
   constexpr auto solver_type = runtime::SolverType::PETSc;
-  if (opts.execution_device != runtime::ExecutionDevice::Host)
+  if (opts.memspace != MemorySpace::Host)
   {
     throw std::runtime_error(
         "PETSc Poisson supports only Host execution");
   }
 
-  ExampleHelper  helper(solver_type, opts.execution_device, outputDir());
+  ExampleHelper  helper(solver_type, opts.memspace, outputDir());
   PoissonProblem prob(opts);
 
   linalg::PETScLinearSystem system(PETSC_COMM_WORLD);

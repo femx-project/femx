@@ -143,12 +143,14 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
   require(src.isValid(), "Device copy has an invalid source view");
   require(dst.isValid(), "Device copy has an invalid destination view");
   require(src.size() == dst.size(), "Device view copy requires equal sizes");
+
   if (src.empty() || src.data() == dst.data())
   {
     return;
   }
   require(!femx::detail::overlaps(src, dst),
           "Device view copy does not support partial overlap");
+
   cuda::copy(dst.data(),
              MemorySpace::Device,
              src.data(),
@@ -170,6 +172,7 @@ void CudaVectorHandler::copy(HostVectorView<const Real> src,
   require(src.isValid(), "Host-to-Device copy has an invalid source view");
   require(dst.isValid(), "Host-to-Device copy has an invalid destination view");
   require(src.size() == dst.size(), "Host-to-Device view copy requires equal sizes");
+
   if (!src.empty())
   {
     cuda::copy(dst.data(),
@@ -231,17 +234,21 @@ void CudaVectorHandler::axpby(Real                         a,
   require(x.isValid(), "axpby has an invalid input view");
   require(y.isValid(), "axpby has an invalid output view");
   require(x.size() == y.size(), "axpby requires equal vector sizes");
+
   if (x.empty())
   {
     return;
   }
+
   require(x.data() == y.data() || !femx::detail::overlaps(x, y),
           "axpby does not support partial overlap");
+
   axpbyKernel<<<cuda::numBlocks(x.size(), kThreads),
                 kThreads,
                 0,
                 static_cast<cudaStream_t>(ctx_.stream())>>>(
       x.size(), a, x.data(), b, y.data());
+
   cuda::checkLastError();
 }
 
@@ -253,17 +260,21 @@ void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
   require(indices.isValid(), "gather has an invalid index view");
   require(dst.isValid(), "gather has an invalid output view");
   require(indices.size() == dst.size(), "gather output size mismatch");
+
   if (dst.empty())
   {
     return;
   }
+
   require(!femx::detail::overlaps(src, dst),
           "gather does not support aliased vectors");
+
   DenseVectorDescriptor  dense(src.size(), src.data());
   SparseVectorDescriptor sparse(src.size(),
                                 indices.size(),
                                 indices.data(),
                                 dst.data());
+
   checkCusparse(cusparseGather(detail::cusparseHandle(ctx_),
                                dense.constDescriptor(),
                                sparse.mutableDescriptor()),
@@ -278,12 +289,15 @@ void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
   require(indices.isValid(), "scatter has an invalid index view");
   require(dst.isValid(), "scatter has an invalid output view");
   require(src.size() == indices.size(), "scatter input size mismatch");
+
   if (src.empty())
   {
     return;
   }
+
   require(!femx::detail::overlaps(src, dst),
           "scatter does not support aliased vectors");
+
   SparseVectorDescriptor sparse(dst.size(),
                                 indices.size(),
                                 indices.data(),
@@ -304,9 +318,11 @@ void CudaVectorHandler::dot(DeviceVectorView<const Real> x,
   require(out.isValid(), "dot has an invalid result view");
   require(x.size() == y.size() && out.size() == 1,
           "dot vector size mismatch");
+
   auto handle = detail::cublasHandle(ctx_);
   checkCublas(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE),
               "cublasSetPointerMode failed");
+
   checkCublas(cublasDdot(handle,
                          x.size(),
                          x.data(),

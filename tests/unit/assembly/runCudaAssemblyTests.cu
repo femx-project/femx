@@ -260,20 +260,20 @@ TestOutcome cudaAssemblyMatchesCpuReference()
                 matsNear(gpu_jac, cpu_jac),
                 "CUDA Jacobian matches CPU");
 
-    linalg::CudaJacobian d_jacobian_only(cuda_ctx);
-    d_jacobian_only.setup(h_map.pattern());
+    linalg::CudaJacobian d_jac_only(cuda_ctx);
+    d_jac_only.setup(h_map.pattern());
     assembly::assembleJacobian(AffineElementKernel{},
                                d_mesh,
                                moved_d_map,
                                state_clone,
-                               d_jacobian_only,
+                               d_jac_only,
                                cuda_ctx);
-    HostCsrMatrix gpu_jacobian_only(h_map.pattern());
+    HostCsrMatrix gpu_jac_only(h_map.pattern());
     copyMatrix(
-        d_jacobian_only.matrix(), gpu_jacobian_only, cuda_ctx);
+        d_jac_only.matrix(), gpu_jac_only, cuda_ctx);
     cuda_ctx.sync();
     recordCheck(status,
-                matsNear(gpu_jacobian_only, cpu_jac),
+                matsNear(gpu_jac_only, cpu_jac),
                 "CUDA Jacobian-only assembly matches CPU");
 
     recordCheck(status,

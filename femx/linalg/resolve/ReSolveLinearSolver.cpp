@@ -440,7 +440,7 @@ private:
   void setTrOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    h_jacobian_.transpose(mat, tr_mat_data_);
+    h_jac_.transpose(mat, tr_mat_data_);
 
     const bool reuse = tr_mat_ != nullptr
                        && tr_rows_ == mat.cols()
@@ -681,7 +681,7 @@ private:
 
   ReSolveOptions       opts_;
   HostContext          h_matrix_ctx_;
-  HostJacobian         h_jacobian_{h_matrix_ctx_};
+  HostJacobian         h_jac_{h_matrix_ctx_};
   const HostCsrMatrix* h_op_{nullptr};
   Index                cpu_rows_{0};
   Index                cpu_cols_{0};

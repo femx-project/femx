@@ -4,7 +4,7 @@ namespace femx::linalg
 {
 
 PETScLinearSystem::PETScLinearSystem(MPI_Comm comm)
-  : ctx_(comm), jacobian_(ctx_), solver_(ctx_.comm())
+  : ctx_(comm), jac_(ctx_), solver_(ctx_.comm())
 {
 }
 
@@ -15,19 +15,19 @@ Context<MemorySpace::Host>& PETScLinearSystem::context() noexcept
 
 Jacobian<MemorySpace::Host>& PETScLinearSystem::jacobian() noexcept
 {
-  return jacobian_;
+  return jac_;
 }
 
 void PETScLinearSystem::solve(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_.solve(jacobian_.matrix(), rhs_, solution);
+  solver_.solve(jac_.matrix(), rhs_, solution);
 }
 
 void PETScLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_.solveT(jacobian_.matrix(), rhs_, solution);
+  solver_.solveT(jac_.matrix(), rhs_, solution);
 }
 
 PETScLinearSolver& PETScLinearSystem::solver() noexcept

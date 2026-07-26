@@ -14,7 +14,7 @@ HostLinearSystem::HostLinearSystem()
 
 HostLinearSystem::HostLinearSystem(
     std::unique_ptr<LinearSolver<MemorySpace::Host>> solver)
-  : jacobian_(ctx_), solver_(std::move(solver))
+  : jac_(ctx_), solver_(std::move(solver))
 {
   require(solver_ != nullptr,
           "HostLinearSystem requires a linear solver");
@@ -29,19 +29,19 @@ Context<MemorySpace::Host>& HostLinearSystem::context() noexcept
 
 Jacobian<MemorySpace::Host>& HostLinearSystem::jacobian() noexcept
 {
-  return jacobian_;
+  return jac_;
 }
 
 void HostLinearSystem::solve(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_->solve(jacobian_.matrix(), rhs_, solution, ctx_);
+  solver_->solve(jac_.matrix(), rhs_, solution, ctx_);
 }
 
 void HostLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_->solveT(jacobian_.matrix(), rhs_, solution, ctx_);
+  solver_->solveT(jac_.matrix(), rhs_, solution, ctx_);
 }
 
 } // namespace femx::linalg

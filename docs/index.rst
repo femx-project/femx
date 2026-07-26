@@ -47,7 +47,7 @@ If Sphinx is installed, the landing page can also be built with:
 Examples
 --------
 
-The forward Poisson examples accept mesh dimensions, execution device, and VTU
+The forward Poisson examples accept mesh dimensions, memory space, and VTU
 output selection. The ``poisson`` target uses the native dense linear system
 for small dependency-free checks:
 
@@ -60,15 +60,15 @@ targets:
 
 .. code-block:: bash
 
-   poisson-resolve --nx 32 --ny 32 --device host --output yes
+   poisson-resolve --nx 32 --ny 32 --memory-space host --output yes
 
 The optimization example follows the same shape and also exposes optimization
 parameters:
 
 .. code-block:: bash
 
-   poisson-opt-resolve --device host --nx 32 --ny 32 --max-its 50
-   poisson-opt-resolve --device device --nx 32 --ny 32 --max-its 50
+   poisson-opt-resolve --memory-space host --nx 32 --ny 32 --max-its 50
+   poisson-opt-resolve --memory-space device --nx 32 --ny 32 --max-its 50
    mpiexec -n 4 poisson-opt-petsc --nx 32 --ny 32 --max-its 50
 
 .. toctree::

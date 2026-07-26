@@ -3,13 +3,13 @@
 namespace femx::runtime
 {
 
-const char* name(ExecutionDevice device) noexcept
+const char* name(MemorySpace space) noexcept
 {
-  switch (device)
+  switch (space)
   {
-  case ExecutionDevice::Host:
+  case MemorySpace::Host:
     return "host";
-  case ExecutionDevice::Device:
+  case MemorySpace::Device:
     return "device";
   }
   return "unknown";

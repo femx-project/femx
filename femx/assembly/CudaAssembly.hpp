@@ -265,7 +265,7 @@ __global__ void assembleTimeKernel(
 }
 
 template <class ElementKernel>
-int configureAssemblyLaunch(std::size_t smem)
+int checkAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
@@ -290,7 +290,7 @@ int configureAssemblyLaunch(std::size_t smem)
 }
 
 template <class ElementKernel>
-int configureTimeAssemblyLaunch(std::size_t smem)
+int checkTimeAssemblyLaunch(std::size_t smem)
 {
   constexpr int threads = 128;
   int           dev     = 0;
@@ -362,7 +362,7 @@ void assembleResidualAndJacobian(
   }
 
   const std::size_t smem    = detail::assemblySharedBytes(mesh, map);
-  const int         threads = detail::configureAssemblyLaunch<ElementKernel>(smem);
+  const int         threads = detail::checkAssemblyLaunch<ElementKernel>(smem);
   const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleKernel<ElementKernel>
@@ -414,11 +414,9 @@ void assembleResidual(const ElementKernel&      kernel,
     return;
   }
 
-  const std::size_t smem =
-      detail::assemblySharedBytes(mesh, map);
-  const int threads =
-      detail::configureAssemblyLaunch<ElementKernel>(smem);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t smem    = detail::assemblySharedBytes(mesh, map);
+  const int         threads = detail::checkAssemblyLaunch<ElementKernel>(smem);
+  const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
@@ -455,9 +453,9 @@ void assembleJacobian(
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
-  const auto jacobian_view = jacobian.assemblyView();
-  detail::checkAssemblyInputs(mesh, map, state, jacobian_view);
-  require(state.data() != jacobian_view.values.data(),
+  const auto jac_view = jacobian.assemblyView();
+  detail::checkAssemblyInputs(mesh, map, state, jac_view);
+  require(state.data() != jac_view.values.data(),
           "Assembly state and matrix values must not alias");
 
   if (map.numElems() == 0)
@@ -465,11 +463,9 @@ void assembleJacobian(
     return;
   }
 
-  const std::size_t shared_bytes =
-      detail::assemblySharedBytes(mesh, map);
-  const int threads =
-      detail::configureAssemblyLaunch<ElementKernel>(shared_bytes);
-  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+  const std::size_t shared_bytes = detail::assemblySharedBytes(mesh, map);
+  const int         threads      = detail::checkAssemblyLaunch<ElementKernel>(shared_bytes);
+  const auto        stream       = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleKernel<ElementKernel>
       <<<static_cast<unsigned int>(map.numElems()),
@@ -480,7 +476,7 @@ void assembleJacobian(
                    map.view(),
                    state.data(),
                    nullptr,
-                   jacobian_view.values.data());
+                   jac_view.values.data());
   cuda::checkLastError();
 }
 
@@ -536,7 +532,7 @@ void assembleResidualAndJacobian(
   }
 
   const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
-  const int         threads = detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
+  const int         threads = detail::checkTimeAssemblyLaunch<ElementKernel>(smem);
   const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleTimeKernel<ElementKernel>
@@ -601,7 +597,7 @@ void assembleResidual(
   }
 
   const std::size_t smem    = detail::timeAssemblySharedBytes(num_hist, map);
-  const int         threads = detail::configureTimeAssemblyLaunch<ElementKernel>(smem);
+  const int         threads = detail::checkTimeAssemblyLaunch<ElementKernel>(smem);
   const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
   detail::assembleTimeKernel<ElementKernel>

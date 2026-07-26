@@ -11,7 +11,6 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/runtime/LinearSystemSelection.hpp>
 
 namespace femx::examples::poisson
 {
@@ -19,11 +18,11 @@ namespace femx::examples::poisson
 /** @brief Command-line configuration for the forward Poisson example. */
 struct Options
 {
-  Index                    num_x_cells = 8; ///< Number of cells in x.
-  Index                    num_y_cells = 8; ///< Number of cells in y.
-  runtime::ExecutionDevice execution_device =
-      runtime::ExecutionDevice::Host; ///< Selected execution device.
-  bool write_output = false;          ///< Write VTU output.
+  Index       num_x_cells = 8; ///< Number of cells in x.
+  Index       num_y_cells = 8; ///< Number of cells in y.
+  MemorySpace memspace =
+      MemorySpace::Host;     ///< Selected memory space.
+  bool write_output = false; ///< Write VTU output.
 };
 
 /**
@@ -54,15 +53,15 @@ public:
   const Options& options() const noexcept;
 
   /** @brief Return the finite-element mesh. */
-  const fem::Mesh&                      mesh() const noexcept;
+  const fem::Mesh&                 mesh() const noexcept;
   /** @brief Return reusable Host element quadrature data. */
-  const fem::HostElementQuadData& elementData() const noexcept;
+  const fem::HostElementQuadData&  elementData() const noexcept;
   /** @brief Return the element assembly map. */
-  const assembly::HostAssemblyMap&      assemblyMap() const noexcept;
+  const assembly::HostAssemblyMap& assemblyMap() const noexcept;
   /** @brief Return essential-boundary CSR metadata. */
-  const assembly::HostBoundaryMap&      boundaryMap() const noexcept;
+  const assembly::HostBoundaryMap& boundaryMap() const noexcept;
   /** @brief Return prescribed values in boundary-map order. */
-  const HostVector<Real>&               boundaryValues() const noexcept;
+  const HostVector<Real>&          boundaryValues() const noexcept;
 
   /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept;
@@ -91,14 +90,14 @@ private:
   static Real boundaryValue(const fem::Mesh::Node& p, Real time);
   static bool onBoundary(const fem::Mesh::Node& p, Real time);
 
-  Options                        opts_;            ///< Problem options.
-  fem::Mesh                      mesh_;            ///< Finite-element mesh.
-  fem::LagrangeQuadQ1            fe_;              ///< Scalar finite element.
-  fem::FESpace                   space_;           ///< Scalar finite-element space.
-  fem::HostElementQuadData elem_data_;       ///< Host integration data.
-  assembly::HostAssemblyMap      assm_map_;        ///< Host assembly mapping.
-  assembly::HostBoundaryMap      boundary_map_;    ///< Constrained rows.
-  HostVector<Real>               boundary_values_; ///< Prescribed boundary values.
+  Options                   opts_;            ///< Problem options.
+  fem::Mesh                 mesh_;            ///< Finite-element mesh.
+  fem::LagrangeQuadQ1       fe_;              ///< Scalar finite element.
+  fem::FESpace              space_;           ///< Scalar finite-element space.
+  fem::HostElementQuadData  elem_data_;       ///< Host integration data.
+  assembly::HostAssemblyMap assm_map_;        ///< Host assembly mapping.
+  assembly::HostBoundaryMap boundary_map_;    ///< Constrained rows.
+  HostVector<Real>          boundary_values_; ///< Prescribed boundary values.
 };
 
 /**
@@ -128,11 +127,11 @@ std::string outputStem(const Options& opts);
  *
  * @param[in] app_name - Executable name.
  * @param[in] petsc_options - Whether PETSc options are accepted.
- * @param[in] device_note - Optional execution-device note.
+ * @param[in] memspace_note - Optional memory-space note.
  */
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* device_note = nullptr);
+                const char* memspace_note = nullptr);
 
 /**
  * @brief Print the standard forward-solve result summary.

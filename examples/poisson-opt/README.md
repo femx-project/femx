@@ -69,8 +69,8 @@ builds.
 
 | Executable | State/adjoint solve | Execution | TAO communicator |
 | --- | --- | --- | --- |
-| `poisson-opt-resolve` | ReSolve | `--device host` | serial |
-| `poisson-opt-resolve` | ReSolve | `--device device` | CUDA |
+| `poisson-opt-resolve` | ReSolve | `--memory-space host` | serial |
+| `poisson-opt-resolve` | ReSolve | `--memory-space device` | CUDA |
 | `poisson-opt-petsc` | PETSc | Host, distributed assembly | `PETSC_COMM_WORLD` |
 
 TAO is provided by PETSc in all three cases. In an MPI PETSc run, every rank
@@ -101,14 +101,14 @@ ReSolve on the CPU:
 
 ```shell
 ./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
-  --device host --nx 32 --ny 32 --max-its 50
+  --memory-space host --nx 32 --ny 32 --max-its 50
 ```
 
 ReSolve and the Enzyme VJP on CUDA:
 
 ```shell
 ./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
-  --device device --nx 32 --ny 32 --max-its 50
+  --memory-space device --nx 32 --ny 32 --max-its 50
 ```
 
 PETSc, Enzyme, and TAO on four MPI ranks:
@@ -116,7 +116,7 @@ PETSc, Enzyme, and TAO on four MPI ranks:
 ```shell
 mpiexec -n 4 \
   ./build/petsc-enzyme/examples/poisson-opt/poisson-opt-petsc \
-  --device host --nx 32 --ny 32 --max-its 50
+  --memory-space host --nx 32 --ny 32 --max-its 50
 ```
 
 Pass `--output yes` to write the final mesh fields and observation point cloud

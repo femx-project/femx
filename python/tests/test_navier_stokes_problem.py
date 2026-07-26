@@ -148,7 +148,7 @@ class NavierStokesProblemTest(unittest.TestCase):
 
         solver = problem.create_solver()
         self.assertIsInstance(solver, femx.NavierStokesSolver)
-        self.assertEqual(solver.execution_device, femx.ExecutionDevice.HOST)
+        self.assertEqual(solver.memspace, femx.MemorySpace.HOST)
         self.assertEqual(solver.solver_type, femx.SolverType.DENSE)
         second = solver.solve(np.array([0.2, 0.6]))
         third = solver.solve(np.array([0.1, 0.3]))
@@ -427,8 +427,14 @@ class NavierStokesProblemTest(unittest.TestCase):
     def test_solver_factory_rejects_unknown_selection(self):
         problem = femx.NavierStokesProblem(self.model)
 
-        self.assertIn(femx.SolverType.DENSE, femx.solver_types())
-        with self.assertRaisesRegex(TypeError, "string"):
+        self.assertEqual(femx.memspaces()[0], femx.MemorySpace.HOST)
+        self.assertIn(
+            femx.SolverType.DENSE,
+            femx.solver_types(femx.MemorySpace.HOST),
+        )
+        solver = problem.create_solver(memspace=femx.MemorySpace.HOST)
+        self.assertEqual(solver.memspace, femx.MemorySpace.HOST)
+        with self.assertRaisesRegex(TypeError, "MemorySpace"):
             problem.create_solver(None)
         with self.assertRaisesRegex(ValueError, "available: host, device"):
             problem.create_solver("missing")
@@ -464,7 +470,7 @@ class NavierStokesProblemTest(unittest.TestCase):
             solver_type="resolve",
             options=values,
         )
-        self.assertEqual(solver.execution_device, femx.ExecutionDevice.HOST)
+        self.assertEqual(solver.memspace, femx.MemorySpace.HOST)
         self.assertEqual(solver.solver_type, femx.SolverType.RESOLVE)
 
     @unittest.skipUnless(

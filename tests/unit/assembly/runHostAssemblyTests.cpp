@@ -228,15 +228,16 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
   status *= near(csrVal(jac, 1, 4), 2.0);
   status *= near(csrVal(jac, 0, 2), 0.0);
 
-  linalg::HostJacobian jacobian_only(ctx);
-  jacobian_only.setup(map.pattern());
+  linalg::HostJacobian jac_only(ctx);
+  jac_only.setup(map.pattern());
   assembly::assembleJacobian(
-      AffineElementKernel{}, mesh, map, state, jacobian_only, ctx);
-  const HostCsrMatrix& jac_only  = jacobian_only.matrix();
-  status                        *= jac_only.nnz() == jac.nnz();
+      AffineElementKernel{}, mesh, map, state, jac_only, ctx);
+  const HostCsrMatrix& jac_only_mat = jac_only.matrix();
+  status *= jac_only_mat.nnz() == jac.nnz();
   for (Index entry = 0; entry < jac.nnz(); ++entry)
   {
-    status *= near(jac_only.valsData()[entry], jac.valsData()[entry]);
+    status *=
+        near(jac_only_mat.valsData()[entry], jac.valsData()[entry]);
   }
 
   return status.report();

@@ -3,8 +3,8 @@
 from ._core import __version__
 from ._core import (
     EnsembleBasis,
-    ExecutionDevice,
     FluidParams,
+    MemorySpace,
     SolverType,
     SumTimeObjective,
     TimeBlockRegularization,
@@ -23,8 +23,8 @@ from ._core import (
 from .mesh import BoundarySurface, Mesh
 from .navier_stokes import (
     DirichletBC,
-    execution_devices,
     InitialStateControl,
+    memspaces,
     NavierStokesModel,
     NavierStokesProblem,
     NavierStokesReducedFunctional,
@@ -45,11 +45,11 @@ __all__ = [
     "BoundarySurface",
     "DirichletBC",
     "EnsembleBasis",
-    "ExecutionDevice",
     "FluidParams",
     "GaussianObservation",
     "InitialStateControl",
     "Mesh",
+    "MemorySpace",
     "NavierStokesModel",
     "NavierStokesProblem",
     "NavierStokesReducedFunctional",
@@ -61,7 +61,7 @@ __all__ = [
     "petsc_size",
     "VelocityControl",
     "solver_types",
-    "execution_devices",
+    "memspaces",
     "SolverType",
     "SumTimeObjective",
     "TaoOptimizer",

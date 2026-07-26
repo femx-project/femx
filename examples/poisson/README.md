@@ -56,16 +56,16 @@ run the matching residual.
 With Re::Solve enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 --device host --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --memory-space host --output yes
 ```
 
-With a CUDA-enabled Re::Solve build, `--device device` keeps mesh data, maps,
-CSR values, right-hand side, and solution in device memory through assembly
-and the linear solve. Only the final report/output solution is copied to the
-host:
+With a CUDA-enabled Re::Solve build, `--memory-space device` keeps mesh data,
+maps, CSR values, right-hand side, and solution in device memory through
+assembly and the linear solve. Only the final report/output solution is copied
+to the host:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 --device device --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --memory-space device --output yes
 ```
 
 With PETSc enabled:
