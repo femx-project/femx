@@ -81,9 +81,10 @@ public:
     solveSystem(op, rhs, out, true);
   }
 
-  void checkContext(const PetscContext& ctx) const
+  void checkContext(const Context<MemorySpace::Host>& ctx) const
   {
-    checkSameComm(comm_, ctx.comm, "context");
+    const auto& mpi_ctx = dynamic_cast<const MpiContext&>(ctx);
+    checkSameComm(comm_, mpi_ctx.comm(), "context");
   }
 
   KSPConvergedReason convergedReason() const
@@ -284,19 +285,19 @@ const KspOptions& KspLinearSolver::opts() const
   return impl_->opts();
 }
 
-void KspLinearSolver::solve(const PETScOperator&    mat,
-                            const HostVector<Real>& rhs,
-                            HostVector<Real>&       sol,
-                            PetscContext&           ctx)
+void KspLinearSolver::solve(const PETScOperator&        mat,
+                            const HostVector<Real>&     rhs,
+                            HostVector<Real>&           sol,
+                            Context<MemorySpace::Host>& ctx)
 {
   impl_->checkContext(ctx);
   impl_->solve(mat, rhs, sol);
 }
 
-void KspLinearSolver::solveT(const PETScOperator&    mat,
-                             const HostVector<Real>& rhs,
-                             HostVector<Real>&       sol,
-                             PetscContext&           ctx)
+void KspLinearSolver::solveT(const PETScOperator&        mat,
+                             const HostVector<Real>&     rhs,
+                             HostVector<Real>&           sol,
+                             Context<MemorySpace::Host>& ctx)
 {
   impl_->checkContext(ctx);
   impl_->solveT(mat, rhs, sol);

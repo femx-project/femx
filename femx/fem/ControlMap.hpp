@@ -2,11 +2,12 @@
 
 #include <utility>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/fem/DirichletControl.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -83,7 +84,7 @@ private:
 
   friend void copy(const ControlMap<MemorySpace::Host>&,
                    ControlMap<MemorySpace::Device>&,
-                   CudaContext&);
+                   linalg::CudaContext&);
 
   friend void controlVals(const ControlMap<MemorySpace::Host>&,
                           Index,
@@ -93,7 +94,7 @@ private:
                           Index,
                           DeviceVectorView<const Real>,
                           DeviceVectorView<Real>,
-                          CudaContext&);
+                          linalg::CudaContext&);
   friend void controlJac(const ControlMap<MemorySpace::Host>&,
                          Index,
                          HostVectorView<const Real>,
@@ -102,7 +103,7 @@ private:
                          Index,
                          DeviceVectorView<const Real>,
                          DeviceVectorView<Real>,
-                         CudaContext&);
+                         linalg::CudaContext&);
   friend void addControlJacT(const ControlMap<MemorySpace::Host>&,
                              Index,
                              HostVectorView<const Real>,
@@ -111,7 +112,7 @@ private:
                              Index,
                              DeviceVectorView<const Real>,
                              DeviceVectorView<Real>,
-                             CudaContext&);
+                             linalg::CudaContext&);
 
   Index num_steps_{0};
   Index num_states_{0};
@@ -145,7 +146,7 @@ HostControlMap makeControlMap(
 
 void copy(const HostControlMap& src,
           DeviceControlMap&     dst,
-          CudaContext&          ctx);
+          linalg::CudaContext&  ctx);
 
 void controlVals(const HostControlMap&      map,
                  Index                      step,
@@ -156,7 +157,7 @@ void controlVals(const DeviceControlMap&      map,
                  Index                        step,
                  DeviceVectorView<const Real> prm,
                  DeviceVectorView<Real>       out,
-                 CudaContext&                 ctx);
+                 linalg::CudaContext&         ctx);
 
 void controlJac(const HostControlMap&      map,
                 Index                      step,
@@ -167,7 +168,7 @@ void controlJac(const DeviceControlMap&      map,
                 Index                        step,
                 DeviceVectorView<const Real> dir,
                 DeviceVectorView<Real>       out,
-                CudaContext&                 ctx);
+                linalg::CudaContext&         ctx);
 
 void addControlJacT(const HostControlMap&      map,
                     Index                      step,
@@ -178,7 +179,7 @@ void addControlJacT(const DeviceControlMap&      map,
                     Index                        step,
                     DeviceVectorView<const Real> adj,
                     DeviceVectorView<Real>       grad,
-                    CudaContext&                 ctx);
+                    linalg::CudaContext&         ctx);
 
 /**
  * @brief Affine initial-state parameterization in one memory space.
@@ -223,7 +224,7 @@ private:
 
   friend void copy(const InitialStateMap<MemorySpace::Host>&,
                    InitialStateMap<MemorySpace::Device>&,
-                   CudaContext&);
+                   linalg::CudaContext&);
 
   friend void initialState(const InitialStateMap<MemorySpace::Host>&,
                            HostVectorView<const Real>,
@@ -231,14 +232,14 @@ private:
   friend void initialState(const InitialStateMap<MemorySpace::Device>&,
                            DeviceVectorView<const Real>,
                            DeviceVectorView<Real>,
-                           CudaContext&);
+                           linalg::CudaContext&);
   friend void addInitialJacT(const InitialStateMap<MemorySpace::Host>&,
                              HostVectorView<const Real>,
                              HostVectorView<Real>);
   friend void addInitialJacT(const InitialStateMap<MemorySpace::Device>&,
                              DeviceVectorView<const Real>,
                              DeviceVectorView<Real>,
-                             CudaContext&);
+                             linalg::CudaContext&);
 
   Index num_states_{0};
   Index num_prm_{0};
@@ -265,7 +266,7 @@ HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
 
 void copy(const HostInitialStateMap& src,
           DeviceInitialStateMap&     dst,
-          CudaContext&               ctx);
+          linalg::CudaContext&       ctx);
 
 void initialState(const HostInitialStateMap& map,
                   HostVectorView<const Real> prm,
@@ -274,7 +275,7 @@ void initialState(const HostInitialStateMap& map,
 void initialState(const DeviceInitialStateMap& map,
                   DeviceVectorView<const Real> prm,
                   DeviceVectorView<Real>       out,
-                  CudaContext&                 ctx);
+                  linalg::CudaContext&         ctx);
 
 void addInitialJacT(const HostInitialStateMap& map,
                     HostVectorView<const Real> adj,
@@ -283,7 +284,7 @@ void addInitialJacT(const HostInitialStateMap& map,
 void addInitialJacT(const DeviceInitialStateMap& map,
                     DeviceVectorView<const Real> adj,
                     DeviceVectorView<Real>       grad,
-                    CudaContext&                 ctx);
+                    linalg::CudaContext&         ctx);
 
 } // namespace fem
 } // namespace femx

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/handler/CudaHandles.hpp>
 
 namespace femx::linalg::detail
@@ -26,76 +27,92 @@ void checkCusparse(cusparseStatus_t status, const char* operation)
   }
 }
 
-namespace
+struct CudaContextAccess
 {
-
-class CublasHandle
-{
-public:
-  CublasHandle()
+  static CudaHandles& handles(CudaContext& ctx)
   {
-    checkCublas(cublasCreate(&handle_), "cublasCreate failed");
+    return *ctx.handles_;
   }
 
-  ~CublasHandle()
+  static std::shared_ptr<void>& sparseState(CudaContext& ctx)
   {
-    if (handle_ != nullptr)
-    {
-      cublasDestroy(handle_);
-    }
+    return ctx.sparse_state_;
   }
+};
 
-  cublasHandle_t get(void* stream)
+CudaHandles::CudaHandles(void* stream)
+{
+  cublasHandle_t cublas = nullptr;
+  checkCublas(cublasCreate(&cublas), "cublasCreate failed");
+  try
   {
-    checkCublas(cublasSetStream(handle_, static_cast<cudaStream_t>(stream)),
+    checkCublas(cublasSetStream(cublas, static_cast<cudaStream_t>(stream)),
                 "cublasSetStream failed");
-    return handle_;
-  }
 
-private:
-  cublasHandle_t handle_{nullptr};
-};
-
-class CusparseHandle
-{
-public:
-  CusparseHandle()
-  {
-    checkCusparse(cusparseCreate(&handle_), "cusparseCreate failed");
-  }
-
-  ~CusparseHandle()
-  {
-    if (handle_ != nullptr)
+    cusparseHandle_t cusparse = nullptr;
+    checkCusparse(cusparseCreate(&cusparse), "cusparseCreate failed");
+    try
     {
-      cusparseDestroy(handle_);
+      checkCusparse(
+          cusparseSetStream(cusparse, static_cast<cudaStream_t>(stream)),
+          "cusparseSetStream failed");
     }
-  }
+    catch (...)
+    {
+      cusparseDestroy(cusparse);
+      throw;
+    }
 
-  cusparseHandle_t get(void* stream)
+    cublas_   = cublas;
+    cusparse_ = cusparse;
+  }
+  catch (...)
   {
-    checkCusparse(
-        cusparseSetStream(handle_, static_cast<cudaStream_t>(stream)),
-        "cusparseSetStream failed");
-    return handle_;
+    cublasDestroy(cublas);
+    throw;
   }
-
-private:
-  cusparseHandle_t handle_{nullptr};
-};
-
-} // namespace
-
-cublasHandle_t cublasHandle(void* stream)
-{
-  thread_local CublasHandle handle;
-  return handle.get(stream);
 }
 
-cusparseHandle_t cusparseHandle(void* stream)
+CudaHandles::~CudaHandles()
 {
-  thread_local CusparseHandle handle;
-  return handle.get(stream);
+  if (cusparse_ != nullptr)
+  {
+    cusparseDestroy(static_cast<cusparseHandle_t>(cusparse_));
+  }
+  if (cublas_ != nullptr)
+  {
+    cublasDestroy(static_cast<cublasHandle_t>(cublas_));
+  }
+}
+
+cublasHandle_t CudaHandles::cublas() const noexcept
+{
+  return static_cast<cublasHandle_t>(cublas_);
+}
+
+cusparseHandle_t CudaHandles::cusparse() const noexcept
+{
+  return static_cast<cusparseHandle_t>(cusparse_);
+}
+
+std::unique_ptr<CudaHandles> makeCudaHandles(void* stream)
+{
+  return std::make_unique<CudaHandles>(stream);
+}
+
+std::shared_ptr<void>& cudaSparseState(CudaContext& ctx)
+{
+  return CudaContextAccess::sparseState(ctx);
+}
+
+cublasHandle_t cublasHandle(CudaContext& ctx)
+{
+  return CudaContextAccess::handles(ctx).cublas();
+}
+
+cusparseHandle_t cusparseHandle(CudaContext& ctx)
+{
+  return CudaContextAccess::handles(ctx).cusparse();
 }
 
 } // namespace femx::linalg::detail

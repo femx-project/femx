@@ -7,8 +7,9 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 namespace femx
 {
@@ -302,8 +303,8 @@ void DirichletControl::apply(const HostVector<Real>& dir,
                              HostVector<Real>&       out) const
 {
   checkControlVector(dir);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext       ctx;
+  auto&                     vec_handler = ctx.vectors();
   linalg::HostMatrixHandler mat_handler(ctx);
   vec_handler.resizeOrZero(out, numStateDofs());
   mat_handler.matvec(matrix_, dir.view(), out.view());
@@ -313,8 +314,8 @@ void DirichletControl::applyTranspose(const HostVector<Real>& dir,
                                       HostVector<Real>&       out) const
 {
   checkStateVector(dir);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext       ctx;
+  auto&                     vec_handler = ctx.vectors();
   linalg::HostMatrixHandler mat_handler(ctx);
   vec_handler.resizeOrZero(out, numControlParams());
   mat_handler.matvecT(matrix_, dir.view(), out.view());

@@ -17,7 +17,9 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <petscsys.h>
@@ -122,34 +124,6 @@ void add(HostVector<Real>& vec, Index i, Real val)
   vec[i] += val;
 }
 
-void resizeOrZero(HostVector<Real>& out, Index size)
-{
-  if (out.size() != size)
-  {
-    out.resize(size);
-  }
-  else
-  {
-    std::fill(out.begin(), out.end(), Real{});
-  }
-}
-
-#if defined(FEMX_HAS_PETSC)
-void allreduce(HostVector<Real>& vec, MPI_Comm comm)
-{
-  const int ierr = MPI_Allreduce(MPI_IN_PLACE,
-                                 vec.data(),
-                                 static_cast<int>(vec.size()),
-                                 MPIU_REAL,
-                                 MPI_SUM,
-                                 comm);
-  if (ierr != MPI_SUCCESS)
-  {
-    throw std::runtime_error("Navier residual MPI_Allreduce failed");
-  }
-}
-#endif
-
 } // namespace
 
 struct NavierWork
@@ -193,34 +167,14 @@ assembly::HostTimeElementView elem(Index             step,
   return {ie, step, num_hist, work.hist.view(), work.nxt.view()};
 }
 
-void reduce(HostVector<Real>&,
-            Index,
-            Index,
-            Index,
-            CpuContext&)
-{
-}
-
-#if defined(FEMX_HAS_PETSC)
 void reduce(HostVector<Real>& vec,
             Index,
             Index,
             Index,
-            linalg::PetscContext& ctx)
+            linalg::Context<MemorySpace::Host>& ctx)
 {
-  int       comm_size = 0;
-  const int ierr      = MPI_Comm_size(ctx.comm, &comm_size);
-  if (ierr != MPI_SUCCESS)
-  {
-    throw std::runtime_error(
-        "Navier history VJP communicator query failed");
-  }
-  if (comm_size > 1)
-  {
-    allreduce(vec, ctx.comm);
-  }
+  ctx.allReduceSum(vec.view());
 }
-#endif
 
 namespace detail
 {
@@ -240,7 +194,7 @@ void applyHistJacT(
     HostVector<Real>&                out,
     Ctx&                             ctx)
 {
-  resizeOrZero(out, map.numStates());
+  ctx.vectors().resizeOrZero(out, map.numStates());
 #pragma omp parallel
   {
     NavierWork work;
@@ -297,7 +251,6 @@ public:
       map_ptr_      = &map;
       host_pattern_ = &map.pattern();
       kernel_       = kernel;
-      ie_end_       = map.numElems();
     }
     else
     {
@@ -315,41 +268,20 @@ public:
   {
     if constexpr (Backend::space == MemorySpace::Device)
     {
-      owned_map_ = std::make_unique<Map>();
-      copy(map, *owned_map_, ctx);
+      auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
+      owned_map_     = std::make_unique<Map>();
+      copy(map, *owned_map_, cuda_ctx);
       owned_data_ = std::make_unique<Data>();
-      fem::copy(data, *owned_data_, ctx);
+      fem::copy(data, *owned_data_, cuda_ctx);
       host_pattern_store_ = map.pattern();
       map_ptr_            = owned_map_.get();
       host_pattern_       = &host_pattern_store_;
       kernel_             = Kernel(owned_data_->view(), fluid, dt);
-      ie_end_             = map.numElems();
     }
     else
     {
       require(false, "Device Navier residual requires Device storage");
     }
-  }
-
-  void setElemRange(Index ie_begin, Index ie_end)
-  {
-    require(ie_begin >= 0 && ie_end >= ie_begin
-                && ie_end <= map().numElems(),
-            "Navier residual element range is invalid");
-    if constexpr (Backend::space == MemorySpace::Device)
-    {
-      require(ie_begin == 0 && ie_end == map().numElems(),
-              "CUDA Navier residual requires the full element range");
-    }
-#if !defined(FEMX_HAS_PETSC)
-    else
-    {
-      require(ie_begin == 0 && ie_end == map().numElems(),
-              "Navier residual element ranges require PETSc");
-    }
-#endif
-    ie_begin_ = ie_begin;
-    ie_end_   = ie_end;
   }
 
   state::TimeDims dims() const override
@@ -370,7 +302,7 @@ public:
   void initialState(ConstView prm, Vec& out, Ctx& ctx) const override
   {
     require(prm.empty(), "Navier physics residual is parameter-free");
-    linalg::VectorHandler<Backend> vec_handler(ctx);
+    auto& vec_handler = ctx.vectors();
     vec_handler.resizeOrZero(out, map().numStates());
   }
 
@@ -380,20 +312,22 @@ public:
                     Ctx&           ctx) const override
   {
     checkCtx(time);
+    const auto      range = ctx.elementRange(map().numElems());
     const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
     if constexpr (Backend::space == MemorySpace::Device)
     {
+      auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
       detail::assembleNext(kernel_,
                            time.step,
                            kNumHist,
-                           ie_begin_,
-                           ie_end_,
+                           range.begin,
+                           range.end,
                            map(),
                            hist,
                            time.nxt,
                            res,
                            jac,
-                           ctx);
+                           cuda_ctx);
     }
     else
     {
@@ -402,8 +336,8 @@ public:
                          kNumHist,
                          state::VariableBlock::NextState,
                          map(),
-                         ie_begin_,
-                         ie_end_,
+                         range.begin,
+                         range.end,
                          hist,
                          time.nxt,
                          res,
@@ -438,18 +372,38 @@ public:
     }
 
     const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
-    detail::applyHistJacT(kernel_,
-                          time.step,
-                          kNumHist,
-                          wrt.historyLag(),
-                          ie_begin_,
-                          ie_end_,
-                          map(),
-                          hist,
-                          time.nxt,
-                          adj,
-                          out,
-                          ctx);
+    const auto      range = ctx.elementRange(map().numElems());
+    if constexpr (Backend::space == MemorySpace::Device)
+    {
+      auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
+      detail::applyHistJacT(kernel_,
+                            time.step,
+                            kNumHist,
+                            wrt.historyLag(),
+                            range.begin,
+                            range.end,
+                            map(),
+                            hist,
+                            time.nxt,
+                            adj,
+                            out,
+                            cuda_ctx);
+    }
+    else
+    {
+      detail::applyHistJacT(kernel_,
+                            time.step,
+                            kNumHist,
+                            wrt.historyLag(),
+                            range.begin,
+                            range.end,
+                            map(),
+                            hist,
+                            time.nxt,
+                            adj,
+                            out,
+                            ctx);
+    }
   }
 
 private:
@@ -475,8 +429,6 @@ private:
   HostCsrPattern        host_pattern_store_;
   const HostCsrPattern* host_pattern_{nullptr};
   Kernel                kernel_;
-  Index                 ie_begin_{0};
-  Index                 ie_end_{0};
 };
 
 class NavierStokesModel::Residual final
@@ -512,8 +464,7 @@ NavierStokesModel::NavierStokesModel(fem::Mesh       mesh,
     data_(makeNavierElementData(space_)),
     map_(assembly::makeAssemblyMap(fem::DofLayout(space_)))
 {
-  ie_end_ = map_.numElems();
-  res_    = std::make_unique<Residual>(nstep_, map_, elementKernel());
+  res_ = std::make_unique<Residual>(nstep_, map_, elementKernel());
 }
 
 NavierStokesModel::~NavierStokesModel() = default;
@@ -563,13 +514,6 @@ const state::HostTimeResidual& NavierStokesModel::residual() const
   return *res_;
 }
 
-void NavierStokesModel::setElemRange(Index ie_begin, Index ie_end)
-{
-  ie_begin_ = ie_begin;
-  ie_end_   = ie_end;
-  res_->setElemRange(ie_begin, ie_end);
-}
-
 const assembly::HostAssemblyMap& NavierStokesModel::map() const
 {
   return map_;
@@ -591,8 +535,8 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
     fem::HostControlMap      control,
     fem::HostInitialStateMap init_state)
 {
-  CudaContext ctx;
-  auto        base = std::make_unique<NavierResidual<linalg::CudaCsrBackend>>(
+  linalg::CudaContext ctx;
+  auto                base = std::make_unique<NavierResidual<linalg::CudaCsrBackend>>(
       model.numSteps(),
       model.map(),
       model.data(),
@@ -612,7 +556,6 @@ makePetscTimeResidual(const NavierStokesModel& model)
 {
   auto res = std::make_unique<NavierResidual<linalg::PetscBackend>>(
       model.numSteps(), model.map(), model.elementKernel());
-  res->setElemRange(model.ie_begin_, model.ie_end_);
   return res;
 }
 #endif

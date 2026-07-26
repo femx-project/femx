@@ -2,7 +2,8 @@
 
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 #if defined(FEMX_HAS_PETSC)
 #include <femx/linalg/petsc/PETScBackend.hpp>
@@ -23,6 +24,12 @@ HostVector<Index> boundaryDofs(const fem::HostControlMap& control)
   return dofs;
 }
 
+linalg::CudaContext& cudaContext(
+    linalg::Context<MemorySpace::Device>& ctx)
+{
+  return dynamic_cast<linalg::CudaContext&>(ctx);
+}
+
 template <class Ctx>
 void controlVals(const fem::HostControlMap& map,
                  Index                      step,
@@ -33,13 +40,13 @@ void controlVals(const fem::HostControlMap& map,
   fem::controlVals(map, step, prm, out);
 }
 
-void controlVals(const fem::DeviceControlMap& map,
-                 Index                        step,
-                 DeviceVectorView<const Real> prm,
-                 DeviceVectorView<Real>       out,
-                 CudaContext&                 ctx)
+void controlVals(const fem::DeviceControlMap&          map,
+                 Index                                 step,
+                 DeviceVectorView<const Real>          prm,
+                 DeviceVectorView<Real>                out,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
-  fem::controlVals(map, step, prm, out, ctx);
+  fem::controlVals(map, step, prm, out, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -51,12 +58,12 @@ void evalInitState(const fem::HostInitialStateMap& map,
   fem::initialState(map, prm, out);
 }
 
-void evalInitState(const fem::DeviceInitialStateMap& map,
-                   DeviceVectorView<const Real>      prm,
-                   DeviceVectorView<Real>            out,
-                   CudaContext&                      ctx)
+void evalInitState(const fem::DeviceInitialStateMap&     map,
+                   DeviceVectorView<const Real>          prm,
+                   DeviceVectorView<Real>                out,
+                   linalg::Context<MemorySpace::Device>& ctx)
 {
-  fem::initialState(map, prm, out, ctx);
+  fem::initialState(map, prm, out, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -68,12 +75,12 @@ void addInitJacT(const fem::HostInitialStateMap& map,
   fem::addInitialJacT(map, adj, out);
 }
 
-void addInitJacT(const fem::DeviceInitialStateMap& map,
-                 DeviceVectorView<const Real>      adj,
-                 DeviceVectorView<Real>            out,
-                 CudaContext&                      ctx)
+void addInitJacT(const fem::DeviceInitialStateMap&     map,
+                 DeviceVectorView<const Real>          adj,
+                 DeviceVectorView<Real>                out,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
-  fem::addInitialJacT(map, adj, out, ctx);
+  fem::addInitialJacT(map, adj, out, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -86,13 +93,13 @@ void addControlJacT(const fem::HostControlMap& map,
   fem::addControlJacT(map, step, adj, out);
 }
 
-void addControlJacT(const fem::DeviceControlMap& map,
-                    Index                        step,
-                    DeviceVectorView<const Real> adj,
-                    DeviceVectorView<Real>       out,
-                    CudaContext&                 ctx)
+void addControlJacT(const fem::DeviceControlMap&          map,
+                    Index                                 step,
+                    DeviceVectorView<const Real>          adj,
+                    DeviceVectorView<Real>                out,
+                    linalg::Context<MemorySpace::Device>& ctx)
 {
-  fem::addControlJacT(map, step, adj, out, ctx);
+  fem::addControlJacT(map, step, adj, out, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -105,13 +112,13 @@ void replaceResCtx(const HostBoundaryMap&     map,
   assembly::replaceRes(map, state, vals, res);
 }
 
-void replaceResCtx(const DeviceBoundaryMap&     map,
-                   DeviceVectorView<const Real> state,
-                   DeviceVectorView<const Real> vals,
-                   DeviceVectorView<Real>       res,
-                   CudaContext&                 ctx)
+void replaceResCtx(const DeviceBoundaryMap&              map,
+                   DeviceVectorView<const Real>          state,
+                   DeviceVectorView<const Real>          vals,
+                   DeviceVectorView<Real>                res,
+                   linalg::Context<MemorySpace::Device>& ctx)
 {
-  assembly::replaceRes(map, state, vals, res, ctx);
+  assembly::replaceRes(map, state, vals, res, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -120,11 +127,11 @@ void zeroBoundaryVals(const HostBoundaryMap& map, HostVectorView<Real> vals, Ctx
   assembly::zeroBoundary(map, vals);
 }
 
-void zeroBoundaryVals(const DeviceBoundaryMap& map,
-                      DeviceVectorView<Real>   vals,
-                      CudaContext&             ctx)
+void zeroBoundaryVals(const DeviceBoundaryMap&              map,
+                      DeviceVectorView<Real>                vals,
+                      linalg::Context<MemorySpace::Device>& ctx)
 {
-  assembly::zeroBoundary(map, vals, ctx);
+  assembly::zeroBoundary(map, vals, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -136,12 +143,12 @@ void replaceJacRows(const HostBoundaryMap& boundary,
   replaceRows(boundary, jac, diag);
 }
 
-void replaceJacRows(const DeviceBoundaryMap& boundary,
-                    DeviceCsrMatrix&         jac,
-                    Real                     diag,
-                    CudaContext&             ctx)
+void replaceJacRows(const DeviceBoundaryMap&              boundary,
+                    DeviceCsrMatrix&                      jac,
+                    Real                                  diag,
+                    linalg::Context<MemorySpace::Device>& ctx)
 {
-  replaceRows(boundary, jac, diag, ctx);
+  replaceRows(boundary, jac, diag, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -154,13 +161,14 @@ void applyDirichletConditionsCtx(const HostBoundaryMap&  boundary,
   applyDirichletConditions(boundary, jac, rhs, vals);
 }
 
-void applyDirichletConditionsCtx(const DeviceBoundaryMap&  boundary,
-                                 DeviceCsrMatrix&          jac,
-                                 DeviceVector<Real>&       rhs,
-                                 const DeviceVector<Real>& vals,
-                                 CudaContext&              ctx)
+void applyDirichletConditionsCtx(const DeviceBoundaryMap&              boundary,
+                                 DeviceCsrMatrix&                      jac,
+                                 DeviceVector<Real>&                   rhs,
+                                 const DeviceVector<Real>&             vals,
+                                 linalg::Context<MemorySpace::Device>& ctx)
 {
-  applyDirichletConditions(boundary, jac, rhs, vals, ctx);
+  applyDirichletConditions(
+      boundary, jac, rhs, vals, cudaContext(ctx));
 }
 
 #if defined(FEMX_HAS_PETSC)
@@ -178,7 +186,7 @@ HostVector<Index> boundaryRows(const HostBoundaryMap& boundary)
 void replaceJacRows(const HostBoundaryMap& boundary,
                     linalg::PETScOperator& jac,
                     Real                   diag,
-                    linalg::PetscContext&)
+                    linalg::Context<MemorySpace::Host>&)
 {
   jac.replaceRows(boundaryRows(boundary), diag);
 }
@@ -187,18 +195,18 @@ void applyDirichletConditionsCtx(const HostBoundaryMap&,
                                  linalg::PETScOperator&,
                                  HostVector<Real>&,
                                  const HostVector<Real>&,
-                                 linalg::PetscContext&)
+                                 linalg::Context<MemorySpace::Host>&)
 {
   // PETSc row replacement already gives the exact nonsymmetric system.
 }
 #endif
 
 template <class Backend>
-void resizeAndZero(typename Backend::Vec& out,
-                   Index                  size,
-                   typename Backend::Ctx& ctx)
+void resizeAndZero(typename Backend::Vec&           out,
+                   Index                            size,
+                   linalg::Context<Backend::space>& ctx)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, size);
 }
 
@@ -243,11 +251,12 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
 
     const HostBoundaryMap host_boundary =
         makeBoundaryMap(boundaryDofs(control), base_->hostPattern());
-    copy(host_boundary, boundary_, ctx);
-    fem::copy(control, control_, ctx);
+    auto& cuda_ctx = cudaContext(ctx);
+    copy(host_boundary, boundary_, cuda_ctx);
+    fem::copy(control, control_, cuda_ctx);
     if (init.numStates() != 0)
     {
-      fem::copy(init, init_, ctx);
+      fem::copy(init, init_, cuda_ctx);
     }
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
@@ -367,7 +376,7 @@ void ConstrainedTimeResidual<Backend>::applyJacT(
     Vec&                 out,
     Ctx&                 ctx) const
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   checkCtx(time);
   require(!wrt.isNextState(),
           "Constrained transpose apply supports only history and parameter blocks");

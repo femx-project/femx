@@ -1,6 +1,7 @@
 #pragma once
 
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 
 namespace femx::linalg
 {
@@ -13,9 +14,9 @@ class LinearSolver
                 "LinearSolver requires a valid backend type");
 
 public:
-  using Matrix  = typename Backend::Mat;
-  using Vector  = typename Backend::Vec;
-  using Context = typename Backend::Ctx;
+  using Matrix           = typename Backend::Mat;
+  using Vector           = typename Backend::Vec;
+  using ExecutionContext = Context<Backend::space>;
 
   virtual ~LinearSolver() = default;
 
@@ -27,10 +28,10 @@ public:
    * @param[in,out] sol - Initial guess replaced by the solution.
    * @param[in] ctx - Execution context.
    */
-  virtual void solve(const Matrix& mat,
-                     const Vector& rhs,
-                     Vector&       sol,
-                     Context&      ctx) = 0;
+  virtual void solve(const Matrix&     mat,
+                     const Vector&     rhs,
+                     Vector&           sol,
+                     ExecutionContext& ctx) = 0;
 
   /**
    * @brief Solve `mat^T * sol = rhs`.
@@ -40,10 +41,10 @@ public:
    * @param[in,out] sol - Initial guess replaced by the solution.
    * @param[in] ctx - Execution context.
    */
-  virtual void solveT(const Matrix& mat,
-                      const Vector& rhs,
-                      Vector&       sol,
-                      Context&      ctx) = 0;
+  virtual void solveT(const Matrix&     mat,
+                      const Vector&     rhs,
+                      Vector&           sol,
+                      ExecutionContext& ctx) = 0;
 };
 
 using HostCsrLinearSolver = LinearSolver<HostCsrBackend>;

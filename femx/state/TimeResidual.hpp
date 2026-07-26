@@ -1,9 +1,9 @@
 #pragma once
 
 #include <femx/common/Checks.hpp>
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 
@@ -183,7 +183,7 @@ public:
   using ConstView = typename Backend::ConstView;
   using Mat       = typename Backend::Mat;
   using Pattern   = typename Backend::Pattern;
-  using Ctx       = typename Backend::Ctx;
+  using Ctx       = linalg::Context<space>;
   using StepCtx   = TimeContext<space>;
 
   virtual ~TimeResidual() = default;

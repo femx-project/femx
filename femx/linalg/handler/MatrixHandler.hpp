@@ -2,8 +2,11 @@
 
 #include <memory>
 
+#include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx::linalg
 {
@@ -27,8 +30,8 @@ public:
    *
    * @param[in] ctx - CPU execution context.
    */
-  explicit MatrixHandler(CpuContext& ctx) noexcept
-    : ctx_(ctx), vec_handler_(ctx)
+  explicit MatrixHandler(Context<MemorySpace::Host>& ctx) noexcept
+    : vec_handler_(ctx.vectors())
   {
   }
 
@@ -177,8 +180,7 @@ private:
             "CsrMatrix copy requires compatible source and destination graphs");
   }
 
-  CpuContext&                   ctx_;             ///< Bound CPU context.
-  HostVectorHandler             vec_handler_;     ///< Host vector operations.
+  HostVectorHandler&            vec_handler_;     ///< Host vector operations.
   mutable std::shared_ptr<void> transpose_state_; ///< Cached transpose state.
 };
 
@@ -199,8 +201,9 @@ public:
    *
    * @param[in] ctx - CUDA execution context.
    */
-  explicit MatrixHandler(CudaContext& ctx) noexcept
-    : ctx_(ctx), vec_handler_(ctx)
+  explicit MatrixHandler(Context<MemorySpace::Device>& ctx)
+    : ctx_(dynamic_cast<CudaContext&>(ctx)),
+      vec_handler_(ctx_.vectors())
   {
   }
 
@@ -373,8 +376,8 @@ private:
             "CsrMatrix copy requires compatible source and destination graphs");
   }
 
-  CudaContext&      ctx_;         ///< Bound CUDA context.
-  CudaVectorHandler vec_handler_; ///< CUDA vector operations.
+  CudaContext&       ctx_;         ///< Bound CUDA context.
+  CudaVectorHandler& vec_handler_; ///< CUDA vector operations.
 };
 
 using HostMatrixHandler = MatrixHandler<HostCsrBackend>;

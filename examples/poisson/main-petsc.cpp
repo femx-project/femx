@@ -64,14 +64,14 @@ int run(const Options& opts)
   }
   A_petsc.finalize();
 
-  KspLinearSolver solver(PETSC_COMM_WORLD);
-  PetscContext    ctx{PETSC_COMM_WORLD};
+  KspLinearSolver    solver(PETSC_COMM_WORLD);
+  linalg::MpiContext ctx{PETSC_COMM_WORLD};
 
   HostVector<Real> x;
   solver.solve(A_petsc, rhs, x, ctx);
 
-  CpuContext host_ctx;
-  const Real res_norm = helper.resNorm(A, rhs, x, host_ctx);
+  linalg::HostContext host_ctx;
+  const Real          res_norm = helper.resNorm(A, rhs, x, host_ctx);
 
   if (isRoot())
   {

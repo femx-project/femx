@@ -3,7 +3,8 @@
 
 #include <cublas_v2.h>
 #include <femx/linalg/handler/CudaHandles.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaVectorHandler.hpp>
 
 namespace femx::linalg
 {
@@ -136,7 +137,7 @@ __global__ void axpbyKernel(Index       size,
 }
 } // namespace
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
                                          DeviceVectorView<Real>       dst) const
 {
   require(src.isValid(), "Device copy has an invalid source view");
@@ -156,14 +157,14 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
              ctx_.stream());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
                                          DeviceVector<Real>&          dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real> src,
+void CudaVectorHandler::copy(HostVectorView<const Real> src,
                                          DeviceVectorView<Real>     dst) const
 {
   require(src.isValid(), "Host-to-Device copy has an invalid source view");
@@ -180,14 +181,14 @@ void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real> src,
   }
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real> src,
+void CudaVectorHandler::copy(HostVectorView<const Real> src,
                                          DeviceVector<Real>&        dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
                                          HostVectorView<Real>         dst) const
 {
   require(src.isValid(), "Device-to-Host copy has an invalid source view");
@@ -204,14 +205,14 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
   }
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
                                          HostVector<Real>&            dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView<Real> vals) const
+void CudaVectorHandler::zero(DeviceVectorView<Real> vals) const
 {
   require(vals.isValid(), "zero has an invalid view");
   if (!vals.empty())
@@ -222,7 +223,7 @@ void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView<Real> vals) const
   }
 }
 
-void VectorHandler<CudaCsrBackend>::axpby(Real                         a,
+void CudaVectorHandler::axpby(Real                         a,
                                           DeviceVectorView<const Real> x,
                                           Real                         b,
                                           DeviceVectorView<Real>       y) const
@@ -244,7 +245,7 @@ void VectorHandler<CudaCsrBackend>::axpby(Real                         a,
   cuda::checkLastError();
 }
 
-void VectorHandler<CudaCsrBackend>::gather(DeviceVectorView<const Real>  src,
+void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
                                            DeviceVectorView<const Index> indices,
                                            DeviceVectorView<Real>        dst) const
 {
@@ -263,13 +264,13 @@ void VectorHandler<CudaCsrBackend>::gather(DeviceVectorView<const Real>  src,
                                 indices.size(),
                                 indices.data(),
                                 dst.data());
-  checkCusparse(cusparseGather(detail::cusparseHandle(ctx_.stream()),
+  checkCusparse(cusparseGather(detail::cusparseHandle(ctx_),
                                dense.constDescriptor(),
                                sparse.mutableDescriptor()),
                 "cusparseGather failed");
 }
 
-void VectorHandler<CudaCsrBackend>::scatter(DeviceVectorView<const Real>  src,
+void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
                                             DeviceVectorView<const Index> indices,
                                             DeviceVectorView<Real>        dst) const
 {
@@ -288,13 +289,13 @@ void VectorHandler<CudaCsrBackend>::scatter(DeviceVectorView<const Real>  src,
                                 indices.data(),
                                 src.data());
   DenseVectorDescriptor  dense(dst.size(), dst.data());
-  checkCusparse(cusparseScatter(detail::cusparseHandle(ctx_.stream()),
+  checkCusparse(cusparseScatter(detail::cusparseHandle(ctx_),
                                 sparse.constDescriptor(),
                                 dense.mutableDescriptor()),
                 "cusparseScatter failed");
 }
 
-void VectorHandler<CudaCsrBackend>::dot(DeviceVectorView<const Real> x,
+void CudaVectorHandler::dot(DeviceVectorView<const Real> x,
                                         DeviceVectorView<const Real> y,
                                         DeviceVectorView<Real>       out) const
 {
@@ -303,7 +304,7 @@ void VectorHandler<CudaCsrBackend>::dot(DeviceVectorView<const Real> x,
   require(out.isValid(), "dot has an invalid result view");
   require(x.size() == y.size() && out.size() == 1,
           "dot vector size mismatch");
-  auto handle = detail::cublasHandle(ctx_.stream());
+  auto handle = detail::cublasHandle(ctx_);
   checkCublas(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE),
               "cublasSetPointerMode failed");
   checkCublas(cublasDdot(handle,

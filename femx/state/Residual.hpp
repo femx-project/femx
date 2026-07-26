@@ -2,6 +2,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 
 namespace femx::state
 {
@@ -27,7 +28,7 @@ public:
   using Vec     = typename Backend::Vec;
   using Mat     = typename Backend::Mat;
   using Pattern = typename Backend::Pattern;
-  using Ctx     = typename Backend::Ctx;
+  using Ctx     = linalg::Context<space>;
 
   virtual ~Residual() = default;
 

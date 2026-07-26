@@ -34,9 +34,9 @@ int run(const Options& opts)
   fwd_jac.resize(problem.stateMap().pattern());
   adj_jac.resize(problem.stateMap().pattern());
 
-  KspLinearSolver fwd_lin_solver(PETSC_COMM_SELF);
-  KspLinearSolver adj_lin_solver(PETSC_COMM_SELF);
-  PetscContext    ctx{PETSC_COMM_SELF};
+  KspLinearSolver    fwd_lin_solver(PETSC_COMM_SELF);
+  KspLinearSolver    adj_lin_solver(PETSC_COMM_SELF);
+  linalg::MpiContext ctx{PETSC_COMM_SELF};
 
   const Result result = solve<PetscBackend>(problem,
                                             fwd_jac,

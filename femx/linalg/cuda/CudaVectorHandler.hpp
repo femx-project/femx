@@ -1,185 +1,14 @@
 #pragma once
 
-#include <algorithm>
 #include <cstddef>
 
-#include <femx/common/Checks.hpp>
-#include <femx/linalg/Backend.hpp>
+#include <femx/common/Cuda.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx::linalg
 {
 
-/** @brief Provide vector operations for an execution backend. */
-template <class Backend>
-class VectorHandler;
-
-/** @brief Provide serial CPU vector operations. */
-template <>
-class VectorHandler<HostCsrBackend> final
-{
-public:
-  /**
-   * @brief Bind vector operations to a CPU context.
-   *
-   * @param[in] ctx - CPU execution context.
-   */
-  explicit VectorHandler(CpuContext& ctx) noexcept
-    : ctx_(ctx)
-  {
-  }
-
-  /**
-   * @brief Copy between same-sized Host views.
-   *
-   * @param[in] src - Source view.
-   * @param[out] dst - Destination view.
-   * @throws std::runtime_error - If sizes differ or views partially overlap.
-   */
-  template <class T>
-  void copy(VectorView<MemorySpace::Host, const T> src,
-            VectorView<MemorySpace::Host, T>       dst) const
-  {
-    require(src.size() == dst.size(),
-            "Host view copy requires equal sizes");
-    if (src.empty() || src.data() == dst.data())
-    {
-      return;
-    }
-    require(!femx::detail::overlaps(src, dst),
-            "Host view copy does not support partial overlap");
-    std::copy(src.begin(), src.end(), dst.begin());
-  }
-
-  /**
-   * @brief Copy between same-sized mutable Host views.
-   *
-   * @param[in] src - Source view.
-   * @param[out] dst - Destination view.
-   * @throws std::runtime_error - If sizes differ or views partially overlap.
-   */
-  template <class T>
-  void copy(VectorView<MemorySpace::Host, T> src,
-            VectorView<MemorySpace::Host, T> dst) const
-  {
-    copy(VectorView<MemorySpace::Host, const T>(src.data(), src.size()),
-         dst);
-  }
-
-  /**
-   * @brief Replace a Host vector by copying a view.
-   *
-   * @param[in] src - Source view.
-   * @param[out] dst - Destination vector.
-   * @throws std::runtime_error - If the view size is negative.
-   */
-  template <class T>
-  void copy(VectorView<MemorySpace::Host, const T> src,
-            Vector<MemorySpace::Host, T>&          dst) const
-  {
-    dst = src;
-  }
-
-  /**
-   * @brief Replace a Host vector by copying a mutable view.
-   *
-   * @param[in] src - Source view.
-   * @param[out] dst - Destination vector.
-   * @throws std::runtime_error - If the view size is negative.
-   */
-  template <class T>
-  void copy(VectorView<MemorySpace::Host, T> src,
-            Vector<MemorySpace::Host, T>&    dst) const
-  {
-    copy(VectorView<MemorySpace::Host, const T>(src.data(), src.size()),
-         dst);
-  }
-
-  /**
-   * @brief Resize a Host vector if needed and set every value to zero.
-   *
-   * @param[in,out] out - Vector to resize or clear.
-   * @param[in] size - Required vector size.
-   * @throws std::runtime_error - If `size` is negative.
-   */
-  template <class T>
-  void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size) const
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      std::fill(out.begin(), out.end(), T{});
-    }
-  }
-
-  /**
-   * @brief Set every value to zero.
-   *
-   * @param[out] vals - Values to clear.
-   */
-  void zero(HostVectorView<Real> vals) const;
-
-  /**
-   * @brief Compute `y = a * x + b * y`.
-   *
-   * @param[in] a - Input-vector scale.
-   * @param[in] x - Input vector.
-   * @param[in] b - Existing-output scale.
-   * @param[in,out] y - Output vector.
-   * @throws std::runtime_error - If sizes or storage overlap are invalid.
-   */
-  void axpby(Real                       a,
-             HostVectorView<const Real> x,
-             Real                       b,
-             HostVectorView<Real>       y) const;
-
-  /**
-   * @brief Compute the dot product of two vectors.
-   *
-   * @param[in] x - First input vector.
-   * @param[in] y - Second input vector.
-   * @return Dot product of `x` and `y`.
-   * @throws std::runtime_error - If vector sizes differ.
-   */
-  Real dot(HostVectorView<const Real> x, HostVectorView<const Real> y) const;
-
-  /**
-   * @brief Compute the squared Euclidean norm of a vector.
-   *
-   * @param[in] x - Input vector.
-   * @return Squared Euclidean norm of `x`.
-   */
-  Real squaredNorm(HostVectorView<const Real> x) const;
-
-  /**
-   * @brief Gather indexed source values into a contiguous destination.
-   *
-   * @param[in] src - Source values.
-   * @param[in] indices - Source indices in destination order.
-   * @param[out] dst - Contiguous destination values.
-   * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
-   */
-  void gather(HostVectorView<const Real>  src,
-              HostVectorView<const Index> indices,
-              HostVectorView<Real>        dst) const;
-
-  /**
-   * @brief Scatter contiguous source values to indexed destinations.
-   *
-   * @param[in] src - Contiguous source values.
-   * @param[in] indices - Destination indices in source order.
-   * @param[out] dst - Indexed destination values.
-   * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
-   */
-  void scatter(HostVectorView<const Real>  src,
-               HostVectorView<const Index> indices,
-               HostVectorView<Real>        dst) const;
-
-private:
-  CpuContext& ctx_; ///< Bound CPU context.
-};
+class CudaContext;
 
 /**
  * @brief Provide CUDA vector operations and explicit Host/Device transfers.
@@ -187,8 +16,7 @@ private:
  * Operations are enqueued on the stream owned by the bound context.
  * Synchronize the context before reading Host destinations.
  */
-template <>
-class VectorHandler<CudaCsrBackend> final
+class CudaVectorHandler final
 {
 public:
   /**
@@ -196,10 +24,7 @@ public:
    *
    * @param[in] ctx - CUDA execution context.
    */
-  explicit VectorHandler(CudaContext& ctx) noexcept
-    : ctx_(ctx)
-  {
-  }
+  explicit CudaVectorHandler(CudaContext& ctx) noexcept;
 
   /**
    * @brief Copy a Host vector to Device storage.
@@ -254,7 +79,7 @@ public:
                  src.data(),
                  MemorySpace::Device,
                  static_cast<std::size_t>(src.size()) * sizeof(T),
-                 ctx_.stream());
+                 stream());
     }
   }
 
@@ -297,7 +122,7 @@ public:
     {
       cuda::zero(out.data(),
                  static_cast<std::size_t>(out.size()) * sizeof(T),
-                 ctx_.stream());
+                 stream());
     }
   }
 
@@ -432,7 +257,8 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void squaredNorm(DeviceVectorView<const Real> x, DeviceVectorView<Real> out) const
+  void squaredNorm(DeviceVectorView<const Real> x,
+                   DeviceVectorView<Real>       out) const
   {
     dot(x, x, out);
   }
@@ -469,14 +295,13 @@ private:
                  src,
                  src_space,
                  static_cast<std::size_t>(size) * sizeof(T),
-                 ctx_.stream());
+                 stream());
     }
   }
 
+  void* stream() const noexcept;
+
   CudaContext& ctx_; ///< Bound CUDA context.
 };
-
-using HostVectorHandler = VectorHandler<HostCsrBackend>;
-using CudaVectorHandler = VectorHandler<CudaCsrBackend>;
 
 } // namespace femx::linalg

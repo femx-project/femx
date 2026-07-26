@@ -8,9 +8,9 @@
 #include <femx/common/Types.hpp>
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -52,7 +52,7 @@ public:
   using VecView    = typename Backend::VecView;
   using ConstView  = typename Backend::ConstView;
   using Mat        = typename Backend::Mat;
-  using Ctx        = typename Backend::Ctx;
+  using Ctx        = linalg::Context<space>;
   using Integrator = state::TimeIntegrator<Backend>;
   using Res        = state::TimeResidual<Backend>;
   using Tr         = state::TimeTrajectory;
@@ -273,7 +273,7 @@ TimeReducedFunctional<Backend>::carry(Index lag)
 template <class Backend>
 void TimeReducedFunctional<Backend>::resetCarry()
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   vec_handler.zero(carry_.view());
   carry_head_ = 0;
 }
@@ -281,7 +281,7 @@ void TimeReducedFunctional<Backend>::resetCarry()
 template <class Backend>
 void TimeReducedFunctional<Backend>::advanceCarry()
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   vec_handler.zero(carry(0));
   carry_head_ = (carry_head_ + 1) % dims_.num_hist;
 }
@@ -299,8 +299,8 @@ TimeReducedFunctional<Backend>::timeCtx(Index step) const
 template <class Backend>
 void TimeReducedFunctional<Backend>::loadStep(Index step)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
-  const Tr&                      tr = tr_;
+  auto&     vec_handler = ctx_.vectors();
+  const Tr& tr          = tr_;
   for (Index lag = 0; lag < dims_.num_hist; ++lag)
   {
     vec_handler.copy(tr.level(detail::histLevel(step, lag)), histState(lag));
@@ -313,7 +313,7 @@ void TimeReducedFunctional<Backend>::solveFwd(
     HostVectorView<const Real> prm,
     const TimeReducedProgress& progress)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   require(prm.size() == numParams(),
           "TimeReducedFunctional parameter size mismatch");
   host_prm_ = prm;
@@ -365,7 +365,7 @@ void TimeReducedFunctional<Backend>::solveAdj(
     HostVectorView<Real>       out,
     const TimeReducedProgress& progress)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   require(out.size() == numParams(),
           "TimeReducedFunctional gradient size mismatch");
   obj_.paramGrad(tr_, host_prm_, host_grad_);

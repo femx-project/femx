@@ -3,11 +3,12 @@
 #include <cstdint>
 #include <utility>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -109,7 +110,7 @@ private:
 
   friend void copy(const BoundaryMap<MemorySpace::Host>& src,
                    BoundaryMap<MemorySpace::Device>&     dst,
-                   CudaContext&                          ctx);
+                   linalg::CudaContext&                  ctx);
 
 public:
   /** @brief Return the mapped CSR row count. */
@@ -190,7 +191,7 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& dofs,
  */
 void copy(const HostBoundaryMap& src,
           DeviceBoundaryMap&     dst,
-          CudaContext&           ctx);
+          linalg::CudaContext&   ctx);
 
 /**
  * @brief Replace constrained rows in the authoritative Jacobian.
@@ -217,7 +218,7 @@ void replaceRows(const HostBoundaryMap& map,
 void replaceRows(const DeviceBoundaryMap& map,
                  DeviceCsrMatrix&         jac,
                  Real                     diag,
-                 CudaContext&             ctx);
+                 linalg::CudaContext&     ctx);
 
 /**
  * @brief Replace constrained residual entries with state minus prescribed.
@@ -249,7 +250,7 @@ void replaceRes(const DeviceBoundaryMap&     map,
                 DeviceVectorView<const Real> state,
                 DeviceVectorView<const Real> bc_vals,
                 DeviceVectorView<Real>       res,
-                CudaContext&                 ctx);
+                linalg::CudaContext&         ctx);
 
 /** @brief Set constrained entries of a Host vector to zero. */
 void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> vals);
@@ -257,7 +258,7 @@ void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> vals);
 /** @brief Asynchronous CUDA equivalent of zeroBoundary(). */
 void zeroBoundary(const DeviceBoundaryMap& map,
                   DeviceVectorView<Real>   vals,
-                  CudaContext&             ctx);
+                  linalg::CudaContext&     ctx);
 
 /**
  * @brief Apply Dirichlet conditions to a Host linear system.
@@ -288,7 +289,7 @@ void applyDirichletConditions(const DeviceBoundaryMap&  map,
                               DeviceCsrMatrix&          mat,
                               DeviceVector<Real>&       rhs,
                               const DeviceVector<Real>& bc_vals,
-                              CudaContext&              ctx);
+                              linalg::CudaContext&      ctx);
 
 } // namespace assembly
 } // namespace femx

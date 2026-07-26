@@ -34,8 +34,8 @@ int run(const Options& opts)
   HostVector<Real> rhs;
   problem.assemble(A, rhs);
 
-  DenseLinearSolver solver;
-  CpuContext        ctx;
+  DenseLinearSolver   solver;
+  linalg::HostContext ctx;
 
   HostVector<Real> x;
   solver.solve(A, rhs, x, ctx);

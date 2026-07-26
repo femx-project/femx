@@ -151,22 +151,22 @@ private:
   std::unique_ptr<inverse::SumObjective>          obj_;
 
   template <class Backend>
-  friend Result solve(PoissonOptProblem&             problem,
-                      typename Backend::Mat&         fwd_jac,
-                      linalg::LinearSolver<Backend>& fwd_solver,
-                      typename Backend::Mat&         adj_jac,
-                      linalg::LinearSolver<Backend>& adj_solver,
-                      typename Backend::Ctx&         ctx);
+  friend Result solve(PoissonOptProblem&               problem,
+                      typename Backend::Mat&           fwd_jac,
+                      linalg::LinearSolver<Backend>&   fwd_solver,
+                      typename Backend::Mat&           adj_jac,
+                      linalg::LinearSolver<Backend>&   adj_solver,
+                      linalg::Context<Backend::space>& ctx);
 };
 
 /** @brief Optimize boundary values using the supplied forward/adjoint solvers. */
 template <class Backend>
-Result solve(PoissonOptProblem&             problem,
-             typename Backend::Mat&         fwd_jac,
-             linalg::LinearSolver<Backend>& fwd_solver,
-             typename Backend::Mat&         adj_jac,
-             linalg::LinearSolver<Backend>& adj_solver,
-             typename Backend::Ctx&         ctx);
+Result solve(PoissonOptProblem&               problem,
+             typename Backend::Mat&           fwd_jac,
+             linalg::LinearSolver<Backend>&   fwd_solver,
+             typename Backend::Mat&           adj_jac,
+             linalg::LinearSolver<Backend>&   adj_solver,
+             linalg::Context<Backend::space>& ctx);
 
 /** @brief Parse Poisson optimization command-line options. */
 Options parseOptions(int argc, char** argv, bool ignore_unknown);

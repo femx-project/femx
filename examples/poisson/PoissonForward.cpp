@@ -14,6 +14,7 @@
 #include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/io/VtuWriter.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -236,9 +237,9 @@ Index PoissonForwardProblem::numDofs() const noexcept
 void PoissonForwardProblem::assemble(HostCsrMatrix&    mat,
                                      HostVector<Real>& rhs) const
 {
-  HostVector<Real> zero_state(numDofs(), 0.0);
-  HostVector<Real> res;
-  CpuContext       ctx;
+  HostVector<Real>    zero_state(numDofs(), 0.0);
+  HostVector<Real>    res;
+  linalg::HostContext ctx;
   assembly::assemble(PoissonComponents<MemorySpace::Host>(element_data_.view()),
                      geom_,
                      map_,

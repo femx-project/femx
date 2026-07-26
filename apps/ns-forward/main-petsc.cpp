@@ -122,7 +122,6 @@ int run(const Config& prm)
   }
 
   Problem fwd(prm);
-  setElemRange(fwd.model, fwd.model.mesh().numElems());
 
   PETScOperator A(PETSC_COMM_WORLD);
   A.resize(fwd.model.map().pattern());
@@ -133,7 +132,7 @@ int run(const Config& prm)
   auto                                   base_res = model::ns::makePetscTimeResidual(fwd.model);
   assembly::PetscConstrainedTimeResidual res(*base_res, fwd.residual.controlMap());
 
-  PetscContext ctx{PETSC_COMM_WORLD};
+  linalg::MpiContext ctx{PETSC_COMM_WORLD};
 
   TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
   integ.setInitialState(fwd.initial_state);

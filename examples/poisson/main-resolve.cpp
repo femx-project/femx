@@ -4,14 +4,16 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
 #include "PoissonComponents.hpp"
 #include <femx/assembly/CudaAssembly.hpp>
-#include <femx/common/Context.hpp>
+#include <femx/linalg/Context.hpp>
 #endif
 
 using namespace femx;
@@ -36,7 +38,7 @@ void solveHost(const ExampleHelper&         helper,
   problem.assemble(mat, rhs);
 
   ReSolveLinearSolver solver;
-  CpuContext          ctx;
+  linalg::HostContext ctx;
   solver.solve(mat, rhs, x, ctx);
   res_norm = helper.resNorm(mat, rhs, x, ctx);
 }
@@ -47,8 +49,8 @@ void solveDevice(const ExampleHelper&         helper,
                  HostVector<Real>&            x,
                  Real&                        res_norm)
 {
-  CudaContext       ctx;
-  CudaVectorHandler vec_handler(ctx);
+  linalg::CudaContext ctx;
+  auto&               vec_handler = ctx.vectors();
 
   fem::DeviceGeometry              geom;
   fem::DeviceElementQuadratureData element_data;

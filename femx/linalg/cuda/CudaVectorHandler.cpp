@@ -1,0 +1,89 @@
+#include <stdexcept>
+
+#include <femx/linalg/cuda/CudaVectorHandler.hpp>
+
+namespace femx::linalg
+{
+
+#if !defined(FEMX_HAS_CUDA)
+namespace
+{
+[[noreturn]] void cudaUnavailable()
+{
+  throw std::runtime_error(
+      "femx was built without the CUDA execution backend");
+}
+} // namespace
+
+void CudaVectorHandler::copy(DeviceVectorView<const Real>,
+                             DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::copy(DeviceVectorView<const Real>,
+                             DeviceVector<Real>&) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::copy(HostVectorView<const Real>,
+                             DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::copy(HostVectorView<const Real>,
+                             DeviceVector<Real>&) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::copy(DeviceVectorView<const Real>,
+                             HostVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::copy(DeviceVectorView<const Real>,
+                             HostVector<Real>&) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::zero(DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::axpby(Real,
+                              DeviceVectorView<const Real>,
+                              Real,
+                              DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::gather(DeviceVectorView<const Real>,
+                               DeviceVectorView<const Index>,
+                               DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::scatter(DeviceVectorView<const Real>,
+                                DeviceVectorView<const Index>,
+                                DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::dot(DeviceVectorView<const Real>,
+                            DeviceVectorView<const Real>,
+                            DeviceVectorView<Real>) const
+{
+  cudaUnavailable();
+}
+#endif
+
+} // namespace femx::linalg

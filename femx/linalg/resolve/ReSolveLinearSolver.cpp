@@ -7,10 +7,12 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -93,8 +95,8 @@ public:
             "ReSolveLinearSolver Host RHS has incompatible dimensions");
     checkHostAliases(*host_op_, rhs, sol);
 
-    CpuContext        ctx;
-    HostVectorHandler vec_handler(ctx);
+    HostContext ctx;
+    auto&       vec_handler = ctx.vectors();
     vec_handler.resizeOrZero(sol, host_op_->cols());
     if (isZero(rhs))
     {
@@ -418,8 +420,8 @@ private:
                const HostVector<Real>& rhs,
                HostVector<Real>&       sol)
   {
-    CpuContext        ctx;
-    HostVectorHandler vec_handler(ctx);
+    HostContext ctx;
+    auto&       vec_handler = ctx.vectors();
     vec_handler.resizeOrZero(sol, mat.rows());
     if (isZero(rhs))
     {
@@ -644,7 +646,7 @@ private:
     require(rhs.size() == sys.rows,
             "ReSolveLinearSolver Device RHS has incompatible dimensions");
     checkCudaAliases(sys, rhs, sol);
-    CudaVectorHandler vec_handler(ctx);
+    auto& vec_handler = ctx.vectors();
     vec_handler.resizeOrZero(sol, sys.cols);
 
     // femx assembly owns this stream. ReSolve currently has no complete stream
@@ -677,7 +679,7 @@ private:
 #endif
 
   ReSolveOptions       opts_;
-  CpuContext           host_mat_ctx_;
+  HostContext          host_mat_ctx_;
   HostMatrixHandler    host_mat_handler_{host_mat_ctx_};
   const HostCsrMatrix* host_op_{nullptr};
   Index                cpu_rows_{0};
@@ -721,7 +723,7 @@ ReSolveLinearSolver::~ReSolveLinearSolver() = default;
 void ReSolveLinearSolver::solve(const HostCsrMatrix&    mat,
                                 const HostVector<Real>& rhs,
                                 HostVector<Real>&       sol,
-                                CpuContext&)
+                                Context<MemorySpace::Host>&)
 {
   impl_->solve(mat, rhs, sol);
 }
@@ -729,25 +731,25 @@ void ReSolveLinearSolver::solve(const HostCsrMatrix&    mat,
 void ReSolveLinearSolver::solveT(const HostCsrMatrix&    mat,
                                  const HostVector<Real>& rhs,
                                  HostVector<Real>&       sol,
-                                 CpuContext&)
+                                 Context<MemorySpace::Host>&)
 {
   impl_->solveT(mat, rhs, sol);
 }
 
-void ReSolveLinearSolver::solve(const DeviceCsrMatrix&    mat,
-                                const DeviceVector<Real>& rhs,
-                                DeviceVector<Real>&       sol,
-                                CudaContext&              ctx)
+void ReSolveLinearSolver::solve(const DeviceCsrMatrix&        mat,
+                                const DeviceVector<Real>&     rhs,
+                                DeviceVector<Real>&           sol,
+                                Context<MemorySpace::Device>& ctx)
 {
-  impl_->solve(mat, rhs, sol, ctx);
+  impl_->solve(mat, rhs, sol, dynamic_cast<CudaContext&>(ctx));
 }
 
-void ReSolveLinearSolver::solveT(const DeviceCsrMatrix&    mat,
-                                 const DeviceVector<Real>& rhs,
-                                 DeviceVector<Real>&       sol,
-                                 CudaContext&              ctx)
+void ReSolveLinearSolver::solveT(const DeviceCsrMatrix&        mat,
+                                 const DeviceVector<Real>&     rhs,
+                                 DeviceVector<Real>&           sol,
+                                 Context<MemorySpace::Device>& ctx)
 {
-  impl_->solveT(mat, rhs, sol, ctx);
+  impl_->solveT(mat, rhs, sol, dynamic_cast<CudaContext&>(ctx));
 }
 
 } // namespace linalg

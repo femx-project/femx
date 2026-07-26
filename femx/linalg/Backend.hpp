@@ -2,7 +2,6 @@
 
 #include <type_traits>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -20,7 +19,6 @@ struct HostCsrBackend
   using ConstView = HostVectorView<const Real>;
   using Mat       = HostCsrMatrix;
   using Pattern   = HostCsrPattern;
-  using Ctx       = CpuContext;
 };
 
 /** @brief Provide CUDA execution over Device CSR storage. */
@@ -33,7 +31,6 @@ struct CudaCsrBackend
   using ConstView = DeviceVectorView<const Real>;
   using Mat       = DeviceCsrMatrix;
   using Pattern   = DeviceCsrPattern;
-  using Ctx       = CudaContext;
 };
 
 /** @brief Map a memory space to its native CSR backend. */
@@ -72,7 +69,6 @@ struct IsBackend<Backend,
                              typename Backend::ConstView,
                              typename Backend::Mat,
                              typename Backend::Pattern,
-                             typename Backend::Ctx,
                              decltype(Backend::space)>> : std::true_type
 {
 };

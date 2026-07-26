@@ -1,6 +1,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 using namespace femx::state;
 
 namespace femx
@@ -64,8 +65,8 @@ void SumTimeObjective::stateGrad(Index                   level,
                                  const HostVector<Real>& prm,
                                  HostVector<Real>&       out) const
 {
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numStates());
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
@@ -79,8 +80,8 @@ void SumTimeObjective::paramGrad(const TimeTrajectory&   tr,
                                  const HostVector<Real>& prm,
                                  HostVector<Real>&       out) const
 {
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numParams());
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)

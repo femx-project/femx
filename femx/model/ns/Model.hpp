@@ -63,9 +63,6 @@ public:
   state::HostTimeResidual&       residual();
   const state::HostTimeResidual& residual() const;
 
-  /** @brief Restrict Host assembly to the half-open element range. */
-  void setElemRange(Index ie_begin, Index ie_end);
-
   const assembly::HostAssemblyMap& map() const;
 
   /** @brief Return flattened element values reusable by either backend. */
@@ -81,11 +78,6 @@ public:
 private:
   class Residual;
 
-#if defined(FEMX_HAS_PETSC)
-  friend std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
-  makePetscTimeResidual(const NavierStokesModel& model);
-#endif
-
   Index nstep_{0};
   Real  dt_{0.0};
 
@@ -97,8 +89,6 @@ private:
   fem::HostElementQuadratureData      data_;
   assembly::HostAssemblyMap           map_;
   std::unique_ptr<Residual>           res_;
-  Index                               ie_begin_{0};
-  Index                               ie_end_{0};
 };
 
 /** @brief Copy the parameter-free physics residual and add Device constraints. */

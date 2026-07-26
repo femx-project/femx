@@ -9,8 +9,9 @@
 
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 
 namespace femx
 {
@@ -305,7 +306,7 @@ int configureTimeAssemblyLaunch(std::size_t smem)
  * ElementKernel is the only template parameter. It implements the same
  * row-wise `evalRow` contract as the CPU overload, with device ElementView and
  * VectorView arguments. All zeroing and the assembly launch are enqueued on
- * the CudaContext stream; callers synchronize only at an explicit boundary.
+ * the linalg::CudaContext stream; callers synchronize only at an explicit boundary.
  *
  * @tparam ElementKernel Trivially copyable row-wise element evaluator.
  * @param kernel Element evaluator copied into the kernel launch.
@@ -323,9 +324,9 @@ void assemble(const ElementKernel&       kernel,
               const DeviceVector<Real>&  state,
               DeviceVector<Real>&        res,
               DeviceCsrMatrix&           jac,
-              CudaContext&               ctx)
+              linalg::CudaContext&       ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
+  auto&                     vec_handler = ctx.vectors();
   linalg::CudaMatrixHandler mat_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
@@ -374,9 +375,9 @@ void assemble(const ElementKernel&         kernel,
               DeviceVectorView<const Real> nxt,
               DeviceVector<Real>&          res,
               DeviceCsrMatrix&             jac,
-              CudaContext&                 ctx)
+              linalg::CudaContext&         ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
+  auto&                     vec_handler = ctx.vectors();
   linalg::CudaMatrixHandler mat_handler(ctx);
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA time element kernel must be trivially copyable");
@@ -427,9 +428,9 @@ void assembleResidual(
     DeviceVectorView<const Real> hist,
     DeviceVectorView<const Real> nxt,
     DeviceVector<Real>&          res,
-    CudaContext&                 ctx)
+    linalg::CudaContext&         ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA time element kernel must be trivially copyable");
 

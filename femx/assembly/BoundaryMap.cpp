@@ -4,7 +4,8 @@
 
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -140,15 +141,15 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& dofs,
 
 void copy(const HostBoundaryMap& src,
           DeviceBoundaryMap&     dst,
-          CudaContext&           ctx)
+          linalg::CudaContext&   ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
-  DeviceVector<Index>       bc_rows;
-  DeviceVector<Index>       diag;
-  DeviceVector<Index>       col_offsets;
-  DeviceVector<Index>       col_entries;
-  DeviceVector<Index>       col_rows;
-  DeviceVector<Index>       bc_mask;
+  auto&               vec_handler = ctx.vectors();
+  DeviceVector<Index> bc_rows;
+  DeviceVector<Index> diag;
+  DeviceVector<Index> col_offsets;
+  DeviceVector<Index> col_entries;
+  DeviceVector<Index> col_rows;
+  DeviceVector<Index> bc_mask;
 
   vec_handler.copy(src.bc_rows_, bc_rows);
   vec_handler.copy(src.diag_, diag);
@@ -250,7 +251,7 @@ void applyDirichletConditions(const HostBoundaryMap&  map,
 void replaceRows(const DeviceBoundaryMap&,
                  DeviceCsrMatrix&,
                  Real,
-                 CudaContext&)
+                 linalg::CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
@@ -260,7 +261,7 @@ void replaceRes(const DeviceBoundaryMap&,
                 DeviceVectorView<const Real>,
                 DeviceVectorView<const Real>,
                 DeviceVectorView<Real>,
-                CudaContext&)
+                linalg::CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
@@ -268,7 +269,7 @@ void replaceRes(const DeviceBoundaryMap&,
 
 void zeroBoundary(const DeviceBoundaryMap&,
                   DeviceVectorView<Real>,
-                  CudaContext&)
+                  linalg::CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
@@ -278,7 +279,7 @@ void applyDirichletConditions(const DeviceBoundaryMap&,
                               DeviceCsrMatrix&,
                               DeviceVector<Real>&,
                               const DeviceVector<Real>&,
-                              CudaContext&)
+                              linalg::CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");

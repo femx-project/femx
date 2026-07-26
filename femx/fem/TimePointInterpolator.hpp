@@ -1,10 +1,11 @@
 #pragma once
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
 
 namespace femx
@@ -67,7 +68,7 @@ private:
 
   friend void copy(const HostPointInterpolatorData& src,
                    DevicePointInterpolatorData&     dst,
-                   CudaContext&                     ctx);
+                   linalg::CudaContext&             ctx);
 
   CsrMatrix<Space> mat_;
 };
@@ -80,7 +81,7 @@ private:
  */
 inline void copy(const HostPointInterpolatorData& src,
                  DevicePointInterpolatorData&     dst,
-                 CudaContext&                     ctx)
+                 linalg::CudaContext&             ctx)
 {
   linalg::CudaMatrixHandler mat_handler(ctx);
   DeviceCsrPattern          pattern;
@@ -122,17 +123,17 @@ public:
   void observe(Index                        level,
                DeviceVectorView<const Real> state,
                DeviceVectorView<Real>       out,
-               CudaContext&                 ctx) const override;
+               linalg::CudaContext&         ctx) const override;
 
   void addStateJacT(Index                        level,
                     DeviceVectorView<const Real> dir,
                     DeviceVectorView<Real>       out,
-                    CudaContext&                 ctx) const override;
+                    linalg::CudaContext&         ctx) const override;
 
 private:
   friend void copy(const TimePointInterpolator& src,
                    DeviceTimePointInterpolator& dst,
-                   CudaContext&                 ctx);
+                   linalg::CudaContext&         ctx);
 
   void checkLevel(Index level) const;
 
@@ -166,7 +167,7 @@ public:
 
   /** @brief Create an independently owned explicit Device copy. */
   std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
-      CudaContext& ctx) const override;
+      linalg::CudaContext& ctx) const override;
 
   void observe(Index                   level,
                const HostVector<Real>& state,
@@ -236,7 +237,7 @@ private:
 /** @brief Explicitly copy the Host data owned by `src` to Device. */
 inline void copy(const TimePointInterpolator& src,
                  DevicePointInterpolatorData& dst,
-                 CudaContext&                 ctx)
+                 linalg::CudaContext&         ctx)
 {
   copy(src.data(), dst, ctx);
 }
@@ -244,7 +245,7 @@ inline void copy(const TimePointInterpolator& src,
 /** @brief Explicitly initialize a Device observation operator from `src`. */
 inline void copy(const TimePointInterpolator& src,
                  DeviceTimePointInterpolator& dst,
-                 CudaContext&                 ctx)
+                 linalg::CudaContext&         ctx)
 {
   copy(src.data(), dst.data_, ctx);
   dst.num_steps_ = src.numSteps();

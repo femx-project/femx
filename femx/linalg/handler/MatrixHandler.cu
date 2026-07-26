@@ -12,17 +12,6 @@
 #include <femx/linalg/handler/CudaHandles.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
 
-namespace femx::detail
-{
-struct CudaContextAccess
-{
-  static std::shared_ptr<void>& sparseState(CudaContext& ctx)
-  {
-    return ctx.sparse_state_;
-  }
-};
-} // namespace femx::detail
-
 namespace femx::linalg
 {
 namespace
@@ -243,7 +232,7 @@ void scaleOutput(DeviceVectorView<Real> y, Real beta, CudaContext& ctx)
 
 CsrState& csrState(CudaContext& ctx)
 {
-  auto& storage = femx::detail::CudaContextAccess::sparseState(ctx);
+  auto& storage = detail::cudaSparseState(ctx);
   if (!storage)
   {
     storage = std::shared_ptr<void>(
@@ -349,7 +338,7 @@ void spmv(const DeviceCsrMatrix&       mat,
 
   const auto  op             = transpose ? CUSPARSE_OPERATION_TRANSPOSE
                                          : CUSPARSE_OPERATION_NON_TRANSPOSE;
-  auto        handle         = detail::cusparseHandle(ctx.stream());
+  auto        handle         = detail::cusparseHandle(ctx);
   std::size_t workspace_size = 0;
   checkCusparse(cusparseSpMV_bufferSize(handle,
                                         op,
@@ -439,7 +428,7 @@ void MatrixHandler<CudaCsrBackend>::transpose(
     return;
   }
 
-  auto handle = detail::cusparseHandle(ctx_.stream());
+  auto handle = detail::cusparseHandle(ctx_);
   if (rebuild_pattern)
   {
     std::size_t workspace_size = 0;
@@ -557,7 +546,7 @@ void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real> mat,
     scaleOutput(y, beta, ctx_);
     return;
   }
-  auto handle = detail::cublasHandle(ctx_.stream());
+  auto handle = detail::cublasHandle(ctx_);
   checkCublas(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST),
               "cublasSetPointerMode failed");
   checkCublas(cublasDgemv(handle,
@@ -591,7 +580,7 @@ void MatrixHandler<CudaCsrBackend>::matvecT(DeviceMatrixView<const Real> mat,
     scaleOutput(y, beta, ctx_);
     return;
   }
-  auto handle = detail::cublasHandle(ctx_.stream());
+  auto handle = detail::cublasHandle(ctx_);
   checkCublas(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST),
               "cublasSetPointerMode failed");
   checkCublas(cublasDgemv(handle,

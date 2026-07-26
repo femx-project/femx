@@ -2,6 +2,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 
 namespace femx
@@ -48,7 +49,7 @@ void EnsembleBasis::apply(const HostVector<Real>& alpha,
 {
   checkAlpha(alpha);
   out = mean_;
-  CpuContext                ctx;
+  linalg::HostContext       ctx;
   linalg::HostMatrixHandler mat_handler(ctx);
   mat_handler.matvec(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
 }
@@ -58,7 +59,7 @@ void EnsembleBasis::applyT(const HostVector<Real>& grad,
 {
   checkPhysical(grad);
   out.resize(numCoefficients());
-  CpuContext                ctx;
+  linalg::HostContext       ctx;
   linalg::HostMatrixHandler mat_handler(ctx);
   mat_handler.matvecT(perts_.view(), grad.view(), out.view());
 }

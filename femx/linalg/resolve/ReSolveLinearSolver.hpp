@@ -3,7 +3,6 @@
 #include <memory>
 #include <string>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
@@ -67,10 +66,10 @@ public:
    * @throws std::runtime_error - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
-  void solve(const HostCsrMatrix&    mat,
-             const HostVector<Real>& rhs,
-             HostVector<Real>&       sol,
-             CpuContext&             ctx) override;
+  void solve(const HostCsrMatrix&        mat,
+             const HostVector<Real>&     rhs,
+             HostVector<Real>&           sol,
+             Context<MemorySpace::Host>& ctx) override;
 
   /**
    * @brief Solve `mat^T * sol = rhs` on Host.
@@ -82,10 +81,10 @@ public:
    * @throws std::runtime_error - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
-  void solveT(const HostCsrMatrix&    mat,
-              const HostVector<Real>& rhs,
-              HostVector<Real>&       sol,
-              CpuContext&             ctx) override;
+  void solveT(const HostCsrMatrix&        mat,
+              const HostVector<Real>&     rhs,
+              HostVector<Real>&           sol,
+              Context<MemorySpace::Host>& ctx) override;
 
   /**
    * @brief Solve `mat * sol = rhs` on Device without Host staging.
@@ -97,10 +96,10 @@ public:
    * @throws std::runtime_error - If the inputs, CUDA backend, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
-  void solve(const DeviceCsrMatrix&    mat,
-             const DeviceVector<Real>& rhs,
-             DeviceVector<Real>&       sol,
-             CudaContext&              ctx) override;
+  void solve(const DeviceCsrMatrix&        mat,
+             const DeviceVector<Real>&     rhs,
+             DeviceVector<Real>&           sol,
+             Context<MemorySpace::Device>& ctx) override;
 
   /**
    * @brief Solve `mat^T * sol = rhs` on Device.
@@ -112,10 +111,10 @@ public:
    * @throws std::runtime_error - If the inputs, CUDA backend, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
-  void solveT(const DeviceCsrMatrix&    mat,
-              const DeviceVector<Real>& rhs,
-              DeviceVector<Real>&       sol,
-              CudaContext&              ctx) override;
+  void solveT(const DeviceCsrMatrix&        mat,
+              const DeviceVector<Real>&     rhs,
+              DeviceVector<Real>&           sol,
+              Context<MemorySpace::Device>& ctx) override;
 
   ReSolveLinearSolver(const ReSolveLinearSolver&) = delete;
 

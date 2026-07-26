@@ -32,7 +32,7 @@ int run(const Options& opts)
   HostCsrMatrix       adj_jac(problem.stateMap().pattern());
   ReSolveLinearSolver fwd_lin_solver;
   ReSolveLinearSolver adj_lin_solver;
-  CpuContext          ctx;
+  linalg::HostContext ctx;
 
   const Result result = solve<HostCsrBackend>(problem,
                                               fwd_jac,

@@ -2,7 +2,8 @@
 
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/common/Context.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -114,7 +115,7 @@ void checkDirichletSystem(const DeviceBoundaryMap&  map,
           "BoundaryMap vectors must not alias matrix values");
 }
 
-cudaStream_t cudaStream(CudaContext& ctx)
+cudaStream_t cudaStream(linalg::CudaContext& ctx)
 {
   return static_cast<cudaStream_t>(ctx.stream());
 }
@@ -124,7 +125,7 @@ void launchRows(const DeviceBoundaryMap&  map,
                 Real                      diag,
                 DeviceVector<Real>*       rhs,
                 const DeviceVector<Real>* bc_vals,
-                CudaContext&              ctx)
+                linalg::CudaContext&      ctx)
 {
   if (map.numBcs() == 0)
   {
@@ -146,7 +147,7 @@ void launchRows(const DeviceBoundaryMap&  map,
 void replaceRows(const DeviceBoundaryMap& map,
                  DeviceCsrMatrix&         jac,
                  Real                     diag,
-                 CudaContext&             ctx)
+                 linalg::CudaContext&     ctx)
 {
   checkMat(map, jac);
   launchRows(map, jac, diag, nullptr, nullptr, ctx);
@@ -156,7 +157,7 @@ void replaceRes(const DeviceBoundaryMap&     map,
                 DeviceVectorView<const Real> state,
                 DeviceVectorView<const Real> bc_vals,
                 DeviceVectorView<Real>       res,
-                CudaContext&                 ctx)
+                linalg::CudaContext&         ctx)
 {
   require(state.size() == map.rows() && res.size() == map.rows()
               && bc_vals.size() == map.numBcs(),
@@ -175,7 +176,7 @@ void replaceRes(const DeviceBoundaryMap&     map,
 
 void zeroBoundary(const DeviceBoundaryMap& map,
                   DeviceVectorView<Real>   vals,
-                  CudaContext&             ctx)
+                  linalg::CudaContext&     ctx)
 {
   require(vals.size() == map.rows(),
           "BoundaryMap vector has incompatible size");
@@ -193,7 +194,7 @@ void applyDirichletConditions(const DeviceBoundaryMap&  map,
                               DeviceCsrMatrix&          mat,
                               DeviceVector<Real>&       rhs,
                               const DeviceVector<Real>& bc_vals,
-                              CudaContext&              ctx)
+                              linalg::CudaContext&      ctx)
 {
   checkDirichletSystem(map, mat, rhs, bc_vals);
   if (map.numBcs() == 0)

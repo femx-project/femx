@@ -14,7 +14,9 @@
 #include "Config.hpp"
 #include "Problem.hpp"
 #include "Solve.hpp"
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
@@ -125,8 +127,8 @@ int run(const Config& prm)
 
   SolveResult result;
 #if defined(FEMX_RESOLVE_USE_CUDA)
-  CudaContext ctx;
-  auto        res = model::ns::makeDeviceTimeResidual(
+  linalg::CudaContext ctx;
+  auto                res = model::ns::makeDeviceTimeResidual(
       fwd.model, fwd.residual.controlMap());
 
   DeviceCsrMatrix     mat(res->pattern());
@@ -135,7 +137,7 @@ int run(const Config& prm)
   DeviceTimeIntegrator integ(*res, mat, solver, ctx);
 
   DeviceVector<Real> initial;
-  CudaVectorHandler  vec_handler(ctx);
+  auto&              vec_handler = ctx.vectors();
   vec_handler.copy(fwd.initial_state, initial);
 
   ctx.sync();
@@ -150,7 +152,7 @@ int run(const Config& prm)
 #else
   HostCsrMatrix       mat(fwd.model.map().pattern());
   ReSolveLinearSolver solver(opts);
-  CpuContext          ctx;
+  linalg::HostContext ctx;
 
   HostTimeIntegrator integ(fwd.residual, mat, solver, ctx);
 

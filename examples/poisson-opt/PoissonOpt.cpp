@@ -29,7 +29,9 @@
 #include <femx/inverse/SumObjective.hpp>
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/petsc/PETScBackend.hpp>
 #include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
@@ -56,17 +58,17 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-void setStateJac(const HostCsrMatrix& src,
-                 HostCsrMatrix&       dst,
-                 CpuContext&          ctx)
+void setStateJac(const HostCsrMatrix&                src,
+                 HostCsrMatrix&                      dst,
+                 linalg::Context<MemorySpace::Host>& ctx)
 {
   linalg::HostMatrixHandler mat_handler(ctx);
   mat_handler.copy(src, dst);
 }
 
-void setStateJac(const HostCsrMatrix&   src,
-                 linalg::PETScOperator& dst,
-                 linalg::PetscContext&  ctx)
+void setStateJac(const HostCsrMatrix&                src,
+                 linalg::PETScOperator&              dst,
+                 linalg::Context<MemorySpace::Host>& ctx)
 {
   linalg::MatrixHandler<linalg::PetscBackend> mat_handler(ctx);
   mat_handler.copy(src, dst);
@@ -83,7 +85,7 @@ public:
   using Vec     = typename Backend::Vec;
   using Mat     = typename Backend::Mat;
   using Pattern = typename Backend::Pattern;
-  using Ctx     = typename Backend::Ctx;
+  using Ctx     = linalg::Context<Backend::space>;
 
   PoissonMapResidual(const HostGeometry&              geom,
                      const HostElementQuadratureData& element_data,
@@ -172,7 +174,7 @@ private:
 
   void assembleRaw(const Vec& state, Vec& res) const
   {
-    CpuContext ctx;
+    linalg::HostContext ctx;
     assembly::assemble(poisson::PoissonComponents<MemorySpace::Host>(
                            element_data_->view()),
                        *geom_,
@@ -731,12 +733,12 @@ bool PoissonOptProblem::isControlNode(const Mesh::Node& p) const
 }
 
 template <class Backend>
-Result solve(PoissonOptProblem&             problem,
-             typename Backend::Mat&         fwd_jac,
-             linalg::LinearSolver<Backend>& fwd_solver,
-             typename Backend::Mat&         adj_jac,
-             linalg::LinearSolver<Backend>& adj_solver,
-             typename Backend::Ctx&         ctx)
+Result solve(PoissonOptProblem&               problem,
+             typename Backend::Mat&           fwd_jac,
+             linalg::LinearSolver<Backend>&   fwd_solver,
+             typename Backend::Mat&           adj_jac,
+             linalg::LinearSolver<Backend>&   adj_solver,
+             linalg::Context<Backend::space>& ctx)
 {
   static_assert(Backend::space == MemorySpace::Host,
                 "Poisson optimization requires Host state storage");
@@ -783,7 +785,7 @@ template Result solve<linalg::HostCsrBackend>(
     linalg::LinearSolver<linalg::HostCsrBackend>&,
     HostCsrMatrix&,
     linalg::LinearSolver<linalg::HostCsrBackend>&,
-    CpuContext&);
+    linalg::Context<MemorySpace::Host>&);
 
 template Result solve<linalg::PetscBackend>(
     PoissonOptProblem&,
@@ -791,7 +793,7 @@ template Result solve<linalg::PetscBackend>(
     linalg::LinearSolver<linalg::PetscBackend>&,
     linalg::PETScOperator&,
     linalg::LinearSolver<linalg::PetscBackend>&,
-    linalg::PetscContext&);
+    linalg::Context<MemorySpace::Host>&);
 
 Options parseOptions(int    argc,
                      char** argv,

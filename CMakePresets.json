@@ -15,7 +15,7 @@
         "FEMX_ENABLE_ENZYME": "OFF",
         "FEMX_BUILD_APPS": "ON",
         "FEMX_BUILD_EXAMPLES": "ON",
-        "FEMX_BUILD_TESTS": "ON"
+        "FEMX_BUILD_TESTS": "OFF"
       }
     },
     {

@@ -7,9 +7,9 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -50,7 +50,7 @@ public:
   using VecView   = typename Backend::VecView;
   using ConstView = typename Backend::ConstView;
   using Mat       = typename Backend::Mat;
-  using Ctx       = typename Backend::Ctx;
+  using Ctx       = linalg::Context<space>;
   using Res       = TimeResidual<Backend>;
   using Solver    = linalg::LinearSolver<Backend>;
   using Tr        = TimeTrajectory;
@@ -180,7 +180,7 @@ void TimeIntegrator<Backend>::setInitialState(ConstView state)
 {
   require(state.size() == numStates(),
           "TimeIntegrator initial state size mismatch");
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   vec_handler.copy(state, init_);
   ctx_.sync();
   has_init_ = true;
@@ -244,7 +244,7 @@ TimeIntegrator<Backend>::timeCtx(Index step, ConstView prm) const
 template <class Backend>
 void TimeIntegrator<Backend>::initialize(ConstView prm)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   if (!has_init_)
   {
     res_.initialState(prm, init_, ctx_);
@@ -259,7 +259,7 @@ void TimeIntegrator<Backend>::initialize(ConstView prm)
 template <class Backend>
 void TimeIntegrator<Backend>::advanceHist()
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   for (Index lag = dims_.num_hist - 1; lag > 0; --lag)
   {
     vec_handler.copy(histState(lag - 1), histState(lag));
@@ -271,7 +271,7 @@ void TimeIntegrator<Backend>::advanceHist()
 template <class Backend>
 SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto&                          vec_handler = ctx_.vectors();
   linalg::MatrixHandler<Backend> mat_handler(ctx_);
   const TimeContext<space>       time       = timeCtx(step, prm);
   const auto                     assm_begin = detail::TimeClock::now();
@@ -302,7 +302,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
                                               Tr*       tr,
                                               Observer  observer)
 {
-  linalg::VectorHandler<Backend> vec_handler(ctx_);
+  auto& vec_handler = ctx_.vectors();
   require(prm.size() == numParams(),
           "TimeIntegrator parameter size mismatch");
 

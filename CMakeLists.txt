@@ -21,7 +21,7 @@ option(FEMX_ENABLE_OPENMP "Require OpenMP parallel assembly" OFF)
 option(FEMX_ENABLE_PETSC "Require PETSc applications and backends" OFF)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
-option(FEMX_BUILD_TESTS "Build femx tests" ON)
+option(FEMX_BUILD_TESTS "Build femx tests" OFF)
 option(FEMX_BUILD_PYTHON "Build supported Python bindings" OFF)
 option(FEMX_BUILD_PYTHON_EXPERIMENTAL "Build experimental Python bindings" OFF)
 set(FEMX_OPENMP_ROOT

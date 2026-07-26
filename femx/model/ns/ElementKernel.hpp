@@ -6,6 +6,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 
 namespace femx
@@ -502,7 +503,7 @@ void assembleNext(
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
     DeviceCsrMatrix&                   jac,
-    CudaContext&                       ctx);
+    linalg::CudaContext&               ctx);
 
 void applyHistJacT(
     const DeviceElementKernel&         kernel,
@@ -516,7 +517,7 @@ void applyHistJacT(
     DeviceVectorView<const Real>       nxt,
     DeviceVectorView<const Real>       adj,
     DeviceVector<Real>&                out,
-    CudaContext&                       ctx);
+    linalg::CudaContext&               ctx);
 
 } // namespace detail
 

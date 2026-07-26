@@ -4,9 +4,9 @@
 #include <femx/common/Types.hpp>
 #include <femx/inverse/Objective.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -25,7 +25,7 @@ class ReducedFunctional final
 public:
   using Vec         = typename Backend::Vec;
   using Mat         = typename Backend::Mat;
-  using Ctx         = typename Backend::Ctx;
+  using Ctx         = linalg::Context<Backend::space>;
   using Res         = state::Residual<Backend>;
   using StateSolver = state::StateSolver<Backend>;
   using LinSolver   = linalg::LinearSolver<Backend>;
@@ -93,7 +93,7 @@ private:
 
   void gradAt(const Vec& prm, Vec& out)
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto&                          vec_handler = ctx_.vectors();
     linalg::MatrixHandler<Backend> mat_handler(ctx_);
     obj_.stateGrad(state_, prm, state_grad_);
     checkSize(state_grad_, dims_.num_states);

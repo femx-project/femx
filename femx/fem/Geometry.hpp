@@ -1,9 +1,9 @@
 #pragma once
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -26,7 +26,7 @@ Geometry<MemorySpace::Host> makeGeometry(const Mesh& mesh);
  */
 void copy(const Geometry<MemorySpace::Host>& src,
           Geometry<MemorySpace::Device>&     dst,
-          CudaContext&                       ctx);
+          linalg::CudaContext&               ctx);
 
 /** @brief Lightweight access to flattened mesh geometry. */
 template <MemorySpace Space>
@@ -164,7 +164,7 @@ private:
 
   friend void copy(const Geometry<MemorySpace::Host>& src,
                    Geometry<MemorySpace::Device>&     dst,
-                   CudaContext&                       ctx);
+                   linalg::CudaContext&               ctx);
 
   Index                dim_{0};
   Index                num_nodes_{0};
@@ -180,9 +180,9 @@ using DeviceGeometry = Geometry<MemorySpace::Device>;
 
 inline void copy(const Geometry<MemorySpace::Host>& src,
                  Geometry<MemorySpace::Device>&     dst,
-                 CudaContext&                       ctx)
+                 linalg::CudaContext&               ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
+  auto& vec_handler   = ctx.vectors();
   dst.dim_            = src.dim_;
   dst.num_nodes_      = src.num_nodes_;
   dst.num_elems_      = src.num_elems_;

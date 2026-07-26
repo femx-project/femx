@@ -2,10 +2,11 @@
 
 #include <utility>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -131,7 +132,7 @@ private:
 
   friend void copy(const HostAssemblyMap& src,
                    DeviceAssemblyMap&     dst,
-                   CudaContext&           ctx);
+                   linalg::CudaContext&   ctx);
 
 public:
   /** @brief Return the number of mapped elements. */
@@ -245,7 +246,7 @@ HostAssemblyMap makeAssemblyMap(fem::DofLayout layout);
  */
 void copy(const HostAssemblyMap& src,
           DeviceAssemblyMap&     dst,
-          CudaContext&           ctx);
+          linalg::CudaContext&   ctx);
 
 } // namespace assembly
 } // namespace femx

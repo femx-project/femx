@@ -8,12 +8,13 @@
 #include <string>
 #include <utility>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 namespace femx::examples
 {
@@ -98,7 +99,7 @@ public:
   Real resNorm(const HostCsrMatrix&    A,
                const HostVector<Real>& rhs,
                const HostVector<Real>& x,
-               CpuContext&             ctx) const
+               linalg::HostContext&    ctx) const
   {
     if (rhs.size() != A.rows() || x.size() != A.cols())
     {
@@ -106,7 +107,7 @@ public:
     }
 
     linalg::HostMatrixHandler mat_handler(ctx);
-    linalg::HostVectorHandler vec_handler(ctx);
+    auto&                     vec_handler = ctx.vectors();
 
     HostVector<Real> residual;
     mat_handler.matvec(A, x.view(), residual);
@@ -131,7 +132,7 @@ public:
   Real resNorm(const DeviceCsrMatrix&    A,
                const DeviceVector<Real>& rhs,
                const DeviceVector<Real>& x,
-               CudaContext&              ctx) const
+               linalg::CudaContext&      ctx) const
   {
     if (rhs.size() != A.rows() || x.size() != A.cols())
     {
@@ -139,7 +140,7 @@ public:
     }
 
     linalg::CudaMatrixHandler mat_handler(ctx);
-    linalg::CudaVectorHandler vec_handler(ctx);
+    auto&                     vec_handler = ctx.vectors();
 
     DeviceVector<Real> residual;
     mat_handler.matvec(A, x.view(), residual);

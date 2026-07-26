@@ -5,9 +5,9 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state
@@ -22,7 +22,7 @@ class StateSolver
 
 public:
   using Vec = typename Backend::Vec;
-  using Ctx = typename Backend::Ctx;
+  using Ctx = linalg::Context<Backend::space>;
   using Res = Residual<Backend>;
 
   virtual ~StateSolver() = default;
@@ -44,7 +44,7 @@ class LinearStateSolver final : public StateSolver<Backend>
 public:
   using Vec    = typename Backend::Vec;
   using Mat    = typename Backend::Mat;
-  using Ctx    = typename Backend::Ctx;
+  using Ctx    = linalg::Context<Backend::space>;
   using Res    = Residual<Backend>;
   using Solver = linalg::LinearSolver<Backend>;
 
@@ -89,7 +89,7 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto&                          vec_handler = ctx_.vectors();
     linalg::MatrixHandler<Backend> mat_handler(ctx_);
     require(prm.size() == numParams(), "LinearStateSolver parameter size mismatch");
 
@@ -134,7 +134,7 @@ class NewtonStateSolver final : public StateSolver<Backend>
 public:
   using Vec    = typename Backend::Vec;
   using Mat    = typename Backend::Mat;
-  using Ctx    = typename Backend::Ctx;
+  using Ctx    = linalg::Context<Backend::space>;
   using Res    = Residual<Backend>;
   using Solver = linalg::LinearSolver<Backend>;
 
@@ -167,7 +167,7 @@ public:
   {
     require(state.size() == numStates(),
             "NewtonStateSolver initial state size mismatch");
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     vec_handler.copy(state.view(), init_);
     ctx_.sync();
     has_init_ = true;
@@ -205,7 +205,7 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto&                          vec_handler = ctx_.vectors();
     linalg::MatrixHandler<Backend> mat_handler(ctx_);
 
     require(prm.size() == numParams(), "NewtonStateSolver parameter size mismatch");
@@ -250,7 +250,7 @@ public:
 private:
   void initState(Vec& state)
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     if (state.size() != numStates())
     {
       state.resize(numStates());

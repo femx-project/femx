@@ -3,7 +3,8 @@
 #include <cmath>
 #include <utility>
 
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx::apps::ns_forward
 {
@@ -117,9 +118,9 @@ SolveResult solve(state::DeviceTimeIntegrator& integrator,
   configureMonitor(monitor, time, output, terminal, log_out);
 
   monitor.start(integrator.numSteps(), integrator.numStates());
-  CudaContext               transfer;
-  DeviceVector<Real>        parameters;
-  linalg::CudaVectorHandler vector_handler(transfer);
+  linalg::CudaContext transfer;
+  DeviceVector<Real>  parameters;
+  auto&               vector_handler = transfer.vectors();
   vector_handler.copy(problem.parameters, parameters);
   transfer.sync();
 
