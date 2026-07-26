@@ -27,7 +27,7 @@ bool near(Real a, Real b)
 }
 
 template <class T, std::size_t N>
-bool valsEqual(const Array<T>& actual, const std::array<T, N>& expected)
+bool valsEqual(const HostVector<T>& actual, const std::array<T, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
   {
@@ -44,7 +44,7 @@ bool valsEqual(const Array<T>& actual, const std::array<T, N>& expected)
 }
 
 template <std::size_t N>
-bool valsNear(const HostVector&          actual,
+bool valsNear(const HostVector<Real>&    actual,
               const std::array<Real, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
@@ -71,13 +71,13 @@ Mesh makeBoundaryMesh()
                          7,
                          "left",
                          Element::Shape::Segment,
-                         Array<Index>{0, 2}});
+                         HostVector<Index>{0, 2}});
   mesh.addBoundaryFacet({1,
                          2,
                          8,
                          "right",
                          Element::Shape::Segment,
-                         Array<Index>{1, 3}});
+                         HostVector<Index>{1, 3}});
   return mesh;
 }
 
@@ -93,13 +93,13 @@ Mesh makeBoundaryLineMesh()
                          4,
                          "inlet",
                          Element::Shape::Segment,
-                         Array<Index>{0, 1}});
+                         HostVector<Index>{0, 1}});
   mesh.addBoundaryFacet({1,
                          2,
                          4,
                          "inlet",
                          Element::Shape::Segment,
-                         Array<Index>{1, 2}});
+                         HostVector<Index>{1, 2}});
   return mesh;
 }
 
@@ -112,7 +112,7 @@ Mesh makeBoundaryTriangleMesh()
   mesh.addNode({0.0, 1.0, 0.0});
   mesh.addNode({0.5, 0.5, 0.0});
   mesh.addPhysicalName(2, 4, "inlet");
-  const Array<Array<Index>> facets = {
+  const HostVector<HostVector<Index>> facets = {
       {0, 1, 4}, {1, 2, 4}, {2, 3, 4}, {3, 0, 4}};
   for (Index i = 0; i < facets.size(); ++i)
   {
@@ -146,11 +146,11 @@ TestOutcome boundaryFacetLookup()
   status *= mesh.physicalName(1, 8) == "right";
   status *= mesh.physicalName(1, 99).empty();
 
-  const Array<Mesh::BoundaryFacet> left  = mesh.boundaryFacets("left");
-  status                                *= left.size() == 1;
-  status                                *= left[0].ptag == 7;
-  status                                *= left[0].pname == "left";
-  status                                *= valsEqual(left[0].nids, std::array<Index, 2>{{0, 2}});
+  const HostVector<Mesh::BoundaryFacet> left  = mesh.boundaryFacets("left");
+  status                                     *= left.size() == 1;
+  status                                     *= left[0].ptag == 7;
+  status                                     *= left[0].pname == "left";
+  status                                     *= valsEqual(left[0].nids, std::array<Index, 2>{{0, 2}});
 
   return status.report();
 }
@@ -276,26 +276,26 @@ TestOutcome dirichletControlBasics()
 {
   TestStatus status(__func__);
 
-  const DirichletControl control(Array<Index>{3, 5, 9});
+  const DirichletControl control(HostVector<Index>{3, 5, 9});
   status *= control.numStateDofs() == 3;
   status *= control.numControlParams() == 3;
   status *= control.stateDof(1) == 5;
   status *= valsEqual(control.stateDofs(),
                       std::array<Index, 3>{{3, 5, 9}});
 
-  HostVector mapped;
-  control.apply(HostVector{1.0, 2.0, 3.0}, mapped);
+  HostVector<Real> mapped;
+  control.apply(HostVector<Real>{1.0, 2.0, 3.0}, mapped);
   status *= valsNear(mapped, std::array<Real, 3>{{1.0, 2.0, 3.0}});
 
-  HostVector tr;
-  control.applyTranspose(HostVector{4.0, 5.0, 6.0}, tr);
+  HostVector<Real> tr;
+  control.applyTranspose(HostVector<Real>{4.0, 5.0, 6.0}, tr);
   status *= valsNear(tr,
                      std::array<Real, 3>{{4.0, 5.0, 6.0}});
 
   bool threw = false;
   try
   {
-    DirichletControl duplicate(Array<Index>{1, 1});
+    DirichletControl duplicate(HostVector<Index>{1, 1});
   }
   catch (const std::runtime_error&)
   {
@@ -322,24 +322,24 @@ TestOutcome mappedDirichletControl()
   TestStatus status(__func__);
 
   const DirichletControl control(
-      Array<Index>{4, 7, 8},
+      HostVector<Index>{4, 7, 8},
       2,
-      Array<DirichletControlMapEntry>{{0, 0, 2.0},
-                                      {1, 0, -1.0},
-                                      {1, 1, 3.0},
-                                      {2, 1, 0.5}});
+      HostVector<DirichletControlMapEntry>{{0, 0, 2.0},
+                                           {1, 0, -1.0},
+                                           {1, 1, 3.0},
+                                           {2, 1, 0.5}});
 
   status *= control.numStateDofs() == 3;
   status *= control.numControlParams() == 2;
 
-  const HostVector parameters{2.0, -1.0};
-  HostVector       linear;
+  const HostVector<Real> parameters{2.0, -1.0};
+  HostVector<Real>       linear;
   control.apply(parameters, linear);
   status *= valsNear(linear,
                      std::array<Real, 3>{{4.0, -5.0, -0.5}});
 
-  const HostVector state_direction{1.0, 2.0, -4.0};
-  HostVector       tr;
+  const HostVector<Real> state_direction{1.0, 2.0, -4.0};
+  HostVector<Real>       tr;
   control.applyTranspose(state_direction, tr);
   status *= valsNear(tr, std::array<Real, 2>{{0.0, 4.0}});
 
@@ -359,10 +359,10 @@ TestOutcome mappedDirichletControl()
   try
   {
     DirichletControl duplicate_entry(
-        Array<Index>{0},
+        HostVector<Index>{0},
         1,
-        Array<DirichletControlMapEntry>{{0, 0, 1.0},
-                                        {0, 0, 2.0}});
+        HostVector<DirichletControlMapEntry>{{0, 0, 1.0},
+                                             {0, 0, 2.0}});
   }
   catch (const std::runtime_error&)
   {
@@ -424,27 +424,27 @@ TestOutcome normalVelocityControlMapping()
   mixed.setup();
 
   const DirichletControl control =
-      makeNormalVelocityControl(mixed, "right", HostVector{3.0, 4.0});
+      makeNormalVelocityControl(mixed, "right", HostVector<Real>{3.0, 4.0});
   status *= valsEqual(control.stateDofs(),
                       std::array<Index, 4>{{2, 3, 6, 7}});
   status *= control.numControlParams() == 2;
 
-  HostVector mapped;
-  control.apply(HostVector{10.0, 20.0}, mapped);
+  HostVector<Real> mapped;
+  control.apply(HostVector<Real>{10.0, 20.0}, mapped);
   status *= valsNear(mapped,
                      std::array<Real, 4>{{6.0, 8.0, 12.0, 16.0}});
 
   const DirichletControl active =
-      control.withoutStateDofs(Array<Index>{2, 3});
+      control.withoutStateDofs(HostVector<Index>{2, 3});
   status *= valsEqual(active.stateDofs(),
                       std::array<Index, 2>{{6, 7}});
   status *= active.numControlParams() == 1;
-  active.apply(HostVector{5.0}, mapped);
+  active.apply(HostVector<Real>{5.0}, mapped);
   status *= valsNear(mapped, std::array<Real, 2>{{3.0, 4.0}});
 
   const DirichletControl axial =
-      makeNormalVelocityControl(mixed, "right", HostVector{1.0, 0.0});
-  axial.apply(HostVector{2.0, 3.0}, mapped);
+      makeNormalVelocityControl(mixed, "right", HostVector<Real>{1.0, 0.0});
+  axial.apply(HostVector<Real>{2.0, 3.0}, mapped);
   status *= valsNear(mapped,
                      std::array<Real, 4>{{2.0, 0.0, 3.0, 0.0}});
 

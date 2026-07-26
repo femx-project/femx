@@ -18,7 +18,7 @@ namespace opt
 
 using TaoNumParamsCallback = std::function<Index()>;
 using TaoValueGradCallback =
-    std::function<Real(const HostVector&, HostVector&)>;
+    std::function<Real(const HostVector<Real>&, HostVector<Real>&)>;
 
 /**
  * @brief Adapter from PETSc TAO callbacks to a reduced functional.
@@ -39,13 +39,13 @@ public:
   template <typename Functional,
             typename = decltype(std::declval<Functional&>().numParams()),
             typename = decltype(std::declval<Functional&>().valueGrad(
-                std::declval<const HostVector&>(),
-                std::declval<HostVector&>()))>
+                std::declval<const HostVector<Real>&>(),
+                std::declval<HostVector<Real>&>()))>
   explicit TaoReducedFunctionalAdapter(Functional& fn)
     : TaoReducedFunctionalAdapter(
           [&fn]()
           { return fn.numParams(); },
-          [&fn](const HostVector& prm, HostVector& grad)
+          [&fn](const HostVector<Real>& prm, HostVector<Real>& grad)
           { return fn.valueGrad(prm, grad); })
   {
   }
@@ -118,8 +118,8 @@ private:
 private:
   TaoNumParamsCallback num_param_;
   TaoValueGradCallback value_grad_;
-  HostVector           prm_;
-  HostVector           grad_;
+  HostVector<Real>     prm_;
+  HostVector<Real>     grad_;
 };
 
 } // namespace opt

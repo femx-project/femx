@@ -65,9 +65,9 @@ struct TimeElementKernel
   }
 };
 
-bool vecsNear(const HostVector& lhs,
-              const HostVector& rhs,
-              Real              tolerance = 1.0e-12)
+bool vecsNear(const HostVector<Real>& lhs,
+              const HostVector<Real>& rhs,
+              Real                    tolerance = 1.0e-12)
 {
   if (lhs.size() != rhs.size())
   {
@@ -124,8 +124,8 @@ HostCsrPattern denseThreeByThreeGraph()
 {
   return {3,
           3,
-          HostIndexVector{0, 3, 6, 9},
-          HostIndexVector{0, 1, 2, 0, 1, 2, 0, 1, 2}};
+          HostVector<Index>{0, 3, 6, 9},
+          HostVector<Index>{0, 1, 2, 0, 1, 2, 0, 1, 2}};
 }
 
 void setDenseVals(HostCsrMatrix& mat)
@@ -152,11 +152,11 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     const fem::HostGeometry hgeom = fem::makeGeometry(mesh);
     const auto              host_map =
         assembly::makeAssemblyMap(fem::DofLayout(space));
-    const HostVector host_state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    const HostVector<Real> host_state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    HostVector    cpu_res;
-    HostCsrMatrix cpu_jac(host_map.pattern());
-    CpuContext    cpu_ctx;
+    HostVector<Real> cpu_res;
+    HostCsrMatrix    cpu_jac(host_map.pattern());
+    CpuContext       cpu_ctx;
     assembly::assemble(AffineElementKernel{},
                        hgeom,
                        host_map,
@@ -170,17 +170,17 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     linalg::CudaMatrixHandler   mat_handler(cuda_ctx);
     fem::DeviceGeometry         dgeom;
     assembly::DeviceAssemblyMap device_map;
-    DeviceVector                device_state;
+    DeviceVector<Real>          device_state;
 
     fem::copy(hgeom, dgeom, cuda_ctx);
     assembly::copy(host_map, device_map, cuda_ctx);
     vec_handler.copy(host_state, device_state);
-    DeviceVector state_clone;
+    DeviceVector<Real> state_clone;
     vec_handler.copy(device_state, state_clone);
 
-    DeviceVector    device_res;
-    DeviceCsrMatrix device_jac(device_map.pattern());
-    auto            moved_device_map = std::move(device_map);
+    DeviceVector<Real> device_res;
+    DeviceCsrMatrix    device_jac(device_map.pattern());
+    auto               moved_device_map = std::move(device_map);
     assembly::assemble(AffineElementKernel{},
                        dgeom,
                        moved_device_map,
@@ -189,8 +189,8 @@ TestOutcome cudaAssemblyMatchesCpuReference()
                        device_jac,
                        cuda_ctx);
 
-    HostVector    gpu_res;
-    HostCsrMatrix gpu_jac(host_map.pattern());
+    HostVector<Real> gpu_res;
+    HostCsrMatrix    gpu_jac(host_map.pattern());
     vec_handler.copy(device_res, gpu_res);
     mat_handler.copy(device_jac, gpu_jac);
     cuda_ctx.sync();
@@ -246,13 +246,13 @@ TestOutcome cudaBoundaryMatchesCpuReference()
   {
     const HostCsrPattern host_graph = denseThreeByThreeGraph();
     const auto           host_map =
-        assembly::makeBoundaryMap(Array<Index>{0, 2}, host_graph);
+        assembly::makeBoundaryMap(HostVector<Index>{0, 2}, host_graph);
 
     HostCsrMatrix expected_mat(host_graph);
     setDenseVals(expected_mat);
-    const HostVector initial_rhs{10.0, 20.0, 30.0};
-    HostVector       expected_rhs = initial_rhs;
-    const HostVector bc_vals{2.0, -1.0};
+    const HostVector<Real> initial_rhs{10.0, 20.0, 30.0};
+    HostVector<Real>       expected_rhs = initial_rhs;
+    const HostVector<Real> bc_vals{2.0, -1.0};
     assembly::applyDirichletConditions(
         host_map, expected_mat, expected_rhs, bc_vals);
 
@@ -266,9 +266,9 @@ TestOutcome cudaBoundaryMatchesCpuReference()
 
     HostCsrMatrix host_mat(host_graph);
     setDenseVals(host_mat);
-    DeviceCsrMatrix device_mat(device_graph);
-    DeviceVector    device_rhs;
-    DeviceVector    device_bc;
+    DeviceCsrMatrix    device_mat(device_graph);
+    DeviceVector<Real> device_rhs;
+    DeviceVector<Real> device_bc;
     mat_handler.copy(host_mat, device_mat);
     vec_handler.copy(initial_rhs, device_rhs);
     vec_handler.copy(bc_vals, device_bc);
@@ -279,8 +279,8 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                                        device_bc,
                                        ctx);
 
-    HostCsrMatrix actual_mat(host_graph);
-    HostVector    actual_rhs;
+    HostCsrMatrix    actual_mat(host_graph);
+    HostVector<Real> actual_rhs;
     mat_handler.copy(device_mat, actual_mat);
     vec_handler.copy(device_rhs, actual_rhs);
     ctx.sync();
@@ -302,10 +302,10 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                 matsNear(actual_mat, expected_hist),
                 "CUDA history rows match CPU");
 
-    const HostVector host_state{4.0, 5.0, 6.0};
-    const HostVector host_res{10.0, 20.0, 30.0};
-    DeviceVector     device_state;
-    DeviceVector     device_res;
+    const HostVector<Real> host_state{4.0, 5.0, 6.0};
+    const HostVector<Real> host_res{10.0, 20.0, 30.0};
+    DeviceVector<Real>     device_state;
+    DeviceVector<Real>     device_res;
     vec_handler.copy(host_state, device_state);
     vec_handler.copy(host_res, device_res);
     assembly::replaceRes(device_map,
@@ -313,12 +313,12 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                          device_bc.view(),
                          device_res.view(),
                          ctx);
-    HostVector actual_res;
+    HostVector<Real> actual_res;
     vec_handler.copy(device_res, actual_res);
     ctx.sync();
     recordCheck(status,
                 vecsNear(actual_res,
-                         HostVector{2.0, 20.0, 7.0}),
+                         HostVector<Real>{2.0, 20.0, 7.0}),
                 "CUDA res replacement");
 
     bool alias_rejected = false;
@@ -341,8 +341,8 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     const HostCsrPattern different_layout{
         3,
         3,
-        HostIndexVector{0, 3, 6, 9},
-        HostIndexVector{1, 0, 2, 0, 2, 1, 2, 1, 0}};
+        HostVector<Index>{0, 3, 6, 9},
+        HostVector<Index>{1, 0, 2, 0, 2, 1, 2, 1, 0}};
     DeviceCsrPattern different_device_graph;
     femx::copy(different_layout, different_device_graph, ctx);
     DeviceCsrMatrix wrong_mat(different_device_graph);
@@ -362,17 +362,17 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     const HostCsrPattern diagonal_graph{
         3,
         3,
-        HostIndexVector{0, 1, 2, 3},
-        HostIndexVector{0, 1, 2}};
+        HostVector<Index>{0, 1, 2, 3},
+        HostVector<Index>{0, 1, 2}};
     const auto diagonal_map =
-        assembly::makeBoundaryMap(Array<Index>{0}, diagonal_graph);
+        assembly::makeBoundaryMap(HostVector<Index>{0}, diagonal_graph);
     DeviceCsrPattern            diagonal_device_graph;
     assembly::DeviceBoundaryMap diagonal_device_map;
     femx::copy(diagonal_graph, diagonal_device_graph, ctx);
     assembly::copy(diagonal_map, diagonal_device_map, ctx);
-    DeviceCsrMatrix  diag_mat(diagonal_device_graph);
-    DeviceVector     diagonal_prescribed;
-    const HostVector host_diagonal_prescribed{1.0};
+    DeviceCsrMatrix        diag_mat(diagonal_device_graph);
+    DeviceVector<Real>     diagonal_prescribed;
+    const HostVector<Real> host_diagonal_prescribed{1.0};
     vec_handler.copy(host_diagonal_prescribed, diagonal_prescribed);
     ctx.sync();
 
@@ -416,13 +416,13 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     const auto map = assembly::makeAssemblyMap(
         3,
         3,
-        Array<Array<Index>>{{0, 1}, {1, 2}},
-        Array<Array<Index>>{{0, 1}, {1, 2}});
-    const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    const HostVector nxt{7.0, 8.0, 9.0};
-    HostVector       cpu_res;
-    HostCsrMatrix    cpu_jac(map.pattern());
-    CpuContext       cpu_ctx;
+        HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
+        HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
+    const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    const HostVector<Real> nxt{7.0, 8.0, 9.0};
+    HostVector<Real>       cpu_res;
+    HostCsrMatrix          cpu_jac(map.pattern());
+    CpuContext             cpu_ctx;
     assembly::assemble(TimeElementKernel{},
                        3,
                        2,
@@ -440,9 +440,9 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     linalg::CudaVectorHandler   vec_handler(ctx);
     linalg::CudaMatrixHandler   mat_handler(ctx);
     assembly::DeviceAssemblyMap dmap;
-    DeviceVector                dhist;
-    DeviceVector                dnxt;
-    DeviceVector                dres;
+    DeviceVector<Real>          dhist;
+    DeviceVector<Real>          dnxt;
+    DeviceVector<Real>          dres;
     assembly::copy(map, dmap, ctx);
     vec_handler.copy(hist, dhist);
     vec_handler.copy(nxt, dnxt);
@@ -458,8 +458,8 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
                        djac,
                        ctx);
 
-    HostVector    gpu_res;
-    HostCsrMatrix gpu_jac(map.pattern());
+    HostVector<Real> gpu_res;
+    HostCsrMatrix    gpu_jac(map.pattern());
     vec_handler.copy(dres, gpu_res);
     mat_handler.copy(djac, gpu_jac);
     ctx.sync();
@@ -474,7 +474,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
                                dnxt.view(),
                                dres,
                                ctx);
-    HostVector gpu_res_only;
+    HostVector<Real> gpu_res_only;
     vec_handler.copy(dres, gpu_res_only);
     ctx.sync();
     recordCheck(status,

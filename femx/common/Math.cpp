@@ -7,7 +7,7 @@
 namespace femx
 {
 
-Real dot(const HostVector& x, const HostVector& y)
+Real dot(const HostVector<Real>& x, const HostVector<Real>& y)
 {
   if (x.size() != y.size())
   {
@@ -19,19 +19,19 @@ Real dot(const HostVector& x, const HostVector& y)
   return vec_handler.dot(x.view(), y.view());
 }
 
-Real squaredNorm(const HostVector& x)
+Real squaredNorm(const HostVector<Real>& x)
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   return vec_handler.squaredNorm(x.view());
 }
 
-Real norm(const HostVector& x)
+Real norm(const HostVector<Real>& x)
 {
   return std::sqrt(squaredNorm(x));
 }
 
-Real rmse(const HostVector& x, const HostVector& y)
+Real rmse(const HostVector<Real>& x, const HostVector<Real>& y)
 {
   if (x.size() != y.size())
   {
@@ -47,14 +47,14 @@ Real rmse(const HostVector& x, const HostVector& y)
   return std::sqrt(sum / x.size());
 }
 
-HostVector difference(const HostVector& x, const HostVector& y)
+HostVector<Real> difference(const HostVector<Real>& x, const HostVector<Real>& y)
 {
   if (x.size() != y.size())
   {
     throw std::runtime_error("difference received incompatible vectors");
   }
 
-  HostVector diff(x.size());
+  HostVector<Real> diff(x.size());
   for (Index i = 0; i < x.size(); ++i)
   {
     diff[i] = x[i] - y[i];

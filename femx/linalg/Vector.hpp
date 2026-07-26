@@ -13,17 +13,8 @@
 namespace femx
 {
 
-/** @brief Mutable non-owning view of contiguous Device real values. */
-using DeviceVectorView      = VectorView<MemorySpace::Device, Real>;
-/** @brief Read-only non-owning view of contiguous Device real values. */
-using DeviceConstVectorView = VectorView<MemorySpace::Device, const Real>;
-/** @brief Read-only non-owning view of Host indices. */
-using HostConstIndexView    = VectorView<MemorySpace::Host, const Index>;
-/** @brief Read-only non-owning view of Device indices. */
-using DeviceConstIndexView  = VectorView<MemorySpace::Device, const Index>;
-
 /**
- * @brief Own a contiguous Host vector with the femx signed index type.
+ * @brief Own a contiguous Host vector of values.
  *
  * Its container interface follows `std::vector`; resizing value-initializes
  * all entries and host views remain valid only until storage is reallocated.

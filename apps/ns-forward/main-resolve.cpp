@@ -134,8 +134,8 @@ int run(const Config& prm)
 
   DeviceTimeIntegrator integ(*res, mat, solver, ctx);
 
-  DeviceVector      initial;
-  CudaVectorHandler vec_handler(ctx);
+  DeviceVector<Real> initial;
+  CudaVectorHandler  vec_handler(ctx);
   vec_handler.copy(fwd.initial_state, initial);
 
   ctx.sync();

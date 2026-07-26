@@ -103,10 +103,10 @@ void launchHistVjp(
     Index                              step,
     Index                              lag,
     const assembly::DeviceAssemblyMap& map,
-    DeviceConstVectorView              hist,
-    DeviceConstVectorView              nxt,
-    DeviceConstVectorView              adj,
-    DeviceVector&                      out,
+    DeviceVectorView<const Real>       hist,
+    DeviceVectorView<const Real>       nxt,
+    DeviceVectorView<const Real>       adj,
+    DeviceVector<Real>&                out,
     CudaContext&                       ctx)
 {
   constexpr Index        ndof    = (Dim + 1) * NumNodes;
@@ -136,9 +136,9 @@ void assembleNext(
     Index                              ie_begin,
     Index                              ie_end,
     const assembly::DeviceAssemblyMap& map,
-    DeviceConstVectorView              hist,
-    DeviceConstVectorView              nxt,
-    DeviceVector&                      res,
+    DeviceVectorView<const Real>       hist,
+    DeviceVectorView<const Real>       nxt,
+    DeviceVector<Real>&                res,
     DeviceCsrMatrix&                   jac,
     CudaContext&                       ctx)
 {
@@ -163,10 +163,10 @@ void applyHistJacT(
     Index                              ie_begin,
     Index                              ie_end,
     const assembly::DeviceAssemblyMap& map,
-    DeviceConstVectorView              hist,
-    DeviceConstVectorView              nxt,
-    DeviceConstVectorView              adj,
-    DeviceVector&                      out,
+    DeviceVectorView<const Real>       hist,
+    DeviceVectorView<const Real>       nxt,
+    DeviceVectorView<const Real>       adj,
+    DeviceVector<Real>&                out,
     CudaContext&                       ctx)
 {
   checkRange(ie_begin, ie_end, map);

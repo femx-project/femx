@@ -36,8 +36,8 @@ struct TaoOptions
  */
 struct TaoResult
 {
-  HostVector         prm;                                        ///< Final parameter vector.
-  HostVector         grad;                                       ///< Final reduced gradient.
+  HostVector<Real>   prm;                                        ///< Final parameter vector.
+  HostVector<Real>   grad;                                       ///< Final reduced gradient.
   Real               value             = 0.0;                    ///< Final objective value.
   Real               grad_norm_squared = 0.0;                    ///< Squared final gradient norm.
   Index              its               = 0;                      ///< Number of TAO iterations.
@@ -54,8 +54,8 @@ struct TaoResult
  */
 struct TaoBounds
 {
-  HostVector lower; ///< Lower bound for each parameter.
-  HostVector upper; ///< Upper bound for each parameter.
+  HostVector<Real> lower; ///< Lower bound for each parameter.
+  HostVector<Real> upper; ///< Upper bound for each parameter.
 };
 
 /**
@@ -69,7 +69,7 @@ struct TaoIterationInfo
   Real               constraint_norm = 0.0;                    ///< Current constraint norm.
   Real               step_norm       = 0.0;                    ///< Current step norm.
   TaoConvergedReason reason          = TAO_CONTINUE_ITERATING; ///< TAO reason.
-  HostVector         grad;                                     ///< Current reduced gradient.
+  HostVector<Real>   grad;                                     ///< Current reduced gradient.
 };
 
 /**
@@ -84,7 +84,7 @@ public:
   virtual ~TaoProgressMonitor() = default;
 
   virtual void observe(const TaoIterationInfo& info,
-                       const HostVector&       curr_prm) = 0;
+                       const HostVector<Real>& curr_prm) = 0;
 };
 
 /**
@@ -159,14 +159,14 @@ public:
   template <typename Functional,
             typename = decltype(std::declval<Functional&>().numParams()),
             typename = decltype(std::declval<Functional&>().valueGrad(
-                std::declval<const HostVector&>(),
-                std::declval<HostVector&>()))>
+                std::declval<const HostVector<Real>&>(),
+                std::declval<HostVector<Real>&>()))>
   explicit TaoOptimizer(Functional& fn,
                         MPI_Comm    comm = PETSC_COMM_SELF)
     : TaoOptimizer(
           [&fn]()
           { return fn.numParams(); },
-          [&fn](const HostVector& prm, HostVector& grad)
+          [&fn](const HostVector<Real>& prm, HostVector<Real>& grad)
           { return fn.valueGrad(prm, grad); },
           comm)
   {
@@ -182,7 +182,7 @@ public:
     return opts_;
   }
 
-  void setBounds(const HostVector& lower, const HostVector& upper)
+  void setBounds(const HostVector<Real>& lower, const HostVector<Real>& upper)
   {
     bounds_.lower = lower;
     bounds_.upper = upper;
@@ -205,7 +205,7 @@ public:
     return bounds_;
   }
 
-  void setVariableScale(const HostVector& scale)
+  void setVariableScale(const HostVector<Real>& scale)
   {
     scale_     = scale;
     has_scale_ = true;
@@ -227,7 +227,7 @@ public:
     progress_monitor_ = nullptr;
   }
 
-  PetscErrorCode solve(const HostVector& init, TaoResult& result)
+  PetscErrorCode solve(const HostVector<Real>& init, TaoResult& result)
   {
     if (!num_param_ || !value_grad_)
     {
@@ -263,13 +263,13 @@ public:
     try
     {
       PetscCall(createVec(comm_, static_cast<PetscInt>(numParams()), prm));
-      const HostVector opt_init = toOptimizerParam(init);
+      const HostVector<Real> opt_init = toOptimizerParam(init);
       PetscCall(
           ::femx::linalg::detail::copyToPETSc(opt_init.view(), prm.get()));
 
       TaoReducedFunctionalAdapter adapter(
           num_param_,
-          [this](const HostVector& opt_prm, HostVector& opt_grad)
+          [this](const HostVector<Real>& opt_prm, HostVector<Real>& opt_grad)
           {
             return valueGradInOptimizerCoordinates(opt_prm, opt_grad);
           });
@@ -292,8 +292,8 @@ public:
       {
         PetscCall(VecDuplicate(prm.get(), lower.put()));
         PetscCall(VecDuplicate(prm.get(), upper.put()));
-        const HostVector opt_lower = toOptimizerParam(bounds_.lower);
-        const HostVector opt_upper = toOptimizerParam(bounds_.upper);
+        const HostVector<Real> opt_lower = toOptimizerParam(bounds_.lower);
+        const HostVector<Real> opt_upper = toOptimizerParam(bounds_.upper);
         PetscCall(::femx::linalg::detail::copyToPETSc(opt_lower.view(),
                                                       lower.get()));
         PetscCall(::femx::linalg::detail::copyToPETSc(opt_upper.view(),
@@ -309,7 +309,7 @@ public:
       PetscCall(TaoSetFromOptions(tao.get()));
       PetscCall(TaoSolve(tao.get()));
 
-      HostVector opt_result;
+      HostVector<Real> opt_result;
       PetscCall(::femx::linalg::detail::copyFromPETSc(prm.get(), opt_result));
       result.prm               = toPhysicalParam(opt_result);
       result.value             = value_grad_(result.prm, result.grad);
@@ -353,16 +353,16 @@ private:
     Vec prm = nullptr;
     PetscCall(TaoGetSolution(tao, &prm));
 
-    HostVector opt_curr;
+    HostVector<Real> opt_curr;
     PetscCall(::femx::linalg::detail::copyFromPETSc(prm, opt_curr));
-    HostVector curr = self->toPhysicalParam(opt_curr);
+    HostVector<Real> curr = self->toPhysicalParam(opt_curr);
 
     Vec grad = nullptr;
     PetscCall(TaoGetGradient(tao, &grad, nullptr, nullptr));
-    HostVector curr_grad;
+    HostVector<Real> curr_grad;
     if (grad != nullptr)
     {
-      HostVector opt_grad;
+      HostVector<Real> opt_grad;
       PetscCall(::femx::linalg::detail::copyFromPETSc(grad, opt_grad));
       curr_grad = self->toPhysicalGrad(opt_grad);
       grad_norm =
@@ -445,23 +445,23 @@ private:
     return PETSC_SUCCESS;
   }
 
-  Real valueGradInOptimizerCoordinates(const HostVector& opt_prm,
-                                       HostVector&       opt_grad)
+  Real valueGradInOptimizerCoordinates(const HostVector<Real>& opt_prm,
+                                       HostVector<Real>&       opt_grad)
   {
-    const HostVector prm = toPhysicalParam(opt_prm);
-    HostVector       grad;
-    const Real       value = value_grad_(prm, grad);
-    opt_grad               = toOptimizerGrad(grad);
+    const HostVector<Real> prm = toPhysicalParam(opt_prm);
+    HostVector<Real>       grad;
+    const Real             value = value_grad_(prm, grad);
+    opt_grad                     = toOptimizerGrad(grad);
     return value;
   }
 
-  HostVector toOptimizerParam(const HostVector& prm) const
+  HostVector<Real> toOptimizerParam(const HostVector<Real>& prm) const
   {
     if (!has_scale_)
     {
       return prm;
     }
-    HostVector out(prm.size());
+    HostVector<Real> out(prm.size());
     for (Index i = 0; i < prm.size(); ++i)
     {
       out[i] = prm[i] / scale_[i];
@@ -469,13 +469,13 @@ private:
     return out;
   }
 
-  HostVector toPhysicalParam(const HostVector& opt_prm) const
+  HostVector<Real> toPhysicalParam(const HostVector<Real>& opt_prm) const
   {
     if (!has_scale_)
     {
       return opt_prm;
     }
-    HostVector out(opt_prm.size());
+    HostVector<Real> out(opt_prm.size());
     for (Index i = 0; i < opt_prm.size(); ++i)
     {
       out[i] = scale_[i] * opt_prm[i];
@@ -483,13 +483,13 @@ private:
     return out;
   }
 
-  HostVector toOptimizerGrad(const HostVector& grad) const
+  HostVector<Real> toOptimizerGrad(const HostVector<Real>& grad) const
   {
     if (!has_scale_)
     {
       return grad;
     }
-    HostVector out(grad.size());
+    HostVector<Real> out(grad.size());
     for (Index i = 0; i < grad.size(); ++i)
     {
       out[i] = scale_[i] * grad[i];
@@ -497,13 +497,13 @@ private:
     return out;
   }
 
-  HostVector toPhysicalGrad(const HostVector& opt_grad) const
+  HostVector<Real> toPhysicalGrad(const HostVector<Real>& opt_grad) const
   {
     if (!has_scale_)
     {
       return opt_grad;
     }
-    HostVector out(opt_grad.size());
+    HostVector<Real> out(opt_grad.size());
     for (Index i = 0; i < opt_grad.size(); ++i)
     {
       out[i] = opt_grad[i] / scale_[i];
@@ -532,7 +532,7 @@ private:
   TaoOptions           opts_;
   TaoBounds            bounds_;
   bool                 has_bounds_{false};
-  HostVector           scale_;
+  HostVector<Real>     scale_;
   bool                 has_scale_{false};
   TaoProgressMonitor*  progress_monitor_{nullptr};
 };

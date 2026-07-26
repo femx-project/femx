@@ -33,8 +33,8 @@ Index SumObjective::numParams() const
   return num_param_;
 }
 
-Real SumObjective::value(const HostVector& state,
-                         const HostVector& prm) const
+Real SumObjective::value(const HostVector<Real>& state,
+                         const HostVector<Real>& prm) const
 {
   Real val = 0.0;
   for (const Objective* term : terms_)
@@ -44,15 +44,15 @@ Real SumObjective::value(const HostVector& state,
   return val;
 }
 
-void SumObjective::stateGrad(const HostVector& state,
-                             const HostVector& prm,
-                             HostVector&       out) const
+void SumObjective::stateGrad(const HostVector<Real>& state,
+                             const HostVector<Real>& prm,
+                             HostVector<Real>&       out) const
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, num_states_);
 
-  HostVector term_grad;
+  HostVector<Real> term_grad;
   for (const Objective* term : terms_)
   {
     term->stateGrad(state, prm, term_grad);
@@ -60,15 +60,15 @@ void SumObjective::stateGrad(const HostVector& state,
   }
 }
 
-void SumObjective::paramGrad(const HostVector& state,
-                             const HostVector& prm,
-                             HostVector&       out) const
+void SumObjective::paramGrad(const HostVector<Real>& state,
+                             const HostVector<Real>& prm,
+                             HostVector<Real>&       out) const
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, num_param_);
 
-  HostVector term_grad;
+  HostVector<Real> term_grad;
   for (const Objective* term : terms_)
   {
     term->paramGrad(state, prm, term_grad);
@@ -76,9 +76,9 @@ void SumObjective::paramGrad(const HostVector& state,
   }
 }
 
-void SumObjective::addInto(const HostVector& src,
-                           HostVector&       out,
-                           Index             size)
+void SumObjective::addInto(const HostVector<Real>& src,
+                           HostVector<Real>&       out,
+                           Index                   size)
 {
   require(src.size() == size && out.size() == size,
           "SumObjective vector size mismatch");

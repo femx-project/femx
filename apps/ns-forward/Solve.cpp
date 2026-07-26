@@ -48,7 +48,7 @@ SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
   {
     if (context.level == 0)
     {
-      monitor.observe(0, HostVector(context.curr));
+      monitor.observe(0, HostVector<Real>(context.curr));
       return false;
     }
     return monitor.observeStep(context);
@@ -69,7 +69,7 @@ SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
 
 } // namespace
 
-bool hasFiniteValues(const HostVector& values)
+bool hasFiniteValues(const HostVector<Real>& values)
 {
   for (Index i = 0; i < values.size(); ++i)
   {
@@ -118,7 +118,7 @@ SolveResult solve(state::DeviceTimeIntegrator& integrator,
 
   monitor.start(integrator.numSteps(), integrator.numStates());
   CudaContext               transfer;
-  DeviceVector              parameters;
+  DeviceVector<Real>        parameters;
   linalg::CudaVectorHandler vector_handler(transfer);
   vector_handler.copy(problem.parameters, parameters);
   transfer.sync();
@@ -128,7 +128,7 @@ SolveResult solve(state::DeviceTimeIntegrator& integrator,
   {
     if (context.level == 0)
     {
-      monitor.observe(0, HostVector(context.curr));
+      monitor.observe(0, HostVector<Real>(context.curr));
       return false;
     }
     return monitor.observeStep(context);

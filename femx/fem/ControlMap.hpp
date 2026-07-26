@@ -75,9 +75,9 @@ private:
       Index,
       Index,
       const DirichletControl&,
-      Array<Index>,
-      HostVector,
-      Array<LinearInterpolation>,
+      HostVector<Index>,
+      HostVector<Real>,
+      HostVector<LinearInterpolation>,
       Index,
       Index);
 
@@ -87,30 +87,30 @@ private:
 
   friend void controlVals(const ControlMap<MemorySpace::Host>&,
                           Index,
-                          HostConstVectorView,
-                          HostVectorView);
+                          HostVectorView<const Real>,
+                          HostVectorView<Real>);
   friend void controlVals(const ControlMap<MemorySpace::Device>&,
                           Index,
-                          DeviceConstVectorView,
-                          DeviceVectorView,
+                          DeviceVectorView<const Real>,
+                          DeviceVectorView<Real>,
                           CudaContext&);
   friend void controlJac(const ControlMap<MemorySpace::Host>&,
                          Index,
-                         HostConstVectorView,
-                         HostVectorView);
+                         HostVectorView<const Real>,
+                         HostVectorView<Real>);
   friend void controlJac(const ControlMap<MemorySpace::Device>&,
                          Index,
-                         DeviceConstVectorView,
-                         DeviceVectorView,
+                         DeviceVectorView<const Real>,
+                         DeviceVectorView<Real>,
                          CudaContext&);
   friend void addControlJacT(const ControlMap<MemorySpace::Host>&,
                              Index,
-                             HostConstVectorView,
-                             HostVectorView);
+                             HostVectorView<const Real>,
+                             HostVectorView<Real>);
   friend void addControlJacT(const ControlMap<MemorySpace::Device>&,
                              Index,
-                             DeviceConstVectorView,
-                             DeviceVectorView,
+                             DeviceVectorView<const Real>,
+                             DeviceVectorView<Real>,
                              CudaContext&);
 
   Index num_steps_{0};
@@ -124,9 +124,9 @@ private:
   Vector<Space, Real>         fixed_vals_;
   // Time interpolation is orchestration metadata consumed on Host even when
   // the matrix and vectors live on Device.
-  HostIndexVector             lower_;
-  HostIndexVector             upper_;
-  HostVector                  upper_wts_;
+  HostVector<Index>           lower_;
+  HostVector<Index>           upper_;
+  HostVector<Real>            upper_wts_;
   mutable Vector<Space, Real> compact_;
 };
 
@@ -134,51 +134,51 @@ using HostControlMap   = ControlMap<MemorySpace::Host>;
 using DeviceControlMap = ControlMap<MemorySpace::Device>;
 
 HostControlMap makeControlMap(
-    Index                      num_steps,
-    Index                      num_states,
-    const DirichletControl&    ctr,
-    Array<Index>               fixed_dofs,
-    HostVector                 fixed_vals,
-    Array<LinearInterpolation> time,
-    Index                      ctr_off,
-    Index                      num_prm = -1);
+    Index                           num_steps,
+    Index                           num_states,
+    const DirichletControl&         ctr,
+    HostVector<Index>               fixed_dofs,
+    HostVector<Real>                fixed_vals,
+    HostVector<LinearInterpolation> time,
+    Index                           ctr_off,
+    Index                           num_prm = -1);
 
 void copy(const HostControlMap& src,
           DeviceControlMap&     dst,
           CudaContext&          ctx);
 
-void controlVals(const HostControlMap& map,
-                 Index                 step,
-                 HostConstVectorView   prm,
-                 HostVectorView        out);
+void controlVals(const HostControlMap&      map,
+                 Index                      step,
+                 HostVectorView<const Real> prm,
+                 HostVectorView<Real>       out);
 
-void controlVals(const DeviceControlMap& map,
-                 Index                   step,
-                 DeviceConstVectorView   prm,
-                 DeviceVectorView        out,
-                 CudaContext&            ctx);
+void controlVals(const DeviceControlMap&      map,
+                 Index                        step,
+                 DeviceVectorView<const Real> prm,
+                 DeviceVectorView<Real>       out,
+                 CudaContext&                 ctx);
 
-void controlJac(const HostControlMap& map,
-                Index                 step,
-                HostConstVectorView   dir,
-                HostVectorView        out);
+void controlJac(const HostControlMap&      map,
+                Index                      step,
+                HostVectorView<const Real> dir,
+                HostVectorView<Real>       out);
 
-void controlJac(const DeviceControlMap& map,
-                Index                   step,
-                DeviceConstVectorView   dir,
-                DeviceVectorView        out,
-                CudaContext&            ctx);
+void controlJac(const DeviceControlMap&      map,
+                Index                        step,
+                DeviceVectorView<const Real> dir,
+                DeviceVectorView<Real>       out,
+                CudaContext&                 ctx);
 
-void addControlJacT(const HostControlMap& map,
-                    Index                 step,
-                    HostConstVectorView   adj,
-                    HostVectorView        grad);
+void addControlJacT(const HostControlMap&      map,
+                    Index                      step,
+                    HostVectorView<const Real> adj,
+                    HostVectorView<Real>       grad);
 
-void addControlJacT(const DeviceControlMap& map,
-                    Index                   step,
-                    DeviceConstVectorView   adj,
-                    DeviceVectorView        grad,
-                    CudaContext&            ctx);
+void addControlJacT(const DeviceControlMap&      map,
+                    Index                        step,
+                    DeviceVectorView<const Real> adj,
+                    DeviceVectorView<Real>       grad,
+                    CudaContext&                 ctx);
 
 /**
  * @brief Affine initial-state parameterization in one memory space.
@@ -214,7 +214,7 @@ public:
 
 private:
   friend InitialStateMap<MemorySpace::Host> makeInitialStateMap(
-      HostVector,
+      HostVector<Real>,
       DenseMatrix,
       const DirichletControl&,
       Index,
@@ -226,18 +226,18 @@ private:
                    CudaContext&);
 
   friend void initialState(const InitialStateMap<MemorySpace::Host>&,
-                           HostConstVectorView,
-                           HostVectorView);
+                           HostVectorView<const Real>,
+                           HostVectorView<Real>);
   friend void initialState(const InitialStateMap<MemorySpace::Device>&,
-                           DeviceConstVectorView,
-                           DeviceVectorView,
+                           DeviceVectorView<const Real>,
+                           DeviceVectorView<Real>,
                            CudaContext&);
   friend void addInitialJacT(const InitialStateMap<MemorySpace::Host>&,
-                             HostConstVectorView,
-                             HostVectorView);
+                             HostVectorView<const Real>,
+                             HostVectorView<Real>);
   friend void addInitialJacT(const InitialStateMap<MemorySpace::Device>&,
-                             DeviceConstVectorView,
-                             DeviceVectorView,
+                             DeviceVectorView<const Real>,
+                             DeviceVectorView<Real>,
                              CudaContext&);
 
   Index num_states_{0};
@@ -256,7 +256,7 @@ private:
 using HostInitialStateMap   = InitialStateMap<MemorySpace::Host>;
 using DeviceInitialStateMap = InitialStateMap<MemorySpace::Device>;
 
-HostInitialStateMap makeInitialStateMap(HostVector              mean,
+HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
                                         DenseMatrix             modes,
                                         const DirichletControl& ctr,
                                         Index                   init_off,
@@ -268,21 +268,21 @@ void copy(const HostInitialStateMap& src,
           CudaContext&               ctx);
 
 void initialState(const HostInitialStateMap& map,
-                  HostConstVectorView        prm,
-                  HostVectorView             out);
+                  HostVectorView<const Real> prm,
+                  HostVectorView<Real>       out);
 
 void initialState(const DeviceInitialStateMap& map,
-                  DeviceConstVectorView        prm,
-                  DeviceVectorView             out,
+                  DeviceVectorView<const Real> prm,
+                  DeviceVectorView<Real>       out,
                   CudaContext&                 ctx);
 
 void addInitialJacT(const HostInitialStateMap& map,
-                    HostConstVectorView        adj,
-                    HostVectorView             grad);
+                    HostVectorView<const Real> adj,
+                    HostVectorView<Real>       grad);
 
 void addInitialJacT(const DeviceInitialStateMap& map,
-                    DeviceConstVectorView        adj,
-                    DeviceVectorView             grad,
+                    DeviceVectorView<const Real> adj,
+                    DeviceVectorView<Real>       grad,
                     CudaContext&                 ctx);
 
 } // namespace fem

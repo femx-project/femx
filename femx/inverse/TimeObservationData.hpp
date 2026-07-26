@@ -31,24 +31,24 @@ public:
   bool hasTimeLevels() const;
   bool hasTimeValues() const;
 
-  const std::string&   sampler() const;
-  const Array<Point3>& pts() const;
-  const Array<Index>&  comps() const;
-  const Array<Index>&  timeLevels() const;
-  const HostVector&    timeValues() const;
+  const std::string&        sampler() const;
+  const HostVector<Point3>& pts() const;
+  const HostVector<Index>&  comps() const;
+  const HostVector<Index>&  timeLevels() const;
+  const HostVector<Real>&   timeValues() const;
 
   Index timeLevel(Index row) const;
   Real  timeValue(Index row) const;
 
-  void setLayout(std::string   sampler,
-                 Array<Point3> pts,
-                 Array<Index>  comps);
+  void setLayout(std::string        sampler,
+                 HostVector<Point3> pts,
+                 HostVector<Index>  comps);
 
-  void setTimeLevels(Array<Index> levels);
-  void setTimeValues(HostVector vals);
+  void setTimeLevels(HostVector<Index> levels);
+  void setTimeValues(HostVector<Real> vals);
 
-  HostVectorView      operator[](Index level);
-  HostConstVectorView operator[](Index level) const;
+  HostVectorView<Real>       operator[](Index level);
+  HostVectorView<const Real> operator[](Index level) const;
 
   void setZero();
 
@@ -59,19 +59,19 @@ private:
   void checkTimeValues() const;
 
 private:
-  HostVector    data_; ///< Observation values stored by time level.
-  Index         num_levels_{0};
-  Index         num_obs_{0};
-  std::string   sampler_;     ///< Name of the sampler that produced the layout.
-  Array<Point3> pts_;         ///< Observation point coordinates.
-  Array<Index>  comps_;       ///< Observed component at each point.
-  Array<Index>  time_levels_; ///< Source time level for each row.
-  HostVector    time_vals_;   ///< Physical time value for each row.
+  HostVector<Real>   data_; ///< Observation values stored by time level.
+  Index              num_levels_{0};
+  Index              num_obs_{0};
+  std::string        sampler_;     ///< Name of the sampler that produced the layout.
+  HostVector<Point3> pts_;         ///< Observation point coordinates.
+  HostVector<Index>  comps_;       ///< Observed component at each point.
+  HostVector<Index>  time_levels_; ///< Source time level for each row.
+  HostVector<Real>   time_vals_;   ///< Physical time value for each row.
 };
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
                                   const state::TimeTrajectory&   tr,
-                                  const HostVector&              prm);
+                                  const HostVector<Real>&        prm);
 
 void writeTimeObsData(const std::string& path, const TimeObservationData& data);
 

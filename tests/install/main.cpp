@@ -36,24 +36,24 @@ int main()
 
     femx::HostCsrPattern pattern(2,
                                  2,
-                                 femx::HostIndexVector{0, 2, 4},
-                                 femx::HostIndexVector{0, 1, 0, 1});
+                                 femx::HostVector<femx::Index>{0, 2, 4},
+                                 femx::HostVector<femx::Index>{0, 1, 0, 1});
     femx::HostCsrMatrix  A(std::move(pattern));
-    A.vals() = femx::HostVector{3.0, 1.0, 1.0, 2.0};
+    A.vals() = femx::HostVector<femx::Real>{3.0, 1.0, 1.0, 2.0};
 
-    femx::HostVector rhs(2);
+    femx::HostVector<femx::Real> rhs(2);
     rhs[0] = 5.0;
     rhs[1] = 5.0;
 
     femx::linalg::DenseLinearSolver solver;
     femx::CpuContext                ctx;
-    femx::HostVector                x;
+    femx::HostVector<femx::Real>    x;
     solver.solve(A, rhs, x, ctx);
 
     checkClose(x[0], 1.0, "x[0]");
     checkClose(x[1], 2.0, "x[1]");
 
-    femx::HostVector                Ax(2);
+    femx::HostVector<femx::Real>    Ax(2);
     femx::linalg::HostMatrixHandler mat_handler(ctx);
     mat_handler.matvec(A, x.view(), Ax.view());
     checkClose(Ax[0], rhs[0], "Ax[0]");

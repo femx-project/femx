@@ -12,15 +12,15 @@ namespace inverse
 {
 
 TimeBlockRegularization::TimeBlockRegularization(
-    Index             num_steps,
-    Index             num_states,
-    Index             num_levels,
-    Index             block_size,
-    Array<Index>      rows,
-    Array<Index>      cols,
-    HostVector        vals,
-    Real              weight,
-    const HostVector& reference)
+    Index                   num_steps,
+    Index                   num_states,
+    Index                   num_levels,
+    Index                   block_size,
+    HostVector<Index>       rows,
+    HostVector<Index>       cols,
+    HostVector<Real>        vals,
+    Real                    weight,
+    const HostVector<Real>& reference)
   : num_steps_(num_steps),
     num_states_(num_states),
     num_levels_(num_levels),
@@ -76,8 +76,8 @@ Index TimeBlockRegularization::numParams() const
   return num_levels_ * block_size_;
 }
 
-Real TimeBlockRegularization::value(const TimeTrajectory& tr,
-                                    const HostVector&     prm) const
+Real TimeBlockRegularization::value(const TimeTrajectory&   tr,
+                                    const HostVector<Real>& prm) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -95,10 +95,10 @@ Real TimeBlockRegularization::value(const TimeTrajectory& tr,
   return out;
 }
 
-void TimeBlockRegularization::stateGrad(Index                 level,
-                                        const TimeTrajectory& tr,
-                                        const HostVector&     prm,
-                                        HostVector&           out) const
+void TimeBlockRegularization::stateGrad(Index                   level,
+                                        const TimeTrajectory&   tr,
+                                        const HostVector<Real>& prm,
+                                        HostVector<Real>&       out) const
 {
   (void) level;
   (void) tr;
@@ -108,9 +108,9 @@ void TimeBlockRegularization::stateGrad(Index                 level,
   vec_handler.resizeOrZero(out, numStates());
 }
 
-void TimeBlockRegularization::paramGrad(const TimeTrajectory& tr,
-                                        const HostVector&     prm,
-                                        HostVector&           out) const
+void TimeBlockRegularization::paramGrad(const TimeTrajectory&   tr,
+                                        const HostVector<Real>& prm,
+                                        HostVector<Real>&       out) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -136,16 +136,16 @@ Index TimeBlockRegularization::index(Index level, Index comp) const
   return level * block_size_ + comp;
 }
 
-Real TimeBlockRegularization::centered(const HostVector& prm,
-                                       Index             level,
-                                       Index             comp) const
+Real TimeBlockRegularization::centered(const HostVector<Real>& prm,
+                                       Index                   level,
+                                       Index                   comp) const
 {
   const Index i = index(level, comp);
   return prm[i] - reference_[i];
 }
 
 void TimeBlockRegularization::checkParamSize(
-    const HostVector& prm) const
+    const HostVector<Real>& prm) const
 {
   require(prm.size() == numParams(),
           "TimeBlockRegularization parameter size mismatch");

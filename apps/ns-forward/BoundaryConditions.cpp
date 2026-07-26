@@ -34,8 +34,8 @@ fem::DirichletBC orderedBC(const fem::DirichletBC& src)
 
 } // namespace
 
-Index lowerInterval(const HostVector& pts,
-                    Real              x)
+Index lowerInterval(const HostVector<Real>& pts,
+                    Real                    x)
 {
   using std::distance;
   const auto upper = std::upper_bound(pts.begin(), pts.end(), x);
@@ -231,9 +231,9 @@ Real velocityComponent(const VelocityEvalContext& ctx,
 }
 
 fem::DirichletBC makeDirichletBoundaryConditions(
-    const fem::MixedFESpace&              space,
-    const Array<BoundaryConditionConfig>& bcs,
-    Real                                  time)
+    const fem::MixedFESpace&                   space,
+    const HostVector<BoundaryConditionConfig>& bcs,
+    Real                                       time)
 {
   const auto u_dof = space.field(0);
   const auto p_dof = space.field(1);

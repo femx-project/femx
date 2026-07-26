@@ -90,15 +90,15 @@ public:
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  const Array<Index>& dofs() const noexcept;
-  const HostVector&   vals() const noexcept;
+  const HostVector<Index>& dofs() const noexcept;
+  const HostVector<Real>&  vals() const noexcept;
 
   /** @brief Apply the constraints to a matrix and right-hand side. */
-  void apply(HostCsrMatrix& A, HostVector& b) const;
+  void apply(HostCsrMatrix& A, HostVector<Real>& b) const;
 
 private:
-  Array<Index> dofs_;
-  HostVector   vals_;
+  HostVector<Index> dofs_;
+  HostVector<Real>  vals_;
 };
 
 } // namespace fem

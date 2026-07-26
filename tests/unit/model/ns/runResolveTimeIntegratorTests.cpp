@@ -57,10 +57,10 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         0.1,
         {1.0, 0.1});
 
-    const auto   vel = model.space().field(0);
-    const auto   pre = model.space().field(1);
-    Array<Index> dofs;
-    HostVector   level_vals;
+    const auto        vel = model.space().field(0);
+    const auto        pre = model.space().field(1);
+    HostVector<Index> dofs;
+    HostVector<Real>  level_vals;
     for (Index in = 0; in < model.mesh().numNodes(); ++in)
     {
       const auto& point = model.mesh().node(in);
@@ -77,7 +77,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     dofs.push_back(pre.globalDof(0));
     level_vals.push_back(0.0);
 
-    HostVector vals(steps * dofs.size());
+    HostVector<Real> vals(steps * dofs.size());
     for (Index step = 0; step < steps; ++step)
     {
       for (Index i = 0; i < dofs.size(); ++i)
@@ -85,8 +85,8 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         vals[step * dofs.size() + i] = level_vals[i];
       }
     }
-    const HostVector init(model.numStates());
-    const HostVector prm;
+    const HostVector<Real> init(model.numStates());
+    const HostVector<Real> prm;
 
     assembly::HostConstrainedTimeResidual cpu_res(
         model.residual(),
@@ -110,8 +110,8 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     linalg::ReSolveLinearSolver cuda_solver;
     state::DeviceTimeIntegrator cuda(
         *cuda_res, cuda_mat, cuda_solver, cuda_ctx);
-    DeviceVector              device_initial;
-    DeviceVector              device_parameters;
+    DeviceVector<Real>        device_initial;
+    DeviceVector<Real>        device_parameters;
     linalg::CudaVectorHandler vec_handler(cuda_ctx);
     vec_handler.copy(init, device_initial);
     vec_handler.copy(prm, device_parameters);

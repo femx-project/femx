@@ -79,34 +79,34 @@ public:
     return {};
   }
 
-  virtual void observe(Index             level,
-                       const HostVector& state,
-                       const HostVector& prm,
-                       HostVector&       out) const = 0;
+  virtual void observe(Index                   level,
+                       const HostVector<Real>& state,
+                       const HostVector<Real>& prm,
+                       HostVector<Real>&       out) const = 0;
 
-  virtual void applyStateJac(Index             level,
-                             const HostVector& state,
-                             const HostVector& prm,
-                             const HostVector& dir,
-                             HostVector&       out) const = 0;
+  virtual void applyStateJac(Index                   level,
+                             const HostVector<Real>& state,
+                             const HostVector<Real>& prm,
+                             const HostVector<Real>& dir,
+                             HostVector<Real>&       out) const = 0;
 
-  virtual void applyStateJacT(Index             level,
-                              const HostVector& state,
-                              const HostVector& prm,
-                              const HostVector& dir,
-                              HostVector&       out) const = 0;
+  virtual void applyStateJacT(Index                   level,
+                              const HostVector<Real>& state,
+                              const HostVector<Real>& prm,
+                              const HostVector<Real>& dir,
+                              HostVector<Real>&       out) const = 0;
 
-  virtual void applyParamJac(Index             level,
-                             const HostVector& state,
-                             const HostVector& prm,
-                             const HostVector& dir,
-                             HostVector&       out) const = 0;
+  virtual void applyParamJac(Index                   level,
+                             const HostVector<Real>& state,
+                             const HostVector<Real>& prm,
+                             const HostVector<Real>& dir,
+                             HostVector<Real>&       out) const = 0;
 
-  virtual void applyParamJacT(Index             level,
-                              const HostVector& state,
-                              const HostVector& prm,
-                              const HostVector& dir,
-                              HostVector&       out) const = 0;
+  virtual void applyParamJacT(Index                   level,
+                              const HostVector<Real>& state,
+                              const HostVector<Real>& prm,
+                              const HostVector<Real>& dir,
+                              HostVector<Real>&       out) const = 0;
 };
 
 } // namespace inverse

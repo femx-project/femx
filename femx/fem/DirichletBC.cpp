@@ -179,17 +179,17 @@ void DirichletBC::addBoundary(const MixedFieldView& field,
   }
 }
 
-const Array<Index>& DirichletBC::dofs() const noexcept
+const HostVector<Index>& DirichletBC::dofs() const noexcept
 {
   return dofs_;
 }
 
-const HostVector& DirichletBC::vals() const noexcept
+const HostVector<Real>& DirichletBC::vals() const noexcept
 {
   return vals_;
 }
 
-void DirichletBC::apply(HostCsrMatrix& A, HostVector& b) const
+void DirichletBC::apply(HostCsrMatrix& A, HostVector<Real>& b) const
 {
   if (dofs_.size() != vals_.size())
   {
@@ -200,9 +200,9 @@ void DirichletBC::apply(HostCsrMatrix& A, HostVector& b) const
   const Index* ci   = A.colIndData();
   Real*        vals = A.valsData();
 
-  Array<char> is_dirichlet(A.rows(), 0);
-  Array<char> found_diagonal(A.rows(), 0);
-  HostVector  bc_vals(A.rows());
+  HostVector<char> is_dirichlet(A.rows(), 0);
+  HostVector<char> found_diagonal(A.rows(), 0);
+  HostVector<Real> bc_vals(A.rows());
 
   for (Index c = 0; c < dofs_.size(); ++c)
   {

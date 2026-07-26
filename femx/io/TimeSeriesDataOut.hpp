@@ -22,35 +22,35 @@ class TimeSeriesDataOut
 public:
   struct ScalarField
   {
-    std::string name;
-    HostVector  vals;
+    std::string      name;
+    HostVector<Real> vals;
   };
 
   struct VectorField
   {
-    std::string               name;
-    std::array<HostVector, 3> vals;
+    std::string                     name;
+    std::array<HostVector<Real>, 3> vals;
   };
 
   struct Step
   {
-    Real               time{0.0};
-    Array<ScalarField> scalars;
-    Array<VectorField> vecs;
+    Real                    time{0.0};
+    HostVector<ScalarField> scalars;
+    HostVector<VectorField> vecs;
   };
 
   void attachMesh(const fem::Mesh& mesh);
 
   void beginStep(Real time);
-  void addNodalScalarField(const std::string& name,
-                           const HostVector&  vals);
-  void addNodalVectorField(const std::string& name,
-                           const HostVector&  x,
-                           const HostVector&  y);
-  void addNodalVectorField(const std::string& name,
-                           const HostVector&  x,
-                           const HostVector&  y,
-                           const HostVector&  z);
+  void addNodalScalarField(const std::string&      name,
+                           const HostVector<Real>& vals);
+  void addNodalVectorField(const std::string&      name,
+                           const HostVector<Real>& x,
+                           const HostVector<Real>& y);
+  void addNodalVectorField(const std::string&      name,
+                           const HostVector<Real>& x,
+                           const HostVector<Real>& y,
+                           const HostVector<Real>& z);
   void clear();
 
   void write(const std::string& base) const;
@@ -61,7 +61,7 @@ private:
 
 private:
   const fem::Mesh* mesh_{nullptr};
-  Array<Step>      steps_;
+  HostVector<Step> steps_;
 };
 
 } // namespace io

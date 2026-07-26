@@ -95,10 +95,10 @@ public:
    * @throws std::runtime_error - If the matrix and vector dimensions are
    * incompatible.
    */
-  Real resNorm(const HostCsrMatrix& A,
-               const HostVector&    rhs,
-               const HostVector&    x,
-               CpuContext&          ctx) const
+  Real resNorm(const HostCsrMatrix&    A,
+               const HostVector<Real>& rhs,
+               const HostVector<Real>& x,
+               CpuContext&             ctx) const
   {
     if (rhs.size() != A.rows() || x.size() != A.cols())
     {
@@ -108,7 +108,7 @@ public:
     linalg::HostMatrixHandler mat_handler(ctx);
     linalg::HostVectorHandler vec_handler(ctx);
 
-    HostVector residual;
+    HostVector<Real> residual;
     mat_handler.matvec(A, x.view(), residual);
     vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
     return std::sqrt(vec_handler.squaredNorm(residual.view()));
@@ -128,10 +128,10 @@ public:
    * @throws std::runtime_error - If dimensions are incompatible or a CUDA
    * linear algebra operation fails.
    */
-  Real resNorm(const DeviceCsrMatrix& A,
-               const DeviceVector&    rhs,
-               const DeviceVector&    x,
-               CudaContext&           ctx) const
+  Real resNorm(const DeviceCsrMatrix&    A,
+               const DeviceVector<Real>& rhs,
+               const DeviceVector<Real>& x,
+               CudaContext&              ctx) const
   {
     if (rhs.size() != A.rows() || x.size() != A.cols())
     {
@@ -141,14 +141,14 @@ public:
     linalg::CudaMatrixHandler mat_handler(ctx);
     linalg::CudaVectorHandler vec_handler(ctx);
 
-    DeviceVector residual;
+    DeviceVector<Real> residual;
     mat_handler.matvec(A, x.view(), residual);
     vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
 
-    DeviceVector norm2(1);
+    DeviceVector<Real> norm2(1);
     vec_handler.squaredNorm(residual.view(), norm2.view());
 
-    HostVector host_norm2;
+    HostVector<Real> host_norm2;
     vec_handler.copy(norm2, host_norm2);
     ctx.sync();
     return std::sqrt(host_norm2[0]);

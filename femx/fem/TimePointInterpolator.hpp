@@ -119,15 +119,15 @@ public:
   /** @brief Number of point-component observations. */
   Index numObservations() const override;
 
-  void observe(Index                 level,
-               DeviceConstVectorView state,
-               DeviceVectorView      out,
-               CudaContext&          ctx) const override;
+  void observe(Index                        level,
+               DeviceVectorView<const Real> state,
+               DeviceVectorView<Real>       out,
+               CudaContext&                 ctx) const override;
 
-  void addStateJacT(Index                 level,
-                    DeviceConstVectorView dir,
-                    DeviceVectorView      out,
-                    CudaContext&          ctx) const override;
+  void addStateJacT(Index                        level,
+                    DeviceVectorView<const Real> dir,
+                    DeviceVectorView<Real>       out,
+                    CudaContext&                 ctx) const override;
 
 private:
   friend void copy(const TimePointInterpolator& src,
@@ -152,8 +152,8 @@ public:
   TimePointInterpolator(Index               num_steps,
                         const MixedFESpace& space,
                         Index               fid,
-                        Array<Point3>       pts,
-                        Array<Index>        comps,
+                        HostVector<Point3>  pts,
+                        HostVector<Index>   comps,
                         Index               num_prm);
 
   Index numSteps() const override;
@@ -168,68 +168,68 @@ public:
   std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
       CudaContext& ctx) const override;
 
-  void observe(Index             level,
-               const HostVector& state,
-               const HostVector& prm,
-               HostVector&       out) const override;
+  void observe(Index                   level,
+               const HostVector<Real>& state,
+               const HostVector<Real>& prm,
+               HostVector<Real>&       out) const override;
 
-  void applyStateJac(Index             level,
-                     const HostVector& state,
-                     const HostVector& prm,
-                     const HostVector& dir,
-                     HostVector&       out) const override;
+  void applyStateJac(Index                   level,
+                     const HostVector<Real>& state,
+                     const HostVector<Real>& prm,
+                     const HostVector<Real>& dir,
+                     HostVector<Real>&       out) const override;
 
-  void applyStateJacT(Index             level,
-                      const HostVector& state,
-                      const HostVector& prm,
-                      const HostVector& dir,
-                      HostVector&       out) const override;
+  void applyStateJacT(Index                   level,
+                      const HostVector<Real>& state,
+                      const HostVector<Real>& prm,
+                      const HostVector<Real>& dir,
+                      HostVector<Real>&       out) const override;
 
-  void applyParamJac(Index             level,
-                     const HostVector& state,
-                     const HostVector& prm,
-                     const HostVector& dir,
-                     HostVector&       out) const override;
+  void applyParamJac(Index                   level,
+                     const HostVector<Real>& state,
+                     const HostVector<Real>& prm,
+                     const HostVector<Real>& dir,
+                     HostVector<Real>&       out) const override;
 
-  void applyParamJacT(Index             level,
-                      const HostVector& state,
-                      const HostVector& prm,
-                      const HostVector& dir,
-                      HostVector&       out) const override;
+  void applyParamJacT(Index                   level,
+                      const HostVector<Real>& state,
+                      const HostVector<Real>& prm,
+                      const HostVector<Real>& dir,
+                      HostVector<Real>&       out) const override;
 
   /** @brief Flat Host stencils owned by this interpolator. */
   const HostPointInterpolatorData& data() const noexcept;
 
-  const Array<Point3>& pts() const;
+  const HostVector<Point3>& pts() const;
 
-  const Array<Index>& comps() const;
+  const HostVector<Index>& comps() const;
 
   static bool containsPoint(const MixedFESpace& space,
                             Index               fid,
                             const Point3&       point);
 
-  static Array<Point3> filterPointsInside(
-      const MixedFESpace&  space,
-      Index                fid,
-      const Array<Point3>& pts);
+  static HostVector<Point3> filterPointsInside(
+      const MixedFESpace&       space,
+      Index                     fid,
+      const HostVector<Point3>& pts);
 
 private:
   void checkLevel(Index level) const;
 
-  void checkInputs(const HostVector& state,
-                   const HostVector& prm) const;
+  void checkInputs(const HostVector<Real>& state,
+                   const HostVector<Real>& prm) const;
 
   static HostPointInterpolatorData buildData(
-      const MixedFieldView& field,
-      Index                 num_states,
-      const Array<Point3>&  pts,
-      const Array<Index>&   comps);
+      const MixedFieldView&     field,
+      Index                     num_states,
+      const HostVector<Point3>& pts,
+      const HostVector<Index>&  comps);
 
 private:
   Index                     num_steps_{0};
   Index                     num_prm_{0};
-  Array<Point3>             pts_;   ///< Observation point coordinates.
-  Array<Index>              comps_; ///< Observed components at each point.
+  HostVector<Point3>        pts_;   ///< Observation point coordinates.
+  HostVector<Index>         comps_; ///< Observed components at each point.
   HostPointInterpolatorData data_;  ///< Flat interpolation stencils.
 };
 

@@ -21,7 +21,7 @@ using femx::fem::BoundarySurface;
 using femx::fem::Mesh;
 using femx::fem::SparseTripletMatrix;
 
-py::array_t<Index> indexArray(const femx::Array<Index>& vals)
+py::array_t<Index> indexArray(const femx::HostVector<Index>& vals)
 {
   py::array_t<Index> out(vals.size());
   auto               data = out.mutable_unchecked<1>();
@@ -32,7 +32,7 @@ py::array_t<Index> indexArray(const femx::Array<Index>& vals)
   return out;
 }
 
-py::array_t<Real> realArray(const femx::HostVector& vals)
+py::array_t<Real> realArray(const femx::HostVector<Real>& vals)
 {
   py::array_t<Real> out(vals.size());
   auto              data = out.mutable_unchecked<1>();

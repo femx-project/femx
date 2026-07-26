@@ -48,8 +48,6 @@ class CsrPattern
   using DeviceOnly = std::enable_if_t<S == MemorySpace::Device, int>;
 
 public:
-  using IndexVector = Vector<Space, Index>;
-
   /** @brief Construct an empty zero-by-zero CSR pattern. */
   CsrPattern()
     : storage_(std::make_shared<Storage>())
@@ -74,10 +72,10 @@ public:
    * @throws std::runtime_error - If dimensions or CSR indices are invalid.
    */
   template <MemorySpace S = Space, HostOnly<S> = 0>
-  CsrPattern(Index       rows,
-             Index       cols,
-             IndexVector row_ptr,
-             IndexVector col_ind)
+  CsrPattern(Index                rows,
+             Index                cols,
+             Vector<Space, Index> row_ptr,
+             Vector<Space, Index> col_ind)
     : storage_(std::make_shared<Storage>(rows,
                                          cols,
                                          std::move(row_ptr),
@@ -116,13 +114,13 @@ public:
   }
 
   /** @brief Return the owned CSR row offsets. */
-  const IndexVector& rowPtr() const noexcept
+  const Vector<Space, Index>& rowPtr() const noexcept
   {
     return storage_->row_ptr;
   }
 
   /** @brief Return the owned CSR column indices. */
-  const IndexVector& colInd() const noexcept
+  const Vector<Space, Index>& colInd() const noexcept
   {
     return storage_->col_ind;
   }
@@ -144,11 +142,11 @@ private:
   {
     Storage() = default;
 
-    Storage(Index         num_rows,
-            Index         num_cols,
-            IndexVector   row_ptr,
-            IndexVector   col_ind,
-            std::uint64_t id)
+    Storage(Index                num_rows,
+            Index                num_cols,
+            Vector<Space, Index> row_ptr,
+            Vector<Space, Index> col_ind,
+            std::uint64_t        id)
       : rows(num_rows),
         cols(num_cols),
         row_ptr(std::move(row_ptr)),
@@ -157,19 +155,19 @@ private:
     {
     }
 
-    Index         rows{0};      ///< Number of rows.
-    Index         cols{0};      ///< Number of columns.
-    IndexVector   row_ptr;      ///< CSR row offsets.
-    IndexVector   col_ind;      ///< CSR column indices.
-    std::uint64_t layout_id{0}; ///< Stable CSR layout identifier.
+    Index                rows{0};      ///< Number of rows.
+    Index                cols{0};      ///< Number of columns.
+    Vector<Space, Index> row_ptr;      ///< CSR row offsets.
+    Vector<Space, Index> col_ind;      ///< CSR column indices.
+    std::uint64_t        layout_id{0}; ///< Stable CSR layout identifier.
   };
 
   template <MemorySpace S = Space, DeviceOnly<S> = 0>
-  CsrPattern(Index         rows,
-             Index         cols,
-             IndexVector   row_ptr,
-             IndexVector   col_ind,
-             std::uint64_t layout_id)
+  CsrPattern(Index                rows,
+             Index                cols,
+             Vector<Space, Index> row_ptr,
+             Vector<Space, Index> col_ind,
+             std::uint64_t        layout_id)
     : storage_(std::make_shared<Storage>(rows,
                                          cols,
                                          std::move(row_ptr),
@@ -228,8 +226,8 @@ inline void copy(const HostCsrPattern& src,
                  DeviceCsrPattern&     dst,
                  CudaContext&          ctx)
 {
-  DeviceIndexVector row_ptr;
-  DeviceIndexVector col_ind;
+  DeviceVector<Index> row_ptr;
+  DeviceVector<Index> col_ind;
   row_ptr.resize(src.rowPtr().size());
   col_ind.resize(src.colInd().size());
   if (!row_ptr.empty())

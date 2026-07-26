@@ -20,61 +20,61 @@ class LeastSquaresObjective final : public Objective
 public:
   LeastSquaresObjective(Index num_states, Index num_param);
 
-  LeastSquaresObjective(Index      num_states,
-                        Index      num_param,
-                        HostVector state_target,
-                        HostVector state_weights,
-                        HostVector param_target,
-                        HostVector param_weights);
+  LeastSquaresObjective(Index            num_states,
+                        Index            num_param,
+                        HostVector<Real> state_target,
+                        HostVector<Real> state_weights,
+                        HostVector<Real> param_target,
+                        HostVector<Real> param_weights);
 
   Index numStates() const override;
   Index numParams() const override;
 
-  void setStateTerm(HostVector target, Real weight = 1.0);
-  void setStateTerm(HostVector target, HostVector weights);
+  void setStateTerm(HostVector<Real> target, Real weight = 1.0);
+  void setStateTerm(HostVector<Real> target, HostVector<Real> weights);
 
-  void setParamTerm(HostVector target, Real weight = 1.0);
-  void setParamTerm(HostVector target, HostVector weights);
+  void setParamTerm(HostVector<Real> target, Real weight = 1.0);
+  void setParamTerm(HostVector<Real> target, HostVector<Real> weights);
 
   void clearStateTerm();
   void clearParamTerm();
 
-  Real value(const HostVector& state,
-             const HostVector& prm) const override;
+  Real value(const HostVector<Real>& state,
+             const HostVector<Real>& prm) const override;
 
-  void stateGrad(const HostVector& state,
-                 const HostVector& prm,
-                 HostVector&       out) const override;
+  void stateGrad(const HostVector<Real>& state,
+                 const HostVector<Real>& prm,
+                 HostVector<Real>&       out) const override;
 
-  void paramGrad(const HostVector& state,
-                 const HostVector& prm,
-                 HostVector&       out) const override;
+  void paramGrad(const HostVector<Real>& state,
+                 const HostVector<Real>& prm,
+                 HostVector<Real>&       out) const override;
 
 private:
-  static HostVector uniformWeights(Index size, Real weight);
-  static Real       termValue(const HostVector& x,
-                              const HostVector& target,
-                              const HostVector& weights);
-  static void       termGrad(const HostVector& x,
-                             const HostVector& target,
-                             const HostVector& weights,
-                             HostVector&       out);
+  static HostVector<Real> uniformWeights(Index size, Real weight);
+  static Real             termValue(const HostVector<Real>& x,
+                                    const HostVector<Real>& target,
+                                    const HostVector<Real>& weights);
+  static void             termGrad(const HostVector<Real>& x,
+                                   const HostVector<Real>& target,
+                                   const HostVector<Real>& weights,
+                                   HostVector<Real>&       out);
 
-  void checkInputSizes(const HostVector& state,
-                       const HostVector& prm) const;
-  void checkTerm(const HostVector& target,
-                 const HostVector& weights,
-                 Index             size,
-                 const char*       name) const;
+  void checkInputSizes(const HostVector<Real>& state,
+                       const HostVector<Real>& prm) const;
+  void checkTerm(const HostVector<Real>& target,
+                 const HostVector<Real>& weights,
+                 Index                   size,
+                 const char*             name) const;
 
 private:
   Index num_states_{0};
   Index num_param_{0};
 
-  HostVector state_target_;  ///< Target state values.
-  HostVector state_weights_; ///< Weights for state tracking.
-  HostVector param_target_;  ///< Target parameter values.
-  HostVector param_weights_; ///< Weights for parameter tracking.
+  HostVector<Real> state_target_;  ///< Target state values.
+  HostVector<Real> state_weights_; ///< Weights for state tracking.
+  HostVector<Real> param_target_;  ///< Target parameter values.
+  HostVector<Real> param_weights_; ///< Weights for parameter tracking.
 };
 
 } // namespace inverse

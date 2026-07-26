@@ -16,7 +16,7 @@ namespace femx::tests::solver
 
 inline assembly::HostAssemblyMap makeDense3Map()
 {
-  const Array<Array<Index>> dofs{{0, 1, 2}};
+  const HostVector<HostVector<Index>> dofs{{0, 1, 2}};
   return assembly::makeAssemblyMap(3, 3, dofs, dofs);
 }
 
@@ -27,9 +27,9 @@ inline Index gridNode(Index ix, Index iy, Index nx)
 
 inline assembly::HostAssemblyMap makeGrid5PointMap(Index nx, Index ny)
 {
-  const Index         num_horizontal_edges = (nx - 1) * ny;
-  const Index         num_vertical_edges   = nx * (ny - 1);
-  Array<Array<Index>> dofs;
+  const Index                   num_horizontal_edges = (nx - 1) * ny;
+  const Index                   num_vertical_edges   = nx * (ny - 1);
+  HostVector<HostVector<Index>> dofs;
   dofs.reserve(num_horizontal_edges + num_vertical_edges);
 
   for (Index iy = 0; iy < ny; ++iy)
@@ -125,14 +125,14 @@ inline void fillGrid5PointMat(HostCsrMatrix& mat, Index nx, Index ny)
   }
 }
 
-inline HostVector expectedSolution()
+inline HostVector<Real> expectedSolution()
 {
   return {1.0, -2.0, 0.5};
 }
 
-inline HostVector expectedGridSolution(Index nx, Index ny)
+inline HostVector<Real> expectedGridSolution(Index nx, Index ny)
 {
-  HostVector x(nx * ny);
+  HostVector<Real> x(nx * ny);
   for (Index iy = 0; iy < ny; ++iy)
   {
     for (Index ix = 0; ix < nx; ++ix)
@@ -147,12 +147,12 @@ inline HostVector expectedGridSolution(Index nx, Index ny)
   return x;
 }
 
-inline HostVector forwardRhs()
+inline HostVector<Real> forwardRhs()
 {
   return {1.5, -7.5, 6.5};
 }
 
-inline HostVector trRhs()
+inline HostVector<Real> trRhs()
 {
   return {0.5, -10.0, -1.5};
 }
@@ -162,9 +162,9 @@ inline bool near(Real actual, Real expected, Real tol)
   return std::abs(actual - expected) <= tol * (1.0 + std::abs(expected));
 }
 
-inline bool vecNear(const HostVector& actual,
-                    const HostVector& expected,
-                    Real              tol)
+inline bool vecNear(const HostVector<Real>& actual,
+                    const HostVector<Real>& expected,
+                    Real                    tol)
 {
   if (actual.size() != expected.size())
   {
@@ -187,7 +187,7 @@ inline TestOutcome solvesForwardAndTranspose(
     const char*                  name,
     linalg::HostCsrLinearSolver& solver,
     const HostCsrMatrix&         mat,
-    const HostVector&            expected,
+    const HostVector<Real>&      expected,
     Real                         tol = 1.0e-8)
 {
   TestStatus status(name);
@@ -196,17 +196,17 @@ inline TestOutcome solvesForwardAndTranspose(
   {
     CpuContext                ctx;
     linalg::HostMatrixHandler mat_handler(ctx);
-    HostVector                rhs(mat.rows());
+    HostVector<Real>          rhs(mat.rows());
     mat_handler.matvec(mat, expected.view(), rhs.view());
 
-    HostVector x;
+    HostVector<Real> x;
     solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
-    HostVector rhs_t(mat.cols());
+    HostVector<Real> rhs_t(mat.cols());
     mat_handler.matvecT(mat, expected.view(), rhs_t.view());
 
-    HostVector xt;
+    HostVector<Real> xt;
     solver.solveT(mat, rhs_t, xt, ctx);
     status *= vecNear(xt, expected, tol);
   }

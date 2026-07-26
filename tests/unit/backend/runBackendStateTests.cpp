@@ -42,8 +42,8 @@ HostCsrPattern denseThreeByThreeGraph()
 {
   return {3,
           3,
-          HostIndexVector{0, 3, 6, 9},
-          HostIndexVector{0, 1, 2, 0, 1, 2, 0, 1, 2}};
+          HostVector<Index>{0, 3, 6, 9},
+          HostVector<Index>{0, 1, 2, 0, 1, 2, 0, 1, 2}};
 }
 
 void setMatVals(HostCsrMatrix& mat)
@@ -51,9 +51,9 @@ void setMatVals(HostCsrMatrix& mat)
   mat.vals() = {4.0, 1.0, 2.0, 3.0, 5.0, 6.0, 7.0, 8.0, 9.0};
 }
 
-HostVector mul(const HostCsrMatrix& mat, const HostVector& in)
+HostVector<Real> mul(const HostCsrMatrix& mat, const HostVector<Real>& in)
 {
-  HostVector out(mat.rows());
+  HostVector<Real> out(mat.rows());
   for (Index row = 0; row < mat.rows(); ++row)
   {
     for (Index k = mat.rowPtrData()[row];
@@ -67,7 +67,7 @@ HostVector mul(const HostCsrMatrix& mat, const HostVector& in)
   return out;
 }
 
-Real dot(const HostVector& lhs, const HostVector& rhs)
+Real dot(const HostVector<Real>& lhs, const HostVector<Real>& rhs)
 {
   Real result = 0.0;
   for (Index i = 0; i < lhs.size(); ++i)
@@ -82,7 +82,7 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   TestStatus status(__func__);
 
   const HostCsrPattern pattern = denseThreeByThreeGraph();
-  const auto           map     = assembly::makeBoundaryMap(Array<Index>{1}, pattern);
+  const auto           map     = assembly::makeBoundaryMap(HostVector<Index>{1}, pattern);
 
   HostCsrMatrix authoritative(pattern);
   setMatVals(authoritative);
@@ -96,19 +96,19 @@ TestOutcome boundaryRowsAndForwardEliminationStayDistinct()
   status *= valsNear(hist_jac.vals(),
                      std::array<Real, 9>{{4.0, 1.0, 2.0, 0.0, 0.0, 0.0, 7.0, 8.0, 9.0}});
 
-  HostVector res{10.0, 20.0, 30.0};
+  HostVector<Real> res{10.0, 20.0, 30.0};
   assembly::replaceRes(map,
-                       HostVector{4.0, 7.0, 9.0},
-                       HostVector{2.5},
+                       HostVector<Real>{4.0, 7.0, 9.0},
+                       HostVector<Real>{2.5},
                        res);
   status *= valsNear(res,
                      std::array<Real, 3>{{10.0, 4.5, 30.0}});
 
   HostCsrMatrix solve_mat(pattern);
   setMatVals(solve_mat);
-  HostVector rhs{10.0, 20.0, 30.0};
+  HostVector<Real> rhs{10.0, 20.0, 30.0};
   assembly::applyDirichletConditions(
-      map, solve_mat, rhs, HostVector{2.0});
+      map, solve_mat, rhs, HostVector<Real>{2.0});
   status *= valsNear(solve_mat.vals(),
                      std::array<Real, 9>{{4.0, 0.0, 2.0, 0.0, 1.0, 0.0, 7.0, 0.0, 9.0}});
   status *= valsNear(rhs, std::array<Real, 3>{{8.0, 2.0, 14.0}});
@@ -124,9 +124,9 @@ TestOutcome csrTransposeApplySupportsAdjointIdentity()
   HostCsrMatrix        mat(pattern);
   setMatVals(mat);
 
-  const HostVector          x{1.0, -2.0, 0.5};
-  const HostVector          y{0.25, 3.0, -1.0};
-  HostVector                transpose_product(mat.cols());
+  const HostVector<Real>    x{1.0, -2.0, 0.5};
+  const HostVector<Real>    y{0.25, 3.0, -1.0};
+  HostVector<Real>          transpose_product(mat.cols());
   CpuContext                ctx;
   linalg::HostMatrixHandler mat_handler(ctx);
   mat_handler.matvecT(mat, y.view(), transpose_product.view());
@@ -144,9 +144,9 @@ TestOutcome trajectoryOwnsContiguousStorage()
   TestStatus status(__func__);
 
   state::TimeTrajectory trajectory(2, 3);
-  trajectory.level(0)  = HostVector{1.0, 2.0, 3.0};
-  trajectory.level(1)  = HostVector{4.0, 5.0, 6.0};
-  trajectory.level(2)  = HostVector{7.0, 8.0, 9.0};
+  trajectory.level(0)  = HostVector<Real>{1.0, 2.0, 3.0};
+  trajectory.level(1)  = HostVector<Real>{4.0, 5.0, 6.0};
+  trajectory.level(2)  = HostVector<Real>{7.0, 8.0, 9.0};
   status              *= trajectory.numTimeLevels() == 3;
   status              *= trajectory.level(1)[2] == 6.0;
   status              *= trajectory.data() + 3 == trajectory.level(1).data();
@@ -159,12 +159,12 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   TestStatus status(__func__);
 
   const HostCsrPattern pattern = denseThreeByThreeGraph();
-  const auto           map     = assembly::makeBoundaryMap(Array<Index>{0, 2}, pattern);
+  const auto           map     = assembly::makeBoundaryMap(HostVector<Index>{0, 2}, pattern);
   const HostCsrPattern different_layout{
       3,
       3,
-      HostIndexVector{0, 3, 6, 9},
-      HostIndexVector{1, 0, 2, 0, 2, 1, 2, 1, 0}};
+      HostVector<Index>{0, 3, 6, 9},
+      HostVector<Index>{1, 0, 2, 0, 2, 1, 2, 1, 0}};
   HostCsrMatrix wrong_mat(different_layout);
 
   bool layout_rejected = false;
@@ -178,13 +178,13 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   }
   status *= layout_rejected;
 
-  HostVector alias_vec{1.0, 2.0, 3.0};
-  bool       alias_rejected = false;
+  HostVector<Real> alias_vec{1.0, 2.0, 3.0};
+  bool             alias_rejected = false;
   try
   {
     assembly::replaceRes(map,
                          alias_vec,
-                         HostVector{0.0, 0.0},
+                         HostVector<Real>{0.0, 0.0},
                          alias_vec);
   }
   catch (const std::runtime_error&)
@@ -196,10 +196,10 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   const HostCsrPattern diagonal_graph{
       3,
       3,
-      HostIndexVector{0, 1, 2, 3},
-      HostIndexVector{0, 1, 2}};
+      HostVector<Index>{0, 1, 2, 3},
+      HostVector<Index>{0, 1, 2}};
   const auto diagonal_map =
-      assembly::makeBoundaryMap(Array<Index>{0}, diagonal_graph);
+      assembly::makeBoundaryMap(HostVector<Index>{0}, diagonal_graph);
   HostCsrMatrix diag_mat(diagonal_graph);
   diag_mat.vals() = {2.0, 3.0, 4.0};
 
@@ -207,7 +207,7 @@ TestOutcome boundaryRejectsWrongLayoutsAndAliasedResiduals()
   try
   {
     assembly::applyDirichletConditions(
-        diagonal_map, diag_mat, diag_mat.vals(), HostVector{1.0});
+        diagonal_map, diag_mat, diag_mat.vals(), HostVector<Real>{1.0});
   }
   catch (const std::runtime_error&)
   {

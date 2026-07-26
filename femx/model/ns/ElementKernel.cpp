@@ -14,8 +14,8 @@ namespace ns
 
 void histVjp(const HostElementKernel&             kernel,
              const assembly::HostTimeElementView& e,
-             HostConstVectorView                  adj,
-             HostVectorView                       out)
+             HostVectorView<const Real>           adj,
+             HostVectorView<Real>                 out)
 {
   const auto  data = kernel.data();
   const Index ncol = (data.dim() + 1) * data.numShapes();

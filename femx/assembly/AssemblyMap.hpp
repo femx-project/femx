@@ -86,9 +86,6 @@ template <MemorySpace Space>
 class AssemblyMap
 {
 public:
-  /** @brief Index-vector type in this map's memory space. */
-  using IndexVector = Vector<Space, Index>;
-
   AssemblyMap() = default;
 
   AssemblyMap(const AssemblyMap&)                = default;
@@ -97,19 +94,19 @@ public:
   AssemblyMap& operator=(AssemblyMap&&) noexcept = default;
 
 private:
-  AssemblyMap(Index             num_elems,
-              Index             num_res,
-              Index             num_states,
-              IndexVector       res_offsets,
-              IndexVector       res_dofs,
-              IndexVector       state_offsets,
-              IndexVector       state_dofs,
-              IndexVector       jac_offsets,
-              IndexVector       jac_map,
-              CsrPattern<Space> pattern,
-              Index             max_res,
-              Index             max_state,
-              Index             max_jac)
+  AssemblyMap(Index                num_elems,
+              Index                num_res,
+              Index                num_states,
+              Vector<Space, Index> res_offsets,
+              Vector<Space, Index> res_dofs,
+              Vector<Space, Index> state_offsets,
+              Vector<Space, Index> state_dofs,
+              Vector<Space, Index> jac_offsets,
+              Vector<Space, Index> jac_map,
+              CsrPattern<Space>    pattern,
+              Index                max_res,
+              Index                max_state,
+              Index                max_jac)
     : num_elems_(num_elems),
       num_res_(num_res),
       num_states_(num_states),
@@ -127,10 +124,10 @@ private:
   }
 
   friend HostAssemblyMap makeAssemblyMap(
-      Index                      num_res,
-      Index                      num_states,
-      const Array<Array<Index>>& res_dofs,
-      const Array<Array<Index>>& state_dofs);
+      Index                                num_res,
+      Index                                num_states,
+      const HostVector<HostVector<Index>>& res_dofs,
+      const HostVector<HostVector<Index>>& state_dofs);
 
   friend void copy(const HostAssemblyMap& src,
                    DeviceAssemblyMap&     dst,
@@ -201,13 +198,13 @@ private:
   Index num_res_{0};
   Index num_states_{0};
 
-  IndexVector       res_offsets_;
-  IndexVector       res_dofs_;
-  IndexVector       state_offsets_;
-  IndexVector       state_dofs_;
-  IndexVector       jac_offsets_;
-  IndexVector       jac_map_;
-  CsrPattern<Space> pattern_;
+  Vector<Space, Index> res_offsets_;
+  Vector<Space, Index> res_dofs_;
+  Vector<Space, Index> state_offsets_;
+  Vector<Space, Index> state_dofs_;
+  Vector<Space, Index> jac_offsets_;
+  Vector<Space, Index> jac_map_;
+  CsrPattern<Space>    pattern_;
 
   Index max_res_{0};
   Index max_state_{0};
@@ -224,10 +221,10 @@ private:
  * @return Validated map and its immutable CSR pattern.
  */
 HostAssemblyMap makeAssemblyMap(
-    Index                      num_res,
-    Index                      num_states,
-    const Array<Array<Index>>& res_dofs,
-    const Array<Array<Index>>& state_dofs);
+    Index                                num_res,
+    Index                                num_states,
+    const HostVector<HostVector<Index>>& res_dofs,
+    const HostVector<HostVector<Index>>& state_dofs);
 
 /**
  * @brief Build a rectangular assembly map from residual and state layouts.

@@ -99,17 +99,17 @@ void checkMat(const DeviceBoundaryMap& map, const DeviceCsrMatrix& mat)
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
-void checkDirichletSystem(const DeviceBoundaryMap& map,
-                          const DeviceCsrMatrix&   mat,
-                          const DeviceVector&      rhs,
-                          const DeviceVector&      bc_vals)
+void checkDirichletSystem(const DeviceBoundaryMap&  map,
+                          const DeviceCsrMatrix&    mat,
+                          const DeviceVector<Real>& rhs,
+                          const DeviceVector<Real>& bc_vals)
 {
   checkMat(map, mat);
   require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
           "BoundaryMap Dirichlet vectors have incompatible sizes");
   require(&rhs != &bc_vals,
           "BoundaryMap RHS and prescribed values must not alias");
-  const DeviceVector& mat_vals = mat.vals();
+  const DeviceVector<Real>& mat_vals = mat.vals();
   require(&rhs != &mat_vals && &bc_vals != &mat_vals,
           "BoundaryMap vectors must not alias matrix values");
 }
@@ -119,12 +119,12 @@ cudaStream_t cudaStream(CudaContext& ctx)
   return static_cast<cudaStream_t>(ctx.stream());
 }
 
-void launchRows(const DeviceBoundaryMap& map,
-                DeviceCsrMatrix&         mat,
-                Real                     diag,
-                DeviceVector*            rhs,
-                const DeviceVector*      bc_vals,
-                CudaContext&             ctx)
+void launchRows(const DeviceBoundaryMap&  map,
+                DeviceCsrMatrix&          mat,
+                Real                      diag,
+                DeviceVector<Real>*       rhs,
+                const DeviceVector<Real>* bc_vals,
+                CudaContext&              ctx)
 {
   if (map.numBcs() == 0)
   {
@@ -152,11 +152,11 @@ void replaceRows(const DeviceBoundaryMap& map,
   launchRows(map, jac, diag, nullptr, nullptr, ctx);
 }
 
-void replaceRes(const DeviceBoundaryMap& map,
-                DeviceConstVectorView    state,
-                DeviceConstVectorView    bc_vals,
-                DeviceVectorView         res,
-                CudaContext&             ctx)
+void replaceRes(const DeviceBoundaryMap&     map,
+                DeviceVectorView<const Real> state,
+                DeviceVectorView<const Real> bc_vals,
+                DeviceVectorView<Real>       res,
+                CudaContext&                 ctx)
 {
   require(state.size() == map.rows() && res.size() == map.rows()
               && bc_vals.size() == map.numBcs(),
@@ -174,7 +174,7 @@ void replaceRes(const DeviceBoundaryMap& map,
 }
 
 void zeroBoundary(const DeviceBoundaryMap& map,
-                  DeviceVectorView         vals,
+                  DeviceVectorView<Real>   vals,
                   CudaContext&             ctx)
 {
   require(vals.size() == map.rows(),
@@ -189,11 +189,11 @@ void zeroBoundary(const DeviceBoundaryMap& map,
   cuda::checkLastError();
 }
 
-void applyDirichletConditions(const DeviceBoundaryMap& map,
-                              DeviceCsrMatrix&         mat,
-                              DeviceVector&            rhs,
-                              const DeviceVector&      bc_vals,
-                              CudaContext&             ctx)
+void applyDirichletConditions(const DeviceBoundaryMap&  map,
+                              DeviceCsrMatrix&          mat,
+                              DeviceVector<Real>&       rhs,
+                              const DeviceVector<Real>& bc_vals,
+                              CudaContext&              ctx)
 {
   checkDirichletSystem(map, mat, rhs, bc_vals);
   if (map.numBcs() == 0)

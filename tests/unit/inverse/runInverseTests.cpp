@@ -43,45 +43,45 @@ public:
   }
 
   void observe(Index,
-               const HostVector& state,
-               const HostVector& prm,
-               HostVector&       out) const override
+               const HostVector<Real>& state,
+               const HostVector<Real>& prm,
+               HostVector<Real>&       out) const override
   {
     out = {state[0] + prm[0], 2.0 * state[1]};
   }
 
   void applyStateJac(Index,
-                     const HostVector&,
-                     const HostVector&,
-                     const HostVector& dir,
-                     HostVector&       out) const override
+                     const HostVector<Real>&,
+                     const HostVector<Real>&,
+                     const HostVector<Real>& dir,
+                     HostVector<Real>&       out) const override
   {
     out = {dir[0], 2.0 * dir[1]};
   }
 
   void applyStateJacT(Index,
-                      const HostVector&,
-                      const HostVector&,
-                      const HostVector& dir,
-                      HostVector&       out) const override
+                      const HostVector<Real>&,
+                      const HostVector<Real>&,
+                      const HostVector<Real>& dir,
+                      HostVector<Real>&       out) const override
   {
     out = {dir[0], 2.0 * dir[1]};
   }
 
   void applyParamJac(Index,
-                     const HostVector&,
-                     const HostVector&,
-                     const HostVector& dir,
-                     HostVector&       out) const override
+                     const HostVector<Real>&,
+                     const HostVector<Real>&,
+                     const HostVector<Real>& dir,
+                     HostVector<Real>&       out) const override
   {
     out = {dir[0], 0.0};
   }
 
   void applyParamJacT(Index,
-                      const HostVector&,
-                      const HostVector&,
-                      const HostVector& dir,
-                      HostVector&       out) const override
+                      const HostVector<Real>&,
+                      const HostVector<Real>&,
+                      const HostVector<Real>& dir,
+                      HostVector<Real>&       out) const override
   {
     out = {dir[0]};
   }
@@ -109,12 +109,12 @@ TestOutcome timeLeastSquaresUsesObservationWeights()
   trajectory[0][1] = 2.0;
   trajectory[1][0] = 3.0;
   trajectory[1][1] = 4.0;
-  const HostVector parameters{0.5};
+  const HostVector<Real> parameters{0.5};
 
   status *= std::abs(objective.value(trajectory, parameters) - 6.5)
             < 1.0e-14;
 
-  HostVector state_gradient;
+  HostVector<Real> state_gradient;
   objective.stateGrad(0, trajectory, parameters, state_gradient);
   status *= state_gradient.size() == 2;
   status *= std::abs(state_gradient[0] - 2.0) < 1.0e-14;
@@ -123,7 +123,7 @@ TestOutcome timeLeastSquaresUsesObservationWeights()
   status *= std::abs(state_gradient[0] - 2.0) < 1.0e-14;
   status *= std::abs(state_gradient[1] - 9.0) < 1.0e-14;
 
-  HostVector param_gradient;
+  HostVector<Real> param_gradient;
   objective.paramGrad(trajectory, parameters, param_gradient);
   status *= param_gradient.size() == 1;
   status *= std::abs(param_gradient[0] - 4.0) < 1.0e-14;
@@ -173,12 +173,12 @@ TestOutcome timeBlockRegularizationUsesSparseQuadraticForm()
       {2.0, -1.0, -1.0, 3.0},
       2.0,
       {1.0, 1.0, 0.0, 0.0});
-  state::TimeTrajectory trajectory(1, 2);
-  const HostVector      param{2.0, 0.0, 1.0, 2.0};
+  state::TimeTrajectory  trajectory(1, 2);
+  const HostVector<Real> param{2.0, 0.0, 1.0, 2.0};
 
   status *= std::abs(objective.value(trajectory, param) - 17.0)
             < 1.0e-14;
-  HostVector grad;
+  HostVector<Real> grad;
   objective.paramGrad(trajectory, param, grad);
   status *= grad.size() == 4;
   status *= std::abs(grad[0] - 6.0) < 1.0e-14;
@@ -205,17 +205,17 @@ TestOutcome hostBackendRunsStationarySolversAndAdjoint()
   inverse::ReducedFunctional<linalg::HostCsrBackend> reduced(
       state_solver, adj_jac, adj_solver, obj);
 
-  const HostVector prm{0.6};
-  HostVector       grad;
-  const Real       val  = reduced.valueGrad(prm, grad);
-  status               *= std::abs(val - 0.29) < 1.0e-13;
-  status               *= grad.size() == 1;
-  status               *= std::abs(grad[0] + 0.2) < 1.0e-13;
+  const HostVector<Real> prm{0.6};
+  HostVector<Real>       grad;
+  const Real             val  = reduced.valueGrad(prm, grad);
+  status                     *= std::abs(val - 0.29) < 1.0e-13;
+  status                     *= grad.size() == 1;
+  status                     *= std::abs(grad[0] + 0.2) < 1.0e-13;
 
-  constexpr Real   eps = 1.0e-6;
-  const HostVector plus{prm[0] + eps};
-  const HostVector minus{prm[0] - eps};
-  const Real       fd =
+  constexpr Real         eps = 1.0e-6;
+  const HostVector<Real> plus{prm[0] + eps};
+  const HostVector<Real> minus{prm[0] - eps};
+  const Real             fd =
       (reduced.value(plus) - reduced.value(minus)) / (2.0 * eps);
   status *= std::abs(grad[0] - fd) < 1.0e-9;
 
@@ -224,9 +224,9 @@ TestOutcome hostBackendRunsStationarySolversAndAdjoint()
   linalg::DenseLinearSolver                        nonlinear_solver;
   state::NewtonStateSolver<linalg::HostCsrBackend> newton(
       nonlinear_res, nonlinear_jac, nonlinear_solver, ctx);
-  newton.setInitialState(HostVector{1.0});
-  HostVector state;
-  newton.solve(HostVector{4.0}, state);
+  newton.setInitialState(HostVector<Real>{1.0});
+  HostVector<Real> state;
+  newton.solve(HostVector<Real>{4.0}, state);
   status *= state.size() == 1;
   status *= std::abs(state[0] - 2.0) < 1.0e-10;
 

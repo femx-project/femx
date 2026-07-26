@@ -30,14 +30,14 @@ Index gridNode(Index x, Index y, Index nx)
 
 HostCsrPattern gridGraph(Index nx, Index ny)
 {
-  HostIndexVector row_ptr(nx * ny + 1, 0);
-  HostIndexVector cols;
+  HostVector<Index> row_ptr(nx * ny + 1, 0);
+  HostVector<Index> cols;
   for (Index y = 0; y < ny; ++y)
   {
     for (Index x = 0; x < nx; ++x)
     {
-      Array<Index> row_cols;
-      const Index  row = gridNode(x, y, nx);
+      HostVector<Index> row_cols;
+      const Index       row = gridNode(x, y, nx);
       row_cols.push_back(row);
       if (x > 0)
         row_cols.push_back(gridNode(x - 1, y, nx));
@@ -82,9 +82,9 @@ void fillGridMat(HostCsrMatrix& mat, Real diag_shift = 0.0)
   }
 }
 
-HostVector expectedGridSolution(Index nx, Index ny)
+HostVector<Real> expectedGridSolution(Index nx, Index ny)
 {
-  HostVector sol(nx * ny);
+  HostVector<Real> sol(nx * ny);
   for (Index y = 0; y < ny; ++y)
   {
     for (Index x = 0; x < nx; ++x)
@@ -96,9 +96,9 @@ HostVector expectedGridSolution(Index nx, Index ny)
   return sol;
 }
 
-HostVector mul(const HostCsrMatrix& mat, const HostVector& x)
+HostVector<Real> mul(const HostCsrMatrix& mat, const HostVector<Real>& x)
 {
-  HostVector out(mat.rows());
+  HostVector<Real> out(mat.rows());
   for (Index row = 0; row < mat.rows(); ++row)
   {
     for (Index k = mat.rowPtrData()[row];
@@ -112,7 +112,7 @@ HostVector mul(const HostCsrMatrix& mat, const HostVector& x)
   return out;
 }
 
-bool vecNear(const HostVector& actual, const HostVector& expected)
+bool vecNear(const HostVector<Real>& actual, const HostVector<Real>& expected)
 {
   if (actual.size() != expected.size())
   {
@@ -168,10 +168,10 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     linalg::ReSolveLinearSolver solver;
     linalg::ReSolveLinearSolver tr_solver;
 
-    const HostVector expected = expectedGridSolution(nx, ny);
-    const HostVector hrhs     = mul(hmat, expected);
-    DeviceVector     drhs;
-    DeviceVector     dsol;
+    const HostVector<Real> expected = expectedGridSolution(nx, ny);
+    const HostVector<Real> hrhs     = mul(hmat, expected);
+    DeviceVector<Real>     drhs;
+    DeviceVector<Real>     dsol;
     vec_handler.copy(hrhs, drhs);
 
     bool alias_rejected = false;
@@ -186,18 +186,18 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     status *= alias_rejected;
 
     solver.solve(dmat, drhs, dsol, ctx);
-    HostVector fwd_sol;
+    HostVector<Real> fwd_sol;
     vec_handler.copy(dsol, fwd_sol);
     ctx.sync();
     status *= vecNear(fwd_sol, expected);
 
-    HostVector tr_rhs(hmat_tr_source.cols());
+    HostVector<Real> tr_rhs(hmat_tr_source.cols());
     host_mat_handler.matvecT(hmat_tr_source,
                              expected.view(),
                              tr_rhs.view());
 
-    DeviceVector dtr_rhs;
-    DeviceVector dtr_sol;
+    DeviceVector<Real> dtr_rhs;
+    DeviceVector<Real> dtr_sol;
     vec_handler.copy(tr_rhs, dtr_rhs);
 
     bool tr_alias_rejected = false;
@@ -212,7 +212,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     status *= tr_alias_rejected;
 
     tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_sol, ctx);
-    HostVector device_tr_sol;
+    HostVector<Real> device_tr_sol;
     vec_handler.copy(dtr_sol, device_tr_sol);
     ctx.sync();
     status *= vecNear(device_tr_sol, expected);
@@ -223,7 +223,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     const Real*  tr_source_vals = dmat_tr_source.valsData();
     const Real*  tr_sol_data    = dtr_sol.data();
 
-    HostVector zero_rhs(hrhs.size(), 0.0);
+    HostVector<Real> zero_rhs(hrhs.size(), 0.0);
     vec_handler.copy(zero_rhs, drhs);
     solver.solve(dmat, drhs, dsol, ctx);
     vec_handler.copy(dsol, fwd_sol);
@@ -237,8 +237,8 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     fillGridMat(hmat_tr_source, 0.5);
     mat_handler.copy(hmat, dmat);
     mat_handler.copy(hmat_tr_source, dmat_tr_source);
-    const HostVector rhs2 = mul(hmat, expected);
-    HostVector       tr_rhs2(hmat_tr_source.cols());
+    const HostVector<Real> rhs2 = mul(hmat, expected);
+    HostVector<Real>       tr_rhs2(hmat_tr_source.cols());
     host_mat_handler.matvecT(hmat_tr_source,
                              expected.view(),
                              tr_rhs2.view());

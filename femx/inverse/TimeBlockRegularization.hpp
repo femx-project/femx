@@ -14,47 +14,47 @@ namespace inverse
 class TimeBlockRegularization final : public TimeObjective
 {
 public:
-  TimeBlockRegularization(Index             num_steps,
-                          Index             num_states,
-                          Index             num_levels,
-                          Index             block_size,
-                          Array<Index>      rows,
-                          Array<Index>      cols,
-                          HostVector        vals,
-                          Real              weight,
-                          const HostVector& reference = {});
+  TimeBlockRegularization(Index                   num_steps,
+                          Index                   num_states,
+                          Index                   num_levels,
+                          Index                   block_size,
+                          HostVector<Index>       rows,
+                          HostVector<Index>       cols,
+                          HostVector<Real>        vals,
+                          Real                    weight,
+                          const HostVector<Real>& reference = {});
 
   Index numSteps() const override;
   Index numStates() const override;
   Index numParams() const override;
 
   Real value(const state::TimeTrajectory& tr,
-             const HostVector&            prm) const override;
+             const HostVector<Real>&      prm) const override;
 
   void stateGrad(Index                        level,
                  const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
   void paramGrad(const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
 private:
   Index index(Index level, Index comp) const;
-  Real  centered(const HostVector& prm, Index level, Index comp) const;
-  void  checkParamSize(const HostVector& prm) const;
+  Real  centered(const HostVector<Real>& prm, Index level, Index comp) const;
+  void  checkParamSize(const HostVector<Real>& prm) const;
 
 private:
-  Index        num_steps_{0};
-  Index        num_states_{0};
-  Index        num_levels_{0};
-  Index        block_size_{0};
-  Array<Index> rows_;
-  Array<Index> cols_;
-  HostVector   vals_;
-  Real         weight_{0.0};
-  HostVector   reference_;
+  Index             num_steps_{0};
+  Index             num_states_{0};
+  Index             num_levels_{0};
+  Index             block_size_{0};
+  HostVector<Index> rows_;
+  HostVector<Index> cols_;
+  HostVector<Real>  vals_;
+  Real              weight_{0.0};
+  HostVector<Real>  reference_;
 };
 
 } // namespace inverse

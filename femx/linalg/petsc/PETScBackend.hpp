@@ -21,9 +21,9 @@ void checkMPI(int ierr, const char* op);
 
 void checkInit();
 
-PetscErrorCode copyFromPETSc(Vec src, HostVector& dst);
+PetscErrorCode copyFromPETSc(Vec src, HostVector<Real>& dst);
 
-PetscErrorCode copyToPETSc(HostConstVectorView src, Vec dst);
+PetscErrorCode copyToPETSc(HostVectorView<const Real> src, Vec dst);
 } // namespace detail
 
 /// @endcond
@@ -44,9 +44,9 @@ struct PetscBackend
 {
   static constexpr MemorySpace space = MemorySpace::Host; ///< Vector storage memory space.
 
-  using Vec       = HostVector;
-  using VecView   = HostVectorView;
-  using ConstView = HostConstVectorView;
+  using Vec       = HostVector<Real>;
+  using VecView   = HostVectorView<Real>;
+  using ConstView = HostVectorView<const Real>;
   using Mat       = PETScOperator;
   using Pattern   = HostCsrPattern;
   using Ctx       = PetscContext;
@@ -77,7 +77,7 @@ public:
    * @param[out] dst - Destination vector.
    * @throws std::runtime_error - If the view size is negative.
    */
-  void copy(HostConstVectorView src, HostVector& dst) const
+  void copy(HostVectorView<const Real> src, HostVector<Real>& dst) const
   {
     dst = src;
   }
@@ -89,7 +89,7 @@ public:
    * @param[out] dst - Destination view.
    * @throws std::runtime_error - If sizes differ or views partially overlap.
    */
-  void copy(HostConstVectorView src, HostVectorView dst) const
+  void copy(HostVectorView<const Real> src, HostVectorView<Real> dst) const
   {
     require(src.size() == dst.size(),
             "PETSc backend vector copy requires equal sizes");
@@ -107,7 +107,7 @@ public:
    *
    * @param[out] vals - Values to clear.
    */
-  void zero(HostVectorView vals) const
+  void zero(HostVectorView<Real> vals) const
   {
     std::fill(vals.begin(), vals.end(), Real{});
   }
@@ -121,10 +121,10 @@ public:
    * @param[in,out] y - Output vector.
    * @throws std::runtime_error - If sizes or storage overlap are invalid.
    */
-  void axpby(Real                a,
-             HostConstVectorView x,
-             Real                b,
-             HostVectorView      y) const
+  void axpby(Real                       a,
+             HostVectorView<const Real> x,
+             Real                       b,
+             HostVectorView<Real>       y) const
   {
     require(x.size() == y.size(),
             "PETSc backend axpby requires equal vector sizes");
@@ -142,7 +142,7 @@ public:
    * @param[in] x - Input vector.
    * @return Squared Euclidean norm of `x`.
    */
-  Real squaredNorm(HostConstVectorView x) const
+  Real squaredNorm(HostVectorView<const Real> x) const
   {
     return dot(x, x);
   }
@@ -155,7 +155,7 @@ public:
    * @return Dot product of `x` and `y`.
    * @throws std::runtime_error - If vector sizes differ.
    */
-  Real dot(HostConstVectorView x, HostConstVectorView y) const
+  Real dot(HostVectorView<const Real> x, HostVectorView<const Real> y) const
   {
     require(x.size() == y.size(),
             "PETSc backend dot requires equal vector sizes");
@@ -175,9 +175,9 @@ public:
    * @param[out] dst - Contiguous destination values.
    * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
    */
-  void gather(HostConstVectorView src,
-              HostConstIndexView  indices,
-              HostVectorView      dst) const
+  void gather(HostVectorView<const Real>  src,
+              HostVectorView<const Index> indices,
+              HostVectorView<Real>        dst) const
   {
     require(indices.size() == dst.size(),
             "PETSc backend gather output size mismatch");
@@ -199,9 +199,9 @@ public:
    * @param[out] dst - Indexed destination values.
    * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
    */
-  void scatter(HostConstVectorView src,
-               HostConstIndexView  indices,
-               HostVectorView      dst) const
+  void scatter(HostVectorView<const Real>  src,
+               HostVectorView<const Index> indices,
+               HostVectorView<Real>        dst) const
   {
     require(src.size() == indices.size(),
             "PETSc backend scatter input size mismatch");
@@ -260,9 +260,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or PETSc reports an
    * error.
    */
-  void matvec(const PETScOperator& mat,
-              HostConstVectorView  dir,
-              HostVector&          out) const
+  void matvec(const PETScOperator&       mat,
+              HostVectorView<const Real> dir,
+              HostVector<Real>&          out) const
   {
     mat.apply(dir, out);
   }
@@ -276,9 +276,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or PETSc reports an
    * error.
    */
-  void matvecT(const PETScOperator& mat,
-               HostConstVectorView  dir,
-               HostVector&          out) const
+  void matvecT(const PETScOperator&       mat,
+               HostVectorView<const Real> dir,
+               HostVector<Real>&          out) const
   {
     mat.applyT(dir, out);
   }

@@ -30,7 +30,7 @@ bool near(Real a, Real b)
 }
 
 template <std::size_t N>
-bool valsNear(const HostVector&          actual,
+bool valsNear(const HostVector<Real>&    actual,
               const std::array<Real, N>& expected)
 {
   if (actual.size() != static_cast<Index>(N))
@@ -47,11 +47,11 @@ bool valsNear(const HostVector&          actual,
   return true;
 }
 
-HostVector shapeVals(const FiniteElement&   elem,
-                     const QuadraturePoint& qp)
+HostVector<Real> shapeVals(const FiniteElement&   elem,
+                           const QuadraturePoint& qp)
 {
-  HostVector vals(elem.numDofsPerElement());
-  elem.calcN(qp, HostVectorView(vals.data(), vals.size()));
+  HostVector<Real> vals(elem.numDofsPerElement());
+  elem.calcN(qp, HostVectorView<Real>(vals.data(), vals.size()));
   return vals;
 }
 
@@ -65,7 +65,7 @@ DenseMatrix shapeGradients(const FiniteElement&   elem,
   return gradients;
 }
 
-Real sum(const HostVector& vals)
+Real sum(const HostVector<Real>& vals)
 {
   Real total = 0.0;
   for (Index i = 0; i < vals.size(); ++i)
@@ -182,9 +182,9 @@ TestOutcome triangleP1ShapeFunctions()
 {
   TestStatus status(__func__);
 
-  LagrangeTriangleP1    tri;
-  const QuadraturePoint interior{{0.2, 0.3, 0.0}, 0.0};
-  const HostVector      N = shapeVals(tri, interior);
+  LagrangeTriangleP1     tri;
+  const QuadraturePoint  interior{{0.2, 0.3, 0.0}, 0.0};
+  const HostVector<Real> N = shapeVals(tri, interior);
 
   status *= valsNear(N, std::array<Real, 3>{{0.5, 0.2, 0.3}});
   status *= near(sum(N), 1.0);
@@ -197,7 +197,7 @@ TestOutcome triangleP1ShapeFunctions()
   }};
   for (Index node = 0; node < tri.numNodes(); ++node)
   {
-    const HostVector vals = shapeVals(
+    const HostVector<Real> vals = shapeVals(
         tri, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < tri.numNodes(); ++i)
     {
@@ -212,9 +212,9 @@ TestOutcome quadQ1ShapeFunctions()
 {
   TestStatus status(__func__);
 
-  LagrangeQuadQ1        quad;
-  const QuadraturePoint interior{{0.2, -0.4, 0.0}, 0.0};
-  const HostVector      N = shapeVals(quad, interior);
+  LagrangeQuadQ1         quad;
+  const QuadraturePoint  interior{{0.2, -0.4, 0.0}, 0.0};
+  const HostVector<Real> N = shapeVals(quad, interior);
 
   status *= valsNear(N, std::array<Real, 4>{{0.28, 0.42, 0.18, 0.12}});
   status *= near(sum(N), 1.0);
@@ -228,7 +228,7 @@ TestOutcome quadQ1ShapeFunctions()
   }};
   for (Index node = 0; node < quad.numNodes(); ++node)
   {
-    const HostVector vals = shapeVals(
+    const HostVector<Real> vals = shapeVals(
         quad, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < quad.numNodes(); ++i)
     {
@@ -243,9 +243,9 @@ TestOutcome tetrahedronP1ShapeFunctions()
 {
   TestStatus status(__func__);
 
-  LagrangeTetrahedronP1 tet;
-  const QuadraturePoint interior{{0.2, 0.3, 0.1}, 0.0};
-  const HostVector      N = shapeVals(tet, interior);
+  LagrangeTetrahedronP1  tet;
+  const QuadraturePoint  interior{{0.2, 0.3, 0.1}, 0.0};
+  const HostVector<Real> N = shapeVals(tet, interior);
 
   status *= valsNear(N, std::array<Real, 4>{{0.4, 0.2, 0.3, 0.1}});
   status *= near(sum(N), 1.0);
@@ -259,7 +259,7 @@ TestOutcome tetrahedronP1ShapeFunctions()
   }};
   for (Index node = 0; node < tet.numNodes(); ++node)
   {
-    const HostVector vals = shapeVals(
+    const HostVector<Real> vals = shapeVals(
         tet, nodes[static_cast<std::size_t>(node)]);
     for (Index i = 0; i < tet.numNodes(); ++i)
     {

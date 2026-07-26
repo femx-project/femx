@@ -37,7 +37,7 @@ public:
   Index numDofsPerElem() const;
 
   /** @brief Replace `dofs` with the global DOFs of element `ie`. */
-  void elemDofs(Index ie, Array<Index>& dofs) const;
+  void elemDofs(Index ie, HostVector<Index>& dofs) const;
 
 private:
   const MixedFESpace& mixedSpace() const;

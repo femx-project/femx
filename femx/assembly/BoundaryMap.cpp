@@ -20,17 +20,17 @@ void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
           "BoundaryMap matrix does not match the mapped CSR layout");
 }
 
-void checkDirichletSystem(const HostBoundaryMap& map,
-                          const HostCsrMatrix&   mat,
-                          const HostVector&      rhs,
-                          const HostVector&      bc_vals)
+void checkDirichletSystem(const HostBoundaryMap&  map,
+                          const HostCsrMatrix&    mat,
+                          const HostVector<Real>& rhs,
+                          const HostVector<Real>& bc_vals)
 {
   checkMat(map, mat);
   require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
           "BoundaryMap Dirichlet vectors have incompatible sizes");
   require(&rhs != &bc_vals,
           "BoundaryMap RHS and prescribed values must not alias");
-  const HostVector& mat_vals = mat.vals();
+  const HostVector<Real>& mat_vals = mat.vals();
   require(&rhs != &mat_vals && &bc_vals != &mat_vals,
           "BoundaryMap vectors must not alias matrix values");
 }
@@ -56,18 +56,18 @@ void replaceRowsRaw(const HostBoundaryMap& map,
 
 } // namespace
 
-HostBoundaryMap makeBoundaryMap(const Array<Index>&   dofs,
-                                const HostCsrPattern& pattern)
+HostBoundaryMap makeBoundaryMap(const HostVector<Index>& dofs,
+                                const HostCsrPattern&    pattern)
 {
   require(pattern.rows() == pattern.cols(),
           "BoundaryMap requires a square CSR pattern");
 
-  const Index     num_bcs = dofs.size();
-  HostIndexVector bc_rows(num_bcs);
-  HostIndexVector diag(num_bcs, -1);
-  HostIndexVector col_offsets(num_bcs + 1, 0);
-  HostIndexVector bc_mask(pattern.rows(), 0);
-  Array<Index>    bc_by_col(pattern.cols(), -1);
+  const Index       num_bcs = dofs.size();
+  HostVector<Index> bc_rows(num_bcs);
+  HostVector<Index> diag(num_bcs, -1);
+  HostVector<Index> col_offsets(num_bcs + 1, 0);
+  HostVector<Index> bc_mask(pattern.rows(), 0);
+  HostVector<Index> bc_by_col(pattern.cols(), -1);
 
   for (Index ib = 0; ib < num_bcs; ++ib)
   {
@@ -109,9 +109,9 @@ HostBoundaryMap makeBoundaryMap(const Array<Index>&   dofs,
     col_offsets[ib + 1] += col_offsets[ib];
   }
 
-  HostIndexVector col_entries(col_offsets[num_bcs]);
-  HostIndexVector col_rows(col_offsets[num_bcs]);
-  HostIndexVector next = col_offsets;
+  HostVector<Index> col_entries(col_offsets[num_bcs]);
+  HostVector<Index> col_rows(col_offsets[num_bcs]);
+  HostVector<Index> next = col_offsets;
   for (Index row = 0; row < pattern.rows(); ++row)
   {
     for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
@@ -143,12 +143,12 @@ void copy(const HostBoundaryMap& src,
           CudaContext&           ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
-  DeviceIndexVector         bc_rows;
-  DeviceIndexVector         diag;
-  DeviceIndexVector         col_offsets;
-  DeviceIndexVector         col_entries;
-  DeviceIndexVector         col_rows;
-  DeviceIndexVector         bc_mask;
+  DeviceVector<Index>       bc_rows;
+  DeviceVector<Index>       diag;
+  DeviceVector<Index>       col_offsets;
+  DeviceVector<Index>       col_entries;
+  DeviceVector<Index>       col_rows;
+  DeviceVector<Index>       bc_mask;
 
   vec_handler.copy(src.bc_rows_, bc_rows);
   vec_handler.copy(src.diag_, diag);
@@ -177,10 +177,10 @@ void replaceRows(const HostBoundaryMap& map,
   replaceRowsRaw(map, jac, diag);
 }
 
-void replaceRes(const HostBoundaryMap& map,
-                HostConstVectorView    state,
-                HostConstVectorView    bc_vals,
-                HostVectorView         res)
+void replaceRes(const HostBoundaryMap&     map,
+                HostVectorView<const Real> state,
+                HostVectorView<const Real> bc_vals,
+                HostVectorView<Real>       res)
 {
   require(state.size() == map.rows() && res.size() == map.rows()
               && bc_vals.size() == map.numBcs(),
@@ -196,15 +196,15 @@ void replaceRes(const HostBoundaryMap& map,
   }
 }
 
-void replaceRes(const HostBoundaryMap& map,
-                const HostVector&      state,
-                const HostVector&      bc_vals,
-                HostVector&            res)
+void replaceRes(const HostBoundaryMap&  map,
+                const HostVector<Real>& state,
+                const HostVector<Real>& bc_vals,
+                HostVector<Real>&       res)
 {
   replaceRes(map, state.view(), bc_vals.view(), res.view());
 }
 
-void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals)
+void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> vals)
 {
   require(vals.size() == map.rows(),
           "BoundaryMap vector has incompatible size");
@@ -215,10 +215,10 @@ void zeroBoundary(const HostBoundaryMap& map, HostVectorView vals)
   }
 }
 
-void applyDirichletConditions(const HostBoundaryMap& map,
-                              HostCsrMatrix&         mat,
-                              HostVector&            rhs,
-                              const HostVector&      bc_vals)
+void applyDirichletConditions(const HostBoundaryMap&  map,
+                              HostCsrMatrix&          mat,
+                              HostVector<Real>&       rhs,
+                              const HostVector<Real>& bc_vals)
 {
   checkDirichletSystem(map, mat, rhs, bc_vals);
 
@@ -257,9 +257,9 @@ void replaceRows(const DeviceBoundaryMap&,
 }
 
 void replaceRes(const DeviceBoundaryMap&,
-                DeviceConstVectorView,
-                DeviceConstVectorView,
-                DeviceVectorView,
+                DeviceVectorView<const Real>,
+                DeviceVectorView<const Real>,
+                DeviceVectorView<Real>,
                 CudaContext&)
 {
   throw std::runtime_error(
@@ -267,7 +267,7 @@ void replaceRes(const DeviceBoundaryMap&,
 }
 
 void zeroBoundary(const DeviceBoundaryMap&,
-                  DeviceVectorView,
+                  DeviceVectorView<Real>,
                   CudaContext&)
 {
   throw std::runtime_error(
@@ -276,8 +276,8 @@ void zeroBoundary(const DeviceBoundaryMap&,
 
 void applyDirichletConditions(const DeviceBoundaryMap&,
                               DeviceCsrMatrix&,
-                              DeviceVector&,
-                              const DeviceVector&,
+                              DeviceVector<Real>&,
+                              const DeviceVector<Real>&,
                               CudaContext&)
 {
   throw std::runtime_error(

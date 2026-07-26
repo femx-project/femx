@@ -63,29 +63,29 @@ void addElem(const HostAssemblyMap& map,
              bool                   atomic = false);
 
 /** @brief Replace selected Host CSR rows by diagonal rows. */
-void replaceRows(HostCsrMatrix&      mat,
-                 const Array<Index>& rows,
-                 Real                diag);
+void replaceRows(HostCsrMatrix&           mat,
+                 const HostVector<Index>& rows,
+                 Real                     diag);
 
 /** @brief Eliminate selected Host CSR columns and correct the right-hand side. */
-void eliminateColumns(HostCsrMatrix&      mat,
-                      const Array<Index>& rows,
-                      HostVector&         rhs);
+void eliminateColumns(HostCsrMatrix&           mat,
+                      const HostVector<Index>& rows,
+                      HostVector<Real>&        rhs);
 
 /// @cond INTERNAL
 namespace detail
 {
 struct CpuWork
 {
-  HostVector   state;
-  HostVector   coords;
-  HostVector   hist;
-  HostVector   nxt;
-  HostVector   res;
-  HostVector   jac;
-  DenseMatrix  mat;
-  Array<Index> rows;
-  Array<Index> cols;
+  HostVector<Real>  state;
+  HostVector<Real>  coords;
+  HostVector<Real>  hist;
+  HostVector<Real>  nxt;
+  HostVector<Real>  res;
+  HostVector<Real>  jac;
+  DenseMatrix       mat;
+  HostVector<Index> rows;
+  HostVector<Index> cols;
 };
 
 inline CpuWork& cpuWork()
@@ -105,7 +105,7 @@ void checkAssemblyAliases(const Vector<Space>& state,
 
 inline void checkAssemblyInputs(const fem::HostGeometry& geom,
                                 const HostAssemblyMap&   map,
-                                const HostVector&        state,
+                                const HostVector<Real>&  state,
                                 const HostCsrMatrix&     jac)
 {
   require(geom.numElems() == map.numElems(),
@@ -117,11 +117,11 @@ inline void checkAssemblyInputs(const fem::HostGeometry& geom,
 }
 
 inline void checkTimeAssemblyInputs(
-    Index                  num_hist,
-    state::VariableBlock   wrt,
-    const HostAssemblyMap& map,
-    HostConstVectorView    hist,
-    HostConstVectorView    nxt)
+    Index                      num_hist,
+    state::VariableBlock       wrt,
+    const HostAssemblyMap&     map,
+    HostVectorView<const Real> hist,
+    HostVectorView<const Real> nxt)
 {
   require(num_hist > 0 && hist.size() == num_hist * map.numStates()
               && nxt.size() == map.numStates(),
@@ -149,23 +149,23 @@ inline void checkElementRange(
           "Time assembly element range is invalid");
 }
 
-inline void checkTimeAssemblyAliases(HostConstVectorView hist,
-                                     HostConstVectorView nxt,
-                                     const HostVector&   res)
+inline void checkTimeAssemblyAliases(HostVectorView<const Real> hist,
+                                     HostVectorView<const Real> nxt,
+                                     const HostVector<Real>&    res)
 {
   require(!femx::detail::overlaps(hist, res.view())
               && !femx::detail::overlaps(nxt, res.view()),
           "Time assembly residual must not alias its inputs");
 }
 
-inline void checkTimeMatrixAlias(const HostVector&    res,
-                                 const HostCsrMatrix& jac)
+inline void checkTimeMatrixAlias(const HostVector<Real>& res,
+                                 const HostCsrMatrix&    jac)
 {
   require(&res != &jac.vals(),
           "Time assembly residual and matrix values must not alias");
 }
 
-inline void resizeOrZero(HostVector& out, Index size)
+inline void resizeOrZero(HostVector<Real>& out, Index size)
 {
   if (out.size() != size)
   {
@@ -191,14 +191,14 @@ inline void addTimeElement(
     const HostAssemblyMap& map,
     Index                  ie,
     const DenseMatrix&     elem_mat,
-    Array<Index>&,
-    Array<Index>&,
+    HostVector<Index>&,
+    HostVector<Index>&,
     HostCsrMatrix& jac)
 {
   addElem(map, ie, elem_mat, jac, true);
 }
 
-inline void reduceTimeResidual(HostVector&,
+inline void reduceTimeResidual(HostVector<Real>&,
                                Index,
                                Index,
                                Index,
@@ -208,7 +208,7 @@ inline void reduceTimeResidual(HostVector&,
 }
 
 #if defined(FEMX_HAS_PETSC)
-inline void checkTimeMatrixAlias(const HostVector&,
+inline void checkTimeMatrixAlias(const HostVector<Real>&,
                                  const linalg::PETScOperator&)
 {
 }
@@ -233,8 +233,8 @@ inline void addTimeElement(
     const HostAssemblyMap& map,
     Index                  ie,
     const DenseMatrix&     elem_mat,
-    Array<Index>&          rows,
-    Array<Index>&          cols,
+    HostVector<Index>&     rows,
+    HostVector<Index>&     cols,
     linalg::PETScOperator& jac)
 {
   const auto map_v = map.view();
@@ -254,7 +254,7 @@ inline void addTimeElement(
   }
 }
 
-inline void reduceTimeResidual(HostVector& res,
+inline void reduceTimeResidual(HostVector<Real>& res,
                                Index,
                                Index,
                                Index,
@@ -302,15 +302,15 @@ template <class ElementKernel>
 void assemble(const ElementKernel&     kernel,
               const fem::HostGeometry& geom,
               const HostAssemblyMap&   map,
-              const HostVector&        state,
-              HostVector&              res,
+              const HostVector<Real>&  state,
+              HostVector<Real>&        res,
               HostCsrMatrix&           jac,
               CpuContext&              ctx)
 {
   linalg::HostVectorHandler vec_handler(ctx);
   linalg::HostMatrixHandler mat_handler(ctx);
   detail::checkAssemblyInputs(geom, map, state, jac);
-  const HostVector& mat_vals = jac.vals();
+  const HostVector<Real>& mat_vals = jac.vals();
   detail::checkAssemblyAliases(state, res, mat_vals);
 
   vec_handler.resizeOrZero(res, map.numRes());
@@ -319,11 +319,11 @@ void assemble(const ElementKernel&     kernel,
   const auto geom_v = geom.view();
   const auto map_v  = map.view();
 
-  auto&       work     = detail::cpuWork();
-  HostVector& state_e  = work.state;
-  HostVector& coords_e = work.coords;
-  HostVector& res_e    = work.res;
-  HostVector& jac_e    = work.jac;
+  auto&             work     = detail::cpuWork();
+  HostVector<Real>& state_e  = work.state;
+  HostVector<Real>& coords_e = work.coords;
+  HostVector<Real>& res_e    = work.res;
+  HostVector<Real>& jac_e    = work.jac;
   state_e.reserve(map.maxState());
   coords_e.reserve(geom.maxElemNodes() * geom.dim());
   res_e.reserve(map.maxRes());
@@ -358,7 +358,7 @@ void assemble(const ElementKernel&     kernel,
 
     for (Index row = 0; row < num_rows; ++row)
     {
-      HostVectorView jac_row(jac_e.data() + row * num_cols, num_cols);
+      HostVectorView<Real> jac_row(jac_e.data() + row * num_cols, num_cols);
       kernel.evalRow(elem, row, res_e[row], jac_row);
     }
 
@@ -399,18 +399,18 @@ void assemble(const ElementKernel&     kernel,
  * aliasing are invalid, or if the backend reports an error.
  */
 template <class ElementKernel, class Matrix, class Context>
-void assemble(const ElementKernel&   kernel,
-              Index                  step,
-              Index                  num_hist,
-              state::VariableBlock   wrt,
-              const HostAssemblyMap& map,
-              Index                  element_begin,
-              Index                  element_end,
-              HostConstVectorView    hist,
-              HostConstVectorView    nxt,
-              HostVector&            res,
-              Matrix&                jac,
-              Context&               ctx)
+void assemble(const ElementKernel&       kernel,
+              Index                      step,
+              Index                      num_hist,
+              state::VariableBlock       wrt,
+              const HostAssemblyMap&     map,
+              Index                      element_begin,
+              Index                      element_end,
+              HostVectorView<const Real> hist,
+              HostVectorView<const Real> nxt,
+              HostVector<Real>&          res,
+              Matrix&                    jac,
+              Context&                   ctx)
 {
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   detail::checkElementRange(map, element_begin, element_end);
@@ -490,16 +490,16 @@ void assemble(const ElementKernel&   kernel,
  */
 template <class ElementKernel, class Context>
 void assembleResidual(
-    const ElementKernel&   kernel,
-    Index                  step,
-    Index                  num_hist,
-    const HostAssemblyMap& map,
-    Index                  element_begin,
-    Index                  element_end,
-    HostConstVectorView    hist,
-    HostConstVectorView    nxt,
-    HostVector&            res,
-    Context&               ctx)
+    const ElementKernel&       kernel,
+    Index                      step,
+    Index                      num_hist,
+    const HostAssemblyMap&     map,
+    Index                      element_begin,
+    Index                      element_end,
+    HostVectorView<const Real> hist,
+    HostVectorView<const Real> nxt,
+    HostVector<Real>&          res,
+    Context&                   ctx)
 {
   detail::checkTimeAssemblyInputs(
       num_hist, state::VariableBlock::NextState, map, hist, nxt);
@@ -544,7 +544,7 @@ void assembleResidual(
                        state::VariableBlock::NextState,
                        row,
                        local_res,
-                       HostVectorView{});
+                       HostVectorView<Real>{});
 #pragma omp atomic update
         res[map_v.resDof(ie, row)] += local_res;
       }

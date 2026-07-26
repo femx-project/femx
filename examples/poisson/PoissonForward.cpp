@@ -218,7 +218,7 @@ PoissonForwardProblem::bcMap() const noexcept
   return bc_map_;
 }
 
-const HostVector& PoissonForwardProblem::bcVals() const noexcept
+const HostVector<Real>& PoissonForwardProblem::bcVals() const noexcept
 {
   return bc_vals_;
 }
@@ -233,12 +233,12 @@ Index PoissonForwardProblem::numDofs() const noexcept
   return space_.numDofs();
 }
 
-void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
-                                     HostVector&    rhs) const
+void PoissonForwardProblem::assemble(HostCsrMatrix&    mat,
+                                     HostVector<Real>& rhs) const
 {
-  HostVector zero_state(numDofs(), 0.0);
-  HostVector res;
-  CpuContext ctx;
+  HostVector<Real> zero_state(numDofs(), 0.0);
+  HostVector<Real> res;
+  CpuContext       ctx;
   assembly::assemble(PoissonComponents<MemorySpace::Host>(element_data_.view()),
                      geom_,
                      map_,
@@ -255,7 +255,7 @@ void PoissonForwardProblem::assemble(HostCsrMatrix& mat,
   assembly::applyDirichletConditions(bc_map_, mat, rhs, bc_vals_);
 }
 
-ErrorReport PoissonForwardProblem::errorReport(const HostVector& x) const
+ErrorReport PoissonForwardProblem::errorReport(const HostVector<Real>& x) const
 {
   if (x.size() != space_.numDofs())
   {
@@ -284,8 +284,8 @@ ErrorReport PoissonForwardProblem::errorReport(const HostVector& x) const
   return report;
 }
 
-void PoissonForwardProblem::writeSolution(const HostVector&  x,
-                                          const std::string& base) const
+void PoissonForwardProblem::writeSolution(const HostVector<Real>& x,
+                                          const std::string&      base) const
 {
   if (base.empty())
   {
@@ -302,9 +302,9 @@ void PoissonForwardProblem::writeSolution(const HostVector&  x,
     std::filesystem::create_directories(path.parent_path());
   }
 
-  HostVector solution(mesh_.numNodes());
-  HostVector exact(mesh_.numNodes());
-  HostVector error(mesh_.numNodes());
+  HostVector<Real> solution(mesh_.numNodes());
+  HostVector<Real> exact(mesh_.numNodes());
+  HostVector<Real> error(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     solution[in] = x[space_.globalDof(in, 0)];

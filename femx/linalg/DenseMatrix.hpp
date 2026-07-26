@@ -117,13 +117,13 @@ public:
   }
 
   /** @brief Return the owned row-major entry storage. */
-  HostVector& vals() noexcept
+  HostVector<Real>& vals() noexcept
   {
     return vals_;
   }
 
   /** @brief Return the owned row-major entry storage. */
-  const HostVector& vals() const noexcept
+  const HostVector<Real>& vals() const noexcept
   {
     return vals_;
   }
@@ -141,9 +141,9 @@ private:
     return rows * cols;
   }
 
-  Index      rows_{0}; ///< Number of rows.
-  Index      cols_{0}; ///< Number of columns.
-  HostVector vals_;    ///< Row-major matrix values.
+  Index            rows_{0}; ///< Number of rows.
+  Index            cols_{0}; ///< Number of columns.
+  HostVector<Real> vals_;    ///< Row-major matrix values.
 };
 
 } // namespace femx

@@ -30,7 +30,6 @@ namespace
 {
 
 using femx::DenseMatrix;
-using femx::HostConstVectorView;
 using femx::HostVector;
 using femx::HostVectorView;
 using femx::Index;
@@ -57,16 +56,16 @@ using femx::state::VariableBlock;
 using RealArray = py::array_t<Real,
                               py::array::c_style | py::array::forcecast>;
 
-HostVector vectorFromArray(const RealArray& vals,
-                           const char*      name)
+HostVector<Real> vectorFromArray(const RealArray& vals,
+                                 const char*      name)
 {
   if (vals.ndim() != 1)
   {
     throw std::runtime_error(std::string(name) + " must be one-dimensional");
   }
 
-  HostVector out(static_cast<Index>(vals.shape(0)));
-  const auto data = vals.unchecked<1>();
+  HostVector<Real> out(static_cast<Index>(vals.shape(0)));
+  const auto       data = vals.unchecked<1>();
   for (Index i = 0; i < out.size(); ++i)
   {
     out[i] = data(i);
@@ -74,7 +73,7 @@ HostVector vectorFromArray(const RealArray& vals,
   return out;
 }
 
-py::array_t<Real> vectorArray(const HostVector& vals)
+py::array_t<Real> vectorArray(const HostVector<Real>& vals)
 {
   py::array_t<Real> out(vals.size());
   auto              data = out.mutable_unchecked<1>();
@@ -85,7 +84,7 @@ py::array_t<Real> vectorArray(const HostVector& vals)
   return out;
 }
 
-py::array_t<Real> vectorArray(HostConstVectorView vals)
+py::array_t<Real> vectorArray(HostVectorView<const Real> vals)
 {
   py::array_t<Real> out(vals.size());
   auto              data = out.mutable_unchecked<1>();
@@ -172,7 +171,7 @@ py::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
   return out;
 }
 
-void checkFinite(const HostVector& vals, const char* name)
+void checkFinite(const HostVector<Real>& vals, const char* name)
 {
   for (Real value : vals)
   {
@@ -200,8 +199,8 @@ void checkFinite(const DenseMatrix& vals, const char* name)
 EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
                                       const RealArray& perturbations)
 {
-  HostVector  mean_vals = vectorFromArray(mean, "mean");
-  DenseMatrix perturb_vals =
+  HostVector<Real> mean_vals = vectorFromArray(mean, "mean");
+  DenseMatrix      perturb_vals =
       denseMatrixFromArray(perturbations, "perturbations");
   if (mean_vals.empty())
   {
@@ -220,7 +219,7 @@ EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
 }
 
 void copyArray(const py::handle& value,
-               HostVector&       out,
+               HostVector<Real>& out,
                const char*       name)
 {
   const RealArray vals = RealArray::ensure(value);
@@ -278,9 +277,9 @@ public:
     return pattern_;
   }
 
-  void initialState(HostConstVectorView prm,
-                    HostVector&         out,
-                    femx::CpuContext&   ctx) const override
+  void initialState(HostVectorView<const Real> prm,
+                    HostVector<Real>&          out,
+                    femx::CpuContext&          ctx) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "initial_state");
@@ -294,9 +293,9 @@ public:
   }
 
   void addInitialStateJacobianTranspose(
-      HostConstVectorView state_grad,
-      HostVectorView      out,
-      femx::CpuContext&   ctx) const override
+      HostVectorView<const Real> state_grad,
+      HostVectorView<Real>       out,
+      femx::CpuContext&          ctx) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -307,7 +306,7 @@ public:
           state_grad, out, ctx);
       return;
     }
-    HostVector grad;
+    HostVector<Real> grad;
     copyArray(override(vectorArray(state_grad)),
               grad,
               "initial-state transpose result");
@@ -322,10 +321,10 @@ public:
     }
   }
 
-  void applyJacT(const HostTimeContext& ctx,
-                 VariableBlock          wrt,
-                 HostConstVectorView    adj,
-                 HostVector&            out,
+  void applyJacT(const HostTimeContext&     ctx,
+                 VariableBlock              wrt,
+                 HostVectorView<const Real> adj,
+                 HostVector<Real>&          out,
                  femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
@@ -342,7 +341,7 @@ public:
   }
 
   void assembleNext(const HostTimeContext& ctx,
-                    HostVector&            res_out,
+                    HostVector<Real>&      res_out,
                     femx::HostCsrMatrix&   jac,
                     femx::CpuContext&      cpu) const override
   {
@@ -396,7 +395,7 @@ public:
 
   void prepareLinearSolve(const HostTimeContext& ctx,
                           femx::HostCsrMatrix&   jac,
-                          HostVector&            rhs,
+                          HostVector<Real>&      rhs,
                           femx::CpuContext&) const override
   {
     py::gil_scoped_acquire gil;
@@ -450,7 +449,7 @@ public:
   }
 
 private:
-  void evaluateResidual(const HostTimeContext& ctx, HostVector& out) const
+  void evaluateResidual(const HostTimeContext& ctx, HostVector<Real>& out) const
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "residual");
@@ -468,8 +467,8 @@ private:
     {
       return;
     }
-    femx::HostIndexVector row_ptr(dim.num_res + 1);
-    femx::HostIndexVector col_ind(dim.num_res * dim.num_states);
+    femx::HostVector<Index> row_ptr(dim.num_res + 1);
+    femx::HostVector<Index> col_ind(dim.num_res * dim.num_states);
     for (Index row = 0; row <= dim.num_res; ++row)
     {
       row_ptr[row] = row * dim.num_states;
@@ -544,10 +543,10 @@ void bindState(py::module_& module)
           "evaluate",
           [](const EnsembleBasis& basis, const RealArray& coefficients)
           {
-            HostVector coeffs =
+            HostVector<Real> coeffs =
                 vectorFromArray(coefficients, "coefficients");
             checkFinite(coeffs, "coefficients");
-            HostVector out;
+            HostVector<Real> out;
             basis.apply(coeffs, out);
             return vectorArray(out);
           },
@@ -556,9 +555,9 @@ void bindState(py::module_& module)
           "apply_transpose",
           [](const EnsembleBasis& basis, const RealArray& vals)
           {
-            HostVector phys = vectorFromArray(vals, "values");
+            HostVector<Real> phys = vectorFromArray(vals, "values");
             checkFinite(phys, "values");
-            HostVector out;
+            HostVector<Real> out;
             basis.applyT(phys, out);
             return vectorArray(out);
           },
@@ -728,8 +727,8 @@ void bindState(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            HostVector     vals = vectorFromArray(parameters, "parameters");
-            TimeTrajectory trajectory;
+            HostVector<Real> vals = vectorFromArray(parameters, "parameters");
+            TimeTrajectory   trajectory;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
@@ -793,8 +792,8 @@ void bindState(py::module_& module)
           [](const HostInitialStateMap& map,
              const RealArray&           param)
           {
-            const HostVector prm = vectorFromArray(param, "param");
-            HostVector       out(map.numStates());
+            const HostVector<Real> prm = vectorFromArray(param, "param");
+            HostVector<Real>       out(map.numStates());
             femx::fem::initialState(map, prm.view(), out.view());
             return vectorArray(out);
           },

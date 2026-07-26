@@ -74,10 +74,10 @@ TestOutcome hostAndDeviceTypesAreDistinct()
 {
   TestStatus status(__func__);
 
-  status *= !std::is_same<HostVector, DeviceVector>::value;
-  status *= !std::is_same<HostIndexVector, DeviceIndexVector>::value;
+  status *= !std::is_same<HostVector<Real>, DeviceVector<Real>>::value;
+  status *= !std::is_same<HostVector<Index>, DeviceVector<Index>>::value;
   status *= std::is_same<typename std::remove_pointer<
-                             decltype(HostVector{}.data())>::type,
+                             decltype(HostVector<Real>{}.data())>::type,
                          Real>::value;
 
   return status.report();
@@ -106,16 +106,16 @@ TestOutcome deviceStorageRequiresExplicitStreamSemantics()
 {
   TestStatus status(__func__);
 
-  status *= !std::is_copy_constructible<DeviceVector>::value;
-  status *= !std::is_copy_assignable<DeviceVector>::value;
-  status *= std::is_nothrow_move_constructible<DeviceVector>::value;
-  status *= std::is_nothrow_move_assignable<DeviceVector>::value;
-  status *= !HasContextlessSetZero<HostVector>::value;
-  status *= !HasContextlessSetZero<DeviceVector>::value;
-  status *= !HasContextSetZero<DeviceVector>::value;
-  status *= !HasContextlessResizeOrZero<HostVector>::value;
-  status *= !HasContextlessResizeOrZero<DeviceVector>::value;
-  status *= !HasContextResizeOrZero<DeviceVector>::value;
+  status *= !std::is_copy_constructible<DeviceVector<Real>>::value;
+  status *= !std::is_copy_assignable<DeviceVector<Real>>::value;
+  status *= std::is_nothrow_move_constructible<DeviceVector<Real>>::value;
+  status *= std::is_nothrow_move_assignable<DeviceVector<Real>>::value;
+  status *= !HasContextlessSetZero<HostVector<Real>>::value;
+  status *= !HasContextlessSetZero<DeviceVector<Real>>::value;
+  status *= !HasContextSetZero<DeviceVector<Real>>::value;
+  status *= !HasContextlessResizeOrZero<HostVector<Real>>::value;
+  status *= !HasContextlessResizeOrZero<DeviceVector<Real>>::value;
+  status *= !HasContextResizeOrZero<DeviceVector<Real>>::value;
   status *= std::is_constructible<linalg::HostVectorHandler,
                                   CpuContext&>::value;
   status *= std::is_constructible<linalg::CudaVectorHandler,
@@ -125,10 +125,10 @@ TestOutcome deviceStorageRequiresExplicitStreamSemantics()
   status *= std::is_copy_constructible<state::TimeTrajectory>::value;
   status *= std::is_same<
       decltype(std::declval<state::TimeTrajectory&>().level(Index{})),
-      HostVectorView>::value;
+      HostVectorView<Real>>::value;
   status *= std::is_same<
       decltype(std::declval<const state::TimeTrajectory&>().level(Index{})),
-      HostConstVectorView>::value;
+      HostVectorView<const Real>>::value;
 
   return status.report();
 }
@@ -137,19 +137,19 @@ TestOutcome hostVectorOwnsOnlyHostValues()
 {
   TestStatus status(__func__);
 
-  HostVector vals{1.0, 2.0, 3.0};
-  HostVector copy = vals;
-  copy[1]         = 7.0;
+  HostVector<Real> vals{1.0, 2.0, 3.0};
+  HostVector<Real> copy = vals;
+  copy[1]               = 7.0;
 
   status *= vals.size() == 3;
   status *= vals[1] == 2.0;
   status *= copy[1] == 7.0;
 
-  HostVectorView view(vals.data(), vals.size());
+  HostVectorView<Real> view(vals.data(), vals.size());
   view[0]  = 4.0;
   status  *= vals[0] == 4.0;
 
-  HostVector from_view(view);
+  HostVector<Real> from_view(view);
   status *= from_view.data() != vals.data();
   status *= from_view[0] == 4.0;
   status *= from_view[2] == 3.0;
@@ -157,16 +157,15 @@ TestOutcome hostVectorOwnsOnlyHostValues()
   return status.report();
 }
 
-TestOutcome arrayUsesHostVectorStorage()
+TestOutcome hostVectorSupportsDifferentValueTypes()
 {
   TestStatus status(__func__);
 
-  Array<const char*> labels{"state", "residual", "jacobian"};
-  status *= std::is_same<Array<Index>, HostIndexVector>::value;
+  HostVector<const char*> labels{"state", "residual", "jacobian"};
   status *= labels.size() == 3;
   status *= labels[1] == std::string("residual");
 
-  HostIndexVector indices{2, 4, 6};
+  HostVector<Index> indices{2, 4, 6};
   status *= indices.size() == 3;
   status *= indices[2] == 6;
 
@@ -184,6 +183,6 @@ int main()
   results += femx::tests::executionIsSeparateFromStorage();
   results += femx::tests::deviceStorageRequiresExplicitStreamSemantics();
   results += femx::tests::hostVectorOwnsOnlyHostValues();
-  results += femx::tests::arrayUsesHostVectorStorage();
+  results += femx::tests::hostVectorSupportsDifferentValueTypes();
   return results.summary();
 }

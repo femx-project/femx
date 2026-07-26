@@ -40,7 +40,7 @@ Index checkedAdd(Index lhs, Index rhs)
   return static_cast<Index>(val);
 }
 
-void checkDofs(const Array<Index>& dofs, Index size, const char* kind)
+void checkDofs(const HostVector<Index>& dofs, Index size, const char* kind)
 {
   for (Index dof : dofs)
   {
@@ -52,10 +52,10 @@ void checkDofs(const Array<Index>& dofs, Index size, const char* kind)
 } // namespace
 
 HostAssemblyMap makeAssemblyMap(
-    Index                      num_res,
-    Index                      num_states,
-    const Array<Array<Index>>& elem_res,
-    const Array<Array<Index>>& elem_state)
+    Index                                num_res,
+    Index                                num_states,
+    const HostVector<HostVector<Index>>& elem_res,
+    const HostVector<HostVector<Index>>& elem_state)
 {
   require(num_res >= 0 && num_states >= 0,
           "AssemblyMap global dimensions must be non-negative");
@@ -64,11 +64,11 @@ HostAssemblyMap makeAssemblyMap(
 
   const Index num_elem = elem_res.size();
 
-  HostIndexVector res_offsets(num_elem + 1);
-  HostIndexVector state_offsets(num_elem + 1);
-  HostIndexVector jac_offsets(num_elem + 1);
-  HostIndexVector res_dofs;
-  HostIndexVector state_dofs;
+  HostVector<Index> res_offsets(num_elem + 1);
+  HostVector<Index> state_offsets(num_elem + 1);
+  HostVector<Index> jac_offsets(num_elem + 1);
+  HostVector<Index> res_dofs;
+  HostVector<Index> state_dofs;
 
   Index max_res   = 0;
   Index max_state = 0;
@@ -99,11 +99,11 @@ HostAssemblyMap makeAssemblyMap(
     max_jac               = std::max(max_jac, elem_nnz);
   }
 
-  const Index     nnz = jac_offsets[num_elem];
-  HostIndexVector coo_rows(nnz);
-  HostIndexVector coo_cols(nnz);
-  HostIndexVector order(nnz);
-  HostIndexVector jac_map(nnz);
+  const Index       nnz = jac_offsets[num_elem];
+  HostVector<Index> coo_rows(nnz);
+  HostVector<Index> coo_cols(nnz);
+  HostVector<Index> order(nnz);
+  HostVector<Index> jac_map(nnz);
 
   Index k = 0;
   for (Index ie = 0; ie < num_elem; ++ie)
@@ -131,8 +131,8 @@ HostAssemblyMap makeAssemblyMap(
               return coo_cols[lhs] < coo_cols[rhs];
             });
 
-  HostIndexVector row_ptr(num_res + 1, 0);
-  HostIndexVector cols;
+  HostVector<Index> row_ptr(num_res + 1, 0);
+  HostVector<Index> cols;
   cols.reserve(nnz);
 
   Index csr_i = -1;
@@ -181,8 +181,8 @@ HostAssemblyMap makeAssemblyMap(fem::DofLayout res_lyt,
   require(res_lyt.numElems() == state_lyt.numElems(),
           "AssemblyMap residual/state layouts have different element counts");
 
-  Array<Array<Index>> res_dofs(res_lyt.numElems());
-  Array<Array<Index>> state_dofs(state_lyt.numElems());
+  HostVector<HostVector<Index>> res_dofs(res_lyt.numElems());
+  HostVector<HostVector<Index>> state_dofs(state_lyt.numElems());
   for (Index ie = 0; ie < res_lyt.numElems(); ++ie)
   {
     res_lyt.elemDofs(ie, res_dofs[ie]);
@@ -202,12 +202,12 @@ void copy(const HostAssemblyMap& src,
           CudaContext&           ctx)
 {
   linalg::CudaVectorHandler vec_handler(ctx);
-  DeviceIndexVector         res_offsets;
-  DeviceIndexVector         res_dofs;
-  DeviceIndexVector         state_offsets;
-  DeviceIndexVector         state_dofs;
-  DeviceIndexVector         jac_offsets;
-  DeviceIndexVector         jac_map;
+  DeviceVector<Index>       res_offsets;
+  DeviceVector<Index>       res_dofs;
+  DeviceVector<Index>       state_offsets;
+  DeviceVector<Index>       state_dofs;
+  DeviceVector<Index>       jac_offsets;
+  DeviceVector<Index>       jac_map;
   DeviceCsrPattern          pattern;
 
   vec_handler.copy(src.res_offsets_, res_offsets);

@@ -19,12 +19,12 @@ namespace femx::state
 /** @brief Host state and timing data observed after one time level. */
 struct TimeStepStateContext
 {
-  Index               level{0};
-  Index               total_steps{0};
-  HostConstVectorView prev;
-  HostConstVectorView curr;
-  Real                assm_sec{0.0};
-  Real                lin_solve_sec{0.0};
+  Index                      level{0};
+  Index                      total_steps{0};
+  HostVectorView<const Real> prev;
+  HostVectorView<const Real> curr;
+  Real                       assm_sec{0.0};
+  Real                       lin_solve_sec{0.0};
 };
 
 /** @brief Timings and operation counts for one time solve. */
@@ -318,11 +318,11 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
     vec_handler.copy(nxt_.view(), tr->level(0));
   }
 
-  HostVector obs_prev;
-  HostVector obs_curr;
+  HostVector<Real> obs_prev;
+  HostVector<Real> obs_curr;
   if (observer)
   {
-    HostConstVectorView init;
+    HostVectorView<const Real> init;
     if (tr != nullptr)
     {
       ctx_.sync();
@@ -334,7 +334,7 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
       obs_curr.resize(numStates());
       vec_handler.copy(nxt_.view(), obs_prev.view());
       ctx_.sync();
-      init = static_cast<const HostVector&>(obs_prev).view();
+      init = static_cast<const HostVector<Real>&>(obs_prev).view();
     }
     if (observer({0, numSteps(), init, init, 0.0, 0.0}))
     {
@@ -357,8 +357,8 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
 
     if (observer)
     {
-      HostConstVectorView prev;
-      HostConstVectorView curr;
+      HostVectorView<const Real> prev;
+      HostVectorView<const Real> curr;
       if (tr != nullptr)
       {
         ctx_.sync();
@@ -370,8 +370,8 @@ SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
       {
         vec_handler.copy(nxt_.view(), obs_curr.view());
         ctx_.sync();
-        prev = static_cast<const HostVector&>(obs_prev).view();
-        curr = static_cast<const HostVector&>(obs_curr).view();
+        prev = static_cast<const HostVector<Real>&>(obs_prev).view();
+        curr = static_cast<const HostVector<Real>&>(obs_curr).view();
       }
 
       const bool stop = observer({step + 1,

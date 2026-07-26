@@ -52,8 +52,8 @@ int run(const Options& opts)
   ExampleHelper         helper("petsc", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix A(problem.map().pattern());
-  HostVector    rhs;
+  HostCsrMatrix    A(problem.map().pattern());
+  HostVector<Real> rhs;
   problem.assemble(A, rhs);
 
   PETScOperator A_petsc(PETSC_COMM_WORLD);
@@ -67,7 +67,7 @@ int run(const Options& opts)
   KspLinearSolver solver(PETSC_COMM_WORLD);
   PetscContext    ctx{PETSC_COMM_WORLD};
 
-  HostVector x;
+  HostVector<Real> x;
   solver.solve(A_petsc, rhs, x, ctx);
 
   CpuContext host_ctx;

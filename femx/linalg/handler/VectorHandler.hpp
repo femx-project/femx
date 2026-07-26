@@ -119,7 +119,7 @@ public:
    *
    * @param[out] vals - Values to clear.
    */
-  void zero(HostVectorView vals) const;
+  void zero(HostVectorView<Real> vals) const;
 
   /**
    * @brief Compute `y = a * x + b * y`.
@@ -130,10 +130,10 @@ public:
    * @param[in,out] y - Output vector.
    * @throws std::runtime_error - If sizes or storage overlap are invalid.
    */
-  void axpby(Real                a,
-             HostConstVectorView x,
-             Real                b,
-             HostVectorView      y) const;
+  void axpby(Real                       a,
+             HostVectorView<const Real> x,
+             Real                       b,
+             HostVectorView<Real>       y) const;
 
   /**
    * @brief Compute the dot product of two vectors.
@@ -143,7 +143,7 @@ public:
    * @return Dot product of `x` and `y`.
    * @throws std::runtime_error - If vector sizes differ.
    */
-  Real dot(HostConstVectorView x, HostConstVectorView y) const;
+  Real dot(HostVectorView<const Real> x, HostVectorView<const Real> y) const;
 
   /**
    * @brief Compute the squared Euclidean norm of a vector.
@@ -151,7 +151,7 @@ public:
    * @param[in] x - Input vector.
    * @return Squared Euclidean norm of `x`.
    */
-  Real squaredNorm(HostConstVectorView x) const;
+  Real squaredNorm(HostVectorView<const Real> x) const;
 
   /**
    * @brief Gather indexed source values into a contiguous destination.
@@ -161,9 +161,9 @@ public:
    * @param[out] dst - Contiguous destination values.
    * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
    */
-  void gather(HostConstVectorView src,
-              HostConstIndexView  indices,
-              HostVectorView      dst) const;
+  void gather(HostVectorView<const Real>  src,
+              HostVectorView<const Index> indices,
+              HostVectorView<Real>        dst) const;
 
   /**
    * @brief Scatter contiguous source values to indexed destinations.
@@ -173,9 +173,9 @@ public:
    * @param[out] dst - Indexed destination values.
    * @throws std::runtime_error - If sizes, indices, or aliasing are invalid.
    */
-  void scatter(HostConstVectorView src,
-               HostConstIndexView  indices,
-               HostVectorView      dst) const;
+  void scatter(HostVectorView<const Real>  src,
+               HostVectorView<const Index> indices,
+               HostVectorView<Real>        dst) const;
 
 private:
   CpuContext& ctx_; ///< Bound CPU context.
@@ -309,7 +309,7 @@ public:
    * @throws std::runtime_error - If views are invalid, sizes differ, overlap,
    * or a CUDA operation fails.
    */
-  void copy(DeviceConstVectorView src, DeviceVectorView dst) const;
+  void copy(DeviceVectorView<const Real> src, DeviceVectorView<Real> dst) const;
 
   /**
    * @brief Replace a Device vector by copying a Device view.
@@ -319,7 +319,7 @@ public:
    * @throws std::runtime_error - If the view is invalid or a CUDA operation
    * fails.
    */
-  void copy(DeviceConstVectorView src, DeviceVector& dst) const;
+  void copy(DeviceVectorView<const Real> src, DeviceVector<Real>& dst) const;
 
   /**
    * @brief Copy between same-sized Host and Device views.
@@ -329,7 +329,7 @@ public:
    * @throws std::runtime_error - If views are invalid, sizes differ, or a CUDA
    * operation fails.
    */
-  void copy(HostConstVectorView src, DeviceVectorView dst) const;
+  void copy(HostVectorView<const Real> src, DeviceVectorView<Real> dst) const;
 
   /**
    * @brief Replace a Device vector by copying a Host view.
@@ -339,7 +339,7 @@ public:
    * @throws std::runtime_error - If the view is invalid or a CUDA operation
    * fails.
    */
-  void copy(HostConstVectorView src, DeviceVector& dst) const;
+  void copy(HostVectorView<const Real> src, DeviceVector<Real>& dst) const;
 
   /**
    * @brief Copy between same-sized Device and Host views.
@@ -349,7 +349,7 @@ public:
    * @throws std::runtime_error - If views are invalid, sizes differ, or a CUDA
    * operation fails.
    */
-  void copy(DeviceConstVectorView src, HostVectorView dst) const;
+  void copy(DeviceVectorView<const Real> src, HostVectorView<Real> dst) const;
 
   /**
    * @brief Replace a Host vector by copying a Device view.
@@ -359,7 +359,7 @@ public:
    * @throws std::runtime_error - If the view is invalid or a CUDA operation
    * fails.
    */
-  void copy(DeviceConstVectorView src, HostVector& dst) const;
+  void copy(DeviceVectorView<const Real> src, HostVector<Real>& dst) const;
 
   /**
    * @brief Set every Device value to zero.
@@ -368,7 +368,7 @@ public:
    * @throws std::runtime_error - If the view is invalid or a CUDA operation
    * fails.
    */
-  void zero(DeviceVectorView vals) const;
+  void zero(DeviceVectorView<Real> vals) const;
 
   /**
    * @brief Compute `y = a * x + b * y` on Device.
@@ -380,10 +380,10 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void axpby(Real                  a,
-             DeviceConstVectorView x,
-             Real                  b,
-             DeviceVectorView      y) const;
+  void axpby(Real                         a,
+             DeviceVectorView<const Real> x,
+             Real                         b,
+             DeviceVectorView<Real>       y) const;
 
   /**
    * @brief Gather indexed Device values into a contiguous destination.
@@ -394,9 +394,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void gather(DeviceConstVectorView src,
-              DeviceConstIndexView  indices,
-              DeviceVectorView      dst) const;
+  void gather(DeviceVectorView<const Real>  src,
+              DeviceVectorView<const Index> indices,
+              DeviceVectorView<Real>        dst) const;
 
   /**
    * @brief Scatter contiguous Device values to indexed destinations.
@@ -407,9 +407,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void scatter(DeviceConstVectorView src,
-               DeviceConstIndexView  indices,
-               DeviceVectorView      dst) const;
+  void scatter(DeviceVectorView<const Real>  src,
+               DeviceVectorView<const Index> indices,
+               DeviceVectorView<Real>        dst) const;
 
   /**
    * @brief Compute a Device dot product into one Device value.
@@ -420,9 +420,9 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void dot(DeviceConstVectorView x,
-           DeviceConstVectorView y,
-           DeviceVectorView      out) const;
+  void dot(DeviceVectorView<const Real> x,
+           DeviceVectorView<const Real> y,
+           DeviceVectorView<Real>       out) const;
 
   /**
    * @brief Compute a squared Euclidean norm into one Device value.
@@ -432,7 +432,7 @@ public:
    * @throws std::runtime_error - If inputs are invalid or a CUDA operation
    * fails.
    */
-  void squaredNorm(DeviceConstVectorView x, DeviceVectorView out) const
+  void squaredNorm(DeviceVectorView<const Real> x, DeviceVectorView<Real> out) const
   {
     dot(x, x, out);
   }

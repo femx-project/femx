@@ -5,15 +5,15 @@
 namespace femx::linalg
 {
 
-void VectorHandler<HostCsrBackend>::zero(HostVectorView vals) const
+void VectorHandler<HostCsrBackend>::zero(HostVectorView<Real> vals) const
 {
   std::fill(vals.begin(), vals.end(), Real{});
 }
 
-void VectorHandler<HostCsrBackend>::axpby(Real                a,
-                                          HostConstVectorView x,
-                                          Real                b,
-                                          HostVectorView      y) const
+void VectorHandler<HostCsrBackend>::axpby(Real                       a,
+                                          HostVectorView<const Real> x,
+                                          Real                       b,
+                                          HostVectorView<Real>       y) const
 {
   require(x.size() == y.size(),
           "Host axpby requires equal vector sizes");
@@ -25,8 +25,8 @@ void VectorHandler<HostCsrBackend>::axpby(Real                a,
   }
 }
 
-Real VectorHandler<HostCsrBackend>::dot(HostConstVectorView x,
-                                        HostConstVectorView y) const
+Real VectorHandler<HostCsrBackend>::dot(HostVectorView<const Real> x,
+                                        HostVectorView<const Real> y) const
 {
   require(x.size() == y.size(), "Host dot requires equal vector sizes");
   Real val = 0.0;
@@ -38,14 +38,14 @@ Real VectorHandler<HostCsrBackend>::dot(HostConstVectorView x,
 }
 
 Real VectorHandler<HostCsrBackend>::squaredNorm(
-    HostConstVectorView x) const
+    HostVectorView<const Real> x) const
 {
   return dot(x, x);
 }
 
-void VectorHandler<HostCsrBackend>::gather(HostConstVectorView src,
-                                           HostConstIndexView  indices,
-                                           HostVectorView      dst) const
+void VectorHandler<HostCsrBackend>::gather(HostVectorView<const Real>  src,
+                                           HostVectorView<const Index> indices,
+                                           HostVectorView<Real>        dst) const
 {
   require(indices.size() == dst.size(),
           "Host gather output size mismatch");
@@ -59,9 +59,9 @@ void VectorHandler<HostCsrBackend>::gather(HostConstVectorView src,
   }
 }
 
-void VectorHandler<HostCsrBackend>::scatter(HostConstVectorView src,
-                                            HostConstIndexView  indices,
-                                            HostVectorView      dst) const
+void VectorHandler<HostCsrBackend>::scatter(HostVectorView<const Real>  src,
+                                            HostVectorView<const Index> indices,
+                                            HostVectorView<Real>        dst) const
 {
   require(src.size() == indices.size(),
           "Host scatter input size mismatch");
@@ -85,72 +85,72 @@ namespace
 }
 } // namespace
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView,
-                                         DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real>,
+                                         DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView,
-                                         DeviceVector&) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real>,
+                                         DeviceVector<Real>&) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView,
-                                         DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real>,
+                                         DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView,
-                                         DeviceVector&) const
+void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real>,
+                                         DeviceVector<Real>&) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView,
-                                         HostVectorView) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real>,
+                                         HostVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView,
-                                         HostVector&) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real>,
+                                         HostVector<Real>&) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
 void VectorHandler<CudaCsrBackend>::axpby(Real,
-                                          DeviceConstVectorView,
+                                          DeviceVectorView<const Real>,
                                           Real,
-                                          DeviceVectorView) const
+                                          DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::gather(DeviceConstVectorView,
-                                           DeviceConstIndexView,
-                                           DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::gather(DeviceVectorView<const Real>,
+                                           DeviceVectorView<const Index>,
+                                           DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::scatter(DeviceConstVectorView,
-                                            DeviceConstIndexView,
-                                            DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::scatter(DeviceVectorView<const Real>,
+                                            DeviceVectorView<const Index>,
+                                            DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }
 
-void VectorHandler<CudaCsrBackend>::dot(DeviceConstVectorView,
-                                        DeviceConstVectorView,
-                                        DeviceVectorView) const
+void VectorHandler<CudaCsrBackend>::dot(DeviceVectorView<const Real>,
+                                        DeviceVectorView<const Real>,
+                                        DeviceVectorView<Real>) const
 {
   cudaUnavailable();
 }

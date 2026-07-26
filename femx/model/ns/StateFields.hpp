@@ -19,11 +19,11 @@ namespace femx::model::ns
  * @param[out] pressure - Nodal pressure values.
  * @throws std::runtime_error - If the input or output dimensions are invalid.
  */
-void splitStateFields(HostConstVectorView      state,
-                      const fem::MixedFESpace& space,
-                      HostVector&              ux,
-                      HostVector&              uy,
-                      HostVector&              uz,
-                      HostVector&              pressure);
+void splitStateFields(HostVectorView<const Real> state,
+                      const fem::MixedFESpace&   space,
+                      HostVector<Real>&          ux,
+                      HostVector<Real>&          uy,
+                      HostVector<Real>&          uz,
+                      HostVector<Real>&          pressure);
 
 } // namespace femx::model::ns

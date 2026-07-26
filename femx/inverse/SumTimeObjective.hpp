@@ -25,33 +25,33 @@ public:
   SumTimeObjective& add(const TimeObjective& term);
 
   /** @brief Return the objective terms in insertion order. */
-  const Array<const TimeObjective*>& terms() const noexcept;
+  const HostVector<const TimeObjective*>& terms() const noexcept;
 
   Index numSteps() const override;
   Index numStates() const override;
   Index numParams() const override;
 
   Real value(const state::TimeTrajectory& tr,
-             const HostVector&            prm) const override;
+             const HostVector<Real>&      prm) const override;
 
   void stateGrad(Index                        level,
                  const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
   void paramGrad(const state::TimeTrajectory& tr,
-                 const HostVector&            prm,
-                 HostVector&                  out) const override;
+                 const HostVector<Real>&      prm,
+                 HostVector<Real>&            out) const override;
 
 private:
-  static void checkSize(const HostVector& val, Index exp);
-  static void addInto(const HostVector& src, HostVector& out, Index size);
+  static void checkSize(const HostVector<Real>& val, Index exp);
+  static void addInto(const HostVector<Real>& src, HostVector<Real>& out, Index size);
 
 private:
-  Index                       num_steps_{0};
-  Index                       num_states_{0};
-  Index                       num_param_{0};
-  Array<const TimeObjective*> terms_;
+  Index                            num_steps_{0};
+  Index                            num_states_{0};
+  Index                            num_param_{0};
+  HostVector<const TimeObjective*> terms_;
 };
 
 } // namespace inverse

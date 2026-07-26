@@ -34,7 +34,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    HostVector                     wts)
+    HostVector<Real>               wts)
   : obs_(obs),
     data_(std::move(data)),
     wts_(std::move(wts))
@@ -46,7 +46,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    HostVector                     wts,
+    HostVector<Real>               wts,
     Real                           dt)
   : obs_(obs),
     data_(std::move(data)),
@@ -60,7 +60,7 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    HostVector                     wts,
+    HostVector<Real>               wts,
     Real                           dt,
     Real                           time_offset)
   : obs_(obs),
@@ -76,8 +76,8 @@ TimeLeastSquaresObjective::TimeLeastSquaresObjective(
 TimeLeastSquaresObjective::TimeLeastSquaresObjective(
     const TimeObservationOperator& obs,
     TimeObservationData            data,
-    HostVector                     wts,
-    HostVector                     obs_wts,
+    HostVector<Real>               wts,
+    HostVector<Real>               obs_wts,
     Real                           dt,
     Real                           time_offset)
   : obs_(obs),
@@ -105,11 +105,11 @@ Index TimeLeastSquaresObjective::numParams() const
   return obs_.numParams();
 }
 
-Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
-                                      const HostVector&     prm) const
+Real TimeLeastSquaresObjective::value(const TimeTrajectory&   tr,
+                                      const HostVector<Real>& prm) const
 {
-  Real       val = 0.0;
-  HostVector res;
+  Real             val = 0.0;
+  HostVector<Real> res;
   for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
@@ -123,18 +123,18 @@ Real TimeLeastSquaresObjective::value(const TimeTrajectory& tr,
   return val;
 }
 
-void TimeLeastSquaresObjective::stateGrad(Index                 level,
-                                          const TimeTrajectory& tr,
-                                          const HostVector&     prm,
-                                          HostVector&           out) const
+void TimeLeastSquaresObjective::stateGrad(Index                   level,
+                                          const TimeTrajectory&   tr,
+                                          const HostVector<Real>& prm,
+                                          HostVector<Real>&       out) const
 {
   checkLevel(level);
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, numStates());
 
-  HostVector weighted_res;
-  HostVector level_grad;
+  HostVector<Real> weighted_res;
+  HostVector<Real> level_grad;
   for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
@@ -169,16 +169,16 @@ void TimeLeastSquaresObjective::stateGrad(Index                 level,
   }
 }
 
-void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory& tr,
-                                          const HostVector&     prm,
-                                          HostVector&           out) const
+void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory&   tr,
+                                          const HostVector<Real>& prm,
+                                          HostVector<Real>&       out) const
 {
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.resizeOrZero(out, numParams());
 
-  HostVector weighted_res;
-  HostVector level_grad;
+  HostVector<Real> weighted_res;
+  HostVector<Real> level_grad;
   for (Index row = 0; row < data_.numTimeLevels(); ++row)
   {
     const LinearInterpolation interp = interpolation(row);
@@ -319,8 +319,8 @@ void TimeLeastSquaresObjective::observeInterpolated(
     Index                      data_row,
     const LinearInterpolation& interp,
     const TimeTrajectory&      tr,
-    const HostVector&          prm,
-    HostVector&                out) const
+    const HostVector<Real>&    prm,
+    HostVector<Real>&          out) const
 {
   (void) data_row;
   obs_.observe(interp.lower, tr[interp.lower], prm, out);
@@ -330,7 +330,7 @@ void TimeLeastSquaresObjective::observeInterpolated(
     return;
   }
 
-  HostVector upper;
+  HostVector<Real> upper;
   obs_.observe(interp.upper, tr[interp.upper], prm, upper);
   checkSize(upper, obs_.numObservations());
   for (Index i = 0; i < out.size(); ++i)
@@ -343,29 +343,29 @@ void TimeLeastSquaresObjective::obsResidual(
     Index                      data_row,
     const LinearInterpolation& interp,
     const TimeTrajectory&      tr,
-    const HostVector&          prm,
-    HostVector&                out) const
+    const HostVector<Real>&    prm,
+    HostVector<Real>&          out) const
 {
   require(tr.numTimeLevels() == numTimeLevels()
               && tr.numStates() == numStates(),
           "TimeLeastSquaresObjective trajectory size mismatch");
   observeInterpolated(data_row, interp, tr, prm, out);
 
-  const HostVector data = data_[data_row];
+  const HostVector<Real> data = data_[data_row];
   for (Index i = 0; i < out.size(); ++i)
   {
     out[i] -= data[i];
   }
 }
 
-void TimeLeastSquaresObjective::checkSize(const HostVector& val,
-                                          Index             exp)
+void TimeLeastSquaresObjective::checkSize(const HostVector<Real>& val,
+                                          Index                   exp)
 {
   require(val.size() == exp,
           "TimeLeastSquaresObjective vector size mismatch");
 }
 
-void TimeLeastSquaresObjective::scale(HostVector& out, Real factor)
+void TimeLeastSquaresObjective::scale(HostVector<Real>& out, Real factor)
 {
   for (Index i = 0; i < out.size(); ++i)
   {
@@ -374,9 +374,9 @@ void TimeLeastSquaresObjective::scale(HostVector& out, Real factor)
 }
 
 void TimeLeastSquaresObjective::scaleObservationResidual(
-    Index       row,
-    HostVector& out,
-    Real        factor) const
+    Index             row,
+    HostVector<Real>& out,
+    Real              factor) const
 {
   checkSize(out, data_.numObservations());
   for (Index i = 0; i < out.size(); ++i)

@@ -10,13 +10,13 @@ namespace femx
 namespace inverse
 {
 
-TimeRegularization::TimeRegularization(Index             num_steps,
-                                       Index             num_states,
-                                       Index             num_levels,
-                                       Index             block_size,
-                                       Real              beta_diff,
-                                       Real              beta_value,
-                                       const HostVector& reference)
+TimeRegularization::TimeRegularization(Index                   num_steps,
+                                       Index                   num_states,
+                                       Index                   num_levels,
+                                       Index                   block_size,
+                                       Real                    beta_diff,
+                                       Real                    beta_value,
+                                       const HostVector<Real>& reference)
   : num_steps_(num_steps),
     num_states_(num_states),
     num_levels_(num_levels),
@@ -61,8 +61,8 @@ Index TimeRegularization::numParams() const
   return num_levels_ * block_size_;
 }
 
-Real TimeRegularization::value(const TimeTrajectory& tr,
-                               const HostVector&     prm) const
+Real TimeRegularization::value(const TimeTrajectory&   tr,
+                               const HostVector<Real>& prm) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -84,10 +84,10 @@ Real TimeRegularization::value(const TimeTrajectory& tr,
   return val;
 }
 
-void TimeRegularization::stateGrad(Index                 level,
-                                   const TimeTrajectory& tr,
-                                   const HostVector&     prm,
-                                   HostVector&           out) const
+void TimeRegularization::stateGrad(Index                   level,
+                                   const TimeTrajectory&   tr,
+                                   const HostVector<Real>& prm,
+                                   HostVector<Real>&       out) const
 {
   (void) level;
   (void) tr;
@@ -97,9 +97,9 @@ void TimeRegularization::stateGrad(Index                 level,
   vec_handler.resizeOrZero(out, numStates());
 }
 
-void TimeRegularization::paramGrad(const TimeTrajectory& tr,
-                                   const HostVector&     prm,
-                                   HostVector&           out) const
+void TimeRegularization::paramGrad(const TimeTrajectory&   tr,
+                                   const HostVector<Real>& prm,
+                                   HostVector<Real>&       out) const
 {
   (void) tr;
   checkParamSize(prm);
@@ -127,15 +127,15 @@ Index TimeRegularization::index(Index level, Index comp) const
   return level * block_size_ + comp;
 }
 
-Real TimeRegularization::centered(const HostVector& prm,
-                                  Index             level,
-                                  Index             comp) const
+Real TimeRegularization::centered(const HostVector<Real>& prm,
+                                  Index                   level,
+                                  Index                   comp) const
 {
   const Index i = index(level, comp);
   return prm[i] - reference_[i];
 }
 
-void TimeRegularization::checkParamSize(const HostVector& prm) const
+void TimeRegularization::checkParamSize(const HostVector<Real>& prm) const
 {
   require(prm.size() == numParams(),
           "TimeRegularization parameter size mismatch");

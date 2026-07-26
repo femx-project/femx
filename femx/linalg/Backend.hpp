@@ -15,9 +15,9 @@ struct HostCsrBackend
 {
   static constexpr MemorySpace space = MemorySpace::Host; ///< Storage memory space.
 
-  using Vec       = HostVector;
-  using VecView   = HostVectorView;
-  using ConstView = HostConstVectorView;
+  using Vec       = HostVector<Real>;
+  using VecView   = HostVectorView<Real>;
+  using ConstView = HostVectorView<const Real>;
   using Mat       = HostCsrMatrix;
   using Pattern   = HostCsrPattern;
   using Ctx       = CpuContext;
@@ -28,9 +28,9 @@ struct CudaCsrBackend
 {
   static constexpr MemorySpace space = MemorySpace::Device; ///< Storage memory space.
 
-  using Vec       = DeviceVector;
-  using VecView   = DeviceVectorView;
-  using ConstView = DeviceConstVectorView;
+  using Vec       = DeviceVector<Real>;
+  using VecView   = DeviceVectorView<Real>;
+  using ConstView = DeviceVectorView<const Real>;
   using Mat       = DeviceCsrMatrix;
   using Pattern   = DeviceCsrPattern;
   using Ctx       = CudaContext;

@@ -29,9 +29,9 @@ class GaussQuadrature
 public:
   GaussQuadrature() = default;
 
-  GaussQuadrature(ReferenceElement       elem,
-                  Index                  dim,
-                  Array<QuadraturePoint> pts)
+  GaussQuadrature(ReferenceElement            elem,
+                  Index                       dim,
+                  HostVector<QuadraturePoint> pts)
     : elem_(elem),
       dim_(dim),
       pts_(std::move(pts))
@@ -238,9 +238,9 @@ public:
   }
 
 private:
-  ReferenceElement       elem_ = ReferenceElement::Segment;
-  Index                  dim_  = 0;
-  Array<QuadraturePoint> pts_;
+  ReferenceElement            elem_ = ReferenceElement::Segment;
+  Index                       dim_  = 0;
+  HostVector<QuadraturePoint> pts_;
 };
 
 } // namespace fem

@@ -33,8 +33,8 @@ public:
         2,
         space,
         0,
-        Array<Point3>{{0.25, 0.25, 0.0}, {0.75, 0.5, 0.0}},
-        Array<Index>{0, 1},
+        HostVector<Point3>{{0.25, 0.25, 0.0}, {0.75, 0.5, 0.0}},
+        HostVector<Index>{0, 1},
         0);
   }
 
@@ -50,9 +50,9 @@ bool near(Real lhs, Real rhs, Real tol = 1.0e-12)
   return std::abs(lhs - rhs) <= tol;
 }
 
-bool near(const HostVector& lhs,
-          const HostVector& rhs,
-          Real              tol = 1.0e-12)
+bool near(const HostVector<Real>& lhs,
+          const HostVector<Real>& rhs,
+          Real                    tol = 1.0e-12)
 {
   if (lhs.size() != rhs.size())
   {
@@ -68,7 +68,7 @@ bool near(const HostVector& lhs,
   return true;
 }
 
-Real innerProduct(const HostVector& lhs, const HostVector& rhs)
+Real innerProduct(const HostVector<Real>& lhs, const HostVector<Real>& rhs)
 {
   Real val = 0.0;
   for (Index i = 0; i < lhs.size(); ++i)
@@ -80,30 +80,30 @@ Real innerProduct(const HostVector& lhs, const HostVector& rhs)
 
 TestOutcome hostFlatObserveAndTranspose()
 {
-  TestStatus          status(__func__);
-  InterpolatorFixture fixture;
-  const auto&         op = *fixture.op;
-  const HostVector    state{1.0, 10.0, 3.0, 20.0, 5.0, 30.0, 7.0, 40.0};
-  const HostVector    dir{1.25, -0.5, 2.0, 0.75};
-  const HostVector    prm;
+  TestStatus             status(__func__);
+  InterpolatorFixture    fixture;
+  const auto&            op = *fixture.op;
+  const HostVector<Real> state{1.0, 10.0, 3.0, 20.0, 5.0, 30.0, 7.0, 40.0};
+  const HostVector<Real> dir{1.25, -0.5, 2.0, 0.75};
+  const HostVector<Real> prm;
 
-  HostVector expected_obs;
+  HostVector<Real> expected_obs;
   op.observe(1, state, prm, expected_obs);
 
-  HostVector                flat_obs(op.numObservations());
+  HostVector<Real>          flat_obs(op.numObservations());
   CpuContext                ctx;
   linalg::HostMatrixHandler mat_handler(ctx);
   mat_handler.matvec(op.data().matrix(), state.view(), flat_obs.view());
 
-  HostVector expected_tr;
+  HostVector<Real> expected_tr;
   op.applyStateJacT(1, state, prm, dir, expected_tr);
 
-  HostVector flat_tr(op.numStates());
+  HostVector<Real> flat_tr(op.numStates());
   mat_handler.matvecT(op.data().matrix(), dir.view(), flat_tr.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;
-  status *= near(flat_obs, HostVector{2.5, 17.5, 4.5, 27.5});
+  status *= near(flat_obs, HostVector<Real>{2.5, 17.5, 4.5, 27.5});
   status *= near(flat_obs, expected_obs);
   status *= near(flat_tr, expected_tr);
   status *= near(innerProduct(flat_obs, dir), innerProduct(state, flat_tr));
@@ -120,24 +120,24 @@ TestOutcome cudaObserveAndTransposeMatchHost()
     return status.report();
   }
 
-  InterpolatorFixture fixture;
-  const auto&         op = *fixture.op;
-  const HostVector    state{1.0, 10.0, 3.0, 20.0, 5.0, 30.0, 7.0, 40.0};
-  const HostVector    dir{1.25, -0.5, 2.0, 0.75};
-  const HostVector    prm;
+  InterpolatorFixture    fixture;
+  const auto&            op = *fixture.op;
+  const HostVector<Real> state{1.0, 10.0, 3.0, 20.0, 5.0, 30.0, 7.0, 40.0};
+  const HostVector<Real> dir{1.25, -0.5, 2.0, 0.75};
+  const HostVector<Real> prm;
 
-  HostVector expected_obs;
-  HostVector expected_tr;
+  HostVector<Real> expected_obs;
+  HostVector<Real> expected_tr;
   op.observe(0, state, prm, expected_obs);
   op.applyStateJacT(0, state, prm, dir, expected_tr);
 
   CudaContext                 ctx;
   linalg::CudaVectorHandler   vec_handler(ctx);
   DeviceTimePointInterpolator dev_op;
-  DeviceVector                dev_state;
-  DeviceVector                dev_dir;
-  DeviceVector                dev_obs(op.numObservations());
-  DeviceVector                dev_tr(op.numStates());
+  DeviceVector<Real>          dev_state;
+  DeviceVector<Real>          dev_dir;
+  DeviceVector<Real>          dev_obs(op.numObservations());
+  DeviceVector<Real>          dev_tr(op.numStates());
 
   fem::copy(op, dev_op, ctx);
   vec_handler.copy(state, dev_state);
@@ -150,8 +150,8 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   vec_handler.zero(dev_tr.view());
   iface.addStateJacT(1, dev_dir.view(), dev_tr.view(), ctx);
 
-  HostVector got_obs;
-  HostVector got_tr;
+  HostVector<Real> got_obs;
+  HostVector<Real> got_tr;
   vec_handler.copy(dev_obs, got_obs);
   vec_handler.copy(dev_tr, got_tr);
   ctx.sync();

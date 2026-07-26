@@ -25,26 +25,26 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const HostVector& state,
-             const HostVector& prm) const override;
+  Real value(const HostVector<Real>& state,
+             const HostVector<Real>& prm) const override;
 
-  void stateGrad(const HostVector& state,
-                 const HostVector& prm,
-                 HostVector&       out) const override;
+  void stateGrad(const HostVector<Real>& state,
+                 const HostVector<Real>& prm,
+                 HostVector<Real>&       out) const override;
 
-  void paramGrad(const HostVector& state,
-                 const HostVector& prm,
-                 HostVector&       out) const override;
-
-private:
-  static void addInto(const HostVector& src,
-                      HostVector&       out,
-                      Index             size);
+  void paramGrad(const HostVector<Real>& state,
+                 const HostVector<Real>& prm,
+                 HostVector<Real>&       out) const override;
 
 private:
-  Index                   num_states_{0};
-  Index                   num_param_{0};
-  Array<const Objective*> terms_;
+  static void addInto(const HostVector<Real>& src,
+                      HostVector<Real>&       out,
+                      Index                   size);
+
+private:
+  Index                        num_states_{0};
+  Index                        num_param_{0};
+  HostVector<const Objective*> terms_;
 };
 
 } // namespace inverse

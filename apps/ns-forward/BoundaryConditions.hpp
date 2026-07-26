@@ -21,8 +21,8 @@ namespace femx::apps::ns_forward
  * wall condition define inlet/outlet rims and cavity corners explicitly.
  */
 fem::DirichletBC makeDirichletBoundaryConditions(
-    const fem::MixedFESpace&              space,
-    const Array<BoundaryConditionConfig>& bcs,
-    Real                                  time);
+    const fem::MixedFESpace&                   space,
+    const HostVector<BoundaryConditionConfig>& bcs,
+    Real                                       time);
 
 } // namespace femx::apps::ns_forward

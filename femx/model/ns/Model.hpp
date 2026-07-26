@@ -74,9 +74,9 @@ public:
   /** @brief Return the Host row operator for generic time assembly. */
   HostElementKernel elementKernel() const;
 
-  Array<Index> velocityDofs() const;
-  Array<Index> velocityBoundaryDofs(Index boundary_tag) const;
-  Array<Index> velocityBoundaryDofs(const std::string& boundary_name) const;
+  HostVector<Index> velocityDofs() const;
+  HostVector<Index> velocityBoundaryDofs(Index boundary_tag) const;
+  HostVector<Index> velocityBoundaryDofs(const std::string& boundary_name) const;
 
 private:
   class Residual;

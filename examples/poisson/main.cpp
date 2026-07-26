@@ -30,14 +30,14 @@ int run(const Options& opts)
   ExampleHelper         helper("dense", opts.backend, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix A(problem.map().pattern());
-  HostVector    rhs;
+  HostCsrMatrix    A(problem.map().pattern());
+  HostVector<Real> rhs;
   problem.assemble(A, rhs);
 
   DenseLinearSolver solver;
   CpuContext        ctx;
 
-  HostVector x;
+  HostVector<Real> x;
   solver.solve(A, rhs, x, ctx);
 
   printReport(std::cout,

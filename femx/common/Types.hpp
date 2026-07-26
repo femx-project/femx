@@ -22,10 +22,19 @@ template <MemorySpace Space, class T = Real>
 class Vector;
 
 template <class T>
-using Array = Vector<MemorySpace::Host, T>;
+using HostVector = Vector<MemorySpace::Host, T>;
+
+template <class T>
+using DeviceVector = Vector<MemorySpace::Device, T>;
 
 template <MemorySpace Space, class T>
 class VectorView;
+
+template <class T>
+using HostVectorView = VectorView<MemorySpace::Host, T>;
+
+template <class T>
+using DeviceVectorView = VectorView<MemorySpace::Device, T>;
 
 template <MemorySpace Space>
 class CsrPattern;
@@ -33,23 +42,11 @@ class CsrPattern;
 template <MemorySpace Space>
 class CsrMatrix;
 
-using HostVector   = Vector<MemorySpace::Host>;
-using DeviceVector = Vector<MemorySpace::Device>;
-
-using HostIndexVector   = Vector<MemorySpace::Host, Index>;
-using DeviceIndexVector = Vector<MemorySpace::Device, Index>;
-
 using HostCsrPattern   = CsrPattern<MemorySpace::Host>;
 using DeviceCsrPattern = CsrPattern<MemorySpace::Device>;
 
 using HostCsrMatrix   = CsrMatrix<MemorySpace::Host>;
 using DeviceCsrMatrix = CsrMatrix<MemorySpace::Device>;
-
-template <class T>
-using HostArrayView = VectorView<MemorySpace::Host, T>;
-
-using HostVectorView      = HostArrayView<Real>;
-using HostConstVectorView = HostArrayView<const Real>;
 
 namespace constants
 {

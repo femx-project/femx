@@ -52,12 +52,12 @@ struct Report
  */
 struct Result
 {
-  Report     report;             ///< Final diagnostic metrics.
-  HostVector prm;                ///< Optimized control vector.
-  HostVector state;              ///< State vector at the optimized control.
-  Index      tao_itr    = 0;     ///< Number of TAO iterations.
-  int        tao_reason = 0;     ///< PETSc/TAO convergence reason.
-  bool       converged  = false; ///< True when TAO reports convergence.
+  Report           report;             ///< Final diagnostic metrics.
+  HostVector<Real> prm;                ///< Optimized control vector.
+  HostVector<Real> state;              ///< State vector at the optimized control.
+  Index            tao_itr    = 0;     ///< Number of TAO iterations.
+  int              tao_reason = 0;     ///< PETSc/TAO convergence reason.
+  bool             converged  = false; ///< True when TAO reports convergence.
 };
 
 /**
@@ -92,10 +92,10 @@ public:
   Index numObservations() const noexcept;
 
   /** @brief Compute final error and gradient metrics. */
-  Report report(const HostVector& prm,
-                const HostVector& state,
-                Real              value,
-                const HostVector& grad) const;
+  Report report(const HostVector<Real>& prm,
+                const HostVector<Real>& state,
+                Real                    value,
+                const HostVector<Real>& grad) const;
 
   /**
    * @brief Write final state/control fields to VTU.
@@ -104,27 +104,27 @@ public:
    * @param[in] state - Final state vector.
    * @param[in] base - Output path without extension, or with `.vtu`.
    */
-  void writeSolution(const HostVector&  prm,
-                     const HostVector&  state,
-                     const std::string& base) const;
+  void writeSolution(const HostVector<Real>& prm,
+                     const HostVector<Real>& state,
+                     const std::string&      base) const;
 
 private:
-  void prepareObjective(HostVector target_state);
+  void prepareObjective(HostVector<Real> target_state);
 
   static Real exactValue(const fem::Mesh::Node& p);
 
   void initializeBoundaryDofs();
   void initializeTrueControl();
   void initializeObservationLayout();
-  void writeFields(const HostVector&  prm,
-                   const HostVector&  state,
-                   const std::string& path) const;
+  void writeFields(const HostVector<Real>& prm,
+                   const HostVector<Real>& state,
+                   const std::string&      path) const;
 
-  void writeObs(const HostVector&  state,
-                const std::string& path) const;
+  void writeObs(const HostVector<Real>& state,
+                const std::string&      path) const;
 
-  Index      effectiveObservationStride() const;
-  HostVector observationWeights() const;
+  Index            effectiveObservationStride() const;
+  HostVector<Real> observationWeights() const;
 
   bool isBoundaryNode(const fem::Mesh::Node& p) const;
   bool isControlNode(const fem::Mesh::Node& p) const;
@@ -138,13 +138,13 @@ private:
   fem::HostElementQuadratureData element_data_; ///< Element integration data.
   assembly::HostAssemblyMap      state_map_;
 
-  Array<Index>  ctr_dofs_;
-  Array<Index>  fixed_dofs_;
-  Array<Index>  obs_dofs_;
-  HostVector    ctr_weights_;
-  HostVector    target_state_;
-  HostVector    target_ctr_;
-  Array<Point3> obs_points_;
+  HostVector<Index>  ctr_dofs_;
+  HostVector<Index>  fixed_dofs_;
+  HostVector<Index>  obs_dofs_;
+  HostVector<Real>   ctr_weights_;
+  HostVector<Real>   target_state_;
+  HostVector<Real>   target_ctr_;
+  HostVector<Point3> obs_points_;
 
   std::unique_ptr<inverse::LeastSquaresObjective> misfit_;
   std::unique_ptr<inverse::LeastSquaresObjective> reg_;

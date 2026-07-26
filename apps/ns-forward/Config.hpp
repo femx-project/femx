@@ -50,8 +50,8 @@ struct SolverConfig
 
 struct OutputConfig
 {
-  bool        enabled   = true;                         ///< Enable field and log output.
-  Index       interval  = 10;                           ///< Field-output interval in time steps.
+  bool        enabled   = true;                       ///< Enable field and log output.
+  Index       interval  = 10;                         ///< Field-output interval in time steps.
   std::string directory = FEMX_NS_FORWARD_OUTPUT_DIR; ///< Output directory.
 };
 
@@ -64,8 +64,8 @@ struct VelocityProfileConfig
 
 struct VelocityBoundaryConfig
 {
-  HostVector            time;                     ///< Time samples.
-  HostVector            vals;                     ///< Velocity or flow-rate samples.
+  HostVector<Real>      time;                     ///< Time samples.
+  HostVector<Real>      vals;                     ///< Velocity or flow-rate samples.
   Real                  area   = 1.0;             ///< Boundary area for flow-rate input.
   Real                  per    = 0.0;             ///< Period for pulse inputs.
   std::array<Real, 3>   nrm    = {1.0, 0.0, 0.0}; ///< Boundary normal.
@@ -87,12 +87,12 @@ struct BoundaryConditionConfig
 
 struct Config
 {
-  std::string                    mesh_file;           ///< Mesh file path.
-  TimeConfig                     time;                ///< Time-integration settings.
-  model::ns::FluidProperties     fluid;               ///< Fluid material properties.
-  SolverConfig                   solver;              ///< Linear-solver settings.
-  OutputConfig                   output;              ///< Output settings.
-  Array<BoundaryConditionConfig> boundary_conditions; ///< Boundary settings.
+  std::string                         mesh_file;           ///< Mesh file path.
+  TimeConfig                          time;                ///< Time-integration settings.
+  model::ns::FluidProperties          fluid;               ///< Fluid material properties.
+  SolverConfig                        solver;              ///< Linear-solver settings.
+  OutputConfig                        output;              ///< Output settings.
+  HostVector<BoundaryConditionConfig> boundary_conditions; ///< Boundary settings.
 };
 
 Config loadConfig(const std::string& path);

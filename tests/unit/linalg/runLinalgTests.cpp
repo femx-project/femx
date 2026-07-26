@@ -51,7 +51,7 @@ bool valsNear(const Real* actual, const std::array<Real, N>& expected)
 
 assembly::HostAssemblyMap makeSharedElementMap()
 {
-  const Array<Array<Index>> dofs{{0, 1}, {1, 2}};
+  const HostVector<HostVector<Index>> dofs{{0, 1}, {1, 2}};
   return assembly::makeAssemblyMap(3, 3, dofs, dofs);
 }
 
@@ -61,7 +61,7 @@ TestOutcome vectorBasics()
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
 
-  HostVector v(3, 2.0);
+  HostVector<Real> v(3, 2.0);
   status *= v.size() == 3;
   status *= near(v[0], 2.0) && near(v[1], 2.0) && near(v[2], 2.0);
 
@@ -83,7 +83,7 @@ TestOutcome vectorBasics()
   bool threw = false;
   try
   {
-    HostVector invalid(-1);
+    HostVector<Real> invalid(-1);
   }
   catch (const std::runtime_error&)
   {
@@ -100,14 +100,14 @@ TestOutcome vectorViewCopiesAndAssigns()
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
 
-  Real           raw[3] = {1.0, 2.0, 3.0};
-  HostVectorView view(raw, 3);
-  HostVector     copied(view);
+  Real                 raw[3] = {1.0, 2.0, 3.0};
+  HostVectorView<Real> view(raw, 3);
+  HostVector<Real>     copied(view);
 
   status *= copied.size() == 3;
   status *= valsNear(copied.data(), std::array<Real, 3>{{1.0, 2.0, 3.0}});
 
-  HostVector src{4.0, 5.0, 6.0};
+  HostVector<Real> src{4.0, 5.0, 6.0};
   view    = src;
   status *= valsNear(raw, std::array<Real, 3>{{4.0, 5.0, 6.0}});
 
@@ -117,7 +117,7 @@ TestOutcome vectorViewCopiesAndAssigns()
   bool threw = false;
   try
   {
-    HostVector wrong_size{1.0, 2.0};
+    HostVector<Real> wrong_size{1.0, 2.0};
     view = wrong_size;
   }
   catch (const std::runtime_error&)
@@ -133,16 +133,16 @@ TestOutcome vectorGatherScatter()
 {
   TestStatus status(__func__);
 
-  const HostVector          source{10.0, 20.0, 30.0, 40.0, 50.0};
-  const HostIndexVector     indices{4, 1, 3};
-  HostVector                compact(3);
+  const HostVector<Real>    source{10.0, 20.0, 30.0, 40.0, 50.0};
+  const HostVector<Index>   indices{4, 1, 3};
+  HostVector<Real>          compact(3);
   CpuContext                ctx;
   linalg::HostVectorHandler vec_handler(ctx);
   vec_handler.gather(source.view(), indices.view(), compact.view());
   status *= valsNear(compact.data(),
                      std::array<Real, 3>{{50.0, 20.0, 40.0}});
 
-  HostVector expanded(5, -1.0);
+  HostVector<Real> expanded(5, -1.0);
   vec_handler.scatter(compact.view(), indices.view(), expanded.view());
   status *= valsNear(expanded.data(),
                      std::array<Real, 5>{{-1.0, 20.0, -1.0, 40.0, 50.0}});
@@ -204,23 +204,23 @@ TestOutcome denseMatrixApplies()
   mat(1, 1) = 5.0;
   mat(1, 2) = 6.0;
 
-  const HostVector          x{1.0, 2.0, 3.0};
+  const HostVector<Real>    x{1.0, 2.0, 3.0};
   CpuContext                ctx;
   linalg::HostMatrixHandler mat_handler(ctx);
 
-  HostVector y(2);
+  HostVector<Real> y(2);
   mat_handler.matvec(mat.view(), x.view(), y.view());
   status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
 
-  const HostVector xt{2.0, -1.0};
-  HostVector       yt(3);
+  const HostVector<Real> xt{2.0, -1.0};
+  HostVector<Real>       yt(3);
   mat_handler.matvecT(mat.view(), xt.view(), yt.view());
   status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
 
   bool threw = false;
   try
   {
-    HostVector wrong_input(2);
+    HostVector<Real> wrong_input(2);
     mat_handler.matvec(mat.view(), wrong_input.view(), y.view());
   }
   catch (const std::runtime_error&)
@@ -311,8 +311,8 @@ TestOutcome csrMatrixTranspose()
   const HostCsrPattern pattern{
       3,
       4,
-      HostIndexVector{0, 2, 4, 7},
-      HostIndexVector{0, 2, 1, 3, 0, 2, 3}};
+      HostVector<Index>{0, 2, 4, 7},
+      HostVector<Index>{0, 2, 1, 3, 0, 2, 3}};
   HostCsrMatrix src(pattern);
   src.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
@@ -361,14 +361,14 @@ TestOutcome csrPatternUsesLayoutIdentity()
   const HostCsrPattern pattern{
       2,
       2,
-      HostIndexVector{0, 1, 2},
-      HostIndexVector{0, 1}};
+      HostVector<Index>{0, 1, 2},
+      HostVector<Index>{0, 1}};
   const HostCsrPattern shared = pattern;
   const HostCsrPattern separate{
       2,
       2,
-      HostIndexVector{0, 1, 2},
-      HostIndexVector{0, 1}};
+      HostVector<Index>{0, 1, 2},
+      HostVector<Index>{0, 1}};
 
   status *= pattern.layoutId() != 0;
   status *= shared.layoutId() == pattern.layoutId();

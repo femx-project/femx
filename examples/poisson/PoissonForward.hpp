@@ -58,7 +58,7 @@ public:
   /** @brief Return essential-boundary CSR metadata. */
   const assembly::HostBoundaryMap&      bcMap() const noexcept;
   /** @brief Return prescribed values in boundary-map order. */
-  const HostVector&                     bcVals() const noexcept;
+  const HostVector<Real>&               bcVals() const noexcept;
 
   /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept;
@@ -66,10 +66,10 @@ public:
   Index numDofs() const noexcept;
 
   /** @brief Assemble the constrained host linear system. */
-  void assemble(HostCsrMatrix& mat, HostVector& rhs) const;
+  void assemble(HostCsrMatrix& mat, HostVector<Real>& rhs) const;
 
   /** @brief Compare a solution with the manufactured exact solution. */
-  ErrorReport errorReport(const HostVector& x) const;
+  ErrorReport errorReport(const HostVector<Real>& x) const;
 
   /**
    * @brief Write solution, exact solution, and error fields to VTU.
@@ -77,8 +77,8 @@ public:
    * @param[in] x - State vector on this problem's finite-element space.
    * @param[in] base - Output path without extension, or with `.vtu`.
    */
-  void writeSolution(const HostVector&  x,
-                     const std::string& base) const;
+  void writeSolution(const HostVector<Real>& x,
+                     const std::string&      base) const;
 
 private:
   static Real exactValue(const fem::Mesh::Node& p);
@@ -94,7 +94,7 @@ private:
   fem::HostElementQuadratureData element_data_;
   assembly::HostAssemblyMap      map_;
   assembly::HostBoundaryMap      bc_map_;
-  HostVector                     bc_vals_;
+  HostVector<Real>               bc_vals_;
 };
 
 /** @brief Parse forward Poisson command-line options. */

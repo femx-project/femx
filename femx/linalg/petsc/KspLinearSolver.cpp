@@ -67,16 +67,16 @@ public:
     return opts_;
   }
 
-  void solve(const PETScOperator& op,
-             const HostVector&    rhs,
-             HostVector&          out)
+  void solve(const PETScOperator&    op,
+             const HostVector<Real>& rhs,
+             HostVector<Real>&       out)
   {
     solveSystem(op, rhs, out, false);
   }
 
-  void solveT(const PETScOperator& op,
-              const HostVector&    rhs,
-              HostVector&          out)
+  void solveT(const PETScOperator&    op,
+              const HostVector<Real>& rhs,
+              HostVector<Real>&       out)
   {
     solveSystem(op, rhs, out, true);
   }
@@ -102,10 +102,10 @@ public:
   }
 
 private:
-  void solveSystem(const PETScOperator& op,
-                   const HostVector&    rhs,
-                   HostVector&          out,
-                   bool                 tr)
+  void solveSystem(const PETScOperator&    op,
+                   const HostVector<Real>& rhs,
+                   HostVector<Real>&       out,
+                   bool                    tr)
   {
     require(op.rows() == op.cols(),
             "KspLinearSolver requires a square PETSc matrix");
@@ -155,9 +155,9 @@ private:
     check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
   }
 
-  void setInitialGuess(Vec               vec,
-                       const HostVector& guess,
-                       Index             size)
+  void setInitialGuess(Vec                     vec,
+                       const HostVector<Real>& guess,
+                       Index                   size)
   {
     if (opts_.nonzero_guess && guess.size() == size)
     {
@@ -284,19 +284,19 @@ const KspOptions& KspLinearSolver::opts() const
   return impl_->opts();
 }
 
-void KspLinearSolver::solve(const PETScOperator& mat,
-                            const HostVector&    rhs,
-                            HostVector&          sol,
-                            PetscContext&        ctx)
+void KspLinearSolver::solve(const PETScOperator&    mat,
+                            const HostVector<Real>& rhs,
+                            HostVector<Real>&       sol,
+                            PetscContext&           ctx)
 {
   impl_->checkContext(ctx);
   impl_->solve(mat, rhs, sol);
 }
 
-void KspLinearSolver::solveT(const PETScOperator& mat,
-                             const HostVector&    rhs,
-                             HostVector&          sol,
-                             PetscContext&        ctx)
+void KspLinearSolver::solveT(const PETScOperator&    mat,
+                             const HostVector<Real>& rhs,
+                             HostVector<Real>&       sol,
+                             PetscContext&           ctx)
 {
   impl_->checkContext(ctx);
   impl_->solveT(mat, rhs, sol);

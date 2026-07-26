@@ -75,7 +75,7 @@ struct AffineElementKernel
   void evalRow(const assembly::HostElementView& in,
                Index                            row,
                Real&                            res,
-               HostVectorView                   jac) const
+               HostVectorView<Real>             jac) const
   {
     res = in.state[row] + static_cast<Real>(in.ie + 1)
           + in.coords[0];
@@ -91,7 +91,7 @@ struct RectangularElementKernel
   void evalRow(const assembly::HostElementView& in,
                Index                            row,
                Real&                            res,
-               HostVectorView                   jac) const
+               HostVectorView<Real>             jac) const
   {
     res = static_cast<Real>(row + 1);
     for (Index col = 0; col < in.state.size(); ++col)
@@ -163,9 +163,9 @@ TestOutcome rectangularMapBuildsExactCsrMapping()
 {
   TestStatus status(__func__);
 
-  const Array<Array<Index>> res_dofs{{0, 1}, {1}};
-  const Array<Array<Index>> state_dofs{{0}, {0, 1}};
-  const auto                map =
+  const HostVector<HostVector<Index>> res_dofs{{0, 1}, {1}};
+  const HostVector<HostVector<Index>> state_dofs{{0}, {0, 1}};
+  const auto                          map =
       assembly::makeAssemblyMap(2, 2, res_dofs, state_dofs);
 
   status          *= map.numElems() == 2;
@@ -199,10 +199,10 @@ TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
   const fem::HostGeometry geom = fem::makeGeometry(mesh);
   const auto              map  = assembly::makeAssemblyMap(fem::DofLayout(space));
 
-  HostCsrMatrix    jac(map.pattern());
-  HostVector       res;
-  const HostVector state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  CpuContext       ctx;
+  HostCsrMatrix          jac(map.pattern());
+  HostVector<Real>       res;
+  const HostVector<Real> state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  CpuContext             ctx;
 
   assembly::assemble(AffineElementKernel{},
                      geom,
@@ -229,17 +229,17 @@ TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
 {
   TestStatus status(__func__);
 
-  const fem::Mesh           mesh = fem::Mesh::makeStructuredQuad(2, 1);
-  const fem::HostGeometry   geom = fem::makeGeometry(mesh);
-  const Array<Array<Index>> res_dofs{{0, 1}, {1}};
-  const Array<Array<Index>> state_dofs{{0}, {0, 1}};
-  const auto                map =
+  const fem::Mesh                     mesh = fem::Mesh::makeStructuredQuad(2, 1);
+  const fem::HostGeometry             geom = fem::makeGeometry(mesh);
+  const HostVector<HostVector<Index>> res_dofs{{0, 1}, {1}};
+  const HostVector<HostVector<Index>> state_dofs{{0}, {0, 1}};
+  const auto                          map =
       assembly::makeAssemblyMap(2, 2, res_dofs, state_dofs);
 
-  const HostVector state{2.0, 3.0};
-  HostVector       res;
-  HostCsrMatrix    jac(map.pattern());
-  CpuContext       ctx;
+  const HostVector<Real> state{2.0, 3.0};
+  HostVector<Real>       res;
+  HostCsrMatrix          jac(map.pattern());
+  CpuContext             ctx;
   assembly::assemble(RectangularElementKernel{},
                      geom,
                      map,
@@ -263,13 +263,13 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   const auto map = assembly::makeAssemblyMap(
       3,
       3,
-      Array<Array<Index>>{{0, 1}, {1, 2}},
-      Array<Array<Index>>{{0, 1}, {1, 2}});
-  const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  const HostVector nxt{7.0, 8.0, 9.0};
-  HostVector       res;
-  HostCsrMatrix    jac(map.pattern());
-  CpuContext       ctx;
+      HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
+      HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
+  const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector<Real> nxt{7.0, 8.0, 9.0};
+  HostVector<Real>       res;
+  HostCsrMatrix          jac(map.pattern());
+  CpuContext             ctx;
 
   assembly::assemble(TimeElementKernel{},
                      3,
@@ -314,13 +314,13 @@ TestOutcome cpuTimeAssemblySupportsElementRangesAndResidualOnly()
   const auto map = assembly::makeAssemblyMap(
       3,
       3,
-      Array<Array<Index>>{{0, 1}, {1, 2}},
-      Array<Array<Index>>{{0, 1}, {1, 2}});
-  const HostVector hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  const HostVector nxt{7.0, 8.0, 9.0};
-  HostVector       res;
-  HostCsrMatrix    jac(map.pattern());
-  CpuContext       ctx;
+      HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
+      HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
+  const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector<Real> nxt{7.0, 8.0, 9.0};
+  HostVector<Real>       res;
+  HostCsrMatrix          jac(map.pattern());
+  CpuContext             ctx;
 
   assembly::assemble(TimeElementKernel{},
                      3,
@@ -375,14 +375,14 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
   auto                    map  = assembly::makeAssemblyMap(
       4,
       4,
-      Array<Array<Index>>{{0, 1, 2, 3}},
-      Array<Array<Index>>{{0, 1, 2, 3}});
+      HostVector<HostVector<Index>>{{0, 1, 2, 3}},
+      HostVector<HostVector<Index>>{{0, 1, 2, 3}});
   HostCsrMatrix jac(map.pattern());
   auto          moved_map = std::move(map);
 
-  HostVector       res;
-  const HostVector state{1.0, 2.0, 3.0, 4.0};
-  CpuContext       ctx;
+  HostVector<Real>       res;
+  const HostVector<Real> state{1.0, 2.0, 3.0, 4.0};
+  CpuContext             ctx;
   assembly::assemble(AffineElementKernel{},
                      geom,
                      moved_map,
@@ -406,8 +406,8 @@ TestOutcome hostCsrAssemblyUsesAssemblyMapMapping()
   const auto map = assembly::makeAssemblyMap(
       2,
       2,
-      Array<Array<Index>>{{0, 1}, {1}},
-      Array<Array<Index>>{{0}, {0, 1}});
+      HostVector<HostVector<Index>>{{0, 1}, {1}},
+      HostVector<HostVector<Index>>{{0}, {0, 1}});
   HostCsrMatrix mat(map.pattern());
 
   DenseMatrix first(2, 1);
@@ -435,8 +435,8 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   {
     HostCsrPattern invalid(2,
                            2,
-                           HostIndexVector{0, 2, 1},
-                           HostIndexVector{0});
+                           HostVector<Index>{0, 2, 1},
+                           HostVector<Index>{0});
     (void) invalid;
   }
   catch (const std::runtime_error&)
@@ -449,11 +449,11 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   fem::LagrangeQuadQ1 element;
   fem::FESpace        space(&mesh, &element);
   space.setup();
-  const auto    geom = fem::makeGeometry(mesh);
-  const auto    map  = assembly::makeAssemblyMap(fem::DofLayout(space));
-  HostCsrMatrix jac(map.pattern());
-  HostVector    alias_vec{1.0, 2.0, 3.0, 4.0};
-  CpuContext    ctx;
+  const auto       geom = fem::makeGeometry(mesh);
+  const auto       map  = assembly::makeAssemblyMap(fem::DofLayout(space));
+  HostCsrMatrix    jac(map.pattern());
+  HostVector<Real> alias_vec{1.0, 2.0, 3.0, 4.0};
+  CpuContext       ctx;
 
   bool alias_rejected = false;
   try
@@ -472,8 +472,8 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   }
   status *= alias_rejected;
 
-  HostVector distinct_state{1.0, 2.0, 3.0, 4.0};
-  bool       mat_alias_rejected = false;
+  HostVector<Real> distinct_state{1.0, 2.0, 3.0, 4.0};
+  bool             mat_alias_rejected = false;
   try
   {
     assembly::assemble(AffineElementKernel{},

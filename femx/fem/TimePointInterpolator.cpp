@@ -25,8 +25,8 @@ constexpr Real det_tol   = 1.0e-14;
 
 struct ScalarStencil
 {
-  Array<Index> nids;
-  HostVector   wts;
+  HostVector<Index> nids;
+  HostVector<Real>  wts;
 };
 
 bool insideBox(const Element& elem,
@@ -50,7 +50,7 @@ bool insideBox(const Element& elem,
   return true;
 }
 
-bool insideSimplex(const HostVector& wts)
+bool insideSimplex(const HostVector<Real>& wts)
 {
   Real sum = 0.0;
   for (Real wt : wts)
@@ -64,18 +64,18 @@ bool insideSimplex(const HostVector& wts)
   return std::abs(sum - 1.0) <= 10.0 * point_tol;
 }
 
-HostVector shapeWeights(const FiniteElement&   fe,
-                        const QuadraturePoint& qp)
+HostVector<Real> shapeWeights(const FiniteElement&   fe,
+                              const QuadraturePoint& qp)
 {
-  HostVector wts(fe.numDofsPerElement());
-  fe.calcN(qp, HostVectorView(wts.data(), wts.size()));
+  HostVector<Real> wts(fe.numDofsPerElement());
+  fe.calcN(qp, HostVectorView<Real>(wts.data(), wts.size()));
   return wts;
 }
 
 bool triWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                HostVector&          wts)
+                HostVector<Real>&    wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -98,7 +98,7 @@ bool triWeights(const FiniteElement& fe,
 bool tetWeights(const FiniteElement& fe,
                 const Element&       elem,
                 const Point3&        point,
-                HostVector&          wts)
+                HostVector<Real>&    wts)
 {
   const Point3 a   = elem.node(0);
   const Point3 e1  = difference(elem.node(1), a);
@@ -120,9 +120,9 @@ bool tetWeights(const FiniteElement& fe,
   return insideSimplex(wts);
 }
 
-Point3 mappedPoint(const Element&    elem,
-                   const HostVector& wts,
-                   Index             dim)
+Point3 mappedPoint(const Element&          elem,
+                   const HostVector<Real>& wts,
+                   Index                   dim)
 {
   Point3 mapped{0.0, 0.0, 0.0};
   for (Index in = 0; in < elem.numNodes(); ++in)
@@ -142,12 +142,12 @@ bool quadSolveStep(const Element&       elem,
                    const Point3&        point,
                    Real&                dr,
                    Real&                ds,
-                   HostVector&          wts)
+                   HostVector<Real>&    wts)
 {
   const QuadraturePoint qp{{r, s, 0.0}, 0.0};
   wts = shapeWeights(fe, qp);
 
-  HostVector grad(fe.numDofsPerElement() * fe.dim());
+  HostVector<Real> grad(fe.numDofsPerElement() * fe.dim());
   fe.calcdNdr(
       qp,
       HostMatrixView<Real>(
@@ -184,7 +184,7 @@ bool quadSolveStep(const Element&       elem,
 bool quadWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 HostVector&          wts)
+                 HostVector<Real>&    wts)
 {
   Real r = 0.0;
   Real s = 0.0;
@@ -221,7 +221,7 @@ bool quadWeights(const FiniteElement& fe,
 bool elemWeights(const FiniteElement& fe,
                  const Element&       elem,
                  const Point3&        point,
-                 HostVector&          wts)
+                 HostVector<Real>&    wts)
 {
   switch (fe.referenceElement())
   {
@@ -261,7 +261,7 @@ bool tryFindScalarStencil(const FESpace& space,
       continue;
     }
 
-    HostVector wts;
+    HostVector<Real> wts;
     if (elemWeights(fe, elem, point, wts))
     {
       out = ScalarStencil{elem.nodeIds(), wts};
@@ -300,10 +300,10 @@ Index DeviceTimePointInterpolator::numObservations() const
   return data_.numObservations();
 }
 
-void DeviceTimePointInterpolator::observe(Index                 level,
-                                          DeviceConstVectorView state,
-                                          DeviceVectorView      out,
-                                          CudaContext&          ctx) const
+void DeviceTimePointInterpolator::observe(Index                        level,
+                                          DeviceVectorView<const Real> state,
+                                          DeviceVectorView<Real>       out,
+                                          CudaContext&                 ctx) const
 {
   checkLevel(level);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -311,10 +311,10 @@ void DeviceTimePointInterpolator::observe(Index                 level,
 }
 
 void DeviceTimePointInterpolator::addStateJacT(
-    Index                 level,
-    DeviceConstVectorView dir,
-    DeviceVectorView      out,
-    CudaContext&          ctx) const
+    Index                        level,
+    DeviceVectorView<const Real> dir,
+    DeviceVectorView<Real>       out,
+    CudaContext&                 ctx) const
 {
   checkLevel(level);
   linalg::CudaMatrixHandler mat_handler(ctx);
@@ -330,8 +330,8 @@ void DeviceTimePointInterpolator::checkLevel(Index level) const
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
                                              const MixedFESpace& space,
                                              Index               fid,
-                                             Array<Point3>       pts,
-                                             Array<Index>        comps,
+                                             HostVector<Point3>  pts,
+                                             HostVector<Index>   comps,
                                              Index               num_prm)
   : num_steps_(num_steps),
     num_prm_(num_prm),
@@ -387,10 +387,10 @@ TimePointInterpolator::copyToDevice(CudaContext& ctx) const
   return out;
 }
 
-void TimePointInterpolator::observe(Index             level,
-                                    const HostVector& state,
-                                    const HostVector& prm,
-                                    HostVector&       out) const
+void TimePointInterpolator::observe(Index                   level,
+                                    const HostVector<Real>& state,
+                                    const HostVector<Real>& prm,
+                                    HostVector<Real>&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -403,11 +403,11 @@ void TimePointInterpolator::observe(Index             level,
   mat_handler.matvec(data_.matrix(), state.view(), out.view());
 }
 
-void TimePointInterpolator::applyStateJac(Index             level,
-                                          const HostVector& state,
-                                          const HostVector& prm,
-                                          const HostVector& dir,
-                                          HostVector&       out) const
+void TimePointInterpolator::applyStateJac(Index                   level,
+                                          const HostVector<Real>& state,
+                                          const HostVector<Real>& prm,
+                                          const HostVector<Real>& dir,
+                                          HostVector<Real>&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -423,11 +423,11 @@ void TimePointInterpolator::applyStateJac(Index             level,
   mat_handler.matvec(data_.matrix(), dir.view(), out.view());
 }
 
-void TimePointInterpolator::applyStateJacT(Index             level,
-                                           const HostVector& state,
-                                           const HostVector& prm,
-                                           const HostVector& dir,
-                                           HostVector&       out) const
+void TimePointInterpolator::applyStateJacT(Index                   level,
+                                           const HostVector<Real>& state,
+                                           const HostVector<Real>& prm,
+                                           const HostVector<Real>& dir,
+                                           HostVector<Real>&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -441,11 +441,11 @@ void TimePointInterpolator::applyStateJacT(Index             level,
   mat_handler.matvecT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }
 
-void TimePointInterpolator::applyParamJac(Index             level,
-                                          const HostVector& state,
-                                          const HostVector& prm,
-                                          const HostVector& dir,
-                                          HostVector&       out) const
+void TimePointInterpolator::applyParamJac(Index                   level,
+                                          const HostVector<Real>& state,
+                                          const HostVector<Real>& prm,
+                                          const HostVector<Real>& dir,
+                                          HostVector<Real>&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -457,11 +457,11 @@ void TimePointInterpolator::applyParamJac(Index             level,
   vec_handler.resizeOrZero(out, numObservations());
 }
 
-void TimePointInterpolator::applyParamJacT(Index             level,
-                                           const HostVector& state,
-                                           const HostVector& prm,
-                                           const HostVector& dir,
-                                           HostVector&       out) const
+void TimePointInterpolator::applyParamJacT(Index                   level,
+                                           const HostVector<Real>& state,
+                                           const HostVector<Real>& prm,
+                                           const HostVector<Real>& dir,
+                                           HostVector<Real>&       out) const
 {
   checkLevel(level);
   checkInputs(state, prm);
@@ -478,12 +478,12 @@ const HostPointInterpolatorData& TimePointInterpolator::data() const noexcept
   return data_;
 }
 
-const Array<Point3>& TimePointInterpolator::pts() const
+const HostVector<Point3>& TimePointInterpolator::pts() const
 {
   return pts_;
 }
 
-const Array<Index>& TimePointInterpolator::comps() const
+const HostVector<Index>& TimePointInterpolator::comps() const
 {
   return comps_;
 }
@@ -497,12 +497,12 @@ bool TimePointInterpolator::containsPoint(const MixedFESpace& space,
   return tryFindScalarStencil(field.space(), point, stencil);
 }
 
-Array<Point3> TimePointInterpolator::filterPointsInside(
-    const MixedFESpace&  space,
-    Index                fid,
-    const Array<Point3>& pts)
+HostVector<Point3> TimePointInterpolator::filterPointsInside(
+    const MixedFESpace&       space,
+    Index                     fid,
+    const HostVector<Point3>& pts)
 {
-  Array<Point3> filtered;
+  HostVector<Point3> filtered;
   filtered.reserve(pts.size());
   for (const Point3& point : pts)
   {
@@ -521,23 +521,23 @@ void TimePointInterpolator::checkLevel(Index level) const
 }
 
 void TimePointInterpolator::checkInputs(
-    const HostVector& state,
-    const HostVector& prm) const
+    const HostVector<Real>& state,
+    const HostVector<Real>& prm) const
 {
   require(state.size() == numStates() && prm.size() == numParams(),
           "TimePointInterpolator input size mismatch");
 }
 
 HostPointInterpolatorData TimePointInterpolator::buildData(
-    const MixedFieldView& field,
-    Index                 num_states,
-    const Array<Point3>&  pts,
-    const Array<Index>&   comps)
+    const MixedFieldView&     field,
+    Index                     num_states,
+    const HostVector<Point3>& pts,
+    const HostVector<Index>&  comps)
 {
-  const Index     num_obs = pts.size() * comps.size();
-  HostIndexVector offsets;
-  HostIndexVector dofs;
-  HostVector      wts;
+  const Index       num_obs = pts.size() * comps.size();
+  HostVector<Index> offsets;
+  HostVector<Index> dofs;
+  HostVector<Real>  wts;
   offsets.reserve(num_obs + 1);
   dofs.reserve(num_obs * field.numShapesPerElem());
   wts.reserve(num_obs * field.numShapesPerElem());

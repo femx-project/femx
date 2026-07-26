@@ -51,8 +51,8 @@ public:
     : dims_{num_steps, 1, 1, 1, 1},
       pattern_(1,
                1,
-               HostIndexVector{0, 1},
-               HostIndexVector{0})
+               HostVector<Index>{0, 1},
+               HostVector<Index>{0})
   {
   }
 
@@ -72,14 +72,14 @@ public:
   }
 
   void initialState(ConstView,
-                    HostVector& out,
+                    HostVector<Real>& out,
                     Ctx&) const override
   {
     out.assign(1, 0.0);
   }
 
   void assembleNext(const StepCtx&         time,
-                    HostVector&            out,
+                    HostVector<Real>&      out,
                     linalg::PETScOperator& jac,
                     Ctx&) const override
   {
@@ -95,7 +95,7 @@ public:
   void applyJacT(const StepCtx&,
                  state::VariableBlock wrt,
                  ConstView            adj,
-                 HostVector&          out,
+                 HostVector<Real>&    out,
                  Ctx&) const override
   {
     require(!wrt.isNextState(),
@@ -132,7 +132,7 @@ public:
   }
 
   Real value(const state::TimeTrajectory& tr,
-             const HostVector&) const override
+             const HostVector<Real>&) const override
   {
     const Real diff = tr.level(num_steps_)[0] - target_;
     return 0.5 * diff * diff;
@@ -140,15 +140,15 @@ public:
 
   void stateGrad(Index                        level,
                  const state::TimeTrajectory& tr,
-                 const HostVector&,
-                 HostVector& out) const override
+                 const HostVector<Real>&,
+                 HostVector<Real>& out) const override
   {
     out.assign(1, level == num_steps_ ? tr.level(level)[0] - target_ : 0.0);
   }
 
   void paramGrad(const state::TimeTrajectory&,
-                 const HostVector&,
-                 HostVector& out) const override
+                 const HostVector<Real>&,
+                 HostVector<Real>& out) const override
   {
     out.assign(1, 0.0);
   }
@@ -168,9 +168,9 @@ TestOutcome petscBackendSolvesForwardAndTranspose()
     mat.resize(3, 3);
     solver::fillTestMat(mat);
 
-    const HostVector expected = solver::expectedSolution();
-    HostVector       rhs;
-    HostVector       rhs_t;
+    const HostVector<Real> expected = solver::expectedSolution();
+    HostVector<Real>       rhs;
+    HostVector<Real>       rhs_t;
     mat.apply(expected.view(), rhs);
     mat.applyT(expected.view(), rhs_t);
 
@@ -178,7 +178,7 @@ TestOutcome petscBackendSolvesForwardAndTranspose()
     linalg::PetscContext    ctx{PETSC_COMM_SELF};
     configureKsp(lin_solver);
 
-    HostVector actual;
+    HostVector<Real> actual;
     lin_solver.solve(mat, rhs, actual, ctx);
     status *= solver::vecNear(actual, expected, 1.0e-8);
 
@@ -216,16 +216,16 @@ TestOutcome petscBackendRunsSharedTimeAdjoint()
     inverse::TimeReducedFunctional<linalg::PetscBackend> reduced(
         integ, adj_jac, adj_solver, obj);
 
-    const HostVector prm{0.25};
-    HostVector       grad(1);
-    const Real       val  = reduced.valueGrad(prm.view(), grad.view());
-    status               *= std::abs(val - 0.125) < 1.0e-12;
-    status               *= std::abs(grad[0] + 1.0) < 1.0e-10;
+    const HostVector<Real> prm{0.25};
+    HostVector<Real>       grad(1);
+    const Real             val  = reduced.valueGrad(prm.view(), grad.view());
+    status                     *= std::abs(val - 0.125) < 1.0e-12;
+    status                     *= std::abs(grad[0] + 1.0) < 1.0e-10;
 
-    constexpr Real   eps = 1.0e-6;
-    const HostVector plus{prm[0] + eps};
-    const HostVector minus{prm[0] - eps};
-    const Real       fd = (reduced.value(plus.view())
+    constexpr Real         eps = 1.0e-6;
+    const HostVector<Real> plus{prm[0] + eps};
+    const HostVector<Real> minus{prm[0] - eps};
+    const Real             fd = (reduced.value(plus.view())
                      - reduced.value(minus.view()))
                     / (2.0 * eps);
     status *= std::abs(grad[0] - fd) < 1.0e-8;
@@ -260,17 +260,17 @@ TestOutcome petscBackendRunsSharedStationaryAdjoint()
     inverse::ReducedFunctional<linalg::PetscBackend> reduced(
         state_solver, adj_jac, adj_solver, obj);
 
-    const HostVector prm{0.6};
-    HostVector       grad;
-    const Real       val  = reduced.valueGrad(prm, grad);
-    status               *= std::abs(val - 0.29) < 1.0e-12;
-    status               *= grad.size() == 1;
-    status               *= std::abs(grad[0] + 0.2) < 1.0e-10;
+    const HostVector<Real> prm{0.6};
+    HostVector<Real>       grad;
+    const Real             val  = reduced.valueGrad(prm, grad);
+    status                     *= std::abs(val - 0.29) < 1.0e-12;
+    status                     *= grad.size() == 1;
+    status                     *= std::abs(grad[0] + 0.2) < 1.0e-10;
 
-    constexpr Real   eps = 1.0e-6;
-    const HostVector plus{prm[0] + eps};
-    const HostVector minus{prm[0] - eps};
-    const Real       fd =
+    constexpr Real         eps = 1.0e-6;
+    const HostVector<Real> plus{prm[0] + eps};
+    const HostVector<Real> minus{prm[0] - eps};
+    const Real             fd =
         (reduced.value(plus) - reduced.value(minus)) / (2.0 * eps);
     status *= std::abs(grad[0] - fd) < 1.0e-8;
   }

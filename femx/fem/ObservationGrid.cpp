@@ -36,14 +36,14 @@ Real coordFromBounds(Real  lower,
 
 } // namespace
 
-Array<Point3> observationGridPoints(
+HostVector<Point3> observationGridPoints(
     const Point3&               lower,
     const Point3&               upper,
     const std::array<Index, 3>& counts)
 {
   checkCounts(counts);
 
-  Array<Point3> pts;
+  HostVector<Point3> pts;
   pts.reserve(counts[0] * counts[1] * counts[2]);
 
   for (Index k = 0; k < counts[2]; ++k)
@@ -62,14 +62,14 @@ Array<Point3> observationGridPoints(
   return pts;
 }
 
-Array<Point3> observationGridPoints(
+HostVector<Point3> observationGridPoints(
     const Point3&               origin,
     const std::array<Index, 3>& counts,
     const Point3&               spacing)
 {
   checkCounts(counts);
 
-  Array<Point3> pts;
+  HostVector<Point3> pts;
   pts.reserve(counts[0] * counts[1] * counts[2]);
 
   for (Index k = 0; k < counts[2]; ++k)

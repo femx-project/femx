@@ -136,8 +136,8 @@ __global__ void axpbyKernel(Index       size,
 }
 } // namespace
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
-                                         DeviceVectorView      dst) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+                                         DeviceVectorView<Real>       dst) const
 {
   require(src.isValid(), "Device copy has an invalid source view");
   require(dst.isValid(), "Device copy has an invalid destination view");
@@ -156,15 +156,15 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
              ctx_.stream());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
-                                         DeviceVector&         dst) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+                                         DeviceVector<Real>&          dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
-                                         DeviceVectorView    dst) const
+void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real> src,
+                                         DeviceVectorView<Real>     dst) const
 {
   require(src.isValid(), "Host-to-Device copy has an invalid source view");
   require(dst.isValid(), "Host-to-Device copy has an invalid destination view");
@@ -180,15 +180,15 @@ void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
   }
 }
 
-void VectorHandler<CudaCsrBackend>::copy(HostConstVectorView src,
-                                         DeviceVector&       dst) const
+void VectorHandler<CudaCsrBackend>::copy(HostVectorView<const Real> src,
+                                         DeviceVector<Real>&        dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
-                                         HostVectorView        dst) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+                                         HostVectorView<Real>         dst) const
 {
   require(src.isValid(), "Device-to-Host copy has an invalid source view");
   require(dst.isValid(), "Device-to-Host copy has an invalid destination view");
@@ -204,14 +204,14 @@ void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
   }
 }
 
-void VectorHandler<CudaCsrBackend>::copy(DeviceConstVectorView src,
-                                         HostVector&           dst) const
+void VectorHandler<CudaCsrBackend>::copy(DeviceVectorView<const Real> src,
+                                         HostVector<Real>&            dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
-void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView vals) const
+void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView<Real> vals) const
 {
   require(vals.isValid(), "zero has an invalid view");
   if (!vals.empty())
@@ -222,10 +222,10 @@ void VectorHandler<CudaCsrBackend>::zero(DeviceVectorView vals) const
   }
 }
 
-void VectorHandler<CudaCsrBackend>::axpby(Real                  a,
-                                          DeviceConstVectorView x,
-                                          Real                  b,
-                                          DeviceVectorView      y) const
+void VectorHandler<CudaCsrBackend>::axpby(Real                         a,
+                                          DeviceVectorView<const Real> x,
+                                          Real                         b,
+                                          DeviceVectorView<Real>       y) const
 {
   require(x.isValid(), "axpby has an invalid input view");
   require(y.isValid(), "axpby has an invalid output view");
@@ -244,9 +244,9 @@ void VectorHandler<CudaCsrBackend>::axpby(Real                  a,
   cuda::checkLastError();
 }
 
-void VectorHandler<CudaCsrBackend>::gather(DeviceConstVectorView src,
-                                           DeviceConstIndexView  indices,
-                                           DeviceVectorView      dst) const
+void VectorHandler<CudaCsrBackend>::gather(DeviceVectorView<const Real>  src,
+                                           DeviceVectorView<const Index> indices,
+                                           DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "gather has an invalid source view");
   require(indices.isValid(), "gather has an invalid index view");
@@ -269,9 +269,9 @@ void VectorHandler<CudaCsrBackend>::gather(DeviceConstVectorView src,
                 "cusparseGather failed");
 }
 
-void VectorHandler<CudaCsrBackend>::scatter(DeviceConstVectorView src,
-                                            DeviceConstIndexView  indices,
-                                            DeviceVectorView      dst) const
+void VectorHandler<CudaCsrBackend>::scatter(DeviceVectorView<const Real>  src,
+                                            DeviceVectorView<const Index> indices,
+                                            DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "scatter has an invalid source view");
   require(indices.isValid(), "scatter has an invalid index view");
@@ -294,9 +294,9 @@ void VectorHandler<CudaCsrBackend>::scatter(DeviceConstVectorView src,
                 "cusparseScatter failed");
 }
 
-void VectorHandler<CudaCsrBackend>::dot(DeviceConstVectorView x,
-                                        DeviceConstVectorView y,
-                                        DeviceVectorView      out) const
+void VectorHandler<CudaCsrBackend>::dot(DeviceVectorView<const Real> x,
+                                        DeviceVectorView<const Real> y,
+                                        DeviceVectorView<Real>       out) const
 {
   require(x.isValid(), "dot has an invalid first input view");
   require(y.isValid(), "dot has an invalid second input view");

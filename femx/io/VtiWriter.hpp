@@ -24,14 +24,14 @@ public:
 
   struct ElemField
   {
-    std::string       name;          ///< VTK field name.
-    Index             num_comp = 1;  ///< Number of components per cell.
-    const HostVector* vals{nullptr}; ///< Field values.
+    std::string             name;          ///< VTK field name.
+    Index                   num_comp = 1;  ///< Number of components per cell.
+    const HostVector<Real>* vals{nullptr}; ///< Field values.
   };
 
-  void writeElemData(const std::string&      fname,
-                     const Image&            image,
-                     const Array<ElemField>& fields) const;
+  void writeElemData(const std::string&           fname,
+                     const Image&                 image,
+                     const HostVector<ElemField>& fields) const;
 };
 
 } // namespace io

@@ -70,10 +70,10 @@ void writeLine(const std::string& line,
 }
 
 #ifndef FEMX_HAS_HDF5
-void packVelocity(const HostVector& ux,
-                  const HostVector& uy,
-                  const HostVector& uz,
-                  HostVector&       velocity)
+void packVelocity(const HostVector<Real>& ux,
+                  const HostVector<Real>& uy,
+                  const HostVector<Real>& uz,
+                  HostVector<Real>&       velocity)
 {
   const Index num_nodes = ux.size();
   if (uy.size() != num_nodes
@@ -120,11 +120,11 @@ struct Monitor::FieldOutput
   TimeSeriesDataOut vel_out;
   TimeSeriesDataOut pre_out;
   VtuWriter         vtu_out;
-  HostVector        velocity;
-  HostVector        ux;
-  HostVector        uy;
-  HostVector        uz;
-  HostVector        p;
+  HostVector<Real>  velocity;
+  HostVector<Real>  ux;
+  HostVector<Real>  uy;
+  HostVector<Real>  uz;
+  HostVector<Real>  p;
 };
 
 Monitor::Monitor(const fem::MixedFESpace& space,
@@ -184,8 +184,8 @@ void Monitor::start(Index num_steps,
   }
 }
 
-void Monitor::observe(Index             level,
-                      const HostVector& state)
+void Monitor::observe(Index                   level,
+                      const HostVector<Real>& state)
 {
   if (level > 0)
   {
@@ -267,9 +267,9 @@ bool Monitor::shouldWriteDetailedLog(Index step,
   return true;
 }
 
-void Monitor::writeFieldOutput(Index             level,
-                               const HostVector& state,
-                               Real              time)
+void Monitor::writeFieldOutput(Index                   level,
+                               const HostVector<Real>& state,
+                               Real                    time)
 {
   if (field_out_ == nullptr)
   {
@@ -277,7 +277,7 @@ void Monitor::writeFieldOutput(Index             level,
   }
 
   model::ns::splitStateFields(
-      HostConstVectorView(state.data(), state.size()),
+      HostVectorView<const Real>(state.data(), state.size()),
       *space_,
       field_out_->ux,
       field_out_->uy,
@@ -306,7 +306,7 @@ void Monitor::writeFieldOutput(Index             level,
   field_out_->vtu_out.writePointData(
       stepVtuFile(field_dir_, level),
       space_->mesh(),
-      Array<VtuWriter::PointField>{
+      HostVector<VtuWriter::PointField>{
           {"velocity", 3, &field_out_->velocity},
           {"pressure", 1, &field_out_->p}});
 #endif
@@ -345,8 +345,8 @@ void Monitor::writeDetailedStepLog(Index step,
 }
 
 Real velocityRelativeChange(const fem::MixedFESpace& space,
-                            const HostVector&        prev,
-                            const HostVector&        curr)
+                            const HostVector<Real>&  prev,
+                            const HostVector<Real>&  curr)
 {
   if (prev.size() != curr.size() || prev.size() != space.numDofs())
   {
@@ -382,7 +382,7 @@ Real velocityRelativeChange(const fem::MixedFESpace& space,
 }
 
 Real maxVelocityCfl(const fem::MixedFESpace& space,
-                    const HostVector&        state,
+                    const HostVector<Real>&  state,
                     Real                     dt)
 {
   if (state.size() != space.numDofs())

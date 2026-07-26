@@ -42,16 +42,16 @@ public:
   virtual femx::Index numParams() const noexcept = 0;
 
   virtual femx::Real value(
-      femx::HostConstVectorView          prm,
-      femx::inverse::TimeReducedProgress progress = {}) = 0;
+      femx::HostVectorView<const femx::Real> prm,
+      femx::inverse::TimeReducedProgress     progress = {}) = 0;
   virtual void grad(
-      femx::HostConstVectorView          prm,
-      femx::HostVectorView               out,
-      femx::inverse::TimeReducedProgress progress = {}) = 0;
+      femx::HostVectorView<const femx::Real> prm,
+      femx::HostVectorView<femx::Real>       out,
+      femx::inverse::TimeReducedProgress     progress = {}) = 0;
   virtual femx::Real valueGrad(
-      femx::HostConstVectorView          prm,
-      femx::HostVectorView               out,
-      femx::inverse::TimeReducedProgress progress = {}) = 0;
+      femx::HostVectorView<const femx::Real> prm,
+      femx::HostVectorView<femx::Real>       out,
+      femx::inverse::TimeReducedProgress     progress = {}) = 0;
 
   virtual void        resetTiming() noexcept           = 0;
   virtual femx::Real  assemblySeconds() const noexcept = 0;
