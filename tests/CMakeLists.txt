@@ -12,7 +12,8 @@ add_test(NAME HostAssemblyTests COMMAND runHostAssemblyTests)
 add_executable(
   runPoissonAssemblyTests
   unit/examples/runPoissonAssemblyTests.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/../examples/poisson/PoissonForward.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../examples/poisson/PoissonProblem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../examples/poisson/PoissonResidual.cpp)
 target_include_directories(
   runPoissonAssemblyTests
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -149,15 +150,15 @@ target_include_directories(runNsModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runNsModelTests PRIVATE femx::femx)
 add_test(NAME NsModelTests COMMAND runNsModelTests)
 
-if(TARGET femx_ns_forward_support)
-  add_executable(runNsForwardConfigTests
-                 unit/apps/ns-forward/runConfigTests.cpp)
-  target_include_directories(runNsForwardConfigTests
+if(TARGET femx_navier_support)
+  add_executable(runNavierConfigTests
+                 unit/apps/navier/runConfigTests.cpp)
+  target_include_directories(runNavierConfigTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(
-    runNsForwardConfigTests
+    runNavierConfigTests
     PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  target_link_libraries(runNsForwardConfigTests PRIVATE femx::apps::ns_forward)
-  add_test(NAME NsForwardConfigTests COMMAND runNsForwardConfigTests)
-  set_tests_properties(NsForwardConfigTests PROPERTIES LABELS "ns;app;focused")
+  target_link_libraries(runNavierConfigTests PRIVATE femx::apps::navier)
+  add_test(NAME NavierConfigTests COMMAND runNavierConfigTests)
+  set_tests_properties(NavierConfigTests PROPERTIES LABELS "navier;app;focused")
 endif()

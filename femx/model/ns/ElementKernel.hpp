@@ -4,7 +4,7 @@
 
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/fem/ElementQuadratureData.hpp>
+#include <femx/fem/ElementQuadData.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 
@@ -61,7 +61,7 @@ FEMX_HOST_DEVICE inline Index pdof(Index in,
 
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real gradDot(
-    const fem::ElementQuadratureDataView<Space>& data,
+    const fem::ElementQuadDataView<Space>& data,
     Index                                        ie,
     Index                                        iq,
     Index                                        i,
@@ -77,7 +77,7 @@ FEMX_HOST_DEVICE Real gradDot(
 
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real advDeriv(
-    const fem::ElementQuadratureDataView<Space>& data,
+    const fem::ElementQuadDataView<Space>& data,
     const QuadraturePoint&                       qp,
     Index                                        ie,
     Index                                        iq,
@@ -93,7 +93,7 @@ FEMX_HOST_DEVICE Real advDeriv(
 
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real elemLength(
-    const fem::ElementQuadratureDataView<Space>& data,
+    const fem::ElementQuadDataView<Space>& data,
     const QuadraturePoint&                       qp,
     Index                                        ie,
     Index                                        iq)
@@ -137,7 +137,7 @@ FEMX_HOST_DEVICE Real elemLength(
 
 template <MemorySpace Space>
 FEMX_HOST_DEVICE void evalQp(
-    const fem::ElementQuadratureDataView<Space>& data,
+    const fem::ElementQuadDataView<Space>& data,
     const assembly::TimeElementView<Space>&      e,
     Index                                        iq,
     FluidProperties                              fluid,
@@ -212,7 +212,7 @@ public:
   FEMX_HOST_DEVICE ElementKernel() = default;
 
   FEMX_HOST_DEVICE ElementKernel(
-      fem::ElementQuadratureDataView<Space> data,
+      fem::ElementQuadDataView<Space> data,
       FluidProperties                       fluid,
       Real                                  dt)
     : data_(data), fluid_(fluid), dt_(dt)
@@ -246,7 +246,7 @@ public:
   }
 
   /** @brief Return the element quadrature data used by this operator. */
-  FEMX_HOST_DEVICE fem::ElementQuadratureDataView<Space> data() const
+  FEMX_HOST_DEVICE fem::ElementQuadDataView<Space> data() const
   {
     return data_;
   }
@@ -387,7 +387,7 @@ private:
     return rhs;
   }
 
-  fem::ElementQuadratureDataView<Space> data_;
+  fem::ElementQuadDataView<Space> data_;
   FluidProperties                       fluid_;
   Real                                  dt_{0.0};
 };
@@ -417,7 +417,7 @@ FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
                                  const Real* nxt,
                                  const Real* adj)
 {
-  const fem::ElementQuadratureDataView<Space> data{
+  const fem::ElementQuadDataView<Space> data{
       num_elems,
       num_qpts,
       num_nodes,
@@ -465,7 +465,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
   static_assert(NumQpts > 0 && NumNodes > 0 && Dim > 0,
                 "Fixed Navier dimensions must be positive");
 
-  const fem::ElementQuadratureDataView<Space> data{
+  const fem::ElementQuadDataView<Space> data{
       num_elems,
       NumQpts,
       NumNodes,

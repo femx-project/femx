@@ -1,1 +1,1 @@
-add_subdirectory(ns-forward)
+add_subdirectory(navier)

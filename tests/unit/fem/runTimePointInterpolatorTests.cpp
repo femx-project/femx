@@ -134,27 +134,27 @@ TestOutcome cudaObserveAndTransposeMatchHost()
 
   linalg::CudaContext         ctx;
   auto&                       vec_handler = ctx.vectors();
-  DeviceTimePointInterpolator dev_op;
-  DeviceVector<Real>          dev_state;
-  DeviceVector<Real>          dev_dir;
-  DeviceVector<Real>          dev_obs(op.numObservations());
-  DeviceVector<Real>          dev_tr(op.numStates());
+  DeviceTimePointInterpolator d_op;
+  DeviceVector<Real>          d_state;
+  DeviceVector<Real>          d_dir;
+  DeviceVector<Real>          d_obs(op.numObservations());
+  DeviceVector<Real>          d_tr(op.numStates());
 
-  fem::copy(op, dev_op, ctx);
-  vec_handler.copy(state, dev_state);
-  vec_handler.copy(dir, dev_dir);
+  fem::copy(op, d_op, ctx);
+  vec_handler.copy(state, d_state);
+  vec_handler.copy(dir, d_dir);
 
-  const inverse::DeviceTimeObservationOperator& iface   = dev_op;
-  const Real*                                   obs_ptr = dev_obs.data();
-  const Real*                                   tr_ptr  = dev_tr.data();
-  iface.observe(1, dev_state.view(), dev_obs.view(), ctx);
-  vec_handler.zero(dev_tr.view());
-  iface.addStateJacT(1, dev_dir.view(), dev_tr.view(), ctx);
+  const inverse::DeviceTimeObservationOperator& iface   = d_op;
+  const Real*                                   obs_ptr = d_obs.data();
+  const Real*                                   tr_ptr  = d_tr.data();
+  iface.observe(1, d_state.view(), d_obs.view(), ctx);
+  vec_handler.zero(d_tr.view());
+  iface.addStateJacT(1, d_dir.view(), d_tr.view(), ctx);
 
   HostVector<Real> got_obs;
   HostVector<Real> got_tr;
-  vec_handler.copy(dev_obs, got_obs);
-  vec_handler.copy(dev_tr, got_tr);
+  vec_handler.copy(d_obs, got_obs);
+  vec_handler.copy(d_tr, got_tr);
   ctx.sync();
 
   status *= near(got_obs, expected_obs);
@@ -163,8 +163,8 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   status *= iface.numSteps() == op.numSteps();
   status *= iface.numStates() == op.numStates();
   status *= iface.numObservations() == op.numObservations();
-  status *= dev_obs.data() == obs_ptr;
-  status *= dev_tr.data() == tr_ptr;
+  status *= d_obs.data() == obs_ptr;
+  status *= d_tr.data() == tr_ptr;
   return status.report();
 }
 #endif

@@ -145,7 +145,7 @@ AxialVelocityProfile poiseuilleProfile(const Point3& cen,
 }
 
 Real profileFactor(const AxialVelocityProfile& prof,
-                   const Point3&               point)
+                   const Point3&               p)
 {
   if (prof.type == "uniform")
   {
@@ -161,22 +161,22 @@ Real profileFactor(const AxialVelocityProfile& prof,
 
   const Real radius2 = prof.rad * prof.rad;
   return std::max<Real>(
-      0.0, 1.0 - radialSq(point, prof.cen, prof.nrm) / radius2);
+      0.0, 1.0 - radialSq(p, prof.cen, prof.nrm) / radius2);
 }
 
 Real velocityComponent(const AxialVelocityProfile& prof,
-                       const Point3&               point,
+                       const Point3&               p,
                        Real                        peak_speed,
                        Index                       comp)
 {
   requireValidComponent(comp);
   const Point3 nrm = unit(prof.nrm);
-  return peak_speed * profileFactor(prof, point) * nrm[comp];
+  return peak_speed * profileFactor(prof, p) * nrm[comp];
 }
 
 Real peakSpeed(const std::string& qty,
                const std::string& profile_type,
-               Real               value,
+               Real               val,
                Real               area,
                Real               mean_to_peak)
 {
@@ -188,12 +188,12 @@ Real peakSpeed(const std::string& qty,
       {
         throw std::runtime_error("Flowrate velocity area must be positive");
       }
-      return value / area;
+      return val / area;
     }
     if (qty == "mean_velocity" || qty == "bulk_speed"
         || qty == "max_velocity")
     {
-      return value;
+      return val;
     }
   }
   else if (profile_type == "poiseuille")
@@ -204,15 +204,15 @@ Real peakSpeed(const std::string& qty,
       {
         throw std::runtime_error("Flowrate velocity area must be positive");
       }
-      return mean_to_peak * value / area;
+      return mean_to_peak * val / area;
     }
     if (qty == "mean_velocity" || qty == "bulk_speed")
     {
-      return mean_to_peak * value;
+      return mean_to_peak * val;
     }
     if (qty == "max_velocity")
     {
-      return value;
+      return val;
     }
   }
   else

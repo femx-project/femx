@@ -47,7 +47,7 @@ public:
   void setOperator(const HostCsrMatrix& mat)
   {
     checkHostMat(mat);
-    host_op_ = &mat;
+    h_op_ = &mat;
 
 #if defined(FEMX_HAS_RESOLVE)
     ensureCpu();
@@ -90,15 +90,15 @@ public:
 
   void solve(const HostVector<Real>& rhs, HostVector<Real>& sol)
   {
-    require(host_op_ != nullptr,
+    require(h_op_ != nullptr,
             "ReSolveLinearSolver Host solve called before setOperator");
-    require(rhs.size() == host_op_->rows(),
+    require(rhs.size() == h_op_->rows(),
             "ReSolveLinearSolver Host RHS has incompatible dimensions");
-    checkHostAliases(*host_op_, rhs, sol);
+    checkHostAliases(*h_op_, rhs, sol);
 
     HostContext ctx;
     auto&       vec_handler = ctx.vectors();
-    vec_handler.resizeOrZero(sol, host_op_->cols());
+    vec_handler.resizeOrZero(sol, h_op_->cols());
     if (isZero(rhs))
     {
       return;
@@ -106,7 +106,7 @@ public:
 
 #if defined(FEMX_HAS_RESOLVE)
     solveHostWith(*cpu_solver_,
-                  host_vecs_,
+                  h_vecs_,
                   rhs,
                   sol,
                   "ReSolve Host SystemSolver::solve failed");
@@ -431,7 +431,7 @@ private:
 
     setTrOperator(mat);
     solveHostWith(*tr_solver_,
-                  host_vecs_,
+                  h_vecs_,
                   rhs,
                   sol,
                   "ReSolve transpose SystemSolver::solve failed");
@@ -440,7 +440,7 @@ private:
   void setTrOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    host_jacobian_.transpose(mat, tr_mat_data_);
+    h_jacobian_.transpose(mat, tr_mat_data_);
 
     const bool reuse = tr_mat_ != nullptr
                        && tr_rows_ == mat.cols()
@@ -680,9 +680,9 @@ private:
 #endif
 
   ReSolveOptions       opts_;
-  HostContext          host_matrix_ctx_;
-  HostJacobian         host_jacobian_{host_matrix_ctx_};
-  const HostCsrMatrix* host_op_{nullptr};
+  HostContext          h_matrix_ctx_;
+  HostJacobian         h_jacobian_{h_matrix_ctx_};
+  const HostCsrMatrix* h_op_{nullptr};
   Index                cpu_rows_{0};
   Index                cpu_cols_{0};
   Index                cpu_nnz_{0};
@@ -697,7 +697,7 @@ private:
   std::unique_ptr<ReSolve::matrix::Csr>        cpu_mat_;
   std::unique_ptr<ReSolve::SystemSolver>       tr_solver_;
   std::unique_ptr<ReSolve::matrix::Csr>        tr_mat_;
-  HostVecs                                     host_vecs_;
+  HostVecs                                     h_vecs_;
 #endif
 
 #if defined(FEMX_RESOLVE_USE_CUDA)

@@ -145,16 +145,16 @@ void assembleNext(
     linalg::CudaContext&               ctx)
 {
   checkRange(ie_begin, ie_end, map);
-  assembly::assemble(kernel,
-                     step,
-                     num_hist,
-                     state::VariableBlock::NextState,
-                     map,
-                     hist,
-                     nxt,
-                     res,
-                     jac,
-                     ctx);
+  assembly::assembleResidualAndJacobian(kernel,
+                                        step,
+                                        num_hist,
+                                        state::VariableBlock::NextState,
+                                        map,
+                                        hist,
+                                        nxt,
+                                        res,
+                                        jac,
+                                        ctx);
 }
 
 void applyHistJacT(

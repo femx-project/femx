@@ -99,22 +99,24 @@ void addControlJacT(const fem::DeviceControlMap&          map,
 }
 
 template <class Ctx>
-void replaceResCtx(const HostBoundaryMap&     map,
-                   HostVectorView<const Real> state,
-                   HostVectorView<const Real> vals,
-                   HostVectorView<Real>       res,
-                   Ctx&)
+void applyDirichletConditionsForContext(
+    const HostBoundaryMap&     map,
+    HostVectorView<const Real> state,
+    HostVectorView<const Real> vals,
+    HostVectorView<Real>       res,
+    Ctx&)
 {
-  assembly::replaceRes(map, state, vals, res);
+  assembly::applyDirichletConditions(map, state, vals, res);
 }
 
-void replaceResCtx(const DeviceBoundaryMap&              map,
-                   DeviceVectorView<const Real>          state,
-                   DeviceVectorView<const Real>          vals,
-                   DeviceVectorView<Real>                res,
-                   linalg::Context<MemorySpace::Device>& ctx)
+void applyDirichletConditionsForContext(
+    const DeviceBoundaryMap&              map,
+    DeviceVectorView<const Real>          state,
+    DeviceVectorView<const Real>          vals,
+    DeviceVectorView<Real>                res,
+    linalg::Context<MemorySpace::Device>& ctx)
 {
-  assembly::replaceRes(map, state, vals, res, cudaContext(ctx));
+  assembly::applyDirichletConditions(map, state, vals, res, cudaContext(ctx));
 }
 
 template <class Ctx>
@@ -128,14 +130,6 @@ void zeroBoundaryVals(const DeviceBoundaryMap&              map,
                       linalg::Context<MemorySpace::Device>& ctx)
 {
   assembly::zeroBoundary(map, vals, cudaContext(ctx));
-}
-
-template <MemorySpace Space>
-void replaceJacRows(const BoundaryMap<Space>& boundary,
-                    linalg::Jacobian<Space>&  jac,
-                    Real                      diagonal)
-{
-  jac.replaceRows(boundary.view().constrained_rows, diagonal);
 }
 
 template <MemorySpace Space>
@@ -166,14 +160,16 @@ ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
     const Base&              base,
     fem::HostControlMap      control,
     fem::HostInitialStateMap init)
-  : base_(&base)
+  : base_(base)
 {
   if constexpr (Space == MemorySpace::Host)
   {
     initDims(control, init);
     control_  = std::move(control);
     boundary_ = makeBoundaryMap(boundaryDofs(control_));
+
     setInitialStateMap(std::move(init));
+
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
     boundary_vals_.resize(control_.numBcs());
@@ -186,22 +182,19 @@ ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
 
 template <MemorySpace Space>
 ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
-    std::unique_ptr<Base>    base,
+    const Base&              base,
     fem::HostControlMap      control,
     fem::HostInitialStateMap init,
     Ctx&                     ctx)
-  : owned_base_(std::move(base)), base_(owned_base_.get())
+  : base_(base)
 {
   if constexpr (Space == MemorySpace::Device)
   {
-    require(base_ != nullptr,
-            "ConstrainedTimeResidual requires a base residual");
     initDims(control, init);
 
-    const HostBoundaryMap host_boundary =
-        makeBoundaryMap(boundaryDofs(control));
-    auto& cuda_ctx = cudaContext(ctx);
-    copy(host_boundary, boundary_, cuda_ctx);
+    const HostBoundaryMap h_boundary = makeBoundaryMap(boundaryDofs(control));
+    auto&                 cuda_ctx   = cudaContext(ctx);
+    copy(h_boundary, boundary_, cuda_ctx);
     fem::copy(control, control_, cuda_ctx);
     if (init.numStates() != 0)
     {
@@ -213,7 +206,7 @@ ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
   }
   else
   {
-    require(false, "The owning copy constructor requires Device storage");
+    require(false, "The context constructor requires Device storage");
   }
 }
 
@@ -226,7 +219,7 @@ state::TimeDims ConstrainedTimeResidual<Space>::dims() const
 template <MemorySpace Space>
 const HostCsrPattern& ConstrainedTimeResidual<Space>::hostPattern() const
 {
-  return base_->hostPattern();
+  return base_.hostPattern();
 }
 
 template <MemorySpace Space>
@@ -265,9 +258,10 @@ void ConstrainedTimeResidual<Space>::initialState(ConstView prm,
 {
   require(prm.size() == dims_.num_param,
           "ConstrainedTimeResidual initial-state parameter size mismatch");
+
   if (init_.numStates() == 0)
   {
-    base_->initialState(base_prm_.view(), out, ctx);
+    base_.initialState(base_prm_.view(), out, ctx);
     return;
   }
   if (out.size() != dims_.num_states)
@@ -299,15 +293,15 @@ void ConstrainedTimeResidual<Space>::assembleNext(const StepCtx& time,
                                                   Ctx&           ctx) const
 {
   checkCtx(time);
-  base_->assembleNext(baseCtx(time), res, jac, ctx);
+  base_.assembleNext(baseCtx(time), res, jac, ctx);
   require(res.size() == dims_.num_res,
           "ConstrainedTimeResidual base residual size mismatch");
 
   assembly::controlVals(
       control_, time.step, time.prm, boundary_vals_.view(), ctx);
-  replaceResCtx(
+  applyDirichletConditionsForContext(
       boundary_, time.nxt, boundary_vals_.view(), res.view(), ctx);
-  replaceJacRows(boundary_, jac, 1.0);
+  assembly::applyDirichletConditions(boundary_, jac);
 }
 
 template <MemorySpace Space>
@@ -320,10 +314,12 @@ void ConstrainedTimeResidual<Space>::applyJacT(
 {
   auto& vec_handler = ctx.vectors();
   checkCtx(time);
+
   require(!wrt.isNextState(),
           "Constrained transpose apply supports only history and parameter blocks");
   require(adj.size() == dims_.num_res,
           "ConstrainedTimeResidual adjoint size mismatch");
+
   if (wrt.isParam())
   {
     resizeAndZero<Space>(out, dims_.num_param, ctx);
@@ -333,23 +329,25 @@ void ConstrainedTimeResidual<Space>::applyJacT(
   }
 
   vec_handler.copy(adj, base_adj_.view());
+
   zeroBoundaryVals(boundary_, base_adj_.view(), ctx);
-  base_->applyJacT(baseCtx(time), wrt, base_adj_.view(), out, ctx);
+  base_.applyJacT(baseCtx(time), wrt, base_adj_.view(), out, ctx);
+
   require(out.size() == dims_.num_states,
           "ConstrainedTimeResidual transpose apply size mismatch");
 }
 
 template <MemorySpace Space>
-void ConstrainedTimeResidual<Space>::prepareLinearSolve(
+void ConstrainedTimeResidual<Space>::setup(
     const StepCtx& time,
     Jac&           jac,
     Vec&           rhs,
     Ctx&           ctx) const
 {
   checkCtx(time);
-  base_->prepareLinearSolve(baseCtx(time), jac, rhs, ctx);
-  assembly::controlVals(
-      control_, time.step, time.prm, boundary_vals_.view(), ctx);
+  base_.setup(baseCtx(time), jac, rhs, ctx);
+
+  assembly::controlVals(control_, time.step, time.prm, boundary_vals_.view(), ctx);
   eliminateJacColumns(boundary_, jac, rhs, boundary_vals_);
 }
 
@@ -367,9 +365,7 @@ void ConstrainedTimeResidual<Space>::initDims(
     const fem::HostControlMap&      control,
     const fem::HostInitialStateMap& init)
 {
-  require(base_ != nullptr,
-          "ConstrainedTimeResidual requires a base residual");
-  base_dims_ = base_->dims();
+  base_dims_ = base_.dims();
   dims_      = base_dims_;
   require(base_dims_.num_res == base_dims_.num_states,
           "ConstrainedTimeResidual requires square state residuals");

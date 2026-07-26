@@ -10,11 +10,12 @@ namespace
 
 constexpr int kThreads = 256;
 
-__global__ void replaceResKernel(const Index* rows,
-                                 Index        count,
-                                 const Real*  state,
-                                 const Real*  prescribed_values,
-                                 Real*        residual)
+__global__ void applyDirichletConditionsKernel(
+    const Index* rows,
+    Index        count,
+    const Real*  state,
+    const Real*  prescribed_values,
+    Real*        residual)
 {
   const Index i =
       static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
@@ -44,11 +45,12 @@ cudaStream_t stream(linalg::CudaContext& ctx)
 
 } // namespace
 
-void replaceRes(const DeviceBoundaryMap&     map,
-                DeviceVectorView<const Real> state,
-                DeviceVectorView<const Real> prescribed_values,
-                DeviceVectorView<Real>       residual,
-                linalg::CudaContext&         ctx)
+void applyDirichletConditions(
+    const DeviceBoundaryMap&     map,
+    DeviceVectorView<const Real> state,
+    DeviceVectorView<const Real> prescribed_values,
+    DeviceVectorView<Real>       residual,
+    linalg::CudaContext&         ctx)
 {
   const auto rows = map.view().constrained_rows;
   require(prescribed_values.size() == rows.size(),
@@ -60,14 +62,14 @@ void replaceRes(const DeviceBoundaryMap&     map,
   {
     return;
   }
-  replaceResKernel<<<cuda::numBlocks(rows.size(), kThreads),
-                     kThreads,
-                     0,
-                     stream(ctx)>>>(rows.data(),
-                                    rows.size(),
-                                    state.data(),
-                                    prescribed_values.data(),
-                                    residual.data());
+  applyDirichletConditionsKernel<<<cuda::numBlocks(rows.size(), kThreads),
+                                   kThreads,
+                                   0,
+                                   stream(ctx)>>>(rows.data(),
+                                                  rows.size(),
+                                                  state.data(),
+                                                  prescribed_values.data(),
+                                                  residual.data());
   cuda::checkLastError();
 }
 

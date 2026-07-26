@@ -3,8 +3,10 @@
 #include <stdexcept>
 
 #include "TestHelper.hpp"
+#include <femx/fem/DofMap.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
+#include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/ObservationGrid.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 
@@ -132,6 +134,54 @@ TestOutcome vectorFESpaceDofMap()
   return status.report();
 }
 
+TestOutcome variableElementDofMap()
+{
+  TestStatus status(__func__);
+
+  const DofMap dof_map(5,
+                       HostVector<Index>{0, 2, 5},
+                       HostVector<Index>{0, 2, 1, 3, 4});
+
+  status *= dof_map.numElems() == 2;
+  status *= dof_map.numDofs() == 5;
+  status *= dof_map.numDofsPerElem() == 0;
+  status *= dof_map.numElementDofs(0) == 2;
+  status *= dof_map.numElementDofs(1) == 3;
+  status *= indexValuesEqual(
+      HostVector<Index>(dof_map.elementDofs(0)),
+      std::array<Index, 2>{{0, 2}});
+  status *= indexValuesEqual(
+      HostVector<Index>(dof_map.elementDofs(1)),
+      std::array<Index, 3>{{1, 3, 4}});
+
+  return status.report();
+}
+
+TestOutcome mixedFESpaceDofMap()
+{
+  TestStatus status(__func__);
+
+  const Mesh     mesh = Mesh::makeStructuredQuad(1, 1);
+  LagrangeQuadQ1 element;
+  FESpace        velocity(&mesh, &element, 2);
+  FESpace        pressure(&mesh, &element);
+  MixedFESpace   space;
+  space.addField(velocity);
+  space.addField(pressure);
+  space.setup();
+
+  status *= space.numElems() == 1;
+  status *= space.numDofs() == 12;
+  status *= space.numDofsPerElem() == 12;
+  status *= space.dofMap().numElems() == space.numElems();
+  status *= space.dofMap().numDofs() == space.numDofs();
+  status *= indexValuesEqual(
+      HostVector<Index>(space.dofMap().elementDofs(0)),
+      std::array<Index, 12>{{0, 1, 2, 3, 6, 7, 4, 5, 8, 9, 11, 10}});
+
+  return status.report();
+}
+
 TestOutcome invalidFESpaceInputs()
 {
   TestStatus status(__func__);
@@ -240,6 +290,8 @@ int main(int, char**)
   results += femx::tests::structuredQuadMesh();
   results += femx::tests::scalarFESpaceDofMap();
   results += femx::tests::vectorFESpaceDofMap();
+  results += femx::tests::variableElementDofMap();
+  results += femx::tests::mixedFESpaceDofMap();
   results += femx::tests::invalidFESpaceInputs();
   results += femx::tests::observationGridFromBounds();
   results += femx::tests::observationGridFromSpacing();

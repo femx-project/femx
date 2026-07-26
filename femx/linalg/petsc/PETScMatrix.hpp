@@ -178,8 +178,8 @@ private:
   static void computePrealloc(const HostCsrPattern& pattern,
                               PetscInt              begin,
                               PetscInt              end,
-                              HostVector<PetscInt>& d_nnz,
-                              HostVector<PetscInt>& o_nnz);
+                              HostVector<PetscInt>& diag_nnz,
+                              HostVector<PetscInt>& offdiag_nnz);
 
 private:
   MPI_Comm comm_{PETSC_COMM_SELF}; ///< Communicator used by the matrix.

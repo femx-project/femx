@@ -271,7 +271,7 @@ SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
   const TimeContext<space> time        = timeCtx(step, prm);
   const auto               assm_begin  = detail::TimeClock::now();
 
-  jac.begin(res_.hostPattern());
+  jac.setup(res_.hostPattern());
   res_.assembleNext(time, res_vec_, jac, ctx_);
   require(res_vec_.size() == dims_.num_res, "TimeIntegrator residual size mismatch");
 
@@ -279,18 +279,18 @@ SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
   jac.apply(nxt_.view(), rhs_);
   vec_handler.axpby(-1.0, res_vec_.view(), 1.0, rhs_.view());
 
-  res_.prepareLinearSolve(time, jac, rhs_, ctx_);
+  res_.setup(time, jac, rhs_, ctx_);
   ctx_.sync();
 
   const Real assm_sec = detail::elapsedSec(assm_begin);
 
   const auto solve_begin = detail::TimeClock::now();
   system_.solve(rhs_.view(), sol_);
-  const Real lin_solve_sec = detail::elapsedSec(solve_begin);
+  const Real solve_sec = detail::elapsedSec(solve_begin);
 
   require(sol_.size() == numStates(), "TimeIntegrator solution size mismatch");
   advanceHist();
-  return {assm_sec, lin_solve_sec, 1, 1};
+  return {assm_sec, solve_sec, 1, 1};
 }
 
 template <MemorySpace Space>

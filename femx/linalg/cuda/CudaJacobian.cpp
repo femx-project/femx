@@ -10,13 +10,13 @@ CudaJacobian::CudaJacobian(CudaContext& ctx) noexcept
 {
 }
 
-void CudaJacobian::begin(const HostCsrPattern& pattern)
+void CudaJacobian::setup(const HostCsrPattern& pattern)
 {
   if (matrix_.pattern().layoutId() != pattern.layoutId())
   {
-    DeviceCsrPattern device_pattern;
-    femx::copy(pattern, device_pattern, ctx_);
-    matrix_      = DeviceCsrMatrix(device_pattern);
+    DeviceCsrPattern d_pattern;
+    femx::copy(pattern, d_pattern, ctx_);
+    matrix_      = DeviceCsrMatrix(d_pattern);
     constraints_ = {};
   }
   else

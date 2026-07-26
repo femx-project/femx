@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
@@ -56,7 +57,7 @@ private:
                    BoundaryMap<MemorySpace::Device>&     destination,
                    linalg::CudaContext&                  ctx);
 
-  Vector<Space, Index> constrained_rows_;
+  Vector<Space, Index> constrained_rows_; ///< Constrained row indices.
 };
 
 using HostBoundaryMap   = BoundaryMap<MemorySpace::Host>;
@@ -81,27 +82,62 @@ void copy(const HostBoundaryMap& source,
           linalg::CudaContext&   ctx);
 
 /**
- * @brief Replace constrained residual entries by state minus prescribed value.
+ * @brief Apply Dirichlet conditions to a Host residual.
+ *
+ * @param[in] map - Constrained rows in prescribed-value order.
+ * @param[in] state - Current state.
+ * @param[in] prescribed_values - Values prescribed at the constrained rows.
+ * @param[out] residual - Residual whose constrained entries are replaced.
  */
-void replaceRes(const HostBoundaryMap&     map,
-                HostVectorView<const Real> state,
-                HostVectorView<const Real> prescribed_values,
-                HostVectorView<Real>       residual);
-
-/** @brief Owning-vector convenience overload of replaceRes(). */
-void replaceRes(const HostBoundaryMap&  map,
-                const HostVector<Real>& state,
-                const HostVector<Real>& prescribed_values,
-                HostVector<Real>&       residual);
+void applyDirichletConditions(
+    const HostBoundaryMap&     map,
+    HostVectorView<const Real> state,
+    HostVectorView<const Real> prescribed_values,
+    HostVectorView<Real>       residual);
 
 /**
- * @brief Asynchronously replace constrained Device residual entries.
+ * @brief Apply Dirichlet conditions to an owning Host residual vector.
+ *
+ * @param[in] map - Constrained rows in prescribed-value order.
+ * @param[in] state - Current state.
+ * @param[in] prescribed_values - Values prescribed at the constrained rows.
+ * @param[out] residual - Residual whose constrained entries are replaced.
  */
-void replaceRes(const DeviceBoundaryMap&     map,
-                DeviceVectorView<const Real> state,
-                DeviceVectorView<const Real> prescribed_values,
-                DeviceVectorView<Real>       residual,
-                linalg::CudaContext&         ctx);
+void applyDirichletConditions(
+    const HostBoundaryMap&  map,
+    const HostVector<Real>& state,
+    const HostVector<Real>& prescribed_values,
+    HostVector<Real>&       residual);
+
+/**
+ * @brief Apply Dirichlet conditions to a Device residual.
+ *
+ * @param[in] map - Constrained rows in prescribed-value order.
+ * @param[in] state - Current Device state.
+ * @param[in] prescribed_values - Device values prescribed at constrained rows.
+ * @param[out] residual - Device residual whose constrained entries are replaced.
+ * @param[in,out] ctx - CUDA context used for the asynchronous update.
+ */
+void applyDirichletConditions(
+    const DeviceBoundaryMap&     map,
+    DeviceVectorView<const Real> state,
+    DeviceVectorView<const Real> prescribed_values,
+    DeviceVectorView<Real>       residual,
+    linalg::CudaContext&         ctx);
+
+/**
+ * @brief Apply Dirichlet conditions to a Jacobian.
+ *
+ * @param[in] map - Constrained rows.
+ * @param[in,out] jacobian - Jacobian whose constrained rows become identity rows.
+ */
+template <MemorySpace Space>
+void applyDirichletConditions(
+    const BoundaryMap<Space>& map,
+    linalg::Jacobian<Space>&  jacobian)
+{
+  jacobian.replaceRows(map.view().constrained_rows, 1.0);
+}
 
 /** @brief Set constrained Host vector entries to zero. */
 void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> values);

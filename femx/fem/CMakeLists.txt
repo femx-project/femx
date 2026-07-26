@@ -8,12 +8,10 @@ target_sources(
           BoundarySurface.cpp
           ControlMap.cpp
           DirichletControl.cpp
-          DofLayout.cpp
           DofMap.cpp
-          ElementQuadratureData.cpp
+          ElementQuadData.cpp
           ElementValues.cpp
           FESpace.cpp
-          Geometry.cpp
           GmshReader.cpp
           Mesh.cpp
           MixedFESpace.cpp
@@ -26,15 +24,13 @@ target_sources(
          ControlMap.hpp
          Element.hpp
          DirichletControl.hpp
-         DofLayout.hpp
          MixedFESpace.hpp
          DofMap.hpp
-         ElementQuadratureData.hpp
+         ElementQuadData.hpp
          ElementValues.hpp
          FESpace.hpp
          FiniteElement.hpp
          GaussQuadrature.hpp
-         Geometry.hpp
          GmshReader.hpp
          Mesh.hpp
          ObservationGrid.hpp

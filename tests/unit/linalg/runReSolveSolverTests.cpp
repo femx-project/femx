@@ -112,11 +112,11 @@ TestOutcome resolveZeroRhsReturnsZero()
     HostVector<Real>       sol{1.0, 2.0, 3.0};
     linalg::HostContext    ctx;
 
-    linalg::ReSolveLinearSolver host_solver;
-    host_solver.solve(mat, rhs, sol, ctx);
+    linalg::ReSolveLinearSolver h_solver;
+    h_solver.solve(mat, rhs, sol, ctx);
     status *= solver::vecNear(sol, rhs, 0.0);
     sol     = {1.0, 2.0, 3.0};
-    host_solver.solveT(mat, rhs, sol, ctx);
+    h_solver.solveT(mat, rhs, sol, ctx);
     status *= solver::vecNear(sol, rhs, 0.0);
   }
   catch (const std::exception& e)

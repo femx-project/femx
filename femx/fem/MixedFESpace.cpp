@@ -37,10 +37,10 @@ Index MixedFieldView::numDofsPerElem() const noexcept
   return space_->numDofsPerElem();
 }
 
-Index MixedFieldView::localDof(Index shape_index,
+Index MixedFieldView::localDof(Index shape_idx,
                                Index comp) const noexcept
 {
-  return local_offset_ + space_->localDof(shape_index, comp);
+  return local_offset_ + space_->localDof(shape_idx, comp);
 }
 
 Index MixedFieldView::globalDof(Index scalar_dof,
@@ -63,8 +63,8 @@ void MixedFESpace::setup()
 
   local_offsets_.resize(numFields());
   global_offsets_.resize(numFields());
-  num_dofs_per_elem_ = 0;
-  num_dofs_          = 0;
+  Index num_dofs_per_elem = 0;
+  Index num_dofs          = 0;
 
   const Mesh* mesh = &fields_[0].mesh();
   for (Index fid = 0; fid < numFields(); ++fid)
@@ -76,10 +76,31 @@ void MixedFESpace::setup()
     }
 
     field.setup();
-    local_offsets_[fid]   = num_dofs_per_elem_;
-    global_offsets_[fid]  = num_dofs_;
-    num_dofs_per_elem_   += field.numDofsPerElem();
-    num_dofs_            += field.numDofs();
+    local_offsets_[fid]   = num_dofs_per_elem;
+    global_offsets_[fid]  = num_dofs;
+    num_dofs_per_elem    += field.numDofsPerElem();
+    num_dofs             += field.numDofs();
+  }
+
+  dof_map_.allocate(num_dofs,
+                    fields_[0].numElems(),
+                    num_dofs_per_elem);
+  for (Index ie = 0; ie < dof_map_.numElems(); ++ie)
+  {
+    Index local_offset = 0;
+    for (Index fid = 0; fid < numFields(); ++fid)
+    {
+      const FESpace&              field      = fields_[fid];
+      HostVectorView<const Index> field_dofs = field.dofMap().elementDofs(ie);
+      for (Index il = 0; il < field_dofs.size(); ++il)
+      {
+        dof_map_.setElementDof(
+            ie,
+            local_offset + il,
+            global_offsets_[fid] + field_dofs[il]);
+      }
+      local_offset += field_dofs.size();
+    }
   }
 }
 
@@ -87,7 +108,7 @@ MixedFieldView MixedFESpace::field(Index fid) const
 {
   if (fid < 0 || fid >= fields_.size())
   {
-    throw std::runtime_error("MixedFESpace: field id out of range");
+    throw std::runtime_error("MixedFESpace: field identifier is out of range");
   }
 
   return MixedFieldView(&fields_[fid], local_offsets_[fid], global_offsets_[fid]);
@@ -98,6 +119,11 @@ const Mesh& MixedFESpace::mesh() const noexcept
   return fields_[0].mesh();
 }
 
+const DofMap& MixedFESpace::dofMap() const noexcept
+{
+  return dof_map_;
+}
+
 Index MixedFESpace::numFields() const noexcept
 {
   return fields_.size();
@@ -105,42 +131,28 @@ Index MixedFESpace::numFields() const noexcept
 
 Index MixedFESpace::numElems() const noexcept
 {
-  return fields_[0].numElems();
+  return fields_.empty() ? 0 : fields_[0].numElems();
 }
 
 Index MixedFESpace::numDofs() const noexcept
 {
-  return num_dofs_;
+  return dof_map_.numDofs();
 }
 
 Index MixedFESpace::numDofsPerElem() const noexcept
 {
-  return num_dofs_per_elem_;
+  return dof_map_.numDofsPerElem();
 }
 
 void MixedFESpace::elemDofs(Index              ie,
                             HostVector<Index>& dofs) const
 {
-  dofs.resize(num_dofs_per_elem_);
-
-  Index offset = 0;
-  for (Index fid = 0; fid < numFields(); ++fid)
-  {
-    const FESpace& field      = fields_[fid];
-    const Index*   field_dofs = field.dofMap().elementDofsData(ie);
-    for (Index j = 0; j < field.numDofsPerElem(); ++j)
-    {
-      dofs[offset + j] = global_offsets_[fid] + field_dofs[j];
-    }
-    offset += field.numDofsPerElem();
-  }
+  dofs = dof_map_.elementDofs(ie);
 }
 
 HostVector<Index> MixedFESpace::elemDofs(Index ie) const
 {
-  HostVector<Index> dofs;
-  elemDofs(ie, dofs);
-  return dofs;
+  return HostVector<Index>(dof_map_.elementDofs(ie));
 }
 
 } // namespace fem

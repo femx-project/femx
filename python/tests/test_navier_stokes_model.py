@@ -33,6 +33,17 @@ class NavierStokesModelTest(unittest.TestCase):
         self.assertEqual(dims.num_states, self.model.num_states)
         self.assertEqual(dims.num_param, 0)
 
+    def test_residual_keeps_model_alive(self):
+        residual = femx.NavierStokesModel(
+            MESH_FILE,
+            num_steps=2,
+            dt=0.1,
+        ).residual
+
+        dims = residual.dims()
+        self.assertEqual(dims.num_steps, 2)
+        self.assertGreater(dims.num_states, 0)
+
     def test_velocity_dof_queries(self):
         self.assertEqual(
             self.model.velocity_dofs.size,

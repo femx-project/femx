@@ -216,10 +216,18 @@ public:
                          Vec&           out,
                          Ctx&           ctx) const = 0;
 
-  virtual void prepareLinearSolve(const StepCtx& time,
-                                  Jac&           jac,
-                                  Vec&           rhs,
-                                  Ctx&           ctx) const
+  /**
+   * @brief Set up the Jacobian and right-hand side before a linear solve.
+   *
+   * @param[in] time - Current time-step context.
+   * @param[in,out] jac - Assembled Jacobian.
+   * @param[in,out] rhs - Linear-system right-hand side.
+   * @param[in,out] ctx - Linear algebra context.
+   */
+  virtual void setup(const StepCtx& time,
+                     Jac&           jac,
+                     Vec&           rhs,
+                     Ctx&           ctx) const
   {
     (void) time;
     (void) jac;

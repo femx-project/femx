@@ -11,16 +11,194 @@
 
 namespace femx
 {
+namespace linalg
+{
+class CudaContext;
+}
+
 namespace fem
 {
+
+class Mesh;
+class DeviceMesh;
+
+/** @brief Provide lightweight access to mesh coordinates and connectivity. */
+template <MemorySpace Space>
+class MeshView
+{
+public:
+  FEMX_HOST_DEVICE MeshView() = default;
+
+  /**
+   * @brief Construct a view over flattened mesh data.
+   *
+   * @param[in] dim - Spatial dimension.
+   * @param[in] num_nodes - Number of global nodes.
+   * @param[in] num_elems - Number of elements.
+   * @param[in] max_elem_nodes - Largest element node count.
+   * @param[in] coords - Node-major coordinate components.
+   * @param[in] elem_offsets - Element offsets into `conn`.
+   * @param[in] conn - Flattened element-to-node connectivity.
+   */
+  FEMX_HOST_DEVICE MeshView(
+      Index                          dim,
+      Index                          num_nodes,
+      Index                          num_elems,
+      Index                          max_elem_nodes,
+      VectorView<Space, const Real>  coords,
+      VectorView<Space, const Index> elem_offsets,
+      VectorView<Space, const Index> conn)
+    : dim_(dim),
+      num_nodes_(num_nodes),
+      num_elems_(num_elems),
+      max_elem_nodes_(max_elem_nodes),
+      coords_(coords),
+      elem_offsets_(elem_offsets),
+      conn_(conn)
+  {
+  }
+
+  /** @brief Return the spatial dimension. */
+  FEMX_HOST_DEVICE Index dim() const
+  {
+    return dim_;
+  }
+
+  /** @brief Return the number of global nodes. */
+  FEMX_HOST_DEVICE Index numNodes() const
+  {
+    return num_nodes_;
+  }
+
+  /** @brief Return the number of elements. */
+  FEMX_HOST_DEVICE Index numElems() const
+  {
+    return num_elems_;
+  }
+
+  /** @brief Return the largest element node count. */
+  FEMX_HOST_DEVICE Index maxElemNodes() const
+  {
+    return max_elem_nodes_;
+  }
+
+  /**
+   * @brief Return one coordinate component for a global node.
+   *
+   * @param[in] node - Global node index.
+   * @param[in] d - Coordinate component.
+   * @return Requested coordinate component.
+   */
+  FEMX_HOST_DEVICE Real coord(Index node, Index d) const
+  {
+    return coords_[node * dim_ + d];
+  }
+
+  /**
+   * @brief Return the number of nodes on one element.
+   *
+   * @param[in] ie - Element index.
+   * @return Number of nodes on the element.
+   */
+  FEMX_HOST_DEVICE Index elemNumNodes(Index ie) const
+  {
+    return elem_offsets_[ie + 1] - elem_offsets_[ie];
+  }
+
+  /**
+   * @brief Map one element-local node to a global node.
+   *
+   * @param[in] ie - Element index.
+   * @param[in] in - Element-local node index.
+   * @return Global node index.
+   */
+  FEMX_HOST_DEVICE Index elemNode(Index ie, Index in) const
+  {
+    return conn_[elem_offsets_[ie] + in];
+  }
+
+private:
+  Index                          dim_{0};            ///< Spatial dimension.
+  Index                          num_nodes_{0};      ///< Number of global nodes.
+  Index                          num_elems_{0};      ///< Number of elements.
+  Index                          max_elem_nodes_{0}; ///< Largest element node count.
+  VectorView<Space, const Real>  coords_;            ///< Node-major coordinates.
+  VectorView<Space, const Index> elem_offsets_;      ///< Element connectivity offsets.
+  VectorView<Space, const Index> conn_;              ///< Flattened connectivity.
+};
+
+/**
+ * @brief Own mesh coordinates and connectivity in Device memory.
+ *
+ * Construct this execution representation by copying a Host `Mesh`.
+ */
+class DeviceMesh
+{
+public:
+  DeviceMesh() = default;
+
+  DeviceMesh(const DeviceMesh&)                = delete;
+  DeviceMesh(DeviceMesh&&) noexcept            = default;
+  DeviceMesh& operator=(const DeviceMesh&)     = delete;
+  DeviceMesh& operator=(DeviceMesh&&) noexcept = default;
+
+  /** @brief Return the spatial dimension. */
+  Index dim() const noexcept
+  {
+    return dim_;
+  }
+
+  /** @brief Return the number of global nodes. */
+  Index numNodes() const noexcept
+  {
+    return num_nodes_;
+  }
+
+  /** @brief Return the number of elements. */
+  Index numElems() const noexcept
+  {
+    return num_elems_;
+  }
+
+  /** @brief Return the largest element node count. */
+  Index maxElemNodes() const noexcept
+  {
+    return max_elem_nodes_;
+  }
+
+  /** @brief Return a non-owning view valid while this object is alive. */
+  MeshView<MemorySpace::Device> view() const noexcept
+  {
+    return {dim_,
+            num_nodes_,
+            num_elems_,
+            max_elem_nodes_,
+            coords_.view(),
+            elem_offsets_.view(),
+            conn_.view()};
+  }
+
+private:
+  friend void copy(const Mesh&          src,
+                   DeviceMesh&          dst,
+                   linalg::CudaContext& ctx);
+
+  Index               dim_{0};            ///< Spatial dimension.
+  Index               num_nodes_{0};      ///< Number of global nodes.
+  Index               num_elems_{0};      ///< Number of elements.
+  Index               max_elem_nodes_{0}; ///< Largest element node count.
+  DeviceVector<Real>  coords_;            ///< Node-major coordinates.
+  DeviceVector<Index> elem_offsets_;      ///< Element connectivity offsets.
+  DeviceVector<Index> conn_;              ///< Flattened connectivity.
+};
 
 /**
  * @brief Unstructured finite-element mesh with optional physical boundary data.
  *
  * Mesh stores nodal coordinates, element connectivity, and the physical names
- * imported from mesh files or generated by structured-mesh helpers. Elements
- * own a copy of their nodal coordinates so geometry evaluation can be done
- * without looking up nodes repeatedly during assembly.
+ * imported from mesh files or generated by structured-mesh helpers. It also
+ * provides flat Host and Device views for assembly. Elements retain their
+ * nodal coordinates for Host-side finite-element setup.
  */
 class Mesh
 {
@@ -45,6 +223,11 @@ public:
 
   Mesh() = default;
 
+  /**
+   * @brief Construct an empty mesh with a spatial dimension.
+   *
+   * @param[in] dim - Spatial dimension.
+   */
   explicit Mesh(Index dim)
     : dim_(dim)
   {
@@ -68,36 +251,68 @@ public:
                                  Real  y_min = 0.0,
                                  Real  y_max = 1.0);
 
+  /** @brief Return the spatial dimension. */
   Index dim() const noexcept
   {
     return dim_;
   }
 
+  /** @brief Return the number of mesh nodes. */
   Index numNodes() const noexcept
   {
     return nodes_.size();
   }
 
+  /** @brief Return the number of mesh elements. */
   Index numElems() const noexcept
   {
     return elems_.size();
   }
 
+  /** @brief Return the largest element node count. */
+  Index maxElemNodes() const noexcept
+  {
+    return max_elem_nodes_;
+  }
+
+  /**
+   * @brief Return a non-owning Host view of coordinates and connectivity.
+   *
+   * @return View valid until nodes or elements are added.
+   * @throws std::runtime_error - If the mesh dimension or internal storage is
+   * invalid.
+   */
+  MeshView<MemorySpace::Host> view() const;
+
+  /** @brief Return all finite elements. */
   const HostVector<Element>& elems() const noexcept
   {
     return elems_;
   }
 
+  /**
+   * @brief Return one finite element.
+   *
+   * @param[in] ie - Element index.
+   * @return Element at `ie`.
+   */
   const Element& elem(Index ie) const
   {
     return elems_[ie];
   }
 
+  /** @brief Return all classified boundary facets. */
   const HostVector<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;
   }
 
+  /**
+   * @brief Return boundary facets with a physical name.
+   *
+   * @param[in] pname - Physical boundary name.
+   * @return Matching boundary facets.
+   */
   HostVector<BoundaryFacet> boundaryFacets(const std::string& pname) const
   {
     HostVector<BoundaryFacet> facets;
@@ -111,12 +326,20 @@ public:
     return facets;
   }
 
+  /** @brief Return physical names keyed by dimension and tag. */
   const std::map<std::pair<Index, Index>, std::string>&
   physicalNames() const noexcept
   {
     return physical_names_;
   }
 
+  /**
+   * @brief Return the physical name for a dimension and tag.
+   *
+   * @param[in] dim - Entity dimension.
+   * @param[in] tag - Physical tag.
+   * @return Physical name, or an empty string if none exists.
+   */
   std::string physicalName(Index dim, Index tag) const
   {
     const auto it = physical_names_.find({dim, tag});
@@ -127,22 +350,40 @@ public:
     return it->second;
   }
 
+  /**
+   * @brief Return one mesh node.
+   *
+   * @param[in] in - Node index.
+   * @return Node at `in`.
+   */
   const Node& node(Index in) const
   {
     return nodes_[in];
   }
 
+  /**
+   * @brief Return the node identifiers of one element.
+   *
+   * @param[in] ie - Element index.
+   * @return Pointer to the element node identifiers.
+   */
   const Index* elemNodeIds(Index ie) const
   {
     return elems_[ie].nodeIdsData();
   }
 
-  void addNode(const Node& node)
-  {
-    nodes_.push_back(node);
-  }
+  /**
+   * @brief Add one mesh node.
+   *
+   * @param[in] node - Node coordinates.
+   */
+  void addNode(const Node& node);
 
-  /** @brief Add one element using mesh node ids. */
+  /**
+   * @brief Add one element using mesh node identifiers.
+   *
+   * @param[in] nids - Mesh node identifiers in element-local order.
+   */
   void addElem(const HostVector<Index>& nids)
   {
     addElem(nids, Element::Shape::Unknown, dim_, 0, 0, {});
@@ -151,7 +392,7 @@ public:
   /**
    * @brief Add one element with topology and physical classification.
    *
-   * @param[in] nids - Mesh node ids in element-local order.
+   * @param[in] nids - Mesh node identifiers in element-local order.
    * @param[in] shape - Element topology.
    * @param[in] edim - Entity dimension from the mesh generator.
    * @param[in] etag - Entity tag from the mesh generator.
@@ -163,28 +404,25 @@ public:
                Index                    edim,
                Index                    etag,
                Index                    ptag,
-               std::string              pname)
-  {
-    HostVector<Node> cn;
-    cn.reserve(nids.size());
-    for (Index in : nids)
-    {
-      cn.push_back(node(in));
-    }
-    elems_.emplace_back(nids,
-                        std::move(cn),
-                        shape,
-                        edim,
-                        etag,
-                        ptag,
-                        std::move(pname));
-  }
+               std::string              pname);
 
+  /**
+   * @brief Add a classified boundary facet.
+   *
+   * @param[in] facet - Boundary facet.
+   */
   void addBoundaryFacet(BoundaryFacet facet)
   {
     boundary_facets_.push_back(std::move(facet));
   }
 
+  /**
+   * @brief Add a physical name.
+   *
+   * @param[in] dim - Entity dimension.
+   * @param[in] tag - Physical tag.
+   * @param[in] name - Physical name.
+   */
   void addPhysicalName(Index       dim,
                        Index       tag,
                        std::string name)
@@ -193,13 +431,32 @@ public:
   }
 
 private:
-  Index                     dim_{0};
-  HostVector<Node>          nodes_;
-  HostVector<Element>       elems_;
-  HostVector<BoundaryFacet> boundary_facets_;
+  friend void copy(const Mesh&          src,
+                   DeviceMesh&          dst,
+                   linalg::CudaContext& ctx);
+
+  Index                     dim_{0};            ///< Spatial dimension.
+  HostVector<Node>          nodes_;             ///< Global nodes.
+  HostVector<Element>       elems_;             ///< Finite elements.
+  Index                     max_elem_nodes_{0}; ///< Largest element node count.
+  HostVector<Real>          coords_;            ///< Flat node-major coordinates.
+  HostVector<Index>         elem_offsets_{0};   ///< Element connectivity offsets.
+  HostVector<Index>         conn_;              ///< Flattened connectivity.
+  HostVector<BoundaryFacet> boundary_facets_;   ///< Classified boundary facets.
   std::map<std::pair<Index, Index>, std::string>
-      physical_names_;
+      physical_names_; ///< Physical names by dimension and tag.
 };
+
+/**
+ * @brief Copy a Host mesh to Device-owned execution storage.
+ *
+ * @param[in] src - Host mesh kept alive while copies are queued.
+ * @param[out] dst - Device mesh replaced by the copy.
+ * @param[in] ctx - CUDA context used for the asynchronous copy.
+ */
+void copy(const Mesh&          src,
+          DeviceMesh&          dst,
+          linalg::CudaContext& ctx);
 
 } // namespace fem
 } // namespace femx

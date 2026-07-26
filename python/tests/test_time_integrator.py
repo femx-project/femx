@@ -40,8 +40,8 @@ class ScalarRecurrence(femx.TimeResidual):
         return np.array([[1.0]])
 
 
-class PreparedScalarRecurrence(ScalarRecurrence):
-    def prepare_linear_solve(self, context, rhs):
+class SetupScalarRecurrence(ScalarRecurrence):
+    def setup(self, context, rhs):
         del context
         self.prepared_type = type(rhs)
         rhs[0] = 6.0
@@ -174,8 +174,8 @@ class TimeIntegratorTest(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "progress must be callable"):
             integrator.solve(np.array([1.0]), progress=object())
 
-    def test_prepare_linear_solve_receives_mutable_rhs(self):
-        problem = PreparedScalarRecurrence(num_steps=1)
+    def test_setup_receives_mutable_rhs(self):
+        problem = SetupScalarRecurrence(num_steps=1)
         integrator = femx.TimeIntegrator(problem)
         integrator.set_initial_state(np.array([1.0]))
 

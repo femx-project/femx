@@ -5,16 +5,16 @@
 #include <string>
 
 #include "../ExampleHelper.hpp"
-#include "PoissonForward.hpp"
-#include <femx/runtime/LinearSystemFactory.hpp>
+#include "PoissonProblem.hpp"
+#include "PoissonResidual.hpp"
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/StateSolver.hpp>
 
 using namespace femx;
-using namespace femx::examples::poisson;
-using namespace femx::linalg;
-using namespace femx::runtime;
 using namespace femx::examples;
+using namespace femx::examples::poisson;
+using namespace femx::runtime;
 
 #ifndef FEMX_POISSON_APP_NAME
 #define FEMX_POISSON_APP_NAME "poisson-petsc"
@@ -32,31 +32,33 @@ int run(const Options& opts)
         "PETSc Poisson supports only Host execution");
   }
 
-  ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
-  PoissonForwardProblem problem(opts);
+  ExampleHelper  helper(solver_type, opts.execution_device, outputDir());
+  PoissonProblem prob(opts);
 
-  auto system = makeHostLinearSystem(solver_type);
+  linalg::PETScLinearSystem system(PETSC_COMM_WORLD);
 
-  state::HostLinearStateSolver solver(problem, *system);
-  const HostVector<Real>       prm;
-  HostVector<Real>             x;
+  HostPoissonResidual          res(prob);
+  state::HostLinearStateSolver state_solver(res, system);
 
-  solver.solve(prm, x);
+  const HostVector<Real> prm;
+  HostVector<Real>       x;
 
-  const Real res_norm = helper.resNorm(problem, x, prm, system->context());
+  state_solver.solve(prm, x);
+
+  const Real res_norm = helper.resNorm(res, x, prm, system.context());
 
   if (isRoot())
   {
     printReport(std::cout,
                 helper.name(),
-                problem,
-                problem.errorReport(x),
+                prob,
+                prob.errorReport(x),
                 res_norm);
 
     if (opts.write_output)
     {
       const std::string base = helper.outputBase(outputStem(opts));
-      problem.writeSolution(x, base);
+      prob.writeSolution(x, base);
       helper.printVisualizationPath(base);
     }
   }

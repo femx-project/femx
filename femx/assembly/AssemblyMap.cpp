@@ -7,7 +7,7 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/fem/DofLayout.hpp>
+#include <femx/fem/DofMap.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
@@ -176,26 +176,26 @@ HostAssemblyMap makeAssemblyMap(
           max_jac};
 }
 
-HostAssemblyMap makeAssemblyMap(fem::DofLayout res_lyt,
-                                fem::DofLayout state_lyt)
+HostAssemblyMap makeAssemblyMap(const fem::DofMap& res_map,
+                                const fem::DofMap& state_map)
 {
-  require(res_lyt.numElems() == state_lyt.numElems(),
-          "AssemblyMap residual/state layouts have different element counts");
+  require(res_map.numElems() == state_map.numElems(),
+          "AssemblyMap residual/state maps have different element counts");
 
-  HostVector<HostVector<Index>> res_dofs(res_lyt.numElems());
-  HostVector<HostVector<Index>> state_dofs(state_lyt.numElems());
-  for (Index ie = 0; ie < res_lyt.numElems(); ++ie)
+  HostVector<HostVector<Index>> res_dofs(res_map.numElems());
+  HostVector<HostVector<Index>> state_dofs(state_map.numElems());
+  for (Index ie = 0; ie < res_map.numElems(); ++ie)
   {
-    res_lyt.elemDofs(ie, res_dofs[ie]);
-    state_lyt.elemDofs(ie, state_dofs[ie]);
+    res_dofs[ie]   = res_map.elementDofs(ie);
+    state_dofs[ie] = state_map.elementDofs(ie);
   }
   return makeAssemblyMap(
-      res_lyt.numDofs(), state_lyt.numDofs(), res_dofs, state_dofs);
+      res_map.numDofs(), state_map.numDofs(), res_dofs, state_dofs);
 }
 
-HostAssemblyMap makeAssemblyMap(fem::DofLayout layout)
+HostAssemblyMap makeAssemblyMap(const fem::DofMap& dof_map)
 {
-  return makeAssemblyMap(layout, layout);
+  return makeAssemblyMap(dof_map, dof_map);
 }
 
 void copy(const HostAssemblyMap& src,

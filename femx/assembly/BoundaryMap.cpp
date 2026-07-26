@@ -31,10 +31,11 @@ void copy(const HostBoundaryMap& source,
   destination = DeviceBoundaryMap(std::move(constrained_rows));
 }
 
-void replaceRes(const HostBoundaryMap&     map,
-                HostVectorView<const Real> state,
-                HostVectorView<const Real> prescribed_values,
-                HostVectorView<Real>       residual)
+void applyDirichletConditions(
+    const HostBoundaryMap&     map,
+    HostVectorView<const Real> state,
+    HostVectorView<const Real> prescribed_values,
+    HostVectorView<Real>       residual)
 {
   const auto rows = map.view().constrained_rows;
   require(prescribed_values.size() == rows.size(),
@@ -50,15 +51,14 @@ void replaceRes(const HostBoundaryMap&     map,
   }
 }
 
-void replaceRes(const HostBoundaryMap&  map,
-                const HostVector<Real>& state,
-                const HostVector<Real>& prescribed_values,
-                HostVector<Real>&       residual)
+void applyDirichletConditions(
+    const HostBoundaryMap&  map,
+    const HostVector<Real>& state,
+    const HostVector<Real>& prescribed_values,
+    HostVector<Real>&       residual)
 {
-  replaceRes(map,
-             state.view(),
-             prescribed_values.view(),
-             residual.view());
+  applyDirichletConditions(
+      map, state.view(), prescribed_values.view(), residual.view());
 }
 
 void zeroBoundary(const HostBoundaryMap& map,
@@ -74,11 +74,11 @@ void zeroBoundary(const HostBoundaryMap& map,
 }
 
 #if !defined(FEMX_HAS_CUDA)
-void replaceRes(const DeviceBoundaryMap&,
-                DeviceVectorView<const Real>,
-                DeviceVectorView<const Real>,
-                DeviceVectorView<Real>,
-                linalg::CudaContext&)
+void applyDirichletConditions(const DeviceBoundaryMap&,
+                              DeviceVectorView<const Real>,
+                              DeviceVectorView<const Real>,
+                              DeviceVectorView<Real>,
+                              linalg::CudaContext&)
 {
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");

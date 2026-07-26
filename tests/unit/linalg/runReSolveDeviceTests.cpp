@@ -159,38 +159,38 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     std::cout << "    ReSolve build: " << FEMX_RESOLVE_BUILD_ID << '\n';
 #endif
 
-    constexpr Index      nx     = 16;
-    constexpr Index      ny     = 16;
-    const HostCsrPattern hgraph = gridGraph(nx, ny);
-    HostCsrMatrix        hmat(hgraph);
-    fillGridMat(hmat);
-    HostCsrMatrix hmat_tr_source(hgraph);
-    fillGridMat(hmat_tr_source);
+    constexpr Index      nx      = 16;
+    constexpr Index      ny      = 16;
+    const HostCsrPattern h_graph = gridGraph(nx, ny);
+    HostCsrMatrix        h_mat(h_graph);
+    fillGridMat(h_mat);
+    HostCsrMatrix h_mat_tr_source(h_graph);
+    fillGridMat(h_mat_tr_source);
 
     linalg::HostContext  cpu_ctx;
     linalg::CudaContext  ctx;
-    linalg::HostJacobian host_jacobian(cpu_ctx);
+    linalg::HostJacobian h_jacobian(cpu_ctx);
     auto&                vec_handler = ctx.vectors();
-    DeviceCsrPattern     dgraph;
-    copy(hgraph, dgraph, ctx);
+    DeviceCsrPattern     d_graph;
+    copy(h_graph, d_graph, ctx);
 
-    DeviceCsrMatrix dmat(dgraph);
-    copyMatrix(hmat, dmat, ctx);
-    DeviceCsrMatrix dmat_tr_source(dgraph);
-    copyMatrix(hmat_tr_source, dmat_tr_source, ctx);
+    DeviceCsrMatrix d_mat(d_graph);
+    copyMatrix(h_mat, d_mat, ctx);
+    DeviceCsrMatrix d_mat_tr_source(d_graph);
+    copyMatrix(h_mat_tr_source, d_mat_tr_source, ctx);
     linalg::ReSolveLinearSolver solver;
     linalg::ReSolveLinearSolver tr_solver;
 
     const HostVector<Real> expected = expectedGridSolution(nx, ny);
-    const HostVector<Real> hrhs     = mul(hmat, expected);
-    DeviceVector<Real>     drhs;
-    DeviceVector<Real>     dsol;
-    vec_handler.copy(hrhs, drhs);
+    const HostVector<Real> h_rhs    = mul(h_mat, expected);
+    DeviceVector<Real>     d_rhs;
+    DeviceVector<Real>     d_sol;
+    vec_handler.copy(h_rhs, d_rhs);
 
     bool alias_rejected = false;
     try
     {
-      solver.solve(dmat, drhs, drhs, ctx);
+      solver.solve(d_mat, d_rhs, d_rhs, ctx);
     }
     catch (const std::runtime_error&)
     {
@@ -198,25 +198,25 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     }
     status *= alias_rejected;
 
-    solver.solve(dmat, drhs, dsol, ctx);
+    solver.solve(d_mat, d_rhs, d_sol, ctx);
     HostVector<Real> fwd_sol;
-    vec_handler.copy(dsol, fwd_sol);
+    vec_handler.copy(d_sol, fwd_sol);
     ctx.sync();
     status *= vecNear(fwd_sol, expected);
 
-    HostVector<Real> tr_rhs(hmat_tr_source.cols());
-    host_jacobian.applyT(hmat_tr_source,
-                         expected.view(),
-                         tr_rhs.view());
+    HostVector<Real> tr_rhs(h_mat_tr_source.cols());
+    h_jacobian.applyT(h_mat_tr_source,
+                      expected.view(),
+                      tr_rhs.view());
 
-    DeviceVector<Real> dtr_rhs;
-    DeviceVector<Real> dtr_sol;
-    vec_handler.copy(tr_rhs, dtr_rhs);
+    DeviceVector<Real> d_tr_rhs;
+    DeviceVector<Real> d_tr_sol;
+    vec_handler.copy(tr_rhs, d_tr_rhs);
 
     bool tr_alias_rejected = false;
     try
     {
-      tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_rhs, ctx);
+      tr_solver.solveT(d_mat_tr_source, d_tr_rhs, d_tr_rhs, ctx);
     }
     catch (const std::runtime_error&)
     {
@@ -224,51 +224,51 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     }
     status *= tr_alias_rejected;
 
-    tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_sol, ctx);
-    HostVector<Real> device_tr_sol;
-    vec_handler.copy(dtr_sol, device_tr_sol);
+    tr_solver.solveT(d_mat_tr_source, d_tr_rhs, d_tr_sol, ctx);
+    HostVector<Real> h_tr_sol;
+    vec_handler.copy(d_tr_sol, h_tr_sol);
     ctx.sync();
-    status *= vecNear(device_tr_sol, expected);
+    status *= vecNear(h_tr_sol, expected);
 
-    const Real*  source_vals    = dmat.valsData();
-    const Index* source_rows    = dmat.rowPtrData();
-    const Index* source_cols    = dmat.colIndData();
-    const Real*  tr_source_vals = dmat_tr_source.valsData();
-    const Real*  tr_sol_data    = dtr_sol.data();
+    const Real*  source_vals    = d_mat.valsData();
+    const Index* source_rows    = d_mat.rowPtrData();
+    const Index* source_cols    = d_mat.colIndData();
+    const Real*  tr_source_vals = d_mat_tr_source.valsData();
+    const Real*  tr_sol_data    = d_tr_sol.data();
 
-    HostVector<Real> zero_rhs(hrhs.size(), 0.0);
-    vec_handler.copy(zero_rhs, drhs);
-    solver.solve(dmat, drhs, dsol, ctx);
-    vec_handler.copy(dsol, fwd_sol);
+    HostVector<Real> zero_rhs(h_rhs.size(), 0.0);
+    vec_handler.copy(zero_rhs, d_rhs);
+    solver.solve(d_mat, d_rhs, d_sol, ctx);
+    vec_handler.copy(d_sol, fwd_sol);
     ctx.sync();
     status *= vecNear(fwd_sol, zero_rhs);
 
     // Update vals in the same femx allocations and solve again. Give the
     // transpose source a different shift so the explicitly transposed matrix,
     // rather than the bound forward matrix, must be authoritative.
-    fillGridMat(hmat, 0.25);
-    fillGridMat(hmat_tr_source, 0.5);
-    copyMatrix(hmat, dmat, ctx);
-    copyMatrix(hmat_tr_source, dmat_tr_source, ctx);
-    const HostVector<Real> rhs2 = mul(hmat, expected);
-    HostVector<Real>       tr_rhs2(hmat_tr_source.cols());
-    host_jacobian.applyT(hmat_tr_source,
-                         expected.view(),
-                         tr_rhs2.view());
-    vec_handler.copy(rhs2, drhs);
-    vec_handler.copy(tr_rhs2, dtr_rhs);
-    solver.solve(dmat, drhs, dsol, ctx);
-    tr_solver.solveT(dmat_tr_source, dtr_rhs, dtr_sol, ctx);
-    vec_handler.copy(dsol, fwd_sol);
-    vec_handler.copy(dtr_sol, device_tr_sol);
+    fillGridMat(h_mat, 0.25);
+    fillGridMat(h_mat_tr_source, 0.5);
+    copyMatrix(h_mat, d_mat, ctx);
+    copyMatrix(h_mat_tr_source, d_mat_tr_source, ctx);
+    const HostVector<Real> rhs2 = mul(h_mat, expected);
+    HostVector<Real>       tr_rhs2(h_mat_tr_source.cols());
+    h_jacobian.applyT(h_mat_tr_source,
+                      expected.view(),
+                      tr_rhs2.view());
+    vec_handler.copy(rhs2, d_rhs);
+    vec_handler.copy(tr_rhs2, d_tr_rhs);
+    solver.solve(d_mat, d_rhs, d_sol, ctx);
+    tr_solver.solveT(d_mat_tr_source, d_tr_rhs, d_tr_sol, ctx);
+    vec_handler.copy(d_sol, fwd_sol);
+    vec_handler.copy(d_tr_sol, h_tr_sol);
     ctx.sync();
     status *= vecNear(fwd_sol, expected);
-    status *= vecNear(device_tr_sol, expected);
-    status *= source_vals == dmat.valsData();
-    status *= source_rows == dmat.rowPtrData();
-    status *= source_cols == dmat.colIndData();
-    status *= tr_source_vals == dmat_tr_source.valsData();
-    status *= tr_sol_data == dtr_sol.data();
+    status *= vecNear(h_tr_sol, expected);
+    status *= source_vals == d_mat.valsData();
+    status *= source_rows == d_mat.rowPtrData();
+    status *= source_cols == d_mat.colIndData();
+    status *= tr_source_vals == d_mat_tr_source.valsData();
+    status *= tr_sol_data == d_tr_sol.data();
   }
   catch (const std::exception& error)
   {

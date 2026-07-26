@@ -1,0 +1,88 @@
+#include "ElementKernel.hpp"
+#include "PoissonResidual.hpp"
+#include <femx/assembly/CudaAssembly.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+
+namespace femx::examples::poisson
+{
+
+DevicePoissonResidual::DevicePoissonResidual(
+    const PoissonProblem& prob,
+    linalg::CudaContext&  ctx)
+  : num_dofs_(prob.numDofs()),
+    h_pattern_(prob.assemblyMap().pattern())
+{
+  fem::copy(prob.mesh(), mesh_, ctx);
+  fem::copy(prob.elementData(), elem_data_, ctx);
+  assembly::copy(prob.assemblyMap(), assm_map_, ctx);
+  assembly::copy(prob.boundaryMap(), boundary_map_, ctx);
+  ctx.vectors().copy(prob.boundaryValues(), boundary_vals_);
+}
+
+state::Dimensions DevicePoissonResidual::dims() const
+{
+  return {num_dofs_, 0, num_dofs_};
+}
+
+const HostCsrPattern& DevicePoissonResidual::hostPattern() const
+{
+  return h_pattern_;
+}
+
+void DevicePoissonResidual::assembleResidual(
+    const DeviceVector<Real>& state,
+    const DeviceVector<Real>& /* prm */,
+    DeviceVector<Real>&                   out,
+    linalg::Context<MemorySpace::Device>& base_ctx) const
+{
+  auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
+
+  assembly::assembleResidual(
+      ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      mesh_,
+      assm_map_,
+      state,
+      out,
+      ctx);
+
+  assembly::applyDirichletConditions(
+      boundary_map_,
+      state.view(),
+      boundary_vals_.view(),
+      out.view(),
+      ctx);
+}
+
+void DevicePoissonResidual::assembleJacobian(
+    const DeviceVector<Real>& state,
+    const DeviceVector<Real>& /* prm */,
+    linalg::Jacobian<MemorySpace::Device>& out,
+    linalg::Context<MemorySpace::Device>&  base_ctx) const
+{
+  auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
+  auto& jac = static_cast<linalg::CudaJacobian&>(out);
+
+  assembly::assembleJacobian(
+      ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      mesh_,
+      assm_map_,
+      state,
+      jac,
+      ctx);
+
+  assembly::applyDirichletConditions(boundary_map_, jac);
+}
+
+void DevicePoissonResidual::applyParamJacT(
+    const DeviceVector<Real>& /* state */,
+    const DeviceVector<Real>& /* prm */,
+    const DeviceVector<Real>& /* adj */,
+    DeviceVector<Real>& out,
+    linalg::Context<MemorySpace::Device>&) const
+{
+  // This example has no parameters.
+  out.resize(0);
+}
+
+} // namespace femx::examples::poisson

@@ -165,7 +165,7 @@ HostJacobian::HostJacobian(Context<MemorySpace::Host>& ctx) noexcept
 
 HostJacobian::~HostJacobian() = default;
 
-void HostJacobian::begin(const HostCsrPattern& pattern)
+void HostJacobian::setup(const HostCsrPattern& pattern)
 {
   if (matrix_.pattern().layoutId() != pattern.layoutId())
   {

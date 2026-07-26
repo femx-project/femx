@@ -18,6 +18,7 @@
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/Model.hpp>
+#include <femx/model/ns/NavierStokesResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::tests
@@ -50,17 +51,17 @@ bool vectorsNear(const HostVector<Real>& lhs,
 }
 
 Real deviceValue(inverse::DeviceTimeReducedFunctional& functional,
-                 const HostVector<Real>&               parameters)
+                 const HostVector<Real>&               prm)
 {
-  return functional.value(parameters.view());
+  return functional.value(prm.view());
 }
 
 Real deviceValueGrad(inverse::DeviceTimeReducedFunctional& functional,
-                     const HostVector<Real>&               parameters,
-                     HostVector<Real>&                     gradient)
+                     const HostVector<Real>&               prm,
+                     HostVector<Real>&                     grad)
 {
-  gradient.resize(functional.numParams());
-  return functional.valueGrad(parameters.view(), gradient.view());
+  grad.resize(functional.numParams());
+  return functional.valueGrad(prm.view(), grad.view());
 }
 
 struct ProblemData
@@ -174,8 +175,9 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         steps, model.numStates(), num_prm);
     obj.add(misfit).add(reg);
 
+    model::ns::HostNavierStokesResidual   navier(model);
     assembly::HostConstrainedTimeResidual cpu_res(
-        model.residual(), ctr, init);
+        navier, ctr, init);
     linalg::HostLinearSystem cpu_fwd_system(
         std::make_unique<linalg::ReSolveLinearSolver>());
     state::HostTimeIntegrator cpu_integ(cpu_res, cpu_fwd_system);
@@ -186,9 +188,16 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 
     linalg::CudaLinearSystem cuda_fwd_system(
         std::make_unique<linalg::ReSolveLinearSolver>());
-    auto cuda_res = model::ns::makeDeviceTimeResidual(
-        model, ctr, init, cuda_fwd_system.context());
-    state::DeviceTimeIntegrator cuda_integ(*cuda_res, cuda_fwd_system);
+    auto& cuda_ctx =
+        static_cast<linalg::CudaContext&>(cuda_fwd_system.context());
+    model::ns::DeviceNavierStokesResidual d_navier(
+        model, cuda_ctx);
+    assembly::DeviceConstrainedTimeResidual cuda_res(
+        d_navier,
+        ctr,
+        init,
+        cuda_ctx);
+    state::DeviceTimeIntegrator cuda_integ(cuda_res, cuda_fwd_system);
     linalg::CudaLinearSystem    cuda_adj_system(
         std::make_unique<linalg::ReSolveLinearSolver>());
     inverse::DeviceTimeReducedFunctional cuda(

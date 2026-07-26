@@ -211,9 +211,9 @@ void PETScMatrix::resize(const HostCsrPattern& pattern)
   }
   const PetscInt end = begin + local_rows;
 
-  HostVector<PetscInt> d_nnz;
-  HostVector<PetscInt> o_nnz;
-  computePrealloc(pattern, begin, end, d_nnz, o_nnz);
+  HostVector<PetscInt> diag_nnz;
+  HostVector<PetscInt> offdiag_nnz;
+  computePrealloc(pattern, begin, end, diag_nnz, offdiag_nnz);
 
   check(MatCreateAIJ(comm_,
                      end - begin,
@@ -221,9 +221,9 @@ void PETScMatrix::resize(const HostCsrPattern& pattern)
                      static_cast<PetscInt>(rows_),
                      static_cast<PetscInt>(cols_),
                      0,
-                     d_nnz.empty() ? nullptr : d_nnz.data(),
+                     diag_nnz.empty() ? nullptr : diag_nnz.data(),
                      0,
-                     o_nnz.empty() ? nullptr : o_nnz.data(),
+                     offdiag_nnz.empty() ? nullptr : offdiag_nnz.data(),
                      &mat_),
         "MatCreateAIJ");
 
@@ -441,12 +441,12 @@ void PETScMatrix::createVec(Index size, ScopedVec& out) const
 void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
                                   PetscInt              begin,
                                   PetscInt              end,
-                                  HostVector<PetscInt>& d_nnz,
-                                  HostVector<PetscInt>& o_nnz)
+                                  HostVector<PetscInt>& diag_nnz,
+                                  HostVector<PetscInt>& offdiag_nnz)
 {
   const PetscInt nrow = end - begin;
-  d_nnz.assign(nrow, 0);
-  o_nnz.assign(nrow, 0);
+  diag_nnz.assign(nrow, 0);
+  offdiag_nnz.assign(nrow, 0);
 
   const Index* rp = pattern.rowPtrData();
   const Index* ci = pattern.colIndData();
@@ -466,8 +466,8 @@ void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
         ++off;
       }
     }
-    d_nnz[row - begin] = diag;
-    o_nnz[row - begin] = off;
+    diag_nnz[row - begin]    = diag;
+    offdiag_nnz[row - begin] = off;
   }
 }
 

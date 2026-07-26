@@ -32,7 +32,7 @@ public:
   HostJacobian(HostJacobian&&)                 = delete;
   HostJacobian& operator=(HostJacobian&&)      = delete;
 
-  void begin(const HostCsrPattern& pattern) override;
+  void setup(const HostCsrPattern& pattern) override;
   void addElement(const ElementJacobianView& element) override;
   void replaceRows(HostVectorView<const Index> rows,
                    Real                        diagonal) override;

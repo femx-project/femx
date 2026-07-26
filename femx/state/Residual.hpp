@@ -34,14 +34,28 @@ public:
   /** @brief Return the canonical Host Jacobian pattern. */
   virtual const HostCsrPattern& hostPattern() const = 0;
 
-  /** @brief Evaluate R(state, prm). */
-  virtual void res(const Vec& state,
-                   const Vec& prm,
-                   Vec&       out,
-                   Ctx&       ctx) const = 0;
+  /**
+   * @brief Assemble the residual at a state and parameter point.
+   *
+   * @param[in] state - State vector.
+   * @param[in] prm - Parameter vector.
+   * @param[out] out - Assembled residual.
+   * @param[in,out] ctx - Linear algebra context.
+   */
+  virtual void assembleResidual(const Vec& state,
+                                const Vec& prm,
+                                Vec&       out,
+                                Ctx&       ctx) const = 0;
 
-  /** @brief Assemble dR/dstate at the supplied point. */
-  virtual void assembleStateJac(const Vec& state,
+  /**
+   * @brief Assemble the state Jacobian at a state and parameter point.
+   *
+   * @param[in] state - State vector.
+   * @param[in] prm - Parameter vector.
+   * @param[in,out] out - State Jacobian receiving assembled entries.
+   * @param[in,out] ctx - Linear algebra context.
+   */
+  virtual void assembleJacobian(const Vec& state,
                                 const Vec& prm,
                                 Jac&       out,
                                 Ctx&       ctx) const = 0;

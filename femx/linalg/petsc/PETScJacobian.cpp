@@ -8,7 +8,7 @@ PETScJacobian::PETScJacobian(MpiContext& ctx)
 {
 }
 
-void PETScJacobian::begin(const HostCsrPattern& pattern)
+void PETScJacobian::setup(const HostCsrPattern& pattern)
 {
   matrix_.resize(pattern);
 }

@@ -68,10 +68,10 @@ def rewrite_doc_page_links(line: str) -> str:
     replacements = {
         "](examples/poisson-opt)": "](md_examples_2poisson-opt_2README.html)",
         "](examples/poisson)": "](md_examples_2poisson_2README.html)",
-        "](apps/ns-forward)": "](md_apps_2ns-forward_2README.html)",
+        "](apps/navier)": "](md_apps_2navier_2README.html)",
         'href="examples/poisson-opt"': 'href="md_examples_2poisson-opt_2README.html"',
         'href="examples/poisson"': 'href="md_examples_2poisson_2README.html"',
-        'href="apps/ns-forward"': 'href="md_apps_2ns-forward_2README.html"',
+        'href="apps/navier"': 'href="md_apps_2navier_2README.html"',
     }
     for src, dst in replacements.items():
         line = line.replace(src, dst)

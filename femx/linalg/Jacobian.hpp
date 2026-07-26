@@ -52,7 +52,7 @@ public:
    *
    * @param[in] pattern - Canonical global sparsity pattern.
    */
-  virtual void begin(const HostCsrPattern& pattern) = 0;
+  virtual void setup(const HostCsrPattern& pattern) = 0;
 
   /**
    * @brief Add one element contribution.
@@ -117,7 +117,7 @@ public:
    *
    * @param[in] pattern - Canonical global sparsity pattern.
    */
-  virtual void begin(const HostCsrPattern& pattern) = 0;
+  virtual void setup(const HostCsrPattern& pattern) = 0;
 
   /**
    * @brief Replace constrained rows by diagonal rows.

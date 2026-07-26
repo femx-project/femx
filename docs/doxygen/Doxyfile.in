@@ -22,7 +22,7 @@ INPUT                  = docs/doxygen/mainpage.md \
                          examples/ExampleHelper.hpp \
                          examples/poisson \
                          examples/poisson-opt \
-                         apps/ns-forward
+                         apps/navier
 FILE_PATTERNS          = *.hpp \
                          *.cpp \
                          *.md
