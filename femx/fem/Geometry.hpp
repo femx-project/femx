@@ -15,7 +15,7 @@ class Mesh;
 template <MemorySpace Space>
 class Geometry;
 
-/** @brief Flatten mesh coordinates and connectivity into host backend storage. */
+/** @brief Flatten mesh coordinates and connectivity into Host storage. */
 Geometry<MemorySpace::Host> makeGeometry(const Mesh& mesh);
 
 /**

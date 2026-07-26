@@ -22,15 +22,23 @@ namespace detail
 {
 
 inline void checkAssemblyInputs(
-    const fem::DeviceGeometry&           geom,
-    const DeviceAssemblyMap&             map,
-    const DeviceVector<Real>&            state,
-    const linalg::DeviceCsrAssemblyView& jac)
+    const fem::DeviceGeometry& geom,
+    const DeviceAssemblyMap&   map,
+    const DeviceVector<Real>&  state)
 {
   require(geom.numElems() == map.numElems(),
           "Geometry and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
+}
+
+inline void checkAssemblyInputs(
+    const fem::DeviceGeometry&           geom,
+    const DeviceAssemblyMap&             map,
+    const DeviceVector<Real>&            state,
+    const linalg::DeviceCsrAssemblyView& jac)
+{
+  checkAssemblyInputs(geom, map, state);
   require(jac.rows == map.pattern().rows()
               && jac.columns == map.pattern().cols()
               && jac.nonzeros == map.pattern().nnz(),
@@ -167,9 +175,12 @@ __global__ void assembleKernel(
   {
     atomicAdd(res + map.resDof(ie, row), res_e[row]);
   }
-  for (Index i = tid; i < num_jac; i += stride)
+  if (jac != nullptr)
   {
-    atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+    for (Index i = tid; i < num_jac; i += stride)
+    {
+      atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+    }
   }
 }
 
@@ -366,6 +377,52 @@ void assemble(const ElementKernel&       kernel,
                    state.data(),
                    res.data(),
                    jacobian.values.data());
+  cuda::checkLastError();
+}
+
+/** @brief Assemble a stationary Device residual without a Jacobian. */
+template <class ElementKernel>
+void assembleResidual(const ElementKernel&       kernel,
+                      const fem::DeviceGeometry& geom,
+                      const DeviceAssemblyMap&   map,
+                      const DeviceVector<Real>&  state,
+                      DeviceVector<Real>&        res,
+                      linalg::CudaContext&       ctx)
+{
+  auto& vec_handler = ctx.vectors();
+  static_assert(std::is_trivially_copyable<ElementKernel>::value,
+                "CUDA element kernel must be trivially copyable");
+
+  detail::checkAssemblyInputs(geom, map, state);
+  require(state.data() != res.data(),
+          "Assembly state and residual must not alias");
+
+  if (res.size() != map.numRes())
+  {
+    res.resize(map.numRes());
+  }
+  vec_handler.zero(res.view());
+  if (map.numElems() == 0)
+  {
+    return;
+  }
+
+  const std::size_t smem =
+      detail::assemblySharedBytes(geom, map);
+  const int threads =
+      detail::configureAssemblyLaunch<ElementKernel>(smem);
+  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+
+  detail::assembleKernel<ElementKernel>
+      <<<static_cast<unsigned int>(map.numElems()),
+         static_cast<unsigned int>(threads),
+         smem,
+         stream>>>(kernel,
+                   geom.view(),
+                   map.view(),
+                   state.data(),
+                   res.data(),
+                   nullptr);
   cuda::checkLastError();
 }
 

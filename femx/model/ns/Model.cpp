@@ -523,12 +523,13 @@ HostElementKernel NavierStokesModel::elementKernel() const
 
 #if defined(FEMX_HAS_CUDA)
 std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
-    const NavierStokesModel& model,
-    fem::HostControlMap      control,
-    fem::HostInitialStateMap init_state)
+    const NavierStokesModel&              model,
+    fem::HostControlMap                   control,
+    fem::HostInitialStateMap              init_state,
+    linalg::Context<MemorySpace::Device>& base_ctx)
 {
-  linalg::CudaContext ctx;
-  auto                base = std::make_unique<NavierResidual<MemorySpace::Device>>(
+  auto& ctx  = dynamic_cast<linalg::CudaContext&>(base_ctx);
+  auto  base = std::make_unique<NavierResidual<MemorySpace::Device>>(
       model.numSteps(),
       model.map(),
       model.data(),
@@ -537,7 +538,6 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
       ctx);
   auto out = std::make_unique<assembly::DeviceConstrainedTimeResidual>(
       std::move(base), std::move(control), std::move(init_state), ctx);
-  ctx.sync();
   return out;
 }
 #endif

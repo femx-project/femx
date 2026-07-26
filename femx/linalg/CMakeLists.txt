@@ -35,7 +35,7 @@ target_link_libraries(femx_linalg PUBLIC femx_config femx_common)
 
 if(FEMX_HAS_CUDA)
   target_sources(
-    femx_linalg PRIVATE ../common/Cuda.cu handler/CudaHandles.cu
+    femx_linalg PRIVATE ../common/Cuda.cu cuda/CudaHandles.cu
                         cuda/CudaJacobian.cu cuda/CudaVectorHandler.cu)
   target_link_libraries(femx_linalg PUBLIC CUDA::cudart CUDA::cusparse
                                            CUDA::cublas)

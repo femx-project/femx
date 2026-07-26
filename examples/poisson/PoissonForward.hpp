@@ -14,6 +14,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx::examples::poisson
 {
@@ -42,7 +43,7 @@ struct ErrorReport
 /**
  * @brief Forward Poisson example on a structured quadrilateral mesh.
  */
-class PoissonForwardProblem
+class PoissonForwardProblem final : public state::HostResidual
 {
 public:
   /** @brief Construct the mesh, FE space, assembly map, and boundary map. */
@@ -67,8 +68,23 @@ public:
   /** @brief Return the number of algebraic unknowns. */
   Index numDofs() const noexcept;
 
-  /** @brief Assemble the constrained host linear system. */
-  void assemble(HostCsrMatrix& mat, HostVector<Real>& rhs) const;
+  state::Dimensions     dims() const override;
+  const HostCsrPattern& hostPattern() const override;
+  void                  res(const HostVector<Real>&             state,
+                            const HostVector<Real>&             prm,
+                            HostVector<Real>&                   out,
+                            linalg::Context<MemorySpace::Host>& ctx) const override;
+  void                  assembleStateJac(
+                       const HostVector<Real>&              state,
+                       const HostVector<Real>&              prm,
+                       linalg::Jacobian<MemorySpace::Host>& out,
+                       linalg::Context<MemorySpace::Host>&  ctx) const override;
+  void applyParamJacT(
+      const HostVector<Real>&             state,
+      const HostVector<Real>&             prm,
+      const HostVector<Real>&             adj,
+      HostVector<Real>&                   out,
+      linalg::Context<MemorySpace::Host>& ctx) const override;
 
   /** @brief Compare a solution with the manufactured exact solution. */
   ErrorReport errorReport(const HostVector<Real>& x) const;
@@ -83,6 +99,9 @@ public:
                      const std::string&      base) const;
 
 private:
+  void checkVectors(const HostVector<Real>& state,
+                    const HostVector<Real>& prm) const;
+
   static Real exactValue(const fem::Mesh::Node& p);
   static Real boundaryValue(const fem::Mesh::Node& p, Real time);
   static bool onBoundary(const fem::Mesh::Node& p, Real time);

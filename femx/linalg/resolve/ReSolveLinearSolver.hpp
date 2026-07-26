@@ -94,7 +94,7 @@ public:
    * @param[in] rhs - Device right-hand side vector.
    * @param[out] sol - Device solution vector.
    * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA backend, or solver
+   * @throws std::runtime_error - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
   void solve(const DeviceCsrMatrix&        mat,
@@ -109,7 +109,7 @@ public:
    * @param[in] rhs - Device right-hand side vector.
    * @param[out] sol - Device solution vector.
    * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA backend, or solver
+   * @throws std::runtime_error - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
   void solveT(const DeviceCsrMatrix&        mat,

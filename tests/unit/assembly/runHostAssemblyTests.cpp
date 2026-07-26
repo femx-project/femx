@@ -13,6 +13,8 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -187,7 +189,7 @@ TestOutcome rectangularMapBuildsExactCsrMapping()
   return status.report();
 }
 
-TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
+TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
 {
   TestStatus status(__func__);
 
@@ -199,18 +201,20 @@ TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
   const fem::HostGeometry geom = fem::makeGeometry(mesh);
   const auto              map  = assembly::makeAssemblyMap(fem::DofLayout(space));
 
-  HostCsrMatrix          jac(map.pattern());
   HostVector<Real>       res;
   const HostVector<Real> state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  CpuContext             ctx;
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
 
+  jacobian.begin(map.pattern());
   assembly::assemble(AffineElementKernel{},
                      geom,
                      map,
                      state,
                      res,
-                     jac,
+                     jacobian,
                      ctx);
+  const HostCsrMatrix& jac = jacobian.matrix();
 
   status *= valsEqual(
       res,
@@ -225,7 +229,7 @@ TestOutcome cpuAssemblyUsesRuntimeMapAndSharedGraph()
   return status.report();
 }
 
-TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
+TestOutcome hostAssemblySupportsRectangularLocalLayouts()
 {
   TestStatus status(__func__);
 
@@ -238,15 +242,17 @@ TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
 
   const HostVector<Real> state{2.0, 3.0};
   HostVector<Real>       res;
-  HostCsrMatrix          jac(map.pattern());
-  CpuContext             ctx;
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
+  jacobian.begin(map.pattern());
   assembly::assemble(RectangularElementKernel{},
                      geom,
                      map,
                      state,
                      res,
-                     jac,
+                     jacobian,
                      ctx);
+  const HostCsrMatrix& jac = jacobian.matrix();
 
   status *= valsEqual(res, std::array<Real, 2>{{3.0, 10.0}});
   status *= near(csrVal(jac, 0, 0), 11.0);
@@ -256,7 +262,7 @@ TestOutcome cpuAssemblySupportsRectangularLocalLayouts()
   return status.report();
 }
 
-TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
+TestOutcome hostTimeAssemblyHandlesHistoryBlocks()
 {
   TestStatus status(__func__);
 
@@ -268,9 +274,10 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   const HostVector<Real> nxt{7.0, 8.0, 9.0};
   HostVector<Real>       res;
-  HostCsrMatrix          jac(map.pattern());
-  CpuContext             ctx;
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
 
+  jacobian.begin(map.pattern());
   assembly::assemble(TimeElementKernel{},
                      3,
                      2,
@@ -281,13 +288,15 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
                      hist.view(),
                      nxt.view(),
                      res,
-                     jac,
+                     jacobian,
                      ctx);
-  status *= valsEqual(res, std::array<Real, 3>{{10.0, 20.0, 10.0}});
-  status *= near(csrVal(jac, 0, 0), 1.0);
-  status *= near(csrVal(jac, 1, 1), 2.0);
-  status *= near(csrVal(jac, 2, 2), 1.0);
+  const HostCsrMatrix& jac  = jacobian.matrix();
+  status                   *= valsEqual(res, std::array<Real, 3>{{10.0, 20.0, 10.0}});
+  status                   *= near(csrVal(jac, 0, 0), 1.0);
+  status                   *= near(csrVal(jac, 1, 1), 2.0);
+  status                   *= near(csrVal(jac, 2, 2), 1.0);
 
+  jacobian.begin(map.pattern());
   assembly::assemble(TimeElementKernel{},
                      3,
                      2,
@@ -298,7 +307,7 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
                      hist.view(),
                      nxt.view(),
                      res,
-                     jac,
+                     jacobian,
                      ctx);
   status *= near(csrVal(jac, 0, 0), -2.0);
   status *= near(csrVal(jac, 1, 1), -4.0);
@@ -307,7 +316,7 @@ TestOutcome cpuTimeAssemblyHandlesHistoryBlocks()
   return status.report();
 }
 
-TestOutcome cpuTimeAssemblySupportsElementRangesAndResidualOnly()
+TestOutcome hostTimeAssemblySupportsElementRangesAndResidualOnly()
 {
   TestStatus status(__func__);
 
@@ -319,9 +328,10 @@ TestOutcome cpuTimeAssemblySupportsElementRangesAndResidualOnly()
   const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   const HostVector<Real> nxt{7.0, 8.0, 9.0};
   HostVector<Real>       res;
-  HostCsrMatrix          jac(map.pattern());
-  CpuContext             ctx;
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
 
+  jacobian.begin(map.pattern());
   assembly::assemble(TimeElementKernel{},
                      3,
                      2,
@@ -332,12 +342,13 @@ TestOutcome cpuTimeAssemblySupportsElementRangesAndResidualOnly()
                      hist.view(),
                      nxt.view(),
                      res,
-                     jac,
+                     jacobian,
                      ctx);
-  status *= valsEqual(res, std::array<Real, 3>{{10.0, 9.5, 0.0}});
-  status *= near(csrVal(jac, 0, 0), 1.0);
-  status *= near(csrVal(jac, 1, 1), 1.0);
-  status *= near(csrVal(jac, 2, 2), 0.0);
+  const HostCsrMatrix& jac  = jacobian.matrix();
+  status                   *= valsEqual(res, std::array<Real, 3>{{10.0, 9.5, 0.0}});
+  status                   *= near(csrVal(jac, 0, 0), 1.0);
+  status                   *= near(csrVal(jac, 1, 1), 1.0);
+  status                   *= near(csrVal(jac, 2, 2), 0.0);
 
   assembly::assembleResidual(TimeElementKernel{},
                              3,
@@ -377,51 +388,26 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
       4,
       HostVector<HostVector<Index>>{{0, 1, 2, 3}},
       HostVector<HostVector<Index>>{{0, 1, 2, 3}});
-  HostCsrMatrix jac(map.pattern());
-  auto          moved_map = std::move(map);
+  auto moved_map = std::move(map);
 
   HostVector<Real>       res;
   const HostVector<Real> state{1.0, 2.0, 3.0, 4.0};
-  CpuContext             ctx;
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
+  jacobian.begin(moved_map.pattern());
   assembly::assemble(AffineElementKernel{},
                      geom,
                      moved_map,
                      state,
                      res,
-                     jac,
+                     jacobian,
                      ctx);
+  const HostCsrMatrix& jac = jacobian.matrix();
 
   status *= jac.rows() == 4;
   status *= jac.nnz() == 16;
   status *= near(csrVal(jac, 0, 0), 2.0);
   status *= near(csrVal(jac, 3, 2), 1.0);
-
-  return status.report();
-}
-
-TestOutcome hostCsrAssemblyUsesAssemblyMapMapping()
-{
-  TestStatus status(__func__);
-
-  const auto map = assembly::makeAssemblyMap(
-      2,
-      2,
-      HostVector<HostVector<Index>>{{0, 1}, {1}},
-      HostVector<HostVector<Index>>{{0}, {0, 1}});
-  HostCsrMatrix mat(map.pattern());
-
-  DenseMatrix first(2, 1);
-  first(0, 0) = 2.0;
-  first(1, 0) = 3.0;
-  DenseMatrix second(1, 2);
-  second(0, 0) = 5.0;
-  second(0, 1) = 7.0;
-
-  assembly::addElem(map, 0, first, mat);
-  assembly::addElem(map, 1, second, mat);
-  status *= near(csrVal(mat, 0, 0), 2.0);
-  status *= near(csrVal(mat, 1, 0), 8.0);
-  status *= near(csrVal(mat, 1, 1), 7.0);
 
   return status.report();
 }
@@ -449,11 +435,12 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   fem::LagrangeQuadQ1 element;
   fem::FESpace        space(&mesh, &element);
   space.setup();
-  const auto       geom = fem::makeGeometry(mesh);
-  const auto       map  = assembly::makeAssemblyMap(fem::DofLayout(space));
-  HostCsrMatrix    jac(map.pattern());
-  HostVector<Real> alias_vec{1.0, 2.0, 3.0, 4.0};
-  CpuContext       ctx;
+  const auto           geom = fem::makeGeometry(mesh);
+  const auto           map  = assembly::makeAssemblyMap(fem::DofLayout(space));
+  HostVector<Real>     alias_vec{1.0, 2.0, 3.0, 4.0};
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.begin(map.pattern());
 
   bool alias_rejected = false;
   try
@@ -463,7 +450,7 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
                        map,
                        alias_vec,
                        alias_vec,
-                       jac,
+                       jacobian,
                        ctx);
   }
   catch (const std::runtime_error&)
@@ -471,24 +458,6 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
     alias_rejected = true;
   }
   status *= alias_rejected;
-
-  HostVector<Real> distinct_state{1.0, 2.0, 3.0, 4.0};
-  bool             mat_alias_rejected = false;
-  try
-  {
-    assembly::assemble(AffineElementKernel{},
-                       geom,
-                       map,
-                       distinct_state,
-                       jac.vals(),
-                       jac,
-                       ctx);
-  }
-  catch (const std::runtime_error&)
-  {
-    mat_alias_rejected = true;
-  }
-  status *= mat_alias_rejected;
 
   return status.report();
 }
@@ -502,13 +471,12 @@ int main()
   femx::tests::TestingResults results;
   results += femx::tests::geometryFlattensRuntimeMeshData();
   results += femx::tests::rectangularMapBuildsExactCsrMapping();
-  results += femx::tests::cpuAssemblyUsesRuntimeMapAndSharedGraph();
-  results += femx::tests::cpuAssemblySupportsRectangularLocalLayouts();
-  results += femx::tests::cpuTimeAssemblyHandlesHistoryBlocks();
+  results += femx::tests::hostAssemblyUsesRuntimeMapAndSharedGraph();
+  results += femx::tests::hostAssemblySupportsRectangularLocalLayouts();
+  results += femx::tests::hostTimeAssemblyHandlesHistoryBlocks();
   results +=
-      femx::tests::cpuTimeAssemblySupportsElementRangesAndResidualOnly();
+      femx::tests::hostTimeAssemblySupportsElementRangesAndResidualOnly();
   results += femx::tests::matGraphSurvivesAssemblyMapMove();
-  results += femx::tests::hostCsrAssemblyUsesAssemblyMapMapping();
   results += femx::tests::malformedGraphsAndAssemblyAliasesAreRejected();
   return results.summary();
 }

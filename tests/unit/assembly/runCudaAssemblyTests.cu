@@ -3,7 +3,7 @@
 #include <iostream>
 #include <utility>
 
-#include "TestHelper.hpp"
+#include <TestHelper.hpp>
 #include <femx/assembly/Assembly.hpp>
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/assembly/BoundaryMap.hpp>
@@ -14,8 +14,10 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -120,6 +122,63 @@ void recordCheck(TestStatus& status, bool condition, const char* label)
   status *= condition;
 }
 
+void copyMatrix(const HostCsrMatrix& source,
+                DeviceCsrMatrix&     destination,
+                linalg::CudaContext& ctx)
+{
+  if (source.pattern().layoutId() != destination.pattern().layoutId())
+  {
+    throw std::runtime_error(
+        "Test matrix copy requires matching CSR layouts");
+  }
+  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+}
+
+void copyMatrix(const DeviceCsrMatrix& source,
+                HostCsrMatrix&         destination,
+                linalg::CudaContext&   ctx)
+{
+  if (source.pattern().layoutId() != destination.pattern().layoutId())
+  {
+    throw std::runtime_error(
+        "Test matrix copy requires matching CSR layouts");
+  }
+  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+}
+
+void loadMatrix(const HostCsrMatrix&  source,
+                linalg::HostJacobian& destination)
+{
+  destination.begin(source.pattern());
+  HostVector<Index> row(1);
+  for (Index global_row = 0; global_row < source.rows(); ++global_row)
+  {
+    const Index begin = source.rowPtrData()[global_row];
+    const Index count =
+        source.rowPtrData()[global_row + 1] - begin;
+    HostVector<Index> entries(count);
+    for (Index i = 0; i < count; ++i)
+    {
+      entries[i] = begin + i;
+    }
+    row[0] = global_row;
+    destination.addElement(
+        {row.view(),
+         {source.colIndData() + begin, count},
+         entries.view(),
+         {source.valsData() + begin, 1, count}});
+  }
+}
+
+void loadMatrix(const HostCsrMatrix&  source,
+                linalg::CudaJacobian& destination,
+                linalg::CudaContext&  ctx)
+{
+  destination.begin(source.pattern());
+  ctx.vectors().copy(source.vals().view(),
+                     destination.assemblyView().values);
+}
+
 HostCsrPattern denseThreeByThreeGraph()
 {
   return {3,
@@ -136,7 +195,7 @@ void setDenseVals(HostCsrMatrix& mat)
 TestOutcome cudaAssemblyMatchesCpuReference()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -154,20 +213,21 @@ TestOutcome cudaAssemblyMatchesCpuReference()
         assembly::makeAssemblyMap(fem::DofLayout(space));
     const HostVector<Real> host_state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    HostVector<Real> cpu_res;
-    HostCsrMatrix    cpu_jac(host_map.pattern());
-    CpuContext       cpu_ctx;
+    HostVector<Real>     cpu_res;
+    linalg::HostContext  cpu_ctx;
+    linalg::HostJacobian cpu_jacobian(cpu_ctx);
+    cpu_jacobian.begin(host_map.pattern());
     assembly::assemble(AffineElementKernel{},
                        hgeom,
                        host_map,
                        host_state,
                        cpu_res,
-                       cpu_jac,
+                       cpu_jacobian,
                        cpu_ctx);
+    const HostCsrMatrix& cpu_jac = cpu_jacobian.matrix();
 
-    CudaContext                 cuda_ctx;
-    linalg::CudaVectorHandler   vec_handler(cuda_ctx);
-    linalg::CudaMatrixHandler   mat_handler(cuda_ctx);
+    linalg::CudaContext         cuda_ctx;
+    auto&                       vec_handler = cuda_ctx.vectors();
     fem::DeviceGeometry         dgeom;
     assembly::DeviceAssemblyMap device_map;
     DeviceVector<Real>          device_state;
@@ -178,21 +238,22 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     DeviceVector<Real> state_clone;
     vec_handler.copy(device_state, state_clone);
 
-    DeviceVector<Real> device_res;
-    DeviceCsrMatrix    device_jac(device_map.pattern());
-    auto               moved_device_map = std::move(device_map);
+    DeviceVector<Real>   device_res;
+    linalg::CudaJacobian device_jacobian(cuda_ctx);
+    device_jacobian.begin(host_map.pattern());
+    auto moved_device_map = std::move(device_map);
     assembly::assemble(AffineElementKernel{},
                        dgeom,
                        moved_device_map,
                        state_clone,
                        device_res,
-                       device_jac,
+                       device_jacobian,
                        cuda_ctx);
 
     HostVector<Real> gpu_res;
     HostCsrMatrix    gpu_jac(host_map.pattern());
     vec_handler.copy(device_res, gpu_res);
-    mat_handler.copy(device_jac, gpu_jac);
+    copyMatrix(device_jacobian.matrix(), gpu_jac, cuda_ctx);
     cuda_ctx.sync();
 
     recordCheck(status,
@@ -212,8 +273,8 @@ TestOutcome cudaAssemblyMatchesCpuReference()
                          dgeom,
                          moved_device_map,
                          state_clone,
-                         device_jac.vals(),
-                         device_jac,
+                         state_clone,
+                         device_jacobian,
                          cuda_ctx);
     }
     catch (const std::runtime_error&)
@@ -236,7 +297,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
 TestOutcome cudaBoundaryMatchesCpuReference()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -246,42 +307,42 @@ TestOutcome cudaBoundaryMatchesCpuReference()
   {
     const HostCsrPattern host_graph = denseThreeByThreeGraph();
     const auto           host_map =
-        assembly::makeBoundaryMap(HostVector<Index>{0, 2}, host_graph);
-
-    HostCsrMatrix expected_mat(host_graph);
-    setDenseVals(expected_mat);
-    const HostVector<Real> initial_rhs{10.0, 20.0, 30.0};
-    HostVector<Real>       expected_rhs = initial_rhs;
-    const HostVector<Real> bc_vals{2.0, -1.0};
-    assembly::applyDirichletConditions(
-        host_map, expected_mat, expected_rhs, bc_vals);
-
-    CudaContext                 ctx;
-    linalg::CudaVectorHandler   vec_handler(ctx);
-    linalg::CudaMatrixHandler   mat_handler(ctx);
-    DeviceCsrPattern            device_graph;
-    assembly::DeviceBoundaryMap device_map;
-    femx::copy(host_graph, device_graph, ctx);
-    assembly::copy(host_map, device_map, ctx);
+        assembly::makeBoundaryMap(HostVector<Index>{0, 2});
 
     HostCsrMatrix host_mat(host_graph);
     setDenseVals(host_mat);
-    DeviceCsrMatrix    device_mat(device_graph);
+    const HostVector<Real> initial_rhs{10.0, 20.0, 30.0};
+    HostVector<Real>       expected_rhs = initial_rhs;
+    const HostVector<Real> bc_vals{2.0, -1.0};
+    linalg::HostContext    host_ctx;
+    linalg::HostJacobian   expected_jacobian(host_ctx);
+    loadMatrix(host_mat, expected_jacobian);
+    expected_jacobian.eliminateColumns(host_map.view().constrained_rows,
+                                       bc_vals.view(),
+                                       expected_rhs.view());
+    const HostCsrMatrix& expected_mat =
+        expected_jacobian.matrix();
+
+    linalg::CudaContext         ctx;
+    auto&                       vec_handler = ctx.vectors();
+    assembly::DeviceBoundaryMap device_map;
+    assembly::copy(host_map, device_map, ctx);
+
+    linalg::CudaJacobian device_jacobian(ctx);
+    loadMatrix(host_mat, device_jacobian, ctx);
     DeviceVector<Real> device_rhs;
     DeviceVector<Real> device_bc;
-    mat_handler.copy(host_mat, device_mat);
     vec_handler.copy(initial_rhs, device_rhs);
     vec_handler.copy(bc_vals, device_bc);
 
-    assembly::applyDirichletConditions(device_map,
-                                       device_mat,
-                                       device_rhs,
-                                       device_bc,
-                                       ctx);
+    device_jacobian.eliminateColumns(
+        device_map.view().constrained_rows,
+        device_bc.view(),
+        device_rhs.view());
 
     HostCsrMatrix    actual_mat(host_graph);
     HostVector<Real> actual_rhs;
-    mat_handler.copy(device_mat, actual_mat);
+    copyMatrix(device_jacobian.matrix(), actual_mat, ctx);
     vec_handler.copy(device_rhs, actual_rhs);
     ctx.sync();
     recordCheck(status,
@@ -291,12 +352,17 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                 vecsNear(actual_rhs, expected_rhs),
                 "CUDA forward RHS matches CPU");
 
-    HostCsrMatrix expected_hist(host_graph);
-    setDenseVals(expected_hist);
-    assembly::replaceRows(host_map, expected_hist, 0.0);
-    mat_handler.copy(host_mat, device_mat);
-    assembly::replaceRows(device_map, device_mat, 0.0, ctx);
-    mat_handler.copy(device_mat, actual_mat);
+    linalg::HostJacobian expected_hist_jacobian(host_ctx);
+    loadMatrix(host_mat, expected_hist_jacobian);
+    expected_hist_jacobian.replaceRows(
+        host_map.view().constrained_rows, 0.0);
+    const HostCsrMatrix& expected_hist =
+        expected_hist_jacobian.matrix();
+
+    loadMatrix(host_mat, device_jacobian, ctx);
+    device_jacobian.replaceRows(
+        device_map.view().constrained_rows, 0.0);
+    copyMatrix(device_jacobian.matrix(), actual_mat, ctx);
     ctx.sync();
     recordCheck(status,
                 matsNear(actual_mat, expected_hist),
@@ -349,7 +415,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     bool            layout_rejected = false;
     try
     {
-      mat_handler.copy(host_mat, wrong_mat);
+      copyMatrix(host_mat, wrong_mat, ctx);
     }
     catch (const std::runtime_error&)
     {
@@ -358,40 +424,6 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     recordCheck(status,
                 layout_rejected,
                 "mat copy rejects a different layout");
-
-    const HostCsrPattern diagonal_graph{
-        3,
-        3,
-        HostVector<Index>{0, 1, 2, 3},
-        HostVector<Index>{0, 1, 2}};
-    const auto diagonal_map =
-        assembly::makeBoundaryMap(HostVector<Index>{0}, diagonal_graph);
-    DeviceCsrPattern            diagonal_device_graph;
-    assembly::DeviceBoundaryMap diagonal_device_map;
-    femx::copy(diagonal_graph, diagonal_device_graph, ctx);
-    assembly::copy(diagonal_map, diagonal_device_map, ctx);
-    DeviceCsrMatrix        diag_mat(diagonal_device_graph);
-    DeviceVector<Real>     diagonal_prescribed;
-    const HostVector<Real> host_diagonal_prescribed{1.0};
-    vec_handler.copy(host_diagonal_prescribed, diagonal_prescribed);
-    ctx.sync();
-
-    bool mat_alias_rejected = false;
-    try
-    {
-      assembly::applyDirichletConditions(diagonal_device_map,
-                                         diag_mat,
-                                         diag_mat.vals(),
-                                         diagonal_prescribed,
-                                         ctx);
-    }
-    catch (const std::runtime_error&)
-    {
-      mat_alias_rejected = true;
-    }
-    recordCheck(status,
-                mat_alias_rejected,
-                "forward preparation rejects mat-val alias");
   }
   catch (const std::exception& error)
   {
@@ -405,7 +437,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
 TestOutcome cudaTimeAssemblyMatchesCpuReference()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -421,8 +453,9 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     const HostVector<Real> nxt{7.0, 8.0, 9.0};
     HostVector<Real>       cpu_res;
-    HostCsrMatrix          cpu_jac(map.pattern());
-    CpuContext             cpu_ctx;
+    linalg::HostContext    cpu_ctx;
+    linalg::HostJacobian   cpu_jacobian(cpu_ctx);
+    cpu_jacobian.begin(map.pattern());
     assembly::assemble(TimeElementKernel{},
                        3,
                        2,
@@ -433,12 +466,12 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
                        hist.view(),
                        nxt.view(),
                        cpu_res,
-                       cpu_jac,
+                       cpu_jacobian,
                        cpu_ctx);
+    const HostCsrMatrix& cpu_jac = cpu_jacobian.matrix();
 
-    CudaContext                 ctx;
-    linalg::CudaVectorHandler   vec_handler(ctx);
-    linalg::CudaMatrixHandler   mat_handler(ctx);
+    linalg::CudaContext         ctx;
+    auto&                       vec_handler = ctx.vectors();
     assembly::DeviceAssemblyMap dmap;
     DeviceVector<Real>          dhist;
     DeviceVector<Real>          dnxt;
@@ -446,7 +479,8 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     assembly::copy(map, dmap, ctx);
     vec_handler.copy(hist, dhist);
     vec_handler.copy(nxt, dnxt);
-    DeviceCsrMatrix djac(dmap.pattern());
+    linalg::CudaJacobian djac(ctx);
+    djac.begin(map.pattern());
     assembly::assemble(TimeElementKernel{},
                        3,
                        2,
@@ -461,7 +495,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     HostVector<Real> gpu_res;
     HostCsrMatrix    gpu_jac(map.pattern());
     vec_handler.copy(dres, gpu_res);
-    mat_handler.copy(djac, gpu_jac);
+    copyMatrix(djac.matrix(), gpu_jac, ctx);
     ctx.sync();
     recordCheck(status, vecsNear(gpu_res, cpu_res), "CUDA time res");
     recordCheck(status, matsNear(gpu_jac, cpu_jac), "CUDA time jac");

@@ -134,8 +134,7 @@ makeDeviceLinearSystem(
 #if defined(FEMX_RESOLVE_USE_CUDA)
   if (!native_solver)
   {
-    native_solver =
-        std::make_unique<linalg::ReSolveLinearSolver>();
+    native_solver = std::make_unique<linalg::ReSolveLinearSolver>();
   }
   return std::make_unique<linalg::CudaLinearSystem>(
       std::move(native_solver));

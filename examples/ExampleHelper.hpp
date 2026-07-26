@@ -10,13 +10,9 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
 #include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx::examples
 {
@@ -71,65 +67,45 @@ public:
   }
 
   /**
-   * @brief Compute `||A x - rhs||_2` with Host linear algebra operations.
+   * @brief Compute the Host residual norm.
    *
-   * @param[in] A - Host CSR matrix.
-   * @param[in] rhs - Host right-hand side.
-   * @param[in] x - Host solution vector.
-   * @param[in,out] ctx - CPU execution context.
-   * @return Euclidean norm of the algebraic residual.
-   * @throws std::runtime_error - If the matrix and vector dimensions are
-   * incompatible.
+   * @param[in] op - Residual operator.
+   * @param[in] state - State at which to evaluate the residual.
+   * @param[in] prm - Parameter vector.
+   * @param[in,out] ctx - Host execution context.
+   * @return Euclidean norm of the residual.
    */
-  Real resNorm(const HostCsrMatrix&    A,
-               const HostVector<Real>& rhs,
-               const HostVector<Real>& x,
-               linalg::HostContext&    ctx) const
+  Real resNorm(const state::HostResidual&          op,
+               const HostVector<Real>&             state,
+               const HostVector<Real>&             prm,
+               linalg::Context<MemorySpace::Host>& ctx) const
   {
-    if (rhs.size() != A.rows() || x.size() != A.cols())
-    {
-      throw std::runtime_error("Residual dimensions are inconsistent");
-    }
-
-    linalg::HostJacobian jacobian(ctx);
-    auto&                vec_handler = ctx.vectors();
-
-    HostVector<Real> residual(A.rows());
-    jacobian.apply(A, x.view(), residual.view());
-    vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
-    return std::sqrt(vec_handler.squaredNorm(residual.view()));
+    HostVector<Real> residual;
+    op.res(state, prm, residual, ctx);
+    return std::sqrt(ctx.vectors().squaredNorm(residual.view()));
   }
 
 #if defined(FEMX_HAS_CUDA)
   /**
-   * @brief Compute `||A x - rhs||_2` with Device linear algebra operations.
+   * @brief Compute the Device residual norm.
    *
    * The operation synchronizes `ctx` before returning the Host result.
    *
-   * @param[in] A - Device CSR matrix.
-   * @param[in] rhs - Device right-hand side.
-   * @param[in] x - Device solution vector.
-   * @param[in,out] ctx - CUDA execution context.
-   * @return Euclidean norm of the algebraic residual.
-   * @throws std::runtime_error - If dimensions are incompatible or a CUDA
-   * linear algebra operation fails.
+   * @param[in] op - Residual operator.
+   * @param[in] state - Device state at which to evaluate the residual.
+   * @param[in] prm - Device parameter vector.
+   * @param[in,out] ctx - Device execution context.
+   * @return Euclidean norm of the residual.
    */
-  Real resNorm(const DeviceCsrMatrix&    A,
-               const DeviceVector<Real>& rhs,
-               const DeviceVector<Real>& x,
-               linalg::CudaContext&      ctx) const
+  Real resNorm(
+      const state::DeviceResidual&          op,
+      const DeviceVector<Real>&             state,
+      const DeviceVector<Real>&             prm,
+      linalg::Context<MemorySpace::Device>& ctx) const
   {
-    if (rhs.size() != A.rows() || x.size() != A.cols())
-    {
-      throw std::runtime_error("Residual dimensions are inconsistent");
-    }
-
-    linalg::CudaJacobian jacobian(ctx);
-    auto&                vec_handler = ctx.vectors();
-
-    DeviceVector<Real> residual(A.rows());
-    jacobian.apply(A, x.view(), residual.view());
-    vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
+    auto&              vec_handler = ctx.vectors();
+    DeviceVector<Real> residual;
+    op.res(state, prm, residual, ctx);
 
     DeviceVector<Real> norm2(1);
     vec_handler.squaredNorm(residual.view(), norm2.view());

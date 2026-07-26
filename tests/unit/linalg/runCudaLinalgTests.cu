@@ -3,10 +3,12 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "TestHelper.hpp"
+#include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -58,10 +60,22 @@ void record(TestStatus& status, bool condition, const char* label)
   status *= condition;
 }
 
+void copyMatrix(const HostCsrMatrix& source,
+                DeviceCsrMatrix&     destination,
+                linalg::CudaContext& ctx)
+{
+  if (source.pattern().layoutId() != destination.pattern().layoutId())
+  {
+    throw std::runtime_error(
+        "Test matrix copy requires matching CSR layouts");
+  }
+  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+}
+
 TestOutcome persistentCudaCsrOps()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -81,21 +95,21 @@ TestOutcome persistentCudaCsrOps()
     const HostVector<Real> host_affine_input{1.0, 2.0, 3.0};
     const HostVector<Real> host_tr_input{2.0, -1.0, 0.5};
 
-    CpuContext                cpu_ctx;
-    CudaContext               ctx;
-    linalg::HostMatrixHandler host_mat_handler(cpu_ctx);
-    linalg::CudaVectorHandler vec_handler(ctx);
-    linalg::CudaMatrixHandler mat_handler(ctx);
-    DeviceCsrPattern          device_graph;
+    linalg::HostContext  cpu_ctx;
+    linalg::CudaContext  ctx;
+    linalg::HostJacobian host_jacobian(cpu_ctx);
+    linalg::CudaJacobian jacobian(ctx);
+    auto&                vec_handler = ctx.vectors();
+    DeviceCsrPattern     device_graph;
     copy(pattern, device_graph, ctx);
     record(status,
            device_graph.layoutId() == pattern.layoutId(),
            "Device pattern preserves its Host layout identity");
     DeviceCsrMatrix device_mat(device_graph);
-    mat_handler.copy(host_mat, device_mat);
+    copyMatrix(host_mat, device_mat, ctx);
 
     DeviceCsrMatrix device_transpose;
-    mat_handler.transpose(device_mat, device_transpose);
+    jacobian.transpose(device_mat, device_transpose);
     const Index* transpose_row_ptr = device_transpose.rowPtrData();
     const Index* transpose_col_ind = device_transpose.colIndData();
     Real*        transpose_vals    = device_transpose.valsData();
@@ -143,9 +157,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(input.view(), sliced_input.view().subview(3, 4));
 
     DeviceVector<Real> output(3);
-    mat_handler.matvec(device_mat,
-                       sliced_input.view().subview(3, 4),
-                       output.view());
+    jacobian.apply(device_mat,
+                   sliced_input.view().subview(3, 4),
+                   output.view());
     HostVector<Real> first_product;
     vec_handler.copy(output, first_product);
 
@@ -163,15 +177,15 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real> tr_input;
     vec_handler.copy(host_tr_input, tr_input);
     DeviceVector<Real> direct_tr_product(4);
-    mat_handler.matvecT(device_mat,
-                        tr_input.view(),
-                        direct_tr_product.view());
+    jacobian.applyT(device_mat,
+                    tr_input.view(),
+                    direct_tr_product.view());
     HostVector<Real> actual_direct_tr_product;
     vec_handler.copy(direct_tr_product, actual_direct_tr_product);
     HostVector<Real> expected_tr_product(4);
-    host_mat_handler.matvecT(host_mat,
-                             host_tr_input.view(),
-                             expected_tr_product.view());
+    host_jacobian.applyT(host_mat,
+                         host_tr_input.view(),
+                         expected_tr_product.view());
     ctx.sync();
 
     record(status,
@@ -212,13 +226,13 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real>     device_dense;
     vec_handler.copy(host_dense, device_dense);
     DeviceVector<Real> dense_product(2);
-    mat_handler.matvec(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
-                       input.view().subview(0, 3),
-                       dense_product.view());
+    jacobian.apply(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                   input.view().subview(0, 3),
+                   dense_product.view());
     DeviceVector<Real> dense_tr_product(3);
-    mat_handler.matvecT(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
-                        dense_product.view(),
-                        dense_tr_product.view());
+    jacobian.applyT(DeviceMatrixView<const Real>(device_dense.data(), 2, 3),
+                    dense_product.view(),
+                    dense_tr_product.view());
     HostVector<Real> actual_dense;
     HostVector<Real> actual_dense_tr;
     vec_handler.copy(dense_product, actual_dense);
@@ -236,14 +250,14 @@ TestOutcome persistentCudaCsrOps()
            "transposed CSR apply");
 
     host_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
-    mat_handler.copy(host_mat, device_mat);
-    mat_handler.transpose(device_mat, device_transpose);
-    mat_handler.matvec(device_mat,
-                       sliced_input.view().subview(3, 4),
-                       output.view());
-    mat_handler.matvecT(device_mat,
-                        tr_input.view(),
-                        direct_tr_product.view());
+    copyMatrix(host_mat, device_mat, ctx);
+    jacobian.transpose(device_mat, device_transpose);
+    jacobian.apply(device_mat,
+                   sliced_input.view().subview(3, 4),
+                   output.view());
+    jacobian.applyT(device_mat,
+                    tr_input.view(),
+                    direct_tr_product.view());
 
     HostVector<Real> updated_product;
     HostVector<Real> updated_direct_tr_product;
@@ -251,9 +265,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(output, updated_product);
     vec_handler.copy(direct_tr_product, updated_direct_tr_product);
     vec_handler.copy(device_transpose.vals(), updated_transpose_vals);
-    host_mat_handler.matvecT(host_mat,
-                             host_tr_input.view(),
-                             expected_tr_product.view());
+    host_jacobian.applyT(host_mat,
+                         host_tr_input.view(),
+                         expected_tr_product.view());
     ctx.sync();
 
     record(status,
@@ -278,9 +292,9 @@ TestOutcome persistentCudaCsrOps()
     bool overlap_rejected = false;
     try
     {
-      mat_handler.matvec(device_mat,
-                         sliced_input.view().subview(3, 4),
-                         sliced_input.view().subview(4, 3));
+      jacobian.apply(device_mat,
+                     sliced_input.view().subview(3, 4),
+                     sliced_input.view().subview(4, 3));
     }
     catch (const std::runtime_error&)
     {

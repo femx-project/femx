@@ -14,7 +14,6 @@
 #include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/DofLayout.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/linalg/native/HostContext.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -235,36 +234,76 @@ Index PoissonForwardProblem::numDofs() const noexcept
   return space_.numDofs();
 }
 
-void PoissonForwardProblem::assemble(HostCsrMatrix&    mat,
-                                     HostVector<Real>& rhs) const
+state::Dimensions PoissonForwardProblem::dims() const
 {
-  HostVector<Real>    zero_state(numDofs(), 0.0);
-  HostVector<Real>    res;
-  linalg::HostContext ctx;
+  return {numDofs(), 0, numDofs()};
+}
+
+const HostCsrPattern& PoissonForwardProblem::hostPattern() const
+{
+  return map_.pattern();
+}
+
+void PoissonForwardProblem::res(
+    const HostVector<Real>&             state,
+    const HostVector<Real>&             prm,
+    HostVector<Real>&                   out,
+    linalg::Context<MemorySpace::Host>& ctx) const
+{
+  checkVectors(state, prm);
+  assembly::assembleResidual(
+      PoissonComponents<MemorySpace::Host>(element_data_.view()),
+      geom_,
+      map_,
+      state,
+      out,
+      ctx);
+  assembly::replaceRes(
+      bc_map_, state.view(), bc_vals_.view(), out.view());
+}
+
+void PoissonForwardProblem::assembleStateJac(
+    const HostVector<Real>&              state,
+    const HostVector<Real>&              prm,
+    linalg::Jacobian<MemorySpace::Host>& out,
+    linalg::Context<MemorySpace::Host>&  ctx) const
+{
+  checkVectors(state, prm);
+  HostVector<Real> unused;
   assembly::assemble(PoissonComponents<MemorySpace::Host>(element_data_.view()),
                      geom_,
                      map_,
-                     zero_state,
-                     res,
-                     mat,
+                     state,
+                     unused,
+                     out,
                      ctx);
+  out.replaceRows(bc_map_.view().constrained_rows, 1.0);
+}
 
-  rhs.resize(res.size());
-  for (Index row = 0; row < res.size(); ++row)
+void PoissonForwardProblem::applyParamJacT(
+    const HostVector<Real>& state,
+    const HostVector<Real>& prm,
+    const HostVector<Real>& adj,
+    HostVector<Real>&       out,
+    linalg::Context<MemorySpace::Host>&) const
+{
+  checkVectors(state, prm);
+  if (adj.size() != numDofs())
   {
-    rhs[row] = -res[row];
+    throw std::runtime_error(
+        "Poisson adjoint vector has incompatible size");
   }
-  const auto        rows_view = bc_map_.view().constrained_rows;
-  HostVector<Index> rows(rows_view);
-  for (Index i = 0; i < rows.size(); ++i)
+  out.resize(0);
+}
+
+void PoissonForwardProblem::checkVectors(
+    const HostVector<Real>& state,
+    const HostVector<Real>& prm) const
+{
+  if (state.size() != numDofs() || !prm.empty())
   {
-    rhs[rows[i]] = bc_vals_[i];
-  }
-  assembly::eliminateColumns(mat, rows, rhs);
-  assembly::replaceRows(mat, rows, 1.0);
-  for (Index i = 0; i < rows.size(); ++i)
-  {
-    rhs[rows[i]] = bc_vals_[i];
+    throw std::runtime_error(
+        "Poisson residual vectors have incompatible sizes");
   }
 }
 

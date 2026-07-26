@@ -1,5 +1,4 @@
 #include "SolverTestFixtures.hpp"
-#include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <resolve/resolve_defs.hpp>
 
@@ -74,20 +73,20 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
     solver::fillGrid5PointMat(mat, nx, ny);
 
     linalg::ReSolveLinearSolver lin_solver;
-    CpuContext                  ctx;
-    linalg::HostMatrixHandler   mat_handler(ctx);
+    linalg::HostContext         ctx;
+    linalg::HostJacobian        jacobian(ctx);
 
     const HostVector<Real> expected = solver::expectedGridSolution(nx, ny);
     HostVector<Real>       rhs(expected.size());
-    mat_handler.matvec(mat, expected.view(), rhs.view());
+    jacobian.apply(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
 
-    mat_handler.zero(mat);
+    ctx.vectors().zero(mat.vals().view());
     solver::fillGrid5PointMat(mat, nx, ny);
-    mat_handler.matvec(mat, expected.view(), rhs.view());
+    jacobian.apply(mat, expected.view(), rhs.view());
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
   }
@@ -111,7 +110,7 @@ TestOutcome resolveZeroRhsReturnsZero()
     solver::fillTestMat(mat);
     const HostVector<Real> rhs(3, 0.0);
     HostVector<Real>       sol{1.0, 2.0, 3.0};
-    CpuContext             ctx;
+    linalg::HostContext    ctx;
 
     linalg::ReSolveLinearSolver host_solver;
     host_solver.solve(mat, rhs, sol, ctx);

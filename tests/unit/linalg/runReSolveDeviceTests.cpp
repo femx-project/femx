@@ -5,10 +5,12 @@
 #include <stdexcept>
 #include <utility>
 
-#include "TestHelper.hpp"
+#include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 namespace femx
@@ -130,10 +132,22 @@ bool vecNear(const HostVector<Real>& actual, const HostVector<Real>& expected)
   return true;
 }
 
+void copyMatrix(const HostCsrMatrix& source,
+                DeviceCsrMatrix&     destination,
+                linalg::CudaContext& ctx)
+{
+  if (source.pattern().layoutId() != destination.pattern().layoutId())
+  {
+    throw std::runtime_error(
+        "Test matrix copy requires matching CSR layouts");
+  }
+  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+}
+
 TestOutcome unifiedResolveSolvesDeviceStorage()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -153,18 +167,17 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     HostCsrMatrix hmat_tr_source(hgraph);
     fillGridMat(hmat_tr_source);
 
-    CpuContext                cpu_ctx;
-    CudaContext               ctx;
-    linalg::HostMatrixHandler host_mat_handler(cpu_ctx);
-    linalg::CudaVectorHandler vec_handler(ctx);
-    linalg::CudaMatrixHandler mat_handler(ctx);
-    DeviceCsrPattern          dgraph;
+    linalg::HostContext  cpu_ctx;
+    linalg::CudaContext  ctx;
+    linalg::HostJacobian host_jacobian(cpu_ctx);
+    auto&                vec_handler = ctx.vectors();
+    DeviceCsrPattern     dgraph;
     copy(hgraph, dgraph, ctx);
 
     DeviceCsrMatrix dmat(dgraph);
-    mat_handler.copy(hmat, dmat);
+    copyMatrix(hmat, dmat, ctx);
     DeviceCsrMatrix dmat_tr_source(dgraph);
-    mat_handler.copy(hmat_tr_source, dmat_tr_source);
+    copyMatrix(hmat_tr_source, dmat_tr_source, ctx);
     linalg::ReSolveLinearSolver solver;
     linalg::ReSolveLinearSolver tr_solver;
 
@@ -192,9 +205,9 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     status *= vecNear(fwd_sol, expected);
 
     HostVector<Real> tr_rhs(hmat_tr_source.cols());
-    host_mat_handler.matvecT(hmat_tr_source,
-                             expected.view(),
-                             tr_rhs.view());
+    host_jacobian.applyT(hmat_tr_source,
+                         expected.view(),
+                         tr_rhs.view());
 
     DeviceVector<Real> dtr_rhs;
     DeviceVector<Real> dtr_sol;
@@ -235,13 +248,13 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     // rather than the bound forward matrix, must be authoritative.
     fillGridMat(hmat, 0.25);
     fillGridMat(hmat_tr_source, 0.5);
-    mat_handler.copy(hmat, dmat);
-    mat_handler.copy(hmat_tr_source, dmat_tr_source);
+    copyMatrix(hmat, dmat, ctx);
+    copyMatrix(hmat_tr_source, dmat_tr_source, ctx);
     const HostVector<Real> rhs2 = mul(hmat, expected);
     HostVector<Real>       tr_rhs2(hmat_tr_source.cols());
-    host_mat_handler.matvecT(hmat_tr_source,
-                             expected.view(),
-                             tr_rhs2.view());
+    host_jacobian.applyT(hmat_tr_source,
+                         expected.view(),
+                         tr_rhs2.view());
     vec_handler.copy(rhs2, drhs);
     vec_handler.copy(tr_rhs2, dtr_rhs);
     solver.solve(dmat, drhs, dsol, ctx);

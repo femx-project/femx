@@ -4,7 +4,7 @@
 #include <string>
 
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/handler/CudaHandles.hpp>
+#include <femx/linalg/cuda/CudaHandles.hpp>
 
 namespace femx::linalg::detail
 {

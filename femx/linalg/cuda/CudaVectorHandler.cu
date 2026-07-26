@@ -2,8 +2,8 @@
 #include <cusparse.h>
 
 #include <cublas_v2.h>
-#include <femx/linalg/handler/CudaHandles.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaHandles.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
 
 namespace femx::linalg
@@ -138,7 +138,7 @@ __global__ void axpbyKernel(Index       size,
 } // namespace
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
-                                         DeviceVectorView<Real>       dst) const
+                             DeviceVectorView<Real>       dst) const
 {
   require(src.isValid(), "Device copy has an invalid source view");
   require(dst.isValid(), "Device copy has an invalid destination view");
@@ -158,14 +158,14 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
 }
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
-                                         DeviceVector<Real>&          dst) const
+                             DeviceVector<Real>&          dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
 void CudaVectorHandler::copy(HostVectorView<const Real> src,
-                                         DeviceVectorView<Real>     dst) const
+                             DeviceVectorView<Real>     dst) const
 {
   require(src.isValid(), "Host-to-Device copy has an invalid source view");
   require(dst.isValid(), "Host-to-Device copy has an invalid destination view");
@@ -182,14 +182,14 @@ void CudaVectorHandler::copy(HostVectorView<const Real> src,
 }
 
 void CudaVectorHandler::copy(HostVectorView<const Real> src,
-                                         DeviceVector<Real>&        dst) const
+                             DeviceVector<Real>&        dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
 }
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
-                                         HostVectorView<Real>         dst) const
+                             HostVectorView<Real>         dst) const
 {
   require(src.isValid(), "Device-to-Host copy has an invalid source view");
   require(dst.isValid(), "Device-to-Host copy has an invalid destination view");
@@ -206,7 +206,7 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
 }
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
-                                         HostVector<Real>&            dst) const
+                             HostVector<Real>&            dst) const
 {
   resize(dst, src.size());
   copy(src, dst.view());
@@ -224,9 +224,9 @@ void CudaVectorHandler::zero(DeviceVectorView<Real> vals) const
 }
 
 void CudaVectorHandler::axpby(Real                         a,
-                                          DeviceVectorView<const Real> x,
-                                          Real                         b,
-                                          DeviceVectorView<Real>       y) const
+                              DeviceVectorView<const Real> x,
+                              Real                         b,
+                              DeviceVectorView<Real>       y) const
 {
   require(x.isValid(), "axpby has an invalid input view");
   require(y.isValid(), "axpby has an invalid output view");
@@ -246,8 +246,8 @@ void CudaVectorHandler::axpby(Real                         a,
 }
 
 void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
-                                           DeviceVectorView<const Index> indices,
-                                           DeviceVectorView<Real>        dst) const
+                               DeviceVectorView<const Index> indices,
+                               DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "gather has an invalid source view");
   require(indices.isValid(), "gather has an invalid index view");
@@ -271,8 +271,8 @@ void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
 }
 
 void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
-                                            DeviceVectorView<const Index> indices,
-                                            DeviceVectorView<Real>        dst) const
+                                DeviceVectorView<const Index> indices,
+                                DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "scatter has an invalid source view");
   require(indices.isValid(), "scatter has an invalid index view");
@@ -296,8 +296,8 @@ void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
 }
 
 void CudaVectorHandler::dot(DeviceVectorView<const Real> x,
-                                        DeviceVectorView<const Real> y,
-                                        DeviceVectorView<Real>       out) const
+                            DeviceVectorView<const Real> y,
+                            DeviceVectorView<Real>       out) const
 {
   require(x.isValid(), "dot has an invalid first input view");
   require(y.isValid(), "dot has an invalid second input view");

@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <cublas_v2.h>
+#include <femx/linalg/cuda/CudaHandles.hpp>
 #include <femx/linalg/cuda/CudaJacobian.hpp>
-#include <femx/linalg/handler/CudaHandles.hpp>
 
 namespace femx::linalg
 {

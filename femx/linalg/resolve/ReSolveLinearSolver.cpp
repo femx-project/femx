@@ -256,7 +256,7 @@ private:
   [[noreturn]] static void unavailableCuda()
   {
     throw std::runtime_error(
-        "ReSolveLinearSolver Device path requires the ReSolve CUDA backend");
+        "ReSolveLinearSolver Device path requires ReSolve CUDA support");
   }
 
   static void check(int status, const char* op)

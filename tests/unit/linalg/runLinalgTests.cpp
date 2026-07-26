@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <stdexcept>
@@ -8,8 +9,8 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -57,9 +58,9 @@ assembly::HostAssemblyMap makeSharedElementMap()
 
 TestOutcome vectorBasics()
 {
-  TestStatus                status(__func__);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  TestStatus          status(__func__);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
 
   HostVector<Real> v(3, 2.0);
   status *= v.size() == 3;
@@ -96,9 +97,9 @@ TestOutcome vectorBasics()
 
 TestOutcome vectorViewCopiesAndAssigns()
 {
-  TestStatus                status(__func__);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  TestStatus          status(__func__);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
 
   Real                 raw[3] = {1.0, 2.0, 3.0};
   HostVectorView<Real> view(raw, 3);
@@ -133,11 +134,11 @@ TestOutcome vectorGatherScatter()
 {
   TestStatus status(__func__);
 
-  const HostVector<Real>    source{10.0, 20.0, 30.0, 40.0, 50.0};
-  const HostVector<Index>   indices{4, 1, 3};
-  HostVector<Real>          compact(3);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  const HostVector<Real>  source{10.0, 20.0, 30.0, 40.0, 50.0};
+  const HostVector<Index> indices{4, 1, 3};
+  HostVector<Real>        compact(3);
+  linalg::HostContext     ctx;
+  auto&                   vec_handler = ctx.vectors();
   vec_handler.gather(source.view(), indices.view(), compact.view());
   status *= valsNear(compact.data(),
                      std::array<Real, 3>{{50.0, 20.0, 40.0}});
@@ -152,9 +153,7 @@ TestOutcome vectorGatherScatter()
 
 TestOutcome denseMatrixBasics()
 {
-  TestStatus                status(__func__);
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
+  TestStatus status(__func__);
 
   DenseMatrix empty;
   status *= empty.rows() == 0;
@@ -177,7 +176,7 @@ TestOutcome denseMatrixBasics()
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{1.0, 2.0, 3.0, 4.0, 5.0, 6.0}});
 
-  mat_handler.zero(mat);
+  std::fill(mat.data(), mat.data() + mat.size(), 0.0);
   status *= valsNear(mat.data(),
                      std::array<Real, 6>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
@@ -204,24 +203,24 @@ TestOutcome denseMatrixApplies()
   mat(1, 1) = 5.0;
   mat(1, 2) = 6.0;
 
-  const HostVector<Real>    x{1.0, 2.0, 3.0};
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
+  const HostVector<Real> x{1.0, 2.0, 3.0};
+  linalg::HostContext    ctx;
+  linalg::HostJacobian   jacobian(ctx);
 
   HostVector<Real> y(2);
-  mat_handler.matvec(mat.view(), x.view(), y.view());
+  jacobian.apply(mat.view(), x.view(), y.view());
   status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
 
   const HostVector<Real> xt{2.0, -1.0};
   HostVector<Real>       yt(3);
-  mat_handler.matvecT(mat.view(), xt.view(), yt.view());
+  jacobian.applyT(mat.view(), xt.view(), yt.view());
   status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
 
   bool threw = false;
   try
   {
     HostVector<Real> wrong_input(2);
-    mat_handler.matvec(mat.view(), wrong_input.view(), y.view());
+    jacobian.apply(mat.view(), wrong_input.view(), y.view());
   }
   catch (const std::runtime_error&)
   {
@@ -271,9 +270,9 @@ TestOutcome assemblyMapBuildsSharedElementSparsity()
 
 TestOutcome csrMatrixOwnsValuesForGraph()
 {
-  TestStatus                status(__func__);
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
+  TestStatus          status(__func__);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
 
   const auto    map = makeSharedElementMap();
   HostCsrMatrix mat(map.pattern());
@@ -293,11 +292,11 @@ TestOutcome csrMatrixOwnsValuesForGraph()
                      std::array<Real, 7>{{1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0}});
 
   HostCsrMatrix copied(map.pattern());
-  mat_handler.copy(mat, copied);
+  vec_handler.copy(mat.vals().view(), copied.vals().view());
   status *= valsNear(copied.valsData(),
                      std::array<Real, 7>{{1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3.0}});
 
-  mat_handler.zero(mat);
+  vec_handler.zero(mat.vals().view());
   status *= valsNear(mat.valsData(),
                      std::array<Real, 7>{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
@@ -316,10 +315,10 @@ TestOutcome csrMatrixTranspose()
   HostCsrMatrix src(pattern);
   src.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  HostCsrMatrix             dst;
-  mat_handler.transpose(src, dst);
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  HostCsrMatrix        dst;
+  jacobian.transpose(src, dst);
 
   status *= dst.rows() == 4 && dst.cols() == 3 && dst.nnz() == 7;
   status *= valsEqual(dst.rowPtrData(),
@@ -329,21 +328,16 @@ TestOutcome csrMatrixTranspose()
   status *= valsNear(dst.valsData(),
                      std::array<Real, 7>{{2.0, -2.0, 3.0, -1.0, 5.0, 4.0, 1.0}});
 
-  const Index* row_ptr = dst.rowPtrData();
-  const Index* col_ind = dst.colIndData();
-  Real*        vals    = dst.valsData();
-  src.vals()           = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
-  mat_handler.transpose(src, dst);
+  src.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
+  jacobian.transpose(src, dst);
 
-  status *= row_ptr == dst.rowPtrData() && col_ind == dst.colIndData()
-            && vals == dst.valsData();
   status *= valsNear(dst.valsData(),
                      std::array<Real, 7>{{-1.0, 4.0, 0.5, 2.0, 1.0, -3.0, -2.0}});
 
   bool alias_rejected = false;
   try
   {
-    mat_handler.transpose(src, src);
+    jacobian.transpose(src, src);
   }
   catch (const std::runtime_error&)
   {

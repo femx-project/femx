@@ -3,11 +3,11 @@ target_include_directories(runLinalgTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runLinalgTests PRIVATE femx::femx)
 add_test(NAME LinalgTests COMMAND runLinalgTests)
 
-add_executable(runBackendAssemblyTests unit/backend/runBackendAssemblyTests.cpp)
-target_include_directories(runBackendAssemblyTests
+add_executable(runHostAssemblyTests unit/assembly/runHostAssemblyTests.cpp)
+target_include_directories(runHostAssemblyTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runBackendAssemblyTests PRIVATE femx::femx)
-add_test(NAME BackendAssemblyTests COMMAND runBackendAssemblyTests)
+target_link_libraries(runHostAssemblyTests PRIVATE femx::femx)
+add_test(NAME HostAssemblyTests COMMAND runHostAssemblyTests)
 
 add_executable(
   runPoissonAssemblyTests
@@ -21,7 +21,7 @@ target_link_libraries(runPoissonAssemblyTests PRIVATE femx::femx)
 add_test(NAME PoissonAssemblyTests COMMAND runPoissonAssemblyTests)
 
 if(FEMX_HAS_CUDA)
-  add_executable(runCudaAssemblyTests unit/backend/runCudaAssemblyTests.cu)
+  add_executable(runCudaAssemblyTests unit/assembly/runCudaAssemblyTests.cu)
   target_include_directories(runCudaAssemblyTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runCudaAssemblyTests PRIVATE femx::femx)
@@ -30,7 +30,7 @@ if(FEMX_HAS_CUDA)
   add_test(NAME CudaAssemblyTests COMMAND runCudaAssemblyTests)
   set_tests_properties(CudaAssemblyTests PROPERTIES LABELS "cuda;optional")
 
-  add_executable(runCudaLinalgTests unit/backend/runCudaLinalgTests.cu)
+  add_executable(runCudaLinalgTests unit/linalg/runCudaLinalgTests.cu)
   target_include_directories(runCudaLinalgTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runCudaLinalgTests PRIVATE femx::linalg)
@@ -44,8 +44,8 @@ endif()
 if(FEMX_HAS_CUDA
    AND FEMX_HAS_RESOLVE_CUDA
    AND TARGET femx_linalg_resolve
-   AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-  add_executable(runReSolveDeviceTests unit/backend/runReSolveDeviceTests.cpp)
+   AND NOT FEMX_RESOLVE_DEVICE_MODE STREQUAL "HOST")
+  add_executable(runReSolveDeviceTests unit/linalg/runReSolveDeviceTests.cpp)
   target_include_directories(runReSolveDeviceTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runReSolveDeviceTests PRIVATE femx::linalg_resolve)

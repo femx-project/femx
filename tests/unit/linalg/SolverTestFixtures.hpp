@@ -9,7 +9,8 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx::tests::solver
 {
@@ -184,27 +185,27 @@ inline bool vecNear(const HostVector<Real>& actual,
 }
 
 inline TestOutcome solvesForwardAndTranspose(
-    const char*                  name,
-    linalg::HostCsrLinearSolver& solver,
-    const HostCsrMatrix&         mat,
-    const HostVector<Real>&      expected,
-    Real                         tol = 1.0e-8)
+    const char*                              name,
+    linalg::LinearSolver<MemorySpace::Host>& solver,
+    const HostCsrMatrix&                     mat,
+    const HostVector<Real>&                  expected,
+    Real                                     tol = 1.0e-8)
 {
   TestStatus status(name);
 
   try
   {
-    CpuContext                ctx;
-    linalg::HostMatrixHandler mat_handler(ctx);
-    HostVector<Real>          rhs(mat.rows());
-    mat_handler.matvec(mat, expected.view(), rhs.view());
+    linalg::HostContext  ctx;
+    linalg::HostJacobian jacobian(ctx);
+    HostVector<Real>     rhs(mat.rows());
+    jacobian.apply(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;
     solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
     HostVector<Real> rhs_t(mat.cols());
-    mat_handler.matvecT(mat, expected.view(), rhs_t.view());
+    jacobian.applyT(mat, expected.view(), rhs_t.view());
 
     HostVector<Real> xt;
     solver.solveT(mat, rhs_t, xt, ctx);
@@ -220,10 +221,10 @@ inline TestOutcome solvesForwardAndTranspose(
 }
 
 inline TestOutcome solvesForwardAndTranspose(
-    const char*                  name,
-    linalg::HostCsrLinearSolver& solver,
-    const HostCsrMatrix&         mat,
-    Real                         tol = 1.0e-8)
+    const char*                              name,
+    linalg::LinearSolver<MemorySpace::Host>& solver,
+    const HostCsrMatrix&                     mat,
+    Real                                     tol = 1.0e-8)
 {
   return solvesForwardAndTranspose(
       name, solver, mat, expectedSolution(), tol);

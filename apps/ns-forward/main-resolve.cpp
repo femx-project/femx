@@ -138,7 +138,8 @@ int run(const Config& prm)
 
   auto  system = makeDeviceLinearSystem(solver, std::make_unique<ReSolveLinearSolver>(opts));
   auto& ctx    = dynamic_cast<linalg::CudaContext&>(system->context());
-  auto  res    = model::ns::makeDeviceTimeResidual(fwd.model, fwd.residual.controlMap());
+  auto  res    = model::ns::makeDeviceTimeResidual(
+      fwd.model, fwd.residual.controlMap(), {}, ctx);
 
   DeviceTimeIntegrator integ(*res, *system);
   DeviceVector<Real>   initial;

@@ -974,13 +974,19 @@ class PythonDeviceTimeIntegrator final
 {
 public:
   PythonDeviceTimeIntegrator(
-      std::unique_ptr<femx::state::DeviceTimeResidual> res,
-      femx::linalg::ReSolveOptions                     opts)
-    : res_(std::move(res)),
-      system_(femx::runtime::makeDeviceLinearSystem(
+      const NavierStokesModel&       model,
+      femx::fem::HostControlMap      control,
+      femx::fem::HostInitialStateMap init,
+      femx::linalg::ReSolveOptions   opts)
+    : system_(femx::runtime::makeDeviceLinearSystem(
           femx::runtime::SolverType::ReSolve,
           std::make_unique<femx::linalg::ReSolveLinearSolver>(
               std::move(opts)))),
+      res_(femx::model::ns::makeDeviceTimeResidual(
+          model,
+          std::move(control),
+          std::move(init),
+          system_->context())),
       integ_(*res_, *system_)
   {
   }
@@ -1017,11 +1023,11 @@ public:
   }
 
 private:
-  std::unique_ptr<femx::state::DeviceTimeResidual> res_;
   std::unique_ptr<
       femx::linalg::LinearSystem<femx::MemorySpace::Device>>
-                                    system_;
-  femx::state::DeviceTimeIntegrator integ_;
+                                                   system_;
+  std::unique_ptr<femx::state::DeviceTimeResidual> res_;
+  femx::state::DeviceTimeIntegrator                integ_;
 };
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
@@ -1030,11 +1036,11 @@ makeDeviceIntegrator(NavierStokesModel&     model,
                      const RealArray&       initial,
                      const py::object&      options)
 {
-  auto integrator =
-      std::make_unique<PythonDeviceTimeIntegrator>(
-          femx::model::ns::makeDeviceTimeResidual(
-              model, problem.controlMap()),
-          resolveOptions(options));
+  auto integrator = std::make_unique<PythonDeviceTimeIntegrator>(
+      model,
+      problem.controlMap(),
+      femx::fem::HostInitialStateMap{},
+      resolveOptions(options));
   const HostVector<Real> host_initial =
       realVector(initial, "initial_state");
   integrator->setInitialState(host_initial);
@@ -1054,11 +1060,11 @@ makeDeviceIntegrator(NavierStokesModel&          model,
   const auto  opts    = resolveOptions(options);
   if (basis.cols() == 0)
   {
-    auto integrator =
-        std::make_unique<PythonDeviceTimeIntegrator>(
-            femx::model::ns::makeDeviceTimeResidual(
-                model, problem.controlMap()),
-            opts);
+    auto integrator = std::make_unique<PythonDeviceTimeIntegrator>(
+        model,
+        problem.controlMap(),
+        femx::fem::HostInitialStateMap{},
+        opts);
     integrator->setInitialState(init);
     return integrator;
   }
@@ -1070,8 +1076,9 @@ makeDeviceIntegrator(NavierStokesModel&          model,
       problem.controlParamOffset(),
       num_prm);
   return std::make_unique<PythonDeviceTimeIntegrator>(
-      femx::model::ns::makeDeviceTimeResidual(
-          model, problem.controlMap(), std::move(init_map)),
+      model,
+      problem.controlMap(),
+      std::move(init_map),
       opts);
 }
 

@@ -31,7 +31,6 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/LinearSystem.hpp>
-#include <femx/linalg/native/HostContext.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/Residual.hpp>
@@ -56,28 +55,6 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-void setStateJac(const HostCsrMatrix&                 source,
-                 linalg::Jacobian<MemorySpace::Host>& destination)
-{
-  HostVector<Index> row(1);
-  for (Index global_row = 0; global_row < source.rows(); ++global_row)
-  {
-    const Index       begin = source.rowPtrData()[global_row];
-    const Index       count = source.rowPtrData()[global_row + 1] - begin;
-    HostVector<Index> entries(count);
-    for (Index i = 0; i < count; ++i)
-    {
-      entries[i] = begin + i;
-    }
-    row[0] = global_row;
-    destination.addElement(
-        {row.view(),
-         {source.colIndData() + begin, count},
-         entries.view(),
-         {source.valsData() + begin, 1, count}});
-  }
-}
-
 /** @brief AssemblyMap residual shared by Host and PETSc linear systems. */
 class PoissonMapResidual final : public HostResidual
 {
@@ -94,8 +71,7 @@ public:
     : geom_(&geom),
       element_data_(&element_data),
       map_(&map),
-      control_dofs_(std::move(control_dofs)),
-      jac_(map.pattern())
+      control_dofs_(std::move(control_dofs))
   {
     HostVector<Index> bc_dofs = control_dofs_;
     bc_dofs.reserve(control_dofs_.size() + fixed_dofs.size());
@@ -121,10 +97,17 @@ public:
   void res(const Vec& state,
            const Vec& prm,
            Vec&       out,
-           Ctx&) const override
+           Ctx&       ctx) const override
   {
     checkVectors(state, prm);
-    assembleRaw(state, out);
+    assembly::assembleResidual(
+        poisson::PoissonComponents<MemorySpace::Host>(
+            element_data_->view()),
+        *geom_,
+        *map_,
+        state,
+        out,
+        ctx);
     replaceRes(bc_map_, state, bcVals(prm), out);
   }
 
@@ -135,8 +118,15 @@ public:
   {
     checkVectors(state, prm);
     HostVector<Real> unused;
-    assembleRaw(state, unused);
-    setStateJac(jac_, out);
+    assembly::assemble(
+        poisson::PoissonComponents<MemorySpace::Host>(
+            element_data_->view()),
+        *geom_,
+        *map_,
+        state,
+        unused,
+        out,
+        ctx);
     out.replaceRows(bc_map_.view().constrained_rows, 1.0);
   }
 
@@ -166,19 +156,6 @@ private:
     }
   }
 
-  void assembleRaw(const Vec& state, Vec& res) const
-  {
-    linalg::HostContext ctx;
-    assembly::assemble(poisson::PoissonComponents<MemorySpace::Host>(
-                           element_data_->view()),
-                       *geom_,
-                       *map_,
-                       state,
-                       res,
-                       jac_,
-                       ctx);
-  }
-
   HostVector<Real> bcVals(const Vec& prm) const
   {
     HostVector<Real> vals(bc_map_.numBcs(), 0.0);
@@ -194,7 +171,6 @@ private:
   const HostAssemblyMap*           map_{nullptr};
   HostVector<Index>                control_dofs_;
   HostBoundaryMap                  bc_map_;
-  mutable HostCsrMatrix            jac_;
 };
 
 Mesh makePoissonMesh(const Options& opts)

@@ -105,11 +105,11 @@ SolveResult solve(state::DeviceTimeIntegrator& integrator,
   configureMonitor(monitor, time, output, terminal, log_out);
 
   monitor.start(integrator.numSteps(), integrator.numStates());
-  linalg::CudaContext transfer;
-  DeviceVector<Real>  parameters;
-  auto&               vector_handler = transfer.vectors();
+  auto&              ctx = integrator.context();
+  DeviceVector<Real> parameters;
+  auto&              vector_handler = ctx.vectors();
   vector_handler.copy(problem.parameters, parameters);
-  transfer.sync();
+  ctx.sync();
 
   state::DeviceTimeIntegrator::Observer observer =
       [&monitor](const state::TimeStepStateContext& context)

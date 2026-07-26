@@ -6,7 +6,7 @@
 namespace femx
 {
 
-/** @brief Storage location used by backend-aware containers and views. */
+/** @brief Storage location used by memory-space-aware containers and views. */
 enum class MemorySpace
 {
   Host,  ///< CPU-addressable memory.

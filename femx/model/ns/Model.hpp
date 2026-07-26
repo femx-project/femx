@@ -89,8 +89,9 @@ private:
 
 /** @brief Copy the parameter-free physics residual and add Device constraints. */
 std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
-    const NavierStokesModel& model,
-    fem::HostControlMap      control,
-    fem::HostInitialStateMap init_state = {});
+    const NavierStokesModel&              model,
+    fem::HostControlMap                   control,
+    fem::HostInitialStateMap              init_state,
+    linalg::Context<MemorySpace::Device>& ctx);
 
 } // namespace femx::model::ns

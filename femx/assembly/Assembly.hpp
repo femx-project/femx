@@ -50,23 +50,6 @@ using DeviceElementView     = ElementView<MemorySpace::Device>;
 using HostTimeElementView   = TimeElementView<MemorySpace::Host>;
 using DeviceTimeElementView = TimeElementView<MemorySpace::Device>;
 
-/** @brief Accumulate one row-major element matrix into Host CSR values. */
-void addElem(const HostAssemblyMap& map,
-             Index                  ie,
-             const DenseMatrix&     elem_mat,
-             HostCsrMatrix&         mat,
-             bool                   atomic = false);
-
-/** @brief Replace selected Host CSR rows by diagonal rows. */
-void replaceRows(HostCsrMatrix&           mat,
-                 const HostVector<Index>& rows,
-                 Real                     diag);
-
-/** @brief Eliminate selected Host CSR columns and correct the right-hand side. */
-void eliminateColumns(HostCsrMatrix&           mat,
-                      const HostVector<Index>& rows,
-                      HostVector<Real>&        rhs);
-
 /// @cond INTERNAL
 namespace detail
 {
@@ -77,7 +60,6 @@ struct CpuWork
   HostVector<Real>  hist;
   HostVector<Real>  nxt;
   HostVector<Real>  res;
-  HostVector<Real>  jac;
   DenseMatrix       mat;
   HostVector<Index> rows;
   HostVector<Index> cols;
@@ -89,26 +71,21 @@ inline CpuWork& cpuWork()
   return work;
 }
 
-template <MemorySpace Space>
-void checkAssemblyAliases(const Vector<Space>& state,
-                          const Vector<Space>& res,
-                          const Vector<Space>& vals)
+inline void checkAssemblyAliases(const HostVector<Real>& state,
+                                 const HostVector<Real>& res)
 {
-  require(&state != &res && &state != &vals && &res != &vals,
-          "Assembly state, residual, and matrix values must not alias");
+  require(&state != &res,
+          "Assembly state and residual must not alias");
 }
 
 inline void checkAssemblyInputs(const fem::HostGeometry& geom,
                                 const HostAssemblyMap&   map,
-                                const HostVector<Real>&  state,
-                                const HostCsrMatrix&     jac)
+                                const HostVector<Real>&  state)
 {
   require(geom.numElems() == map.numElems(),
           "Geometry and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
-  require(jac.pattern().layoutId() == map.pattern().layoutId(),
-          "Assembly matrix must use the AssemblyMap CSR layout");
 }
 
 inline void checkTimeAssemblyInputs(
@@ -181,6 +158,80 @@ inline void reduceTimeResidual(HostVector<Real>& res,
   ctx.allReduceSum(res.view());
 }
 
+template <class ElementKernel>
+void assembleHostElements(
+    const ElementKernel&                 kernel,
+    const fem::HostGeometry&             geom,
+    const HostAssemblyMap&               map,
+    const HostVector<Real>&              state,
+    HostVector<Real>&                    res,
+    linalg::Jacobian<MemorySpace::Host>* jac,
+    linalg::Context<MemorySpace::Host>&  ctx)
+{
+  checkAssemblyInputs(geom, map, state);
+  checkAssemblyAliases(state, res);
+  ctx.vectors().resizeOrZero(res, map.numRes());
+
+  const auto geom_v = geom.view();
+  const auto map_v  = map.view();
+  const auto range  = ctx.elementRange(map.numElems());
+
+#pragma omp parallel
+  {
+    auto&             work     = cpuWork();
+    HostVector<Real>& state_e  = work.state;
+    HostVector<Real>& coords_e = work.coords;
+    HostVector<Real>& res_e    = work.res;
+    DenseMatrix&      jac_e    = work.mat;
+    state_e.reserve(map.maxState());
+    coords_e.reserve(geom.maxElemNodes() * geom.dim());
+    res_e.reserve(map.maxRes());
+
+#pragma omp for
+    for (Index ie = range.begin; ie < range.end; ++ie)
+    {
+      const Index num_rows  = map_v.numResDofs(ie);
+      const Index num_cols  = map_v.numStateDofs(ie);
+      const Index num_nodes = geom_v.elemNumNodes(ie);
+
+      state_e.resize(num_cols);
+      coords_e.resize(num_nodes * geom.dim());
+      res_e.resize(num_rows);
+      jac_e.resize(num_rows, num_cols);
+
+      for (Index col = 0; col < num_cols; ++col)
+      {
+        state_e[col] = state[map_v.stateDof(ie, col)];
+      }
+      for (Index in = 0; in < num_nodes; ++in)
+      {
+        const Index node = geom_v.elemNode(ie, in);
+        for (Index d = 0; d < geom.dim(); ++d)
+        {
+          coords_e[in * geom.dim() + d] = geom_v.coord(node, d);
+        }
+      }
+
+      const HostElementView elem{
+          ie, geom.dim(), num_nodes, state_e.view(), coords_e.view()};
+      for (Index row = 0; row < num_rows; ++row)
+      {
+        HostVectorView<Real> jac_row(
+            jac_e.data() + row * num_cols, num_cols);
+        kernel.evalRow(elem, row, res_e[row], jac_row);
+#pragma omp atomic update
+        res[map_v.resDof(ie, row)] += res_e[row];
+      }
+      if (jac != nullptr)
+      {
+        addTimeElement(
+            map, ie, jac_e, work.rows, work.cols, *jac);
+      }
+    }
+  }
+  ctx.allReduceSum(res.view());
+}
+
 } // namespace detail
 
 /// @endcond
@@ -198,80 +249,33 @@ inline void reduceTimeResidual(HostVector<Real>& res,
  * @param map Element-to-global assembly map.
  * @param state Global state vector.
  * @param res Global residual replaced by the assembled result.
- * @param jac CSR matrix zeroed and assembled in place.
+ * @param jac Jacobian receiving element contributions.
+ * @param ctx Host execution context.
  */
 template <class ElementKernel>
-void assemble(const ElementKernel&                kernel,
-              const fem::HostGeometry&            geom,
-              const HostAssemblyMap&              map,
-              const HostVector<Real>&             state,
-              HostVector<Real>&                   res,
-              HostCsrMatrix&                      jac,
-              linalg::Context<MemorySpace::Host>& ctx)
+void assemble(const ElementKernel&                 kernel,
+              const fem::HostGeometry&             geom,
+              const HostAssemblyMap&               map,
+              const HostVector<Real>&              state,
+              HostVector<Real>&                    res,
+              linalg::Jacobian<MemorySpace::Host>& jac,
+              linalg::Context<MemorySpace::Host>&  ctx)
 {
-  auto& vec_handler = ctx.vectors();
-  detail::checkAssemblyInputs(geom, map, state, jac);
-  const HostVector<Real>& mat_vals = jac.vals();
-  detail::checkAssemblyAliases(state, res, mat_vals);
+  detail::assembleHostElements(
+      kernel, geom, map, state, res, &jac, ctx);
+}
 
-  vec_handler.resizeOrZero(res, map.numRes());
-  vec_handler.zero(jac.vals().view());
-
-  const auto geom_v = geom.view();
-  const auto map_v  = map.view();
-
-  auto&             work     = detail::cpuWork();
-  HostVector<Real>& state_e  = work.state;
-  HostVector<Real>& coords_e = work.coords;
-  HostVector<Real>& res_e    = work.res;
-  HostVector<Real>& jac_e    = work.jac;
-  state_e.reserve(map.maxState());
-  coords_e.reserve(geom.maxElemNodes() * geom.dim());
-  res_e.reserve(map.maxRes());
-  jac_e.reserve(map.maxJac());
-
-  for (Index ie = 0; ie < map.numElems(); ++ie)
-  {
-    const Index num_rows  = map_v.numResDofs(ie);
-    const Index num_cols  = map_v.numStateDofs(ie);
-    const Index num_nodes = geom_v.elemNumNodes(ie);
-
-    state_e.resize(num_cols);
-    coords_e.resize(num_nodes * geom.dim());
-    res_e.resize(num_rows);
-    jac_e.resize(num_rows * num_cols);
-
-    for (Index col = 0; col < num_cols; ++col)
-    {
-      state_e[col] = state[map_v.stateDof(ie, col)];
-    }
-    for (Index in = 0; in < num_nodes; ++in)
-    {
-      const Index node = geom_v.elemNode(ie, in);
-      for (Index d = 0; d < geom.dim(); ++d)
-      {
-        coords_e[in * geom.dim() + d] = geom_v.coord(node, d);
-      }
-    }
-
-    const HostElementView elem{
-        ie, geom.dim(), num_nodes, state_e.view(), coords_e.view()};
-
-    for (Index row = 0; row < num_rows; ++row)
-    {
-      HostVectorView<Real> jac_row(jac_e.data() + row * num_cols, num_cols);
-      kernel.evalRow(elem, row, res_e[row], jac_row);
-    }
-
-    for (Index row = 0; row < num_rows; ++row)
-    {
-      res[map_v.resDof(ie, row)] += res_e[row];
-    }
-    for (Index i = 0; i < num_rows * num_cols; ++i)
-    {
-      jac.valsData()[map_v.jacIndex(ie, i)] += jac_e[i];
-    }
-  }
+/** @brief Assemble a stationary Host residual without a Jacobian. */
+template <class ElementKernel>
+void assembleResidual(const ElementKernel&                kernel,
+                      const fem::HostGeometry&            geom,
+                      const HostAssemblyMap&              map,
+                      const HostVector<Real>&             state,
+                      HostVector<Real>&                   res,
+                      linalg::Context<MemorySpace::Host>& ctx)
+{
+  detail::assembleHostElements(
+      kernel, geom, map, state, res, nullptr, ctx);
 }
 
 /**
@@ -295,7 +299,7 @@ void assemble(const ElementKernel&                kernel,
  * @param[in,out] jac - Matrix zeroed and assembled in place.
  * @param[in] ctx - Execution context matching `jac`.
  * @throws std::runtime_error - If dimensions, the range, matrix layout, or
- * aliasing are invalid, or if the backend reports an error.
+ * aliasing are invalid, or if the implementation reports an error.
  */
 template <class ElementKernel>
 void assemble(const ElementKernel&                 kernel,
@@ -383,7 +387,7 @@ void assemble(const ElementKernel&                 kernel,
  * @param[out] res - Global residual replaced by the assembled result.
  * @param[in] ctx - Execution context.
  * @throws std::runtime_error - If dimensions, the range, or aliasing are
- * invalid, or if the backend reports an error.
+ * invalid, or if the implementation reports an error.
  */
 template <class ElementKernel, class Context>
 void assembleResidual(

@@ -10,7 +10,7 @@ namespace
 [[noreturn]] void unavailable()
 {
   throw std::runtime_error(
-      "femx was built without the CUDA execution backend");
+      "femx was built without CUDA execution support");
 }
 } // namespace
 

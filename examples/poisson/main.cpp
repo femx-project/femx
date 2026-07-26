@@ -4,9 +4,8 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
 #include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/state/StateSolver.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -33,21 +32,20 @@ int run(const Options& opts)
   ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix    A(problem.map().pattern());
-  HostVector<Real> rhs;
-  problem.assemble(A, rhs);
+  auto system = runtime::makeHostLinearSystem(solver_type);
 
-  DenseLinearSolver   native_solver;
-  linalg::HostContext ctx;
+  state::HostLinearStateSolver solver(problem, *system);
+  const HostVector<Real>       prm;
 
   HostVector<Real> x;
-  native_solver.solve(A, rhs, x, ctx);
+  solver.solve(prm, x);
 
   printReport(std::cout,
               helper.name(),
               problem,
               problem.errorReport(x),
-              helper.resNorm(A, rhs, x, ctx));
+              helper.resNorm(
+                  problem, x, prm, system->context()));
 
   if (opts.write_output)
   {
