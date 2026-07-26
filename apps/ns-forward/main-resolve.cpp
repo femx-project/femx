@@ -15,10 +15,9 @@
 #include "Problem.hpp"
 #include "Solve.hpp"
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaLinearSystem.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/BuildInfo.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 using namespace femx;
@@ -126,17 +125,25 @@ int run(const Config& prm)
   }
 
   SolveResult result;
+
 #if defined(FEMX_RESOLVE_USE_CUDA)
-  auto system = linalg::CudaLinearSystem(
-      std::make_unique<ReSolveLinearSolver>(opts));
-  auto& ctx = dynamic_cast<linalg::CudaContext&>(system.context());
-  auto  res = model::ns::makeDeviceTimeResidual(
-      fwd.model, fwd.residual.controlMap());
 
-  DeviceTimeIntegrator integ(*res, system);
+  constexpr auto device = ExecutionDevice::Device;
+  constexpr auto solver = SolverType::ReSolve;
+  if (!supportsLinearSystem(device, solver))
+  {
+    throw std::runtime_error(
+        "Requested ReSolve Device linear system is unavailable");
+  }
 
-  DeviceVector<Real> initial;
-  auto&              vec_handler = ctx.vectors();
+  auto  system = makeDeviceLinearSystem(solver, std::make_unique<ReSolveLinearSolver>(opts));
+  auto& ctx    = dynamic_cast<linalg::CudaContext&>(system->context());
+  auto  res    = model::ns::makeDeviceTimeResidual(fwd.model, fwd.residual.controlMap());
+
+  DeviceTimeIntegrator integ(*res, *system);
+  DeviceVector<Real>   initial;
+
+  auto& vec_handler = ctx.vectors();
   vec_handler.copy(fwd.initial_state, initial);
 
   ctx.sync();
@@ -148,11 +155,20 @@ int run(const Config& prm)
                  prm.output,
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
-#else
-  auto system = linalg::HostLinearSystem(
-      std::make_unique<ReSolveLinearSolver>(opts));
 
-  HostTimeIntegrator integ(fwd.residual, system);
+#else
+
+  constexpr auto device = ExecutionDevice::Host;
+  constexpr auto solver = SolverType::ReSolve;
+  if (!supportsLinearSystem(device, solver))
+  {
+    throw std::runtime_error(
+        "Requested ReSolve Host linear system is unavailable");
+  }
+
+  auto system = makeHostLinearSystem(solver, std::make_unique<ReSolveLinearSolver>(opts));
+
+  HostTimeIntegrator integ(fwd.residual, *system);
 
   integ.setInitialState(fwd.initial_state);
   result = solve(integ,
@@ -161,6 +177,7 @@ int run(const Config& prm)
                  prm.output,
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
+
 #endif
 
   if (!hasFiniteValues(result.final_state))

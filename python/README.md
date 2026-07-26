@@ -51,7 +51,10 @@ problem.add_bc(femx.DirichletBC("inlet", "velocity", inlet_velocity))
 problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
 problem.build()
 
-solver = problem.create_solver(backend="petsc")
+solver = problem.create_solver(
+    execution_device=femx.ExecutionDevice.HOST,
+    solver_type=femx.SolverType.PETSC,
+)
 trajectory = solver.solve(progress=print_progress)
 print()
 

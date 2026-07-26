@@ -5,7 +5,6 @@
 #include <string>
 
 #include "Bindings.hpp"
-#include "PETScInit.hpp"
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
@@ -18,19 +17,14 @@
 #include <femx/io/TimeSeriesDataOut.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 #include <femx/model/ns/Model.hpp>
 #include <femx/model/ns/StateFields.hpp>
 #ifdef FEMX_RESOLVE_USE_CUDA
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
-#ifdef FEMX_HAS_PETSC
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
-#include <femx/runtime/PETScRuntime.hpp>
-#endif
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -846,7 +840,7 @@ public:
   }
 
   std::unique_ptr<femx::inverse::DeviceTimeObservationOperator>
-  copyToDevice(femx::CudaContext& ctx) const override
+  copyToDevice(femx::linalg::CudaContext& ctx) const override
   {
     return interpolator_.copyToDevice(ctx);
   }
@@ -968,226 +962,6 @@ private:
   femx::fem::TimePointInterpolator interpolator_;
 };
 
-#ifdef FEMX_HAS_PETSC
-class PythonPetscTimeIntegrator final
-{
-public:
-  PythonPetscTimeIntegrator(
-      NavierStokesModel&             model,
-      femx::fem::HostControlMap      control,
-      femx::fem::HostInitialStateMap init_map,
-      const HostVector<Real>&        init)
-  {
-    femx::python::initializePETSc();
-    ctx_.comm = PETSC_COMM_WORLD;
-    femx::runtime::setElemRange(
-        model, model.mesh().numElems(), PETSC_COMM_WORLD);
-
-    base_ = femx::model::ns::makePetscTimeResidual(model);
-    res_  = std::make_unique<
-         femx::assembly::PetscConstrainedTimeResidual>(
-        *base_, std::move(control), std::move(init_map));
-    jac_ = std::make_unique<femx::linalg::PETScOperator>(
-        PETSC_COMM_WORLD);
-    jac_->resize(res_->pattern());
-    solver_ = std::make_unique<femx::linalg::KspLinearSolver>(
-        PETSC_COMM_WORLD);
-    integ_ = std::make_unique<
-        femx::state::TimeIntegrator<femx::linalg::PetscBackend>>(
-        *res_, *jac_, *solver_, ctx_);
-    if (!init.empty())
-    {
-      integ_->setInitialState(init);
-    }
-  }
-
-  femx::state::TimeIntegrator<femx::linalg::PetscBackend>& get() noexcept
-  {
-    return *integ_;
-  }
-
-  const femx::state::TimeIntegrator<femx::linalg::PetscBackend>&
-  get() const noexcept
-  {
-    return *integ_;
-  }
-
-private:
-  femx::linalg::PetscContext ctx_{PETSC_COMM_WORLD};
-  std::unique_ptr<
-      femx::state::TimeResidual<femx::linalg::PetscBackend>>
-                                                                base_;
-  std::unique_ptr<femx::assembly::PetscConstrainedTimeResidual> res_;
-  std::unique_ptr<femx::linalg::PETScOperator>                  jac_;
-  std::unique_ptr<femx::linalg::KspLinearSolver>                solver_;
-  std::unique_ptr<
-      femx::state::TimeIntegrator<femx::linalg::PetscBackend>>
-      integ_;
-};
-
-std::unique_ptr<PythonPetscTimeIntegrator>
-makePetscIntegrator(NavierStokesModel&     model,
-                    FixedDirichletProblem& problem,
-                    const RealArray&       initial)
-{
-  return std::make_unique<PythonPetscTimeIntegrator>(
-      model,
-      problem.controlMap(),
-      femx::fem::HostInitialStateMap{},
-      realVector(initial, "initial_state"));
-}
-
-std::unique_ptr<PythonPetscTimeIntegrator>
-makePetscIntegrator(NavierStokesModel&          model,
-                    ControlledDirichletProblem& problem,
-                    const RealArray&            mean,
-                    const RealArray&            modes)
-{
-  const Index num_prm = problem.residual().dims().num_param;
-  auto        init    = realVector(mean, "initial_state_mean");
-  auto        basis   = realMatrix(modes, "initial_state_modes");
-  if (basis.cols() == 0)
-  {
-    return std::make_unique<PythonPetscTimeIntegrator>(
-        model,
-        problem.controlMap(),
-        femx::fem::HostInitialStateMap{},
-        init);
-  }
-
-  auto init_map = femx::fem::makeInitialStateMap(
-      std::move(init),
-      std::move(basis),
-      problem.control(),
-      0,
-      problem.controlParamOffset(),
-      num_prm);
-  return std::make_unique<PythonPetscTimeIntegrator>(
-      model, problem.controlMap(), std::move(init_map), HostVector<Real>{});
-}
-
-TimeTrajectory solvePetsc(PythonPetscTimeIntegrator& owner,
-                          const RealArray&           parameters,
-                          const py::object&          progress)
-{
-  if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
-  {
-    throw py::type_error("progress must be callable");
-  }
-
-  HostVector<Real> prm = realVector(parameters, "parameters");
-  TimeTrajectory   tr;
-  auto&            integ = owner.get();
-  if (progress.is_none())
-  {
-    py::gil_scoped_release release;
-    integ.solve(prm.view(), tr);
-    return tr;
-  }
-
-  using Integrator =
-      femx::state::TimeIntegrator<femx::linalg::PetscBackend>;
-  Integrator::Observer observer =
-      [&progress](const femx::state::TimeStepStateContext& step)
-  {
-    py::gil_scoped_acquire acquire;
-    if (PyErr_CheckSignals() != 0)
-    {
-      throw py::error_already_set();
-    }
-    if (step.level == 0)
-    {
-      return false;
-    }
-    py::dict event;
-    event["type"]                 = "solve";
-    event["phase"]                = "forward";
-    event["step"]                 = step.level;
-    event["total"]                = step.total_steps;
-    event["assembly_seconds"]     = step.assm_sec;
-    event["linear_solve_seconds"] = step.lin_solve_sec;
-    progress(std::move(event));
-    return false;
-  };
-  py::gil_scoped_release release;
-  integ.solve(prm.view(), tr, std::move(observer));
-  return tr;
-}
-
-class PythonPetscTimeReducedFunctional final
-  : public PythonTimeReducedFunctional
-{
-public:
-  PythonPetscTimeReducedFunctional(
-      PythonPetscTimeIntegrator&          owner,
-      const femx::inverse::TimeObjective& obj)
-    : jac_(PETSC_COMM_WORLD), solver_(PETSC_COMM_WORLD)
-  {
-    jac_.resize(owner.get().residual().pattern());
-    impl_ = std::make_unique<
-        femx::inverse::TimeReducedFunctional<femx::linalg::PetscBackend>>(
-        owner.get(), jac_, solver_, obj);
-  }
-
-  Index numParams() const noexcept override
-  {
-    return impl_->numParams();
-  }
-
-  Real value(femx::HostVectorView<const Real>   prm,
-             femx::inverse::TimeReducedProgress progress = {}) override
-  {
-    return impl_->value(prm, std::move(progress));
-  }
-
-  void grad(femx::HostVectorView<const Real>   prm,
-            femx::HostVectorView<Real>         out,
-            femx::inverse::TimeReducedProgress progress = {}) override
-  {
-    impl_->grad(prm, out, std::move(progress));
-  }
-
-  Real valueGrad(femx::HostVectorView<const Real>   prm,
-                 femx::HostVectorView<Real>         out,
-                 femx::inverse::TimeReducedProgress progress = {}) override
-  {
-    return impl_->valueGrad(prm, out, std::move(progress));
-  }
-
-  void resetTiming() noexcept override
-  {
-    impl_->resetTiming();
-  }
-
-  Real assemblySeconds() const noexcept override
-  {
-    return impl_->assemblySeconds();
-  }
-
-  Real solveSeconds() const noexcept override
-  {
-    return impl_->solveSeconds();
-  }
-
-  Index assemblyCalls() const noexcept override
-  {
-    return impl_->assemblyCalls();
-  }
-
-  Index solveCalls() const noexcept override
-  {
-    return impl_->solveCalls();
-  }
-
-private:
-  femx::linalg::PETScOperator   jac_;
-  femx::linalg::KspLinearSolver solver_;
-  std::unique_ptr<
-      femx::inverse::TimeReducedFunctional<femx::linalg::PetscBackend>>
-      impl_;
-};
-#endif
-
 #ifdef FEMX_RESOLVE_USE_CUDA
 femx::linalg::ReSolveOptions resolveOptions(const py::object& obj)
 {
@@ -1203,9 +977,11 @@ public:
       std::unique_ptr<femx::state::DeviceTimeResidual> res,
       femx::linalg::ReSolveOptions                     opts)
     : res_(std::move(res)),
-      jac_(res_->pattern()),
-      solver_(std::move(opts)),
-      integ_(*res_, jac_, solver_, ctx_)
+      system_(femx::runtime::makeDeviceLinearSystem(
+          femx::runtime::SolverType::ReSolve,
+          std::make_unique<femx::linalg::ReSolveLinearSolver>(
+              std::move(opts)))),
+      integ_(*res_, *system_)
   {
   }
 
@@ -1221,19 +997,31 @@ public:
 
   void setInitialState(const HostVector<Real>& init)
   {
-    femx::DeviceVector<Real>        state;
-    femx::linalg::CudaVectorHandler vec_handler(ctx_);
-    vec_handler.copy(init, state);
-    ctx_.sync();
+    auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
+        system_->context());
+    femx::DeviceVector<Real> state;
+    ctx.vectors().copy(init, state);
+    ctx.sync();
     integ_.setInitialState(state);
   }
 
+  femx::DeviceVector<Real> copyParameters(
+      const HostVector<Real>& parameters)
+  {
+    auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
+        system_->context());
+    femx::DeviceVector<Real> out;
+    ctx.vectors().copy(parameters, out);
+    ctx.sync();
+    return out;
+  }
+
 private:
-  femx::CudaContext                                ctx_;
   std::unique_ptr<femx::state::DeviceTimeResidual> res_;
-  femx::DeviceCsrMatrix                            jac_;
-  femx::linalg::ReSolveLinearSolver                solver_;
-  femx::state::DeviceTimeIntegrator                integ_;
+  std::unique_ptr<
+      femx::linalg::LinearSystem<femx::MemorySpace::Device>>
+                                    system_;
+  femx::state::DeviceTimeIntegrator integ_;
 };
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
@@ -1293,9 +1081,13 @@ class PythonDeviceTimeReducedFunctional final
 public:
   PythonDeviceTimeReducedFunctional(
       PythonDeviceTimeIntegrator&         owner,
-      const femx::inverse::TimeObjective& obj)
-    : jac_(owner.get().residual().pattern()),
-      impl_(owner.get(), jac_, solver_, obj)
+      const femx::inverse::TimeObjective& obj,
+      const py::object&                   options)
+    : adj_system_(femx::runtime::makeDeviceLinearSystem(
+          femx::runtime::SolverType::ReSolve,
+          std::make_unique<femx::linalg::ReSolveLinearSolver>(
+              resolveOptions(options)))),
+      impl_(owner.get(), *adj_system_, obj)
   {
   }
 
@@ -1350,8 +1142,9 @@ public:
   }
 
 private:
-  femx::DeviceCsrMatrix                      jac_;
-  femx::linalg::ReSolveLinearSolver          solver_;
+  std::unique_ptr<
+      femx::linalg::LinearSystem<femx::MemorySpace::Device>>
+                                             adj_system_;
   femx::inverse::DeviceTimeReducedFunctional impl_;
 };
 #endif
@@ -1389,22 +1182,6 @@ void bindNavierStokes(py::module_& module)
             return model.residual();
           },
           py::return_value_policy::reference_internal)
-      .def(
-          "_use_full_element_range",
-          [](NavierStokesModel& model)
-          {
-            model.setElemRange(0, model.mesh().numElems());
-          })
-#ifdef FEMX_HAS_PETSC
-      .def(
-          "_use_petsc_world_element_range",
-          [](NavierStokesModel& model)
-          {
-            femx::python::initializePETSc();
-            femx::runtime::setElemRange(
-                model, model.mesh().numElems(), PETSC_COMM_WORLD);
-          })
-#endif
       .def_property_readonly(
           "velocity_dofs",
           [](const NavierStokesModel& model)
@@ -1522,76 +1299,6 @@ void bindNavierStokes(py::module_& module)
            py::arg("mean"),
            py::arg("modes"));
 
-#ifdef FEMX_HAS_PETSC
-  py::class_<PythonPetscTimeIntegrator>(
-      module, "_PetscTimeIntegrator")
-      .def(py::init(static_cast<std::unique_ptr<PythonPetscTimeIntegrator> (*)(
-                        NavierStokesModel&,
-                        FixedDirichletProblem&,
-                        const RealArray&)>(&makePetscIntegrator)),
-           py::arg("model"),
-           py::arg("problem"),
-           py::arg("initial_state"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>())
-      .def(py::init(static_cast<std::unique_ptr<PythonPetscTimeIntegrator> (*)(
-                        NavierStokesModel&,
-                        ControlledDirichletProblem&,
-                        const RealArray&,
-                        const RealArray&)>(&makePetscIntegrator)),
-           py::arg("model"),
-           py::arg("problem"),
-           py::arg("initial_state_mean"),
-           py::arg("initial_state_modes"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>())
-      .def_property_readonly(
-          "num_steps",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().numSteps(); })
-      .def_property_readonly(
-          "num_states",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().numStates(); })
-      .def_property_readonly(
-          "num_param",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().numParams(); })
-      .def("solve",
-           &solvePetsc,
-           py::arg("param"),
-           py::arg("progress") = py::none())
-      .def("reset_timing",
-           [](PythonPetscTimeIntegrator& owner)
-           { owner.get().resetStats(); })
-      .def_property_readonly(
-          "assembly_seconds",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().lastStats().assm_sec; })
-      .def_property_readonly(
-          "solve_seconds",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().lastStats().lin_solve_sec; })
-      .def_property_readonly(
-          "assembly_calls",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().lastStats().assm_calls; })
-      .def_property_readonly(
-          "solve_calls",
-          [](const PythonPetscTimeIntegrator& owner)
-          { return owner.get().lastStats().lin_solve_calls; });
-
-  py::class_<PythonPetscTimeReducedFunctional,
-             PythonTimeReducedFunctional>(
-      module, "_PetscTimeReducedFunctional")
-      .def(py::init<PythonPetscTimeIntegrator&,
-                    const femx::inverse::TimeObjective&>(),
-           py::arg("integrator"),
-           py::arg("objective"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>());
-#endif
-
 #ifdef FEMX_RESOLVE_USE_CUDA
   py::class_<PythonDeviceTimeIntegrator>(
       module, "_DeviceTimeIntegrator")
@@ -1642,12 +1349,9 @@ void bindNavierStokes(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            const HostVector<Real>          values = realVector(parameters, "parameters");
-            femx::CudaContext               transfer;
-            femx::DeviceVector<Real>        device_values;
-            femx::linalg::CudaVectorHandler vec_handler(transfer);
-            vec_handler.copy(values, device_values);
-            transfer.sync();
+            const HostVector<Real> values =
+                realVector(parameters, "parameters");
+            auto           device_values = owner.copyParameters(values);
             TimeTrajectory trajectory;
             if (progress.is_none())
             {
@@ -1712,9 +1416,11 @@ void bindNavierStokes(py::module_& module)
              PythonTimeReducedFunctional>(
       module, "_DeviceTimeReducedFunctional")
       .def(py::init<PythonDeviceTimeIntegrator&,
-                    const femx::inverse::TimeObjective&>(),
+                    const femx::inverse::TimeObjective&,
+                    const py::object&>(),
            py::arg("integrator"),
            py::arg("objective"),
+           py::arg("options") = py::none(),
            py::keep_alive<1, 2>(),
            py::keep_alive<1, 3>());
 #endif

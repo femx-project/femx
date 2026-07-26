@@ -13,6 +13,7 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 
 namespace femx::examples::poisson
 {
@@ -20,10 +21,11 @@ namespace femx::examples::poisson
 /** @brief Command-line configuration for the forward Poisson example. */
 struct Options
 {
-  Index       num_x_cells  = 8;                 ///< Number of cells in x.
-  Index       num_y_cells  = 8;                 ///< Number of cells in y.
-  MemorySpace backend      = MemorySpace::Host; ///< Selected memory space.
-  bool        write_output = false;             ///< Write VTU output.
+  Index                    num_x_cells = 8; ///< Number of cells in x.
+  Index                    num_y_cells = 8; ///< Number of cells in y.
+  runtime::ExecutionDevice execution_device =
+      runtime::ExecutionDevice::Host; ///< Selected execution device.
+  bool write_output = false;          ///< Write VTU output.
 };
 
 /**
@@ -108,11 +110,11 @@ std::string outputStem(const Options& opts);
 
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* backend_note = nullptr);
+                const char* device_note = nullptr);
 
 /** @brief Print the standard forward-solve result summary. */
 void printReport(std::ostream&                out,
-                 const std::string&           backend,
+                 const std::string&           configuration,
                  const PoissonForwardProblem& problem,
                  const ErrorReport&           error,
                  Real                         res_norm);

@@ -7,9 +7,9 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
+#include <femx/linalg/native/HostLinearSystem.hpp>
 
 namespace
 {
@@ -45,17 +45,30 @@ int main()
     rhs[0] = 5.0;
     rhs[1] = 5.0;
 
-    femx::linalg::DenseLinearSolver solver;
-    femx::CpuContext                ctx;
-    femx::HostVector<femx::Real>    x;
-    solver.solve(A, rhs, x, ctx);
+    femx::linalg::HostLinearSystem system;
+    auto&                          jacobian = system.jacobian();
+    jacobian.begin(A.pattern());
+
+    femx::HostVector<femx::Index> rows{0, 1};
+    femx::HostVector<femx::Index> columns{0, 1};
+    femx::HostVector<femx::Index> entries{0, 1, 2, 3};
+    femx::DenseMatrix             values(2, 2);
+    values(0, 0) = 3.0;
+    values(0, 1) = 1.0;
+    values(1, 0) = 1.0;
+    values(1, 1) = 2.0;
+    jacobian.addElement(
+        {rows.view(), columns.view(), entries.view(), values.view()});
+    jacobian.finalize();
+
+    femx::HostVector<femx::Real> x;
+    system.solve(rhs.view(), x);
 
     checkClose(x[0], 1.0, "x[0]");
     checkClose(x[1], 2.0, "x[1]");
 
-    femx::HostVector<femx::Real>    Ax(2);
-    femx::linalg::HostMatrixHandler mat_handler(ctx);
-    mat_handler.matvec(A, x.view(), Ax.view());
+    femx::HostVector<femx::Real> Ax;
+    jacobian.apply(x.view(), Ax);
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");
   }

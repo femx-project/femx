@@ -148,7 +148,8 @@ class NavierStokesProblemTest(unittest.TestCase):
 
         solver = problem.create_solver()
         self.assertIsInstance(solver, femx.NavierStokesSolver)
-        self.assertEqual(solver.backend, "dense")
+        self.assertEqual(solver.execution_device, femx.ExecutionDevice.HOST)
+        self.assertEqual(solver.solver_type, femx.SolverType.DENSE)
         second = solver.solve(np.array([0.2, 0.6]))
         third = solver.solve(np.array([0.1, 0.3]))
         self.assertEqual(solver.num_solves, 2)
@@ -423,25 +424,26 @@ class NavierStokesProblemTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     problem.build()
 
-    def test_solver_factory_rejects_unknown_backend(self):
+    def test_solver_factory_rejects_unknown_selection(self):
         problem = femx.NavierStokesProblem(self.model)
 
-        self.assertIn("dense", femx.solver_backends())
+        self.assertIn(femx.SolverType.DENSE, femx.solver_types())
         with self.assertRaisesRegex(TypeError, "string"):
             problem.create_solver(None)
-        with self.assertRaisesRegex(ValueError, "available: dense"):
+        with self.assertRaisesRegex(ValueError, "available: host, device"):
             problem.create_solver("missing")
 
     def test_dense_solver_rejects_resolve_options(self):
         problem = femx.NavierStokesProblem(self.model)
 
-        with self.assertRaisesRegex(
-            ValueError, "not supported for backend 'dense'"
-        ):
-            problem.create_solver("dense", options={"rtol": 1.0e-10})
+        with self.assertRaisesRegex(ValueError, "only for ReSolve"):
+            problem.create_solver(
+                solver_type="dense",
+                options={"rtol": 1.0e-10},
+            )
 
     @unittest.skipUnless(
-        "resolve" in femx.solver_backends(),
+        femx.SolverType.RESOLVE in femx.solver_types(),
         "femx was built without ReSolve",
     )
     def test_resolve_solver_accepts_validated_options(self):
@@ -458,20 +460,30 @@ class NavierStokesProblemTest(unittest.TestCase):
         self.assertEqual(options.precond, "ilu0")
 
         problem = femx.NavierStokesProblem(self.model)
-        solver = problem.create_solver("resolve", options=values)
-        self.assertEqual(solver.backend, "resolve")
+        solver = problem.create_solver(
+            solver_type="resolve",
+            options=values,
+        )
+        self.assertEqual(solver.execution_device, femx.ExecutionDevice.HOST)
+        self.assertEqual(solver.solver_type, femx.SolverType.RESOLVE)
 
     @unittest.skipUnless(
-        "resolve" in femx.solver_backends(),
+        femx.SolverType.RESOLVE in femx.solver_types(),
         "femx was built without ReSolve",
     )
     def test_resolve_solver_rejects_invalid_options(self):
         problem = femx.NavierStokesProblem(self.model)
 
         with self.assertRaisesRegex(TypeError, "options must be a mapping"):
-            problem.create_solver("resolve", options=[("rtol", 1.0e-10)])
+            problem.create_solver(
+                solver_type="resolve",
+                options=[("rtol", 1.0e-10)],
+            )
         with self.assertRaisesRegex(ValueError, "unknown ReSolve option"):
-            problem.create_solver("resolve", options={"tolerance": 1.0e-10})
+            problem.create_solver(
+                solver_type="resolve",
+                options={"tolerance": 1.0e-10},
+            )
 
         invalid = (
             ({"rtol": True}, TypeError, "real number"),
@@ -485,7 +497,10 @@ class NavierStokesProblemTest(unittest.TestCase):
         for values, error, message in invalid:
             with self.subTest(options=values):
                 with self.assertRaisesRegex(error, message):
-                    problem.create_solver("resolve", options=values)
+                    problem.create_solver(
+                        solver_type="resolve",
+                        options=values,
+                    )
 
 
 if __name__ == "__main__":

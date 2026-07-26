@@ -20,7 +20,7 @@ struct CommandLineOptions
  *
  * @param[in] argc - Argument count.
  * @param[in] argv - Argument values.
- * @param[in] allow_unknown_options - Preserve options owned by a backend.
+ * @param[in] allow_unknown_options - Preserve options owned by a solver.
  * @return Parsed command-line options.
  * @throws std::runtime_error - If required or supported options are invalid.
  */
@@ -33,7 +33,7 @@ CommandLineOptions parseCommandLine(int   argc,
  *
  * @param[out] out - Output stream.
  * @param[in] executable - Executable name.
- * @param[in] option_suffix - Additional backend option syntax.
+ * @param[in] option_suffix - Additional solver option syntax.
  * @param[in] extra_lines - Additional usage lines.
  */
 void printUsage(std::ostream&                  out,

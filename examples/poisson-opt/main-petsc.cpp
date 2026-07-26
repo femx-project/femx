@@ -6,7 +6,7 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/petsc/PETScLinearSystem.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -24,12 +24,13 @@ namespace
 
 int run(const Options& opts)
 {
-  ExampleHelper     helper("petsc", MemorySpace::Host, outputDir());
+  constexpr auto    solver = SolverType::PETSc;
+  ExampleHelper     helper(solver, ExecutionDevice::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  PETScLinearSystem forward_system(PETSC_COMM_SELF);
-  PETScLinearSystem adjoint_system(PETSC_COMM_SELF);
-  const Result      result = solve(problem, forward_system, adjoint_system);
+  auto         forward_system = makeHostLinearSystem(solver);
+  auto         adjoint_system = makeHostLinearSystem(solver);
+  const Result result         = solve(problem, *forward_system, *adjoint_system);
 
   printReport(std::cout,
               helper.name(),

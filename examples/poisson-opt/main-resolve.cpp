@@ -5,8 +5,8 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -25,15 +25,17 @@ namespace
 
 int run(const Options& opts)
 {
-  ExampleHelper     helper("resolve", MemorySpace::Host, outputDir());
+  constexpr auto    solver = SolverType::ReSolve;
+  ExampleHelper     helper(solver, ExecutionDevice::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  HostLinearSystem forward_system(
-      std::make_unique<ReSolveLinearSolver>());
-  HostLinearSystem adjoint_system(
-      std::make_unique<ReSolveLinearSolver>());
+  auto forward_system = makeHostLinearSystem(
+      solver, std::make_unique<ReSolveLinearSolver>());
+  auto adjoint_system = makeHostLinearSystem(
+      solver, std::make_unique<ReSolveLinearSolver>());
 
-  const Result result = solve(problem, forward_system, adjoint_system);
+  const Result result =
+      solve(problem, *forward_system, *adjoint_system);
 
   printReport(std::cout,
               helper.name(),

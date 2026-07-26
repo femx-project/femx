@@ -16,6 +16,7 @@
 #include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 
 namespace femx::examples
 {
@@ -41,49 +42,32 @@ inline bool hasHelp(int argc, char* const argv[])
 }
 
 /**
- * @brief Return a lower-case name for a femx memory space.
- *
- * @param[in] memspace - Memory space to name.
- * @return `"cpu"` for Host, `"cuda"` for Device, or `"unknown"` otherwise.
- */
-inline const char* memspaceName(MemorySpace memspace)
-{
-  switch (memspace)
-  {
-  case MemorySpace::Host:
-    return "cpu";
-  case MemorySpace::Device:
-    return "cuda";
-  }
-  return "unknown";
-}
-
-/**
  * @brief Small helpers for femx examples.
  */
 class ExampleHelper
 {
 public:
   /**
-   * @brief Bind display names and the output directory for one backend.
+   * @brief Bind solver, execution device, and output directory.
    *
-   * @param[in] solver - Solver name used in reports and output paths.
-   * @param[in] memspace - Memory space used by the example.
+   * @param[in] solver - Solver used by the example.
+   * @param[in] device - Execution device used by the example.
    * @param[in] out_dir - Directory for generated output files.
    */
-  ExampleHelper(std::string solver,
-                MemorySpace memspace,
-                std::string out_dir)
-    : solver_(std::move(solver)),
-      memspace_(memspace),
+  ExampleHelper(runtime::SolverType      solver,
+                runtime::ExecutionDevice device,
+                std::string              out_dir)
+    : solver_(solver),
+      device_(device),
       out_dir_(std::move(out_dir))
   {
   }
 
-  /** @brief Return the `solver/memory-space` display name. */
+  /** @brief Return the `solver/execution-device` display name. */
   std::string name() const
   {
-    return solver_ + "/" + memspaceName(memspace_);
+    return std::string(runtime::name(solver_)) + "/"
+           + runtime::name(device_);
   }
 
   /**
@@ -158,7 +142,7 @@ public:
 #endif
 
   /**
-   * @brief Build an output path containing solver and memory-space names.
+   * @brief Build an output path containing solver and execution-device names.
    *
    * @param[in] stem - Problem-specific file stem.
    * @return Output path without a file extension.
@@ -166,7 +150,8 @@ public:
   std::string outputBase(const std::string& stem) const
   {
     const std::filesystem::path dir(out_dir_);
-    const std::string           file = stem + "-" + solver_ + "-" + memspaceName(memspace_);
+    const std::string           file =
+        stem + "-" + runtime::name(solver_) + "-" + runtime::name(device_);
     return (dir / file).string();
   }
 
@@ -183,9 +168,9 @@ public:
   }
 
 private:
-  std::string solver_;   ///< Solver name used in reports and output paths.
-  MemorySpace memspace_; ///< Memory space used by the example.
-  std::string out_dir_;  ///< Directory for generated output files.
+  runtime::SolverType      solver_;  ///< Solver used by the example.
+  runtime::ExecutionDevice device_;  ///< Execution device used by the example.
+  std::string              out_dir_; ///< Directory for generated output files.
 };
 
 /**

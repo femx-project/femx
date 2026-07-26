@@ -176,7 +176,7 @@ std::string outputStem(const Options& opts);
 
 /** @brief Print the standard optimization result summary. */
 void printReport(std::ostream&            out,
-                 const std::string&       backend,
+                 const std::string&       configuration,
                  const PoissonOptProblem& problem,
                  const Report&            report,
                  Index                    tao_itr,

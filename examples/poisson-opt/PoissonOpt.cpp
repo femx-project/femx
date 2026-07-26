@@ -78,7 +78,7 @@ void setStateJac(const HostCsrMatrix&                 source,
   }
 }
 
-/** @brief AssemblyMap residual written once for Host CSR and PETSc backends. */
+/** @brief AssemblyMap residual shared by Host and PETSc linear systems. */
 class PoissonMapResidual final : public HostResidual
 {
 public:
@@ -888,14 +888,14 @@ std::string outputStem(const Options& opts)
 }
 
 void printReport(std::ostream&            out,
-                 const std::string&       backend,
+                 const std::string&       configuration,
                  const PoissonOptProblem& problem,
                  const Report&            report,
                  Index                    tao_itr,
                  int                      tao_reason)
 {
   const Options& opts = problem.options();
-  out << "Poisson optimal control (" << backend << ")\n";
+  out << "Poisson optimal control (" << configuration << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';
   out << "  nodes: " << problem.numNodes() << '\n';

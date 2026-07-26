@@ -11,6 +11,7 @@
 #include "Solve.hpp"
 #include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -122,10 +123,18 @@ int run(const Config& prm)
 
   Problem fwd(prm);
 
-  PETScLinearSystem system(PETSC_COMM_WORLD);
-  setKspOptions(system.solver(), prm.solver);
+  constexpr auto device = ExecutionDevice::Host;
+  constexpr auto solver = SolverType::PETSc;
+  if (!supportsLinearSystem(device, solver))
+  {
+    throw std::runtime_error(
+        "Requested PETSc Host linear system is unavailable");
+  }
+  auto  system       = makeHostLinearSystem(solver);
+  auto& petsc_system = dynamic_cast<PETScLinearSystem&>(*system);
+  setKspOptions(petsc_system.solver(), prm.solver);
 
-  HostTimeIntegrator integ(fwd.residual, system);
+  HostTimeIntegrator integ(fwd.residual, *system);
   integ.setInitialState(fwd.initial_state);
 
   std::ofstream log_out;

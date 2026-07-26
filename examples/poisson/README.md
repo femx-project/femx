@@ -51,15 +51,15 @@ system and does not require optional solver packages.
 With Re::Solve enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cpu --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --device host --output yes
 ```
 
-With a CUDA-enabled Re::Solve build, `-b cuda` keeps geometry, maps, CSR
+With a CUDA-enabled Re::Solve build, `--device device` keeps geometry, maps, CSR
 values, right-hand side, and solution in device memory through assembly and
 the linear solve. Only the final report/output solution is copied to the host:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cuda --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --device device --output yes
 ```
 
 With PETSc enabled:

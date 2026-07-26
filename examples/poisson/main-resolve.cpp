@@ -7,14 +7,15 @@
 #include "PoissonForward.hpp"
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
 #include "PoissonComponents.hpp"
 #include <femx/assembly/CudaAssembly.hpp>
-#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 #endif
 
 using namespace femx;
@@ -50,18 +51,19 @@ void solveDevice(const ExampleHelper&         helper,
                  HostVector<Real>&            x,
                  Real&                        res_norm)
 {
-  auto system = linalg::CudaLinearSystem(
+  auto system = runtime::makeDeviceLinearSystem(
+      runtime::SolverType::ReSolve,
       std::make_unique<ReSolveLinearSolver>());
-  auto& ctx         = dynamic_cast<linalg::CudaContext&>(system.context());
-  auto& jac         = dynamic_cast<linalg::CudaJacobian&>(system.jacobian());
+  auto& ctx         = dynamic_cast<linalg::CudaContext&>(system->context());
+  auto& jac         = dynamic_cast<linalg::CudaJacobian&>(system->jacobian());
   auto& vec_handler = ctx.vectors();
 
   fem::DeviceGeometry              geom;
-  fem::DeviceElementQuadratureData element_data;
+  fem::DeviceElementQuadratureData data;
   assembly::DeviceAssemblyMap      map;
   assembly::DeviceBoundaryMap      bc_map;
   copy(problem.geom(), geom, ctx);
-  copy(problem.elementData(), element_data, ctx);
+  copy(problem.elementData(), data, ctx);
   assembly::copy(problem.map(), map, ctx);
   assembly::copy(problem.bcMap(), bc_map, ctx);
 
@@ -72,7 +74,7 @@ void solveDevice(const ExampleHelper&         helper,
   vec_handler.copy(problem.bcVals(), bc_vals);
 
   jac.begin(problem.map().pattern());
-  assembly::assemble(PoissonComponents<MemorySpace::Device>(element_data.view()),
+  assembly::assemble(PoissonComponents<MemorySpace::Device>(data.view()),
                      geom,
                      map,
                      state,
@@ -80,11 +82,10 @@ void solveDevice(const ExampleHelper&         helper,
                      jac,
                      ctx);
   vec_handler.axpby(-1.0, res.view(), 0.0, rhs.view());
-  jac.eliminateColumns(
-      bc_map.view().constrained_rows, bc_vals.view(), rhs.view());
+  jac.eliminateColumns(bc_map.view().constrained_rows, bc_vals.view(), rhs.view());
 
   DeviceVector<Real> sol;
-  system.solve(rhs.view(), sol);
+  system->solve(rhs.view(), sol);
 
   res_norm = helper.resNorm(jac.matrix(), rhs, sol, ctx);
   vec_handler.copy(sol, x);
@@ -94,12 +95,13 @@ void solveDevice(const ExampleHelper&         helper,
 
 int run(const Options& opts)
 {
-  ExampleHelper         helper("resolve", opts.backend, outputDir());
+  constexpr auto        solver = runtime::SolverType::ReSolve;
+  ExampleHelper         helper(solver, opts.execution_device, outputDir());
   PoissonForwardProblem problem(opts);
 
   HostVector<Real> x;
   Real             res_norm = 0.0;
-  if (opts.backend == MemorySpace::Host)
+  if (opts.execution_device == runtime::ExecutionDevice::Host)
   {
     solveHost(helper, problem, x, res_norm);
   }
@@ -109,7 +111,7 @@ int run(const Options& opts)
     solveDevice(helper, problem, x, res_norm);
 #else
     throw std::runtime_error(
-        "CUDA Poisson backend requires a CUDA-enabled ReSolve build");
+        "Device Poisson execution requires a CUDA-enabled ReSolve build");
 #endif
   }
 

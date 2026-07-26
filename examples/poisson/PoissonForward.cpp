@@ -102,18 +102,19 @@ std::string lowerAscii(std::string value)
   return value;
 }
 
-MemorySpace parseMemorySpace(const std::string& value)
+runtime::ExecutionDevice parseExecutionDevice(const std::string& value)
 {
-  const std::string backend = lowerAscii(value);
-  if (backend == "cpu")
+  const std::string device = lowerAscii(value);
+  if (device == "host" || device == "cpu")
   {
-    return MemorySpace::Host;
+    return runtime::ExecutionDevice::Host;
   }
-  if (backend == "cuda" || backend == "gpu")
+  if (device == "device" || device == "cuda" || device == "gpu")
   {
-    return MemorySpace::Device;
+    return runtime::ExecutionDevice::Device;
   }
-  throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
+  throw std::runtime_error(
+      "Execution device must be 'host' or 'device'");
 }
 
 bool parseOutputValue(const std::string& value)
@@ -130,24 +131,25 @@ bool parseOutputValue(const std::string& value)
   throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-MemorySpace readBackendOption(int&               i,
-                              int                argc,
-                              char**             argv,
-                              const std::string& name)
+runtime::ExecutionDevice readExecutionDeviceOption(
+    int&               i,
+    int                argc,
+    char**             argv,
+    const std::string& name)
 {
-  return parseMemorySpace(readStringOption(i, argc, argv, name));
+  return parseExecutionDevice(readStringOption(i, argc, argv, name));
 }
 
-bool readBackendAssignment(const std::string& arg,
-                           const std::string& name,
-                           MemorySpace&       out)
+bool readExecutionDeviceAssignment(const std::string&        arg,
+                                   const std::string&        name,
+                                   runtime::ExecutionDevice& out)
 {
   std::string value;
   if (!readStringAssignment(arg, name, value))
   {
     return false;
   }
-  out = parseMemorySpace(value);
+  out = parseExecutionDevice(value);
   return true;
 }
 
@@ -385,9 +387,10 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
       }
       continue;
     }
-    if (arg == "--backend" || arg == "-b")
+    if (arg == "--device" || arg == "-d")
     {
-      opts.backend = readBackendOption(i, argc, argv, arg);
+      opts.execution_device =
+          readExecutionDeviceOption(i, argc, argv, arg);
       continue;
     }
     if (readIndexAssignment(arg, "--nx", opts.num_x_cells)
@@ -404,8 +407,10 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
     {
       throw std::runtime_error("Use --output yes or --output no");
     }
-    if (readBackendAssignment(arg, "--backend", opts.backend)
-        || readBackendAssignment(arg, "-b", opts.backend))
+    if (readExecutionDeviceAssignment(
+            arg, "--device", opts.execution_device)
+        || readExecutionDeviceAssignment(
+            arg, "-d", opts.execution_device))
     {
       continue;
     }
@@ -433,23 +438,23 @@ std::string outputStem(const Options& opts)
 
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* backend_note)
+                const char* device_note)
 {
   std::cout << "Usage: " << app_name
-            << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]";
+            << " [--nx N] [--ny N] [-d host|device] [--output yes|no]";
   if (petsc_options)
   {
     std::cout << " [PETSc options]";
   }
   std::cout << '\n';
-  std::cout << "  -b, --backend cpu|cuda selects the device backend";
-  if (backend_note)
+  std::cout << "  -d, --device host|device selects the execution device";
+  if (device_note)
   {
-    std::cout << " (" << backend_note << ")";
+    std::cout << " (" << device_note << ")";
   }
   else if (petsc_options)
   {
-    std::cout << " (PETSc supports cpu only)";
+    std::cout << " (PETSc supports Host execution only)";
   }
   std::cout << '\n';
   std::cout << "  --output yes writes a VTU file under "
@@ -458,13 +463,13 @@ void printUsage(const char* app_name,
 }
 
 void printReport(std::ostream&                out,
-                 const std::string&           backend,
+                 const std::string&           configuration,
                  const PoissonForwardProblem& problem,
                  const ErrorReport&           error,
                  Real                         res_norm)
 {
   const Options& opts = problem.options();
-  out << "Poisson forward (" << backend << ")\n";
+  out << "Poisson forward (" << configuration << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';
   out << "  nodes: " << problem.numNodes() << '\n';

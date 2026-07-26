@@ -9,6 +9,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -44,12 +45,14 @@ void copyToPETSc(const HostCsrMatrix& src, PETScMatrix& dst)
 
 int run(const Options& opts)
 {
-  if (opts.backend != MemorySpace::Host)
+  constexpr auto solver_type = runtime::SolverType::PETSc;
+  if (opts.execution_device != runtime::ExecutionDevice::Host)
   {
-    throw std::runtime_error("PETSc Poisson backend supports only 'cpu'");
+    throw std::runtime_error(
+        "PETSc Poisson supports only Host execution");
   }
 
-  ExampleHelper         helper("petsc", opts.backend, outputDir());
+  ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
   PoissonForwardProblem problem(opts);
 
   HostCsrMatrix    A(problem.map().pattern());
@@ -64,10 +67,10 @@ int run(const Options& opts)
   }
   A_petsc.finalize();
 
-  PETScLinearSolver solver(PETSC_COMM_WORLD);
+  PETScLinearSolver native_solver(PETSC_COMM_WORLD);
 
   HostVector<Real> x;
-  solver.solve(A_petsc, rhs, x);
+  native_solver.solve(A_petsc, rhs, x);
 
   linalg::HostContext host_ctx;
   const Real          res_norm = helper.resNorm(A, rhs, x, host_ctx);

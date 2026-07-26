@@ -41,7 +41,10 @@ def main():
 
     problem.build()
 
-    solver = problem.create_solver(backend="petsc")
+    solver = problem.create_solver(
+        execution_device=femx.ExecutionDevice.HOST,
+        solver_type=femx.SolverType.PETSC,
+    )
     trajectory = solver.solve(progress=print_progress)
     print()
 

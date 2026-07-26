@@ -1,20 +1,27 @@
 #pragma once
 
+#include <memory>
 #include <utility>
 
 #include <femx/inverse/TimeReducedFunctional.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/LinearSystem.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <pybind11/pybind11.h>
+
+std::unique_ptr<femx::linalg::LinearSystem<femx::MemorySpace::Host>>
+makePythonHostLinearSystem(femx::runtime::SolverType solver,
+                           const pybind11::object&   options);
 
 class PythonHostTimeIntegrator final
 {
 public:
   PythonHostTimeIntegrator(
       const femx::state::HostTimeResidual& res,
-      femx::linalg::HostCsrLinearSolver&   solver)
-    : jac_(res.pattern()), integ_(res, jac_, solver, ctx_)
+      femx::runtime::SolverType            solver,
+      const pybind11::object&              options)
+    : system_(makePythonHostLinearSystem(solver, options)),
+      integ_(res, *system_)
   {
   }
 
@@ -29,8 +36,9 @@ public:
   }
 
 private:
-  femx::CpuContext                ctx_;
-  femx::HostCsrMatrix             jac_;
+  std::unique_ptr<
+      femx::linalg::LinearSystem<femx::MemorySpace::Host>>
+                                  system_;
   femx::state::HostTimeIntegrator integ_;
 };
 
