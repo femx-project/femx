@@ -13,8 +13,9 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx::examples
 {
@@ -106,11 +107,11 @@ public:
       throw std::runtime_error("Residual dimensions are inconsistent");
     }
 
-    linalg::HostMatrixHandler mat_handler(ctx);
-    auto&                     vec_handler = ctx.vectors();
+    linalg::HostJacobian jacobian(ctx);
+    auto&                vec_handler = ctx.vectors();
 
-    HostVector<Real> residual;
-    mat_handler.matvec(A, x.view(), residual);
+    HostVector<Real> residual(A.rows());
+    jacobian.apply(A, x.view(), residual.view());
     vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
     return std::sqrt(vec_handler.squaredNorm(residual.view()));
   }
@@ -139,11 +140,11 @@ public:
       throw std::runtime_error("Residual dimensions are inconsistent");
     }
 
-    linalg::CudaMatrixHandler mat_handler(ctx);
-    auto&                     vec_handler = ctx.vectors();
+    linalg::CudaJacobian jacobian(ctx);
+    auto&                vec_handler = ctx.vectors();
 
-    DeviceVector<Real> residual;
-    mat_handler.matvec(A, x.view(), residual);
+    DeviceVector<Real> residual(A.rows());
+    jacobian.apply(A, x.view(), residual.view());
     vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
 
     DeviceVector<Real> norm2(1);

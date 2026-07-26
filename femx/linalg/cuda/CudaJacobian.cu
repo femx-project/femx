@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <cublas_v2.h>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/linalg/handler/CudaHandles.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
 
 namespace femx::linalg
 {
@@ -110,6 +110,95 @@ __global__ void scaleKernel(Index size, Real scale, Real* vals)
   if (i < size)
   {
     vals[i] *= scale;
+  }
+}
+
+__global__ void markConstraintsKernel(Index        count,
+                                      const Index* rows,
+                                      Index        matrix_rows,
+                                      Index*       row_to_constraint)
+{
+  const Index ib =
+      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (ib < count)
+  {
+    const Index row = rows[ib];
+    if (row >= 0 && row < matrix_rows)
+    {
+      row_to_constraint[row] = ib;
+    }
+  }
+}
+
+__global__ void fillIndexKernel(Index size, Index value, Index* out)
+{
+  const Index index =
+      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (index < size)
+  {
+    out[index] = value;
+  }
+}
+
+__global__ void replaceConstraintRowsKernel(
+    Index        count,
+    const Index* rows,
+    const Index* row_offsets,
+    const Index* column_indices,
+    Real*        matrix_values,
+    Real         diagonal,
+    Real*        rhs,
+    const Real*  prescribed_values)
+{
+  const Index ib = static_cast<Index>(blockIdx.x);
+  if (ib >= count)
+  {
+    return;
+  }
+
+  const Index row = rows[ib];
+  for (Index entry = row_offsets[row] + threadIdx.x;
+       entry < row_offsets[row + 1];
+       entry += blockDim.x)
+  {
+    matrix_values[entry] =
+        column_indices[entry] == row ? diagonal : 0.0;
+  }
+  if (threadIdx.x == 0 && rhs != nullptr)
+  {
+    rhs[row] = prescribed_values[ib];
+  }
+}
+
+__global__ void eliminateConstraintColumnsKernel(
+    Index        matrix_rows,
+    const Index* row_offsets,
+    const Index* column_indices,
+    const Index* row_to_constraint,
+    const Real*  prescribed_values,
+    Real*        matrix_values,
+    Real*        rhs)
+{
+  const Index row = static_cast<Index>(blockIdx.x);
+  if (row >= matrix_rows)
+  {
+    return;
+  }
+
+  for (Index entry = row_offsets[row] + threadIdx.x;
+       entry < row_offsets[row + 1];
+       entry += blockDim.x)
+  {
+    const Index ib = row_to_constraint[column_indices[entry]];
+    if (ib >= 0)
+    {
+      const Real value = matrix_values[entry];
+      if (row_to_constraint[row] < 0)
+      {
+        atomicAdd(rhs + row, -value * prescribed_values[ib]);
+      }
+      matrix_values[entry] = 0.0;
+    }
   }
 }
 
@@ -387,7 +476,111 @@ void spmv(const DeviceCsrMatrix&       mat,
 }
 } // namespace
 
-void MatrixHandler<CudaCsrBackend>::transpose(
+void CudaJacobian::ensureConstraints(
+    DeviceVectorView<const Index> rows)
+{
+  require(rows.isValid(), "CUDA constrained-row view is invalid");
+  if (constraints_.layout_id == matrix_.pattern().layoutId()
+      && constraints_.rows == rows.data()
+      && constraints_.count == rows.size())
+  {
+    return;
+  }
+
+  constraints_.layout_id = matrix_.pattern().layoutId();
+  constraints_.rows      = rows.data();
+  constraints_.count     = rows.size();
+  ctx_.vectors().resizeOrZero(constraints_.row_to_constraint,
+                              matrix_.rows());
+  if (!constraints_.row_to_constraint.empty())
+  {
+    fillIndexKernel<<<cuda::numBlocks(constraints_.row_to_constraint.size(), kThreads),
+                      kThreads,
+                      0,
+                      static_cast<cudaStream_t>(ctx_.stream())>>>(
+        constraints_.row_to_constraint.size(),
+        -1,
+        constraints_.row_to_constraint.data());
+    cuda::checkLastError();
+  }
+  if (!rows.empty())
+  {
+    markConstraintsKernel<<<cuda::numBlocks(rows.size(), kThreads),
+                            kThreads,
+                            0,
+                            static_cast<cudaStream_t>(ctx_.stream())>>>(
+        rows.size(),
+        rows.data(),
+        matrix_.rows(),
+        constraints_.row_to_constraint.data());
+    cuda::checkLastError();
+  }
+}
+
+void CudaJacobian::replaceRows(DeviceVectorView<const Index> rows,
+                               Real                          diagonal)
+{
+  ensureConstraints(rows);
+  if (rows.empty())
+  {
+    return;
+  }
+  replaceConstraintRowsKernel<<<static_cast<unsigned int>(rows.size()),
+                                kThreads,
+                                0,
+                                static_cast<cudaStream_t>(ctx_.stream())>>>(
+      rows.size(),
+      rows.data(),
+      matrix_.rowPtrData(),
+      matrix_.colIndData(),
+      matrix_.valsData(),
+      diagonal,
+      nullptr,
+      nullptr);
+  cuda::checkLastError();
+}
+
+void CudaJacobian::eliminateColumns(
+    DeviceVectorView<const Index> rows,
+    DeviceVectorView<const Real>  values,
+    DeviceVectorView<Real>        rhs)
+{
+  require(values.size() == rows.size() && rhs.size() == matrix_.rows(),
+          "CUDA Jacobian constraint vectors have incompatible dimensions");
+  ensureConstraints(rows);
+  if (rows.empty())
+  {
+    return;
+  }
+
+  eliminateConstraintColumnsKernel<<<static_cast<unsigned int>(matrix_.rows()),
+                                     kThreads,
+                                     0,
+                                     static_cast<cudaStream_t>(ctx_.stream())>>>(
+      matrix_.rows(),
+      matrix_.rowPtrData(),
+      matrix_.colIndData(),
+      constraints_.row_to_constraint.data(),
+      values.data(),
+      matrix_.valsData(),
+      rhs.data());
+  cuda::checkLastError();
+  replaceConstraintRowsKernel<<<static_cast<unsigned int>(rows.size()),
+                                kThreads,
+                                0,
+                                static_cast<cudaStream_t>(ctx_.stream())>>>(
+      rows.size(),
+      rows.data(),
+      matrix_.rowPtrData(),
+      matrix_.colIndData(),
+      matrix_.valsData(),
+      1.0,
+      rhs.data(),
+      values.data());
+  cuda::checkLastError();
+}
+
+void CudaJacobian::transpose(
     const DeviceCsrMatrix& src,
     DeviceCsrMatrix&       dst) const
 {
@@ -500,11 +693,11 @@ void MatrixHandler<CudaCsrBackend>::transpose(
   cuda::checkLastError();
 }
 
-void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&       mat,
-                                           DeviceVectorView<const Real> x,
-                                           DeviceVectorView<Real>       y,
-                                           Real                         alpha,
-                                           Real                         beta) const
+void CudaJacobian::apply(const DeviceCsrMatrix&       mat,
+                         DeviceVectorView<const Real> x,
+                         DeviceVectorView<Real>       y,
+                         Real                         alpha,
+                         Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, false);
   if (mat.rows() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -515,11 +708,11 @@ void MatrixHandler<CudaCsrBackend>::matvec(const DeviceCsrMatrix&       mat,
   spmv(mat, x, y, ctx_, alpha, beta, false);
 }
 
-void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&       mat,
-                                            DeviceVectorView<const Real> x,
-                                            DeviceVectorView<Real>       y,
-                                            Real                         alpha,
-                                            Real                         beta) const
+void CudaJacobian::applyT(const DeviceCsrMatrix&       mat,
+                          DeviceVectorView<const Real> x,
+                          DeviceVectorView<Real>       y,
+                          Real                         alpha,
+                          Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, true);
   if (mat.cols() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -530,11 +723,11 @@ void MatrixHandler<CudaCsrBackend>::matvecT(const DeviceCsrMatrix&       mat,
   spmv(mat, x, y, ctx_, alpha, beta, true);
 }
 
-void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real> mat,
-                                           DeviceVectorView<const Real> x,
-                                           DeviceVectorView<Real>       y,
-                                           Real                         alpha,
-                                           Real                         beta) const
+void CudaJacobian::apply(DeviceMatrixView<const Real> mat,
+                         DeviceVectorView<const Real> x,
+                         DeviceVectorView<Real>       y,
+                         Real                         alpha,
+                         Real                         beta) const
 {
   checkDenseMatvec(mat, x, y, false);
   if (mat.rows() == 0)
@@ -564,11 +757,11 @@ void MatrixHandler<CudaCsrBackend>::matvec(DeviceMatrixView<const Real> mat,
               "cublasDgemv failed");
 }
 
-void MatrixHandler<CudaCsrBackend>::matvecT(DeviceMatrixView<const Real> mat,
-                                            DeviceVectorView<const Real> x,
-                                            DeviceVectorView<Real>       y,
-                                            Real                         alpha,
-                                            Real                         beta) const
+void CudaJacobian::applyT(DeviceMatrixView<const Real> mat,
+                          DeviceVectorView<const Real> x,
+                          DeviceVectorView<Real>       y,
+                          Real                         alpha,
+                          Real                         beta) const
 {
   checkDenseMatvec(mat, x, y, true);
   if (mat.cols() == 0)

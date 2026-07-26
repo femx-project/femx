@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -6,7 +7,7 @@
 #include "PoissonForward.hpp"
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
@@ -49,8 +50,11 @@ void solveDevice(const ExampleHelper&         helper,
                  HostVector<Real>&            x,
                  Real&                        res_norm)
 {
-  linalg::CudaContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto system = linalg::CudaLinearSystem(
+      std::make_unique<ReSolveLinearSolver>());
+  auto& ctx         = dynamic_cast<linalg::CudaContext&>(system.context());
+  auto& jac         = dynamic_cast<linalg::CudaJacobian&>(system.jacobian());
+  auto& vec_handler = ctx.vectors();
 
   fem::DeviceGeometry              geom;
   fem::DeviceElementQuadratureData element_data;
@@ -67,22 +71,22 @@ void solveDevice(const ExampleHelper&         helper,
   DeviceVector<Real> bc_vals;
   vec_handler.copy(problem.bcVals(), bc_vals);
 
-  DeviceCsrMatrix mat(map.pattern());
+  jac.begin(problem.map().pattern());
   assembly::assemble(PoissonComponents<MemorySpace::Device>(element_data.view()),
                      geom,
                      map,
                      state,
                      res,
-                     mat,
+                     jac,
                      ctx);
   vec_handler.axpby(-1.0, res.view(), 0.0, rhs.view());
-  assembly::applyDirichletConditions(bc_map, mat, rhs, bc_vals, ctx);
+  jac.eliminateColumns(
+      bc_map.view().constrained_rows, bc_vals.view(), rhs.view());
 
-  ReSolveLinearSolver solver;
-  DeviceVector<Real>  sol;
-  solver.solve(mat, rhs, sol, ctx);
+  DeviceVector<Real> sol;
+  system.solve(rhs.view(), sol);
 
-  res_norm = helper.resNorm(mat, rhs, sol, ctx);
+  res_norm = helper.resNorm(jac.matrix(), rhs, sol, ctx);
   vec_handler.copy(sol, x);
   ctx.sync();
 }

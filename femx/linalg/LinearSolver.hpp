@@ -1,22 +1,19 @@
 #pragma once
 
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/CsrMatrix.hpp>
 
 namespace femx::linalg
 {
 
-/** @brief Define the linear solve contract for an execution backend. */
-template <class Backend>
+/** @brief Define the CSR linear solve contract for one memory space. */
+template <MemorySpace Space>
 class LinearSolver
 {
-  static_assert(is_backend_v<Backend>,
-                "LinearSolver requires a valid backend type");
-
 public:
-  using Matrix           = typename Backend::Mat;
-  using Vector           = typename Backend::Vec;
-  using ExecutionContext = Context<Backend::space>;
+  using Matrix           = CsrMatrix<Space>;
+  using Vector           = femx::Vector<Space, Real>;
+  using ExecutionContext = Context<Space>;
 
   virtual ~LinearSolver() = default;
 
@@ -46,8 +43,5 @@ public:
                       Vector&           sol,
                       ExecutionContext& ctx) = 0;
 };
-
-using HostCsrLinearSolver = LinearSolver<HostCsrBackend>;
-using DeviceLinearSolver  = LinearSolver<CudaCsrBackend>;
 
 } // namespace femx::linalg

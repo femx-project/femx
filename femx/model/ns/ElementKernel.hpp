@@ -7,6 +7,7 @@
 #include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 
 namespace femx
@@ -502,7 +503,7 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    DeviceCsrMatrix&                   jac,
+    linalg::CudaJacobian&              jac,
     linalg::CudaContext&               ctx);
 
 void applyHistJacT(

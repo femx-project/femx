@@ -6,8 +6,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state
@@ -43,16 +42,14 @@ class LinearStateSolver final : public StateSolver<Backend>
 {
 public:
   using Vec    = typename Backend::Vec;
-  using Mat    = typename Backend::Mat;
   using Ctx    = linalg::Context<Backend::space>;
   using Res    = Residual<Backend>;
-  using Solver = linalg::LinearSolver<Backend>;
+  using System = linalg::LinearSystem<Backend::space>;
 
-  LinearStateSolver(const Res& res, Mat& jac, Solver& solver, Ctx& ctx)
+  LinearStateSolver(const Res& res, System& system)
     : res_(res),
-      jac_(jac),
-      solver_(solver),
-      ctx_(ctx),
+      system_(system),
+      ctx_(system.context()),
       dims_(res.dims()),
       zero_(dims_.num_states),
       res_vec_(dims_.num_res),
@@ -89,18 +86,19 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    auto&                          vec_handler = ctx_.vectors();
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     require(prm.size() == numParams(), "LinearStateSolver parameter size mismatch");
 
     res_.res(zero_, prm, res_vec_, ctx_);
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
 
     vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-    res_.assembleStateJac(zero_, prm, jac_, ctx_);
+    auto& jac = system_.jacobian();
+    jac.begin(res_.hostPattern());
+    res_.assembleStateJac(zero_, prm, jac, ctx_);
 
-    mat_handler.finalize(jac_);
-    solver_.solve(jac_, rhs_, state, ctx_);
+    jac.finalize();
+    system_.solve(rhs_.view(), state);
 
     ctx_.sync();
     require(state.size() == numStates(), "LinearStateSolver solution size mismatch");
@@ -108,8 +106,7 @@ public:
 
 private:
   const Res& res_;
-  Mat&       jac_;
-  Solver&    solver_;
+  System&    system_;
   Ctx&       ctx_;
   Dimensions dims_;
   Vec        zero_;
@@ -133,16 +130,14 @@ class NewtonStateSolver final : public StateSolver<Backend>
 
 public:
   using Vec    = typename Backend::Vec;
-  using Mat    = typename Backend::Mat;
   using Ctx    = linalg::Context<Backend::space>;
   using Res    = Residual<Backend>;
-  using Solver = linalg::LinearSolver<Backend>;
+  using System = linalg::LinearSystem<Backend::space>;
 
-  NewtonStateSolver(const Res& res, Mat& jac, Solver& solver, Ctx& ctx)
+  NewtonStateSolver(const Res& res, System& system)
     : res_(res),
-      jac_(jac),
-      solver_(solver),
-      ctx_(ctx),
+      system_(system),
+      ctx_(system.context()),
       dims_(res.dims()),
       init_(dims_.num_states),
       res_vec_(dims_.num_res),
@@ -205,8 +200,7 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    auto&                          vec_handler = ctx_.vectors();
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
 
     require(prm.size() == numParams(), "NewtonStateSolver parameter size mismatch");
     initState(state);
@@ -228,10 +222,12 @@ public:
       }
 
       vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-      res_.assembleStateJac(state, prm, jac_, ctx_);
-      mat_handler.finalize(jac_);
+      auto& jac = system_.jacobian();
+      jac.begin(res_.hostPattern());
+      res_.assembleStateJac(state, prm, jac, ctx_);
+      jac.finalize();
 
-      solver_.solve(jac_, rhs_, step_, ctx_);
+      system_.solve(rhs_.view(), step_);
       require(step_.size() == numStates(),
               "NewtonStateSolver step size mismatch");
 
@@ -266,8 +262,7 @@ private:
   }
 
   const Res&         res_;
-  Mat&               jac_;
-  Solver&            solver_;
+  System&            system_;
   Ctx&               ctx_;
   Dimensions         dims_;
   NewtonStateOptions opts_;

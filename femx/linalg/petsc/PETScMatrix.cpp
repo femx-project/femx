@@ -5,8 +5,8 @@
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx
 {
@@ -89,12 +89,12 @@ using detail::check;
 using detail::checkInit;
 using detail::checkMPI;
 
-PETScOperator::PETScOperator(MPI_Comm comm)
+PETScMatrix::PETScMatrix(MPI_Comm comm)
   : comm_(comm)
 {
 }
 
-PETScOperator::~PETScOperator()
+PETScMatrix::~PETScMatrix()
 {
   if (mat_ != nullptr)
   {
@@ -102,28 +102,28 @@ PETScOperator::~PETScOperator()
   }
 }
 
-Index PETScOperator::rows() const
+Index PETScMatrix::rows() const
 {
   return rows_;
 }
 
-Index PETScOperator::cols() const
+Index PETScMatrix::cols() const
 {
   return cols_;
 }
 
-Mat PETScOperator::mat() const
+Mat PETScMatrix::mat() const
 {
-  require(mat_ != nullptr, "PETScOperator is not initialized");
+  require(mat_ != nullptr, "PETScMatrix is not initialized");
   return mat_;
 }
 
-MPI_Comm PETScOperator::comm() const
+MPI_Comm PETScMatrix::comm() const
 {
   return comm_;
 }
 
-void PETScOperator::resize(Index rows, Index cols)
+void PETScMatrix::resize(Index rows, Index cols)
 {
   checkInit();
 
@@ -172,7 +172,7 @@ void PETScOperator::resize(Index rows, Index cols)
         "MatSetOption");
 }
 
-void PETScOperator::resize(const HostCsrPattern& pattern)
+void PETScMatrix::resize(const HostCsrPattern& pattern)
 {
   checkInit();
 
@@ -232,7 +232,7 @@ void PETScOperator::resize(const HostCsrPattern& pattern)
   check(MatSetUp(mat_), "MatSetUp");
 }
 
-void PETScOperator::setZero()
+void PETScMatrix::setZero()
 {
   if (mat_ == nullptr)
   {
@@ -241,9 +241,9 @@ void PETScOperator::setZero()
   check(MatZeroEntries(mat_), "MatZeroEntries");
 }
 
-void PETScOperator::set(Index row, Index col, Real val)
+void PETScMatrix::set(Index row, Index col, Real val)
 {
-  require(mat_ != nullptr, "PETScOperator is not initialized");
+  require(mat_ != nullptr, "PETScMatrix is not initialized");
   check(MatSetValue(mat_,
                     static_cast<PetscInt>(row),
                     static_cast<PetscInt>(col),
@@ -252,38 +252,39 @@ void PETScOperator::set(Index row, Index col, Real val)
         "MatSetValue");
 }
 
-void PETScOperator::addBlock(const HostVector<Index>& rows,
-                             const HostVector<Index>& cols,
-                             const DenseMatrix&       mat_e)
+void PETScMatrix::addBlock(HostVectorView<const Index> rows,
+                           HostVectorView<const Index> columns,
+                           HostMatrixView<const Real>  values)
 {
-  require(mat_e.rows() == rows.size() && mat_e.cols() == cols.size(),
-          "PETScOperator local block size does not match dofs");
+  require(values.rows() == rows.size()
+              && values.cols() == columns.size(),
+          "PETScMatrix local block size does not match dofs");
   static thread_local HostVector<PetscInt> petsc_rows;
   static thread_local HostVector<PetscInt> petsc_cols;
   petsc_rows.resize(rows.size());
-  petsc_cols.resize(cols.size());
+  petsc_cols.resize(columns.size());
   for (Index i = 0; i < rows.size(); ++i)
   {
     petsc_rows[i] = static_cast<PetscInt>(rows[i]);
   }
-  for (Index i = 0; i < cols.size(); ++i)
+  for (Index i = 0; i < columns.size(); ++i)
   {
-    petsc_cols[i] = static_cast<PetscInt>(cols[i]);
+    petsc_cols[i] = static_cast<PetscInt>(columns[i]);
   }
   addBlock(petsc_rows.data(),
            petsc_rows.size(),
            petsc_cols.data(),
            petsc_cols.size(),
-           mat_e.data());
+           values.data());
 }
 
-void PETScOperator::addBlock(const PetscInt* rows,
-                             Index           num_rows,
-                             const PetscInt* cols,
-                             Index           num_cols,
-                             const Real*     vals)
+void PETScMatrix::addBlock(const PetscInt* rows,
+                           Index           num_rows,
+                           const PetscInt* cols,
+                           Index           num_cols,
+                           const Real*     vals)
 {
-  require(mat_ != nullptr, "PETScOperator is not initialized");
+  require(mat_ != nullptr, "PETScMatrix is not initialized");
   check(MatSetValues(mat_,
                      static_cast<PetscInt>(num_rows),
                      rows,
@@ -294,20 +295,22 @@ void PETScOperator::addBlock(const PetscInt* rows,
         "MatSetValues");
 }
 
-void PETScOperator::finalize()
+void PETScMatrix::finalize()
 {
-  require(mat_ != nullptr, "PETScOperator is not initialized");
+  require(mat_ != nullptr, "PETScMatrix is not initialized");
   check(MatAssemblyBegin(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyBegin");
   check(MatAssemblyEnd(mat_, MAT_FINAL_ASSEMBLY), "MatAssemblyEnd");
 }
 
-void PETScOperator::replaceRows(const HostVector<Index>& rows, Real diag)
+void PETScMatrix::replaceRows(HostVectorView<const Index> rows,
+                              Real                        diagonal)
 {
   finalize();
-  zeroRows(rows, diag);
+  zeroRows(rows, diagonal);
 }
 
-void PETScOperator::zeroRows(const HostVector<Index>& rows, Real diag)
+void PETScMatrix::zeroRows(HostVectorView<const Index> rows,
+                           Real                        diagonal)
 {
   if (rows.empty())
   {
@@ -319,23 +322,67 @@ void PETScOperator::zeroRows(const HostVector<Index>& rows, Real diag)
   for (Index row : rows)
   {
     require(row >= 0 && row < rows_,
-            "PETScOperator zeroRows row is out of range");
+            "PETScMatrix zeroRows row is out of range");
     prows.push_back(static_cast<PetscInt>(row));
   }
 
   check(MatZeroRows(mat(),
                     static_cast<PetscInt>(prows.size()),
                     prows.data(),
-                    static_cast<PetscScalar>(diag),
+                    static_cast<PetscScalar>(diagonal),
                     nullptr,
                     nullptr),
         "MatZeroRows");
 }
 
-void PETScOperator::apply(HostVectorView<const Real> dir, HostVector<Real>& out) const
+void PETScMatrix::eliminateColumns(
+    HostVectorView<const Index> rows,
+    HostVectorView<const Real>  values,
+    HostVectorView<Real>        rhs)
+{
+  require(values.size() == rows.size() && rhs.size() == rows_,
+          "PETSc matrix constraint vectors have incompatible dimensions");
+  if (rows.empty())
+  {
+    return;
+  }
+
+  finalize();
+  HostVector<PetscInt> petsc_rows(rows.size());
+  HostVector<Real>     prescribed(cols_, 0.0);
+  for (Index i = 0; i < rows.size(); ++i)
+  {
+    require(rows[i] >= 0 && rows[i] < rows_,
+            "PETSc matrix constrained row is out of range");
+    petsc_rows[i]       = static_cast<PetscInt>(rows[i]);
+    prescribed[rows[i]] = values[i];
+  }
+
+  ScopedVec prescribed_vector;
+  ScopedVec rhs_vector;
+  createVec(cols_, prescribed_vector);
+  createVec(rows_, rhs_vector);
+  check(detail::copyToPETSc(prescribed.view(), prescribed_vector.get()),
+        "copyToPETSc");
+  check(detail::copyToPETSc(rhs, rhs_vector.get()), "copyToPETSc");
+  check(MatZeroRowsColumns(mat(),
+                           static_cast<PetscInt>(petsc_rows.size()),
+                           petsc_rows.data(),
+                           1.0,
+                           prescribed_vector.get(),
+                           rhs_vector.get()),
+        "MatZeroRowsColumns");
+
+  HostVector<Real> corrected;
+  check(detail::copyFromPETSc(rhs_vector.get(), corrected),
+        "copyFromPETSc");
+  rhs = corrected;
+}
+
+void PETScMatrix::apply(HostVectorView<const Real> dir, HostVector<Real>& out) const
 {
   require(dir.size() == cols(),
-          "PETScOperator apply received incompatible vector");
+          "PETScMatrix apply received incompatible vector");
 
   ScopedVec x;
   ScopedVec y;
@@ -346,10 +393,10 @@ void PETScOperator::apply(HostVectorView<const Real> dir, HostVector<Real>& out)
   check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
 }
 
-void PETScOperator::applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const
+void PETScMatrix::applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const
 {
   require(dir.size() == rows(),
-          "PETScOperator transpose apply received incompatible vector");
+          "PETScMatrix transpose apply received incompatible vector");
 
   ScopedVec x;
   ScopedVec y;
@@ -360,7 +407,7 @@ void PETScOperator::applyT(HostVectorView<const Real> dir, HostVector<Real>& out
   check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
 }
 
-PETScOperator::ScopedVec::~ScopedVec()
+PETScMatrix::ScopedVec::~ScopedVec()
 {
   if (vec_ != nullptr)
   {
@@ -368,17 +415,17 @@ PETScOperator::ScopedVec::~ScopedVec()
   }
 }
 
-Vec PETScOperator::ScopedVec::get() const
+Vec PETScMatrix::ScopedVec::get() const
 {
   return vec_;
 }
 
-Vec* PETScOperator::ScopedVec::put()
+Vec* PETScMatrix::ScopedVec::put()
 {
   return &vec_;
 }
 
-void PETScOperator::createVec(Index size, ScopedVec& out) const
+void PETScMatrix::createVec(Index size, ScopedVec& out) const
 {
   PetscMPIInt comm_size = 1;
   checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
@@ -391,11 +438,11 @@ void PETScOperator::createVec(Index size, ScopedVec& out) const
   check(VecSetFromOptions(out.get()), "VecSetFromOptions");
 }
 
-void PETScOperator::computePrealloc(const HostCsrPattern& pattern,
-                                    PetscInt              begin,
-                                    PetscInt              end,
-                                    HostVector<PetscInt>& d_nnz,
-                                    HostVector<PetscInt>& o_nnz)
+void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
+                                  PetscInt              begin,
+                                  PetscInt              end,
+                                  HostVector<PetscInt>& d_nnz,
+                                  HostVector<PetscInt>& o_nnz)
 {
   const PetscInt nrow = end - begin;
   d_nnz.assign(nrow, 0);

@@ -6,7 +6,8 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -83,11 +84,11 @@ inline void copy(const HostPointInterpolatorData& src,
                  DevicePointInterpolatorData&     dst,
                  linalg::CudaContext&             ctx)
 {
-  linalg::CudaMatrixHandler mat_handler(ctx);
-  DeviceCsrPattern          pattern;
+  auto&            vec_handler = ctx.vectors();
+  DeviceCsrPattern pattern;
   femx::copy(src.mat_.pattern(), pattern, ctx);
   DeviceCsrMatrix mat(pattern);
-  mat_handler.copy(src.mat_, mat);
+  vec_handler.copy(src.mat_.vals(), mat.vals());
   dst.mat_ = std::move(mat);
 }
 

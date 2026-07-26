@@ -5,8 +5,7 @@
 #include <femx/inverse/Objective.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -24,21 +23,18 @@ class ReducedFunctional final
 
 public:
   using Vec         = typename Backend::Vec;
-  using Mat         = typename Backend::Mat;
   using Ctx         = linalg::Context<Backend::space>;
   using Res         = state::Residual<Backend>;
   using StateSolver = state::StateSolver<Backend>;
-  using LinSolver   = linalg::LinearSolver<Backend>;
+  using System      = linalg::LinearSystem<Backend::space>;
 
   ReducedFunctional(StateSolver&     state_solver,
-                    Mat&             adj_jac,
-                    LinSolver&       adj_solver,
+                    System&          adj_system,
                     const Objective& obj)
     : state_solver_(state_solver),
       res_(state_solver.residual()),
-      adj_jac_(adj_jac),
-      adj_solver_(adj_solver),
-      ctx_(state_solver.context()),
+      adj_system_(adj_system),
+      ctx_(adj_system.context()),
       obj_(obj),
       dims_(res_.dims()),
       state_(dims_.num_states),
@@ -93,14 +89,15 @@ private:
 
   void gradAt(const Vec& prm, Vec& out)
   {
-    auto&                          vec_handler = ctx_.vectors();
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     obj_.stateGrad(state_, prm, state_grad_);
     checkSize(state_grad_, dims_.num_states);
 
-    res_.assembleStateJac(state_, prm, adj_jac_, ctx_);
-    mat_handler.finalize(adj_jac_);
-    adj_solver_.solveT(adj_jac_, state_grad_, adj_, ctx_);
+    auto& jac = adj_system_.jacobian();
+    jac.begin(res_.hostPattern());
+    res_.assembleStateJac(state_, prm, jac, ctx_);
+    jac.finalize();
+    adj_system_.solveT(state_grad_.view(), adj_);
     checkSize(adj_, dims_.num_res);
 
     obj_.paramGrad(state_, prm, prm_grad_);
@@ -124,8 +121,7 @@ private:
 
   StateSolver&      state_solver_;
   const Res&        res_;
-  Mat&              adj_jac_;
-  LinSolver&        adj_solver_;
+  System&           adj_system_;
   Ctx&              ctx_;
   const Objective&  obj_;
   state::Dimensions dims_;

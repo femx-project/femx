@@ -30,10 +30,9 @@
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
 #include <femx/opt/TaoOptimizer.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/Residual.hpp>
@@ -58,34 +57,36 @@ namespace
 
 constexpr Real boundary_eps = 1.0e-12;
 
-void setStateJac(const HostCsrMatrix&                src,
-                 HostCsrMatrix&                      dst,
-                 linalg::Context<MemorySpace::Host>& ctx)
+void setStateJac(const HostCsrMatrix&                 source,
+                 linalg::Jacobian<MemorySpace::Host>& destination)
 {
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.copy(src, dst);
-}
-
-void setStateJac(const HostCsrMatrix&                src,
-                 linalg::PETScOperator&              dst,
-                 linalg::Context<MemorySpace::Host>& ctx)
-{
-  linalg::MatrixHandler<linalg::PetscBackend> mat_handler(ctx);
-  mat_handler.copy(src, dst);
+  HostVector<Index> row(1);
+  for (Index global_row = 0; global_row < source.rows(); ++global_row)
+  {
+    const Index       begin = source.rowPtrData()[global_row];
+    const Index       count = source.rowPtrData()[global_row + 1] - begin;
+    HostVector<Index> entries(count);
+    for (Index i = 0; i < count; ++i)
+    {
+      entries[i] = begin + i;
+    }
+    row[0] = global_row;
+    destination.addElement(
+        {row.view(),
+         {source.colIndData() + begin, count},
+         entries.view(),
+         {source.valsData() + begin, 1, count}});
+  }
 }
 
 /** @brief AssemblyMap residual written once for Host CSR and PETSc backends. */
-template <class Backend>
-class PoissonMapResidual final : public Residual<Backend>
+class PoissonMapResidual final : public HostResidual
 {
-  static_assert(Backend::space == MemorySpace::Host,
-                "Poisson optimization requires Host state storage");
-
 public:
-  using Vec     = typename Backend::Vec;
-  using Mat     = typename Backend::Mat;
-  using Pattern = typename Backend::Pattern;
-  using Ctx     = linalg::Context<Backend::space>;
+  using Vec     = HostVector<Real>;
+  using Mat     = linalg::Jacobian<MemorySpace::Host>;
+  using Pattern = HostCsrPattern;
+  using Ctx     = linalg::Context<MemorySpace::Host>;
 
   PoissonMapResidual(const HostGeometry&              geom,
                      const HostElementQuadratureData& element_data,
@@ -104,7 +105,7 @@ public:
     {
       bc_dofs.push_back(dof);
     }
-    bc_map_ = makeBoundaryMap(bc_dofs, map.pattern());
+    bc_map_ = makeBoundaryMap(bc_dofs);
   }
 
   Dimensions dims() const override
@@ -142,8 +143,8 @@ public:
     checkVectors(state, prm);
     HostVector<Real> unused;
     assembleRaw(state, unused);
-    replaceRows(bc_map_, jac_, 1.0);
-    setStateJac(jac_, out, ctx);
+    setStateJac(jac_, out);
+    out.replaceRows(bc_map_.view().constrained_rows, 1.0);
   }
 
   void applyParamJacT(const Vec& state,
@@ -732,31 +733,24 @@ bool PoissonOptProblem::isControlNode(const Mesh::Node& p) const
          && p[0] < 1.0 - boundary_eps;
 }
 
-template <class Backend>
-Result solve(PoissonOptProblem&               problem,
-             typename Backend::Mat&           fwd_jac,
-             linalg::LinearSolver<Backend>&   fwd_solver,
-             typename Backend::Mat&           adj_jac,
-             linalg::LinearSolver<Backend>&   adj_solver,
-             linalg::Context<Backend::space>& ctx)
+Result solve(PoissonOptProblem&                       problem,
+             linalg::LinearSystem<MemorySpace::Host>& forward_system,
+             linalg::LinearSystem<MemorySpace::Host>& adjoint_system)
 {
-  static_assert(Backend::space == MemorySpace::Host,
-                "Poisson optimization requires Host state storage");
-  PoissonMapResidual<Backend> res(problem.geom_,
-                                  problem.element_data_,
-                                  problem.state_map_,
-                                  problem.ctr_dofs_,
-                                  problem.fixed_dofs_);
+  PoissonMapResidual res(problem.geom_,
+                         problem.element_data_,
+                         problem.state_map_,
+                         problem.ctr_dofs_,
+                         problem.fixed_dofs_);
 
-  state::LinearStateSolver<Backend> state_solver(
-      res, fwd_jac, fwd_solver, ctx);
+  state::HostLinearStateSolver state_solver(res, forward_system);
 
   HostVector<Real> target_state;
   state_solver.solve(problem.target_ctr_, target_state);
   problem.prepareObjective(std::move(target_state));
 
-  inverse::ReducedFunctional<Backend> fn(
-      state_solver, adj_jac, adj_solver, problem.objective());
+  inverse::HostReducedFunctional fn(
+      state_solver, adjoint_system, problem.objective());
 
   opt::TaoOptimizer tao(fn, PETSC_COMM_SELF);
   tao.opts().max_its = problem.options().max_its;
@@ -778,22 +772,6 @@ Result solve(PoissonOptProblem&               problem,
   out.converged  = result.converged();
   return out;
 }
-
-template Result solve<linalg::HostCsrBackend>(
-    PoissonOptProblem&,
-    HostCsrMatrix&,
-    linalg::LinearSolver<linalg::HostCsrBackend>&,
-    HostCsrMatrix&,
-    linalg::LinearSolver<linalg::HostCsrBackend>&,
-    linalg::Context<MemorySpace::Host>&);
-
-template Result solve<linalg::PetscBackend>(
-    PoissonOptProblem&,
-    linalg::PETScOperator&,
-    linalg::LinearSolver<linalg::PetscBackend>&,
-    linalg::PETScOperator&,
-    linalg::LinearSolver<linalg::PetscBackend>&,
-    linalg::Context<MemorySpace::Host>&);
 
 Options parseOptions(int    argc,
                      char** argv,

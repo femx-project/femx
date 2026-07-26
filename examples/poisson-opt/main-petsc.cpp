@@ -6,9 +6,7 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -29,21 +27,9 @@ int run(const Options& opts)
   ExampleHelper     helper("petsc", MemorySpace::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  PETScOperator fwd_jac(PETSC_COMM_SELF);
-  PETScOperator adj_jac(PETSC_COMM_SELF);
-  fwd_jac.resize(problem.stateMap().pattern());
-  adj_jac.resize(problem.stateMap().pattern());
-
-  KspLinearSolver    fwd_lin_solver(PETSC_COMM_SELF);
-  KspLinearSolver    adj_lin_solver(PETSC_COMM_SELF);
-  linalg::MpiContext ctx{PETSC_COMM_SELF};
-
-  const Result result = solve<PetscBackend>(problem,
-                                            fwd_jac,
-                                            fwd_lin_solver,
-                                            adj_jac,
-                                            adj_lin_solver,
-                                            ctx);
+  PETScLinearSystem forward_system(PETSC_COMM_SELF);
+  PETScLinearSystem adjoint_system(PETSC_COMM_SELF);
+  const Result      result = solve(problem, forward_system, adjoint_system);
 
   printReport(std::cout,
               helper.name(),

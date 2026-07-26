@@ -317,6 +317,7 @@ public:
     if constexpr (Backend::space == MemorySpace::Device)
     {
       auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
+      auto& cuda_jac = dynamic_cast<linalg::CudaJacobian&>(jac);
       detail::assembleNext(kernel_,
                            time.step,
                            kNumHist,
@@ -326,7 +327,7 @@ public:
                            hist,
                            time.nxt,
                            res,
-                           jac,
+                           cuda_jac,
                            cuda_ctx);
     }
     else
@@ -547,16 +548,6 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
       std::move(base), std::move(control), std::move(init_state), ctx);
   ctx.sync();
   return out;
-}
-#endif
-
-#if defined(FEMX_HAS_PETSC)
-std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
-makePetscTimeResidual(const NavierStokesModel& model)
-{
-  auto res = std::make_unique<NavierResidual<linalg::PetscBackend>>(
-      model.numSteps(), model.map(), model.elementKernel());
-  return res;
 }
 #endif
 

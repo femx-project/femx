@@ -9,8 +9,7 @@
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -51,18 +50,17 @@ public:
   using Vec        = typename Backend::Vec;
   using VecView    = typename Backend::VecView;
   using ConstView  = typename Backend::ConstView;
-  using Mat        = typename Backend::Mat;
+  using Mat        = linalg::Jacobian<space>;
   using Ctx        = linalg::Context<space>;
   using Integrator = state::TimeIntegrator<Backend>;
   using Res        = state::TimeResidual<Backend>;
   using Tr         = state::TimeTrajectory;
-  using Solver     = linalg::LinearSolver<Backend>;
+  using System     = linalg::LinearSystem<space>;
   using StepCtx    = state::TimeStepStateContext;
   using Observer   = typename Integrator::Observer;
 
   TimeReducedFunctional(Integrator&          integrator,
-                        Mat&                 jac,
-                        Solver&              adj_solver,
+                        System&              adj_system,
                         const TimeObjective& obj);
 
   TimeReducedFunctional(const TimeReducedFunctional&)            = delete;
@@ -109,8 +107,7 @@ private:
 
   Integrator&          integrator_;
   const Res&           res_;
-  Mat&                 jac_;
-  Solver&              adj_solver_;
+  System&              adj_system_;
   Ctx&                 ctx_;
   const TimeObjective& obj_;
   state::TimeDims      dims_;
@@ -140,14 +137,12 @@ using DeviceTimeReducedFunctional = TimeReducedFunctional<linalg::CudaCsrBackend
 template <class Backend>
 TimeReducedFunctional<Backend>::TimeReducedFunctional(
     Integrator&          integrator,
-    Mat&                 jac,
-    Solver&              adj_solver,
+    System&              adj_system,
     const TimeObjective& obj)
   : integrator_(integrator),
     res_(integrator.residual()),
-    jac_(jac),
-    adj_solver_(adj_solver),
-    ctx_(integrator.context()),
+    adj_system_(adj_system),
+    ctx_(adj_system.context()),
     obj_(obj),
     dims_(res_.dims()),
     prm_(dims_.num_param),
@@ -349,15 +344,16 @@ template <class Backend>
 typename TimeReducedFunctional<Backend>::Mat&
 TimeReducedFunctional<Backend>::assembleNext(Index step)
 {
-  linalg::MatrixHandler<Backend> mat_handler(ctx_);
-  const auto                     begin = detail::Clock::now();
+  const auto begin = detail::Clock::now();
   loadStep(step);
-  res_.assembleNext(timeCtx(step), sol_, jac_, ctx_);
-  mat_handler.finalize(jac_);
+  auto& jac = adj_system_.jacobian();
+  jac.begin(res_.hostPattern());
+  res_.assembleNext(timeCtx(step), sol_, jac, ctx_);
+  jac.finalize();
   ctx_.sync();
   assm_sec_ += detail::elapsedSec(begin);
   ++assm_calls_;
-  return jac_;
+  return jac;
 }
 
 template <class Backend>
@@ -389,7 +385,8 @@ void TimeReducedFunctional<Backend>::solveAdj(
 
     Mat&       nxt_jac     = assembleNext(step);
     const auto solve_begin = detail::Clock::now();
-    adj_solver_.solveT(nxt_jac, rhs_, sol_, ctx_);
+    static_cast<void>(nxt_jac);
+    adj_system_.solveT(rhs_.view(), sol_);
     solve_sec_ += detail::elapsedSec(solve_begin);
     ++solve_calls_;
     checkSize(sol_, dims_.num_res);

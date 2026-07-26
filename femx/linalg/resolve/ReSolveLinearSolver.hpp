@@ -40,8 +40,9 @@ struct ReSolveOptions
  * not stage matrices or vectors through Host memory. Host and CUDA resources
  * are initialized independently on first use.
  */
-class ReSolveLinearSolver final : public HostCsrLinearSolver,
-                                  public DeviceLinearSolver
+class ReSolveLinearSolver final
+  : public LinearSolver<MemorySpace::Host>,
+    public LinearSolver<MemorySpace::Device>
 {
 public:
   /** @brief Construct a solver with default ReSolve options. */

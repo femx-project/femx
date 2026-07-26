@@ -9,7 +9,7 @@
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScUtilities.hpp>
 #include <femx/opt/TaoReducedFunctionalAdapter.hpp>
 
 namespace femx

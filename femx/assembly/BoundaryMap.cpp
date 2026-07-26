@@ -1,262 +1,79 @@
 #include <stdexcept>
-#include <string>
-#include <utility>
 
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
 
-namespace femx
-{
-namespace assembly
-{
-namespace
+namespace femx::assembly
 {
 
-template <MemorySpace Space>
-void checkMat(const BoundaryMap<Space>& map, const CsrMatrix<Space>& mat)
+HostBoundaryMap makeBoundaryMap(const HostVector<Index>& rows)
 {
-  require(mat.pattern().layoutId() == map.layoutId(),
-          "BoundaryMap matrix does not match the mapped CSR layout");
-}
-
-void checkDirichletSystem(const HostBoundaryMap&  map,
-                          const HostCsrMatrix&    mat,
-                          const HostVector<Real>& rhs,
-                          const HostVector<Real>& bc_vals)
-{
-  checkMat(map, mat);
-  require(rhs.size() == map.rows() && bc_vals.size() == map.numBcs(),
-          "BoundaryMap Dirichlet vectors have incompatible sizes");
-  require(&rhs != &bc_vals,
-          "BoundaryMap RHS and prescribed values must not alias");
-  const HostVector<Real>& mat_vals = mat.vals();
-  require(&rhs != &mat_vals && &bc_vals != &mat_vals,
-          "BoundaryMap vectors must not alias matrix values");
-}
-
-void replaceRowsRaw(const HostBoundaryMap& map,
-                    HostCsrMatrix&         mat,
-                    Real                   diag)
-{
-  const auto  view    = map.view();
-  const auto& row_ptr = mat.pattern().rowPtr();
-  Real*       vals    = mat.valsData();
-
-  for (Index ib = 0; ib < view.num_bcs; ++ib)
+  HostVector<Index> constrained_rows(rows);
+  for (Index i = 0; i < constrained_rows.size(); ++i)
   {
-    const Index row = view.bcRow(ib);
-    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+    require(constrained_rows[i] >= 0,
+            "BoundaryMap constrained rows must be nonnegative");
+    for (Index previous = 0; previous < i; ++previous)
     {
-      vals[k] = 0.0;
-    }
-    vals[view.diag(ib)] = diag;
-  }
-}
-
-} // namespace
-
-HostBoundaryMap makeBoundaryMap(const HostVector<Index>& dofs,
-                                const HostCsrPattern&    pattern)
-{
-  require(pattern.rows() == pattern.cols(),
-          "BoundaryMap requires a square CSR pattern");
-
-  const Index       num_bcs = dofs.size();
-  HostVector<Index> bc_rows(num_bcs);
-  HostVector<Index> diag(num_bcs, -1);
-  HostVector<Index> col_offsets(num_bcs + 1, 0);
-  HostVector<Index> bc_mask(pattern.rows(), 0);
-  HostVector<Index> bc_by_col(pattern.cols(), -1);
-
-  for (Index ib = 0; ib < num_bcs; ++ib)
-  {
-    const Index dof = dofs[ib];
-    require(dof >= 0 && dof < pattern.rows(),
-            "BoundaryMap constrained DOF is out of range");
-    require(bc_mask[dof] == 0,
-            "BoundaryMap constrained DOFs must be unique");
-    bc_rows[ib]    = dof;
-    bc_mask[dof]   = 1;
-    bc_by_col[dof] = ib;
-  }
-
-  const auto& row_ptr = pattern.rowPtr();
-  const auto& cols    = pattern.colInd();
-  for (Index row = 0; row < pattern.rows(); ++row)
-  {
-    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
-    {
-      const Index col = cols[k];
-      const Index ib  = bc_by_col[col];
-      if (ib >= 0)
-      {
-        ++col_offsets[ib + 1];
-        if (row == col)
-        {
-          require(diag[ib] < 0,
-                  "BoundaryMap constrained row has duplicate diagonal entries");
-          diag[ib] = k;
-        }
-      }
+      require(constrained_rows[i] != constrained_rows[previous],
+              "BoundaryMap constrained rows must be unique");
     }
   }
-
-  for (Index ib = 0; ib < num_bcs; ++ib)
-  {
-    require(diag[ib] >= 0,
-            "BoundaryMap constrained row has no diagonal entry");
-    col_offsets[ib + 1] += col_offsets[ib];
-  }
-
-  HostVector<Index> col_entries(col_offsets[num_bcs]);
-  HostVector<Index> col_rows(col_offsets[num_bcs]);
-  HostVector<Index> next = col_offsets;
-  for (Index row = 0; row < pattern.rows(); ++row)
-  {
-    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
-    {
-      const Index ib = bc_by_col[cols[k]];
-      if (ib >= 0)
-      {
-        const Index dst  = next[ib]++;
-        col_entries[dst] = k;
-        col_rows[dst]    = row;
-      }
-    }
-  }
-
-  return {pattern.rows(),
-          pattern.cols(),
-          pattern.nnz(),
-          pattern.layoutId(),
-          std::move(bc_rows),
-          std::move(diag),
-          std::move(col_offsets),
-          std::move(col_entries),
-          std::move(col_rows),
-          std::move(bc_mask)};
+  return HostBoundaryMap(std::move(constrained_rows));
 }
 
-void copy(const HostBoundaryMap& src,
-          DeviceBoundaryMap&     dst,
+void copy(const HostBoundaryMap& source,
+          DeviceBoundaryMap&     destination,
           linalg::CudaContext&   ctx)
 {
-  auto&               vec_handler = ctx.vectors();
-  DeviceVector<Index> bc_rows;
-  DeviceVector<Index> diag;
-  DeviceVector<Index> col_offsets;
-  DeviceVector<Index> col_entries;
-  DeviceVector<Index> col_rows;
-  DeviceVector<Index> bc_mask;
-
-  vec_handler.copy(src.bc_rows_, bc_rows);
-  vec_handler.copy(src.diag_, diag);
-  vec_handler.copy(src.col_offsets_, col_offsets);
-  vec_handler.copy(src.col_entries_, col_entries);
-  vec_handler.copy(src.col_rows_, col_rows);
-  vec_handler.copy(src.bc_mask_, bc_mask);
-
-  dst = {src.num_rows_,
-         src.num_cols_,
-         src.nnz_,
-         src.layout_id_,
-         std::move(bc_rows),
-         std::move(diag),
-         std::move(col_offsets),
-         std::move(col_entries),
-         std::move(col_rows),
-         std::move(bc_mask)};
-}
-
-void replaceRows(const HostBoundaryMap& map,
-                 HostCsrMatrix&         jac,
-                 Real                   diag)
-{
-  checkMat(map, jac);
-  replaceRowsRaw(map, jac, diag);
+  DeviceVector<Index> constrained_rows;
+  ctx.vectors().copy(source.constrained_rows_, constrained_rows);
+  destination = DeviceBoundaryMap(std::move(constrained_rows));
 }
 
 void replaceRes(const HostBoundaryMap&     map,
                 HostVectorView<const Real> state,
-                HostVectorView<const Real> bc_vals,
-                HostVectorView<Real>       res)
+                HostVectorView<const Real> prescribed_values,
+                HostVectorView<Real>       residual)
 {
-  require(state.size() == map.rows() && res.size() == map.rows()
-              && bc_vals.size() == map.numBcs(),
-          "BoundaryMap residual vectors have incompatible sizes");
-  require(!detail::overlaps(state, res)
-              && !detail::overlaps(bc_vals, res),
+  const auto rows = map.view().constrained_rows;
+  require(prescribed_values.size() == rows.size(),
+          "BoundaryMap prescribed-value size mismatch");
+  require(!detail::overlaps(state, residual)
+              && !detail::overlaps(prescribed_values, residual),
           "BoundaryMap residual output must not alias its inputs");
-  const auto view = map.view();
-  for (Index ib = 0; ib < view.num_bcs; ++ib)
+  for (Index i = 0; i < rows.size(); ++i)
   {
-    const Index row = view.bcRow(ib);
-    res[row]        = state[row] - bc_vals[ib];
+    require(rows[i] < state.size() && rows[i] < residual.size(),
+            "BoundaryMap constrained row is out of vector range");
+    residual[rows[i]] = state[rows[i]] - prescribed_values[i];
   }
 }
 
 void replaceRes(const HostBoundaryMap&  map,
                 const HostVector<Real>& state,
-                const HostVector<Real>& bc_vals,
-                HostVector<Real>&       res)
+                const HostVector<Real>& prescribed_values,
+                HostVector<Real>&       residual)
 {
-  replaceRes(map, state.view(), bc_vals.view(), res.view());
+  replaceRes(map,
+             state.view(),
+             prescribed_values.view(),
+             residual.view());
 }
 
-void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> vals)
+void zeroBoundary(const HostBoundaryMap& map,
+                  HostVectorView<Real>   values)
 {
-  require(vals.size() == map.rows(),
-          "BoundaryMap vector has incompatible size");
-  const auto view = map.view();
-  for (Index ib = 0; ib < view.num_bcs; ++ib)
+  const auto rows = map.view().constrained_rows;
+  for (Index row : rows)
   {
-    vals[view.bcRow(ib)] = 0.0;
-  }
-}
-
-void applyDirichletConditions(const HostBoundaryMap&  map,
-                              HostCsrMatrix&          mat,
-                              HostVector<Real>&       rhs,
-                              const HostVector<Real>& bc_vals)
-{
-  checkDirichletSystem(map, mat, rhs, bc_vals);
-
-  const auto view = map.view();
-  Real*      vals = mat.valsData();
-  for (Index ib = 0; ib < view.num_bcs; ++ib)
-  {
-    const Real bc = bc_vals[ib];
-    for (Index i = view.colBegin(ib); i < view.colEnd(ib); ++i)
-    {
-      const Index row = view.col_rows[i];
-      const Index k   = view.col_entries[i];
-      if (!view.isBc(row))
-      {
-        rhs[row] -= vals[k] * bc;
-      }
-      vals[k] = 0.0;
-    }
-  }
-
-  replaceRowsRaw(map, mat, 1.0);
-  for (Index ib = 0; ib < view.num_bcs; ++ib)
-  {
-    rhs[view.bcRow(ib)] = bc_vals[ib];
+    require(row < values.size(),
+            "BoundaryMap constrained row is out of vector range");
+    values[row] = 0.0;
   }
 }
 
 #if !defined(FEMX_HAS_CUDA)
-void replaceRows(const DeviceBoundaryMap&,
-                 DeviceCsrMatrix&,
-                 Real,
-                 linalg::CudaContext&)
-{
-  throw std::runtime_error(
-      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
-}
-
 void replaceRes(const DeviceBoundaryMap&,
                 DeviceVectorView<const Real>,
                 DeviceVectorView<const Real>,
@@ -274,17 +91,6 @@ void zeroBoundary(const DeviceBoundaryMap&,
   throw std::runtime_error(
       "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
 }
-
-void applyDirichletConditions(const DeviceBoundaryMap&,
-                              DeviceCsrMatrix&,
-                              DeviceVector<Real>&,
-                              const DeviceVector<Real>&,
-                              linalg::CudaContext&)
-{
-  throw std::runtime_error(
-      "BoundaryMap CUDA operations require FEMX_ENABLE_CUDA");
-}
 #endif
 
-} // namespace assembly
-} // namespace femx
+} // namespace femx::assembly

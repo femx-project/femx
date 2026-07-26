@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/runtime/Parallel.hpp>
 
 namespace femx::runtime
@@ -112,8 +112,8 @@ inline void setPetscOptionIfMissing(const char* name,
 }
 
 template <typename SolverParams>
-void setMumpsKspOptions(linalg::KspLinearSolver& solver,
-                        const SolverParams&      prm)
+void setMumpsKspOptions(linalg::PETScLinearSolver& solver,
+                        const SolverParams&        prm)
 {
   auto& opts       = solver.opts();
   opts.restart     = 200;

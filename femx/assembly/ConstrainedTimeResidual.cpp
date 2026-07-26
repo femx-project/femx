@@ -5,10 +5,6 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
-
 namespace femx::assembly
 {
 namespace
@@ -134,72 +130,25 @@ void zeroBoundaryVals(const DeviceBoundaryMap&              map,
   assembly::zeroBoundary(map, vals, cudaContext(ctx));
 }
 
-template <class Ctx>
-void replaceJacRows(const HostBoundaryMap& boundary,
-                    HostCsrMatrix&         jac,
-                    Real                   diag,
-                    Ctx&)
+template <MemorySpace Space>
+void replaceJacRows(const BoundaryMap<Space>& boundary,
+                    linalg::Jacobian<Space>&  jac,
+                    Real                      diagonal)
 {
-  replaceRows(boundary, jac, diag);
+  jac.replaceRows(boundary.view().constrained_rows, diagonal);
 }
 
-void replaceJacRows(const DeviceBoundaryMap&              boundary,
-                    DeviceCsrMatrix&                      jac,
-                    Real                                  diag,
-                    linalg::Context<MemorySpace::Device>& ctx)
+template <MemorySpace Space>
+void eliminateJacColumns(
+    const BoundaryMap<Space>&  boundary,
+    linalg::Jacobian<Space>&   jac,
+    Vector<Space, Real>&       rhs,
+    const Vector<Space, Real>& values)
 {
-  replaceRows(boundary, jac, diag, cudaContext(ctx));
+  jac.eliminateColumns(boundary.view().constrained_rows,
+                       values.view(),
+                       rhs.view());
 }
-
-template <class Ctx>
-void applyDirichletConditionsCtx(const HostBoundaryMap&  boundary,
-                                 HostCsrMatrix&          jac,
-                                 HostVector<Real>&       rhs,
-                                 const HostVector<Real>& vals,
-                                 Ctx&)
-{
-  applyDirichletConditions(boundary, jac, rhs, vals);
-}
-
-void applyDirichletConditionsCtx(const DeviceBoundaryMap&              boundary,
-                                 DeviceCsrMatrix&                      jac,
-                                 DeviceVector<Real>&                   rhs,
-                                 const DeviceVector<Real>&             vals,
-                                 linalg::Context<MemorySpace::Device>& ctx)
-{
-  applyDirichletConditions(
-      boundary, jac, rhs, vals, cudaContext(ctx));
-}
-
-#if defined(FEMX_HAS_PETSC)
-HostVector<Index> boundaryRows(const HostBoundaryMap& boundary)
-{
-  const auto        view = boundary.view();
-  HostVector<Index> rows(view.num_bcs);
-  for (Index i = 0; i < rows.size(); ++i)
-  {
-    rows[i] = view.bcRow(i);
-  }
-  return rows;
-}
-
-void replaceJacRows(const HostBoundaryMap& boundary,
-                    linalg::PETScOperator& jac,
-                    Real                   diag,
-                    linalg::Context<MemorySpace::Host>&)
-{
-  jac.replaceRows(boundaryRows(boundary), diag);
-}
-
-void applyDirichletConditionsCtx(const HostBoundaryMap&,
-                                 linalg::PETScOperator&,
-                                 HostVector<Real>&,
-                                 const HostVector<Real>&,
-                                 linalg::Context<MemorySpace::Host>&)
-{
-  // PETSc row replacement already gives the exact nonsymmetric system.
-}
-#endif
 
 template <class Backend>
 void resizeAndZero(typename Backend::Vec&           out,
@@ -223,7 +172,7 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
   {
     initDims(control, init);
     control_  = std::move(control);
-    boundary_ = makeBoundaryMap(boundaryDofs(control_), base_->hostPattern());
+    boundary_ = makeBoundaryMap(boundaryDofs(control_));
     setInitialStateMap(std::move(init));
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
@@ -250,7 +199,7 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
     initDims(control, init);
 
     const HostBoundaryMap host_boundary =
-        makeBoundaryMap(boundaryDofs(control), base_->hostPattern());
+        makeBoundaryMap(boundaryDofs(control));
     auto& cuda_ctx = cudaContext(ctx);
     copy(host_boundary, boundary_, cuda_ctx);
     fem::copy(control, control_, cuda_ctx);
@@ -365,7 +314,7 @@ void ConstrainedTimeResidual<Backend>::assembleNext(const StepCtx& time,
       control_, time.step, time.prm, boundary_vals_.view(), ctx);
   replaceResCtx(
       boundary_, time.nxt, boundary_vals_.view(), res.view(), ctx);
-  replaceJacRows(boundary_, jac, 1.0, ctx);
+  replaceJacRows(boundary_, jac, 1.0);
 }
 
 template <class Backend>
@@ -408,8 +357,7 @@ void ConstrainedTimeResidual<Backend>::prepareLinearSolve(
   base_->prepareLinearSolve(baseCtx(time), jac, rhs, ctx);
   assembly::controlVals(
       control_, time.step, time.prm, boundary_vals_.view(), ctx);
-  applyDirichletConditionsCtx(
-      boundary_, jac, rhs, boundary_vals_, ctx);
+  eliminateJacColumns(boundary_, jac, rhs, boundary_vals_);
 }
 
 template <class Backend>
@@ -467,10 +415,6 @@ template class ConstrainedTimeResidual<linalg::HostCsrBackend>;
 
 #if defined(FEMX_HAS_CUDA)
 template class ConstrainedTimeResidual<linalg::CudaCsrBackend>;
-#endif
-
-#if defined(FEMX_HAS_PETSC)
-template class ConstrainedTimeResidual<linalg::PetscBackend>;
 #endif
 
 } // namespace femx::assembly

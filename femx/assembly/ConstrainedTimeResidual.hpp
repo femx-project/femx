@@ -8,10 +8,6 @@
 #include <femx/linalg/Backend.hpp>
 #include <femx/state/TimeResidual.hpp>
 
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
-
 namespace femx::assembly
 {
 
@@ -97,9 +93,4 @@ using HostConstrainedTimeResidual =
     ConstrainedTimeResidual<linalg::HostCsrBackend>;
 using DeviceConstrainedTimeResidual =
     ConstrainedTimeResidual<linalg::CudaCsrBackend>;
-#if defined(FEMX_HAS_PETSC)
-using PetscConstrainedTimeResidual =
-    ConstrainedTimeResidual<linalg::PetscBackend>;
-#endif
-
 } // namespace femx::assembly

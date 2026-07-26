@@ -7,7 +7,7 @@ namespace femx::linalg
 {
 
 /** @brief Solve small Host CSR systems through dense factorization. */
-class DenseLinearSolver final : public HostCsrLinearSolver
+class DenseLinearSolver final : public LinearSolver<MemorySpace::Host>
 {
 public:
   /**

@@ -92,18 +92,6 @@ SolveResult solve(state::HostTimeIntegrator& integrator,
   return solveHost(integrator, problem, time, output, terminal, log_out);
 }
 
-#if defined(FEMX_HAS_PETSC)
-SolveResult solve(state::TimeIntegrator<linalg::PetscBackend>& integrator,
-                  const Problem&                               problem,
-                  const TimeConfig&                            time,
-                  const OutputConfig&                          output,
-                  std::ostream*                                terminal,
-                  std::ostream*                                log_out)
-{
-  return solveHost(integrator, problem, time, output, terminal, log_out);
-}
-#endif
-
 #if defined(FEMX_HAS_CUDA)
 SolveResult solve(state::DeviceTimeIntegrator& integrator,
                   const Problem&               problem,

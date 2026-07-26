@@ -3,8 +3,9 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx
 {
@@ -15,7 +16,7 @@ using detail::check;
 using detail::checkInit;
 using detail::checkMPI;
 
-class KspLinearSolver::Impl
+class PETScLinearSolver::Impl
 {
 private:
   class ScopedVec
@@ -67,24 +68,18 @@ public:
     return opts_;
   }
 
-  void solve(const PETScOperator&    op,
+  void solve(const PETScMatrix&      op,
              const HostVector<Real>& rhs,
              HostVector<Real>&       out)
   {
     solveSystem(op, rhs, out, false);
   }
 
-  void solveT(const PETScOperator&    op,
+  void solveT(const PETScMatrix&      op,
               const HostVector<Real>& rhs,
               HostVector<Real>&       out)
   {
     solveSystem(op, rhs, out, true);
-  }
-
-  void checkContext(const Context<MemorySpace::Host>& ctx) const
-  {
-    const auto& mpi_ctx = dynamic_cast<const MpiContext&>(ctx);
-    checkSameComm(comm_, mpi_ctx.comm(), "context");
   }
 
   KSPConvergedReason convergedReason() const
@@ -103,15 +98,15 @@ public:
   }
 
 private:
-  void solveSystem(const PETScOperator&    op,
+  void solveSystem(const PETScMatrix&      op,
                    const HostVector<Real>& rhs,
                    HostVector<Real>&       out,
                    bool                    tr)
   {
     require(op.rows() == op.cols(),
-            "KspLinearSolver requires a square PETSc matrix");
+            "PETScLinearSolver requires a square PETSc matrix");
     require(rhs.size() == op.rows(),
-            "KspLinearSolver received inconsistent rhs size");
+            "PETScLinearSolver received inconsistent rhs size");
 
     checkSameComm(comm_, op.comm(), "matrix");
 
@@ -177,7 +172,7 @@ private:
         || (result != MPI_IDENT && result != MPI_CONGRUENT))
     {
       throw std::runtime_error(
-          std::string("KspLinearSolver communicator mismatch for ") + object);
+          std::string("PETScLinearSolver communicator mismatch for ") + object);
     }
   }
 
@@ -252,7 +247,7 @@ private:
     if (static_cast<int>(last_reason_) <= 0)
     {
       throw std::runtime_error(
-          "KspLinearSolver failed to converge: reason="
+          "PETScLinearSolver failed to converge: reason="
           + std::to_string(static_cast<int>(last_reason_))
           + ", iterations=" + std::to_string(static_cast<long long>(last_its_))
           + ", residual=" + std::to_string(last_rnorm_));
@@ -268,52 +263,48 @@ private:
   PetscReal          last_rnorm_{0.0};
 };
 
-KspLinearSolver::KspLinearSolver(MPI_Comm comm)
+PETScLinearSolver::PETScLinearSolver(MPI_Comm comm)
   : impl_(std::make_unique<Impl>(comm))
 {
 }
 
-KspLinearSolver::~KspLinearSolver() = default;
+PETScLinearSolver::~PETScLinearSolver() = default;
 
-KspOptions& KspLinearSolver::opts()
+KspOptions& PETScLinearSolver::opts()
 {
   return impl_->opts();
 }
 
-const KspOptions& KspLinearSolver::opts() const
+const KspOptions& PETScLinearSolver::opts() const
 {
   return impl_->opts();
 }
 
-void KspLinearSolver::solve(const PETScOperator&        mat,
-                            const HostVector<Real>&     rhs,
-                            HostVector<Real>&           sol,
-                            Context<MemorySpace::Host>& ctx)
+void PETScLinearSolver::solve(const PETScMatrix&      mat,
+                              const HostVector<Real>& rhs,
+                              HostVector<Real>&       sol)
 {
-  impl_->checkContext(ctx);
   impl_->solve(mat, rhs, sol);
 }
 
-void KspLinearSolver::solveT(const PETScOperator&        mat,
-                             const HostVector<Real>&     rhs,
-                             HostVector<Real>&           sol,
-                             Context<MemorySpace::Host>& ctx)
+void PETScLinearSolver::solveT(const PETScMatrix&      mat,
+                               const HostVector<Real>& rhs,
+                               HostVector<Real>&       sol)
 {
-  impl_->checkContext(ctx);
   impl_->solveT(mat, rhs, sol);
 }
 
-KSPConvergedReason KspLinearSolver::convergedReason() const
+KSPConvergedReason PETScLinearSolver::convergedReason() const
 {
   return impl_->convergedReason();
 }
 
-PetscInt KspLinearSolver::its() const
+PetscInt PETScLinearSolver::its() const
 {
   return impl_->its();
 }
 
-PetscReal KspLinearSolver::rnorm() const
+PetscReal PETScLinearSolver::rnorm() const
 {
   return impl_->rnorm();
 }

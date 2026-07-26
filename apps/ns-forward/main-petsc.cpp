@@ -9,8 +9,7 @@
 #include "Config.hpp"
 #include "Problem.hpp"
 #include "Solve.hpp"
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
@@ -72,7 +71,7 @@ BuildInfo makeBuildInfo()
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
 }
 
-void setKspOptions(KspLinearSolver& solver, const SolverConfig& prm)
+void setKspOptions(PETScLinearSolver& solver, const SolverConfig& prm)
 {
   auto& opts       = solver.opts();
   opts.restart     = prm.restart;
@@ -123,18 +122,10 @@ int run(const Config& prm)
 
   Problem fwd(prm);
 
-  PETScOperator A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.map().pattern());
+  PETScLinearSystem system(PETSC_COMM_WORLD);
+  setKspOptions(system.solver(), prm.solver);
 
-  KspLinearSolver solver(PETSC_COMM_WORLD);
-  setKspOptions(solver, prm.solver);
-
-  auto                                   base_res = model::ns::makePetscTimeResidual(fwd.model);
-  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.residual.controlMap());
-
-  linalg::MpiContext ctx{PETSC_COMM_WORLD};
-
-  TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
+  HostTimeIntegrator integ(fwd.residual, system);
   integ.setInitialState(fwd.initial_state);
 
   std::ofstream log_out;

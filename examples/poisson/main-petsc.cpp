@@ -7,8 +7,8 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScMatrix.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -24,7 +24,7 @@ using namespace femx::examples;
 namespace
 {
 
-void copyToPETSc(const HostCsrMatrix& src, PETScOperator& dst)
+void copyToPETSc(const HostCsrMatrix& src, PETScMatrix& dst)
 {
   const Index* rp   = src.rowPtrData();
   const Index* ci   = src.colIndData();
@@ -56,7 +56,7 @@ int run(const Options& opts)
   HostVector<Real> rhs;
   problem.assemble(A, rhs);
 
-  PETScOperator A_petsc(PETSC_COMM_WORLD);
+  PETScMatrix A_petsc(PETSC_COMM_WORLD);
   A_petsc.resize(problem.map().pattern());
   if (isRoot())
   {
@@ -64,11 +64,10 @@ int run(const Options& opts)
   }
   A_petsc.finalize();
 
-  KspLinearSolver    solver(PETSC_COMM_WORLD);
-  linalg::MpiContext ctx{PETSC_COMM_WORLD};
+  PETScLinearSolver solver(PETSC_COMM_WORLD);
 
   HostVector<Real> x;
-  solver.solve(A_petsc, rhs, x, ctx);
+  solver.solve(A_petsc, rhs, x);
 
   linalg::HostContext host_ctx;
   const Real          res_norm = helper.resNorm(A, rhs, x, host_ctx);

@@ -15,8 +15,8 @@
 #include "Problem.hpp"
 #include "Solve.hpp"
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/cuda/CudaLinearSystem.hpp>
+#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
@@ -127,14 +127,13 @@ int run(const Config& prm)
 
   SolveResult result;
 #if defined(FEMX_RESOLVE_USE_CUDA)
-  linalg::CudaContext ctx;
-  auto                res = model::ns::makeDeviceTimeResidual(
+  auto system = linalg::CudaLinearSystem(
+      std::make_unique<ReSolveLinearSolver>(opts));
+  auto& ctx = dynamic_cast<linalg::CudaContext&>(system.context());
+  auto  res = model::ns::makeDeviceTimeResidual(
       fwd.model, fwd.residual.controlMap());
 
-  DeviceCsrMatrix     mat(res->pattern());
-  ReSolveLinearSolver solver(opts);
-
-  DeviceTimeIntegrator integ(*res, mat, solver, ctx);
+  DeviceTimeIntegrator integ(*res, system);
 
   DeviceVector<Real> initial;
   auto&              vec_handler = ctx.vectors();
@@ -150,11 +149,10 @@ int run(const Config& prm)
                  &std::cout,
                  output_enabled ? &log_out : nullptr);
 #else
-  HostCsrMatrix       mat(fwd.model.map().pattern());
-  ReSolveLinearSolver solver(opts);
-  linalg::HostContext ctx;
+  auto system = linalg::HostLinearSystem(
+      std::make_unique<ReSolveLinearSolver>(opts));
 
-  HostTimeIntegrator integ(fwd.residual, mat, solver, ctx);
+  HostTimeIntegrator integ(fwd.residual, system);
 
   integ.setInitialState(fwd.initial_state);
   result = solve(integ,

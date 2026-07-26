@@ -3,7 +3,7 @@
 #include <type_traits>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx::linalg
@@ -17,7 +17,7 @@ struct HostCsrBackend
   using Vec       = HostVector<Real>;
   using VecView   = HostVectorView<Real>;
   using ConstView = HostVectorView<const Real>;
-  using Mat       = HostCsrMatrix;
+  using Mat       = Jacobian<MemorySpace::Host>;
   using Pattern   = HostCsrPattern;
 };
 
@@ -29,7 +29,7 @@ struct CudaCsrBackend
   using Vec       = DeviceVector<Real>;
   using VecView   = DeviceVectorView<Real>;
   using ConstView = DeviceVectorView<const Real>;
-  using Mat       = DeviceCsrMatrix;
+  using Mat       = Jacobian<MemorySpace::Device>;
   using Pattern   = DeviceCsrPattern;
 };
 

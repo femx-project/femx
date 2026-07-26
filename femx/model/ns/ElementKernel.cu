@@ -140,7 +140,7 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    DeviceCsrMatrix&                   jac,
+    linalg::CudaJacobian&              jac,
     linalg::CudaContext&               ctx)
 {
   checkRange(ie_begin, ie_end, map);

@@ -16,8 +16,7 @@
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/Objective.hpp>
 #include <femx/inverse/SumObjective.hpp>
-#include <femx/linalg/Backend.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/linalg/Vector.hpp>
 
 namespace femx::examples::poisson_opt
@@ -150,23 +149,16 @@ private:
   std::unique_ptr<inverse::LeastSquaresObjective> reg_;
   std::unique_ptr<inverse::SumObjective>          obj_;
 
-  template <class Backend>
-  friend Result solve(PoissonOptProblem&               problem,
-                      typename Backend::Mat&           fwd_jac,
-                      linalg::LinearSolver<Backend>&   fwd_solver,
-                      typename Backend::Mat&           adj_jac,
-                      linalg::LinearSolver<Backend>&   adj_solver,
-                      linalg::Context<Backend::space>& ctx);
+  friend Result solve(
+      PoissonOptProblem&                       problem,
+      linalg::LinearSystem<MemorySpace::Host>& forward_system,
+      linalg::LinearSystem<MemorySpace::Host>& adjoint_system);
 };
 
 /** @brief Optimize boundary values using the supplied forward/adjoint solvers. */
-template <class Backend>
-Result solve(PoissonOptProblem&               problem,
-             typename Backend::Mat&           fwd_jac,
-             linalg::LinearSolver<Backend>&   fwd_solver,
-             typename Backend::Mat&           adj_jac,
-             linalg::LinearSolver<Backend>&   adj_solver,
-             linalg::Context<Backend::space>& ctx);
+Result solve(PoissonOptProblem&                       problem,
+             linalg::LinearSystem<MemorySpace::Host>& forward_system,
+             linalg::LinearSystem<MemorySpace::Host>& adjoint_system);
 
 /** @brief Parse Poisson optimization command-line options. */
 Options parseOptions(int argc, char** argv, bool ignore_unknown);

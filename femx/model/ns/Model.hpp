@@ -16,10 +16,6 @@
 #include <femx/model/ns/FluidProperties.hpp>
 #include <femx/state/TimeResidual.hpp>
 
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
-
 namespace femx::model::ns
 {
 
@@ -96,11 +92,5 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
     const NavierStokesModel& model,
     fem::HostControlMap      control,
     fem::HostInitialStateMap init_state = {});
-
-#if defined(FEMX_HAS_PETSC)
-/** @brief Create the PETSc-matrix Navier physics residual. */
-std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
-makePetscTimeResidual(const NavierStokesModel& model);
-#endif
 
 } // namespace femx::model::ns

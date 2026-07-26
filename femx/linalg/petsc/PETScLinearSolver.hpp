@@ -6,16 +6,14 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/petsc/MpiContext.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {
 namespace linalg
 {
 
-class PETScOperator;
+class PETScMatrix;
 
 /** @brief Configure the PETSc KSP linear solver. */
 struct KspOptions
@@ -36,13 +34,12 @@ struct KspOptions
 };
 
 /**
- * @brief Solve PETSc systems through the `LinearSolver` interface.
+ * @brief Own a PETSc KSP solver for PETSc-native matrices.
  *
- * KspLinearSolver accepts PETSc-native matrices through `PetscBackend`. The
- * solver options can be set programmatically and optionally overridden by
+ * The solver options can be set programmatically and optionally overridden by
  * PETSc's options database.
  */
-class KspLinearSolver final : public LinearSolver<PetscBackend>
+class PETScLinearSolver final
 {
 public:
   /**
@@ -50,13 +47,13 @@ public:
    *
    * @param[in] comm - PETSc communicator.
    */
-  explicit KspLinearSolver(MPI_Comm comm = PETSC_COMM_SELF);
+  explicit PETScLinearSolver(MPI_Comm comm = PETSC_COMM_SELF);
 
-  KspLinearSolver(const KspLinearSolver&) = delete;
+  PETScLinearSolver(const PETScLinearSolver&) = delete;
 
-  KspLinearSolver& operator=(const KspLinearSolver&) = delete;
+  PETScLinearSolver& operator=(const PETScLinearSolver&) = delete;
 
-  ~KspLinearSolver() override;
+  ~PETScLinearSolver();
 
   /** @brief Return mutable solver options. */
   KspOptions& opts();
@@ -70,14 +67,12 @@ public:
    * @param[in] mat - Square PETSc system matrix.
    * @param[in] rhs - Replicated Host right-hand side.
    * @param[in,out] sol - Initial guess replaced by the replicated solution.
-   * @param[in] ctx - PETSc execution context.
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
-  void solve(const PETScOperator&        mat,
-             const HostVector<Real>&     rhs,
-             HostVector<Real>&           sol,
-             Context<MemorySpace::Host>& ctx) override;
+  void solve(const PETScMatrix&      mat,
+             const HostVector<Real>& rhs,
+             HostVector<Real>&       sol);
 
   /**
    * @brief Solve `mat^T * sol = rhs`.
@@ -85,14 +80,12 @@ public:
    * @param[in] mat - Square PETSc system matrix.
    * @param[in] rhs - Replicated Host right-hand side.
    * @param[in,out] sol - Initial guess replaced by the replicated solution.
-   * @param[in] ctx - PETSc execution context.
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
-  void solveT(const PETScOperator&        mat,
-              const HostVector<Real>&     rhs,
-              HostVector<Real>&           sol,
-              Context<MemorySpace::Host>& ctx) override;
+  void solveT(const PETScMatrix&      mat,
+              const HostVector<Real>& rhs,
+              HostVector<Real>&       sol);
 
   /** @brief Return the most recent KSP convergence reason. */
   KSPConvergedReason convergedReason() const;

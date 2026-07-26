@@ -8,14 +8,9 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
 #include <femx/state/TimeResidual.hpp>
-
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/MpiContext.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
 
 namespace femx
 {
@@ -131,14 +126,6 @@ inline void checkTimeAssemblyInputs(
           "Time assembly variable block is invalid");
 }
 
-inline void checkTimeAssemblyMatrix(
-    const HostAssemblyMap& map,
-    const HostCsrMatrix&   jac)
-{
-  require(jac.pattern().layoutId() == map.pattern().layoutId(),
-          "Time assembly matrix must use the AssemblyMap CSR layout");
-}
-
 inline void checkElementRange(
     const HostAssemblyMap& map,
     Index                  elem_begin,
@@ -158,73 +145,13 @@ inline void checkTimeAssemblyAliases(HostVectorView<const Real> hist,
           "Time assembly residual must not alias its inputs");
 }
 
-inline void checkTimeMatrixAlias(const HostVector<Real>& res,
-                                 const HostCsrMatrix&    jac)
-{
-  require(&res != &jac.vals(),
-          "Time assembly residual and matrix values must not alias");
-}
-
-inline void resetTimeMatrix(
-    const HostAssemblyMap&              map,
-    HostCsrMatrix&                      jac,
-    linalg::Context<MemorySpace::Host>& ctx)
-{
-  checkTimeAssemblyMatrix(map, jac);
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.zero(jac);
-}
-
 inline void addTimeElement(
-    const HostAssemblyMap& map,
-    Index                  ie,
-    const DenseMatrix&     elem_mat,
-    HostVector<Index>&,
-    HostVector<Index>&,
-    HostCsrMatrix& jac)
-{
-  addElem(map, ie, elem_mat, jac, true);
-}
-
-inline void reduceTimeResidual(HostVector<Real>& res,
-                               Index,
-                               Index,
-                               Index,
-                               linalg::Context<MemorySpace::Host>& ctx)
-{
-  ctx.allReduceSum(res.view());
-}
-
-#if defined(FEMX_HAS_PETSC)
-inline void checkTimeMatrixAlias(const HostVector<Real>&,
-                                 const linalg::PETScOperator&)
-{
-}
-
-inline void resetTimeMatrix(
-    const HostAssemblyMap&              map,
-    linalg::PETScOperator&              jac,
-    linalg::Context<MemorySpace::Host>& ctx)
-{
-  linalg::detail::checkInit();
-  const auto& mpi_ctx       = dynamic_cast<const linalg::MpiContext&>(ctx);
-  int         comm_relation = MPI_UNEQUAL;
-  const int   ierr =
-      MPI_Comm_compare(jac.comm(), mpi_ctx.comm(), &comm_relation);
-  require(ierr == MPI_SUCCESS
-              && (comm_relation == MPI_IDENT
-                  || comm_relation == MPI_CONGRUENT),
-          "PETSc time assembly matrix and context communicators must match");
-  jac.resize(map.pattern());
-}
-
-inline void addTimeElement(
-    const HostAssemblyMap& map,
-    Index                  ie,
-    const DenseMatrix&     elem_mat,
-    HostVector<Index>&     rows,
-    HostVector<Index>&     cols,
-    linalg::PETScOperator& jac)
+    const HostAssemblyMap&               map,
+    Index                                ie,
+    const DenseMatrix&                   elem_mat,
+    HostVector<Index>&                   rows,
+    HostVector<Index>&                   cols,
+    linalg::Jacobian<MemorySpace::Host>& jac)
 {
   const auto map_v = map.view();
   rows.resize(map_v.numResDofs(ie));
@@ -237,13 +164,22 @@ inline void addTimeElement(
   {
     cols[col] = map_v.stateDof(ie, col);
   }
-#pragma omp critical(femx_petsc_matrix_set_value)
-  {
-    jac.addBlock(rows, cols, elem_mat);
-  }
+  const Index num_entries = rows.size() * cols.size();
+  jac.addElement(
+      {rows.view(),
+       cols.view(),
+       {map_v.jac_map + map_v.jac_offsets[ie], num_entries},
+       elem_mat.view()});
 }
 
-#endif
+inline void reduceTimeResidual(HostVector<Real>& res,
+                               Index,
+                               Index,
+                               Index,
+                               linalg::Context<MemorySpace::Host>& ctx)
+{
+  ctx.allReduceSum(res.view());
+}
 
 } // namespace detail
 
@@ -273,14 +209,13 @@ void assemble(const ElementKernel&                kernel,
               HostCsrMatrix&                      jac,
               linalg::Context<MemorySpace::Host>& ctx)
 {
-  auto&                     vec_handler = ctx.vectors();
-  linalg::HostMatrixHandler mat_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   detail::checkAssemblyInputs(geom, map, state, jac);
   const HostVector<Real>& mat_vals = jac.vals();
   detail::checkAssemblyAliases(state, res, mat_vals);
 
   vec_handler.resizeOrZero(res, map.numRes());
-  mat_handler.zero(jac);
+  vec_handler.zero(jac.vals().view());
 
   const auto geom_v = geom.view();
   const auto map_v  = map.view();
@@ -347,8 +282,6 @@ void assemble(const ElementKernel&                kernel,
  * lag-major with `map.numStates()` global values per lag.
  *
  * @tparam ElementKernel Row-wise time element evaluator.
- * @tparam Matrix Host CSR or PETSc matrix.
- * @tparam Context CPU or PETSc execution context.
  * @param[in] kernel - Element evaluator.
  * @param[in] step - Residual step index.
  * @param[in] num_hist - Number of history states.
@@ -364,27 +297,25 @@ void assemble(const ElementKernel&                kernel,
  * @throws std::runtime_error - If dimensions, the range, matrix layout, or
  * aliasing are invalid, or if the backend reports an error.
  */
-template <class ElementKernel, class Matrix, class Context>
-void assemble(const ElementKernel&       kernel,
-              Index                      step,
-              Index                      num_hist,
-              state::VariableBlock       wrt,
-              const HostAssemblyMap&     map,
-              Index                      element_begin,
-              Index                      element_end,
-              HostVectorView<const Real> hist,
-              HostVectorView<const Real> nxt,
-              HostVector<Real>&          res,
-              Matrix&                    jac,
-              Context&                   ctx)
+template <class ElementKernel>
+void assemble(const ElementKernel&                 kernel,
+              Index                                step,
+              Index                                num_hist,
+              state::VariableBlock                 wrt,
+              const HostAssemblyMap&               map,
+              Index                                element_begin,
+              Index                                element_end,
+              HostVectorView<const Real>           hist,
+              HostVectorView<const Real>           nxt,
+              HostVector<Real>&                    res,
+              linalg::Jacobian<MemorySpace::Host>& jac,
+              linalg::Context<MemorySpace::Host>&  ctx)
 {
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   detail::checkElementRange(map, element_begin, element_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
-  detail::checkTimeMatrixAlias(res, jac);
 
   ctx.vectors().resizeOrZero(res, map.numRes());
-  detail::resetTimeMatrix(map, jac, ctx);
 
   const auto map_v = map.view();
 #pragma omp parallel

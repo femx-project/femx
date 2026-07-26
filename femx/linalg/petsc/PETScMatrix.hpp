@@ -12,13 +12,15 @@ class DenseMatrix;
 namespace linalg
 {
 
+class PETScJacobian;
+
 /**
  * @brief Own and assemble a PETSc-backed matrix.
  *
- * PETScOperator owns a PETSc Mat and provides assembly, preallocation,
+ * PETScMatrix owns a PETSc Mat and provides assembly, preallocation,
  * row elimination, and matrix-vector application helpers.
  */
-class PETScOperator final
+class PETScMatrix final
 {
 public:
   /**
@@ -26,13 +28,13 @@ public:
    *
    * @param[in] comm - PETSc communicator.
    */
-  explicit PETScOperator(MPI_Comm comm = PETSC_COMM_SELF);
+  explicit PETScMatrix(MPI_Comm comm = PETSC_COMM_SELF);
 
-  PETScOperator(const PETScOperator&) = delete;
+  PETScMatrix(const PETScMatrix&) = delete;
 
-  PETScOperator& operator=(const PETScOperator&) = delete;
+  PETScMatrix& operator=(const PETScMatrix&) = delete;
 
-  ~PETScOperator();
+  ~PETScMatrix();
 
   /** @brief Return the global number of rows. */
   Index rows() const;
@@ -97,9 +99,9 @@ public:
    * @throws std::runtime_error - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void addBlock(const HostVector<Index>& rows,
-                const HostVector<Index>& cols,
-                const DenseMatrix&       mat_e);
+  void addBlock(HostVectorView<const Index> rows,
+                HostVectorView<const Index> columns,
+                HostMatrixView<const Real>  values);
 
   /**
    * @brief Complete PETSc matrix assembly.
@@ -116,7 +118,18 @@ public:
    * @param[in] diag - Replacement diagonal value.
    * @throws std::runtime_error - If a row is invalid or PETSc reports an error.
    */
-  void replaceRows(const HostVector<Index>& rows, Real diag);
+  void replaceRows(HostVectorView<const Index> rows, Real diagonal);
+
+  /**
+   * @brief Eliminate constrained rows and columns with RHS correction.
+   *
+   * @param[in] rows - Global constrained rows.
+   * @param[in] values - Prescribed values in row order.
+   * @param[in,out] rhs - Replicated Host right-hand side.
+   */
+  void eliminateColumns(HostVectorView<const Index> rows,
+                        HostVectorView<const Real>  values,
+                        HostVectorView<Real>        rhs);
 
   /**
    * @brief Apply the matrix to a replicated Host vector.
@@ -160,7 +173,7 @@ private:
                 Index           num_cols,
                 const Real*     vals);
 
-  void zeroRows(const HostVector<Index>& rows, Real diag);
+  void zeroRows(HostVectorView<const Index> rows, Real diagonal);
 
   static void computePrealloc(const HostCsrPattern& pattern,
                               PetscInt              begin,

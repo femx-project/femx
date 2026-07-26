@@ -8,8 +8,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/LinearSystem.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -49,15 +48,14 @@ public:
   using Vec       = typename Backend::Vec;
   using VecView   = typename Backend::VecView;
   using ConstView = typename Backend::ConstView;
-  using Mat       = typename Backend::Mat;
   using Ctx       = linalg::Context<space>;
   using Res       = TimeResidual<Backend>;
-  using Solver    = linalg::LinearSolver<Backend>;
+  using System    = linalg::LinearSystem<space>;
   using Tr        = TimeTrajectory;
   using StepCtx   = TimeStepStateContext;
   using Observer  = std::function<bool(const StepCtx&)>;
 
-  TimeIntegrator(const Res& res, Mat& jac, Solver& solver, Ctx& ctx);
+  TimeIntegrator(const Res& res, System& system);
 
   TimeIntegrator(const TimeIntegrator&)            = delete;
   TimeIntegrator& operator=(const TimeIntegrator&) = delete;
@@ -90,8 +88,7 @@ private:
   SolveStats         solveImpl(ConstView prm, Tr* tr, Observer observer);
 
   const Res& res_;
-  Mat&       jac_;
-  Solver&    solver_;
+  System&    system_;
   Ctx&       ctx_;
   TimeDims   dims_;
   Vec        init_;
@@ -121,17 +118,18 @@ inline Real elapsedSec(const TimeClock::time_point& begin)
 
 template <class Backend>
 TimeIntegrator<Backend>::TimeIntegrator(const Res& res,
-                                        Mat&       jac,
-                                        Solver&    solver,
-                                        Ctx&       ctx)
-  : res_(res), jac_(jac), solver_(solver), ctx_(ctx), dims_(res.dims())
+                                        System&    system)
+  : res_(res),
+    system_(system),
+    ctx_(system.context()),
+    dims_(res.dims())
 {
   require(dims_.num_res == dims_.num_states,
           "TimeIntegrator requires square residual dimensions");
   require(dims_.num_hist > 0,
           "TimeIntegrator requires at least one history state");
-  require(res_.pattern().rows() == dims_.num_res
-              && res_.pattern().cols() == dims_.num_states,
+  require(res_.hostPattern().rows() == dims_.num_res
+              && res_.hostPattern().cols() == dims_.num_states,
           "TimeIntegrator residual pattern dimensions do not match");
 
   init_.resize(numStates());
@@ -271,25 +269,26 @@ void TimeIntegrator<Backend>::advanceHist()
 template <class Backend>
 SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
 {
-  auto&                          vec_handler = ctx_.vectors();
-  linalg::MatrixHandler<Backend> mat_handler(ctx_);
-  const TimeContext<space>       time       = timeCtx(step, prm);
-  const auto                     assm_begin = detail::TimeClock::now();
+  auto&                    vec_handler = ctx_.vectors();
+  auto&                    jac         = system_.jacobian();
+  const TimeContext<space> time        = timeCtx(step, prm);
+  const auto               assm_begin  = detail::TimeClock::now();
 
-  res_.assembleNext(time, res_vec_, jac_, ctx_);
+  jac.begin(res_.hostPattern());
+  res_.assembleNext(time, res_vec_, jac, ctx_);
   require(res_vec_.size() == dims_.num_res, "TimeIntegrator residual size mismatch");
 
-  mat_handler.finalize(jac_);
-  mat_handler.matvec(jac_, nxt_.view(), rhs_);
+  jac.finalize();
+  jac.apply(nxt_.view(), rhs_);
   vec_handler.axpby(-1.0, res_vec_.view(), 1.0, rhs_.view());
 
-  res_.prepareLinearSolve(time, jac_, rhs_, ctx_);
+  res_.prepareLinearSolve(time, jac, rhs_, ctx_);
   ctx_.sync();
 
   const Real assm_sec = detail::elapsedSec(assm_begin);
 
   const auto solve_begin = detail::TimeClock::now();
-  solver_.solve(jac_, rhs_, sol_, ctx_);
+  system_.solve(rhs_.view(), sol_);
   const Real lin_solve_sec = detail::elapsedSec(solve_begin);
 
   require(sol_.size() == numStates(), "TimeIntegrator solution size mismatch");
