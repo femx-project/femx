@@ -22,7 +22,7 @@ HostVector<Real> solveState(
   Vec   prm;
   Vec   state;
   ctx.vectors().copy(h_prm.view(), prm);
-  state_solver.solve(prm, state);
+  state_solver.solve(state, prm);
 
   HostVector<Real> h_state;
   ctx.vectors().copy(state.view(), h_state);

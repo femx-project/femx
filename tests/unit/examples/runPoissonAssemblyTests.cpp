@@ -32,7 +32,7 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   state::HostLinearStateSolver solver(poisson_res, system);
   const HostVector<Real>       prm;
   HostVector<Real>             state;
-  solver.solve(prm, state);
+  solver.solve(state);
 
   auto& jac =
       dynamic_cast<linalg::HostJacobian&>(system.jacobian());

@@ -141,12 +141,12 @@ void printUsage(const char* app_name,
  * @param[in] configuration - Solver configuration name.
  * @param[in] prob - Solved problem.
  * @param[in] err - Solution error metrics.
- * @param[in] res_norm - Residual L2 norm.
+ * @param[in] rnorm - Residual L2 norm.
  */
 void printReport(std::ostream&         out,
                  const std::string&    configuration,
                  const PoissonProblem& prob,
                  const ErrorReport&    err,
-                 Real                  res_norm);
+                 Real                  rnorm);
 
 } // namespace femx::examples::poisson

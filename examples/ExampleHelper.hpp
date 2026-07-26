@@ -140,16 +140,15 @@ public:
    *
    * @param[in] op - Residual operator.
    * @param[in] state - State at which to evaluate the residual.
-   * @param[in] prm - Parameter vector.
    * @param[in,out] ctx - Host execution context.
    * @return Euclidean norm of the residual.
    */
   Real resNorm(const state::HostResidual&          op,
                const HostVector<Real>&             state,
-               const HostVector<Real>&             prm,
                linalg::Context<MemorySpace::Host>& ctx) const
   {
-    HostVector<Real> res;
+    HostVector<Real>       res;
+    const HostVector<Real> prm;
     op.assembleResidual(state, prm, res, ctx);
     return std::sqrt(ctx.vectors().squaredNorm(res.view()));
   }
@@ -162,18 +161,17 @@ public:
    *
    * @param[in] op - Residual operator.
    * @param[in] state - Device state at which to evaluate the residual.
-   * @param[in] prm - Device parameter vector.
    * @param[in,out] ctx - Device execution context.
    * @return Euclidean norm of the residual.
    */
   Real resNorm(
       const state::DeviceResidual&          op,
       const DeviceVector<Real>&             state,
-      const DeviceVector<Real>&             prm,
       linalg::Context<MemorySpace::Device>& ctx) const
   {
-    auto&              vec_handler = ctx.vectors();
-    DeviceVector<Real> res;
+    auto&                    vec_handler = ctx.vectors();
+    const DeviceVector<Real> prm;
+    DeviceVector<Real>       res;
     op.assembleResidual(state, prm, res, ctx);
 
     DeviceVector<Real> norm2(1);

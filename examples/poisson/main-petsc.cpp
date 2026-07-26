@@ -40,12 +40,11 @@ int run(const Options& opts)
   HostPoissonResidual          res(prob);
   state::HostLinearStateSolver state_solver(res, system);
 
-  const HostVector<Real> prm;
-  HostVector<Real>       x;
+  HostVector<Real> x;
 
-  state_solver.solve(prm, x);
+  state_solver.solve(x);
 
-  const Real res_norm = helper.resNorm(res, x, prm, system.context());
+  const Real rnorm = helper.resNorm(res, x, system.context());
 
   if (isRoot())
   {
@@ -53,7 +52,7 @@ int run(const Options& opts)
                 helper.name(),
                 prob,
                 prob.errorReport(x),
-                res_norm);
+                rnorm);
 
     if (opts.write_output)
     {

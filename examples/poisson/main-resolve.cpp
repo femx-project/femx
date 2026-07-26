@@ -35,16 +35,14 @@ Real solveHost(const ExampleHelper&  helper,
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   HostLinearSystem system(std::move(solver));
 
-  HostPoissonResidual res(prob);
-
+  HostPoissonResidual          res(prob);
   state::HostLinearStateSolver state_solver(res, system);
-  const HostVector<Real>       prm;
 
-  state_solver.solve(prm, x);
+  state_solver.solve(x);
 
-  const Real res_norm = helper.resNorm(res, x, prm, system.context());
+  const Real rnorm = helper.resNorm(res, x, system.context());
 
-  return res_norm;
+  return rnorm;
 }
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
@@ -57,20 +55,17 @@ Real solveDevice(const ExampleHelper&  helper,
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  DevicePoissonResidual res(prob, ctx);
-
+  DevicePoissonResidual                         res(prob, ctx);
   state::LinearStateSolver<MemorySpace::Device> state_solver(res, system);
 
-  const DeviceVector<Real> prm;
-  DeviceVector<Real>       d_x;
+  DeviceVector<Real> d_x;
+  state_solver.solve(d_x);
 
-  state_solver.solve(prm, d_x);
-
-  const Real res_norm = helper.resNorm(res, d_x, prm, ctx);
+  const Real rnorm = helper.resNorm(res, d_x, ctx);
   ctx.vectors().copy(d_x, x);
   ctx.sync();
 
-  return res_norm;
+  return rnorm;
 }
 #endif
 
@@ -80,16 +75,16 @@ int run(const Options& opts)
   ExampleHelper  helper(solver_type, opts.execution_device, outputDir());
   PoissonProblem prob(opts);
 
-  HostVector<Real> sol;
-  Real             res_norm;
+  HostVector<Real> x;
+  Real             rnorm;
   if (opts.execution_device == runtime::ExecutionDevice::Host)
   {
-    res_norm = solveHost(helper, prob, sol);
+    rnorm = solveHost(helper, prob, x);
   }
   else
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
-    res_norm = solveDevice(helper, prob, sol);
+    rnorm = solveDevice(helper, prob, x);
 #else
     throw std::runtime_error(
         "Device Poisson execution requires a CUDA-enabled ReSolve build");
@@ -99,13 +94,13 @@ int run(const Options& opts)
   printReport(std::cout,
               helper.name(),
               prob,
-              prob.errorReport(sol),
-              res_norm);
+              prob.errorReport(x),
+              rnorm);
 
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));
-    prob.writeSolution(sol, base);
+    prob.writeSolution(x, base);
     helper.printVisualizationPath(base);
   }
 

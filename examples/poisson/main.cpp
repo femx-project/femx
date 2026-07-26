@@ -35,16 +35,15 @@ int run(const Options& opts)
 
   HostPoissonResidual          res(prob);
   state::HostLinearStateSolver state_solver(res, system);
-  const HostVector<Real>       prm;
 
   HostVector<Real> sol;
-  state_solver.solve(prm, sol);
+  state_solver.solve(sol);
 
   printReport(std::cout,
               helper.name(),
               prob,
               prob.errorReport(sol),
-              helper.resNorm(res, sol, prm, system.context()));
+              helper.resNorm(res, sol, system.context()));
 
   if (opts.write_output)
   {
