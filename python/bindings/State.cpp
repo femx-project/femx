@@ -7,16 +7,15 @@
 #include "Bindings.hpp"
 #include "PETScInit.hpp"
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/LinearSolver.hpp>
+#include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
 #ifdef FEMX_HAS_RESOLVE
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
@@ -35,14 +34,12 @@ using femx::HostVectorView;
 using femx::Index;
 using femx::Real;
 using femx::fem::HostInitialStateMap;
-using femx::linalg::DenseLinearSolver;
-using femx::linalg::HostCsrLinearSolver;
-#ifdef FEMX_HAS_PETSC
-#endif
 #ifdef FEMX_HAS_RESOLVE
 using femx::linalg::ReSolveLinearSolver;
 using femx::linalg::ReSolveOptions;
 #endif
+using femx::runtime::ExecutionDevice;
+using femx::runtime::SolverType;
 using femx::state::EnsembleBasis;
 using femx::state::HostTimeContext;
 using femx::state::HostTimeHistoryView;
@@ -271,39 +268,32 @@ public:
     return pattern_;
   }
 
-  const femx::HostCsrPattern& pattern() const override
-  {
-    updateGraph();
-    return pattern_;
-  }
-
-  void initialState(HostVectorView<const Real> prm,
-                    HostVector<Real>&          out,
-                    femx::CpuContext&          ctx) const override
+  void initialState(HostVectorView<const Real>                      prm,
+                    HostVector<Real>&                               out,
+                    femx::linalg::Context<femx::MemorySpace::Host>& ctx)
+      const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override = py::get_override(this, "initial_state");
     if (!override)
     {
-      femx::linalg::HostVectorHandler vec_handler(ctx);
-      vec_handler.resizeOrZero(out, dims().num_states);
+      ctx.vectors().resizeOrZero(out, dims().num_states);
       return;
     }
     copyArray(override(vectorArray(prm)), out, "initial state");
   }
 
-  void addInitialStateJacobianTranspose(
-      HostVectorView<const Real> state_grad,
-      HostVectorView<Real>       out,
-      femx::CpuContext&          ctx) const override
+  void addInitialStateJacT(
+      HostVectorView<const Real>                      state_grad,
+      HostVectorView<Real>                            out,
+      femx::linalg::Context<femx::MemorySpace::Host>& ctx) const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
-        py::get_override(this, "add_initial_state_jacobian_transpose");
+        py::get_override(this, "add_initial_state_jac_t");
     if (!override)
     {
-      TimeResidual::addInitialStateJacobianTranspose(
-          state_grad, out, ctx);
+      TimeResidual::addInitialStateJacT(state_grad, out, ctx);
       return;
     }
     HostVector<Real> grad;
@@ -325,7 +315,8 @@ public:
                  VariableBlock              wrt,
                  HostVectorView<const Real> adj,
                  HostVector<Real>&          out,
-                 femx::CpuContext&) const override
+                 femx::linalg::Context<femx::MemorySpace::Host>&)
+      const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -340,18 +331,14 @@ public:
               "transpose Jacobian result");
   }
 
-  void assembleNext(const HostTimeContext& ctx,
-                    HostVector<Real>&      res_out,
-                    femx::HostCsrMatrix&   jac,
-                    femx::CpuContext&      cpu) const override
+  void assembleNext(const HostTimeContext&                           ctx,
+                    HostVector<Real>&                                res_out,
+                    femx::linalg::Jacobian<femx::MemorySpace::Host>& jac,
+                    femx::linalg::Context<femx::MemorySpace::Host>&)
+      const override
   {
     evaluateResidual(ctx, res_out);
     updateGraph();
-    if (jac.pattern().layoutId() != pattern_.layoutId())
-    {
-      throw std::runtime_error(
-          "Python TimeResidual Jacobian uses an incompatible pattern");
-    }
 
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -379,24 +366,36 @@ public:
           "TimeResidual.assemble_next() returned an array with invalid shape");
     }
 
-    femx::linalg::HostMatrixHandler mat_handler(cpu);
-    mat_handler.zero(jac);
-    const auto data = mat.unchecked<2>();
+    DenseMatrix       values(rows, cols);
+    HostVector<Index> jac_rows(rows);
+    HostVector<Index> jac_columns(cols);
+    HostVector<Index> csr_entries(rows * cols);
+    const auto        data = mat.unchecked<2>();
     for (Index row = 0; row < rows; ++row)
     {
-      for (Index k = jac.rowPtrData()[row];
-           k < jac.rowPtrData()[row + 1];
-           ++k)
+      jac_rows[row] = row;
+      for (Index col = 0; col < cols; ++col)
       {
-        jac.valsData()[k] = data(row, jac.colIndData()[k]);
+        values(row, col)              = data(row, col);
+        csr_entries[row * cols + col] = row * cols + col;
       }
     }
+    for (Index col = 0; col < cols; ++col)
+    {
+      jac_columns[col] = col;
+    }
+    jac.addElement(
+        {jac_rows.view(),
+         jac_columns.view(),
+         csr_entries.view(),
+         values.view()});
   }
 
   void prepareLinearSolve(const HostTimeContext& ctx,
-                          femx::HostCsrMatrix&   jac,
-                          HostVector<Real>&      rhs,
-                          femx::CpuContext&) const override
+                          femx::linalg::Jacobian<femx::MemorySpace::Host>&,
+                          HostVector<Real>& rhs,
+                          femx::linalg::Context<femx::MemorySpace::Host>&)
+      const override
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
@@ -406,22 +405,8 @@ public:
       return;
     }
 
-    DenseMatrix dense(jac.rows(), jac.cols());
-    for (Index row = 0; row < jac.rows(); ++row)
-    {
-      for (Index k = jac.rowPtrData()[row];
-           k < jac.rowPtrData()[row + 1];
-           ++k)
-      {
-        dense(row, jac.colIndData()[k]) = jac.valsData()[k];
-      }
-    }
-    py::array_t<Real> jac_array = denseMatrixArray(dense);
     py::array_t<Real> rhs_array = vectorArray(rhs);
-    const py::object  result    = override(
-        ctxData(ctx),
-        jac_array,
-        rhs_array);
+    const py::object  result    = override(ctxData(ctx), rhs_array);
     if (result.is_none())
     {
       copyArray(rhs_array, rhs, "prepared right-hand side");
@@ -429,22 +414,6 @@ public:
     else
     {
       copyArray(result, rhs, "prepared right-hand side");
-    }
-    if (jac_array.ndim() != 2 || jac_array.shape(0) != jac.rows()
-        || jac_array.shape(1) != jac.cols())
-    {
-      throw std::runtime_error(
-          "prepared Jacobian has an inconsistent shape");
-    }
-    const auto jac_vals = jac_array.unchecked<2>();
-    for (Index row = 0; row < jac.rows(); ++row)
-    {
-      for (Index k = jac.rowPtrData()[row];
-           k < jac.rowPtrData()[row + 1];
-           ++k)
-      {
-        jac.valsData()[k] = jac_vals(row, jac.colIndData()[k]);
-      }
     }
   }
 
@@ -515,8 +484,65 @@ py::array trajectoryLevel(TimeTrajectory& trajectory, Index level)
 
 } // namespace
 
+std::unique_ptr<femx::linalg::LinearSystem<femx::MemorySpace::Host>>
+makePythonHostLinearSystem(SolverType        solver,
+                           const py::object& options)
+{
+  if (solver == SolverType::Dense)
+  {
+    if (!options.is_none())
+    {
+      throw py::value_error(
+          "Dense solver options are not supported");
+    }
+    return femx::runtime::makeHostLinearSystem(solver);
+  }
+
+  if (solver == SolverType::ReSolve)
+  {
+#if defined(FEMX_HAS_RESOLVE)
+    const ReSolveOptions opts =
+        options.is_none() ? ReSolveOptions{}
+                          : options.cast<ReSolveOptions>();
+    return femx::runtime::makeHostLinearSystem(
+        solver, std::make_unique<ReSolveLinearSolver>(opts));
+#else
+    static_cast<void>(options);
+    throw py::value_error(
+        "ReSolve is unavailable in this femx build");
+#endif
+  }
+
+  if (solver == SolverType::PETSc)
+  {
+    if (!options.is_none())
+    {
+      throw py::value_error(
+          "PETSc solver options are not supported");
+    }
+#if defined(FEMX_HAS_PETSC)
+    femx::python::initializePETSc();
+    return femx::runtime::makeHostLinearSystem(solver);
+#else
+    throw py::value_error(
+        "PETSc is unavailable in this femx build");
+#endif
+  }
+
+  throw py::value_error("Unknown linear solver selection");
+}
+
 void bindState(py::module_& module)
 {
+  py::enum_<ExecutionDevice>(module, "ExecutionDevice")
+      .value("HOST", ExecutionDevice::Host)
+      .value("DEVICE", ExecutionDevice::Device);
+
+  py::enum_<SolverType>(module, "SolverType")
+      .value("DENSE", SolverType::Dense)
+      .value("RESOLVE", SolverType::ReSolve)
+      .value("PETSC", SolverType::PETSc);
+
   py::class_<EnsembleBasis>(module, "EnsembleBasis")
       .def(py::init(&ensembleBasisFromArrays),
            py::arg("mean"),
@@ -573,11 +599,6 @@ void bindState(py::module_& module)
           py::arg("mean"),
           py::arg("perturbations"));
 
-  py::class_<HostCsrLinearSolver>(module, "HostCsrLinearSolver");
-  py::class_<DenseLinearSolver, HostCsrLinearSolver>(module,
-                                                     "DenseLinearSolver")
-      .def(py::init<Real>(), py::arg("pivot_tolerance") = 1.0e-14);
-
 #ifdef FEMX_HAS_RESOLVE
   py::class_<ReSolveOptions>(module, "_ReSolveOptions")
       .def(py::init<>())
@@ -594,10 +615,6 @@ void bindState(py::module_& module)
       .def_readwrite("rtol", &ReSolveOptions::rtol)
       .def_readwrite("flexible", &ReSolveOptions::flexible);
 
-  py::class_<ReSolveLinearSolver, HostCsrLinearSolver>(
-      module, "_ReSolveLinearSolver")
-      .def(py::init<>())
-      .def(py::init<ReSolveOptions>(), py::arg("options"));
 #endif
 
 #ifdef FEMX_HAS_PETSC
@@ -696,14 +713,13 @@ void bindState(py::module_& module)
                          static_cast<py::ssize_t>(sizeof(Real))}); });
 
   py::class_<PythonHostTimeIntegrator>(module, "TimeIntegrator")
-      .def(py::init([](const TimeResidual&  problem,
-                       HostCsrLinearSolver& solver)
-                    { return std::make_unique<PythonHostTimeIntegrator>(
-                          problem, solver); }),
+      .def(py::init<const TimeResidual&,
+                    SolverType,
+                    const py::object&>(),
            py::arg("problem"),
-           py::arg("linear_solver"),
-           py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>())
+           py::arg("solver")  = SolverType::Dense,
+           py::arg("options") = py::none(),
+           py::keep_alive<1, 2>())
       .def_property_readonly(
           "num_steps",
           [](const PythonHostTimeIntegrator& owner)

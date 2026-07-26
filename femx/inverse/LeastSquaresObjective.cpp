@@ -4,7 +4,8 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 namespace femx
 {
@@ -143,8 +144,8 @@ void LeastSquaresObjective::termGrad(const HostVector<Real>& x,
                                      const HostVector<Real>& weights,
                                      HostVector<Real>&       out)
 {
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, x.size());
   if (target.empty())
   {

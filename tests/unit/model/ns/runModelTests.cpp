@@ -47,7 +47,7 @@ TestOutcome ownsReusableDiscretization()
   return status.report();
 }
 
-TestOutcome modelPublishesBackendAssemblyInputs()
+TestOutcome modelPublishesAssemblyInputs()
 {
   TestStatus status(__func__);
 
@@ -109,7 +109,7 @@ int main()
 {
   femx::tests::TestingResults results;
   results += femx::tests::ownsReusableDiscretization();
-  results += femx::tests::modelPublishesBackendAssemblyInputs();
+  results += femx::tests::modelPublishesAssemblyInputs();
   results += femx::tests::modelRejectsInvalidTimeConfiguration();
   return results.summary();
 }

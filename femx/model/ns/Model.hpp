@@ -16,10 +16,6 @@
 #include <femx/model/ns/FluidProperties.hpp>
 #include <femx/state/TimeResidual.hpp>
 
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
-
 namespace femx::model::ns
 {
 
@@ -63,12 +59,9 @@ public:
   state::HostTimeResidual&       residual();
   const state::HostTimeResidual& residual() const;
 
-  /** @brief Restrict Host assembly to the half-open element range. */
-  void setElemRange(Index ie_begin, Index ie_end);
-
   const assembly::HostAssemblyMap& map() const;
 
-  /** @brief Return flattened element values reusable by either backend. */
+  /** @brief Return flattened element values reusable in either memory space. */
   const fem::HostElementQuadratureData& data() const;
 
   /** @brief Return the Host row operator for generic time assembly. */
@@ -81,11 +74,6 @@ public:
 private:
   class Residual;
 
-#if defined(FEMX_HAS_PETSC)
-  friend std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
-  makePetscTimeResidual(const NavierStokesModel& model);
-#endif
-
   Index nstep_{0};
   Real  dt_{0.0};
 
@@ -97,20 +85,13 @@ private:
   fem::HostElementQuadratureData      data_;
   assembly::HostAssemblyMap           map_;
   std::unique_ptr<Residual>           res_;
-  Index                               ie_begin_{0};
-  Index                               ie_end_{0};
 };
 
 /** @brief Copy the parameter-free physics residual and add Device constraints. */
 std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
-    const NavierStokesModel& model,
-    fem::HostControlMap      control,
-    fem::HostInitialStateMap init_state = {});
-
-#if defined(FEMX_HAS_PETSC)
-/** @brief Create the PETSc-matrix Navier physics residual. */
-std::unique_ptr<state::TimeResidual<linalg::PetscBackend>>
-makePetscTimeResidual(const NavierStokesModel& model);
-#endif
+    const NavierStokesModel&              model,
+    fem::HostControlMap                   control,
+    fem::HostInitialStateMap              init_state,
+    linalg::Context<MemorySpace::Device>& ctx);
 
 } // namespace femx::model::ns

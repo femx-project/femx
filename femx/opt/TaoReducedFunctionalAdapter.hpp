@@ -9,7 +9,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/petsc/PETScBackend.hpp>
+#include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx
 {

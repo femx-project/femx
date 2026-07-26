@@ -107,7 +107,11 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             self.reduced,
             femx.NavierStokesReducedFunctional,
         )
-        self.assertEqual(self.reduced.backend, "dense")
+        self.assertEqual(
+            self.reduced.execution_device,
+            femx.ExecutionDevice.HOST,
+        )
+        self.assertEqual(self.reduced.solver_type, femx.SolverType.DENSE)
 
     @unittest.skipUnless(HAS_ENZYME, "femx was built without Enzyme")
     def test_dense_reference_signature(self):
@@ -210,14 +214,14 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        HAS_ENZYME and "resolve" in femx.solver_backends(),
+        HAS_ENZYME and femx.SolverType.RESOLVE in femx.solver_types(),
         "femx was built without Enzyme or ReSolve",
     )
     def test_resolve_matches_dense_forward_value_and_gradient(self):
-        traj = self.problem.solve(DENSE_PARAM, backend="resolve")
+        traj = self.problem.solve(DENSE_PARAM, solver_type="resolve")
         reduced = self.problem.create_reduced(
             self.observation.objective(num_param=self.problem.num_param),
-            backend="resolve",
+            solver_type="resolve",
         )
         obj, grad = reduced.value_grad(DENSE_PARAM)
 
@@ -236,14 +240,14 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        HAS_ENZYME and "petsc" in femx.solver_backends(),
+        HAS_ENZYME and femx.SolverType.PETSC in femx.solver_types(),
         "femx was built without Enzyme or PETSc",
     )
     def test_petsc_matches_dense_forward_value_and_gradient(self):
-        traj = self.problem.solve(DENSE_PARAM, backend="petsc")
+        traj = self.problem.solve(DENSE_PARAM, solver_type="petsc")
         reduced = self.problem.create_reduced(
             self.observation.objective(num_param=self.problem.num_param),
-            backend="petsc",
+            solver_type="petsc",
         )
         obj, grad = reduced.value_grad(DENSE_PARAM)
 
@@ -262,15 +266,15 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        HAS_ENZYME and "petsc" in femx.solver_backends(),
+        HAS_ENZYME and femx.SolverType.PETSC in femx.solver_types(),
         "femx was built without Enzyme or PETSc/TAO",
     )
     def test_tao_accepts_dense_and_petsc_reduced_functionals(self):
         results = []
-        for backend in ("dense", "petsc"):
+        for solver_type in ("dense", "petsc"):
             reduced = self.problem.create_reduced(
                 self.observation.objective(num_param=self.problem.num_param),
-                backend=backend,
+                solver_type=solver_type,
             )
             result = femx.TaoOptimizer(reduced).solve(
                 DENSE_PARAM,

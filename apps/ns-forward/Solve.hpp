@@ -20,15 +20,6 @@ SolveResult solve(state::HostTimeIntegrator& integrator,
                   std::ostream*              terminal = nullptr,
                   std::ostream*              log_out  = nullptr);
 
-#if defined(FEMX_HAS_PETSC)
-SolveResult solve(state::TimeIntegrator<linalg::PetscBackend>& integrator,
-                  const Problem&                               problem,
-                  const TimeConfig&                            time,
-                  const OutputConfig&                          output,
-                  std::ostream*                                terminal = nullptr,
-                  std::ostream*                                log_out  = nullptr);
-#endif
-
 #if defined(FEMX_HAS_CUDA)
 SolveResult solve(state::DeviceTimeIntegrator& integrator,
                   const Problem&               problem,

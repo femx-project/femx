@@ -5,10 +5,13 @@
 #include <femx/common/Types.hpp>
 #include <femx/linalg/View.hpp>
 
-namespace femx
+namespace femx::linalg
 {
 class CudaContext;
+}
 
+namespace femx
+{
 namespace inverse
 {
 
@@ -34,16 +37,16 @@ public:
   virtual Index numObservations() const = 0;
 
   /** @brief Overwrite a preallocated observation vector on `ctx`. */
-  virtual void observe(Index        level,
-                       ConstView    state,
-                       View         out,
-                       CudaContext& ctx) const = 0;
+  virtual void observe(Index                level,
+                       ConstView            state,
+                       View                 out,
+                       linalg::CudaContext& ctx) const = 0;
 
   /** @brief Add the state-transpose product to preallocated `out` on `ctx`. */
-  virtual void addStateJacT(Index        level,
-                            ConstView    dir,
-                            View         out,
-                            CudaContext& ctx) const = 0;
+  virtual void addStateJacT(Index                level,
+                            ConstView            dir,
+                            View                 out,
+                            linalg::CudaContext& ctx) const = 0;
 };
 
 /**
@@ -74,7 +77,7 @@ public:
    * returned operator and controls when initialization is synchronized.
    */
   virtual std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
-      CudaContext&) const
+      linalg::CudaContext&) const
   {
     return {};
   }

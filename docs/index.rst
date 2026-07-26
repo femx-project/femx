@@ -47,26 +47,27 @@ If Sphinx is installed, the landing page can also be built with:
 Examples
 --------
 
-The forward Poisson examples accept mesh dimensions, solver backend, and VTU
-output selection. The ``poisson`` target uses the native dense solver for
-small dependency-free checks:
+The forward Poisson examples accept mesh dimensions, execution device, and VTU
+output selection. The ``poisson`` target uses the native dense linear system
+for small dependency-free checks:
 
 .. code-block:: bash
 
    poisson --output yes
 
-Optional solver backends are exposed through backend-specific targets:
+Optional linear-system implementations are exposed through solver-specific
+targets:
 
 .. code-block:: bash
 
-   poisson-resolve --nx 32 --ny 32 -b cpu --output yes
+   poisson-resolve --nx 32 --ny 32 --device host --output yes
 
 The optimization example follows the same shape and also exposes optimization
 parameters:
 
 .. code-block:: bash
 
-   poisson-opt-resolve --nx 32 --ny 32 -b cpu --output yes --max-its 50
+   poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
 
 .. toctree::
    :maxdepth: 2

@@ -6,10 +6,9 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
+#include <femx/state/StateSolver.hpp>
 
 using namespace femx;
 using namespace femx::examples::poisson;
@@ -24,54 +23,27 @@ using namespace femx::examples;
 namespace
 {
 
-void copyToPETSc(const HostCsrMatrix& src, PETScOperator& dst)
-{
-  const Index* rp   = src.rowPtrData();
-  const Index* ci   = src.colIndData();
-  const Real*  vals = src.valsData();
-
-  for (Index row = 0; row < src.rows(); ++row)
-  {
-    for (Index k = rp[row]; k < rp[row + 1]; ++k)
-    {
-      if (vals[k] != 0.0)
-      {
-        dst.set(row, ci[k], vals[k]);
-      }
-    }
-  }
-}
-
 int run(const Options& opts)
 {
-  if (opts.backend != MemorySpace::Host)
+  constexpr auto solver_type = runtime::SolverType::PETSc;
+  if (opts.execution_device != runtime::ExecutionDevice::Host)
   {
-    throw std::runtime_error("PETSc Poisson backend supports only 'cpu'");
+    throw std::runtime_error(
+        "PETSc Poisson supports only Host execution");
   }
 
-  ExampleHelper         helper("petsc", opts.backend, outputDir());
+  ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix    A(problem.map().pattern());
-  HostVector<Real> rhs;
-  problem.assemble(A, rhs);
+  auto system = makeHostLinearSystem(solver_type);
 
-  PETScOperator A_petsc(PETSC_COMM_WORLD);
-  A_petsc.resize(problem.map().pattern());
-  if (isRoot())
-  {
-    copyToPETSc(A, A_petsc);
-  }
-  A_petsc.finalize();
+  state::HostLinearStateSolver solver(problem, *system);
+  const HostVector<Real>       prm;
+  HostVector<Real>             x;
 
-  KspLinearSolver solver(PETSC_COMM_WORLD);
-  PetscContext    ctx{PETSC_COMM_WORLD};
+  solver.solve(prm, x);
 
-  HostVector<Real> x;
-  solver.solve(A_petsc, rhs, x, ctx);
-
-  CpuContext host_ctx;
-  const Real res_norm = helper.resNorm(A, rhs, x, host_ctx);
+  const Real res_norm = helper.resNorm(problem, x, prm, system->context());
 
   if (isRoot())
   {

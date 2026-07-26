@@ -1,9 +1,9 @@
 #pragma once
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -16,7 +16,7 @@ class GaussQuadrature;
 template <MemorySpace Space>
 class ElementQuadratureData;
 
-using HostElementQuadratureData = ElementQuadratureData<MemorySpace::Host>;
+using HostElementQuadratureData   = ElementQuadratureData<MemorySpace::Host>;
 using DeviceElementQuadratureData = ElementQuadratureData<MemorySpace::Device>;
 
 /**
@@ -42,7 +42,7 @@ HostElementQuadratureData makeElementQuadratureData(
  */
 void copy(const HostElementQuadratureData& src,
           DeviceElementQuadratureData&     dst,
-          CudaContext&                     ctx);
+          linalg::CudaContext&             ctx);
 
 /**
  * @brief Provide non-owning access to element quadrature data.
@@ -238,7 +238,7 @@ private:
 
   friend void copy(const HostElementQuadratureData& src,
                    DeviceElementQuadratureData&     dst,
-                   CudaContext&                     ctx);
+                   linalg::CudaContext&             ctx);
 
   Index               num_elems_{0};  ///< Number of elements.
   Index               num_qpts_{0};   ///< Quadrature points per element.
@@ -251,13 +251,13 @@ private:
 
 inline void copy(const HostElementQuadratureData& src,
                  DeviceElementQuadratureData&     dst,
-                 CudaContext&                     ctx)
+                 linalg::CudaContext&             ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
-  dst.num_elems_  = src.num_elems_;
-  dst.num_qpts_   = src.num_qpts_;
-  dst.num_shapes_ = src.num_shapes_;
-  dst.dim_        = src.dim_;
+  auto& vec_handler = ctx.vectors();
+  dst.num_elems_    = src.num_elems_;
+  dst.num_qpts_     = src.num_qpts_;
+  dst.num_shapes_   = src.num_shapes_;
+  dst.dim_          = src.dim_;
   vec_handler.copy(src.N_, dst.N_);
   vec_handler.copy(src.dNdx_, dst.dNdx_);
   vec_handler.copy(src.JxW_, dst.JxW_);

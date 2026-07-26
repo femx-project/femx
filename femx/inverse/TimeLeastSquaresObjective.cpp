@@ -5,7 +5,8 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 using namespace femx::state;
 
 namespace femx
@@ -129,8 +130,8 @@ void TimeLeastSquaresObjective::stateGrad(Index                   level,
                                           HostVector<Real>&       out) const
 {
   checkLevel(level);
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numStates());
 
   HostVector<Real> weighted_res;
@@ -173,8 +174,8 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory&   tr,
                                           const HostVector<Real>& prm,
                                           HostVector<Real>&       out) const
 {
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numParams());
 
   HostVector<Real> weighted_res;

@@ -2,7 +2,7 @@
 
 #include "TestHelper.hpp"
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -197,7 +197,7 @@ TestOutcome hostInitialStateTranspose()
 TestOutcome cudaMapsMatchHost()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -222,8 +222,8 @@ TestOutcome cudaMapsMatchHost()
   fem::addInitialJacT(
       host_init, adj.view(), expected_init_grad.view());
 
-  CudaContext                ctx;
-  linalg::CudaVectorHandler  vec_handler(ctx);
+  linalg::CudaContext        ctx;
+  auto&                      vec_handler = ctx.vectors();
   fem::DeviceControlMap      ctr;
   fem::DeviceInitialStateMap init;
   DeviceVector<Real>         dev_prm;

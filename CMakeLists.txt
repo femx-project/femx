@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
-option(FEMX_ENABLE_CUDA "Enable CUDA memory and assembly backends" OFF)
+option(FEMX_ENABLE_CUDA "Enable CUDA execution and Device storage" OFF)
 
 project(
   femx
@@ -15,13 +15,13 @@ include(GNUInstallDirs)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(FEMX_ENABLE_RESOLVE "Require ReSolve linear solver backend" OFF)
+option(FEMX_ENABLE_RESOLVE "Enable ReSolve linear systems" OFF)
 option(FEMX_ENABLE_HDF5 "Require HDF5 output support" OFF)
 option(FEMX_ENABLE_OPENMP "Require OpenMP parallel assembly" OFF)
-option(FEMX_ENABLE_PETSC "Require PETSc applications and backends" OFF)
+option(FEMX_ENABLE_PETSC "Enable PETSc applications and linear systems" OFF)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
-option(FEMX_BUILD_TESTS "Build femx tests" ON)
+option(FEMX_BUILD_TESTS "Build femx tests" OFF)
 option(FEMX_BUILD_PYTHON "Build supported Python bindings" OFF)
 option(FEMX_BUILD_PYTHON_EXPERIMENTAL "Build experimental Python bindings" OFF)
 set(FEMX_OPENMP_ROOT
@@ -43,27 +43,27 @@ if(NOT EXISTS "${FEMX_NLOHMANN_JSON_INCLUDE_DIR}/nlohmann/json.hpp")
       "`git submodule update --init --recursive` from the femx source tree.")
 endif()
 
-set(FEMX_RESOLVE_BACKEND
+set(FEMX_RESOLVE_DEVICE
     "AUTO"
-    CACHE STRING "Requested ReSolve backend: AUTO, CPU, or CUDA")
-set_property(CACHE FEMX_RESOLVE_BACKEND PROPERTY STRINGS AUTO CPU CUDA)
-string(TOUPPER "${FEMX_RESOLVE_BACKEND}" FEMX_RESOLVE_BACKEND_MODE)
+    CACHE STRING "Requested ReSolve execution device: AUTO, HOST, or DEVICE")
+set_property(CACHE FEMX_RESOLVE_DEVICE PROPERTY STRINGS AUTO HOST DEVICE)
+string(TOUPPER "${FEMX_RESOLVE_DEVICE}" FEMX_RESOLVE_DEVICE_MODE)
 
 set(FEMX_RESOLVE_REVISION
     ""
     CACHE STRING
           "Optional revision label for the installed ReSolve development tree")
 
-if(NOT FEMX_RESOLVE_BACKEND_MODE MATCHES "^(AUTO|CPU|CUDA)$")
-  message(FATAL_ERROR "FEMX_RESOLVE_BACKEND must be AUTO, CPU, or CUDA.")
+if(NOT FEMX_RESOLVE_DEVICE_MODE MATCHES "^(AUTO|HOST|DEVICE)$")
+  message(FATAL_ERROR "FEMX_RESOLVE_DEVICE must be AUTO, HOST, or DEVICE.")
 endif()
 
 if(FEMX_ENABLE_RESOLVE
-   AND FEMX_RESOLVE_BACKEND_MODE STREQUAL "CUDA"
+   AND FEMX_RESOLVE_DEVICE_MODE STREQUAL "DEVICE"
    AND NOT FEMX_ENABLE_CUDA)
   set(FEMX_ENABLE_CUDA
       ON
-      CACHE BOOL "Enable CUDA memory and assembly backends" FORCE)
+      CACHE BOOL "Enable CUDA execution and Device storage" FORCE)
 endif()
 
 set(FEMX_HAS_ENZYME OFF)
@@ -89,7 +89,7 @@ if(FEMX_ENABLE_CUDA)
   endif()
   find_package(CUDAToolkit REQUIRED)
   set(FEMX_HAS_CUDA ON)
-  message(STATUS "CUDA execution backend: ${CMAKE_CUDA_COMPILER_VERSION}")
+  message(STATUS "CUDA execution support: ${CMAKE_CUDA_COMPILER_VERSION}")
 endif()
 
 if(FEMX_ENABLE_ENZYME)
@@ -304,17 +304,17 @@ if(FEMX_ENABLE_RESOLVE)
 endif()
 
 if(ReSolve_FOUND)
-  if(FEMX_RESOLVE_BACKEND_MODE STREQUAL "CUDA" AND NOT FEMX_HAS_RESOLVE_CUDA)
+  if(FEMX_RESOLVE_DEVICE_MODE STREQUAL "DEVICE" AND NOT FEMX_HAS_RESOLVE_CUDA)
     message(
-      FATAL_ERROR "FEMX_RESOLVE_BACKEND=CUDA requires a CUDA-enabled ReSolve "
+      FATAL_ERROR "FEMX_RESOLVE_DEVICE=DEVICE requires CUDA-enabled ReSolve "
                   "package, but the found package has no CUDA target.")
   endif()
 
-  if(FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU" AND FEMX_HAS_RESOLVE_CUDA)
+  if(FEMX_RESOLVE_DEVICE_MODE STREQUAL "HOST" AND FEMX_HAS_RESOLVE_CUDA)
     message(
       STATUS
-        "FEMX_RESOLVE_BACKEND=CPU selected; the CUDA-capable ReSolve package "
-        "will be used with the CPU workspace.")
+        "FEMX_RESOLVE_DEVICE=HOST selected; the CUDA-capable ReSolve package "
+        "will be used with the Host workspace.")
   endif()
 endif()
 
@@ -473,7 +473,7 @@ if(ReSolve_FOUND)
   target_compile_definitions(
     femx_config INTERFACE FEMX_RESOLVE_BUILD_ID="${FEMX_RESOLVE_BUILD_ID}")
   if(FEMX_HAS_RESOLVE_CUDA AND FEMX_HAS_CUDA)
-    if(NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
+    if(NOT FEMX_RESOLVE_DEVICE_MODE STREQUAL "HOST")
       target_compile_definitions(femx_config INTERFACE FEMX_RESOLVE_USE_CUDA=1)
     endif()
   endif()

@@ -16,11 +16,11 @@ namespace femx::tests
 namespace
 {
 
-std::string configPath(const char* backend,
+std::string configPath(const char* solver,
                        const char* problem)
 {
   return std::string(FEMX_TEST_SOURCE_DIR)
-         + "/apps/ns-forward/configs/" + backend + "/" + problem
+         + "/apps/ns-forward/configs/" + solver + "/" + problem
          + "/Config.json";
 }
 
@@ -28,15 +28,15 @@ TestOutcome shippedConfigsUseCanonicalOptions()
 {
   TestStatus status(__func__);
 
-  constexpr std::array<const char*, 2> backends{{"petsc", "resolve"}};
+  constexpr std::array<const char*, 2> solvers{{"petsc", "resolve"}};
   constexpr std::array<const char*, 3> problems{
       {"cavity", "stenosis", "straighttube"}};
-  for (const char* backend : backends)
+  for (const char* solver : solvers)
   {
     for (const char* problem : problems)
     {
       const auto prm =
-          apps::ns_forward::loadConfig(configPath(backend, problem));
+          apps::ns_forward::loadConfig(configPath(solver, problem));
       status *= prm.solver.max_itrs == 5000;
       status *= std::abs(prm.solver.relative_tolerance - 1.0e-8)
                 <= 1.0e-16;

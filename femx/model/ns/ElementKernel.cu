@@ -4,7 +4,9 @@
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 
 namespace femx::model::ns::detail
 {
@@ -107,7 +109,7 @@ void launchHistVjp(
     DeviceVectorView<const Real>       nxt,
     DeviceVectorView<const Real>       adj,
     DeviceVector<Real>&                out,
-    CudaContext&                       ctx)
+    linalg::CudaContext&               ctx)
 {
   constexpr Index        ndof    = (Dim + 1) * NumNodes;
   constexpr unsigned int threads = 128;
@@ -139,8 +141,8 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    DeviceCsrMatrix&                   jac,
-    CudaContext&                       ctx)
+    linalg::CudaJacobian&              jac,
+    linalg::CudaContext&               ctx)
 {
   checkRange(ie_begin, ie_end, map);
   assembly::assemble(kernel,
@@ -167,7 +169,7 @@ void applyHistJacT(
     DeviceVectorView<const Real>       nxt,
     DeviceVectorView<const Real>       adj,
     DeviceVector<Real>&                out,
-    CudaContext&                       ctx)
+    linalg::CudaContext&               ctx)
 {
   checkRange(ie_begin, ie_end, map);
   require(num_hist == 2 && lag >= 0 && lag < num_hist,
@@ -182,7 +184,7 @@ void applyHistJacT(
   {
     out.resize(map.numStates());
   }
-  linalg::CudaVectorHandler vec_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   vec_handler.zero(out.view());
 
 #if defined(FEMX_HAS_ENZYME)

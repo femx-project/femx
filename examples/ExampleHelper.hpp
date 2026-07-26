@@ -8,12 +8,11 @@
 #include <string>
 #include <utility>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/state/Residual.hpp>
 
 namespace femx::examples
 {
@@ -39,111 +38,74 @@ inline bool hasHelp(int argc, char* const argv[])
 }
 
 /**
- * @brief Return a lower-case name for a femx memory space.
- *
- * @param[in] memspace - Memory space to name.
- * @return `"cpu"` for Host, `"cuda"` for Device, or `"unknown"` otherwise.
- */
-inline const char* memspaceName(MemorySpace memspace)
-{
-  switch (memspace)
-  {
-  case MemorySpace::Host:
-    return "cpu";
-  case MemorySpace::Device:
-    return "cuda";
-  }
-  return "unknown";
-}
-
-/**
  * @brief Small helpers for femx examples.
  */
 class ExampleHelper
 {
 public:
   /**
-   * @brief Bind display names and the output directory for one backend.
+   * @brief Bind solver, execution device, and output directory.
    *
-   * @param[in] solver - Solver name used in reports and output paths.
-   * @param[in] memspace - Memory space used by the example.
+   * @param[in] solver - Solver used by the example.
+   * @param[in] device - Execution device used by the example.
    * @param[in] out_dir - Directory for generated output files.
    */
-  ExampleHelper(std::string solver,
-                MemorySpace memspace,
-                std::string out_dir)
-    : solver_(std::move(solver)),
-      memspace_(memspace),
+  ExampleHelper(runtime::SolverType      solver,
+                runtime::ExecutionDevice device,
+                std::string              out_dir)
+    : solver_(solver),
+      device_(device),
       out_dir_(std::move(out_dir))
   {
   }
 
-  /** @brief Return the `solver/memory-space` display name. */
+  /** @brief Return the `solver/execution-device` display name. */
   std::string name() const
   {
-    return solver_ + "/" + memspaceName(memspace_);
+    return std::string(runtime::name(solver_)) + "/"
+           + runtime::name(device_);
   }
 
   /**
-   * @brief Compute `||A x - rhs||_2` with Host linear algebra operations.
+   * @brief Compute the Host residual norm.
    *
-   * @param[in] A - Host CSR matrix.
-   * @param[in] rhs - Host right-hand side.
-   * @param[in] x - Host solution vector.
-   * @param[in,out] ctx - CPU execution context.
-   * @return Euclidean norm of the algebraic residual.
-   * @throws std::runtime_error - If the matrix and vector dimensions are
-   * incompatible.
+   * @param[in] op - Residual operator.
+   * @param[in] state - State at which to evaluate the residual.
+   * @param[in] prm - Parameter vector.
+   * @param[in,out] ctx - Host execution context.
+   * @return Euclidean norm of the residual.
    */
-  Real resNorm(const HostCsrMatrix&    A,
-               const HostVector<Real>& rhs,
-               const HostVector<Real>& x,
-               CpuContext&             ctx) const
+  Real resNorm(const state::HostResidual&          op,
+               const HostVector<Real>&             state,
+               const HostVector<Real>&             prm,
+               linalg::Context<MemorySpace::Host>& ctx) const
   {
-    if (rhs.size() != A.rows() || x.size() != A.cols())
-    {
-      throw std::runtime_error("Residual dimensions are inconsistent");
-    }
-
-    linalg::HostMatrixHandler mat_handler(ctx);
-    linalg::HostVectorHandler vec_handler(ctx);
-
     HostVector<Real> residual;
-    mat_handler.matvec(A, x.view(), residual);
-    vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
-    return std::sqrt(vec_handler.squaredNorm(residual.view()));
+    op.res(state, prm, residual, ctx);
+    return std::sqrt(ctx.vectors().squaredNorm(residual.view()));
   }
 
 #if defined(FEMX_HAS_CUDA)
   /**
-   * @brief Compute `||A x - rhs||_2` with Device linear algebra operations.
+   * @brief Compute the Device residual norm.
    *
    * The operation synchronizes `ctx` before returning the Host result.
    *
-   * @param[in] A - Device CSR matrix.
-   * @param[in] rhs - Device right-hand side.
-   * @param[in] x - Device solution vector.
-   * @param[in,out] ctx - CUDA execution context.
-   * @return Euclidean norm of the algebraic residual.
-   * @throws std::runtime_error - If dimensions are incompatible or a CUDA
-   * linear algebra operation fails.
+   * @param[in] op - Residual operator.
+   * @param[in] state - Device state at which to evaluate the residual.
+   * @param[in] prm - Device parameter vector.
+   * @param[in,out] ctx - Device execution context.
+   * @return Euclidean norm of the residual.
    */
-  Real resNorm(const DeviceCsrMatrix&    A,
-               const DeviceVector<Real>& rhs,
-               const DeviceVector<Real>& x,
-               CudaContext&              ctx) const
+  Real resNorm(
+      const state::DeviceResidual&          op,
+      const DeviceVector<Real>&             state,
+      const DeviceVector<Real>&             prm,
+      linalg::Context<MemorySpace::Device>& ctx) const
   {
-    if (rhs.size() != A.rows() || x.size() != A.cols())
-    {
-      throw std::runtime_error("Residual dimensions are inconsistent");
-    }
-
-    linalg::CudaMatrixHandler mat_handler(ctx);
-    linalg::CudaVectorHandler vec_handler(ctx);
-
+    auto&              vec_handler = ctx.vectors();
     DeviceVector<Real> residual;
-    mat_handler.matvec(A, x.view(), residual);
-    vec_handler.axpby(-1.0, rhs.view(), 1.0, residual.view());
+    op.res(state, prm, residual, ctx);
 
     DeviceVector<Real> norm2(1);
     vec_handler.squaredNorm(residual.view(), norm2.view());
@@ -156,7 +118,7 @@ public:
 #endif
 
   /**
-   * @brief Build an output path containing solver and memory-space names.
+   * @brief Build an output path containing solver and execution-device names.
    *
    * @param[in] stem - Problem-specific file stem.
    * @return Output path without a file extension.
@@ -164,7 +126,8 @@ public:
   std::string outputBase(const std::string& stem) const
   {
     const std::filesystem::path dir(out_dir_);
-    const std::string           file = stem + "-" + solver_ + "-" + memspaceName(memspace_);
+    const std::string           file =
+        stem + "-" + runtime::name(solver_) + "-" + runtime::name(device_);
     return (dir / file).string();
   }
 
@@ -181,9 +144,9 @@ public:
   }
 
 private:
-  std::string solver_;   ///< Solver name used in reports and output paths.
-  MemorySpace memspace_; ///< Memory space used by the example.
-  std::string out_dir_;  ///< Directory for generated output files.
+  runtime::SolverType      solver_;  ///< Solver used by the example.
+  runtime::ExecutionDevice device_;  ///< Execution device used by the example.
+  std::string              out_dir_; ///< Directory for generated output files.
 };
 
 /**

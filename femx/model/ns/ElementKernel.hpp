@@ -8,6 +8,12 @@
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 
+namespace femx::linalg
+{
+class CudaContext;
+class CudaJacobian;
+} // namespace femx::linalg
+
 namespace femx
 {
 namespace model
@@ -458,6 +464,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
 {
   static_assert(NumQpts > 0 && NumNodes > 0 && Dim > 0,
                 "Fixed Navier dimensions must be positive");
+
   const fem::ElementQuadratureDataView<Space> data{
       num_elems,
       NumQpts,
@@ -466,6 +473,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
       {N, NumQpts * NumNodes},
       {dNdx, num_elems * NumQpts * NumNodes * Dim},
       {JxW, num_elems * NumQpts}};
+
   const assembly::TimeElementView<Space> elem{
       ie,
       step,
@@ -501,8 +509,8 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    DeviceCsrMatrix&                   jac,
-    CudaContext&                       ctx);
+    linalg::CudaJacobian&              jac,
+    linalg::CudaContext&               ctx);
 
 void applyHistJacT(
     const DeviceElementKernel&         kernel,
@@ -516,7 +524,7 @@ void applyHistJacT(
     DeviceVectorView<const Real>       nxt,
     DeviceVectorView<const Real>       adj,
     DeviceVector<Real>&                out,
-    CudaContext&                       ctx);
+    linalg::CudaContext&               ctx);
 
 } // namespace detail
 

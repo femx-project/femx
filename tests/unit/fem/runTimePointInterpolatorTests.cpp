@@ -7,8 +7,9 @@
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -90,16 +91,16 @@ TestOutcome hostFlatObserveAndTranspose()
   HostVector<Real> expected_obs;
   op.observe(1, state, prm, expected_obs);
 
-  HostVector<Real>          flat_obs(op.numObservations());
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.matvec(op.data().matrix(), state.view(), flat_obs.view());
+  HostVector<Real>     flat_obs(op.numObservations());
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.apply(op.data().matrix(), state.view(), flat_obs.view());
 
   HostVector<Real> expected_tr;
   op.applyStateJacT(1, state, prm, dir, expected_tr);
 
   HostVector<Real> flat_tr(op.numStates());
-  mat_handler.matvecT(op.data().matrix(), dir.view(), flat_tr.view(), 1.0, 1.0);
+  jacobian.applyT(op.data().matrix(), dir.view(), flat_tr.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;
@@ -114,7 +115,7 @@ TestOutcome hostFlatObserveAndTranspose()
 TestOutcome cudaObserveAndTransposeMatchHost()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -131,8 +132,8 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   op.observe(0, state, prm, expected_obs);
   op.applyStateJacT(0, state, prm, dir, expected_tr);
 
-  CudaContext                 ctx;
-  linalg::CudaVectorHandler   vec_handler(ctx);
+  linalg::CudaContext         ctx;
+  auto&                       vec_handler = ctx.vectors();
   DeviceTimePointInterpolator dev_op;
   DeviceVector<Real>          dev_state;
   DeviceVector<Real>          dev_dir;

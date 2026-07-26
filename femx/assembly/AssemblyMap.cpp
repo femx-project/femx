@@ -8,7 +8,8 @@
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Checks.hpp>
 #include <femx/fem/DofLayout.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -199,16 +200,16 @@ HostAssemblyMap makeAssemblyMap(fem::DofLayout layout)
 
 void copy(const HostAssemblyMap& src,
           DeviceAssemblyMap&     dst,
-          CudaContext&           ctx)
+          linalg::CudaContext&   ctx)
 {
-  linalg::CudaVectorHandler vec_handler(ctx);
-  DeviceVector<Index>       res_offsets;
-  DeviceVector<Index>       res_dofs;
-  DeviceVector<Index>       state_offsets;
-  DeviceVector<Index>       state_dofs;
-  DeviceVector<Index>       jac_offsets;
-  DeviceVector<Index>       jac_map;
-  DeviceCsrPattern          pattern;
+  auto&               vec_handler = ctx.vectors();
+  DeviceVector<Index> res_offsets;
+  DeviceVector<Index> res_dofs;
+  DeviceVector<Index> state_offsets;
+  DeviceVector<Index> state_dofs;
+  DeviceVector<Index> jac_offsets;
+  DeviceVector<Index> jac_map;
+  DeviceCsrPattern    pattern;
 
   vec_handler.copy(src.res_offsets_, res_offsets);
   vec_handler.copy(src.res_dofs_, res_dofs);

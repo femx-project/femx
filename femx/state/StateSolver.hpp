@@ -4,26 +4,22 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Backend.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state
 {
 
-/** @brief Solver contract for one stationary residual backend. */
-template <class Backend>
+/** @brief Define a stationary state solver in one memory space. */
+template <MemorySpace Space>
 class StateSolver
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "StateSolver requires a valid backend type");
-
 public:
-  using Vec = typename Backend::Vec;
-  using Ctx = typename Backend::Ctx;
-  using Res = Residual<Backend>;
+  using Vec = Vector<Space, Real>;
+  using Ctx = linalg::Context<Space>;
+  using Res = Residual<Space>;
 
   virtual ~StateSolver() = default;
 
@@ -38,21 +34,19 @@ public:
 };
 
 /** @brief State solver for affine-linear stationary residuals. */
-template <class Backend>
-class LinearStateSolver final : public StateSolver<Backend>
+template <MemorySpace Space>
+class LinearStateSolver final : public StateSolver<Space>
 {
 public:
-  using Vec    = typename Backend::Vec;
-  using Mat    = typename Backend::Mat;
-  using Ctx    = typename Backend::Ctx;
-  using Res    = Residual<Backend>;
-  using Solver = linalg::LinearSolver<Backend>;
+  using Vec    = Vector<Space, Real>;
+  using Ctx    = linalg::Context<Space>;
+  using Res    = Residual<Space>;
+  using System = linalg::LinearSystem<Space>;
 
-  LinearStateSolver(const Res& res, Mat& jac, Solver& solver, Ctx& ctx)
+  LinearStateSolver(const Res& res, System& system)
     : res_(res),
-      jac_(jac),
-      solver_(solver),
-      ctx_(ctx),
+      system_(system),
+      ctx_(system.context()),
       dims_(res.dims()),
       zero_(dims_.num_states),
       res_vec_(dims_.num_res),
@@ -89,18 +83,19 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     require(prm.size() == numParams(), "LinearStateSolver parameter size mismatch");
 
     res_.res(zero_, prm, res_vec_, ctx_);
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
 
     vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-    res_.assembleStateJac(zero_, prm, jac_, ctx_);
+    auto& jac = system_.jacobian();
+    jac.begin(res_.hostPattern());
+    res_.assembleStateJac(zero_, prm, jac, ctx_);
 
-    mat_handler.finalize(jac_);
-    solver_.solve(jac_, rhs_, state, ctx_);
+    jac.finalize();
+    system_.solve(rhs_.view(), state);
 
     ctx_.sync();
     require(state.size() == numStates(), "LinearStateSolver solution size mismatch");
@@ -108,8 +103,7 @@ public:
 
 private:
   const Res& res_;
-  Mat&       jac_;
-  Solver&    solver_;
+  System&    system_;
   Ctx&       ctx_;
   Dimensions dims_;
   Vec        zero_;
@@ -124,25 +118,23 @@ struct NewtonStateOptions
   Real  step_tol{0.0};
 };
 
-/** @brief Newton state solver for Host-storage backends. */
-template <class Backend>
-class NewtonStateSolver final : public StateSolver<Backend>
+/** @brief Solve a Host stationary residual with Newton's method. */
+template <MemorySpace Space>
+class NewtonStateSolver final : public StateSolver<Space>
 {
-  static_assert(Backend::space == MemorySpace::Host,
+  static_assert(Space == MemorySpace::Host,
                 "NewtonStateSolver requires Host state storage");
 
 public:
-  using Vec    = typename Backend::Vec;
-  using Mat    = typename Backend::Mat;
-  using Ctx    = typename Backend::Ctx;
-  using Res    = Residual<Backend>;
-  using Solver = linalg::LinearSolver<Backend>;
+  using Vec    = Vector<Space, Real>;
+  using Ctx    = linalg::Context<Space>;
+  using Res    = Residual<Space>;
+  using System = linalg::LinearSystem<Space>;
 
-  NewtonStateSolver(const Res& res, Mat& jac, Solver& solver, Ctx& ctx)
+  NewtonStateSolver(const Res& res, System& system)
     : res_(res),
-      jac_(jac),
-      solver_(solver),
-      ctx_(ctx),
+      system_(system),
+      ctx_(system.context()),
       dims_(res.dims()),
       init_(dims_.num_states),
       res_vec_(dims_.num_res),
@@ -167,7 +159,7 @@ public:
   {
     require(state.size() == numStates(),
             "NewtonStateSolver initial state size mismatch");
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     vec_handler.copy(state.view(), init_);
     ctx_.sync();
     has_init_ = true;
@@ -205,8 +197,7 @@ public:
 
   void solve(const Vec& prm, Vec& state) override
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
 
     require(prm.size() == numParams(), "NewtonStateSolver parameter size mismatch");
     initState(state);
@@ -228,10 +219,12 @@ public:
       }
 
       vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-      res_.assembleStateJac(state, prm, jac_, ctx_);
-      mat_handler.finalize(jac_);
+      auto& jac = system_.jacobian();
+      jac.begin(res_.hostPattern());
+      res_.assembleStateJac(state, prm, jac, ctx_);
+      jac.finalize();
 
-      solver_.solve(jac_, rhs_, step_, ctx_);
+      system_.solve(rhs_.view(), step_);
       require(step_.size() == numStates(),
               "NewtonStateSolver step size mismatch");
 
@@ -250,7 +243,7 @@ public:
 private:
   void initState(Vec& state)
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     if (state.size() != numStates())
     {
       state.resize(numStates());
@@ -266,8 +259,7 @@ private:
   }
 
   const Res&         res_;
-  Mat&               jac_;
-  Solver&            solver_;
+  System&            system_;
   Ctx&               ctx_;
   Dimensions         dims_;
   NewtonStateOptions opts_;
@@ -278,8 +270,8 @@ private:
   bool               has_init_{false};
 };
 
-using HostStateSolver       = StateSolver<linalg::HostCsrBackend>;
-using HostLinearStateSolver = LinearStateSolver<linalg::HostCsrBackend>;
-using HostNewtonStateSolver = NewtonStateSolver<linalg::HostCsrBackend>;
+using HostStateSolver       = StateSolver<MemorySpace::Host>;
+using HostLinearStateSolver = LinearStateSolver<MemorySpace::Host>;
+using HostNewtonStateSolver = NewtonStateSolver<MemorySpace::Host>;
 
 } // namespace femx::state

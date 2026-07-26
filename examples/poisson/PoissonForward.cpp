@@ -101,18 +101,19 @@ std::string lowerAscii(std::string value)
   return value;
 }
 
-MemorySpace parseMemorySpace(const std::string& value)
+runtime::ExecutionDevice parseExecutionDevice(const std::string& value)
 {
-  const std::string backend = lowerAscii(value);
-  if (backend == "cpu")
+  const std::string device = lowerAscii(value);
+  if (device == "host" || device == "cpu")
   {
-    return MemorySpace::Host;
+    return runtime::ExecutionDevice::Host;
   }
-  if (backend == "cuda" || backend == "gpu")
+  if (device == "device" || device == "cuda" || device == "gpu")
   {
-    return MemorySpace::Device;
+    return runtime::ExecutionDevice::Device;
   }
-  throw std::runtime_error("Backend must be 'cpu' or 'cuda'");
+  throw std::runtime_error(
+      "Execution device must be 'host' or 'device'");
 }
 
 bool parseOutputValue(const std::string& value)
@@ -129,24 +130,25 @@ bool parseOutputValue(const std::string& value)
   throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
-MemorySpace readBackendOption(int&               i,
-                              int                argc,
-                              char**             argv,
-                              const std::string& name)
+runtime::ExecutionDevice readExecutionDeviceOption(
+    int&               i,
+    int                argc,
+    char**             argv,
+    const std::string& name)
 {
-  return parseMemorySpace(readStringOption(i, argc, argv, name));
+  return parseExecutionDevice(readStringOption(i, argc, argv, name));
 }
 
-bool readBackendAssignment(const std::string& arg,
-                           const std::string& name,
-                           MemorySpace&       out)
+bool readExecutionDeviceAssignment(const std::string&        arg,
+                                   const std::string&        name,
+                                   runtime::ExecutionDevice& out)
 {
   std::string value;
   if (!readStringAssignment(arg, name, value))
   {
     return false;
   }
-  out = parseMemorySpace(value);
+  out = parseExecutionDevice(value);
   return true;
 }
 
@@ -186,8 +188,7 @@ PoissonForwardProblem::PoissonForwardProblem(const Options& opts)
   DirichletBC boundary;
   boundary.addBoundary(space_, onBoundary, boundaryValue);
   bc_vals_ = boundary.vals();
-  bc_map_  = assembly::makeBoundaryMap(boundary.dofs(),
-                                      map_.pattern());
+  bc_map_  = assembly::makeBoundaryMap(boundary.dofs());
 }
 
 const Options& PoissonForwardProblem::options() const noexcept
@@ -233,26 +234,77 @@ Index PoissonForwardProblem::numDofs() const noexcept
   return space_.numDofs();
 }
 
-void PoissonForwardProblem::assemble(HostCsrMatrix&    mat,
-                                     HostVector<Real>& rhs) const
+state::Dimensions PoissonForwardProblem::dims() const
 {
-  HostVector<Real> zero_state(numDofs(), 0.0);
-  HostVector<Real> res;
-  CpuContext       ctx;
+  return {numDofs(), 0, numDofs()};
+}
+
+const HostCsrPattern& PoissonForwardProblem::hostPattern() const
+{
+  return map_.pattern();
+}
+
+void PoissonForwardProblem::res(
+    const HostVector<Real>&             state,
+    const HostVector<Real>&             prm,
+    HostVector<Real>&                   out,
+    linalg::Context<MemorySpace::Host>& ctx) const
+{
+  checkVectors(state, prm);
+  assembly::assembleResidual(
+      PoissonComponents<MemorySpace::Host>(element_data_.view()),
+      geom_,
+      map_,
+      state,
+      out,
+      ctx);
+  assembly::replaceRes(
+      bc_map_, state.view(), bc_vals_.view(), out.view());
+}
+
+void PoissonForwardProblem::assembleStateJac(
+    const HostVector<Real>&              state,
+    const HostVector<Real>&              prm,
+    linalg::Jacobian<MemorySpace::Host>& out,
+    linalg::Context<MemorySpace::Host>&  ctx) const
+{
+  checkVectors(state, prm);
+  HostVector<Real> unused;
   assembly::assemble(PoissonComponents<MemorySpace::Host>(element_data_.view()),
                      geom_,
                      map_,
-                     zero_state,
-                     res,
-                     mat,
+                     state,
+                     unused,
+                     out,
                      ctx);
+  out.replaceRows(bc_map_.view().constrained_rows, 1.0);
+}
 
-  rhs.resize(res.size());
-  for (Index row = 0; row < res.size(); ++row)
+void PoissonForwardProblem::applyParamJacT(
+    const HostVector<Real>& state,
+    const HostVector<Real>& prm,
+    const HostVector<Real>& adj,
+    HostVector<Real>&       out,
+    linalg::Context<MemorySpace::Host>&) const
+{
+  checkVectors(state, prm);
+  if (adj.size() != numDofs())
   {
-    rhs[row] = -res[row];
+    throw std::runtime_error(
+        "Poisson adjoint vector has incompatible size");
   }
-  assembly::applyDirichletConditions(bc_map_, mat, rhs, bc_vals_);
+  out.resize(0);
+}
+
+void PoissonForwardProblem::checkVectors(
+    const HostVector<Real>& state,
+    const HostVector<Real>& prm) const
+{
+  if (state.size() != numDofs() || !prm.empty())
+  {
+    throw std::runtime_error(
+        "Poisson residual vectors have incompatible sizes");
+  }
 }
 
 ErrorReport PoissonForwardProblem::errorReport(const HostVector<Real>& x) const
@@ -374,9 +426,10 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
       }
       continue;
     }
-    if (arg == "--backend" || arg == "-b")
+    if (arg == "--device" || arg == "-d")
     {
-      opts.backend = readBackendOption(i, argc, argv, arg);
+      opts.execution_device =
+          readExecutionDeviceOption(i, argc, argv, arg);
       continue;
     }
     if (readIndexAssignment(arg, "--nx", opts.num_x_cells)
@@ -393,8 +446,10 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
     {
       throw std::runtime_error("Use --output yes or --output no");
     }
-    if (readBackendAssignment(arg, "--backend", opts.backend)
-        || readBackendAssignment(arg, "-b", opts.backend))
+    if (readExecutionDeviceAssignment(
+            arg, "--device", opts.execution_device)
+        || readExecutionDeviceAssignment(
+            arg, "-d", opts.execution_device))
     {
       continue;
     }
@@ -422,23 +477,23 @@ std::string outputStem(const Options& opts)
 
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* backend_note)
+                const char* device_note)
 {
   std::cout << "Usage: " << app_name
-            << " [--nx N] [--ny N] [-b cpu|cuda] [--output yes|no]";
+            << " [--nx N] [--ny N] [-d host|device] [--output yes|no]";
   if (petsc_options)
   {
     std::cout << " [PETSc options]";
   }
   std::cout << '\n';
-  std::cout << "  -b, --backend cpu|cuda selects the device backend";
-  if (backend_note)
+  std::cout << "  -d, --device host|device selects the execution device";
+  if (device_note)
   {
-    std::cout << " (" << backend_note << ")";
+    std::cout << " (" << device_note << ")";
   }
   else if (petsc_options)
   {
-    std::cout << " (PETSc supports cpu only)";
+    std::cout << " (PETSc supports Host execution only)";
   }
   std::cout << '\n';
   std::cout << "  --output yes writes a VTU file under "
@@ -447,13 +502,13 @@ void printUsage(const char* app_name,
 }
 
 void printReport(std::ostream&                out,
-                 const std::string&           backend,
+                 const std::string&           configuration,
                  const PoissonForwardProblem& problem,
                  const ErrorReport&           error,
                  Real                         res_norm)
 {
   const Options& opts = problem.options();
-  out << "Poisson forward (" << backend << ")\n";
+  out << "Poisson forward (" << configuration << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';
   out << "  nodes: " << problem.numNodes() << '\n';

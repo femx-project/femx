@@ -16,7 +16,6 @@
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/opt/TaoOptimizer.hpp>
@@ -46,7 +45,7 @@ using femx::inverse::TimeObjective;
 using femx::inverse::TimeObservationData;
 using femx::inverse::TimeObservationOperator;
 using femx::inverse::TimeRegularization;
-using femx::linalg::HostCsrLinearSolver;
+using femx::runtime::SolverType;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 
@@ -58,10 +57,11 @@ class PythonHostTimeReducedFunctional final
 {
 public:
   PythonHostTimeReducedFunctional(PythonHostTimeIntegrator& owner,
-                                  HostCsrLinearSolver&      solver,
-                                  const TimeObjective&      obj)
-    : jac_(owner.get().residual().pattern()),
-      impl_(owner.get(), jac_, solver, obj)
+                                  const TimeObjective&      obj,
+                                  SolverType                solver,
+                                  const py::object&         options)
+    : adj_system_(makePythonHostLinearSystem(solver, options)),
+      impl_(owner.get(), *adj_system_, obj)
   {
   }
 
@@ -116,7 +116,9 @@ public:
   }
 
 private:
-  femx::HostCsrMatrix   jac_;
+  std::unique_ptr<
+      femx::linalg::LinearSystem<femx::MemorySpace::Host>>
+                        adj_system_;
   TimeReducedFunctional impl_;
 };
 
@@ -860,14 +862,15 @@ void bindInverse(py::module_& module)
              PythonTimeReducedFunctional>(module,
                                           "TimeReducedFunctional")
       .def(py::init<PythonHostTimeIntegrator&,
-                    HostCsrLinearSolver&,
-                    const TimeObjective&>(),
+                    const TimeObjective&,
+                    SolverType,
+                    const py::object&>(),
            py::arg("integrator"),
-           py::arg("adjoint_solver"),
            py::arg("objective"),
+           py::arg("solver")  = SolverType::Dense,
+           py::arg("options") = py::none(),
            py::keep_alive<1, 2>(),
-           py::keep_alive<1, 3>(),
-           py::keep_alive<1, 4>());
+           py::keep_alive<1, 3>());
 
 #ifdef FEMX_HAS_PETSC
   module.def("_tao_solve",

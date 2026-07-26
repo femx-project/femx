@@ -1,7 +1,9 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 
 namespace femx
@@ -48,9 +50,9 @@ void EnsembleBasis::apply(const HostVector<Real>& alpha,
 {
   checkAlpha(alpha);
   out = mean_;
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.matvec(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.apply(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
 }
 
 void EnsembleBasis::applyT(const HostVector<Real>& grad,
@@ -58,9 +60,9 @@ void EnsembleBasis::applyT(const HostVector<Real>& grad,
 {
   checkPhysical(grad);
   out.resize(numCoefficients());
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.matvecT(perts_.view(), grad.view(), out.view());
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.applyT(perts_.view(), grad.view(), out.view());
 }
 
 void EnsembleBasis::checkDims() const

@@ -10,14 +10,19 @@ from . import _core
 from .mesh import Mesh
 
 
-_BACKENDS = {}
+_DEVICE_NAMES = {
+    "host": _core.ExecutionDevice.HOST,
+    "device": _core.ExecutionDevice.DEVICE,
+}
+_SOLVER_NAMES = {
+    "dense": _core.SolverType.DENSE,
+    "resolve": _core.SolverType.RESOLVE,
+    "petsc": _core.SolverType.PETSC,
+}
 
 
-@dataclass(frozen=True)
-class _Backend:
-    solver: object = None
-    device_time: bool = False
-    petsc_time: bool = False
+def _enum_name(values, value):
+    return next(name for name, candidate in values.items() if candidate == value)
 
 
 _RESOLVE_STRING_OPTIONS = (
@@ -41,22 +46,74 @@ _RESOLVE_OPTIONS = frozenset(
 )
 
 
-def _factories(backend):
-    if not isinstance(backend, str):
-        raise TypeError("backend must be a string")
+def _execution_device(value):
+    if isinstance(value, _core.ExecutionDevice):
+        return value
+    if not isinstance(value, str):
+        raise TypeError("execution_device must be an ExecutionDevice or string")
     try:
-        return _BACKENDS[backend]
+        return _DEVICE_NAMES[value.lower()]
     except KeyError as error:
-        available = ", ".join(_BACKENDS)
         raise ValueError(
-            f"unknown solver backend '{backend}'; available: {available}"
+            f"unknown execution device {value!r}; available: host, device"
         ) from error
 
 
-def solver_backends():
-    """Return the solver backends available in this femx build."""
+def _solver_type(value):
+    if isinstance(value, _core.SolverType):
+        return value
+    if not isinstance(value, str):
+        raise TypeError("solver_type must be a SolverType or string")
+    try:
+        return _SOLVER_NAMES[value.lower()]
+    except KeyError as error:
+        raise ValueError(
+            f"unknown solver type {value!r}; available: dense, resolve, petsc"
+        ) from error
 
-    return tuple(_BACKENDS)
+
+def execution_devices():
+    """Return execution devices available for complete linear systems."""
+
+    devices = [_core.ExecutionDevice.HOST]
+    if (
+        _core._has_resolve
+        and _core._resolve_uses_cuda
+        and _core._cuda_available
+    ):
+        devices.append(_core.ExecutionDevice.DEVICE)
+    return tuple(devices)
+
+
+def solver_types(execution_device=_core.ExecutionDevice.HOST):
+    """Return solver types available on an execution device."""
+
+    device = _execution_device(execution_device)
+    solvers = []
+    if device == _core.ExecutionDevice.HOST:
+        solvers.append(_core.SolverType.DENSE)
+        if _core._has_resolve:
+            solvers.append(_core.SolverType.RESOLVE)
+        if _core._has_petsc:
+            solvers.append(_core.SolverType.PETSC)
+    elif (
+        _core._has_resolve
+        and _core._resolve_uses_cuda
+        and _core._cuda_available
+    ):
+        solvers.append(_core.SolverType.RESOLVE)
+    return tuple(solvers)
+
+
+def _selection(execution_device, solver_type):
+    device = _execution_device(execution_device)
+    solver = _solver_type(solver_type)
+    if solver not in solver_types(device):
+        raise ValueError(
+            f"solver {_enum_name(_SOLVER_NAMES, solver)!r} is unavailable on "
+            f"{_enum_name(_DEVICE_NAMES, device)!r} execution"
+        )
+    return device, solver
 
 
 def petsc_rank():
@@ -145,21 +202,14 @@ def _resolve_options(values):
     return options
 
 
-def _backend_options(backend, values):
+def _solver_options(solver_type, values):
     if values is None:
         return None
-    if backend != "resolve":
+    if solver_type != _core.SolverType.RESOLVE:
         raise ValueError(
-            f"solver options are not supported for backend '{backend}'"
+            "solver options are supported only for ReSolve"
         )
     return _resolve_options(values)
-
-
-def _activate_backend(prob, backend):
-    if backend == "petsc":
-        prob.model._impl._use_petsc_world_element_range()
-    else:
-        prob.model._impl._use_full_element_range()
 
 
 def _bnds(bnds, size):
@@ -203,17 +253,6 @@ def _bnds(bnds, size):
     if np.any(lower > upper):
         raise ValueError("each lower bound must not exceed its upper bound")
     return np.ascontiguousarray(lower), np.ascontiguousarray(upper)
-
-
-def _dense_solver(_, options=None):
-    del options
-    return _core.DenseLinearSolver()
-
-
-def _resolve_solver(_, options=None):
-    if options is None:
-        return _core._ReSolveLinearSolver()
-    return _core._ReSolveLinearSolver(options)
 
 
 @dataclass(frozen=True)
@@ -660,15 +699,37 @@ class NavierStokesProblem:
         self._ensure_built()
         return self._fixed_values.copy()
 
-    def create_solver(self, backend="dense", options=None):
-        """Create a forward solver, with optional ReSolve settings."""
+    def create_solver(
+        self,
+        execution_device=_core.ExecutionDevice.HOST,
+        solver_type=_core.SolverType.DENSE,
+        options=None,
+    ):
+        """Create a forward solver from independent device and solver values."""
 
-        return NavierStokesSolver(self, backend, options=options)
+        return NavierStokesSolver(
+            self,
+            execution_device,
+            solver_type,
+            options=options,
+        )
 
-    def create_reduced(self, obj, backend="dense"):
-        """Create a reduced functional for the selected backend."""
+    def create_reduced(
+        self,
+        obj,
+        execution_device=_core.ExecutionDevice.HOST,
+        solver_type=_core.SolverType.DENSE,
+        options=None,
+    ):
+        """Create a reduced functional with separate execution and solver choices."""
 
-        return NavierStokesReducedFunctional(self, obj, backend)
+        return NavierStokesReducedFunctional(
+            self,
+            obj,
+            execution_device,
+            solver_type,
+            options=options,
+        )
 
     def _check_param(self, param):
         values = self.param if param is None else param
@@ -679,26 +740,39 @@ class NavierStokesProblem:
             raise ValueError("param must be finite")
         return values
 
-    def solve(self, param=None, backend="dense"):
-        if backend not in self._solvers:
-            self._solvers[backend] = self.create_solver(backend)
-        return self._solvers[backend].solve(param)
+    def solve(
+        self,
+        param=None,
+        execution_device=_core.ExecutionDevice.HOST,
+        solver_type=_core.SolverType.DENSE,
+    ):
+        selection = _selection(execution_device, solver_type)
+        if selection not in self._solvers:
+            self._solvers[selection] = self.create_solver(*selection)
+        return self._solvers[selection].solve(param)
 
 
 class NavierStokesSolver:
-    """Reusable time integrator for one compiled problem and backend."""
+    """Reusable time integrator for one execution-device/solver pair."""
 
-    def __init__(self, prob, backend, options=None):
+    def __init__(
+        self,
+        prob,
+        execution_device=_core.ExecutionDevice.HOST,
+        solver_type=_core.SolverType.DENSE,
+        options=None,
+    ):
         if not isinstance(prob, NavierStokesProblem):
             raise TypeError("prob must be a NavierStokesProblem")
-        factories = _factories(backend)
-        options = _backend_options(backend, options)
+        device, solver = _selection(execution_device, solver_type)
+        options = _solver_options(solver, options)
         prob._ensure_built()
 
         self._prob = prob
         self._compiled = prob._compiled
-        self._backend = backend
-        if factories.device_time:
+        self._execution_device = device
+        self._solver_type = solver
+        if device == _core.ExecutionDevice.DEVICE:
             if prob._ctr is None:
                 self._integ = _core._DeviceTimeIntegrator(
                     prob.model._impl,
@@ -713,28 +787,13 @@ class NavierStokesSolver:
                     prob._initial_state,
                     prob._initial_modes,
                     options,
-                )
-            self._timer = self._integ
-        elif factories.petsc_time:
-            if prob._ctr is None:
-                self._integ = _core._PetscTimeIntegrator(
-                    prob.model._impl,
-                    prob._compiled,
-                    prob._initial_state,
-                )
-            else:
-                self._integ = _core._PetscTimeIntegrator(
-                    prob.model._impl,
-                    prob._compiled,
-                    prob._initial_state,
-                    prob._initial_modes,
                 )
             self._timer = self._integ
         else:
-            lin = factories.solver(prob, options)
             time = _core.TimeIntegrator(
                 prob.residual,
-                lin,
+                solver,
+                options,
             )
             if prob._initial_map is None:
                 time.set_initial_state(prob._initial_state)
@@ -747,8 +806,12 @@ class NavierStokesSolver:
         return self._prob
 
     @property
-    def backend(self):
-        return self._backend
+    def execution_device(self):
+        return self._execution_device
+
+    @property
+    def solver_type(self):
+        return self._solver_type
 
     @property
     def num_solves(self):
@@ -781,7 +844,6 @@ class NavierStokesSolver:
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
 
-        _activate_backend(self._prob, self._backend)
         param = self._prob._check_param(param)
         traj = self._integ.solve(param, progress=progress)
         self._num_solves += 1
@@ -789,9 +851,16 @@ class NavierStokesSolver:
 
 
 class NavierStokesReducedFunctional:
-    """Reusable forward and adjoint evaluation for one solver backend."""
+    """Reusable forward and adjoint evaluation with separate systems."""
 
-    def __init__(self, prob, obj, backend):
+    def __init__(
+        self,
+        prob,
+        obj,
+        execution_device=_core.ExecutionDevice.HOST,
+        solver_type=_core.SolverType.DENSE,
+        options=None,
+    ):
         if not isinstance(prob, NavierStokesProblem):
             raise TypeError("prob must be a NavierStokesProblem")
         if not isinstance(obj, _core.TimeObjective):
@@ -807,25 +876,27 @@ class NavierStokesReducedFunctional:
         self._prob = prob
         self._compiled = prob._compiled
         self._obj = obj
-        self._backend = backend
-        self._fwd = prob.create_solver(backend)
-        factories = _factories(backend)
-        if factories.device_time:
+        device, solver = _selection(execution_device, solver_type)
+        solver_options = _solver_options(solver, options)
+        self._execution_device = device
+        self._solver_type = solver
+        self._fwd = prob.create_solver(
+            device,
+            solver,
+            options=options,
+        )
+        if device == _core.ExecutionDevice.DEVICE:
             self._impl = _core._DeviceTimeReducedFunctional(
                 self._fwd._integ,
                 obj,
-            )
-        elif factories.petsc_time:
-            self._impl = _core._PetscTimeReducedFunctional(
-                self._fwd._integ,
-                obj,
+                solver_options,
             )
         else:
-            adj = factories.solver(prob)
             self._impl = _core.TimeReducedFunctional(
                 self._fwd._integ,
-                adj,
                 obj,
+                solver,
+                solver_options,
             )
 
     @property
@@ -837,8 +908,12 @@ class NavierStokesReducedFunctional:
         return self._obj
 
     @property
-    def backend(self):
-        return self._backend
+    def execution_device(self):
+        return self._execution_device
+
+    @property
+    def solver_type(self):
+        return self._solver_type
 
     @property
     def num_param(self):
@@ -869,22 +944,16 @@ class NavierStokesReducedFunctional:
                 "problem configuration changed; create a new reduced functional"
             )
 
-    def _activate_backend(self):
-        _activate_backend(self._prob, self._backend)
-
     def value(self, param):
         self._check_current()
-        self._activate_backend()
         return self._impl.value(self._prob._check_param(param))
 
     def grad(self, param):
         self._check_current()
-        self._activate_backend()
         return np.asarray(self._impl.grad(self._prob._check_param(param)))
 
     def value_grad(self, param, progress=None):
         self._check_current()
-        self._activate_backend()
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
         value, grad = self._impl.value_grad(
@@ -932,7 +1001,6 @@ class TaoOptimizer:
             raise TypeError("progress must be callable")
 
         self._reduced._check_current()
-        self._reduced._activate_backend()
         init_param = self._reduced.prob._check_param(init_param)
         lower, upper = _bnds(bnds, self._reduced.num_param)
         result = _core._tao_solve(
@@ -955,15 +1023,3 @@ class TaoOptimizer:
             status=int(result["status"]),
             msg=str(result["msg"]),
         )
-
-
-_BACKENDS["dense"] = _Backend(_dense_solver)
-if hasattr(_core, "_ReSolveLinearSolver") and (
-    not _core._resolve_uses_cuda or _core._cuda_available
-):
-    _BACKENDS["resolve"] = _Backend(
-        _resolve_solver,
-        device_time=_core._resolve_uses_cuda,
-    )
-if hasattr(_core, "_PetscTimeIntegrator"):
-    _BACKENDS["petsc"] = _Backend(petsc_time=True)

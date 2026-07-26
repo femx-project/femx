@@ -3,7 +3,8 @@
 #include <cmath>
 #include <utility>
 
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx::apps::ns_forward
 {
@@ -29,13 +30,12 @@ void configureMonitor(Monitor&            monitor,
   monitor.setConvergence(time.convergence);
 }
 
-template <class Backend>
-SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
-                      const Problem&                  problem,
-                      const TimeConfig&               time,
-                      const OutputConfig&             output,
-                      std::ostream*                   terminal,
-                      std::ostream*                   log_out)
+SolveResult solveHost(state::HostTimeIntegrator& integrator,
+                      const Problem&             problem,
+                      const TimeConfig&          time,
+                      const OutputConfig&        output,
+                      std::ostream*              terminal,
+                      std::ostream*              log_out)
 {
   Monitor monitor(problem.model.space(),
                   problem.model.dt(),
@@ -43,7 +43,7 @@ SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
   configureMonitor(monitor, time, output, terminal, log_out);
 
   monitor.start(integrator.numSteps(), integrator.numStates());
-  typename state::TimeIntegrator<Backend>::Observer observer =
+  state::HostTimeIntegrator::Observer observer =
       [&monitor](const state::TimeStepStateContext& context)
   {
     if (context.level == 0)
@@ -91,18 +91,6 @@ SolveResult solve(state::HostTimeIntegrator& integrator,
   return solveHost(integrator, problem, time, output, terminal, log_out);
 }
 
-#if defined(FEMX_HAS_PETSC)
-SolveResult solve(state::TimeIntegrator<linalg::PetscBackend>& integrator,
-                  const Problem&                               problem,
-                  const TimeConfig&                            time,
-                  const OutputConfig&                          output,
-                  std::ostream*                                terminal,
-                  std::ostream*                                log_out)
-{
-  return solveHost(integrator, problem, time, output, terminal, log_out);
-}
-#endif
-
 #if defined(FEMX_HAS_CUDA)
 SolveResult solve(state::DeviceTimeIntegrator& integrator,
                   const Problem&               problem,
@@ -117,11 +105,11 @@ SolveResult solve(state::DeviceTimeIntegrator& integrator,
   configureMonitor(monitor, time, output, terminal, log_out);
 
   monitor.start(integrator.numSteps(), integrator.numStates());
-  CudaContext               transfer;
-  DeviceVector<Real>        parameters;
-  linalg::CudaVectorHandler vector_handler(transfer);
+  auto&              ctx = integrator.context();
+  DeviceVector<Real> parameters;
+  auto&              vector_handler = ctx.vectors();
   vector_handler.copy(problem.parameters, parameters);
-  transfer.sync();
+  ctx.sync();
 
   state::DeviceTimeIntegrator::Observer observer =
       [&monitor](const state::TimeStepStateContext& context)

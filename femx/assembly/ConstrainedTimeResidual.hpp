@@ -5,32 +5,26 @@
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/state/TimeResidual.hpp>
-
-#if defined(FEMX_HAS_PETSC)
-#include <femx/linalg/petsc/PETScBackend.hpp>
-#endif
 
 namespace femx::assembly
 {
 
-/** @brief Time residual decorated with constraints in one backend. */
-template <class Backend>
-class ConstrainedTimeResidual final : public state::TimeResidual<Backend>
+/** @brief Decorate a time residual with constraints in one memory space. */
+template <MemorySpace Space>
+class ConstrainedTimeResidual final : public state::TimeResidual<Space>
 {
 public:
-  using Base      = state::TimeResidual<Backend>;
+  using Base      = state::TimeResidual<Space>;
   using Vec       = typename Base::Vec;
   using VecView   = typename Base::VecView;
   using ConstView = typename Base::ConstView;
-  using Mat       = typename Base::Mat;
-  using Pattern   = typename Base::Pattern;
+  using Jac       = typename Base::Jac;
   using Ctx       = typename Base::Ctx;
   using StepCtx   = typename Base::StepCtx;
-  using Boundary  = BoundaryMap<Backend::space>;
-  using Control   = fem::ControlMap<Backend::space>;
-  using InitMap   = fem::InitialStateMap<Backend::space>;
+  using Boundary  = BoundaryMap<Space>;
+  using Control   = fem::ControlMap<Space>;
+  using InitMap   = fem::InitialStateMap<Space>;
 
   /** @brief Decorate a non-owning Host residual. */
   ConstrainedTimeResidual(const Base&              base,
@@ -46,7 +40,6 @@ public:
   state::TimeDims dims() const override;
 
   const HostCsrPattern& hostPattern() const override;
-  const Pattern&        pattern() const override;
 
   const Control& controlMap() const noexcept;
 
@@ -55,13 +48,13 @@ public:
   void clearInitialStateMap() noexcept;
 
   void initialState(ConstView prm, Vec& out, Ctx& ctx) const override;
-  void addInitialStateJacobianTranspose(ConstView state_grad,
-                                        VecView   out,
-                                        Ctx&      ctx) const override;
+  void addInitialStateJacT(ConstView state_grad,
+                           VecView   out,
+                           Ctx&      ctx) const override;
 
   void assembleNext(const StepCtx& time,
                     Vec&           res,
-                    Mat&           jac,
+                    Jac&           jac,
                     Ctx&           ctx) const override;
   void applyJacT(const StepCtx&       time,
                  state::VariableBlock wrt,
@@ -69,7 +62,7 @@ public:
                  Vec&                 out,
                  Ctx&                 ctx) const override;
   void prepareLinearSolve(const StepCtx& time,
-                          Mat&           jac,
+                          Jac&           jac,
                           Vec&           rhs,
                           Ctx&           ctx) const override;
 
@@ -94,12 +87,7 @@ private:
 };
 
 using HostConstrainedTimeResidual =
-    ConstrainedTimeResidual<linalg::HostCsrBackend>;
+    ConstrainedTimeResidual<MemorySpace::Host>;
 using DeviceConstrainedTimeResidual =
-    ConstrainedTimeResidual<linalg::CudaCsrBackend>;
-#if defined(FEMX_HAS_PETSC)
-using PetscConstrainedTimeResidual =
-    ConstrainedTimeResidual<linalg::PetscBackend>;
-#endif
-
+    ConstrainedTimeResidual<MemorySpace::Device>;
 } // namespace femx::assembly

@@ -8,9 +8,12 @@
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/View.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -303,22 +306,22 @@ Index DeviceTimePointInterpolator::numObservations() const
 void DeviceTimePointInterpolator::observe(Index                        level,
                                           DeviceVectorView<const Real> state,
                                           DeviceVectorView<Real>       out,
-                                          CudaContext&                 ctx) const
+                                          linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaMatrixHandler mat_handler(ctx);
-  mat_handler.matvec(data_.matrix(), state, out);
+  linalg::CudaJacobian jacobian(ctx);
+  jacobian.apply(data_.matrix(), state, out);
 }
 
 void DeviceTimePointInterpolator::addStateJacT(
     Index                        level,
     DeviceVectorView<const Real> dir,
     DeviceVectorView<Real>       out,
-    CudaContext&                 ctx) const
+    linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaMatrixHandler mat_handler(ctx);
-  mat_handler.matvecT(data_.matrix(), dir, out, 1.0, 1.0);
+  linalg::CudaJacobian jacobian(ctx);
+  jacobian.applyT(data_.matrix(), dir, out, 1.0, 1.0);
 }
 
 void DeviceTimePointInterpolator::checkLevel(Index level) const
@@ -380,7 +383,7 @@ Index TimePointInterpolator::numObservations() const
 }
 
 std::unique_ptr<DeviceTimeObservationOperator>
-TimePointInterpolator::copyToDevice(CudaContext& ctx) const
+TimePointInterpolator::copyToDevice(linalg::CudaContext& ctx) const
 {
   auto out = std::make_unique<DeviceTimePointInterpolator>();
   copy(*this, *out, ctx);
@@ -398,9 +401,9 @@ void TimePointInterpolator::observe(Index                   level,
   {
     out.resize(numObservations());
   }
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.matvec(data_.matrix(), state.view(), out.view());
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.apply(data_.matrix(), state.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJac(Index                   level,
@@ -418,9 +421,9 @@ void TimePointInterpolator::applyStateJac(Index                   level,
   {
     out.resize(numObservations());
   }
-  CpuContext                ctx;
-  linalg::HostMatrixHandler mat_handler(ctx);
-  mat_handler.matvec(data_.matrix(), dir.view(), out.view());
+  linalg::HostContext  ctx;
+  linalg::HostJacobian jacobian(ctx);
+  jacobian.apply(data_.matrix(), dir.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJacT(Index                   level,
@@ -434,11 +437,11 @@ void TimePointInterpolator::applyStateJacT(Index                   level,
   require(dir.size() == numObservations(),
           "TimePointInterpolator observation direction size mismatch");
 
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
-  linalg::HostMatrixHandler mat_handler(ctx);
+  linalg::HostContext  ctx;
+  auto&                vec_handler = ctx.vectors();
+  linalg::HostJacobian jacobian(ctx);
   vec_handler.resizeOrZero(out, numStates());
-  mat_handler.matvecT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
+  jacobian.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }
 
 void TimePointInterpolator::applyParamJac(Index                   level,
@@ -452,8 +455,8 @@ void TimePointInterpolator::applyParamJac(Index                   level,
   require(dir.size() == numParams(),
           "TimePointInterpolator parameter direction size mismatch");
 
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numObservations());
 }
 
@@ -468,8 +471,8 @@ void TimePointInterpolator::applyParamJacT(Index                   level,
   require(dir.size() == numObservations(),
           "TimePointInterpolator observation direction size mismatch");
 
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numParams());
 }
 

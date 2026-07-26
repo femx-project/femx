@@ -1,4 +1,4 @@
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScLinearSolver.hpp>
 
 int main()
 {

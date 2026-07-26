@@ -8,8 +8,8 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/native/HostJacobian.hpp>
 
 namespace femx
 {
@@ -43,25 +43,19 @@ public:
     return pattern_;
   }
 
-  const HostCsrPattern& pattern() const override
-  {
-    return pattern_;
-  }
-
-  void initialState(HostVectorView<const Real> prm,
-                    HostVector<Real>&          out,
-                    CpuContext&                ctx) const override
+  void initialState(HostVectorView<const Real>          prm,
+                    HostVector<Real>&                   out,
+                    linalg::Context<MemorySpace::Host>& ctx) const override
   {
     require(prm.empty(), "Identity residual is parameter-free");
-    linalg::HostVectorHandler vec_handler(ctx);
-    vec_handler.resizeOrZero(out, 3);
+    ctx.vectors().resizeOrZero(out, 3);
   }
 
   void applyJacT(const state::HostTimeContext&,
-                 state::VariableBlock       wrt,
-                 HostVectorView<const Real> adj,
-                 HostVector<Real>&          out,
-                 CpuContext&                ctx) const override
+                 state::VariableBlock                wrt,
+                 HostVectorView<const Real>          adj,
+                 HostVector<Real>&                   out,
+                 linalg::Context<MemorySpace::Host>& ctx) const override
   {
     require(!wrt.isNextState(),
             "Identity transpose apply supports history and parameters");
@@ -70,28 +64,26 @@ public:
       out.resize(0);
       return;
     }
-    linalg::HostVectorHandler vec_handler(ctx);
-    vec_handler.resizeOrZero(out, 3);
+    ctx.vectors().resizeOrZero(out, 3);
   }
 
-  void assembleNext(const state::HostTimeContext& time,
-                    HostVector<Real>&             res,
-                    HostCsrMatrix&                out,
-                    CpuContext&                   ctx) const override
+  void assembleNext(const state::HostTimeContext&        time,
+                    HostVector<Real>&                    res,
+                    linalg::Jacobian<MemorySpace::Host>& out,
+                    linalg::Context<MemorySpace::Host>&) const override
   {
     res = time.nxt;
-    linalg::HostMatrixHandler mat_handler(ctx);
-    mat_handler.zero(out);
-    for (Index i = 0; i < 3; ++i)
-    {
-      for (Index k = out.rowPtrData()[i]; k < out.rowPtrData()[i + 1]; ++k)
-      {
-        if (out.colIndData()[k] == i)
-        {
-          out.valsData()[k] = 1.0;
-        }
-      }
-    }
+    const HostVector<Index> rows{0, 1, 2};
+    const HostVector<Index> entries{0, 1, 2, 3, 4, 5, 6, 7, 8};
+    DenseMatrix             values(3, 3);
+    values(0, 0) = 1.0;
+    values(1, 1) = 1.0;
+    values(2, 2) = 1.0;
+
+    out.begin(pattern_);
+    out.addElement(
+        {rows.view(), rows.view(), entries.view(), values.view()});
+    out.finalize();
   }
 
 private:
@@ -166,18 +158,18 @@ TestOutcome mappedTimeDirichletResidual()
       next.view(),
       parameters.view(),
       state::HostTimeHistoryView(history.data(), 1, 3)};
-  CpuContext cpu;
+  linalg::HostContext cpu;
 
   HostVector<Real> out;
-  HostCsrMatrix    jac(res.pattern());
   res.initialState(parameters.view(), out, cpu);
   status *= valsNear(out, std::array<Real, 3>{{8.0, 14.0, -4.0}});
   const HostVector<Real> initial_adj{1.0, 2.0, 3.0};
   HostVector<Real>       initial_grad(2);
-  res.addInitialStateJacobianTranspose(
+  res.addInitialStateJacT(
       initial_adj.view(), initial_grad.view(), cpu);
   status *= valsNear(initial_grad, std::array<Real, 2>{{5.0, 0.0}});
 
+  linalg::HostJacobian jac(cpu);
   res.assembleNext(ctx, out, jac, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 

@@ -2,10 +2,10 @@
 
 from ._core import __version__
 from ._core import (
-    DenseLinearSolver,
     EnsembleBasis,
+    ExecutionDevice,
     FluidParams,
-    HostCsrLinearSolver,
+    SolverType,
     SumTimeObjective,
     TimeBlockRegularization,
     TimeDims,
@@ -23,6 +23,7 @@ from ._core import (
 from .mesh import BoundarySurface, Mesh
 from .navier_stokes import (
     DirichletBC,
+    execution_devices,
     InitialStateControl,
     NavierStokesModel,
     NavierStokesProblem,
@@ -36,19 +37,18 @@ from .navier_stokes import (
     VelocityControl,
     TaoOptimizer,
     TaoResult,
-    solver_backends,
+    solver_types,
 )
 from .observation import GaussianObservation, VelocityObservationOperator
 
 __all__ = [
     "BoundarySurface",
-    "DenseLinearSolver",
     "DirichletBC",
     "EnsembleBasis",
+    "ExecutionDevice",
     "FluidParams",
     "GaussianObservation",
     "InitialStateControl",
-    "HostCsrLinearSolver",
     "Mesh",
     "NavierStokesModel",
     "NavierStokesProblem",
@@ -60,7 +60,9 @@ __all__ = [
     "petsc_rank",
     "petsc_size",
     "VelocityControl",
-    "solver_backends",
+    "solver_types",
+    "execution_devices",
+    "SolverType",
     "SumTimeObjective",
     "TaoOptimizer",
     "TaoResult",

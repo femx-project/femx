@@ -3,23 +3,11 @@ target_include_directories(runLinalgTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runLinalgTests PRIVATE femx::femx)
 add_test(NAME LinalgTests COMMAND runLinalgTests)
 
-add_executable(runMemorySpaceTests unit/backend/runMemorySpaceTests.cpp)
-target_include_directories(runMemorySpaceTests
+add_executable(runHostAssemblyTests unit/assembly/runHostAssemblyTests.cpp)
+target_include_directories(runHostAssemblyTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runMemorySpaceTests PRIVATE femx::state)
-add_test(NAME MemorySpaceTests COMMAND runMemorySpaceTests)
-
-add_executable(runBackendAssemblyTests unit/backend/runBackendAssemblyTests.cpp)
-target_include_directories(runBackendAssemblyTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runBackendAssemblyTests PRIVATE femx::femx)
-add_test(NAME BackendAssemblyTests COMMAND runBackendAssemblyTests)
-
-add_executable(runBackendStateTests unit/backend/runBackendStateTests.cpp)
-target_include_directories(runBackendStateTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runBackendStateTests PRIVATE femx::femx)
-add_test(NAME BackendStateTests COMMAND runBackendStateTests)
+target_link_libraries(runHostAssemblyTests PRIVATE femx::femx)
+add_test(NAME HostAssemblyTests COMMAND runHostAssemblyTests)
 
 add_executable(
   runPoissonAssemblyTests
@@ -33,7 +21,7 @@ target_link_libraries(runPoissonAssemblyTests PRIVATE femx::femx)
 add_test(NAME PoissonAssemblyTests COMMAND runPoissonAssemblyTests)
 
 if(FEMX_HAS_CUDA)
-  add_executable(runCudaAssemblyTests unit/backend/runCudaAssemblyTests.cu)
+  add_executable(runCudaAssemblyTests unit/assembly/runCudaAssemblyTests.cu)
   target_include_directories(runCudaAssemblyTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runCudaAssemblyTests PRIVATE femx::femx)
@@ -42,7 +30,7 @@ if(FEMX_HAS_CUDA)
   add_test(NAME CudaAssemblyTests COMMAND runCudaAssemblyTests)
   set_tests_properties(CudaAssemblyTests PROPERTIES LABELS "cuda;optional")
 
-  add_executable(runCudaLinalgTests unit/backend/runCudaLinalgTests.cu)
+  add_executable(runCudaLinalgTests unit/linalg/runCudaLinalgTests.cu)
   target_include_directories(runCudaLinalgTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runCudaLinalgTests PRIVATE femx::linalg)
@@ -56,8 +44,8 @@ endif()
 if(FEMX_HAS_CUDA
    AND FEMX_HAS_RESOLVE_CUDA
    AND TARGET femx_linalg_resolve
-   AND NOT FEMX_RESOLVE_BACKEND_MODE STREQUAL "CPU")
-  add_executable(runReSolveDeviceTests unit/backend/runReSolveDeviceTests.cpp)
+   AND NOT FEMX_RESOLVE_DEVICE_MODE STREQUAL "HOST")
+  add_executable(runReSolveDeviceTests unit/linalg/runReSolveDeviceTests.cpp)
   target_include_directories(runReSolveDeviceTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runReSolveDeviceTests PRIVATE femx::linalg_resolve)
@@ -146,16 +134,6 @@ if(TARGET femx_linalg_resolve)
   set_tests_properties(ReSolveSolverTests PROPERTIES LABELS "resolve;optional")
 endif()
 
-if(TARGET femx_linalg_petsc)
-  add_executable(runPETScSolverTests unit/linalg/runPETScSolverTests.cpp)
-  target_include_directories(runPETScSolverTests
-                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(runPETScSolverTests
-                        PRIVATE femx::linalg_petsc femx::assembly femx::inverse)
-  add_test(NAME PETScSolverTests COMMAND runPETScSolverTests)
-  set_tests_properties(PETScSolverTests PROPERTIES LABELS "petsc;optional")
-endif()
-
 add_executable(runStateTests unit/state/runStateTests.cpp)
 target_include_directories(runStateTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runStateTests PRIVATE femx::state)
@@ -166,10 +144,8 @@ target_include_directories(runInverseTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runInverseTests PRIVATE femx::inverse)
 add_test(NAME InverseTests COMMAND runInverseTests)
 
-add_executable(runNsModelTests
-               unit/model/ns/runModelTests.cpp)
-target_include_directories(runNsModelTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(runNsModelTests unit/model/ns/runModelTests.cpp)
+target_include_directories(runNsModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runNsModelTests PRIVATE femx::femx)
 add_test(NAME NsModelTests COMMAND runNsModelTests)
 
@@ -181,21 +157,7 @@ if(TARGET femx_ns_forward_support)
   target_compile_definitions(
     runNsForwardConfigTests
     PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  target_link_libraries(runNsForwardConfigTests
-                        PRIVATE femx::apps::ns_forward)
+  target_link_libraries(runNsForwardConfigTests PRIVATE femx::apps::ns_forward)
   add_test(NAME NsForwardConfigTests COMMAND runNsForwardConfigTests)
   set_tests_properties(NsForwardConfigTests PROPERTIES LABELS "ns;app;focused")
 endif()
-
-add_executable(runElementKernelTests unit/model/ns/runElementKernelTests.cpp)
-target_include_directories(runElementKernelTests
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runElementKernelTests PRIVATE femx::femx)
-if(FEMX_HAS_CUDA)
-  set_source_files_properties(unit/model/ns/runElementKernelTests.cpp
-                              PROPERTIES LANGUAGE CUDA)
-  set_target_properties(runElementKernelTests
-                        PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
-endif()
-add_test(NAME ElementKernelTests COMMAND runElementKernelTests)
-set_tests_properties(ElementKernelTests PROPERTIES LABELS "ns;focused")

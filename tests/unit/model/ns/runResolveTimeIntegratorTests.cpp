@@ -9,7 +9,8 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/cuda/CudaLinearSystem.hpp>
+#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/Model.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -42,7 +43,7 @@ bool trajectoriesNear(const state::TimeTrajectory& lhs,
 TestOutcome resolveCudaAdvancesTwoSteps()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available())
+  if (!linalg::CudaContext::available())
   {
     status.skipTest();
     return status.report();
@@ -92,27 +93,24 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         model.residual(),
         fem::makeControlMap(
             steps, model.numStates(), {}, dofs, vals, {}, 0, 0));
-    HostCsrMatrix               cpu_mat(model.map().pattern());
-    linalg::ReSolveLinearSolver cpu_solver;
-    CpuContext                  cpu_ctx;
-    state::HostTimeIntegrator   cpu(
-        cpu_res, cpu_mat, cpu_solver, cpu_ctx);
+    linalg::HostLinearSystem cpu_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
+    state::HostTimeIntegrator cpu(cpu_res, cpu_system);
     cpu.setInitialState(init);
     state::TimeTrajectory expected;
     cpu.solve(prm.view(), expected);
 
     auto control = fem::makeControlMap(
         steps, model.numStates(), {}, dofs, vals, {}, 0, 0);
-    CudaContext cuda_ctx;
-    auto        cuda_res = model::ns::makeDeviceTimeResidual(
-        model, std::move(control));
-    DeviceCsrMatrix             cuda_mat(cuda_res->pattern());
-    linalg::ReSolveLinearSolver cuda_solver;
-    state::DeviceTimeIntegrator cuda(
-        *cuda_res, cuda_mat, cuda_solver, cuda_ctx);
-    DeviceVector<Real>        device_initial;
-    DeviceVector<Real>        device_parameters;
-    linalg::CudaVectorHandler vec_handler(cuda_ctx);
+    linalg::CudaLinearSystem cuda_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
+    auto cuda_res = model::ns::makeDeviceTimeResidual(
+        model, std::move(control), {}, cuda_system.context());
+    state::DeviceTimeIntegrator cuda(*cuda_res, cuda_system);
+    auto&                       cuda_ctx = cuda_system.context();
+    DeviceVector<Real>          device_initial;
+    DeviceVector<Real>          device_parameters;
+    auto&                       vec_handler = cuda_ctx.vectors();
     vec_handler.copy(init, device_initial);
     vec_handler.copy(prm, device_parameters);
     cuda_ctx.sync();

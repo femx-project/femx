@@ -210,7 +210,7 @@ inlets, outlets, or a moving cavity lid when the wall should own the rim.
 
 ## Run
 
-From your build directory, run the executable for the backend you enabled:
+From your build directory, run the executable for the solver you enabled:
 
 ```shell
 ./apps/ns-forward/ns-forward-resolve \

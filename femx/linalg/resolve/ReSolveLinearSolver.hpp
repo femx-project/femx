@@ -3,7 +3,6 @@
 #include <memory>
 #include <string>
 
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
@@ -41,8 +40,9 @@ struct ReSolveOptions
  * not stage matrices or vectors through Host memory. Host and CUDA resources
  * are initialized independently on first use.
  */
-class ReSolveLinearSolver final : public HostCsrLinearSolver,
-                                  public DeviceLinearSolver
+class ReSolveLinearSolver final
+  : public LinearSolver<MemorySpace::Host>,
+    public LinearSolver<MemorySpace::Device>
 {
 public:
   /** @brief Construct a solver with default ReSolve options. */
@@ -67,10 +67,10 @@ public:
    * @throws std::runtime_error - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
-  void solve(const HostCsrMatrix&    mat,
-             const HostVector<Real>& rhs,
-             HostVector<Real>&       sol,
-             CpuContext&             ctx) override;
+  void solve(const HostCsrMatrix&        mat,
+             const HostVector<Real>&     rhs,
+             HostVector<Real>&           sol,
+             Context<MemorySpace::Host>& ctx) override;
 
   /**
    * @brief Solve `mat^T * sol = rhs` on Host.
@@ -82,10 +82,10 @@ public:
    * @throws std::runtime_error - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
-  void solveT(const HostCsrMatrix&    mat,
-              const HostVector<Real>& rhs,
-              HostVector<Real>&       sol,
-              CpuContext&             ctx) override;
+  void solveT(const HostCsrMatrix&        mat,
+              const HostVector<Real>&     rhs,
+              HostVector<Real>&           sol,
+              Context<MemorySpace::Host>& ctx) override;
 
   /**
    * @brief Solve `mat * sol = rhs` on Device without Host staging.
@@ -94,13 +94,13 @@ public:
    * @param[in] rhs - Device right-hand side vector.
    * @param[out] sol - Device solution vector.
    * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA backend, or solver
+   * @throws std::runtime_error - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
-  void solve(const DeviceCsrMatrix&    mat,
-             const DeviceVector<Real>& rhs,
-             DeviceVector<Real>&       sol,
-             CudaContext&              ctx) override;
+  void solve(const DeviceCsrMatrix&        mat,
+             const DeviceVector<Real>&     rhs,
+             DeviceVector<Real>&           sol,
+             Context<MemorySpace::Device>& ctx) override;
 
   /**
    * @brief Solve `mat^T * sol = rhs` on Device.
@@ -109,13 +109,13 @@ public:
    * @param[in] rhs - Device right-hand side vector.
    * @param[out] sol - Device solution vector.
    * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA backend, or solver
+   * @throws std::runtime_error - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
-  void solveT(const DeviceCsrMatrix&    mat,
-              const DeviceVector<Real>& rhs,
-              DeviceVector<Real>&       sol,
-              CudaContext&              ctx) override;
+  void solveT(const DeviceCsrMatrix&        mat,
+              const DeviceVector<Real>&     rhs,
+              DeviceVector<Real>&           sol,
+              Context<MemorySpace::Device>& ctx) override;
 
   ReSolveLinearSolver(const ReSolveLinearSolver&) = delete;
 

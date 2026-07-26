@@ -3,8 +3,7 @@ add_library(femx::assembly ALIAS femx_assembly)
 
 target_sources(
   femx_assembly
-  PRIVATE Assembly.cpp AssemblyMap.cpp BoundaryMap.cpp
-          ConstrainedTimeResidual.cpp
+  PRIVATE AssemblyMap.cpp BoundaryMap.cpp ConstrainedTimeResidual.cpp
   PUBLIC Assembly.hpp AssemblyMap.hpp BoundaryMap.hpp
          ConstrainedTimeResidual.hpp CudaAssembly.hpp)
 

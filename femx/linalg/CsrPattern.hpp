@@ -8,19 +8,16 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/common/Context.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
 
 namespace linalg
 {
-struct CudaCsrBackend;
-
-template <class Backend>
-class MatrixHandler;
+class CudaJacobian;
 } // namespace linalg
 
 namespace detail
@@ -181,8 +178,8 @@ private:
 
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
-                   CudaContext&);
-  friend class linalg::MatrixHandler<linalg::CudaCsrBackend>;
+                   linalg::CudaContext&);
+  friend class linalg::CudaJacobian;
 
   void checkSizes() const
   {
@@ -224,7 +221,7 @@ private:
  */
 inline void copy(const HostCsrPattern& src,
                  DeviceCsrPattern&     dst,
-                 CudaContext&          ctx)
+                 linalg::CudaContext&  ctx)
 {
   DeviceVector<Index> row_ptr;
   DeviceVector<Index> col_ind;

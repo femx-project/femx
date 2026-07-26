@@ -4,8 +4,8 @@
 
 #include "../ExampleHelper.hpp"
 #include "PoissonForward.hpp"
-#include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/state/StateSolver.hpp>
 
 using namespace femx;
 using namespace femx::assembly;
@@ -22,29 +22,30 @@ namespace
 
 int run(const Options& opts)
 {
-  if (opts.backend != MemorySpace::Host)
+  constexpr auto solver_type = runtime::SolverType::Dense;
+  if (opts.execution_device != runtime::ExecutionDevice::Host)
   {
-    throw std::runtime_error("Dense Poisson backend supports only 'cpu'");
+    throw std::runtime_error(
+        "Dense Poisson supports only Host execution");
   }
 
-  ExampleHelper         helper("dense", opts.backend, outputDir());
+  ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
   PoissonForwardProblem problem(opts);
 
-  HostCsrMatrix    A(problem.map().pattern());
-  HostVector<Real> rhs;
-  problem.assemble(A, rhs);
+  auto system = runtime::makeHostLinearSystem(solver_type);
 
-  DenseLinearSolver solver;
-  CpuContext        ctx;
+  state::HostLinearStateSolver solver(problem, *system);
+  const HostVector<Real>       prm;
 
   HostVector<Real> x;
-  solver.solve(A, rhs, x, ctx);
+  solver.solve(prm, x);
 
   printReport(std::cout,
               helper.name(),
               problem,
               problem.errorReport(x),
-              helper.resNorm(A, rhs, x, ctx));
+              helper.resNorm(
+                  problem, x, prm, system->context()));
 
   if (opts.write_output)
   {
@@ -64,7 +65,10 @@ int main(int argc, char* argv[])
   {
     if (examples::hasHelp(argc, argv))
     {
-      printUsage(FEMX_POISSON_APP_NAME, false, "dense solver supports cpu only");
+      printUsage(
+          FEMX_POISSON_APP_NAME,
+          false,
+          "dense solver supports Host execution only");
       return 0;
     }
     return run(parseOptions(argc, argv, false));

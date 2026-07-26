@@ -15,8 +15,7 @@ minor releases.
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve built from the `develop` branch, for CPU/CUDA linear solver
-  backends
+- Re::Solve built from the `develop` branch, for Host/Device linear solves
 - PETSc 3.19 or later (tested with PETSc 3.19.6)
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
@@ -100,10 +99,10 @@ optional solver packages. Run it from your build directory:
 See [examples/poisson](examples/poisson) for the problem definition and
 available solver variants.
 
-Backend-specific examples are available when their dependencies are enabled:
+Optional solver examples are available when their dependencies are enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 -b cpu --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --device host --output yes
 ```
 
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
@@ -118,7 +117,7 @@ definition.
 ## Run Apps
 
 The Navier-Stokes forward app provides separate configuration sets for ReSolve
-and PETSc. From your build directory, run the executable for the backend you
+and PETSc. From your build directory, run the executable for the solver you
 enabled:
 
 ```shell
@@ -138,7 +137,7 @@ Common options:
 
 - `FEMX_ENABLE_HDF5=ON|OFF`
 - `FEMX_ENABLE_RESOLVE=ON|OFF`
-- `FEMX_RESOLVE_BACKEND=AUTO|CPU|CUDA`
+- `FEMX_RESOLVE_DEVICE=AUTO|HOST|DEVICE`
 - `FEMX_ENABLE_PETSC=ON|OFF`
 - `PETSC_DIR=/path/to/petsc`
 - `PETSC_ARCH=...`

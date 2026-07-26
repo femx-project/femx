@@ -16,18 +16,10 @@ add_library(femx::apps::ns_forward ALIAS femx_ns_forward_support)
 
 target_sources(
   femx_ns_forward_support
-  PRIVATE BoundaryConditions.cpp
-          CommandLine.cpp
-          Config.cpp
-          Monitor.cpp
-          Problem.cpp
-          Solve.cpp
-  PUBLIC BoundaryConditions.hpp
-         CommandLine.hpp
-         Config.hpp
-         Monitor.hpp
-         Problem.hpp
-         Solve.hpp)
+  PRIVATE BoundaryConditions.cpp CommandLine.cpp Config.cpp Monitor.cpp
+          Problem.cpp Solve.cpp
+  PUBLIC BoundaryConditions.hpp CommandLine.hpp Config.hpp Monitor.hpp
+         Problem.hpp Solve.hpp)
 
 target_include_directories(
   femx_ns_forward_support

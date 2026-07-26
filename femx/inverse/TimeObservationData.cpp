@@ -9,7 +9,8 @@
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
 
@@ -151,8 +152,8 @@ HostVectorView<const Real> TimeObservationData::operator[](Index level) const
 
 void TimeObservationData::setZero()
 {
-  CpuContext                ctx;
-  linalg::HostVectorHandler vec_handler(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectors();
   vec_handler.zero(data_.view());
 }
 

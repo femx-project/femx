@@ -14,6 +14,8 @@
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/cuda/CudaLinearSystem.hpp>
+#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/Model.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -121,7 +123,7 @@ ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
 TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 {
   TestStatus status(__func__);
-  if (!CudaContext::available() || !ad::has_enzyme)
+  if (!linalg::CudaContext::available() || !ad::has_enzyme)
   {
     status.skipTest();
     return status.report();
@@ -174,28 +176,23 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 
     assembly::HostConstrainedTimeResidual cpu_res(
         model.residual(), ctr, init);
-    HostCsrMatrix                      fwd_mat(model.map().pattern());
-    linalg::ReSolveLinearSolver        fwd_solver;
-    CpuContext                         cpu_ctx;
-    state::HostTimeIntegrator          cpu_integ(cpu_res,
-                                        fwd_mat,
-                                        fwd_solver,
-                                        cpu_ctx);
-    HostCsrMatrix                      adj_mat(model.map().pattern());
-    linalg::ReSolveLinearSolver        adj_solver;
+    linalg::HostLinearSystem cpu_fwd_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
+    state::HostTimeIntegrator cpu_integ(cpu_res, cpu_fwd_system);
+    linalg::HostLinearSystem  cpu_adj_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
     inverse::HostTimeReducedFunctional cpu(
-        cpu_integ, adj_mat, adj_solver, obj);
+        cpu_integ, cpu_adj_system, obj);
 
-    CudaContext                 cuda_ctx;
-    auto                        cuda_res = model::ns::makeDeviceTimeResidual(model, ctr, init);
-    DeviceCsrMatrix             cuda_mat(cuda_res->pattern());
-    linalg::ReSolveLinearSolver cuda_fwd_solver;
-    state::DeviceTimeIntegrator cuda_integ(
-        *cuda_res, cuda_mat, cuda_fwd_solver, cuda_ctx);
-    DeviceCsrMatrix                      cuda_adj_mat(cuda_res->pattern());
-    linalg::ReSolveLinearSolver          cuda_adj_solver;
+    linalg::CudaLinearSystem cuda_fwd_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
+    auto cuda_res = model::ns::makeDeviceTimeResidual(
+        model, ctr, init, cuda_fwd_system.context());
+    state::DeviceTimeIntegrator cuda_integ(*cuda_res, cuda_fwd_system);
+    linalg::CudaLinearSystem    cuda_adj_system(
+        std::make_unique<linalg::ReSolveLinearSolver>());
     inverse::DeviceTimeReducedFunctional cuda(
-        cuda_integ, cuda_adj_mat, cuda_adj_solver, obj);
+        cuda_integ, cuda_adj_system, obj);
 
     const HostVector<Real> prm{0.25, 0.35, 0.65};
     HostVector<Real>       cpu_grad(num_prm);

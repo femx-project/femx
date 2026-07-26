@@ -3,42 +3,36 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/inverse/Objective.hpp>
-#include <femx/linalg/Backend.hpp>
-#include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/handler/MatrixHandler.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
+#include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx::inverse
 {
 
-/** @brief Backend-independent stationary reduced objective and adjoint solve. */
-template <class Backend>
+/** @brief Evaluate a stationary reduced objective and its adjoint gradient. */
+template <MemorySpace Space>
 class ReducedFunctional final
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "ReducedFunctional requires a valid backend type");
-  static_assert(Backend::space == MemorySpace::Host,
+  static_assert(Space == MemorySpace::Host,
                 "ReducedFunctional requires Host objective storage");
 
 public:
-  using Vec         = typename Backend::Vec;
-  using Mat         = typename Backend::Mat;
-  using Ctx         = typename Backend::Ctx;
-  using Res         = state::Residual<Backend>;
-  using StateSolver = state::StateSolver<Backend>;
-  using LinSolver   = linalg::LinearSolver<Backend>;
+  using Vec         = Vector<Space, Real>;
+  using Ctx         = linalg::Context<Space>;
+  using Res         = state::Residual<Space>;
+  using StateSolver = state::StateSolver<Space>;
+  using System      = linalg::LinearSystem<Space>;
 
   ReducedFunctional(StateSolver&     state_solver,
-                    Mat&             adj_jac,
-                    LinSolver&       adj_solver,
+                    System&          adj_system,
                     const Objective& obj)
     : state_solver_(state_solver),
       res_(state_solver.residual()),
-      adj_jac_(adj_jac),
-      adj_solver_(adj_solver),
-      ctx_(state_solver.context()),
+      adj_system_(adj_system),
+      ctx_(adj_system.context()),
       obj_(obj),
       dims_(res_.dims()),
       state_(dims_.num_states),
@@ -93,14 +87,15 @@ private:
 
   void gradAt(const Vec& prm, Vec& out)
   {
-    linalg::VectorHandler<Backend> vec_handler(ctx_);
-    linalg::MatrixHandler<Backend> mat_handler(ctx_);
+    auto& vec_handler = ctx_.vectors();
     obj_.stateGrad(state_, prm, state_grad_);
     checkSize(state_grad_, dims_.num_states);
 
-    res_.assembleStateJac(state_, prm, adj_jac_, ctx_);
-    mat_handler.finalize(adj_jac_);
-    adj_solver_.solveT(adj_jac_, state_grad_, adj_, ctx_);
+    auto& jac = adj_system_.jacobian();
+    jac.begin(res_.hostPattern());
+    res_.assembleStateJac(state_, prm, jac, ctx_);
+    jac.finalize();
+    adj_system_.solveT(state_grad_.view(), adj_);
     checkSize(adj_, dims_.num_res);
 
     obj_.paramGrad(state_, prm, prm_grad_);
@@ -124,8 +119,7 @@ private:
 
   StateSolver&      state_solver_;
   const Res&        res_;
-  Mat&              adj_jac_;
-  LinSolver&        adj_solver_;
+  System&           adj_system_;
   Ctx&              ctx_;
   const Objective&  obj_;
   state::Dimensions dims_;
@@ -136,7 +130,6 @@ private:
   Vec               res_prm_adj_;
 };
 
-using HostReducedFunctional =
-    ReducedFunctional<linalg::HostCsrBackend>;
+using HostReducedFunctional = ReducedFunctional<MemorySpace::Host>;
 
 } // namespace femx::inverse

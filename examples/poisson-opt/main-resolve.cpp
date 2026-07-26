@@ -1,12 +1,12 @@
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
 #include "../ExampleHelper.hpp"
 #include "PoissonOpt.hpp"
-#include <femx/linalg/Backend.hpp>
-#include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 
 using namespace femx;
@@ -25,21 +25,17 @@ namespace
 
 int run(const Options& opts)
 {
-  ExampleHelper     helper("resolve", MemorySpace::Host, outputDir());
+  constexpr auto    solver = SolverType::ReSolve;
+  ExampleHelper     helper(solver, ExecutionDevice::Host, outputDir());
   PoissonOptProblem problem(opts);
 
-  HostCsrMatrix       fwd_jac(problem.stateMap().pattern());
-  HostCsrMatrix       adj_jac(problem.stateMap().pattern());
-  ReSolveLinearSolver fwd_lin_solver;
-  ReSolveLinearSolver adj_lin_solver;
-  CpuContext          ctx;
+  auto forward_system = makeHostLinearSystem(
+      solver, std::make_unique<ReSolveLinearSolver>());
+  auto adjoint_system = makeHostLinearSystem(
+      solver, std::make_unique<ReSolveLinearSolver>());
 
-  const Result result = solve<HostCsrBackend>(problem,
-                                              fwd_jac,
-                                              fwd_lin_solver,
-                                              adj_jac,
-                                              adj_lin_solver,
-                                              ctx);
+  const Result result =
+      solve(problem, *forward_system, *adjoint_system);
 
   printReport(std::cout,
               helper.name(),

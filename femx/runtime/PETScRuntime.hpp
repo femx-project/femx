@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/runtime/Parallel.hpp>
 
 namespace femx::runtime
@@ -79,23 +79,6 @@ inline bool isRoot(MPI_Comm comm = PETSC_COMM_WORLD)
   return commRank(comm) == 0;
 }
 
-inline IndexRange mpiPartitionRange(Index    count,
-                                    MPI_Comm comm = PETSC_COMM_WORLD)
-{
-  return partitionRange(count,
-                        static_cast<Index>(commRank(comm)),
-                        static_cast<Index>(commSize(comm)));
-}
-
-template <typename ElementRangeOwner>
-void setElemRange(ElementRangeOwner& owner,
-                  Index              num_elems,
-                  MPI_Comm           comm = PETSC_COMM_WORLD)
-{
-  const IndexRange elems = mpiPartitionRange(num_elems, comm);
-  owner.setElemRange(elems.begin, elems.end);
-}
-
 inline void setPetscOptionIfMissing(const char* name,
                                     const char* value)
 {
@@ -112,8 +95,8 @@ inline void setPetscOptionIfMissing(const char* name,
 }
 
 template <typename SolverParams>
-void setMumpsKspOptions(linalg::KspLinearSolver& solver,
-                        const SolverParams&      prm)
+void setMumpsKspOptions(linalg::PETScLinearSolver& solver,
+                        const SolverParams&        prm)
 {
   auto& opts       = solver.opts();
   opts.restart     = 200;

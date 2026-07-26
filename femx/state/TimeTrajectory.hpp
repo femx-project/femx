@@ -5,8 +5,9 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 
 namespace femx::state
 {
@@ -88,8 +89,8 @@ public:
 
   void setZero()
   {
-    CpuContext                ctx;
-    linalg::HostVectorHandler vec_handler(ctx);
+    linalg::HostContext ctx;
+    auto&               vec_handler = ctx.vectors();
     vec_handler.zero(data_.view());
   }
 

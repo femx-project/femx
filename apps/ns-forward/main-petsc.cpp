@@ -9,9 +9,9 @@
 #include "Config.hpp"
 #include "Problem.hpp"
 #include "Solve.hpp"
-#include <femx/linalg/petsc/KspLinearSolver.hpp>
-#include <femx/linalg/petsc/PETScOperator.hpp>
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/BuildInfo.hpp>
+#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -72,7 +72,7 @@ BuildInfo makeBuildInfo()
             + std::to_string(PETSC_VERSION_SUBMINOR)}}};
 }
 
-void setKspOptions(KspLinearSolver& solver, const SolverConfig& prm)
+void setKspOptions(PETScLinearSolver& solver, const SolverConfig& prm)
 {
   auto& opts       = solver.opts();
   opts.restart     = prm.restart;
@@ -122,20 +122,21 @@ int run(const Config& prm)
   }
 
   Problem fwd(prm);
-  setElemRange(fwd.model, fwd.model.mesh().numElems());
 
-  PETScOperator A(PETSC_COMM_WORLD);
-  A.resize(fwd.model.map().pattern());
+  constexpr auto device = ExecutionDevice::Host;
+  constexpr auto solver = SolverType::PETSc;
+  if (!supportsLinearSystem(device, solver))
+  {
+    throw std::runtime_error(
+        "Requested PETSc Host linear system is unavailable");
+  }
 
-  KspLinearSolver solver(PETSC_COMM_WORLD);
-  setKspOptions(solver, prm.solver);
+  auto  system       = makeHostLinearSystem(solver);
+  auto& petsc_system = dynamic_cast<PETScLinearSystem&>(*system);
 
-  auto                                   base_res = model::ns::makePetscTimeResidual(fwd.model);
-  assembly::PetscConstrainedTimeResidual res(*base_res, fwd.residual.controlMap());
+  setKspOptions(petsc_system.solver(), prm.solver);
 
-  PetscContext ctx{PETSC_COMM_WORLD};
-
-  TimeIntegrator<PetscBackend> integ(res, A, solver, ctx);
+  HostTimeIntegrator integ(fwd.residual, *system);
   integ.setInitialState(fwd.initial_state);
 
   std::ofstream log_out;

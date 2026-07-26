@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/handler/VectorHandler.hpp>
+#include <femx/linalg/Context.hpp>
 #include <femx/linalg/native/DenseLinearSolver.hpp>
 
 namespace femx::linalg
@@ -16,10 +16,10 @@ DenseLinearSolver::DenseLinearSolver(Real pivot_tolerance)
           "DenseLinearSolver pivot tolerance must be non-negative");
 }
 
-void DenseLinearSolver::solve(const HostCsrMatrix&    mat,
-                              const HostVector<Real>& rhs,
-                              HostVector<Real>&       out,
-                              CpuContext&             ctx)
+void DenseLinearSolver::solve(const HostCsrMatrix&        mat,
+                              const HostVector<Real>&     rhs,
+                              HostVector<Real>&           out,
+                              Context<MemorySpace::Host>& ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.rows(),
           "DenseLinearSolver received inconsistent CSR dimensions");
@@ -28,10 +28,10 @@ void DenseLinearSolver::solve(const HostCsrMatrix&    mat,
   solveDense(std::move(dense), rhs, out, ctx);
 }
 
-void DenseLinearSolver::solveT(const HostCsrMatrix&    mat,
-                               const HostVector<Real>& rhs,
-                               HostVector<Real>&       out,
-                               CpuContext&             ctx)
+void DenseLinearSolver::solveT(const HostCsrMatrix&        mat,
+                               const HostVector<Real>&     rhs,
+                               HostVector<Real>&           out,
+                               Context<MemorySpace::Host>& ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
           "DenseLinearSolver received inconsistent transposed CSR dimensions");
@@ -62,10 +62,10 @@ void DenseLinearSolver::sample(const HostCsrMatrix& mat,
   }
 }
 
-void DenseLinearSolver::solveDense(DenseMatrix             mat,
-                                   const HostVector<Real>& rhs,
-                                   HostVector<Real>&       out,
-                                   CpuContext&             ctx) const
+void DenseLinearSolver::solveDense(DenseMatrix                 mat,
+                                   const HostVector<Real>&     rhs,
+                                   HostVector<Real>&           out,
+                                   Context<MemorySpace::Host>& ctx) const
 {
   const Index      size = mat.rows();
   HostVector<Real> b(rhs);
@@ -108,7 +108,7 @@ void DenseLinearSolver::solveDense(DenseMatrix             mat,
     }
   }
 
-  HostVectorHandler vec_handler(ctx);
+  auto& vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, size);
   for (Index row = size; row-- > 0;)
   {
