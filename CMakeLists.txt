@@ -542,7 +542,7 @@ femx_export_name(femx_fem fem)
 femx_export_name(femx_assembly assembly)
 femx_export_name(femx_io io)
 femx_export_name(femx_runtime runtime)
-femx_export_name(femx_model_ns model_ns)
+femx_export_name(femx_model_navier model_navier)
 femx_export_name(femx_linalg_resolve linalg_resolve)
 femx_export_name(femx_linalg_petsc linalg_petsc)
 femx_export_name(femx_opt opt)
@@ -559,7 +559,7 @@ set(FEMX_INSTALL_TARGETS
     femx_assembly
     femx_io
     femx_runtime
-    femx_model_ns)
+    femx_model_navier)
 
 foreach(_femx_optional_target femx_linalg_resolve femx_linalg_petsc femx_opt)
   if(TARGET "${_femx_optional_target}")

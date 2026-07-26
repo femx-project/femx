@@ -40,24 +40,42 @@ inline bool hasHelp(int argc, char* const argv[])
 }
 
 /**
- * @brief Parse an example memory-space value.
+ * @brief Parse an example execution backend.
  *
- * @param[in] val - Value supplied to `--memory-space`.
- * @return Parsed memory space.
- * @throws std::runtime_error - If `val` is neither `host` nor `device`.
+ * @param[in] val - Value supplied to `--backend`.
+ * @return Memory space used by the selected backend.
+ * @throws std::runtime_error - If `val` is neither `cpu` nor `cuda`.
  */
-inline MemorySpace parseMemorySpace(const std::string& val)
+inline MemorySpace parseBackend(const std::string& val)
 {
-  if (val == "host")
+  if (val == "cpu")
   {
     return MemorySpace::Host;
   }
-  if (val == "device")
+  if (val == "cuda")
   {
     return MemorySpace::Device;
   }
   throw std::runtime_error(
-      "--memory-space expects 'host' or 'device'");
+      "--backend expects 'cpu' or 'cuda'");
+}
+
+/**
+ * @brief Return the user-facing execution-backend name.
+ *
+ * @param[in] space - Memory space used by the backend.
+ * @return Static lower-case backend name.
+ */
+inline const char* backendName(MemorySpace space) noexcept
+{
+  switch (space)
+  {
+  case MemorySpace::Host:
+    return "cpu";
+  case MemorySpace::Device:
+    return "cuda";
+  }
+  return "unknown";
 }
 
 /**
@@ -113,10 +131,10 @@ class ExampleHelper
 {
 public:
   /**
-   * @brief Bind solver, memory space, and output directory.
+   * @brief Bind solver, execution backend, and output directory.
    *
    * @param[in] solver - Solver used by the example.
-   * @param[in] space - Memory space used by the example.
+   * @param[in] space - Memory space used by the execution backend.
    * @param[in] out_dir - Directory for generated output files.
    */
   ExampleHelper(runtime::SolverType solver,
@@ -128,11 +146,11 @@ public:
   {
   }
 
-  /** @brief Return the `solver/memory-space` display name. */
+  /** @brief Return the `solver/backend` display name. */
   std::string name() const
   {
     return std::string(runtime::name(solver_)) + "/"
-           + runtime::name(space_);
+           + backendName(space_);
   }
 
   /**
@@ -185,7 +203,7 @@ public:
 #endif
 
   /**
-   * @brief Build an output path containing solver and memory-space names.
+   * @brief Build an output path containing solver and backend names.
    *
    * @param[in] stem - Problem-specific file stem.
    * @return Output path without a file extension.
@@ -194,7 +212,7 @@ public:
   {
     const std::filesystem::path dir(out_dir_);
     const std::string           file =
-        stem + "-" + runtime::name(solver_) + "-" + runtime::name(space_);
+        stem + "-" + runtime::name(solver_) + "-" + backendName(space_);
     return (dir / file).string();
   }
 
@@ -212,7 +230,7 @@ public:
 
 private:
   runtime::SolverType solver_;  ///< Solver used by the example.
-  MemorySpace         space_;   ///< Memory space used by the example.
+  MemorySpace         space_;   ///< Memory space used by the backend.
   std::string         out_dir_; ///< Directory for generated output files.
 };
 

@@ -1,13 +1,13 @@
-#include "NavierStokesResidual.hpp"
+#include "NavierResidual.hpp"
 
 #include <stdexcept>
 
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/model/ns/Model.hpp>
+#include <femx/model/navier/NavierModel.hpp>
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 namespace
 {
@@ -66,7 +66,7 @@ void add(HostVector<Real>& vals, Index idx, Real val)
 }
 
 void applyHistoryJacT(
-    const HostElementKernel&            kernel,
+    const HostNavierElementKernel&      kernel,
     const assembly::HostAssemblyMap&    map,
     const state::HostTimeContext&       time,
     Index                               lag,
@@ -85,23 +85,23 @@ void applyHistoryJacT(
   {
     NavierWork work;
 #pragma omp for
-    for (Index elem = range.begin; elem < range.end; ++elem)
+    for (Index ie = range.begin; ie < range.end; ++ie)
     {
-      gatherElement(map, hist, time.nxt, elem, work);
+      gatherElement(map, hist, time.nxt, ie, work);
 
       const auto  map_view       = map.view();
-      const Index num_res_dofs   = map_view.numResDofs(elem);
-      const Index num_state_dofs = map_view.numStateDofs(elem);
+      const Index num_res_dofs   = map_view.numResDofs(ie);
+      const Index num_state_dofs = map_view.numStateDofs(ie);
       work.adj.resize(num_res_dofs);
       work.product.resize(kNumHist * num_state_dofs);
 
       for (Index row = 0; row < num_res_dofs; ++row)
       {
-        work.adj[row] = adj[map_view.resDof(elem, row)];
+        work.adj[row] = adj[map_view.resDof(ie, row)];
       }
 
       const assembly::HostTimeElementView element_view{
-          elem,
+          ie,
           time.step,
           kNumHist,
           work.hist.view(),
@@ -112,7 +112,7 @@ void applyHistoryJacT(
       for (Index column = 0; column < num_state_dofs; ++column)
       {
         add(out,
-            map_view.stateDof(elem, column),
+            map_view.stateDof(ie, column),
             work.product[lag * num_state_dofs + column]);
       }
     }
@@ -122,13 +122,13 @@ void applyHistoryJacT(
 
 } // namespace
 
-HostNavierStokesResidual::HostNavierStokesResidual(
-    const NavierStokesModel& model)
+HostNavierResidual::HostNavierResidual(
+    const NavierModel& model)
   : model_(model)
 {
 }
 
-state::TimeDims HostNavierStokesResidual::dims() const
+state::TimeDims HostNavierResidual::dims() const
 {
   return {model_.numSteps(),
           model_.numStates(),
@@ -137,12 +137,12 @@ state::TimeDims HostNavierStokesResidual::dims() const
           kNumHist};
 }
 
-const HostCsrPattern& HostNavierStokesResidual::hostPattern() const
+const HostCsrPattern& HostNavierResidual::hostPattern() const
 {
   return model_.assemblyMap().pattern();
 }
 
-void HostNavierStokesResidual::initialState(
+void HostNavierResidual::initialState(
     ConstView prm,
     Vec&      out,
     Ctx&      ctx) const
@@ -152,7 +152,7 @@ void HostNavierStokesResidual::initialState(
   ctx.vectors().resizeOrZero(out, model_.numStates());
 }
 
-void HostNavierStokesResidual::assembleNext(
+void HostNavierResidual::assembleNext(
     const StepCtx& time,
     Vec&           res,
     Jac&           jac,
@@ -166,7 +166,7 @@ void HostNavierStokesResidual::assembleNext(
       time.hist.data(), kNumHist * map.numStates());
 
   assembly::assembleResidualAndJacobian(
-      HostElementKernel(model_.elementData().view(), model_.fluid(), model_.dt()),
+      HostNavierElementKernel(model_.elementData().view(), model_.fluid(), model_.dt()),
       time.step,
       kNumHist,
       state::VariableBlock::NextState,
@@ -180,7 +180,7 @@ void HostNavierStokesResidual::assembleNext(
       ctx);
 }
 
-void HostNavierStokesResidual::applyJacT(
+void HostNavierResidual::applyJacT(
     const StepCtx&       time,
     state::VariableBlock with_respect_to,
     ConstView            adj,
@@ -188,7 +188,7 @@ void HostNavierStokesResidual::applyJacT(
     Ctx&                 ctx) const
 {
   validateTimeContext(time, model_.numSteps(), model_.numStates());
-  
+
   require(!with_respect_to.isNextState(),
           "Navier-Stokes transpose apply expects a history or parameter block");
   require(adj.size() == model_.assemblyMap().numRes(),
@@ -211,7 +211,7 @@ void HostNavierStokesResidual::applyJacT(
   }
 
   applyHistoryJacT(
-      HostElementKernel(model_.elementData().view(), model_.fluid(), model_.dt()),
+      HostNavierElementKernel(model_.elementData().view(), model_.fluid(), model_.dt()),
       model_.assemblyMap(),
       time,
       with_respect_to.historyLag(),
@@ -220,4 +220,4 @@ void HostNavierStokesResidual::applyJacT(
       ctx);
 }
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

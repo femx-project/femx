@@ -2,7 +2,7 @@
 
 #include <femx/common/Types.hpp>
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 
 /** @brief Store incompressible-fluid material properties. */
@@ -12,4 +12,4 @@ struct FluidProperties
   Real mu  = 1.0; ///< Dynamic viscosity.
 };
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

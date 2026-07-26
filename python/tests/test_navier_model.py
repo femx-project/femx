@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[2]
 MESH_FILE = ROOT / "data" / "meshes" / "2d_rectangle.msh"
 
 
-class NavierStokesModelTest(unittest.TestCase):
+class NavierModelTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.model = femx.NavierStokesModel(
+        cls.model = femx.NavierModel(
             MESH_FILE,
             num_steps=4,
             dt=0.05,
@@ -34,7 +34,7 @@ class NavierStokesModelTest(unittest.TestCase):
         self.assertEqual(dims.num_param, 0)
 
     def test_residual_keeps_model_alive(self):
-        residual = femx.NavierStokesModel(
+        residual = femx.NavierModel(
             MESH_FILE,
             num_steps=2,
             dt=0.1,

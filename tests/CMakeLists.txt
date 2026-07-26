@@ -55,22 +55,22 @@ if(FEMX_HAS_CUDA
                                                      "resolve;cuda;optional")
 
   add_executable(runResolveTimeIntegratorTests
-                 unit/model/ns/runResolveTimeIntegratorTests.cpp)
+                 unit/model/navier/runResolveTimeIntegratorTests.cpp)
   target_include_directories(runResolveTimeIntegratorTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runResolveTimeIntegratorTests
-                        PRIVATE femx::model::ns femx::linalg_resolve)
+                        PRIVATE femx::model::navier femx::linalg_resolve)
   add_test(NAME ResolveTimeIntegratorTests
            COMMAND runResolveTimeIntegratorTests)
   set_tests_properties(ResolveTimeIntegratorTests
                        PROPERTIES LABELS "resolve;cuda;optional")
 
   add_executable(runResolveTimeReducedTests
-                 unit/model/ns/runResolveTimeReducedTests.cpp)
+                 unit/model/navier/runResolveTimeReducedTests.cpp)
   target_include_directories(runResolveTimeReducedTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(
-    runResolveTimeReducedTests PRIVATE femx::model::ns femx::inverse
+    runResolveTimeReducedTests PRIVATE femx::model::navier femx::inverse
                                        femx::linalg_resolve)
   add_test(NAME ResolveTimeReducedTests COMMAND runResolveTimeReducedTests)
   set_tests_properties(ResolveTimeReducedTests
@@ -145,10 +145,10 @@ target_include_directories(runInverseTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runInverseTests PRIVATE femx::inverse)
 add_test(NAME InverseTests COMMAND runInverseTests)
 
-add_executable(runNsModelTests unit/model/ns/runModelTests.cpp)
-target_include_directories(runNsModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runNsModelTests PRIVATE femx::femx)
-add_test(NAME NsModelTests COMMAND runNsModelTests)
+add_executable(runNavierModelTests unit/model/navier/runModelTests.cpp)
+target_include_directories(runNavierModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(runNavierModelTests PRIVATE femx::femx)
+add_test(NAME NavierModelTests COMMAND runNavierModelTests)
 
 if(TARGET femx_navier_support)
   add_executable(runNavierConfigTests

@@ -12,8 +12,8 @@
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/model/ns/Model.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
+#include <femx/model/navier/NavierModel.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -52,8 +52,8 @@ TestOutcome resolveCudaAdvancesTwoSteps()
 
   try
   {
-    constexpr Index              steps = 2;
-    model::ns::NavierStokesModel model(
+    constexpr Index            steps = 2;
+    model::navier::NavierModel model(
         fem::Mesh::makeStructuredQuad(4, 4),
         steps,
         0.1,
@@ -90,7 +90,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     const HostVector<Real> init(model.numStates());
     const HostVector<Real> prm;
 
-    model::ns::HostNavierStokesResidual   navier(model);
+    model::navier::HostNavierResidual     navier(model);
     assembly::HostConstrainedTimeResidual cpu_res(
         navier,
         fem::makeControlMap(
@@ -108,7 +108,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         std::make_unique<linalg::ReSolveLinearSolver>());
     auto& cuda_ctx =
         static_cast<linalg::CudaContext&>(cuda_system.context());
-    model::ns::DeviceNavierStokesResidual d_navier(
+    model::navier::DeviceNavierResidual d_navier(
         model, cuda_ctx);
     assembly::DeviceConstrainedTimeResidual cuda_res(
         d_navier,

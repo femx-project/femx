@@ -400,14 +400,14 @@ class TaoResult:
     msg: str
 
 
-class NavierStokesModel:
+class NavierModel:
     """Reusable Navier-Stokes finite-element discretization."""
 
     def __init__(self, mesh_file, num_steps, dt, *, rho=1.0, mu=1.0):
         fluid = _core.FluidParams()
         fluid.density = rho
         fluid.dynamic_viscosity = mu
-        self._impl = _core.NavierStokesModel(
+        self._impl = _core.NavierModel(
             str(mesh_file), num_steps, dt, fluid
         )
 
@@ -457,12 +457,12 @@ class NavierStokesModel:
             raise ValueError(str(error)) from error
 
 
-class NavierStokesProblem:
+class NavierProblem:
     """A Navier-Stokes model with boundary values and optional inlet control."""
 
     def __init__(self, model):
-        if not isinstance(model, NavierStokesModel):
-            raise TypeError("model must be a NavierStokesModel")
+        if not isinstance(model, NavierModel):
+            raise TypeError("model must be a NavierModel")
         self._model = model
         self._bcs = []
         self._ctr = None
@@ -707,7 +707,7 @@ class NavierStokesProblem:
     ):
         """Create a forward solver from memory-space and solver values."""
 
-        return NavierStokesSolver(
+        return NavierSolver(
             self,
             memspace,
             solver_type,
@@ -723,7 +723,7 @@ class NavierStokesProblem:
     ):
         """Create a reduced functional with memory-space and solver choices."""
 
-        return NavierStokesReducedFunctional(
+        return NavierReducedFunctional(
             self,
             obj,
             memspace,
@@ -752,58 +752,58 @@ class NavierStokesProblem:
         return self._solvers[selection].solve(param)
 
 
-class NavierStokesSolver:
+class NavierSolver:
     """Reusable time integrator for one memory-space/solver pair."""
 
     def __init__(
         self,
-        prob,
+        problem,
         memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
-        if not isinstance(prob, NavierStokesProblem):
-            raise TypeError("prob must be a NavierStokesProblem")
+        if not isinstance(problem, NavierProblem):
+            raise TypeError("problem must be a NavierProblem")
         space, solver = _selection(memspace, solver_type)
         options = _solver_options(solver, options)
-        prob._ensure_built()
+        problem._ensure_built()
 
-        self._prob = prob
-        self._compiled = prob._compiled
+        self._problem = problem
+        self._compiled = problem._compiled
         self._memspace = space
         self._solver_type = solver
         if space == _core.MemorySpace.DEVICE:
-            if prob._ctr is None:
+            if problem._ctr is None:
                 self._integ = _core._DeviceTimeIntegrator(
-                    prob.model._impl,
-                    prob._compiled,
-                    prob._initial_state,
+                    problem.model._impl,
+                    problem._compiled,
+                    problem._initial_state,
                     options,
                 )
             else:
                 self._integ = _core._DeviceTimeIntegrator(
-                    prob.model._impl,
-                    prob._compiled,
-                    prob._initial_state,
-                    prob._initial_modes,
+                    problem.model._impl,
+                    problem._compiled,
+                    problem._initial_state,
+                    problem._initial_modes,
                     options,
                 )
             self._timer = self._integ
         else:
             time = _core.TimeIntegrator(
-                prob.residual,
+                problem.residual,
                 solver,
                 options,
             )
-            if prob._initial_map is None:
-                time.set_initial_state(prob._initial_state)
+            if problem._initial_map is None:
+                time.set_initial_state(problem._initial_state)
             self._integ = time
             self._timer = time
         self._num_solves = 0
 
     @property
-    def prob(self):
-        return self._prob
+    def problem(self):
+        return self._problem
 
     @property
     def memspace(self):
@@ -837,50 +837,50 @@ class NavierStokesSolver:
         self._timer.reset_timing()
 
     def solve(self, param=None, progress=None):
-        if self._prob._compiled is not self._compiled:
+        if self._problem._compiled is not self._compiled:
             raise RuntimeError(
                 "problem configuration changed; create a new solver"
             )
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
 
-        param = self._prob._check_param(param)
+        param = self._problem._check_param(param)
         traj = self._integ.solve(param, progress=progress)
         self._num_solves += 1
         return traj
 
 
-class NavierStokesReducedFunctional:
+class NavierReducedFunctional:
     """Reusable forward and adjoint evaluation with separate systems."""
 
     def __init__(
         self,
-        prob,
+        problem,
         obj,
         memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
-        if not isinstance(prob, NavierStokesProblem):
-            raise TypeError("prob must be a NavierStokesProblem")
+        if not isinstance(problem, NavierProblem):
+            raise TypeError("problem must be a NavierProblem")
         if not isinstance(obj, _core.TimeObjective):
             raise TypeError("obj must be a TimeObjective")
-        prob._ensure_built()
+        problem._ensure_built()
         if (
-            obj.num_steps != prob.model.num_steps
-            or obj.num_states != prob.model.num_states
-            or obj.num_param != prob.num_param
+            obj.num_steps != problem.model.num_steps
+            or obj.num_states != problem.model.num_states
+            or obj.num_param != problem.num_param
         ):
             raise ValueError("obj dimensions must match the problem")
 
-        self._prob = prob
-        self._compiled = prob._compiled
+        self._problem = problem
+        self._compiled = problem._compiled
         self._obj = obj
         space, solver = _selection(memspace, solver_type)
         solver_options = _solver_options(solver, options)
         self._memspace = space
         self._solver_type = solver
-        self._fwd = prob.create_solver(
+        self._fwd = problem.create_solver(
             space,
             solver,
             options=options,
@@ -900,8 +900,8 @@ class NavierStokesReducedFunctional:
             )
 
     @property
-    def prob(self):
-        return self._prob
+    def problem(self):
+        return self._problem
 
     @property
     def obj(self):
@@ -939,25 +939,25 @@ class NavierStokesReducedFunctional:
         self._impl.reset_timing()
 
     def _check_current(self):
-        if self._prob._compiled is not self._compiled:
+        if self._problem._compiled is not self._compiled:
             raise RuntimeError(
                 "problem configuration changed; create a new reduced functional"
             )
 
     def value(self, param):
         self._check_current()
-        return self._impl.value(self._prob._check_param(param))
+        return self._impl.value(self._problem._check_param(param))
 
     def grad(self, param):
         self._check_current()
-        return np.asarray(self._impl.grad(self._prob._check_param(param)))
+        return np.asarray(self._impl.grad(self._problem._check_param(param)))
 
     def value_grad(self, param, progress=None):
         self._check_current()
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable")
         value, grad = self._impl.value_grad(
-            self._prob._check_param(param),
+            self._problem._check_param(param),
             progress=progress,
         )
         return float(value), np.asarray(grad)
@@ -967,9 +967,9 @@ class TaoOptimizer:
     """PETSc/TAO optimizer for a C++ reduced functional."""
 
     def __init__(self, reduced):
-        if not isinstance(reduced, NavierStokesReducedFunctional):
+        if not isinstance(reduced, NavierReducedFunctional):
             raise TypeError(
-                "reduced must be a NavierStokesReducedFunctional"
+                "reduced must be a NavierReducedFunctional"
             )
         if not hasattr(_core, "_tao_solve"):
             raise RuntimeError("femx was built without PETSc/TAO")
@@ -1001,7 +1001,7 @@ class TaoOptimizer:
             raise TypeError("progress must be callable")
 
         self._reduced._check_current()
-        init_param = self._reduced.prob._check_param(init_param)
+        init_param = self._reduced.problem._check_param(init_param)
         lower, upper = _bnds(bnds, self._reduced.num_param)
         result = _core._tao_solve(
             self._reduced._impl,

@@ -63,19 +63,19 @@ void assembleSegment(const HostVector<Index>&  element,
   const Index ids[2]      = {i0, i1};
   const Real  mass_scale  = length / 6.0;
   const Real  stiff_scale = 1.0 / length;
-  for (Index i = 0; i < 2; ++i)
+  for (Index in = 0; in < 2; ++in)
   {
-    out.load[ids[i]] += 0.5 * length;
-    for (Index j = 0; j < 2; ++j)
+    out.load[ids[in]] += 0.5 * length;
+    for (Index jn = 0; jn < 2; ++jn)
     {
       addEntry(out.mass,
-               ids[i],
-               ids[j],
-               mass_scale * (i == j ? 2.0 : 1.0));
+               ids[in],
+               ids[jn],
+               mass_scale * (in == jn ? 2.0 : 1.0));
       addEntry(out.stiffness,
-               ids[i],
-               ids[j],
-               stiff_scale * (i == j ? 1.0 : -1.0));
+               ids[in],
+               ids[jn],
+               stiff_scale * (in == jn ? 1.0 : -1.0));
     }
   }
 }
@@ -113,25 +113,26 @@ void assembleTriangle(const HostVector<Index>&  element,
       {0.0, 1.0}};
   const Real mass_scale = area / 12.0;
 
-  for (Index i = 0; i < 3; ++i)
+  for (Index in = 0; in < 3; ++in)
   {
-    const Index row  = element[i];
+    const Index row  = element[in];
     out.load[row]   += area / 3.0;
-    for (Index j = 0; j < 3; ++j)
+    for (Index jn = 0; jn < 3; ++jn)
     {
-      const Index col      = element[j];
+      const Index col      = element[jn];
       Real        grad_dot = 0.0;
-      for (Index p = 0; p < 2; ++p)
+      for (Index id = 0; id < 2; ++id)
       {
-        for (Index q = 0; q < 2; ++q)
+        for (Index jd = 0; jd < 2; ++jd)
         {
-          grad_dot += ref_grad[i][p] * inv_g[p][q] * ref_grad[j][q];
+          grad_dot +=
+              ref_grad[in][id] * inv_g[id][jd] * ref_grad[jn][jd];
         }
       }
       addEntry(out.mass,
                row,
                col,
-               mass_scale * (i == j ? 2.0 : 1.0));
+               mass_scale * (in == jn ? 2.0 : 1.0));
       addEntry(out.stiffness, row, col, area * grad_dot);
     }
   }
@@ -216,9 +217,9 @@ void BoundarySurface::findRimNodes()
       ++incidence[elements_[ie][0]];
       ++incidence[elements_[ie][1]];
     }
-    for (Index i = 0; i < numNodes(); ++i)
+    for (Index in = 0; in < numNodes(); ++in)
     {
-      is_rim[i] = incidence[i] != 2;
+      is_rim[in] = incidence[in] != 2;
     }
   }
   else if (dim_ == 2)
@@ -254,11 +255,11 @@ void BoundarySurface::findRimNodes()
     throw std::runtime_error("Boundary surface dimension must be one or two");
   }
 
-  for (Index i = 0; i < numNodes(); ++i)
+  for (Index in = 0; in < numNodes(); ++in)
   {
-    if (is_rim[i])
+    if (is_rim[in])
     {
-      rim_node_ids_.push_back(i);
+      rim_node_ids_.push_back(in);
     }
   }
 }

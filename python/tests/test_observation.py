@@ -11,7 +11,7 @@ TINY_MESH_FILE = Path(__file__).parent / "data" / "2d_tiny_tube.msh"
 
 class VelocityObservationOperatorTest(unittest.TestCase):
     def setUp(self):
-        self.model = femx.NavierStokesModel(
+        self.model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=2,
             dt=0.25,
@@ -177,14 +177,14 @@ class VelocityObservationOperatorTest(unittest.TestCase):
 
 class ControlledObservationIntegrationTest(unittest.TestCase):
     def test_synthetic_ctr_generates_obs_vector(self):
-        model = femx.NavierStokesModel(
+        model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        problem = femx.NavierStokesProblem(model)
+        problem = femx.NavierProblem(model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.add_ctr(

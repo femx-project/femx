@@ -18,11 +18,10 @@ namespace femx::examples::poisson
 /** @brief Command-line configuration for the forward Poisson example. */
 struct Options
 {
-  Index       num_x_cells = 8; ///< Number of cells in x.
-  Index       num_y_cells = 8; ///< Number of cells in y.
-  MemorySpace memspace =
-      MemorySpace::Host;     ///< Selected memory space.
-  bool write_output = false; ///< Write VTU output.
+  Index       num_x_cells  = 8;                 ///< Number of cells in x.
+  Index       num_y_cells  = 8;                 ///< Number of cells in y.
+  MemorySpace memspace     = MemorySpace::Host; ///< Selected memory space.
+  bool        write_output = false;             ///< Write VTU output.
 };
 
 /**
@@ -127,24 +126,24 @@ std::string outputStem(const Options& opts);
  *
  * @param[in] app_name - Executable name.
  * @param[in] petsc_options - Whether PETSc options are accepted.
- * @param[in] memspace_note - Optional memory-space note.
+ * @param[in] backend_note - Optional execution-backend note.
  */
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* memspace_note = nullptr);
+                const char* backend_note = nullptr);
 
 /**
  * @brief Print the standard forward-solve result summary.
  *
  * @param[in,out] out - Output stream.
  * @param[in] configuration - Solver configuration name.
- * @param[in] prob - Solved problem.
+ * @param[in] problem - Solved problem.
  * @param[in] err - Solution error metrics.
  * @param[in] rnorm - Residual L2 norm.
  */
 void printReport(std::ostream&         out,
                  const std::string&    configuration,
-                 const PoissonProblem& prob,
+                 const PoissonProblem& problem,
                  const ErrorReport&    err,
                  Real                  rnorm);
 

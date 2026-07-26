@@ -34,9 +34,9 @@ void Mesh::addNode(const Node& node)
   nodes_.push_back(node);
   if (dim_ > 0 && dim_ <= 3)
   {
-    for (Index d = 0; d < dim_; ++d)
+    for (Index id = 0; id < dim_; ++id)
     {
-      coords_.push_back(node[d]);
+      coords_.push_back(node[id]);
     }
   }
 }
@@ -53,11 +53,11 @@ void Mesh::addElem(const HostVector<Index>& nids,
 
   HostVector<Node> elem_nodes;
   elem_nodes.reserve(nids.size());
-  for (Index node_id : nids)
+  for (Index in : nids)
   {
-    require(node_id >= 0 && node_id < numNodes(),
+    require(in >= 0 && in < numNodes(),
             "Mesh element connectivity is out of range");
-    elem_nodes.push_back(node(node_id));
+    elem_nodes.push_back(node(in));
   }
   elems_.emplace_back(nids,
                       std::move(elem_nodes),
@@ -67,9 +67,9 @@ void Mesh::addElem(const HostVector<Index>& nids,
                       ptag,
                       std::move(pname));
 
-  for (Index node_id : nids)
+  for (Index in : nids)
   {
-    conn_.push_back(node_id);
+    conn_.push_back(in);
   }
   elem_offsets_.push_back(conn_.size());
   max_elem_nodes_ = std::max(max_elem_nodes_, nids.size());

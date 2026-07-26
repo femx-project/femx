@@ -25,30 +25,30 @@ int run(const Options& opts)
   if (opts.memspace != MemorySpace::Host)
   {
     throw std::runtime_error(
-        "Dense Poisson supports only Host execution");
+        "Dense Poisson supports only the CPU backend");
   }
 
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
-  PoissonProblem prob(opts);
+  PoissonProblem problem(opts);
 
   linalg::HostLinearSystem system;
 
-  HostPoissonResidual          res(prob);
+  HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
-  HostVector<Real> sol;
-  state_solver.solve(sol);
+  HostVector<Real> result;
+  state_solver.solve(result);
 
   printReport(std::cout,
               helper.name(),
-              prob,
-              prob.errorReport(sol),
-              helper.resNorm(res, sol, system.context()));
+              problem,
+              problem.errorReport(result),
+              helper.resNorm(res, result, system.context()));
 
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));
-    prob.writeSolution(sol, base);
+    problem.writeSolution(result, base);
     helper.printVisualizationPath(base);
   }
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
       printUsage(
           FEMX_POISSON_APP_NAME,
           false,
-          "dense solver supports Host execution only");
+          "dense solver supports only the CPU backend");
       return 0;
     }
     return run(parseOptions(argc, argv, false));

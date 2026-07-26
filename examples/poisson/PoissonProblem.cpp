@@ -155,20 +155,20 @@ void PoissonProblem::writeSolution(const HostVector<Real>& x,
     std::filesystem::create_directories(path.parent_path());
   }
 
-  HostVector<Real> sol(mesh_.numNodes());
+  HostVector<Real> result(mesh_.numNodes());
   HostVector<Real> exact(mesh_.numNodes());
   HostVector<Real> error(mesh_.numNodes());
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
-    sol[in]   = x[space_.globalDof(in, 0)];
-    exact[in] = exactValue(mesh_.node(in));
-    error[in] = sol[in] - exact[in];
+    result[in] = x[space_.globalDof(in, 0)];
+    exact[in]  = exactValue(mesh_.node(in));
+    error[in]  = result[in] - exact[in];
   }
 
   VtuWriter out;
   out.writePointData(path.string(),
                      mesh_,
-                     {{"solution", 1, &sol},
+                     {{"solution", 1, &result},
                       {"exact", 1, &exact},
                       {"error", 1, &error}});
 }
@@ -223,9 +223,9 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
           runtime::requireValue(argc, argv, i, arg), arg);
       continue;
     }
-    if (arg == "--memory-space" || arg == "-m")
+    if (arg == "--backend" || arg == "-b")
     {
-      opts.memspace = parseMemorySpace(
+      opts.memspace = parseBackend(
           runtime::requireValue(argc, argv, i, arg));
       continue;
     }
@@ -253,10 +253,10 @@ std::string outputStem(const Options& opts)
 
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* memspace_note)
+                const char* backend_note)
 {
   std::cout << "Usage: " << app_name
-            << " [--nx N] [--ny N] [-m host|device]"
+            << " [--nx N] [--ny N] [-b cpu|cuda]"
             << " [--output yes|no]";
   if (petsc_options)
   {
@@ -264,10 +264,10 @@ void printUsage(const char* app_name,
   }
   std::cout << '\n';
   std::cout
-      << "  -m, --memory-space host|device selects the memory space";
-  if (memspace_note)
+      << "  -b, --backend cpu|cuda selects the execution backend";
+  if (backend_note)
   {
-    std::cout << " (" << memspace_note << ")";
+    std::cout << " (" << backend_note << ")";
   }
   else if (petsc_options)
   {
@@ -281,16 +281,16 @@ void printUsage(const char* app_name,
 
 void printReport(std::ostream&         out,
                  const std::string&    configuration,
-                 const PoissonProblem& prob,
+                 const PoissonProblem& problem,
                  const ErrorReport&    err,
                  Real                  rnorm)
 {
-  const Options& opts = prob.options();
+  const Options& opts = problem.options();
   out << "Poisson forward (" << configuration << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';
-  out << "  nodes: " << prob.numNodes() << '\n';
-  out << "  dofs: " << prob.numDofs() << '\n';
+  out << "  nodes: " << problem.numNodes() << '\n';
+  out << "  dofs: " << problem.numDofs() << '\n';
   out << "  solution range: [" << err.min_val << ", "
       << err.max_val << "]\n";
   out << "  residual l2 norm: " << rnorm << '\n';

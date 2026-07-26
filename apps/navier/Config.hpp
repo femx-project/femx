@@ -12,7 +12,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/FluidProperties.hpp>
+#include <femx/model/navier/FluidProperties.hpp>
 
 #ifndef FEMX_NAVIER_OUTPUT_DIR
 #define FEMX_NAVIER_OUTPUT_DIR "."
@@ -97,7 +97,7 @@ struct Config
 {
   std::string                         mesh_file;           ///< Mesh file path.
   TimeConfig                          time;                ///< Time-integration settings.
-  model::ns::FluidProperties          fluid;               ///< Fluid material properties.
+  model::navier::FluidProperties      fluid;               ///< Fluid material properties.
   SolverConfig                        solver;              ///< Linear-solver settings.
   OutputConfig                        output;              ///< Output settings.
   HostVector<BoundaryConditionConfig> boundary_conditions; ///< Boundary settings.

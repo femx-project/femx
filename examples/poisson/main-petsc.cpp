@@ -29,15 +29,15 @@ int run(const Options& opts)
   if (opts.memspace != MemorySpace::Host)
   {
     throw std::runtime_error(
-        "PETSc Poisson supports only Host execution");
+        "PETSc Poisson supports only the CPU backend");
   }
 
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
-  PoissonProblem prob(opts);
+  PoissonProblem problem(opts);
 
   linalg::PETScLinearSystem system(PETSC_COMM_WORLD);
 
-  HostPoissonResidual          res(prob);
+  HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
   HostVector<Real> x;
@@ -50,14 +50,14 @@ int run(const Options& opts)
   {
     printReport(std::cout,
                 helper.name(),
-                prob,
-                prob.errorReport(x),
+                problem,
+                problem.errorReport(x),
                 rnorm);
 
     if (opts.write_output)
     {
       const std::string base = helper.outputBase(outputStem(opts));
-      prob.writeSolution(x, base);
+      problem.writeSolution(x, base);
       helper.printVisualizationPath(base);
     }
   }

@@ -29,40 +29,40 @@ namespace
 {
 
 Real solveHost(const ExampleHelper&  helper,
-               const PoissonProblem& prob,
-               HostVector<Real>&     x)
+               const PoissonProblem& problem,
+               HostVector<Real>&     h_x)
 {
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   HostLinearSystem system(std::move(solver));
 
-  HostPoissonResidual          res(prob);
+  HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
-  state_solver.solve(x);
+  state_solver.solve(h_x);
 
-  const Real rnorm = helper.resNorm(res, x, system.context());
+  const Real rnorm = helper.resNorm(res, h_x, system.context());
 
   return rnorm;
 }
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
 Real solveDevice(const ExampleHelper&  helper,
-                 const PoissonProblem& prob,
-                 HostVector<Real>&     x)
+                 const PoissonProblem& problem,
+                 HostVector<Real>&     h_x)
 {
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   CudaLinearSystem system(std::move(solver));
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  DevicePoissonResidual                         res(prob, ctx);
-  state::LinearStateSolver<MemorySpace::Device> state_solver(res, system);
+  DevicePoissonResidual          res(problem, ctx);
+  state::DeviceLinearStateSolver state_solver(res, system);
 
   DeviceVector<Real> d_x;
   state_solver.solve(d_x);
 
   const Real rnorm = helper.resNorm(res, d_x, ctx);
-  ctx.vectors().copy(d_x, x);
+  ctx.vectors().copy(d_x, h_x);
   ctx.sync();
 
   return rnorm;
@@ -73,34 +73,34 @@ int run(const Options& opts)
 {
   constexpr auto solver_type = runtime::SolverType::ReSolve;
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
-  PoissonProblem prob(opts);
+  PoissonProblem problem(opts);
 
   HostVector<Real> x;
   Real             rnorm;
   if (opts.memspace == MemorySpace::Host)
   {
-    rnorm = solveHost(helper, prob, x);
+    rnorm = solveHost(helper, problem, x);
   }
   else
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
-    rnorm = solveDevice(helper, prob, x);
+    rnorm = solveDevice(helper, problem, x);
 #else
     throw std::runtime_error(
-        "Device Poisson execution requires a CUDA-enabled ReSolve build");
+        "The CUDA backend requires a CUDA-enabled ReSolve build");
 #endif
   }
 
   printReport(std::cout,
               helper.name(),
-              prob,
-              prob.errorReport(x),
+              problem,
+              problem.errorReport(x),
               rnorm);
 
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));
-    prob.writeSolution(x, base);
+    problem.writeSolution(x, base);
     helper.printVisualizationPath(base);
   }
 

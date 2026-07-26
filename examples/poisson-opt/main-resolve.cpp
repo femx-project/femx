@@ -29,7 +29,7 @@ using namespace femx::examples::poisson_opt;
 namespace
 {
 
-Result optimizeHost(PoissonOptProblem& prob)
+Result optimizeHost(PoissonOptProblem& problem)
 {
   auto fwd_solver = std::make_unique<linalg::ReSolveLinearSolver>();
   auto adj_solver = std::make_unique<linalg::ReSolveLinearSolver>();
@@ -37,15 +37,15 @@ Result optimizeHost(PoissonOptProblem& prob)
   linalg::HostLinearSystem fwd_system(std::move(fwd_solver));
   linalg::HostLinearSystem adj_system(std::move(adj_solver));
 
-  HostPoissonOptResidual       res(prob);
+  HostPoissonOptResidual       res(problem);
   state::HostLinearStateSolver state_solver(res, fwd_system);
 
-  return optimize(prob, state_solver, adj_system, PETSC_COMM_SELF);
+  return optimize(problem, state_solver, adj_system, PETSC_COMM_SELF);
 }
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
 
-Result optimizeDevice(PoissonOptProblem& prob)
+Result optimizeDevice(PoissonOptProblem& problem)
 {
   auto fwd_solver = std::make_unique<linalg::ReSolveLinearSolver>();
   auto adj_solver = std::make_unique<linalg::ReSolveLinearSolver>();
@@ -55,10 +55,10 @@ Result optimizeDevice(PoissonOptProblem& prob)
 
   auto& ctx = static_cast<linalg::CudaContext&>(fwd_system.context());
 
-  DevicePoissonOptResidual                      res(prob, ctx);
-  state::LinearStateSolver<MemorySpace::Device> state_solver(res, fwd_system);
+  DevicePoissonOptResidual       res(problem, ctx);
+  state::DeviceLinearStateSolver state_solver(res, fwd_system);
 
-  return optimize(prob, state_solver, adj_system, PETSC_COMM_SELF);
+  return optimize(problem, state_solver, adj_system, PETSC_COMM_SELF);
 }
 
 #endif
@@ -66,29 +66,29 @@ Result optimizeDevice(PoissonOptProblem& prob)
 int run(const Options& opts)
 {
   ExampleHelper     helper(runtime::SolverType::ReSolve,
-                           opts.memspace,
-                           outputDir());
-  PoissonOptProblem prob(opts);
+                       opts.memspace,
+                       outputDir());
+  PoissonOptProblem problem(opts);
 
   Result result;
   if (opts.memspace == MemorySpace::Host)
   {
-    result = optimizeHost(prob);
+    result = optimizeHost(problem);
   }
   else
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
-    result = optimizeDevice(prob);
+    result = optimizeDevice(problem);
 #else
     throw std::runtime_error(
-        "Device Poisson optimization requires a CUDA-enabled "
+        "The CUDA backend requires a CUDA-enabled "
         "ReSolve build");
 #endif
   }
 
   printReport(std::cout,
               helper.name(),
-              prob,
+              problem,
               result.report,
               result.iterations,
               result.reason);
@@ -96,7 +96,7 @@ int run(const Options& opts)
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));
-    prob.writeSolution(result.control, result.state, base);
+    problem.writeSolution(result.control, result.state, base);
     helper.printVisualizationPath(base);
     helper.printVisualizationPath(base + ".observations");
   }

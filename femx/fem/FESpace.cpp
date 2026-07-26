@@ -43,11 +43,12 @@ void FESpace::setup()
     }
 
     const Index* conn = mesh_->elemNodeIds(ie);
-    for (Index a = 0; a < num_shapes_per_elem_; ++a)
+    for (Index in = 0; in < num_shapes_per_elem_; ++in)
     {
-      for (Index c = 0; c < comps_; ++c)
+      for (Index ic = 0; ic < comps_; ++ic)
       {
-        dof_map_.setElementDof(ie, localDof(a, c), globalDof(conn[a], c));
+        dof_map_.setElementDof(
+            ie, localDof(in, ic), globalDof(conn[in], ic));
       }
     }
   }

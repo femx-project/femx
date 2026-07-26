@@ -221,28 +221,28 @@ void readEntities(std::istream& in, std::map<EntityKey, EntityData>& entities)
   expectMarker(in, "$EndEntities");
 }
 
-void readNodesV2(std::istream&           in,
+void readNodesV2(std::istream&           input,
                  Mesh&                   mesh,
                  std::map<Index, Index>& nid_by_tag)
 {
   Index num_nodes = 0;
-  in >> num_nodes;
+  input >> num_nodes;
 
-  for (Index i = 0; i < num_nodes; ++i)
+  for (Index in = 0; in < num_nodes; ++in)
   {
     Index      ntag = 0;
     Mesh::Node node{};
-    in >> ntag >> node[0] >> node[1] >> node[2];
+    input >> ntag >> node[0] >> node[1] >> node[2];
 
     const Index local_id = mesh.numNodes();
     nid_by_tag[ntag]     = local_id;
     mesh.addNode(node);
   }
 
-  expectMarker(in, "$EndNodes");
+  expectMarker(input, "$EndNodes");
 }
 
-void readNodesV4(std::istream&           in,
+void readNodesV4(std::istream&           input,
                  Mesh&                   mesh,
                  std::map<Index, Index>& nid_by_tag)
 {
@@ -250,7 +250,7 @@ void readNodesV4(std::istream&           in,
   Index num_nodes  = 0;
   Index min_ntag   = 0;
   Index max_ntag   = 0;
-  in >> num_blocks >> num_nodes >> min_ntag >> max_ntag;
+  input >> num_blocks >> num_nodes >> min_ntag >> max_ntag;
 
   for (Index block = 0; block < num_blocks; ++block)
   {
@@ -258,42 +258,42 @@ void readNodesV4(std::istream&           in,
     Index etag            = 0;
     Index parametric      = 0;
     Index num_nodes_block = 0;
-    in >> edim >> etag >> parametric >> num_nodes_block;
+    input >> edim >> etag >> parametric >> num_nodes_block;
 
     HostVector<Index> ntags(num_nodes_block);
-    for (Index i = 0; i < num_nodes_block; ++i)
+    for (Index in = 0; in < num_nodes_block; ++in)
     {
-      in >> ntags[i];
+      input >> ntags[in];
     }
 
-    for (Index i = 0; i < num_nodes_block; ++i)
+    for (Index in = 0; in < num_nodes_block; ++in)
     {
       Mesh::Node node{};
-      in >> node[0] >> node[1] >> node[2];
+      input >> node[0] >> node[1] >> node[2];
       if (parametric)
       {
-        for (Index j = 0; j < edim; ++j)
+        for (Index id = 0; id < edim; ++id)
         {
           Real ignored = 0.0;
-          in >> ignored;
+          input >> ignored;
         }
       }
 
-      const Index local_id = mesh.numNodes();
-      nid_by_tag[ntags[i]] = local_id;
+      const Index local_id  = mesh.numNodes();
+      nid_by_tag[ntags[in]] = local_id;
       mesh.addNode(node);
     }
   }
 
-  expectMarker(in, "$EndNodes");
+  expectMarker(input, "$EndNodes");
 }
 
-void readElemsV2(std::istream&                 in,
+void readElemsV2(std::istream&                 input,
                  const std::map<Index, Index>& nid_by_tag,
                  HostVector<ElemRecord>&       elems)
 {
   Index num_elems = 0;
-  in >> num_elems;
+  input >> num_elems;
   elems.reserve(elems.size() + num_elems);
 
   for (Index ie = 0; ie < num_elems; ++ie)
@@ -301,12 +301,12 @@ void readElemsV2(std::istream&                 in,
     Index elem_tag  = 0;
     Index elem_type = 0;
     Index num_tags  = 0;
-    in >> elem_tag >> elem_type >> num_tags;
+    input >> elem_tag >> elem_type >> num_tags;
 
     HostVector<Index> tags(num_tags);
     for (Index j = 0; j < num_tags; ++j)
     {
-      in >> tags[j];
+      input >> tags[j];
     }
 
     const Index          num_nodes = gmshNumNodes(elem_type);
@@ -319,10 +319,10 @@ void readElemsV2(std::istream&                 in,
     rec.shape = shape;
     rec.nids.reserve(num_nodes);
 
-    for (Index j = 0; j < num_nodes; ++j)
+    for (Index in = 0; in < num_nodes; ++in)
     {
       Index ntag = 0;
-      in >> ntag;
+      input >> ntag;
       const auto node_it = nid_by_tag.find(ntag);
       if (node_it == nid_by_tag.end())
       {
@@ -337,10 +337,10 @@ void readElemsV2(std::istream&                 in,
     }
   }
 
-  expectMarker(in, "$EndElements");
+  expectMarker(input, "$EndElements");
 }
 
-void readElemsV4(std::istream&                 in,
+void readElemsV4(std::istream&                 input,
                  const std::map<Index, Index>& nid_by_tag,
                  HostVector<ElemRecord>&       elems)
 {
@@ -348,7 +348,7 @@ void readElemsV4(std::istream&                 in,
   Index num_elems    = 0;
   Index min_elem_tag = 0;
   Index max_elem_tag = 0;
-  in >> num_blocks >> num_elems >> min_elem_tag >> max_elem_tag;
+  input >> num_blocks >> num_elems >> min_elem_tag >> max_elem_tag;
 
   elems.reserve(num_elems);
   for (Index block = 0; block < num_blocks; ++block)
@@ -357,7 +357,7 @@ void readElemsV4(std::istream&                 in,
     Index etag            = 0;
     Index elem_type       = 0;
     Index num_elems_block = 0;
-    in >> edim >> etag >> elem_type >> num_elems_block;
+    input >> edim >> etag >> elem_type >> num_elems_block;
 
     const Index          num_nodes = gmshNumNodes(elem_type);
     const Element::Shape shape     = gmshShape(elem_type);
@@ -365,7 +365,7 @@ void readElemsV4(std::istream&                 in,
     for (Index ie = 0; ie < num_elems_block; ++ie)
     {
       Index elem_tag = 0;
-      in >> elem_tag;
+      input >> elem_tag;
 
       ElemRecord rec;
       rec.edim  = edim;
@@ -374,10 +374,10 @@ void readElemsV4(std::istream&                 in,
       rec.shape = shape;
       rec.nids.reserve(num_nodes);
 
-      for (Index j = 0; j < num_nodes; ++j)
+      for (Index in = 0; in < num_nodes; ++in)
       {
         Index ntag = 0;
-        in >> ntag;
+        input >> ntag;
         const auto node_it = nid_by_tag.find(ntag);
         if (node_it == nid_by_tag.end())
         {
@@ -393,7 +393,7 @@ void readElemsV4(std::istream&                 in,
     }
   }
 
-  expectMarker(in, "$EndElements");
+  expectMarker(input, "$EndElements");
 }
 
 Index meshDim(const HostVector<ElemRecord>& elems)
@@ -538,9 +538,9 @@ Mesh GmshReader::read(const std::string& path)
                            pname.first.second,
                            pname.second);
   }
-  for (Index i = 0; i < mesh.numNodes(); ++i)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    result.addNode(mesh.node(i));
+    result.addNode(mesh.node(in));
   }
   addElemsToMesh(result, elems, entities);
 

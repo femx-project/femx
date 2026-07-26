@@ -12,25 +12,25 @@ import femx
 MESH_FILE = Path(__file__).parent / "data" / "2d_tiny_tube.msh"
 
 
-class NavierStokesIoTest(unittest.TestCase):
+class NavierIoTest(unittest.TestCase):
     def setUp(self):
-        self.model = femx.NavierStokesModel(
+        self.model = femx.NavierModel(
             MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        self.prob = femx.NavierStokesProblem(self.model)
-        self.prob.add_bc(
+        self.problem = femx.NavierProblem(self.model)
+        self.problem.add_bc(
             femx.DirichletBC("wall", "velocity", (0.0, 0.0))
         )
-        self.prob.add_bc(
+        self.problem.add_bc(
             femx.DirichletBC("outlet", "pressure", 0.0)
         )
 
     def test_writes_velocity_and_pressure_time_series(self):
-        traj = self.prob.solve()
+        traj = self.problem.solve()
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory) / "flow.xdmf"
             self.model.write_xdmf(base, traj)

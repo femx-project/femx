@@ -37,7 +37,6 @@ names may be used when their meaning is clear.
 | `grad`     | `gradient`                  |
 | `adj`      | `adjoint`                   |
 | `assm`     | `assembly`, `assembler`     |
-| `sol`      | `solution`                  |
 | `dir`      | `direction`                 |
 | `dim`      | `dimension`                 |
 | `idx`      | `index`                     |
@@ -65,8 +64,29 @@ nearby tests.
 
 Prefer the full name when an abbreviation would be ambiguous.
 
+Use `problem` rather than `prob` for problem variables, parameters, and
+private data members.
+
+Use `result` rather than `sol` for solution vectors and solver outputs.
+
 Do not shorten words in documentation, comments, diagnostics, or user-facing
 messages.
+
+## Loop indices
+
+Use the following semantic names for finite-element loop indices:
+
+| Index | Iteration domain    |
+| ----- | ------------------- |
+| `in`  | node                |
+| `ic`  | component           |
+| `id`  | spatial dimension   |
+| `ie`  | element             |
+
+These names apply to index variables, not to the node, component, dimension,
+or element objects and counts they select. When two indices from the same
+domain are nested, use the corresponding `i` and `j` forms, such as `in` and
+`jn` for two node indices.
 
 ## Declaration spacing
 

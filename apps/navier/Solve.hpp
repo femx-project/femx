@@ -4,7 +4,7 @@
 
 #include "Config.hpp"
 #include "Monitor.hpp"
-#include "NavierStokesProblem.hpp"
+#include "NavierProblem.hpp"
 #include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::apps::navier
@@ -22,7 +22,7 @@ bool hasFiniteValues(const HostVector<Real>& vals);
  * @brief Run the Host time integrator and monitor accepted states.
  *
  * @param[in,out] integ - Configured Host time integrator.
- * @param[in] prob - Navier-Stokes problem data.
+ * @param[in] problem - Navier-Stokes problem data.
  * @param[in] time - Time-stepping configuration.
  * @param[in] out - Field-output configuration.
  * @param[out] terminal - Optional terminal log stream.
@@ -30,7 +30,7 @@ bool hasFiniteValues(const HostVector<Real>& vals);
  * @return Final state and run summary.
  */
 SolveResult solve(state::HostTimeIntegrator& integ,
-                  const NavierStokesProblem& prob,
+                  const NavierProblem&       problem,
                   const TimeConfig&          time,
                   const OutputConfig&        out,
                   std::ostream*              terminal = nullptr,
@@ -41,7 +41,7 @@ SolveResult solve(state::HostTimeIntegrator& integ,
  * @brief Run the Device time integrator and monitor accepted states.
  *
  * @param[in,out] integ - Configured Device time integrator.
- * @param[in] prob - Navier-Stokes problem data.
+ * @param[in] problem - Navier-Stokes problem data.
  * @param[in] time - Time-stepping configuration.
  * @param[in] out - Field-output configuration.
  * @param[out] terminal - Optional terminal log stream.
@@ -49,7 +49,7 @@ SolveResult solve(state::HostTimeIntegrator& integ,
  * @return Final state and run summary.
  */
 SolveResult solve(state::DeviceTimeIntegrator& integ,
-                  const NavierStokesProblem&   prob,
+                  const NavierProblem&         problem,
                   const TimeConfig&            time,
                   const OutputConfig&          out,
                   std::ostream*                terminal = nullptr,

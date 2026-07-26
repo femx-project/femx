@@ -28,43 +28,42 @@ int run(const Options& opts)
   if (opts.memspace != MemorySpace::Host)
   {
     throw std::runtime_error(
-        "PETSc Poisson optimization supports only Host execution");
+        "PETSc Poisson optimization supports only the CPU backend");
   }
 
   ExampleHelper helper(runtime::SolverType::PETSc,
                        opts.memspace,
                        outputDir());
 
-  PoissonOptProblem prob(opts);
+  PoissonOptProblem problem(opts);
 
   linalg::PETScLinearSystem fwd_system(PETSC_COMM_WORLD);
   linalg::PETScLinearSystem adj_system(PETSC_COMM_WORLD);
 
-  HostPoissonOptResidual       res(prob);
+  HostPoissonOptResidual       res(problem);
   state::HostLinearStateSolver state_solver(res, fwd_system);
-  const Result                 sol =
-      optimize(prob, state_solver, adj_system, PETSC_COMM_WORLD);
+
+  const Result result = optimize(problem, state_solver, adj_system, PETSC_COMM_WORLD);
 
   if (runtime::isRoot())
   {
     printReport(std::cout,
                 helper.name(),
-                prob,
-                sol.report,
-                sol.iterations,
-                sol.reason);
+                problem,
+                result.report,
+                result.iterations,
+                result.reason);
 
     if (opts.write_output)
     {
-      const std::string base =
-          helper.outputBase(outputStem(opts));
-      prob.writeSolution(sol.control, sol.state, base);
+      const std::string base = helper.outputBase(outputStem(opts));
+      problem.writeSolution(result.control, result.state, base);
       helper.printVisualizationPath(base);
       helper.printVisualizationPath(base + ".observations");
     }
   }
 
-  return sol.converged ? 0 : 1;
+  return result.converged ? 0 : 1;
 }
 
 } // namespace

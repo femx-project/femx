@@ -204,10 +204,10 @@ void DirichletBC::apply(HostCsrMatrix& A, HostVector<Real>& b) const
   HostVector<char> found_diagonal(A.rows(), 0);
   HostVector<Real> bc_vals(A.rows());
 
-  for (Index c = 0; c < dofs_.size(); ++c)
+  for (Index ib = 0; ib < dofs_.size(); ++ib)
   {
-    const Index id  = dofs_[c];
-    const Real  val = vals_[c];
+    const Index id  = dofs_[ib];
+    const Real  val = vals_[ib];
 
     if (id < 0 || id >= A.rows() || id >= b.size())
     {
@@ -248,9 +248,9 @@ void DirichletBC::apply(HostCsrMatrix& A, HostVector<Real>& b) const
     }
   }
 
-  for (Index id = 0; id < A.rows(); ++id)
+  for (Index row = 0; row < A.rows(); ++row)
   {
-    if (is_dirichlet[id] != 0 && found_diagonal[id] == 0)
+    if (is_dirichlet[row] != 0 && found_diagonal[row] == 0)
     {
       throw std::runtime_error("Dirichlet row has no diagonal entry");
     }

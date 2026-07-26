@@ -32,21 +32,21 @@ HostVector<Real> solveState(
 
 template <MemorySpace Space>
 Result optimizeImpl(
-    PoissonOptProblem&           prob,
+    PoissonOptProblem&           problem,
     state::StateSolver<Space>&   state_solver,
     linalg::LinearSystem<Space>& adj_system,
     MPI_Comm                     comm)
 {
-  prob.prepareObjective(
-      solveState(state_solver, prob.targetControl()));
+  problem.prepareObjective(
+      solveState(state_solver, problem.targetControl()));
 
   inverse::ReducedFunctional<Space> functional(
-      state_solver, adj_system, prob.objective());
+      state_solver, adj_system, problem.objective());
 
   opt::TaoOptimizer optimizer(functional, comm);
-  optimizer.opts().max_its = prob.options().max_iterations;
+  optimizer.opts().max_its = problem.options().max_iterations;
 
-  const HostVector<Real> init_control(prob.numParameters(), 0.0);
+  const HostVector<Real> init_control(problem.numParameters(), 0.0);
   opt::TaoResult         tao_res;
 
   runtime::checkPetsc(
@@ -57,7 +57,7 @@ Result optimizeImpl(
 
   Result result;
 
-  result.report     = prob.report(tao_res.prm, final_state, tao_res.value, tao_res.grad);
+  result.report     = problem.report(tao_res.prm, final_state, tao_res.value, tao_res.grad);
   result.control    = std::move(tao_res.prm);
   result.state      = std::move(final_state);
   result.gradient   = std::move(tao_res.grad);
@@ -71,25 +71,25 @@ Result optimizeImpl(
 } // namespace
 
 Result optimize(
-    PoissonOptProblem&                       prob,
+    PoissonOptProblem&                       problem,
     state::StateSolver<MemorySpace::Host>&   state_solver,
     linalg::LinearSystem<MemorySpace::Host>& adj_system,
     MPI_Comm                                 comm)
 {
   return optimizeImpl(
-      prob, state_solver, adj_system, comm);
+      problem, state_solver, adj_system, comm);
 }
 
 #if defined(FEMX_HAS_CUDA)
 
 Result optimize(
-    PoissonOptProblem&                         prob,
+    PoissonOptProblem&                         problem,
     state::StateSolver<MemorySpace::Device>&   state_solver,
     linalg::LinearSystem<MemorySpace::Device>& adj_system,
     MPI_Comm                                   comm)
 {
   return optimizeImpl(
-      prob, state_solver, adj_system, comm);
+      problem, state_solver, adj_system, comm);
 }
 
 #endif

@@ -82,9 +82,10 @@ Index numElems(const VtiWriter::Image& image)
 
 void checkFinite(const VtiWriter::Image& image)
 {
-  for (Index d = 0; d < 3; ++d)
+  for (Index id = 0; id < 3; ++id)
   {
-    if (!std::isfinite(image.origin[d]) || !std::isfinite(image.spacing[d]))
+    if (!std::isfinite(image.origin[id])
+        || !std::isfinite(image.spacing[id]))
     {
       throw std::runtime_error("VtiWriter origin and spacing must be finite");
     }

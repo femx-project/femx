@@ -145,13 +145,13 @@ void ElementValues::calcPhysicalValues(const Element& elem)
 
     for (Index in = 0; in < num_nodes_; ++in)
     {
-      for (Index a = 0; a < dim_; ++a)
+      for (Index id = 0; id < dim_; ++id)
       {
-        const Real x_a = elem.node(in)[a];
+        const Real x = elem.node(in)[id];
 
-        for (Index b = 0; b < dim_; ++b)
+        for (Index jd = 0; jd < dim_; ++jd)
         {
-          J_[a * dim_ + b] += x_a * dNdr_iq(in, b);
+          J_[id * dim_ + jd] += x * dNdr_iq(in, jd);
         }
       }
     }
@@ -165,15 +165,16 @@ void ElementValues::calcPhysicalValues(const Element& elem)
         num_dofs_,
         dim_);
 
-    for (Index i = 0; i < num_dofs_; ++i)
+    for (Index in = 0; in < num_dofs_; ++in)
     {
-      for (Index a = 0; a < dim_; ++a)
+      for (Index id = 0; id < dim_; ++id)
       {
-        dNdx(i, a) = 0.0;
+        dNdx(in, id) = 0.0;
 
-        for (Index b = 0; b < dim_; ++b)
+        for (Index jd = 0; jd < dim_; ++jd)
         {
-          dNdx(i, a) += dNdr_iq(i, b) * invJ_[b * dim_ + a];
+          dNdx(in, id) +=
+              dNdr_iq(in, jd) * invJ_[jd * dim_ + id];
         }
       }
     }

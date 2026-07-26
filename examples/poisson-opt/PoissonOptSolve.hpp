@@ -24,14 +24,14 @@ struct Result
 /**
  * @brief Optimize with Host state and adjoint systems.
  *
- * @param[in,out] prob - Problem whose objective is prepared.
+ * @param[in,out] problem - Problem whose objective is prepared.
  * @param[in,out] state_solver - Host forward state solver.
  * @param[in,out] adj_system - Host adjoint linear system.
  * @param[in] comm - Communicator used by TAO.
  * @return Optimization result and final state.
  */
 Result optimize(
-    PoissonOptProblem&                       prob,
+    PoissonOptProblem&                       problem,
     state::StateSolver<MemorySpace::Host>&   state_solver,
     linalg::LinearSystem<MemorySpace::Host>& adj_system,
     MPI_Comm                                 comm);
@@ -40,14 +40,14 @@ Result optimize(
 /**
  * @brief Optimize with Device state and adjoint systems.
  *
- * @param[in,out] prob - Problem whose objective is prepared.
+ * @param[in,out] problem - Problem whose objective is prepared.
  * @param[in,out] state_solver - Device forward state solver.
  * @param[in,out] adj_system - Device adjoint linear system.
  * @param[in] comm - Communicator used by TAO.
  * @return Optimization result and final state.
  */
 Result optimize(
-    PoissonOptProblem&                         prob,
+    PoissonOptProblem&                         problem,
     state::StateSolver<MemorySpace::Device>&   state_solver,
     linalg::LinearSystem<MemorySpace::Device>& adj_system,
     MPI_Comm                                   comm);

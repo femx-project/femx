@@ -115,7 +115,7 @@ private:
   Vec                  hist_;
   Vec                  nxt_;
   Vec                  rhs_;
-  Vec                  sol_;
+  Vec                  result_;
   Vec                  carry_;
   Vec                  prm_adj_;
   Vec                  init_grad_;
@@ -147,7 +147,7 @@ TimeReducedFunctional<Space>::TimeReducedFunctional(
     hist_(dims_.num_hist * dims_.num_states),
     nxt_(dims_.num_states),
     rhs_(dims_.num_states),
-    sol_(dims_.num_states),
+    result_(dims_.num_states),
     carry_(dims_.num_hist * dims_.num_states),
     prm_adj_(dims_.num_param),
     init_grad_(dims_.num_states),
@@ -345,7 +345,7 @@ void TimeReducedFunctional<Space>::assembleNext(Index step)
   loadStep(step);
   auto& jac = adj_system_.jacobian();
   jac.setup(res_.hostPattern());
-  res_.assembleNext(timeCtx(step), sol_, jac, ctx_);
+  res_.assembleNext(timeCtx(step), result_, jac, ctx_);
   jac.finalize();
   ctx_.sync();
   assm_sec_ += detail::elapsedSec(begin);
@@ -381,16 +381,16 @@ void TimeReducedFunctional<Space>::solveAdj(
 
     assembleNext(step);
     const auto solve_begin = detail::Clock::now();
-    adj_system_.solveT(rhs_.view(), sol_);
+    adj_system_.solveT(rhs_.view(), result_);
     solve_sec_ += detail::elapsedSec(solve_begin);
     ++solve_calls_;
-    checkSize(sol_, dims_.num_res);
+    checkSize(result_, dims_.num_res);
 
     for (Index lag = 0; lag < dims_.num_hist; ++lag)
     {
       res_.applyJacT(timeCtx(step),
                      state::VariableBlock::hist(lag),
-                     sol_.view(),
+                     result_.view(),
                      rhs_,
                      ctx_);
       checkSize(rhs_, numStates());
@@ -406,7 +406,7 @@ void TimeReducedFunctional<Space>::solveAdj(
 
     res_.applyJacT(timeCtx(step),
                    state::VariableBlock::Param,
-                   sol_.view(),
+                   result_.view(),
                    prm_adj_,
                    ctx_);
     checkSize(prm_adj_, numParams());

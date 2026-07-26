@@ -36,16 +36,16 @@ bool insideBox(const Element& elem,
                const Point3&  point,
                Index          dim)
 {
-  for (Index a = 0; a < dim; ++a)
+  for (Index id = 0; id < dim; ++id)
   {
-    Real lower = elem.node(0)[a];
-    Real upper = elem.node(0)[a];
+    Real lower = elem.node(0)[id];
+    Real upper = elem.node(0)[id];
     for (Index in = 1; in < elem.numNodes(); ++in)
     {
-      lower = std::min(lower, elem.node(in)[a]);
-      upper = std::max(upper, elem.node(in)[a]);
+      lower = std::min(lower, elem.node(in)[id]);
+      upper = std::max(upper, elem.node(in)[id]);
     }
-    if (point[a] < lower - point_tol || point[a] > upper + point_tol)
+    if (point[id] < lower - point_tol || point[id] > upper + point_tol)
     {
       return false;
     }
@@ -130,9 +130,9 @@ Point3 mappedPoint(const Element&          elem,
   Point3 mapped{0.0, 0.0, 0.0};
   for (Index in = 0; in < elem.numNodes(); ++in)
   {
-    for (Index a = 0; a < dim; ++a)
+    for (Index id = 0; id < dim; ++id)
     {
-      mapped[a] += wts[in] * elem.node(in)[a];
+      mapped[id] += wts[in] * elem.node(in)[id];
     }
   }
   return mapped;
@@ -347,15 +347,15 @@ TimePointInterpolator::TimePointInterpolator(Index               num_steps,
   const MixedFieldView field = space.field(fid);
   if (comps_.empty())
   {
-    for (Index c = 0; c < field.numComponents(); ++c)
+    for (Index ic = 0; ic < field.numComponents(); ++ic)
     {
-      comps_.push_back(c);
+      comps_.push_back(ic);
     }
   }
 
-  for (Index comp : comps_)
+  for (Index ic : comps_)
   {
-    require(comp >= 0 && comp < field.numComponents(),
+    require(ic >= 0 && ic < field.numComponents(),
             "TimePointInterpolator component is out of range");
   }
 
@@ -549,12 +549,12 @@ HostPointInterpolatorData TimePointInterpolator::buildData(
   for (const Point3& point : pts)
   {
     const ScalarStencil scalar = findScalarStencil(field.space(), point);
-    for (Index comp : comps)
+    for (Index ic : comps)
     {
-      for (Index i = 0; i < scalar.wts.size(); ++i)
+      for (Index in = 0; in < scalar.wts.size(); ++in)
       {
-        dofs.push_back(field.globalDof(scalar.nids[i], comp));
-        wts.push_back(scalar.wts[i]);
+        dofs.push_back(field.globalDof(scalar.nids[in], ic));
+        wts.push_back(scalar.wts[in]);
       }
       offsets.push_back(dofs.size());
     }

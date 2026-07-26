@@ -323,9 +323,9 @@ Mesh readMesh(hid_t file, Element::Shape shape)
   {
     HostVector<Index> nids;
     nids.reserve(cn);
-    for (Index i = 0; i < cn; ++i)
+    for (Index in = 0; in < cn; ++in)
     {
-      nids.push_back(topology[ie * cn + i]);
+      nids.push_back(topology[ie * cn + in]);
     }
     mesh.addElem(nids, shape, dim, 0, 0, {});
   }
@@ -349,9 +349,9 @@ std::array<HostVector<Real>, 3> readVectorField(hid_t              file,
       HostVector<Real>(num_nodes), HostVector<Real>(num_nodes), HostVector<Real>(num_nodes)};
   for (Index in = 0; in < num_nodes; ++in)
   {
-    for (Index d = 0; d < 3; ++d)
+    for (Index ic = 0; ic < 3; ++ic)
     {
-      out[d][in] = data[3 * in + d];
+      out[ic][in] = data[3 * in + ic];
     }
   }
   return out;

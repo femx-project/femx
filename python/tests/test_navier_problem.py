@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 import femx
-import femx.navier_stokes as navier_stokes
+import femx.navier as navier
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -12,9 +12,9 @@ MESH_FILE = ROOT / "data" / "meshes" / "2d_rectangle.msh"
 TINY_MESH_FILE = Path(__file__).parent / "data" / "2d_tiny_tube.msh"
 
 
-class NavierStokesProblemTest(unittest.TestCase):
+class NavierProblemTest(unittest.TestCase):
     def setUp(self):
-        self.model = femx.NavierStokesModel(
+        self.model = femx.NavierModel(
             MESH_FILE,
             num_steps=3,
             dt=0.25,
@@ -23,7 +23,7 @@ class NavierStokesProblemTest(unittest.TestCase):
         )
 
     def test_constant_velocity_and_automatic_pressure_gauge(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(
             femx.DirichletBC(
                 boundary="wall",
@@ -45,11 +45,11 @@ class NavierStokesProblemTest(unittest.TestCase):
         self.assertEqual(dims.num_param, 0)
 
     def test_name_and_tag_select_the_same_boundary(self):
-        by_name = femx.NavierStokesProblem(self.model)
+        by_name = femx.NavierProblem(self.model)
         by_name.add_bc(femx.DirichletBC("inlet", "velocity", (1.0, 0.0)))
         by_name.build()
 
-        by_tag = femx.NavierStokesProblem(self.model)
+        by_tag = femx.NavierProblem(self.model)
         by_tag.add_bc(femx.DirichletBC(4, "velocity", (1.0, 0.0)))
         by_tag.build()
 
@@ -63,7 +63,7 @@ class NavierStokesProblemTest(unittest.TestCase):
             calls.append((point.copy(), time))
             return point[1] + time, -time
 
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(
             femx.DirichletBC(
                 boundary="inlet",
@@ -84,7 +84,7 @@ class NavierStokesProblemTest(unittest.TestCase):
         self.assertTrue(all(point.shape == (2,) for point, _ in calls))
 
     def test_pressure_bc_disables_automatic_point_gauge(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.build()
 
@@ -92,27 +92,27 @@ class NavierStokesProblemTest(unittest.TestCase):
         self.assertEqual(problem.fixed_dofs.size, outlet_nodes.size)
 
     def test_conflicting_corner_values_are_rejected(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("inlet", "velocity", (1.0, 0.0)))
         with self.assertRaisesRegex(ValueError, "conflicting Dirichlet"):
             problem.build()
 
     def test_rejects_invalid_velocity_shape(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(femx.DirichletBC("inlet", "velocity", 1.0))
         with self.assertRaisesRegex(ValueError, "2 values"):
             problem.build()
 
     def test_normal_ctr_runs_dense_forward_with_time_interpolation(self):
-        model = femx.NavierStokesModel(
+        model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        problem = femx.NavierStokesProblem(model)
+        problem = femx.NavierProblem(model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.add_ctr(
@@ -147,7 +147,9 @@ class NavierStokesProblemTest(unittest.TestCase):
         np.testing.assert_allclose(values[1:, tangential_dof], 0.0)
 
         solver = problem.create_solver()
-        self.assertIsInstance(solver, femx.NavierStokesSolver)
+        self.assertIsInstance(solver, femx.NavierSolver)
+        self.assertIs(solver.problem, problem)
+        self.assertFalse(hasattr(solver, "prob"))
         self.assertEqual(solver.memspace, femx.MemorySpace.HOST)
         self.assertEqual(solver.solver_type, femx.SolverType.DENSE)
         second = solver.solve(np.array([0.2, 0.6]))
@@ -163,14 +165,14 @@ class NavierStokesProblemTest(unittest.TestCase):
             solver.solve(np.array([0.2, 0.6]))
 
     def test_fixed_initial_state_runs_without_adding_parameters(self):
-        model = femx.NavierStokesModel(
+        model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        problem = femx.NavierStokesProblem(model)
+        problem = femx.NavierProblem(model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.add_ctr(
@@ -198,7 +200,7 @@ class NavierStokesProblemTest(unittest.TestCase):
         np.testing.assert_array_equal(traj.values[0], state)
 
     def test_fixed_initial_state_preserves_boundary_values(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         problem.add_bc(femx.DirichletBC("inlet", "velocity", (1.0, 0.0)))
         problem.build()
 
@@ -209,14 +211,14 @@ class NavierStokesProblemTest(unittest.TestCase):
             problem.build()
 
     def test_affine_initial_state_ctr_runs_forward(self):
-        model = femx.NavierStokesModel(
+        model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        problem = femx.NavierStokesProblem(model)
+        problem = femx.NavierProblem(model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.add_ctr(
@@ -314,14 +316,14 @@ class NavierStokesProblemTest(unittest.TestCase):
         self.assertEqual(solver.solve_seconds, 0.0)
 
     def test_periodic_ctr_shares_first_and_last_time_level(self):
-        model = femx.NavierStokesModel(
+        model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=4,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        problem = femx.NavierStokesProblem(model)
+        problem = femx.NavierProblem(model)
         problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         problem.add_ctr(
@@ -357,14 +359,14 @@ class NavierStokesProblemTest(unittest.TestCase):
     def test_explicit_ctr_rejects_time_levels_unused_by_solver(self):
         for periodic in (False, True):
             with self.subTest(periodic=periodic):
-                model = femx.NavierStokesModel(
+                model = femx.NavierModel(
                     TINY_MESH_FILE,
                     num_steps=1,
                     dt=1.0,
                     rho=1.0,
                     mu=0.01,
                 )
-                problem = femx.NavierStokesProblem(model)
+                problem = femx.NavierProblem(model)
                 problem.add_bc(
                     femx.DirichletBC("wall", "velocity", (0.0, 0.0))
                 )
@@ -386,7 +388,7 @@ class NavierStokesProblemTest(unittest.TestCase):
                     problem.build()
 
     def test_initial_modes_are_exactly_zero_on_constrained_dofs(self):
-        base = femx.NavierStokesProblem(self.model)
+        base = femx.NavierProblem(self.model)
         base.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
         base.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
         base.add_ctr(
@@ -405,7 +407,7 @@ class NavierStokesProblemTest(unittest.TestCase):
             with self.subTest(dof=int(dof)):
                 modes = np.zeros((self.model.num_states, 1))
                 modes[dof, 0] = 1.0e-12
-                problem = femx.NavierStokesProblem(self.model)
+                problem = femx.NavierProblem(self.model)
                 problem.add_bc(
                     femx.DirichletBC("wall", "velocity", (0.0, 0.0))
                 )
@@ -425,7 +427,7 @@ class NavierStokesProblemTest(unittest.TestCase):
                     problem.build()
 
     def test_solver_factory_rejects_unknown_selection(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
 
         self.assertEqual(femx.memspaces()[0], femx.MemorySpace.HOST)
         self.assertIn(
@@ -440,7 +442,7 @@ class NavierStokesProblemTest(unittest.TestCase):
             problem.create_solver("missing")
 
     def test_dense_solver_rejects_resolve_options(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
 
         with self.assertRaisesRegex(ValueError, "only for ReSolve"):
             problem.create_solver(
@@ -458,14 +460,14 @@ class NavierStokesProblemTest(unittest.TestCase):
             "max_its": np.int64(5000),
             "restart": 200,
         }
-        options = navier_stokes._resolve_options(values)
+        options = navier._resolve_options(values)
         self.assertEqual(options.rtol, 1.0e-10)
         self.assertEqual(options.max_its, 5000)
         self.assertEqual(options.restart, 200)
         self.assertEqual(options.solve, "fgmres")
         self.assertEqual(options.precond, "ilu0")
 
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
         solver = problem.create_solver(
             solver_type="resolve",
             options=values,
@@ -478,7 +480,7 @@ class NavierStokesProblemTest(unittest.TestCase):
         "femx was built without ReSolve",
     )
     def test_resolve_solver_rejects_invalid_options(self):
-        problem = femx.NavierStokesProblem(self.model)
+        problem = femx.NavierProblem(self.model)
 
         with self.assertRaisesRegex(TypeError, "options must be a mapping"):
             problem.create_solver(

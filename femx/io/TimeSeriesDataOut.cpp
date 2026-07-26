@@ -198,9 +198,9 @@ void writeVectorDataset(hid_t                                  file,
 
   for (Index in = 0; in < num_nodes; ++in)
   {
-    for (Index d = 0; d < 3; ++d)
+    for (Index ic = 0; ic < 3; ++ic)
     {
-      data[in * 3 + d] = vals[d][in];
+      data[in * 3 + ic] = vals[ic][in];
     }
   }
 
@@ -225,9 +225,9 @@ void writeMesh(hid_t file, const Mesh& mesh)
   HostVector<Real> geometry(mesh.numNodes() * 3);
   for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    for (Index d = 0; d < 3; ++d)
+    for (Index id = 0; id < 3; ++id)
     {
-      geometry[in * 3 + d] = mesh.node(in)[d];
+      geometry[in * 3 + id] = mesh.node(in)[id];
     }
   }
 
@@ -253,9 +253,9 @@ void writeMesh(hid_t file, const Mesh& mesh)
       throw std::runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
     const Index* nids = mesh.elemNodeIds(ie);
-    for (Index i = 0; i < cn; ++i)
+    for (Index in = 0; in < cn; ++in)
     {
-      topology[ie * cn + i] = nids[i];
+      topology[ie * cn + in] = nids[in];
     }
   }
 

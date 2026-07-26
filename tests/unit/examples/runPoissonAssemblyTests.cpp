@@ -25,8 +25,8 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   examples::poisson::Options opts;
   opts.num_x_cells = 2;
   opts.num_y_cells = 2;
-  examples::poisson::PoissonProblem      prob(opts);
-  examples::poisson::HostPoissonResidual poisson_res(prob);
+  examples::poisson::PoissonProblem      problem(opts);
+  examples::poisson::HostPoissonResidual poisson_res(problem);
 
   linalg::HostLinearSystem     system;
   state::HostLinearStateSolver solver(poisson_res, system);
@@ -39,12 +39,12 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   const HostCsrMatrix& mat = jac.matrix();
 
   status *= mat.pattern().layoutId()
-            == prob.assemblyMap().pattern().layoutId();
-  status *= state.size() == prob.numDofs();
-  status *= prob.mesh().numElems() == 4;
+            == problem.assemblyMap().pattern().layoutId();
+  status *= state.size() == problem.numDofs();
+  status *= problem.mesh().numElems() == 4;
 
-  const auto& map  = prob.boundaryMap();
-  const auto& vals = prob.boundaryValues();
+  const auto& map  = problem.boundaryMap();
+  const auto& vals = problem.boundaryValues();
   const auto  view = map.view();
   for (Index ib = 0; ib < map.numBcs(); ++ib)
   {

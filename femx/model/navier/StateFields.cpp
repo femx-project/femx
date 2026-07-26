@@ -4,7 +4,7 @@
 
 using namespace femx;
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 
 void splitStateFields(HostVectorView<const Real> state,
@@ -31,14 +31,14 @@ void splitStateFields(HostVectorView<const Real> state,
   const auto  vel      = space.field(0);
   const auto  pre      = space.field(1);
   const Index num_comp = vel.numComponents();
-  for (Index node = 0; node < num_nodes; ++node)
+  for (Index in = 0; in < num_nodes; ++in)
   {
-    ux[node] = state[vel.globalDof(node, 0)];
-    uy[node] = num_comp > 1 ? state[vel.globalDof(node, 1)] : 0.0;
-    uz[node] = num_comp > 2 ? state[vel.globalDof(node, 2)] : 0.0;
+    ux[in] = state[vel.globalDof(in, 0)];
+    uy[in] = num_comp > 1 ? state[vel.globalDof(in, 1)] : 0.0;
+    uz[in] = num_comp > 2 ? state[vel.globalDof(in, 2)] : 0.0;
 
-    pressure[node] = state[pre.globalDof(node)];
+    pressure[in] = state[pre.globalDof(in)];
   }
 }
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

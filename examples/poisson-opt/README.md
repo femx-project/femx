@@ -69,9 +69,9 @@ builds.
 
 | Executable | State/adjoint solve | Execution | TAO communicator |
 | --- | --- | --- | --- |
-| `poisson-opt-resolve` | ReSolve | `--memory-space host` | serial |
-| `poisson-opt-resolve` | ReSolve | `--memory-space device` | CUDA |
-| `poisson-opt-petsc` | PETSc | Host, distributed assembly | `PETSC_COMM_WORLD` |
+| `poisson-opt-resolve` | ReSolve | `-b cpu` | serial |
+| `poisson-opt-resolve` | ReSolve | `-b cuda` | CUDA |
+| `poisson-opt-petsc` | PETSc | CPU, distributed assembly | `PETSC_COMM_WORLD` |
 
 TAO is provided by PETSc in all three cases. In an MPI PETSc run, every rank
 participates in the TAO callbacks, finite-element assembly, forward solve, and
@@ -79,7 +79,7 @@ adjoint solve. Only rank zero prints the report and writes visualization files.
 
 ## Build
 
-For one build containing ReSolve Host/CUDA, PETSc/TAO, and Enzyme:
+For one build containing ReSolve CPU/CUDA, PETSc/TAO, and Enzyme:
 
 ```shell
 CXX=clang++ CUDACXX=clang++ \
@@ -101,14 +101,14 @@ ReSolve on the CPU:
 
 ```shell
 ./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
-  --memory-space host --nx 32 --ny 32 --max-its 50
+  -b cpu --nx 32 --ny 32 --max-its 50
 ```
 
 ReSolve and the Enzyme VJP on CUDA:
 
 ```shell
 ./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
-  --memory-space device --nx 32 --ny 32 --max-its 50
+  -b cuda --nx 32 --ny 32 --max-its 50
 ```
 
 PETSc, Enzyme, and TAO on four MPI ranks:
@@ -116,7 +116,7 @@ PETSc, Enzyme, and TAO on four MPI ranks:
 ```shell
 mpiexec -n 4 \
   ./build/petsc-enzyme/examples/poisson-opt/poisson-opt-petsc \
-  --memory-space host --nx 32 --ny 32 --max-its 50
+  -b cpu --nx 32 --ny 32 --max-its 50
 ```
 
 Pass `--output yes` to write the final mesh fields and observation point cloud

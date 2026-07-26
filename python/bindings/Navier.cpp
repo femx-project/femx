@@ -17,10 +17,10 @@
 #include <femx/io/TimeSeriesDataOut.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/FluidProperties.hpp>
-#include <femx/model/ns/Model.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
-#include <femx/model/ns/StateFields.hpp>
+#include <femx/model/navier/FluidProperties.hpp>
+#include <femx/model/navier/NavierModel.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
+#include <femx/model/navier/StateFields.hpp>
 #ifdef FEMX_RESOLVE_USE_CUDA
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
@@ -42,9 +42,9 @@ using femx::HostVector;
 using femx::Index;
 using femx::Real;
 using femx::assembly::HostConstrainedTimeResidual;
-using femx::model::ns::FluidProperties;
-using femx::model::ns::HostNavierStokesResidual;
-using femx::model::ns::NavierStokesModel;
+using femx::model::navier::FluidProperties;
+using femx::model::navier::HostNavierResidual;
+using femx::model::navier::NavierModel;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 
@@ -117,8 +117,8 @@ DenseMatrix realMatrix(const RealArray& vals, const char* name)
 }
 
 py::array_t<Index> boundaryVelocityDofs(
-    const NavierStokesModel& model,
-    const py::object&        selector)
+    const NavierModel& model,
+    const py::object&  selector)
 {
   if (py::isinstance<py::str>(selector))
   {
@@ -133,9 +133,9 @@ py::array_t<Index> boundaryVelocityDofs(
   throw std::runtime_error("Boundary selector must be a physical name or tag");
 }
 
-void writeNavierStokesXdmf(const NavierStokesModel& model,
-                           const std::string&       path,
-                           const TimeTrajectory&    tr)
+void writeNavierXdmf(const NavierModel&    model,
+                     const std::string&    path,
+                     const TimeTrajectory& tr)
 {
   if (path.empty())
   {
@@ -158,12 +158,12 @@ void writeNavierStokesXdmf(const NavierStokesModel& model,
   out.attachMesh(model.mesh());
   for (Index level = 0; level < tr.numTimeLevels(); ++level)
   {
-    femx::model::ns::splitStateFields(tr[level],
-                                      model.space(),
-                                      ux,
-                                      uy,
-                                      uz,
-                                      pressure);
+    femx::model::navier::splitStateFields(tr[level],
+                                          model.space(),
+                                          ux,
+                                          uy,
+                                          uz,
+                                          pressure);
     out.beginStep(static_cast<Real>(level) * model.dt());
     out.addNodalVectorField("velocity", ux, uy, uz);
     out.addNodalScalarField("pressure", pressure);
@@ -185,7 +185,7 @@ Index fieldId(const std::string& field)
 }
 
 template <typename Match>
-std::set<Index> boundaryNodes(const NavierStokesModel& model, Match match)
+std::set<Index> boundaryNodes(const NavierModel& model, Match match)
 {
   const auto&     mesh = model.mesh();
   std::set<Index> nodes;
@@ -204,8 +204,8 @@ std::set<Index> boundaryNodes(const NavierStokesModel& model, Match match)
   return nodes;
 }
 
-std::set<Index> selectBoundaryNodes(const NavierStokesModel& model,
-                                    const py::object&        selector)
+std::set<Index> selectBoundaryNodes(const NavierModel& model,
+                                    const py::object&  selector)
 {
   if (py::isinstance<py::str>(selector))
   {
@@ -235,9 +235,9 @@ py::array_t<Real> pointArray(const femx::fem::Mesh::Node& point, Index dim)
 {
   py::array_t<Real> out(dim);
   auto              vals = out.mutable_unchecked<1>();
-  for (Index component = 0; component < dim; ++component)
+  for (Index id = 0; id < dim; ++id)
   {
-    vals(component) = point[component];
+    vals(id) = point[id];
   }
   return out;
 }
@@ -266,9 +266,9 @@ HostVector<Real> pythonBoundaryValue(const py::object&            val,
   else if (vals.ndim() == 1 && vals.shape(0) == components)
   {
     const auto data = vals.unchecked<1>();
-    for (Index component = 0; component < components; ++component)
+    for (Index ic = 0; ic < components; ++ic)
     {
-      out[component] = data(component);
+      out[ic] = data(ic);
     }
   }
   else
@@ -290,9 +290,9 @@ HostVector<Real> pythonBoundaryValue(const py::object&            val,
 }
 
 femx::fem::DirichletBC pythonDirichletBC(
-    const NavierStokesModel& model,
-    const py::list&          specifications,
-    Real                     time)
+    const NavierModel& model,
+    const py::list&    specifications,
+    Real               time)
 {
   femx::fem::DirichletBC out;
   bool                   has_pressure = false;
@@ -307,19 +307,18 @@ femx::fem::DirichletBC pythonDirichletBC(
     const auto       field_view  = model.space().field(fieldId(field));
     has_pressure                |= field == "pressure";
 
-    for (Index node : selectBoundaryNodes(model, selector))
+    for (Index in : selectBoundaryNodes(model, selector))
     {
       const HostVector<Real> components = pythonBoundaryValue(
           val,
-          model.mesh().node(node),
+          model.mesh().node(in),
           model.mesh().dim(),
           time,
           field_view.numComponents(),
           field);
-      for (Index component = 0; component < components.size(); ++component)
+      for (Index ic = 0; ic < components.size(); ++ic)
       {
-        out.addDof(field_view.globalDof(node, component),
-                   components[component]);
+        out.addDof(field_view.globalDof(in, ic), components[ic]);
       }
     }
   }
@@ -332,8 +331,8 @@ femx::fem::DirichletBC pythonDirichletBC(
 }
 
 femx::fem::TimeDirichletData makePythonDirichletData(
-    const NavierStokesModel& model,
-    const py::iterable&      specifications)
+    const NavierModel&  model,
+    const py::iterable& specifications)
 {
   py::list items;
   for (const py::handle item : specifications)
@@ -350,8 +349,8 @@ femx::fem::TimeDirichletData makePythonDirichletData(
       });
 }
 
-HostVector<Real> pythonNormal(const NavierStokesModel& model,
-                              const py::object&        specification)
+HostVector<Real> pythonNormal(const NavierModel& model,
+                              const py::object&  specification)
 {
   const RealArray vals =
       RealArray::ensure(specification.attr("normal"));
@@ -364,15 +363,15 @@ HostVector<Real> pythonNormal(const NavierStokesModel& model,
 
   HostVector<Real> normal(components);
   const auto       data = vals.unchecked<1>();
-  for (Index component = 0; component < components; ++component)
+  for (Index ic = 0; ic < components; ++ic)
   {
-    normal[component] = data(component);
+    normal[ic] = data(ic);
   }
   return normal;
 }
 
 femx::fem::DirichletControl makePythonNormalControl(
-    const NavierStokesModel& model,
+    const NavierModel&       model,
     const py::object&        specification,
     const HostVector<Index>& fixed_dofs)
 {
@@ -406,7 +405,7 @@ femx::fem::DirichletControl makePythonNormalControl(
 }
 
 femx::fem::DirichletControl makePythonVelocityControl(
-    const NavierStokesModel& model,
+    const NavierModel&       model,
     const py::object&        specification,
     const HostVector<Index>& fixed_dofs)
 {
@@ -436,7 +435,7 @@ femx::fem::DirichletControl makePythonVelocityControl(
 }
 
 femx::fem::DirichletControl makePythonControl(
-    const NavierStokesModel& model,
+    const NavierModel&       model,
     const py::object&        specification,
     const HostVector<Index>& fixed_dofs)
 {
@@ -453,8 +452,8 @@ femx::fem::DirichletControl makePythonControl(
 }
 
 HostVector<femx::LinearInterpolation> makePythonControlTimeStencils(
-    const NavierStokesModel& model,
-    const py::object&        specification)
+    const NavierModel& model,
+    const py::object&  specification)
 {
   const py::object raw_times = specification.attr("times");
   if (raw_times.is_none())
@@ -550,8 +549,8 @@ HostVector<femx::LinearInterpolation> makePythonControlTimeStencils(
 }
 
 HostVector<femx::Point3> pythonObservationPoints(
-    const NavierStokesModel& model,
-    const RealArray&         vals)
+    const NavierModel& model,
+    const RealArray&   vals)
 {
   const Index dim = model.mesh().dim();
   if (vals.ndim() != 2 || vals.shape(0) == 0
@@ -567,23 +566,23 @@ HostVector<femx::Point3> pythonObservationPoints(
   for (Index point = 0; point < points.size(); ++point)
   {
     points[point] = {0.0, 0.0, 0.0};
-    for (Index axis = 0; axis < vals.shape(1); ++axis)
+    for (Index id = 0; id < vals.shape(1); ++id)
     {
-      const Real val = data(point, axis);
+      const Real val = data(point, id);
       if (!std::isfinite(val))
       {
         throw std::runtime_error(
             "observation points must be finite");
       }
-      points[point][axis] = val;
+      points[point][id] = val;
     }
   }
   return points;
 }
 
 HostVector<Index> pythonObservationComponents(
-    const NavierStokesModel& model,
-    const IndexArray&        vals)
+    const NavierModel& model,
+    const IndexArray&  vals)
 {
   if (vals.ndim() != 1 || vals.shape(0) == 0)
   {
@@ -595,15 +594,15 @@ HostVector<Index> pythonObservationComponents(
   HostVector<Index> components(vals.shape(0));
   std::set<Index>   seen;
   const auto        data = vals.unchecked<1>();
-  for (Index i = 0; i < components.size(); ++i)
+  for (Index ic = 0; ic < components.size(); ++ic)
   {
-    components[i] = data(i);
-    if (components[i] < 0 || components[i] >= num_components)
+    components[ic] = data(ic);
+    if (components[ic] < 0 || components[ic] >= num_components)
     {
       throw std::runtime_error(
           "observation component is out of range");
     }
-    if (!seen.insert(components[i]).second)
+    if (!seen.insert(components[ic]).second)
     {
       throw std::runtime_error(
           "observation components must not contain duplicates");
@@ -631,7 +630,7 @@ py::array_t<Real> timeDirichletValueArray(
 class FixedDirichletProblem
 {
 public:
-  FixedDirichletProblem(NavierStokesModel&  model,
+  FixedDirichletProblem(NavierModel&        model,
                         const py::iterable& specifications)
     : model_(model),
       navier_(model),
@@ -669,8 +668,8 @@ public:
   }
 
 private:
-  NavierStokesModel&           model_;
-  HostNavierStokesResidual     navier_; ///< Host Navier-Stokes residual.
+  NavierModel&                 model_;
+  HostNavierResidual           navier_; ///< Host Navier-Stokes residual.
   femx::fem::TimeDirichletData data_;
   HostConstrainedTimeResidual  res_;
 };
@@ -678,7 +677,7 @@ private:
 class ControlledDirichletProblem
 {
 public:
-  ControlledDirichletProblem(NavierStokesModel&  model,
+  ControlledDirichletProblem(NavierModel&        model,
                              const py::iterable& boundary_conditions,
                              const py::object&   ctr_specification,
                              Index               ctr_param_offset)
@@ -772,9 +771,9 @@ public:
         stored = node;
       }
     }
-    for (const Index node : nodes)
+    for (const Index in : nodes)
     {
-      if (node < 0)
+      if (in < 0)
       {
         throw std::runtime_error(
             "Normal velocity control contains an unused column");
@@ -799,8 +798,8 @@ public:
   }
 
 private:
-  NavierStokesModel&                    model_;
-  HostNavierStokesResidual              navier_; ///< Host Navier-Stokes residual.
+  NavierModel&                          model_;
+  HostNavierResidual                    navier_; ///< Host Navier-Stokes residual.
   femx::fem::TimeDirichletData          data_;
   femx::fem::DirichletControl           ctr_;
   HostVector<femx::LinearInterpolation> time_stencils_;
@@ -812,10 +811,10 @@ class VelocityPointSampler final
   : public femx::inverse::TimeObservationOperator
 {
 public:
-  VelocityPointSampler(const NavierStokesModel& model,
-                       const RealArray&         points,
-                       const IndexArray&        components,
-                       Index                    num_param)
+  VelocityPointSampler(const NavierModel& model,
+                       const RealArray&   points,
+                       const IndexArray&  components,
+                       Index              num_param)
     : interpolator_(model.numSteps(),
                     model.space(),
                     0,
@@ -916,10 +915,10 @@ public:
       observe(level, tr[level], prm, vals);
       for (Index point = 0; point < num_points; ++point)
       {
-        for (Index component = 0; component < num_components; ++component)
+        for (Index ic = 0; ic < num_components; ++ic)
         {
-          data(level, point, component) =
-              vals[point * num_components + component];
+          data(level, point, ic) =
+              vals[point * num_components + ic];
         }
       }
     }
@@ -980,7 +979,7 @@ class PythonDeviceTimeIntegrator final
 {
 public:
   PythonDeviceTimeIntegrator(
-      const NavierStokesModel&       model,
+      const NavierModel&             model,
       femx::fem::HostControlMap      control,
       femx::fem::HostInitialStateMap init,
       femx::linalg::ReSolveOptions   opts)
@@ -1032,7 +1031,7 @@ public:
 private:
   femx::linalg::CudaLinearSystem
       system_; ///< Device linear system.
-  femx::model::ns::DeviceNavierStokesResidual
+  femx::model::navier::DeviceNavierResidual
       navier_; ///< Device Navier-Stokes residual.
   femx::assembly::DeviceConstrainedTimeResidual
                                     res_;   ///< Constrained Device residual.
@@ -1040,14 +1039,14 @@ private:
 };
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
-makeDeviceIntegrator(NavierStokesModel&     model,
-                     FixedDirichletProblem& prob,
+makeDeviceIntegrator(NavierModel&           model,
+                     FixedDirichletProblem& problem,
                      const RealArray&       init,
                      const py::object&      opts)
 {
   auto integ = std::make_unique<PythonDeviceTimeIntegrator>(
       model,
-      prob.controlMap(),
+      problem.controlMap(),
       femx::fem::HostInitialStateMap{},
       resolveOptions(opts));
   const HostVector<Real> h_init =
@@ -1057,13 +1056,13 @@ makeDeviceIntegrator(NavierStokesModel&     model,
 }
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
-makeDeviceIntegrator(NavierStokesModel&          model,
-                     ControlledDirichletProblem& prob,
+makeDeviceIntegrator(NavierModel&                model,
+                     ControlledDirichletProblem& problem,
                      const RealArray&            mean,
                      const RealArray&            modes,
                      const py::object&           opts_obj)
 {
-  const Index num_prm = prob.residual().dims().num_param;
+  const Index num_prm = problem.residual().dims().num_param;
   auto        init    = realVector(mean, "initial_state_mean");
   auto        basis   = realMatrix(modes, "initial_state_modes");
   const auto  opts    = resolveOptions(opts_obj);
@@ -1071,7 +1070,7 @@ makeDeviceIntegrator(NavierStokesModel&          model,
   {
     auto integ = std::make_unique<PythonDeviceTimeIntegrator>(
         model,
-        prob.controlMap(),
+        problem.controlMap(),
         femx::fem::HostInitialStateMap{},
         opts);
     integ->setInitialState(init);
@@ -1080,13 +1079,13 @@ makeDeviceIntegrator(NavierStokesModel&          model,
   auto init_map = femx::fem::makeInitialStateMap(
       std::move(init),
       std::move(basis),
-      prob.control(),
+      problem.control(),
       0,
-      prob.controlParamOffset(),
+      problem.controlParamOffset(),
       num_prm);
   return std::make_unique<PythonDeviceTimeIntegrator>(
       model,
-      prob.controlMap(),
+      problem.controlMap(),
       std::move(init_map),
       opts);
 }
@@ -1164,42 +1163,42 @@ private:
 
 } // namespace
 
-void bindNavierStokes(py::module_& module)
+void bindNavier(py::module_& module)
 {
   py::class_<FluidProperties>(module, "FluidParams")
       .def(py::init<>())
       .def_readwrite("density", &FluidProperties::rho)
       .def_readwrite("dynamic_viscosity", &FluidProperties::mu);
 
-  py::class_<NavierStokesModel>(module, "NavierStokesModel")
+  py::class_<NavierModel>(module, "NavierModel")
       .def(py::init<const std::string&, Index, Real, FluidProperties>(),
            py::arg("mesh_file"),
            py::arg("num_steps"),
            py::arg("dt"),
            py::arg("fluid") = FluidProperties{})
-      .def_property_readonly("num_steps", &NavierStokesModel::numSteps)
-      .def_property_readonly("num_states", &NavierStokesModel::numStates)
-      .def_property_readonly("dt", &NavierStokesModel::dt)
+      .def_property_readonly("num_steps", &NavierModel::numSteps)
+      .def_property_readonly("num_states", &NavierModel::numStates)
+      .def_property_readonly("dt", &NavierModel::dt)
       .def_property_readonly(
           "fluid",
-          &NavierStokesModel::fluid,
+          &NavierModel::fluid,
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "mesh",
-          &NavierStokesModel::mesh,
+          &NavierModel::mesh,
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "residual",
           py::cpp_function(
-              [](NavierStokesModel& model)
+              [](NavierModel& model)
               {
                 return std::unique_ptr<TimeResidual>(
-                    std::make_unique<HostNavierStokesResidual>(model));
+                    std::make_unique<HostNavierResidual>(model));
               },
               py::keep_alive<0, 1>()))
       .def_property_readonly(
           "velocity_dofs",
-          [](const NavierStokesModel& model)
+          [](const NavierModel& model)
           {
             return indexArray(model.velocityDofs());
           })
@@ -1207,13 +1206,13 @@ void bindNavierStokes(py::module_& module)
            &boundaryVelocityDofs,
            py::arg("selector"))
       .def("write_xdmf",
-           &writeNavierStokesXdmf,
+           &writeNavierXdmf,
            py::arg("path"),
            py::arg("trajectory"),
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<FixedDirichletProblem>(module, "_FixedDirichletProblem")
-      .def(py::init<NavierStokesModel&, const py::iterable&>(),
+      .def(py::init<NavierModel&, const py::iterable&>(),
            py::arg("model"),
            py::arg("bcs"),
            py::keep_alive<1, 2>())
@@ -1223,32 +1222,32 @@ void bindNavierStokes(py::module_& module)
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "fixed_dofs",
-          [](const FixedDirichletProblem& prob)
+          [](const FixedDirichletProblem& problem)
           {
-            return indexArray(prob.data().dofs);
+            return indexArray(problem.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
-          [](const FixedDirichletProblem& prob)
+          [](const FixedDirichletProblem& problem)
           {
-            return timeDirichletValueArray(prob.data(), prob.numSteps());
+            return timeDirichletValueArray(problem.data(), problem.numSteps());
           })
       .def_property_readonly(
           "initial_state",
-          [](const FixedDirichletProblem& prob)
+          [](const FixedDirichletProblem& problem)
           {
-            py::array_t<Real> out(prob.data().init_state.size());
+            py::array_t<Real> out(problem.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < prob.data().init_state.size(); ++i)
+            for (Index i = 0; i < problem.data().init_state.size(); ++i)
             {
-              vals(i) = prob.data().init_state[i];
+              vals(i) = problem.data().init_state[i];
             }
             return out;
           });
 
   py::class_<ControlledDirichletProblem>(
       module, "_ControlledDirichletProblem")
-      .def(py::init<NavierStokesModel&,
+      .def(py::init<NavierModel&,
                     const py::iterable&,
                     const py::object&,
                     Index>(),
@@ -1263,39 +1262,39 @@ void bindNavierStokes(py::module_& module)
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "fixed_dofs",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(prob.data().dofs);
+            return indexArray(problem.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            return timeDirichletValueArray(prob.data(), prob.numSteps());
+            return timeDirichletValueArray(problem.data(), problem.numSteps());
           })
       .def_property_readonly(
           "initial_state",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            py::array_t<Real> out(prob.data().init_state.size());
+            py::array_t<Real> out(problem.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < prob.data().init_state.size(); ++i)
+            for (Index i = 0; i < problem.data().init_state.size(); ++i)
             {
-              vals(i) = prob.data().init_state[i];
+              vals(i) = problem.data().init_state[i];
             }
             return out;
           })
       .def_property_readonly(
           "ctr_state_dofs",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(prob.control().stateDofs());
+            return indexArray(problem.control().stateDofs());
           })
       .def_property_readonly(
           "num_ctr_parameters",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            return prob.control().numControlParams();
+            return problem.control().numControlParams();
           })
       .def_property_readonly(
           "num_ctr_levels",
@@ -1305,9 +1304,9 @@ void bindNavierStokes(py::module_& module)
           &ControlledDirichletProblem::controlParamOffset)
       .def_property_readonly(
           "ctr_mesh_node_ids",
-          [](const ControlledDirichletProblem& prob)
+          [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(prob.controlMeshNodeIds());
+            return indexArray(problem.controlMeshNodeIds());
           })
       .def("make_initial_state_map",
            &ControlledDirichletProblem::makeInitialStateMap,
@@ -1318,7 +1317,7 @@ void bindNavierStokes(py::module_& module)
   py::class_<PythonDeviceTimeIntegrator>(
       module, "_DeviceTimeIntegrator")
       .def(py::init(static_cast<std::unique_ptr<PythonDeviceTimeIntegrator> (*)(
-                        NavierStokesModel&,
+                        NavierModel&,
                         FixedDirichletProblem&,
                         const RealArray&,
                         const py::object&)>(&makeDeviceIntegrator)),
@@ -1329,7 +1328,7 @@ void bindNavierStokes(py::module_& module)
            py::keep_alive<1, 2>(),
            py::keep_alive<1, 3>())
       .def(py::init(static_cast<std::unique_ptr<PythonDeviceTimeIntegrator> (*)(
-                        NavierStokesModel&,
+                        NavierModel&,
                         ControlledDirichletProblem&,
                         const RealArray&,
                         const RealArray&,
@@ -1441,7 +1440,7 @@ void bindNavierStokes(py::module_& module)
   py::class_<VelocityPointSampler,
              femx::inverse::TimeObservationOperator>(
       module, "_VelocityPointSampler")
-      .def(py::init<const NavierStokesModel&,
+      .def(py::init<const NavierModel&,
                     const RealArray&,
                     const IndexArray&,
                     Index>(),

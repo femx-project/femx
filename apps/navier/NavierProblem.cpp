@@ -1,4 +1,4 @@
-#include "NavierStokesProblem.hpp"
+#include "NavierProblem.hpp"
 
 #include "BoundaryConditions.hpp"
 #include <femx/fem/ControlMap.hpp>
@@ -27,7 +27,7 @@ fem::TimeDirichletData makeBoundaryData(
 
 } // namespace
 
-NavierStokesProblem::NavierStokesProblem(const Config& prm)
+NavierProblem::NavierProblem(const Config& prm)
   : model_(prm.mesh_file,
            prm.time.steps,
            prm.time.dt,
@@ -47,26 +47,26 @@ NavierStokesProblem::NavierStokesProblem(const Config& prm)
 {
 }
 
-const model::ns::NavierStokesModel&
-NavierStokesProblem::model() const noexcept
+const model::navier::NavierModel&
+NavierProblem::model() const noexcept
 {
   return model_;
 }
 
 const fem::TimeDirichletData&
-NavierStokesProblem::boundaryData() const noexcept
+NavierProblem::boundaryData() const noexcept
 {
   return boundary_data_;
 }
 
 const fem::HostControlMap&
-NavierStokesProblem::controlMap() const noexcept
+NavierProblem::controlMap() const noexcept
 {
   return control_map_;
 }
 
 const HostVector<Real>&
-NavierStokesProblem::initialState() const noexcept
+NavierProblem::initialState() const noexcept
 {
   return boundary_data_.init_state;
 }

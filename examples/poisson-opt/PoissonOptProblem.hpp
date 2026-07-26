@@ -204,14 +204,14 @@ std::string outputStem(const Options& opts);
  *
  * @param[in,out] out - Output stream.
  * @param[in] configuration - Solver configuration name.
- * @param[in] prob - Solved optimization problem.
+ * @param[in] problem - Solved optimization problem.
  * @param[in] rep - Final optimization metrics.
  * @param[in] iterations - Number of optimizer iterations.
  * @param[in] reason - PETSc/TAO convergence reason.
  */
 void printReport(std::ostream&            out,
                  const std::string&       configuration,
-                 const PoissonOptProblem& prob,
+                 const PoissonOptProblem& problem,
                  const Report&            rep,
                  Index                    iterations,
                  int                      reason);

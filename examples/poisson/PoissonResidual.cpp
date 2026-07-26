@@ -1,24 +1,24 @@
 #include "PoissonResidual.hpp"
 
-#include "ElementKernel.hpp"
+#include "PoissonElementKernel.hpp"
 #include <femx/assembly/Assembly.hpp>
 
 namespace femx::examples::poisson
 {
 
-HostPoissonResidual::HostPoissonResidual(const PoissonProblem& prob)
-  : prob_(prob)
+HostPoissonResidual::HostPoissonResidual(const PoissonProblem& problem)
+  : problem_(problem)
 {
 }
 
 state::Dimensions HostPoissonResidual::dims() const
 {
-  return {prob_.numDofs(), 0, prob_.numDofs()};
+  return {problem_.numDofs(), 0, problem_.numDofs()};
 }
 
 const HostCsrPattern& HostPoissonResidual::hostPattern() const
 {
-  return prob_.assemblyMap().pattern();
+  return problem_.assemblyMap().pattern();
 }
 
 void HostPoissonResidual::assembleResidual(
@@ -28,15 +28,15 @@ void HostPoissonResidual::assembleResidual(
     linalg::Context<MemorySpace::Host>& ctx) const
 {
   assembly::assembleResidual(
-      ElementKernel<MemorySpace::Host>(prob_.elementData().view()),
-      prob_.mesh(),
-      prob_.assemblyMap(),
+      HostPoissonElementKernel(problem_.elementData().view()),
+      problem_.mesh(),
+      problem_.assemblyMap(),
       state,
       out,
       ctx);
-  assembly::applyDirichletConditions(prob_.boundaryMap(),
+  assembly::applyDirichletConditions(problem_.boundaryMap(),
                                      state.view(),
-                                     prob_.boundaryValues().view(),
+                                     problem_.boundaryValues().view(),
                                      out.view());
 }
 
@@ -47,13 +47,13 @@ void HostPoissonResidual::assembleJacobian(
     linalg::Context<MemorySpace::Host>&  ctx) const
 {
   assembly::assembleJacobian(
-      ElementKernel<MemorySpace::Host>(prob_.elementData().view()),
-      prob_.mesh(),
-      prob_.assemblyMap(),
+      HostPoissonElementKernel(problem_.elementData().view()),
+      problem_.mesh(),
+      problem_.assemblyMap(),
       state,
       out,
       ctx);
-  assembly::applyDirichletConditions(prob_.boundaryMap(), out);
+  assembly::applyDirichletConditions(problem_.boundaryMap(), out);
 }
 
 void HostPoissonResidual::applyParamJacT(

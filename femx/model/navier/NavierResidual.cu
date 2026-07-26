@@ -1,13 +1,13 @@
 #include <stdexcept>
 
-#include "NavierStokesResidual.hpp"
+#include "NavierResidual.hpp"
 #include <femx/ad/Enzyme.hpp>
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaJacobian.hpp>
-#include <femx/model/ns/Model.hpp>
+#include <femx/model/navier/NavierModel.hpp>
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 namespace
 {
@@ -26,18 +26,18 @@ void validateTimeContext(const state::DeviceTimeContext& time,
 
 } // namespace
 
-DeviceNavierStokesResidual::DeviceNavierStokesResidual(
-    const NavierStokesModel& model,
-    linalg::CudaContext&     ctx)
+DeviceNavierResidual::DeviceNavierResidual(
+    const NavierModel&   model,
+    linalg::CudaContext& ctx)
   : num_steps_(model.numSteps()),
     h_pattern_(model.assemblyMap().pattern())
 {
   fem::copy(model.elementData(), elem_data_, ctx);
   assembly::copy(model.assemblyMap(), assm_map_, ctx);
-  kernel_ = DeviceElementKernel(elem_data_.view(), model.fluid(), model.dt());
+  kernel_ = DeviceNavierElementKernel(elem_data_.view(), model.fluid(), model.dt());
 }
 
-state::TimeDims DeviceNavierStokesResidual::dims() const
+state::TimeDims DeviceNavierResidual::dims() const
 {
   return {num_steps_,
           assm_map_.numStates(),
@@ -46,12 +46,12 @@ state::TimeDims DeviceNavierStokesResidual::dims() const
           kNumHist};
 }
 
-const HostCsrPattern& DeviceNavierStokesResidual::hostPattern() const
+const HostCsrPattern& DeviceNavierResidual::hostPattern() const
 {
   return h_pattern_;
 }
 
-void DeviceNavierStokesResidual::initialState(
+void DeviceNavierResidual::initialState(
     ConstView prm,
     Vec&      out,
     Ctx&      base_ctx) const
@@ -61,7 +61,7 @@ void DeviceNavierStokesResidual::initialState(
   ctx.vectors().resizeOrZero(out, assm_map_.numStates());
 }
 
-void DeviceNavierStokesResidual::assembleNext(
+void DeviceNavierResidual::assembleNext(
     const StepCtx& time,
     Vec&           res,
     Jac&           base_jac,
@@ -88,7 +88,7 @@ void DeviceNavierStokesResidual::assembleNext(
                        ctx);
 }
 
-void DeviceNavierStokesResidual::applyJacT(
+void DeviceNavierResidual::applyJacT(
     const StepCtx&       time,
     state::VariableBlock with_respect_to,
     ConstView            adj,
@@ -136,4 +136,4 @@ void DeviceNavierStokesResidual::applyJacT(
                         ctx);
 }
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

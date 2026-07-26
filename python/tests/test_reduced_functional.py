@@ -63,16 +63,16 @@ DENSE_FINAL_STATE = np.array(
 )
 
 
-class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
+class DenseNavierReducedFunctionalTest(unittest.TestCase):
     def setUp(self):
-        self.model = femx.NavierStokesModel(
+        self.model = femx.NavierModel(
             TINY_MESH_FILE,
             num_steps=3,
             dt=0.25,
             rho=1.0,
             mu=0.01,
         )
-        self.problem = femx.NavierStokesProblem(self.model)
+        self.problem = femx.NavierProblem(self.model)
         self.problem.add_bc(
             femx.DirichletBC("wall", "velocity", (0.0, 0.0))
         )
@@ -105,8 +105,10 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
         )
         self.assertIsInstance(
             self.reduced,
-            femx.NavierStokesReducedFunctional,
+            femx.NavierReducedFunctional,
         )
+        self.assertIs(self.reduced.problem, self.problem)
+        self.assertFalse(hasattr(self.reduced, "prob"))
         self.assertEqual(
             self.reduced.memspace,
             femx.MemorySpace.HOST,

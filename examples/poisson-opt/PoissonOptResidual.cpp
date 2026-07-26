@@ -1,6 +1,6 @@
 #include "PoissonOptResidual.hpp"
 
-#include "../poisson/ElementKernel.hpp"
+#include "../poisson/PoissonElementKernel.hpp"
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
@@ -30,21 +30,21 @@ Real controlDerivative(Real state, Real control)
 } // namespace
 
 HostPoissonOptResidual::HostPoissonOptResidual(
-    const PoissonOptProblem& prob)
-  : prob_(prob)
+    const PoissonOptProblem& problem)
+  : problem_(problem)
 {
 }
 
 state::Dimensions HostPoissonOptResidual::dims() const
 {
-  return {prob_.numStates(),
-          prob_.numParameters(),
-          prob_.numStates()};
+  return {problem_.numStates(),
+          problem_.numParameters(),
+          problem_.numStates()};
 }
 
 const HostCsrPattern& HostPoissonOptResidual::hostPattern() const
 {
-  return prob_.assemblyMap().pattern();
+  return problem_.assemblyMap().pattern();
 }
 
 void HostPoissonOptResidual::assembleResidual(
@@ -54,17 +54,18 @@ void HostPoissonOptResidual::assembleResidual(
     linalg::Context<MemorySpace::Host>& ctx) const
 {
   checkVectors(state, prm);
+
   assembly::assembleResidual(
-      poisson::ElementKernel<MemorySpace::Host>(
-          prob_.elementData().view()),
-      prob_.mesh(),
-      prob_.assemblyMap(),
+      poisson::HostPoissonElementKernel(
+          problem_.elementData().view()),
+      problem_.mesh(),
+      problem_.assemblyMap(),
       state,
       out,
       ctx);
 
   const HostVector<Real> vals = boundaryValues(prm);
-  assembly::applyDirichletConditions(prob_.boundaryMap(),
+  assembly::applyDirichletConditions(problem_.boundaryMap(),
                                      state.view(),
                                      vals.view(),
                                      out.view());
@@ -78,14 +79,14 @@ void HostPoissonOptResidual::assembleJacobian(
 {
   checkVectors(state, prm);
   assembly::assembleJacobian(
-      poisson::ElementKernel<MemorySpace::Host>(
-          prob_.elementData().view()),
-      prob_.mesh(),
-      prob_.assemblyMap(),
+      poisson::HostPoissonElementKernel(
+          problem_.elementData().view()),
+      problem_.mesh(),
+      problem_.assemblyMap(),
       state,
       out,
       ctx);
-  assembly::applyDirichletConditions(prob_.boundaryMap(), out);
+  assembly::applyDirichletConditions(problem_.boundaryMap(), out);
 }
 
 void HostPoissonOptResidual::applyParamJacT(
@@ -99,10 +100,10 @@ void HostPoissonOptResidual::applyParamJacT(
   require(adj.size() == dims().num_res,
           "Poisson optimization adjoint size mismatch");
 
-  out.resize(prob_.numParameters());
-  for (Index ip = 0; ip < prob_.numParameters(); ++ip)
+  out.resize(problem_.numParameters());
+  for (Index ip = 0; ip < problem_.numParameters(); ++ip)
   {
-    const Index state_dof = prob_.controlDofs()[ip];
+    const Index state_dof = problem_.controlDofs()[ip];
     out[ip] =
         controlDerivative(state[state_dof], prm[ip]) * adj[state_dof];
   }
@@ -121,8 +122,8 @@ void HostPoissonOptResidual::checkVectors(
 HostVector<Real> HostPoissonOptResidual::boundaryValues(
     const HostVector<Real>& prm) const
 {
-  HostVector<Real> vals(prob_.boundaryMap().numBcs(), 0.0);
-  for (Index ip = 0; ip < prob_.numParameters(); ++ip)
+  HostVector<Real> vals(problem_.boundaryMap().numBcs(), 0.0);
+  for (Index ip = 0; ip < problem_.numParameters(); ++ip)
   {
     vals[ip] = prm[ip];
   }

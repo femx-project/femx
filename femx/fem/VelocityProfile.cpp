@@ -32,17 +32,17 @@ void requirePositiveRadius(Real rad)
 Point3 facetCenter(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
 {
   Point3 cen = {0.0, 0.0, 0.0};
-  for (Index id : facet.nids)
+  for (Index in : facet.nids)
   {
-    const Point3& point = mesh.node(id);
-    for (Index d = 0; d < 3; ++d)
+    const Point3& point = mesh.node(in);
+    for (Index id = 0; id < 3; ++id)
     {
-      cen[d] += point[d];
+      cen[id] += point[id];
     }
   }
-  for (Index d = 0; d < 3; ++d)
+  for (Index id = 0; id < 3; ++id)
   {
-    cen[d] /= static_cast<Real>(facet.nids.size());
+    cen[id] /= static_cast<Real>(facet.nids.size());
   }
   return cen;
 }
@@ -81,9 +81,9 @@ Point3 boundaryCenter(const Mesh&                  mesh,
 
     const Point3 center_i = facetCenter(mesh, facet);
     const Real   wt       = facetWeight(mesh, facet);
-    for (Index d = 0; d < 3; ++d)
+    for (Index id = 0; id < 3; ++id)
     {
-      cen[d] += wt * center_i[d];
+      cen[id] += wt * center_i[id];
     }
     total_weight += wt;
   }
@@ -93,9 +93,9 @@ Point3 boundaryCenter(const Mesh&                  mesh,
     throw std::runtime_error("No boundary facets found for " + label);
   }
 
-  for (Index d = 0; d < 3; ++d)
+  for (Index id = 0; id < 3; ++id)
   {
-    cen[d] /= total_weight;
+    cen[id] /= total_weight;
   }
   return cen;
 }

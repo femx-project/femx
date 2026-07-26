@@ -270,9 +270,9 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
 
   out << "\nnum_comp " << data.comps().size() << '\n';
   out << "components\n";
-  for (Index comp : data.comps())
+  for (Index ic : data.comps())
   {
-    out << "  " << comp << '\n';
+    out << "  " << ic << '\n';
   }
 
   out << "\nvalues\n";
@@ -285,13 +285,13 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
     for (Index point = 0; point < num_points; ++point)
     {
       out << "    ";
-      for (Index comp = 0; comp < num_comp; ++comp)
+      for (Index ic = 0; ic < num_comp; ++ic)
       {
-        if (comp > 0)
+        if (ic > 0)
         {
           out << ' ';
         }
-        out << vals[point * num_comp + comp];
+        out << vals[point * num_comp + ic];
       }
       out << '\n';
     }
@@ -377,9 +377,9 @@ TimeObservationData readTimeObsData(const std::string& path)
   in >> key;
   requireKey(key, "components");
   HostVector<Index> comps(num_comp);
-  for (Index i = 0; i < num_comp; ++i)
+  for (Index ic = 0; ic < num_comp; ++ic)
   {
-    in >> comps[i];
+    in >> comps[ic];
   }
 
   in >> key;
