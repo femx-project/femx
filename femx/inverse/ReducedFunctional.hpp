@@ -124,7 +124,7 @@ private:
 
     auto& vec_handler = fwd_ctx_.vectors();
     vec_handler.copy(h_prm_.view(), prm_);
-    state_solver_.solve(prm_, state_);
+    state_solver_.solve(state_, prm_);
     vec_handler.copy(state_.view(), h_state_);
     fwd_ctx_.sync();
     checkSize(state_, dims_.num_states);

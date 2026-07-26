@@ -30,7 +30,13 @@ public:
   virtual const Res& residual() const noexcept = 0;
   virtual Ctx&       context() const noexcept  = 0;
 
-  virtual void solve(const Vec& prm, Vec& state) = 0;
+  /**
+   * @brief Solve for a state at the supplied parameter point.
+   *
+   * The default empty parameter vector is valid only when `numParams()` is
+   * zero.
+   */
+  virtual void solve(Vec& state, const Vec& prm = Vec{}) = 0;
 };
 
 /** @brief State solver for affine-linear stationary residuals. */
@@ -81,10 +87,11 @@ public:
     return ctx_;
   }
 
-  void solve(const Vec& prm, Vec& state) override
+  void solve(Vec& state, const Vec& prm = Vec{}) override
   {
     auto& vec_handler = ctx_.vectors();
-    require(prm.size() == numParams(), "LinearStateSolver parameter size mismatch");
+    require(prm.size() == numParams(),
+            "LinearStateSolver parameter size mismatch");
 
     res_.assembleResidual(zero_, prm, res_vec_, ctx_);
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
@@ -197,7 +204,7 @@ public:
     return ctx_;
   }
 
-  void solve(const Vec& prm, Vec& state) override
+  void solve(Vec& state, const Vec& prm = Vec{}) override
   {
     auto& vec_handler = ctx_.vectors();
 

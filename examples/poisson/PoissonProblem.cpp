@@ -281,7 +281,7 @@ void printReport(std::ostream&         out,
                  const std::string&    configuration,
                  const PoissonProblem& prob,
                  const ErrorReport&    err,
-                 Real                  res_norm)
+                 Real                  rnorm)
 {
   const Options& opts = prob.options();
   out << "Poisson forward (" << configuration << ")\n";
@@ -291,7 +291,7 @@ void printReport(std::ostream&         out,
   out << "  dofs: " << prob.numDofs() << '\n';
   out << "  solution range: [" << err.min_val << ", "
       << err.max_val << "]\n";
-  out << "  residual l2 norm: " << res_norm << '\n';
+  out << "  residual l2 norm: " << rnorm << '\n';
   out << "  rms nodal error: " << err.rms_err << '\n';
   out << "  max nodal error: " << err.max_err << '\n';
 }
