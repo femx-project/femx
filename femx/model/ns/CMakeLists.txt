@@ -4,8 +4,9 @@ add_library(femx::model::ns ALIAS femx_model_ns)
 
 target_sources(
   femx_model_ns
-  PRIVATE ElementKernel.cpp Model.cpp StateFields.cpp
-  PUBLIC ElementKernel.hpp FluidProperties.hpp Model.hpp StateFields.hpp)
+  PRIVATE ElementKernel.cpp Model.cpp NavierStokesResidual.cpp StateFields.cpp
+  PUBLIC ElementKernel.hpp FluidProperties.hpp Model.hpp
+         NavierStokesResidual.hpp StateFields.hpp)
 
 target_link_libraries(femx_model_ns PUBLIC femx_config femx_common femx_linalg
                                            femx_fem femx_assembly femx_state)
@@ -15,7 +16,8 @@ if(TARGET femx_linalg_petsc)
 endif()
 
 if(FEMX_HAS_CUDA)
-  target_sources(femx_model_ns PRIVATE ElementKernel.cu)
+  target_sources(femx_model_ns PRIVATE ElementKernel.cu
+                                       NavierStokesResidual.cu)
   set_target_properties(femx_model_ns PROPERTIES CUDA_STANDARD 17
                                                  CUDA_STANDARD_REQUIRED ON)
 endif()

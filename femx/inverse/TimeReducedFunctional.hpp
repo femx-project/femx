@@ -108,9 +108,9 @@ private:
   const TimeObjective& obj_;
   state::TimeDims      dims_;
   Tr                   tr_;
-  HostVector<Real>     host_prm_;
-  HostVector<Real>     host_rhs_;
-  HostVector<Real>     host_grad_;
+  HostVector<Real>     h_prm_;
+  HostVector<Real>     h_rhs_;
+  HostVector<Real>     h_grad_;
   Vec                  prm_;
   Vec                  hist_;
   Vec                  nxt_;
@@ -175,7 +175,7 @@ Real TimeReducedFunctional<Space>::value(
 {
   resetTiming();
   solveFwd(prm, progress);
-  return obj_.value(tr_, host_prm_);
+  return obj_.value(tr_, h_prm_);
 }
 
 template <MemorySpace Space>
@@ -196,7 +196,7 @@ Real TimeReducedFunctional<Space>::valueGrad(
 {
   resetTiming();
   solveFwd(prm, progress);
-  const Real val = obj_.value(tr_, host_prm_);
+  const Real val = obj_.value(tr_, h_prm_);
   solveAdj(out, progress);
   return val;
 }
@@ -309,8 +309,8 @@ void TimeReducedFunctional<Space>::solveFwd(
   auto& vec_handler = ctx_.vectors();
   require(prm.size() == numParams(),
           "TimeReducedFunctional parameter size mismatch");
-  host_prm_ = prm;
-  vec_handler.copy(host_prm_.view(), prm_.view());
+  h_prm_ = prm;
+  vec_handler.copy(h_prm_.view(), prm_.view());
 
   notify(progress, "forward-begin", 0);
   Observer observer;
@@ -344,7 +344,7 @@ void TimeReducedFunctional<Space>::assembleNext(Index step)
   const auto begin = detail::Clock::now();
   loadStep(step);
   auto& jac = adj_system_.jacobian();
-  jac.begin(res_.hostPattern());
+  jac.setup(res_.hostPattern());
   res_.assembleNext(timeCtx(step), sol_, jac, ctx_);
   jac.finalize();
   ctx_.sync();
@@ -360,11 +360,11 @@ void TimeReducedFunctional<Space>::solveAdj(
   auto& vec_handler = ctx_.vectors();
   require(out.size() == numParams(),
           "TimeReducedFunctional gradient size mismatch");
-  obj_.paramGrad(tr_, host_prm_, host_grad_);
-  vec_handler.copy(host_grad_.view(), grad_.view());
+  obj_.paramGrad(tr_, h_prm_, h_grad_);
+  vec_handler.copy(h_grad_.view(), grad_.view());
   checkSize(grad_, numParams());
-  obj_.stateGrad(0, tr_, host_prm_, host_rhs_);
-  vec_handler.copy(host_rhs_.view(), init_grad_.view());
+  obj_.stateGrad(0, tr_, h_prm_, h_rhs_);
+  vec_handler.copy(h_rhs_.view(), init_grad_.view());
   checkSize(init_grad_, numStates());
   resetCarry();
 
@@ -372,8 +372,8 @@ void TimeReducedFunctional<Space>::solveAdj(
   for (Index step = numSteps(); step-- > 0;)
   {
     notify(progress, "adjoint-step", numSteps() - step);
-    obj_.stateGrad(step + 1, tr_, host_prm_, host_rhs_);
-    vec_handler.copy(host_rhs_.view(), rhs_.view());
+    obj_.stateGrad(step + 1, tr_, h_prm_, h_rhs_);
+    vec_handler.copy(h_rhs_.view(), rhs_.view());
     checkSize(rhs_, numStates());
 
     vec_handler.axpby(1.0, carry(0), 1.0, rhs_.view());

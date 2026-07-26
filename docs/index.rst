@@ -67,7 +67,9 @@ parameters:
 
 .. code-block:: bash
 
-   poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
+   poisson-opt-resolve --device host --nx 32 --ny 32 --max-its 50
+   poisson-opt-resolve --device device --nx 32 --ny 32 --max-its 50
+   mpiexec -n 4 poisson-opt-petsc --nx 32 --ny 32 --max-its 50
 
 .. toctree::
    :maxdepth: 2

@@ -1,7 +1,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "PoissonForward.hpp"
+#include "PoissonProblem.hpp"
+#include "PoissonResidual.hpp"
 #include "TestHelper.hpp"
 #include <femx/linalg/native/HostJacobian.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
@@ -21,28 +22,29 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
 {
   TestStatus status(__func__);
 
-  examples::poisson::Options options;
-  options.num_x_cells = 2;
-  options.num_y_cells = 2;
-  examples::poisson::PoissonForwardProblem problem(options);
+  examples::poisson::Options opts;
+  opts.num_x_cells = 2;
+  opts.num_y_cells = 2;
+  examples::poisson::PoissonProblem      prob(opts);
+  examples::poisson::HostPoissonResidual poisson_res(prob);
 
   linalg::HostLinearSystem     system;
-  state::HostLinearStateSolver solver(problem, system);
+  state::HostLinearStateSolver solver(poisson_res, system);
   const HostVector<Real>       prm;
   HostVector<Real>             state;
   solver.solve(prm, state);
 
-  auto& jacobian =
+  auto& jac =
       dynamic_cast<linalg::HostJacobian&>(system.jacobian());
-  const HostCsrMatrix& mat = jacobian.matrix();
+  const HostCsrMatrix& mat = jac.matrix();
 
   status *= mat.pattern().layoutId()
-            == problem.map().pattern().layoutId();
-  status *= state.size() == problem.numDofs();
-  status *= problem.geom().numElems() == 4;
+            == prob.assemblyMap().pattern().layoutId();
+  status *= state.size() == prob.numDofs();
+  status *= prob.mesh().numElems() == 4;
 
-  const auto& map  = problem.bcMap();
-  const auto& vals = problem.bcVals();
+  const auto& map  = prob.boundaryMap();
+  const auto& vals = prob.boundaryValues();
   const auto  view = map.view();
   for (Index ib = 0; ib < map.numBcs(); ++ib)
   {
@@ -55,13 +57,13 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
     }
   }
 
-  HostVector<Real> residual;
-  problem.res(state, prm, residual, system.context());
+  HostVector<Real> res;
+  poisson_res.assembleResidual(state, prm, res, system.context());
   bool has_positive_interior = false;
   for (Index row = 0; row < state.size(); ++row)
   {
     status *= std::isfinite(state[row]);
-    status *= near(residual[row], 0.0);
+    status *= near(res[row], 0.0);
     const bool constrained =
         std::find(view.constrained_rows.begin(),
                   view.constrained_rows.end(),

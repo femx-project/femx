@@ -108,11 +108,18 @@ Optional solver examples are available when their dependencies are enabled:
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
-./examples/poisson-opt/poisson-opt-resolve --nx 32 --ny 32 --output yes --max-its 50
+./examples/poisson-opt/poisson-opt-resolve \
+  --device host --nx 32 --ny 32 --output yes --max-its 50
+
+./examples/poisson-opt/poisson-opt-resolve \
+  --device device --nx 32 --ny 32 --output yes --max-its 50
+
+mpiexec -n 4 ./examples/poisson-opt/poisson-opt-petsc \
+  --nx 32 --ny 32 --output yes --max-its 50
 ```
 
 See [examples/poisson-opt](examples/poisson-opt) for the optimization problem
-definition.
+definition, Enzyme configuration, and backend details.
 
 ## Run Apps
 
@@ -121,14 +128,14 @@ and PETSc. From your build directory, run the executable for the solver you
 enabled:
 
 ```shell
-./apps/ns-forward/ns-forward-resolve \
-  --config ../apps/ns-forward/configs/resolve/cavity/Config.json
+./apps/navier/navier-resolve \
+  --config ../apps/navier/configs/resolve/cavity/Config.json
 
-./apps/ns-forward/ns-forward-petsc \
-  --config ../apps/ns-forward/configs/petsc/cavity/Config.json
+./apps/navier/navier-petsc \
+  --config ../apps/navier/configs/petsc/cavity/Config.json
 ```
 
-See [apps/ns-forward](apps/ns-forward) for the formulation and available demo
+See [apps/navier](apps/navier) for the formulation and available demo
 configurations.
 
 ## CMake Options

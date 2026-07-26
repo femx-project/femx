@@ -80,7 +80,7 @@ public:
     values(1, 1) = 1.0;
     values(2, 2) = 1.0;
 
-    out.begin(pattern_);
+    out.setup(pattern_);
     out.addElement(
         {rows.view(), rows.view(), entries.view(), values.view()});
     out.finalize();

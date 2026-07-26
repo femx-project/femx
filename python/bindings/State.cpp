@@ -9,13 +9,14 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
+#include <femx/linalg/native/HostLinearSystem.hpp>
 #ifdef FEMX_HAS_PETSC
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #endif
 #ifdef FEMX_HAS_RESOLVE
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
-#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
@@ -391,15 +392,14 @@ public:
          values.view()});
   }
 
-  void prepareLinearSolve(const HostTimeContext& ctx,
-                          femx::linalg::Jacobian<femx::MemorySpace::Host>&,
-                          HostVector<Real>& rhs,
-                          femx::linalg::Context<femx::MemorySpace::Host>&)
+  void setup(const HostTimeContext& ctx,
+             femx::linalg::Jacobian<femx::MemorySpace::Host>&,
+             HostVector<Real>& rhs,
+             femx::linalg::Context<femx::MemorySpace::Host>&)
       const override
   {
     py::gil_scoped_acquire gil;
-    const py::function     override =
-        py::get_override(this, "prepare_linear_solve");
+    const py::function     override = py::get_override(this, "setup");
     if (!override)
     {
       return;
@@ -495,7 +495,7 @@ makePythonHostLinearSystem(SolverType        solver,
       throw py::value_error(
           "Dense solver options are not supported");
     }
-    return femx::runtime::makeHostLinearSystem(solver);
+    return std::make_unique<femx::linalg::HostLinearSystem>();
   }
 
   if (solver == SolverType::ReSolve)
@@ -504,8 +504,10 @@ makePythonHostLinearSystem(SolverType        solver,
     const ReSolveOptions opts =
         options.is_none() ? ReSolveOptions{}
                           : options.cast<ReSolveOptions>();
-    return femx::runtime::makeHostLinearSystem(
-        solver, std::make_unique<ReSolveLinearSolver>(opts));
+    auto native_solver =
+        std::make_unique<ReSolveLinearSolver>(opts);
+    return std::make_unique<femx::linalg::HostLinearSystem>(
+        std::move(native_solver));
 #else
     static_cast<void>(options);
     throw py::value_error(
@@ -522,7 +524,8 @@ makePythonHostLinearSystem(SolverType        solver,
     }
 #if defined(FEMX_HAS_PETSC)
     femx::python::initializePETSc();
-    return femx::runtime::makeHostLinearSystem(solver);
+    return std::make_unique<femx::linalg::PETScLinearSystem>(
+        PETSC_COMM_WORLD);
 #else
     throw py::value_error(
         "PETSc is unavailable in this femx build");

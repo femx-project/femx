@@ -13,6 +13,7 @@
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/ns/Model.hpp>
+#include <femx/model/ns/NavierStokesResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -89,8 +90,9 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     const HostVector<Real> init(model.numStates());
     const HostVector<Real> prm;
 
+    model::ns::HostNavierStokesResidual   navier(model);
     assembly::HostConstrainedTimeResidual cpu_res(
-        model.residual(),
+        navier,
         fem::makeControlMap(
             steps, model.numStates(), {}, dofs, vals, {}, 0, 0));
     linalg::HostLinearSystem cpu_system(
@@ -104,26 +106,32 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         steps, model.numStates(), {}, dofs, vals, {}, 0, 0);
     linalg::CudaLinearSystem cuda_system(
         std::make_unique<linalg::ReSolveLinearSolver>());
-    auto cuda_res = model::ns::makeDeviceTimeResidual(
-        model, std::move(control), {}, cuda_system.context());
-    state::DeviceTimeIntegrator cuda(*cuda_res, cuda_system);
-    auto&                       cuda_ctx = cuda_system.context();
-    DeviceVector<Real>          device_initial;
-    DeviceVector<Real>          device_parameters;
+    auto& cuda_ctx =
+        static_cast<linalg::CudaContext&>(cuda_system.context());
+    model::ns::DeviceNavierStokesResidual d_navier(
+        model, cuda_ctx);
+    assembly::DeviceConstrainedTimeResidual cuda_res(
+        d_navier,
+        std::move(control),
+        {},
+        cuda_ctx);
+    state::DeviceTimeIntegrator cuda(cuda_res, cuda_system);
+    DeviceVector<Real>          d_init;
+    DeviceVector<Real>          d_prm;
     auto&                       vec_handler = cuda_ctx.vectors();
-    vec_handler.copy(init, device_initial);
-    vec_handler.copy(prm, device_parameters);
+    vec_handler.copy(init, d_init);
+    vec_handler.copy(prm, d_prm);
     cuda_ctx.sync();
-    cuda.setInitialState(device_initial);
+    cuda.setInitialState(d_init);
 
     state::TimeTrajectory actual;
-    cuda.solve(device_parameters.view(), actual);
+    cuda.solve(d_prm.view(), actual);
     status *= trajectoriesNear(actual, expected, 1.0e-6);
     status *= actual[1][dofs[0]] == level_vals[0];
     status *= actual[2][dofs[0]] == level_vals[0];
 
     const state::SolveStats repeat_stats =
-        cuda.solve(device_parameters.view(), actual);
+        cuda.solve(d_prm.view(), actual);
     status *= repeat_stats.assm_calls == steps;
     status *= repeat_stats.lin_solve_calls == steps;
     status *= trajectoriesNear(actual, expected, 1.0e-6);

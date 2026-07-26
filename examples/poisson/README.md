@@ -43,10 +43,15 @@ From the build directory:
 ./examples/poisson/poisson --output yes
 ```
 
-All variants build the finite-element operator through `Geometry`,
+All variants build the finite-element operator through `Mesh`,
 `AssemblyMap`, `BoundaryMap`, and memory-space-specific CSR storage. The
 default executable uses the native dense fallback to solve that assembled CSR
 system and does not require optional solver packages.
+
+`PoissonProblem` constructs the mesh and finite-element data.
+`HostPoissonResidual` uses that data directly, while `DevicePoissonResidual`
+copies it to the GPU. The three `main` files only choose a linear system and
+run the matching residual.
 
 With Re::Solve enabled:
 
@@ -54,9 +59,10 @@ With Re::Solve enabled:
 ./examples/poisson/poisson-resolve --nx 32 --ny 32 --device host --output yes
 ```
 
-With a CUDA-enabled Re::Solve build, `--device device` keeps geometry, maps, CSR
-values, right-hand side, and solution in device memory through assembly and
-the linear solve. Only the final report/output solution is copied to the host:
+With a CUDA-enabled Re::Solve build, `--device device` keeps mesh data, maps,
+CSR values, right-hand side, and solution in device memory through assembly
+and the linear solve. Only the final report/output solution is copied to the
+host:
 
 ```shell
 ./examples/poisson/poisson-resolve --nx 32 --ny 32 --device device --output yes

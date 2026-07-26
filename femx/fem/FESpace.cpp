@@ -8,15 +8,15 @@ namespace fem
 {
 
 FESpace::FESpace(const Mesh*          mesh,
-                 const FiniteElement* finite_element,
+                 const FiniteElement* fe,
                  Index                comps)
   : mesh_(mesh),
-    fe_(finite_element),
+    fe_(fe),
     comps_(comps)
 {
   if (!mesh_ || !fe_)
   {
-    throw std::runtime_error("FESpace: null mesh or finite elem");
+    throw std::runtime_error("FESpace: null mesh or finite element");
   }
   if (comps_ <= 0)
   {
@@ -29,9 +29,9 @@ void FESpace::setup()
   const Index num_elem      = mesh_->numElems();
   num_shapes_per_elem_      = fe_->numDofsPerElement();
   const Index num_elem_dofs = comps_ * num_shapes_per_elem_;
+  const Index num_dofs      = comps_ * mesh_->numNodes();
 
-  dof_map_.allocate(num_elem, num_elem_dofs);
-  num_dofs_ = comps_ * mesh_->numNodes();
+  dof_map_.allocate(num_dofs, num_elem, num_elem_dofs);
 
   for (Index ie = 0; ie < num_elem; ++ie)
   {
@@ -39,7 +39,7 @@ void FESpace::setup()
     if (elem.numNodes() != fe_->numNodes())
     {
       throw std::runtime_error(
-          "FESpace: finite elem node count does not match mesh elem");
+          "FESpace: finite-element node count does not match mesh element");
     }
 
     const Index* conn = mesh_->elemNodeIds(ie);
@@ -75,7 +75,7 @@ Index FESpace::numElems() const noexcept
 
 Index FESpace::numDofs() const noexcept
 {
-  return num_dofs_;
+  return dof_map_.numDofs();
 }
 
 Index FESpace::numComponents() const noexcept
@@ -90,13 +90,13 @@ Index FESpace::numShapesPerElem() const noexcept
 
 Index FESpace::numDofsPerElem() const noexcept
 {
-  return dof_map_.numElementDofs();
+  return dof_map_.numDofsPerElem();
 }
 
-Index FESpace::localDof(Index shape_index,
+Index FESpace::localDof(Index shape_idx,
                         Index comp) const noexcept
 {
-  return comps_ * shape_index + comp;
+  return comps_ * shape_idx + comp;
 }
 
 Index FESpace::globalDof(Index in,
@@ -108,20 +108,12 @@ Index FESpace::globalDof(Index in,
 void FESpace::elemDofs(Index              ie,
                        HostVector<Index>& dofs) const
 {
-  dofs.resize(dof_map_.numElementDofs());
-
-  const Index* data = dof_map_.elementDofsData(ie);
-  for (Index i = 0; i < dof_map_.numElementDofs(); ++i)
-  {
-    dofs[i] = data[i];
-  }
+  dofs = dof_map_.elementDofs(ie);
 }
 
 HostVector<Index> FESpace::elemDofs(Index ie) const
 {
-  HostVector<Index> dofs;
-  elemDofs(ie, dofs);
-  return dofs;
+  return HostVector<Index>(dof_map_.elementDofs(ie));
 }
 
 } // namespace fem

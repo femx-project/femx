@@ -4,7 +4,7 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Checks.hpp>
-#include <femx/fem/Geometry.hpp>
+#include <femx/fem/Mesh.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
@@ -23,8 +23,8 @@ struct ElementView
 {
   Index                         ie{0};        ///< Global element index.
   Index                         dim{0};       ///< Spatial dimension.
-  Index                         num_nodes{0}; ///< Number of geometry nodes on this element.
-  VectorView<Space, const Real> state;        ///< Element state in local DOF order.
+  Index                         num_nodes{0}; ///< Number of mesh nodes on this element.
+  VectorView<Space, const Real> state;        ///< State in local degree-of-freedom order.
   VectorView<Space, const Real> coords;       ///< Node-major element coordinates.
 };
 
@@ -38,7 +38,12 @@ struct TimeElementView
   VectorView<Space, const Real> hist;        ///< History states, lag-major.
   VectorView<Space, const Real> nxt;         ///< Local next state.
 
-  /** @brief Return one local history state without copying it. */
+  /**
+   * @brief Return one local history state without copying it.
+   *
+   * @param[in] lag - History lag.
+   * @return Local history state.
+   */
   FEMX_HOST_DEVICE VectorView<Space, const Real> histState(Index lag) const
   {
     return hist.subview(lag * nxt.size(), nxt.size());
@@ -78,12 +83,12 @@ inline void checkAssemblyAliases(const HostVector<Real>& state,
           "Assembly state and residual must not alias");
 }
 
-inline void checkAssemblyInputs(const fem::HostGeometry& geom,
-                                const HostAssemblyMap&   map,
-                                const HostVector<Real>&  state)
+inline void checkAssemblyInputs(const fem::Mesh&        mesh,
+                                const HostAssemblyMap&  map,
+                                const HostVector<Real>& state)
 {
-  require(geom.numElems() == map.numElems(),
-          "Geometry and AssemblyMap have different element counts");
+  require(mesh.numElems() == map.numElems(),
+          "Mesh and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
 }
@@ -161,18 +166,23 @@ inline void reduceTimeResidual(HostVector<Real>& res,
 template <class ElementKernel>
 void assembleHostElements(
     const ElementKernel&                 kernel,
-    const fem::HostGeometry&             geom,
+    const fem::Mesh&                     mesh,
     const HostAssemblyMap&               map,
     const HostVector<Real>&              state,
-    HostVector<Real>&                    res,
+    HostVector<Real>*                    res,
     linalg::Jacobian<MemorySpace::Host>* jac,
     linalg::Context<MemorySpace::Host>&  ctx)
 {
-  checkAssemblyInputs(geom, map, state);
-  checkAssemblyAliases(state, res);
-  ctx.vectors().resizeOrZero(res, map.numRes());
+  checkAssemblyInputs(mesh, map, state);
+  require(res != nullptr || jac != nullptr,
+          "Assembly requires a residual or Jacobian output");
+  if (res != nullptr)
+  {
+    checkAssemblyAliases(state, *res);
+    ctx.vectors().resizeOrZero(*res, map.numRes());
+  }
 
-  const auto geom_v = geom.view();
+  const auto mesh_v = mesh.view();
   const auto map_v  = map.view();
   const auto range  = ctx.elementRange(map.numElems());
 
@@ -184,7 +194,7 @@ void assembleHostElements(
     HostVector<Real>& res_e    = work.res;
     DenseMatrix&      jac_e    = work.mat;
     state_e.reserve(map.maxState());
-    coords_e.reserve(geom.maxElemNodes() * geom.dim());
+    coords_e.reserve(mesh.maxElemNodes() * mesh.dim());
     res_e.reserve(map.maxRes());
 
 #pragma omp for
@@ -192,10 +202,10 @@ void assembleHostElements(
     {
       const Index num_rows  = map_v.numResDofs(ie);
       const Index num_cols  = map_v.numStateDofs(ie);
-      const Index num_nodes = geom_v.elemNumNodes(ie);
+      const Index num_nodes = mesh_v.elemNumNodes(ie);
 
       state_e.resize(num_cols);
-      coords_e.resize(num_nodes * geom.dim());
+      coords_e.resize(num_nodes * mesh.dim());
       res_e.resize(num_rows);
       jac_e.resize(num_rows, num_cols);
 
@@ -205,22 +215,25 @@ void assembleHostElements(
       }
       for (Index in = 0; in < num_nodes; ++in)
       {
-        const Index node = geom_v.elemNode(ie, in);
-        for (Index d = 0; d < geom.dim(); ++d)
+        const Index node = mesh_v.elemNode(ie, in);
+        for (Index d = 0; d < mesh.dim(); ++d)
         {
-          coords_e[in * geom.dim() + d] = geom_v.coord(node, d);
+          coords_e[in * mesh.dim() + d] = mesh_v.coord(node, d);
         }
       }
 
       const HostElementView elem{
-          ie, geom.dim(), num_nodes, state_e.view(), coords_e.view()};
+          ie, mesh.dim(), num_nodes, state_e.view(), coords_e.view()};
       for (Index row = 0; row < num_rows; ++row)
       {
         HostVectorView<Real> jac_row(
             jac_e.data() + row * num_cols, num_cols);
         kernel.evalRow(elem, row, res_e[row], jac_row);
+        if (res != nullptr)
+        {
 #pragma omp atomic update
-        res[map_v.resDof(ie, row)] += res_e[row];
+          (*res)[map_v.resDof(ie, row)] += res_e[row];
+        }
       }
       if (jac != nullptr)
       {
@@ -229,7 +242,10 @@ void assembleHostElements(
       }
     }
   }
-  ctx.allReduceSum(res.view());
+  if (res != nullptr)
+  {
+    ctx.allReduceSum(res->view());
+  }
 }
 
 } // namespace detail
@@ -239,89 +255,114 @@ void assembleHostElements(
 /**
  * @brief Assemble residual and Jacobian on the CPU reference path.
  *
- * ElementKernel is the only template parameter. It implements
- * `evalRow(ElementView<Host>, local_row, res, jac_row)` and receives
- * runtime element sizes through the views.
- *
- * @tparam ElementKernel Row-wise element residual and Jacobian evaluator.
- * @param kernel Element evaluator.
- * @param geom Host geometry matching the map's element order.
- * @param map Element-to-global assembly map.
- * @param state Global state vector.
- * @param res Global residual replaced by the assembled result.
- * @param jac Jacobian receiving element contributions.
- * @param ctx Host execution context.
+ * @param[in] kernel - Element evaluator.
+ * @param[in] mesh - Host mesh matching the map's element order.
+ * @param[in] map - Element-to-global assembly map.
+ * @param[in] state - Global state vector.
+ * @param[out] res - Global residual replaced by the assembled result.
+ * @param[in,out] jac - Jacobian receiving element contributions.
+ * @param[in,out] ctx - Host execution context.
  */
 template <class ElementKernel>
-void assemble(const ElementKernel&                 kernel,
-              const fem::HostGeometry&             geom,
-              const HostAssemblyMap&               map,
-              const HostVector<Real>&              state,
-              HostVector<Real>&                    res,
-              linalg::Jacobian<MemorySpace::Host>& jac,
-              linalg::Context<MemorySpace::Host>&  ctx)
+void assembleResidualAndJacobian(
+    const ElementKernel&                 kernel,
+    const fem::Mesh&                     mesh,
+    const HostAssemblyMap&               map,
+    const HostVector<Real>&              state,
+    HostVector<Real>&                    res,
+    linalg::Jacobian<MemorySpace::Host>& jac,
+    linalg::Context<MemorySpace::Host>&  ctx)
 {
   detail::assembleHostElements(
-      kernel, geom, map, state, res, &jac, ctx);
+      kernel, mesh, map, state, &res, &jac, ctx);
 }
 
-/** @brief Assemble a stationary Host residual without a Jacobian. */
+/**
+ * @brief Assemble a stationary Host residual without a Jacobian.
+ *
+ * @param[in] kernel - Element evaluator.
+ * @param[in] mesh - Host mesh matching the map's element order.
+ * @param[in] map - Element-to-global assembly map.
+ * @param[in] state - Global state vector.
+ * @param[out] res - Global residual replaced by the assembled result.
+ * @param[in,out] ctx - Host execution context.
+ */
 template <class ElementKernel>
 void assembleResidual(const ElementKernel&                kernel,
-                      const fem::HostGeometry&            geom,
+                      const fem::Mesh&                    mesh,
                       const HostAssemblyMap&              map,
                       const HostVector<Real>&             state,
                       HostVector<Real>&                   res,
                       linalg::Context<MemorySpace::Host>& ctx)
 {
   detail::assembleHostElements(
-      kernel, geom, map, state, res, nullptr, ctx);
+      kernel, mesh, map, state, &res, nullptr, ctx);
+}
+
+/**
+ * @brief Assemble a stationary Host Jacobian without a residual.
+ *
+ * @param[in] kernel - Element evaluator.
+ * @param[in] mesh - Host mesh matching the map's element order.
+ * @param[in] map - Element-to-global assembly map.
+ * @param[in] state - Global state vector.
+ * @param[in,out] jacobian - Jacobian receiving element contributions.
+ * @param[in,out] ctx - Host execution context.
+ */
+template <class ElementKernel>
+void assembleJacobian(
+    const ElementKernel&                 kernel,
+    const fem::Mesh&                     mesh,
+    const HostAssemblyMap&               map,
+    const HostVector<Real>&              state,
+    linalg::Jacobian<MemorySpace::Host>& jacobian,
+    linalg::Context<MemorySpace::Host>&  ctx)
+{
+  detail::assembleHostElements(
+      kernel, mesh, map, state, nullptr, &jacobian, ctx);
 }
 
 /**
  * @brief Assemble a time residual and state Jacobian over an element range.
  *
- * The element kernel implements
- * `evalRow(TimeElementView<Host>, wrt, row, res, jac_row)`. History storage is
- * lag-major with `map.numStates()` global values per lag.
- *
- * @tparam ElementKernel Row-wise time element evaluator.
  * @param[in] kernel - Element evaluator.
  * @param[in] step - Residual step index.
  * @param[in] num_hist - Number of history states.
  * @param[in] wrt - State block differentiated by the Jacobian.
  * @param[in] map - Element-to-global assembly map.
- * @param[in] element_begin - First element to assemble.
- * @param[in] element_end - One past the last element to assemble.
+ * @param[in] elem_begin - First element to assemble.
+ * @param[in] elem_end - One past the last element to assemble.
  * @param[in] hist - Global lag-major history states.
  * @param[in] nxt - Global next state.
  * @param[out] res - Global residual replaced by the assembled result.
  * @param[in,out] jac - Matrix zeroed and assembled in place.
- * @param[in] ctx - Execution context matching `jac`.
+ * @param[in,out] ctx - Execution context matching `jac`.
  * @throws std::runtime_error - If dimensions, the range, matrix layout, or
  * aliasing are invalid, or if the implementation reports an error.
  */
 template <class ElementKernel>
-void assemble(const ElementKernel&                 kernel,
-              Index                                step,
-              Index                                num_hist,
-              state::VariableBlock                 wrt,
-              const HostAssemblyMap&               map,
-              Index                                element_begin,
-              Index                                element_end,
-              HostVectorView<const Real>           hist,
-              HostVectorView<const Real>           nxt,
-              HostVector<Real>&                    res,
-              linalg::Jacobian<MemorySpace::Host>& jac,
-              linalg::Context<MemorySpace::Host>&  ctx)
+void assembleResidualAndJacobian(
+    const ElementKernel&                 kernel,
+    Index                                step,
+    Index                                num_hist,
+    state::VariableBlock                 wrt,
+    const HostAssemblyMap&               map,
+    Index                                elem_begin,
+    Index                                elem_end,
+    HostVectorView<const Real>           hist,
+    HostVectorView<const Real>           nxt,
+    HostVector<Real>&                    res,
+    linalg::Jacobian<MemorySpace::Host>& jac,
+    linalg::Context<MemorySpace::Host>&  ctx)
 {
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
-  detail::checkElementRange(map, element_begin, element_end);
+  detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
 
   ctx.vectors().resizeOrZero(res, map.numRes());
 
   const auto map_v = map.view();
+
 #pragma omp parallel
   {
     auto& work = detail::cpuWork();
@@ -329,7 +370,7 @@ void assemble(const ElementKernel&                 kernel,
     work.nxt.reserve(map.maxState());
 
 #pragma omp for
-    for (Index ie = element_begin; ie < element_end; ++ie)
+    for (Index ie = elem_begin; ie < elem_end; ++ie)
     {
       const Index num_rows = map_v.numResDofs(ie);
       const Index num_cols = map_v.numStateDofs(ie);
@@ -360,6 +401,7 @@ void assemble(const ElementKernel&                 kernel,
                        row,
                        local_res,
                        {work.mat.data() + row * num_cols, num_cols});
+
 #pragma omp atomic update
         res[map_v.resDof(ie, row)] += local_res;
       }
@@ -368,24 +410,22 @@ void assemble(const ElementKernel&                 kernel,
     }
   }
   detail::reduceTimeResidual(
-      res, element_begin, element_end, map.numElems(), ctx);
+      res, elem_begin, elem_end, map.numElems(), ctx);
 }
 
 /**
  * @brief Assemble a time residual over an element range.
  *
- * @tparam ElementKernel Row-wise time element evaluator.
- * @tparam Context CPU or PETSc execution context.
  * @param[in] kernel - Element evaluator.
  * @param[in] step - Residual step index.
  * @param[in] num_hist - Number of history states.
  * @param[in] map - Element-to-global assembly map.
- * @param[in] element_begin - First element to assemble.
- * @param[in] element_end - One past the last element to assemble.
+ * @param[in] elem_begin - First element to assemble.
+ * @param[in] elem_end - One past the last element to assemble.
  * @param[in] hist - Global lag-major history states.
  * @param[in] nxt - Global next state.
  * @param[out] res - Global residual replaced by the assembled result.
- * @param[in] ctx - Execution context.
+ * @param[in,out] ctx - Execution context.
  * @throws std::runtime_error - If dimensions, the range, or aliasing are
  * invalid, or if the implementation reports an error.
  */
@@ -395,8 +435,8 @@ void assembleResidual(
     Index                      step,
     Index                      num_hist,
     const HostAssemblyMap&     map,
-    Index                      element_begin,
-    Index                      element_end,
+    Index                      elem_begin,
+    Index                      elem_end,
     HostVectorView<const Real> hist,
     HostVectorView<const Real> nxt,
     HostVector<Real>&          res,
@@ -404,7 +444,7 @@ void assembleResidual(
 {
   detail::checkTimeAssemblyInputs(
       num_hist, state::VariableBlock::NextState, map, hist, nxt);
-  detail::checkElementRange(map, element_begin, element_end);
+  detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
   ctx.vectors().resizeOrZero(res, map.numRes());
 
@@ -416,7 +456,7 @@ void assembleResidual(
     work.nxt.reserve(map.maxState());
 
 #pragma omp for
-    for (Index ie = element_begin; ie < element_end; ++ie)
+    for (Index ie = elem_begin; ie < elem_end; ++ie)
     {
       const Index num_rows = map_v.numResDofs(ie);
       const Index num_cols = map_v.numStateDofs(ie);
@@ -452,7 +492,7 @@ void assembleResidual(
     }
   }
   detail::reduceTimeResidual(
-      res, element_begin, element_end, map.numElems(), ctx);
+      res, elem_begin, elem_end, map.numElems(), ctx);
 }
 
 } // namespace assembly

@@ -4,6 +4,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/model/ns/Model.hpp>
+#include <femx/model/ns/NavierStokesResidual.hpp>
 
 namespace femx
 {
@@ -32,15 +33,16 @@ TestOutcome ownsReusableDiscretization()
   status *= model.mesh().numElems() == 2;
   status *= model.numStates() == model.space().numDofs();
 
-  const state::TimeDims dims  = model.residual().dims();
-  status                     *= dims.num_steps == model.numSteps();
-  status                     *= dims.num_states == model.numStates();
-  status                     *= dims.num_param == 0;
-  status                     *= dims.num_res == model.numStates();
+  model::ns::HostNavierStokesResidual res(model);
+  const state::TimeDims               dims  = res.dims();
+  status                                   *= dims.num_steps == model.numSteps();
+  status                                   *= dims.num_states == model.numStates();
+  status                                   *= dims.num_param == 0;
+  status                                   *= dims.num_res == model.numStates();
 
-  status *= model.map().pattern().rows() == model.numStates();
-  status *= model.map().pattern().cols() == model.numStates();
-  status *= model.map().numElems() == model.mesh().numElems();
+  status *= model.assemblyMap().pattern().rows() == model.numStates();
+  status *= model.assemblyMap().pattern().cols() == model.numStates();
+  status *= model.assemblyMap().numElems() == model.mesh().numElems();
   status *= model.velocityDofs().size()
             == model.mesh().numNodes() * model.mesh().dim();
 
@@ -54,13 +56,13 @@ TestOutcome modelPublishesAssemblyInputs()
   model::ns::NavierStokesModel model(
       Mesh::makeStructuredQuad(2, 2), 2, 0.1, {});
 
-  const auto&   geometry = model.geometry();
-  const auto&   map      = model.map();
+  const auto&   mesh = model.mesh();
+  const auto&   map  = model.assemblyMap();
   HostCsrMatrix mat(map.pattern());
 
-  status *= geometry.dim() == model.mesh().dim();
-  status *= geometry.numNodes() == model.mesh().numNodes();
-  status *= geometry.numElems() == model.mesh().numElems();
+  status *= mesh.dim() == 2;
+  status *= mesh.numNodes() == 9;
+  status *= mesh.numElems() == 4;
   status *= map.numRes() == model.numStates();
   status *= map.numStates() == model.numStates();
   status *= mat.rows() == model.numStates();

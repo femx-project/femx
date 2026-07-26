@@ -43,6 +43,23 @@ names may be used when their meaning is clear.
 | `idx`      | `index`                     |
 | `num`      | `number`                    |
 
+When a local variable, function parameter, or private data member needs a
+memory-space qualifier, prefix it with `h_` for Host storage and `d_` for
+Device storage. This is especially useful when the same logical data exists
+in both memory spaces:
+
+```cpp
+HostVector<Real> h_state;
+DeviceVector<Real> d_state;
+```
+
+Use these prefixes only when they distinguish memory spaces. Do not add them
+when the memory space is already unambiguous in the surrounding scope. Keep
+`Host` and `Device` unabbreviated in public type and operation names,
+documentation, diagnostics, and user-facing messages. Reserve `h_` and `d_`
+variable prefixes for Host and Device storage; use descriptive alternatives
+such as `diag_` for other meanings.
+
 Use the same abbreviation consistently in declarations, definitions, and
 nearby tests.
 

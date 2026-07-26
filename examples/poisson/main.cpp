@@ -3,15 +3,14 @@
 #include <string>
 
 #include "../ExampleHelper.hpp"
-#include "PoissonForward.hpp"
-#include <femx/runtime/LinearSystemFactory.hpp>
+#include "PoissonProblem.hpp"
+#include "PoissonResidual.hpp"
+#include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/state/StateSolver.hpp>
 
 using namespace femx;
-using namespace femx::assembly;
 using namespace femx::examples;
 using namespace femx::examples::poisson;
-using namespace femx::linalg;
 
 #ifndef FEMX_POISSON_APP_NAME
 #define FEMX_POISSON_APP_NAME "poisson"
@@ -29,28 +28,28 @@ int run(const Options& opts)
         "Dense Poisson supports only Host execution");
   }
 
-  ExampleHelper         helper(solver_type, opts.execution_device, outputDir());
-  PoissonForwardProblem problem(opts);
+  ExampleHelper  helper(solver_type, opts.execution_device, outputDir());
+  PoissonProblem prob(opts);
 
-  auto system = runtime::makeHostLinearSystem(solver_type);
+  linalg::HostLinearSystem system;
 
-  state::HostLinearStateSolver solver(problem, *system);
+  HostPoissonResidual          res(prob);
+  state::HostLinearStateSolver state_solver(res, system);
   const HostVector<Real>       prm;
 
-  HostVector<Real> x;
-  solver.solve(prm, x);
+  HostVector<Real> sol;
+  state_solver.solve(prm, sol);
 
   printReport(std::cout,
               helper.name(),
-              problem,
-              problem.errorReport(x),
-              helper.resNorm(
-                  problem, x, prm, system->context()));
+              prob,
+              prob.errorReport(sol),
+              helper.resNorm(res, sol, prm, system.context()));
 
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));
-    problem.writeSolution(x, base);
+    prob.writeSolution(sol, base);
     helper.printVisualizationPath(base);
   }
 

@@ -5,7 +5,7 @@
 
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/linalg/LinearSystem.hpp>
-#include <femx/runtime/LinearSystemFactory.hpp>
+#include <femx/runtime/LinearSystemSelection.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <pybind11/pybind11.h>
 

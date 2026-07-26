@@ -19,12 +19,13 @@
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
 #include <femx/model/ns/Model.hpp>
+#include <femx/model/ns/NavierStokesResidual.hpp>
 #include <femx/model/ns/StateFields.hpp>
 #ifdef FEMX_RESOLVE_USE_CUDA
 #include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #endif
-#include <femx/runtime/LinearSystemFactory.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -42,6 +43,7 @@ using femx::Index;
 using femx::Real;
 using femx::assembly::HostConstrainedTimeResidual;
 using femx::model::ns::FluidProperties;
+using femx::model::ns::HostNavierStokesResidual;
 using femx::model::ns::NavierStokesModel;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
@@ -133,14 +135,14 @@ py::array_t<Index> boundaryVelocityDofs(
 
 void writeNavierStokesXdmf(const NavierStokesModel& model,
                            const std::string&       path,
-                           const TimeTrajectory&    trajectory)
+                           const TimeTrajectory&    tr)
 {
   if (path.empty())
   {
     throw std::runtime_error("XDMF output path must not be empty");
   }
-  if (trajectory.numSteps() != model.numSteps()
-      || trajectory.numStates() != model.numStates())
+  if (tr.numSteps() != model.numSteps()
+      || tr.numStates() != model.numStates())
   {
     throw std::runtime_error(
         "XDMF trajectory dimensions do not match the Navier-Stokes model");
@@ -154,9 +156,9 @@ void writeNavierStokesXdmf(const NavierStokesModel& model,
 
   femx::io::TimeSeriesDataOut out;
   out.attachMesh(model.mesh());
-  for (Index level = 0; level < trajectory.numTimeLevels(); ++level)
+  for (Index level = 0; level < tr.numTimeLevels(); ++level)
   {
-    femx::model::ns::splitStateFields(trajectory[level],
+    femx::model::ns::splitStateFields(tr[level],
                                       model.space(),
                                       ux,
                                       uy,
@@ -240,16 +242,16 @@ py::array_t<Real> pointArray(const femx::fem::Mesh::Node& point, Index dim)
   return out;
 }
 
-HostVector<Real> pythonBoundaryValue(const py::object&            value,
+HostVector<Real> pythonBoundaryValue(const py::object&            val,
                                      const femx::fem::Mesh::Node& point,
                                      Index                        dim,
                                      Real                         time,
                                      Index                        components,
                                      const std::string&           field)
 {
-  const py::object raw  = PyCallable_Check(value.ptr())
-                              ? value(pointArray(point, dim), time)
-                              : value;
+  const py::object raw  = PyCallable_Check(val.ptr())
+                              ? val(pointArray(point, dim), time)
+                              : val;
   const RealArray  vals = RealArray::ensure(raw);
   if (!vals)
   {
@@ -301,14 +303,14 @@ femx::fem::DirichletBC pythonDirichletBC(
     const std::string field =
         specification.attr("field").cast<std::string>();
     const py::object selector    = specification.attr("boundary");
-    const py::object value       = specification.attr("value");
+    const py::object val         = specification.attr("value");
     const auto       field_view  = model.space().field(fieldId(field));
     has_pressure                |= field == "pressure";
 
     for (Index node : selectBoundaryNodes(model, selector))
     {
       const HostVector<Real> components = pythonBoundaryValue(
-          value,
+          val,
           model.mesh().node(node),
           model.mesh().dim(),
           time,
@@ -567,13 +569,13 @@ HostVector<femx::Point3> pythonObservationPoints(
     points[point] = {0.0, 0.0, 0.0};
     for (Index axis = 0; axis < vals.shape(1); ++axis)
     {
-      const Real value = data(point, axis);
-      if (!std::isfinite(value))
+      const Real val = data(point, axis);
+      if (!std::isfinite(val))
       {
         throw std::runtime_error(
             "observation points must be finite");
       }
-      points[point][axis] = value;
+      points[point][axis] = val;
     }
   }
   return points;
@@ -632,8 +634,9 @@ public:
   FixedDirichletProblem(NavierStokesModel&  model,
                         const py::iterable& specifications)
     : model_(model),
+      navier_(model),
       data_(makePythonDirichletData(model, specifications)),
-      res_(model_.residual(),
+      res_(navier_,
            femx::fem::makeControlMap(model_.numSteps(),
                                      model_.numStates(),
                                      {},
@@ -667,6 +670,7 @@ public:
 
 private:
   NavierStokesModel&           model_;
+  HostNavierStokesResidual     navier_; ///< Host Navier-Stokes residual.
   femx::fem::TimeDirichletData data_;
   HostConstrainedTimeResidual  res_;
 };
@@ -679,12 +683,13 @@ public:
                              const py::object&   ctr_specification,
                              Index               ctr_param_offset)
     : model_(model),
+      navier_(model),
       data_(makePythonDirichletData(model, boundary_conditions)),
       ctr_(makePythonControl(
           model, ctr_specification, data_.dofs)),
       time_stencils_(makePythonControlTimeStencils(
           model, ctr_specification)),
-      res_(model_.residual(),
+      res_(navier_,
            femx::fem::makeControlMap(model_.numSteps(),
                                      model_.numStates(),
                                      ctr_,
@@ -795,6 +800,7 @@ public:
 
 private:
   NavierStokesModel&                    model_;
+  HostNavierStokesResidual              navier_; ///< Host Navier-Stokes residual.
   femx::fem::TimeDirichletData          data_;
   femx::fem::DirichletControl           ctr_;
   HostVector<femx::LinearInterpolation> time_stencils_;
@@ -889,10 +895,10 @@ public:
     interpolator_.applyParamJacT(level, state, prm, dir, out);
   }
 
-  py::array_t<Real> sample(const femx::state::TimeTrajectory& trajectory) const
+  py::array_t<Real> sample(const femx::state::TimeTrajectory& tr) const
   {
-    if (trajectory.numSteps() != interpolator_.numSteps()
-        || trajectory.numStates() != interpolator_.numStates())
+    if (tr.numSteps() != interpolator_.numSteps()
+        || tr.numStates() != interpolator_.numStates())
     {
       throw std::runtime_error(
           "observation trajectory dimensions do not match the model");
@@ -901,13 +907,13 @@ public:
     const Index       num_points     = interpolator_.pts().size();
     const Index       num_components = interpolator_.comps().size();
     py::array_t<Real> out(
-        {trajectory.numTimeLevels(), num_points, num_components});
+        {tr.numTimeLevels(), num_points, num_components});
     auto             data = out.mutable_unchecked<3>();
-    HostVector<Real> parameters(numParams());
-    for (Index level = 0; level < trajectory.numTimeLevels(); ++level)
+    HostVector<Real> prm(numParams());
+    for (Index level = 0; level < tr.numTimeLevels(); ++level)
     {
       HostVector<Real> vals;
-      observe(level, trajectory[level], parameters, vals);
+      observe(level, tr[level], prm, vals);
       for (Index point = 0; point < num_points; ++point)
       {
         for (Index component = 0; component < num_components; ++component)
@@ -934,25 +940,25 @@ public:
     auto              output = out.mutable_unchecked<2>();
     const auto        input  = directions.unchecked<2>();
     HostVector<Real>  state(numStates());
-    HostVector<Real>  parameters(numParams());
+    HostVector<Real>  prm(numParams());
     for (Index level = 0; level <= numSteps(); ++level)
     {
-      HostVector<Real> direction(numObservations());
+      HostVector<Real> dir(numObservations());
       for (Index i = 0; i < numObservations(); ++i)
       {
-        direction[i] = input(level, i);
-        if (!std::isfinite(direction[i]))
+        dir[i] = input(level, i);
+        if (!std::isfinite(dir[i]))
         {
           throw std::runtime_error(
               "observation directions must be finite");
         }
       }
 
-      HostVector<Real> gradient;
-      applyStateJacT(level, state, parameters, direction, gradient);
+      HostVector<Real> grad;
+      applyStateJacT(level, state, prm, dir, grad);
       for (Index i = 0; i < numStates(); ++i)
       {
-        output(level, i) = gradient[i];
+        output(level, i) = grad[i];
       }
     }
     return out;
@@ -978,16 +984,17 @@ public:
       femx::fem::HostControlMap      control,
       femx::fem::HostInitialStateMap init,
       femx::linalg::ReSolveOptions   opts)
-    : system_(femx::runtime::makeDeviceLinearSystem(
-          femx::runtime::SolverType::ReSolve,
+    : system_(
           std::make_unique<femx::linalg::ReSolveLinearSolver>(
-              std::move(opts)))),
-      res_(femx::model::ns::makeDeviceTimeResidual(
-          model,
-          std::move(control),
-          std::move(init),
-          system_->context())),
-      integ_(*res_, *system_)
+              std::move(opts))),
+      navier_(model,
+              static_cast<femx::linalg::CudaContext&>(
+                  system_.context())),
+      res_(navier_,
+           std::move(control),
+           std::move(init),
+           system_.context()),
+      integ_(res_, system_)
   {
   }
 
@@ -1004,7 +1011,7 @@ public:
   void setInitialState(const HostVector<Real>& init)
   {
     auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
-        system_->context());
+        system_.context());
     femx::DeviceVector<Real> state;
     ctx.vectors().copy(init, state);
     ctx.sync();
@@ -1012,72 +1019,74 @@ public:
   }
 
   femx::DeviceVector<Real> copyParameters(
-      const HostVector<Real>& parameters)
+      const HostVector<Real>& prm)
   {
     auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
-        system_->context());
+        system_.context());
     femx::DeviceVector<Real> out;
-    ctx.vectors().copy(parameters, out);
+    ctx.vectors().copy(prm, out);
     ctx.sync();
     return out;
   }
 
 private:
-  std::unique_ptr<
-      femx::linalg::LinearSystem<femx::MemorySpace::Device>>
-                                                   system_;
-  std::unique_ptr<femx::state::DeviceTimeResidual> res_;
-  femx::state::DeviceTimeIntegrator                integ_;
+  femx::linalg::CudaLinearSystem
+      system_; ///< Device linear system.
+  femx::model::ns::DeviceNavierStokesResidual
+      navier_; ///< Device Navier-Stokes residual.
+  femx::assembly::DeviceConstrainedTimeResidual
+                                    res_;   ///< Constrained Device residual.
+  femx::state::DeviceTimeIntegrator integ_; ///< Device time integrator.
 };
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
 makeDeviceIntegrator(NavierStokesModel&     model,
-                     FixedDirichletProblem& problem,
-                     const RealArray&       initial,
-                     const py::object&      options)
+                     FixedDirichletProblem& prob,
+                     const RealArray&       init,
+                     const py::object&      opts)
 {
-  auto integrator = std::make_unique<PythonDeviceTimeIntegrator>(
+  auto integ = std::make_unique<PythonDeviceTimeIntegrator>(
       model,
-      problem.controlMap(),
+      prob.controlMap(),
       femx::fem::HostInitialStateMap{},
-      resolveOptions(options));
-  const HostVector<Real> host_initial =
-      realVector(initial, "initial_state");
-  integrator->setInitialState(host_initial);
-  return integrator;
+      resolveOptions(opts));
+  const HostVector<Real> h_init =
+      realVector(init, "initial_state");
+  integ->setInitialState(h_init);
+  return integ;
 }
 
 std::unique_ptr<PythonDeviceTimeIntegrator>
 makeDeviceIntegrator(NavierStokesModel&          model,
-                     ControlledDirichletProblem& problem,
+                     ControlledDirichletProblem& prob,
                      const RealArray&            mean,
                      const RealArray&            modes,
-                     const py::object&           options)
+                     const py::object&           opts_obj)
 {
-  const Index num_prm = problem.residual().dims().num_param;
+  const Index num_prm = prob.residual().dims().num_param;
   auto        init    = realVector(mean, "initial_state_mean");
   auto        basis   = realMatrix(modes, "initial_state_modes");
-  const auto  opts    = resolveOptions(options);
+  const auto  opts    = resolveOptions(opts_obj);
   if (basis.cols() == 0)
   {
-    auto integrator = std::make_unique<PythonDeviceTimeIntegrator>(
+    auto integ = std::make_unique<PythonDeviceTimeIntegrator>(
         model,
-        problem.controlMap(),
+        prob.controlMap(),
         femx::fem::HostInitialStateMap{},
         opts);
-    integrator->setInitialState(init);
-    return integrator;
+    integ->setInitialState(init);
+    return integ;
   }
   auto init_map = femx::fem::makeInitialStateMap(
       std::move(init),
       std::move(basis),
-      problem.control(),
+      prob.control(),
       0,
-      problem.controlParamOffset(),
+      prob.controlParamOffset(),
       num_prm);
   return std::make_unique<PythonDeviceTimeIntegrator>(
       model,
-      problem.controlMap(),
+      prob.controlMap(),
       std::move(init_map),
       opts);
 }
@@ -1089,12 +1098,11 @@ public:
   PythonDeviceTimeReducedFunctional(
       PythonDeviceTimeIntegrator&         owner,
       const femx::inverse::TimeObjective& obj,
-      const py::object&                   options)
-    : adj_system_(femx::runtime::makeDeviceLinearSystem(
-          femx::runtime::SolverType::ReSolve,
+      const py::object&                   opts)
+    : adj_system_(
           std::make_unique<femx::linalg::ReSolveLinearSolver>(
-              resolveOptions(options)))),
-      impl_(owner.get(), *adj_system_, obj)
+              resolveOptions(opts))),
+      impl_(owner.get(), adj_system_, obj)
   {
   }
 
@@ -1149,9 +1157,7 @@ public:
   }
 
 private:
-  std::unique_ptr<
-      femx::linalg::LinearSystem<femx::MemorySpace::Device>>
-                                             adj_system_;
+  femx::linalg::CudaLinearSystem             adj_system_;
   femx::inverse::DeviceTimeReducedFunctional impl_;
 };
 #endif
@@ -1184,11 +1190,13 @@ void bindNavierStokes(py::module_& module)
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "residual",
-          [](NavierStokesModel& model) -> TimeResidual&
-          {
-            return model.residual();
-          },
-          py::return_value_policy::reference_internal)
+          py::cpp_function(
+              [](NavierStokesModel& model)
+              {
+                return std::unique_ptr<TimeResidual>(
+                    std::make_unique<HostNavierStokesResidual>(model));
+              },
+              py::keep_alive<0, 1>()))
       .def_property_readonly(
           "velocity_dofs",
           [](const NavierStokesModel& model)
@@ -1215,25 +1223,25 @@ void bindNavierStokes(py::module_& module)
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "fixed_dofs",
-          [](const FixedDirichletProblem& problem)
+          [](const FixedDirichletProblem& prob)
           {
-            return indexArray(problem.data().dofs);
+            return indexArray(prob.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
-          [](const FixedDirichletProblem& problem)
+          [](const FixedDirichletProblem& prob)
           {
-            return timeDirichletValueArray(problem.data(), problem.numSteps());
+            return timeDirichletValueArray(prob.data(), prob.numSteps());
           })
       .def_property_readonly(
           "initial_state",
-          [](const FixedDirichletProblem& problem)
+          [](const FixedDirichletProblem& prob)
           {
-            py::array_t<Real> out(problem.data().init_state.size());
+            py::array_t<Real> out(prob.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < problem.data().init_state.size(); ++i)
+            for (Index i = 0; i < prob.data().init_state.size(); ++i)
             {
-              vals(i) = problem.data().init_state[i];
+              vals(i) = prob.data().init_state[i];
             }
             return out;
           });
@@ -1255,39 +1263,39 @@ void bindNavierStokes(py::module_& module)
           py::return_value_policy::reference_internal)
       .def_property_readonly(
           "fixed_dofs",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            return indexArray(problem.data().dofs);
+            return indexArray(prob.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            return timeDirichletValueArray(problem.data(), problem.numSteps());
+            return timeDirichletValueArray(prob.data(), prob.numSteps());
           })
       .def_property_readonly(
           "initial_state",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            py::array_t<Real> out(problem.data().init_state.size());
+            py::array_t<Real> out(prob.data().init_state.size());
             auto              vals = out.mutable_unchecked<1>();
-            for (Index i = 0; i < problem.data().init_state.size(); ++i)
+            for (Index i = 0; i < prob.data().init_state.size(); ++i)
             {
-              vals(i) = problem.data().init_state[i];
+              vals(i) = prob.data().init_state[i];
             }
             return out;
           })
       .def_property_readonly(
           "ctr_state_dofs",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            return indexArray(problem.control().stateDofs());
+            return indexArray(prob.control().stateDofs());
           })
       .def_property_readonly(
           "num_ctr_parameters",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            return problem.control().numControlParams();
+            return prob.control().numControlParams();
           })
       .def_property_readonly(
           "num_ctr_levels",
@@ -1297,9 +1305,9 @@ void bindNavierStokes(py::module_& module)
           &ControlledDirichletProblem::controlParamOffset)
       .def_property_readonly(
           "ctr_mesh_node_ids",
-          [](const ControlledDirichletProblem& problem)
+          [](const ControlledDirichletProblem& prob)
           {
-            return indexArray(problem.controlMeshNodeIds());
+            return indexArray(prob.controlMeshNodeIds());
           })
       .def("make_initial_state_map",
            &ControlledDirichletProblem::makeInitialStateMap,
@@ -1348,22 +1356,22 @@ void bindNavierStokes(py::module_& module)
       .def(
           "solve",
           [](PythonDeviceTimeIntegrator& owner,
-             const RealArray&            parameters,
+             const RealArray&            prm_array,
              const py::object&           progress)
           {
-            auto& integrator = owner.get();
+            auto& integ = owner.get();
             if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
             {
               throw py::type_error("progress must be callable");
             }
-            const HostVector<Real> values =
-                realVector(parameters, "parameters");
-            auto           device_values = owner.copyParameters(values);
-            TimeTrajectory trajectory;
+            const HostVector<Real> vals =
+                realVector(prm_array, "parameters");
+            auto           d_vals = owner.copyParameters(vals);
+            TimeTrajectory tr;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
-              integrator.solve(device_values.view(), trajectory);
+              integ.solve(d_vals.view(), tr);
             }
             else
             {
@@ -1391,11 +1399,9 @@ void bindNavierStokes(py::module_& module)
                 return false;
               };
               py::gil_scoped_release release;
-              integrator.solve(device_values.view(),
-                               trajectory,
-                               std::move(observer));
+              integ.solve(d_vals.view(), tr, std::move(observer));
             }
-            return trajectory;
+            return tr;
           },
           py::arg("param"),
           py::arg("progress") = py::none())

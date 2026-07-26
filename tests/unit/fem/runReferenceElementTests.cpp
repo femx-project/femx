@@ -4,7 +4,7 @@
 #include <string>
 
 #include "TestHelper.hpp"
-#include <femx/fem/ElementQuadratureData.hpp>
+#include <femx/fem/ElementQuadData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -104,7 +104,7 @@ Real quadratureWeightSum(const GaussQuadrature& quad)
   return total;
 }
 
-TestOutcome elementQuadratureDataMapsToPhysicalSpace()
+TestOutcome ElementQuadDataMapsToPhysicalSpace()
 {
   TestStatus status(__func__);
 
@@ -113,7 +113,7 @@ TestOutcome elementQuadratureDataMapsToPhysicalSpace()
   FESpace        space(&mesh, &quad_element);
   space.setup();
 
-  const auto data = makeElementQuadratureData(
+  const auto data = makeElementQuadData(
       space,
       GaussQuadrature::make(ReferenceElement::Quadrilateral, 2));
   const auto view = data.view();
@@ -328,7 +328,7 @@ int main(int, char**)
   results += femx::tests::quadQ1ShapeFunctions();
   results += femx::tests::tetrahedronP1ShapeFunctions();
   results += femx::tests::quadratureIntegratesConstants();
-  results += femx::tests::elementQuadratureDataMapsToPhysicalSpace();
+  results += femx::tests::ElementQuadDataMapsToPhysicalSpace();
 
   return results.summary();
 }

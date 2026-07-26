@@ -5,15 +5,16 @@
 #include <string>
 
 #include "../ExampleHelper.hpp"
-#include "PoissonOpt.hpp"
-#include <femx/runtime/LinearSystemFactory.hpp>
+#include "PoissonOptProblem.hpp"
+#include "PoissonOptResidual.hpp"
+#include "PoissonOptSolve.hpp"
+#include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
+#include <femx/state/StateSolver.hpp>
 
 using namespace femx;
 using namespace femx::examples;
 using namespace femx::examples::poisson_opt;
-using namespace femx::linalg;
-using namespace femx::runtime;
 
 #ifndef FEMX_POISSON_OPT_APP_NAME
 #define FEMX_POISSON_OPT_APP_NAME "poisson-opt-petsc"
@@ -24,30 +25,46 @@ namespace
 
 int run(const Options& opts)
 {
-  constexpr auto    solver = SolverType::PETSc;
-  ExampleHelper     helper(solver, ExecutionDevice::Host, outputDir());
-  PoissonOptProblem problem(opts);
-
-  auto         forward_system = makeHostLinearSystem(solver);
-  auto         adjoint_system = makeHostLinearSystem(solver);
-  const Result result         = solve(problem, *forward_system, *adjoint_system);
-
-  printReport(std::cout,
-              helper.name(),
-              problem,
-              result.report,
-              result.tao_itr,
-              result.tao_reason);
-
-  if (opts.write_output)
+  if (opts.execution_device
+      != runtime::ExecutionDevice::Host)
   {
-    const std::string base = helper.outputBase(outputStem(opts));
-    problem.writeSolution(result.prm, result.state, base);
-    helper.printVisualizationPath(base);
-    helper.printVisualizationPath(base + ".observations");
+    throw std::runtime_error(
+        "PETSc Poisson optimization supports only Host execution");
   }
 
-  return result.converged ? 0 : 1;
+  ExampleHelper     helper(runtime::SolverType::PETSc,
+                       opts.execution_device,
+                       outputDir());
+  PoissonOptProblem prob(opts);
+
+  linalg::PETScLinearSystem fwd_system(PETSC_COMM_WORLD);
+  linalg::PETScLinearSystem adj_system(PETSC_COMM_WORLD);
+
+  HostPoissonOptResidual       res(prob);
+  state::HostLinearStateSolver state_solver(res, fwd_system);
+  const Result                 sol =
+      optimize(prob, state_solver, adj_system, PETSC_COMM_WORLD);
+
+  if (runtime::isRoot())
+  {
+    printReport(std::cout,
+                helper.name(),
+                prob,
+                sol.report,
+                sol.iterations,
+                sol.reason);
+
+    if (opts.write_output)
+    {
+      const std::string base =
+          helper.outputBase(outputStem(opts));
+      prob.writeSolution(sol.control, sol.state, base);
+      helper.printVisualizationPath(base);
+      helper.printVisualizationPath(base + ".observations");
+    }
+  }
+
+  return sol.converged ? 0 : 1;
 }
 
 } // namespace
@@ -57,35 +74,44 @@ int main(int argc, char* argv[])
   int status = 0;
   try
   {
-    PetscSession petsc(argc, argv);
-    setSerialOpenMp();
+    runtime::PetscSession petsc(argc, argv);
+    runtime::setSerialOpenMp();
 
     try
     {
       if (examples::hasHelp(argc, argv))
       {
-        printUsage(std::cout, FEMX_POISSON_OPT_APP_NAME, true);
+        if (runtime::isRoot())
+        {
+          printUsage(
+              std::cout, FEMX_POISSON_OPT_APP_NAME, true);
+        }
       }
       else
       {
         status = run(parseOptions(argc, argv, true));
       }
     }
-    catch (const std::exception& e)
+    catch (const std::exception& error)
     {
-      examples::reportError(FEMX_POISSON_OPT_APP_NAME, e);
+      if (runtime::isRoot())
+      {
+        examples::reportError(
+            FEMX_POISSON_OPT_APP_NAME, error);
+      }
       status = 1;
     }
 
-    const PetscErrorCode ierr = petsc.finalize();
-    if (ierr != PETSC_SUCCESS && status == 0)
+    const PetscErrorCode error = petsc.finalize();
+    if (error != PETSC_SUCCESS && status == 0)
     {
-      return 1;
+      status = 1;
     }
   }
-  catch (const std::exception& e)
+  catch (const std::exception& error)
   {
-    return examples::reportError(FEMX_POISSON_OPT_APP_NAME, e);
+    return examples::reportError(
+        FEMX_POISSON_OPT_APP_NAME, error);
   }
   return status;
 }

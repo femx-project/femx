@@ -26,7 +26,7 @@ public:
    */
   explicit CudaJacobian(CudaContext& ctx) noexcept;
 
-  void begin(const HostCsrPattern& pattern) override;
+  void setup(const HostCsrPattern& pattern) override;
   void replaceRows(DeviceVectorView<const Index> rows,
                    Real                          diagonal) override;
   void eliminateColumns(DeviceVectorView<const Index> rows,

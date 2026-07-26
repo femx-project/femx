@@ -203,42 +203,42 @@ TestOutcome cudaMapsMatchHost()
     return status.report();
   }
 
-  const fem::HostControlMap      host_ctr  = makeTimeMap();
-  const fem::HostInitialStateMap host_init = makeInitialMap();
+  const fem::HostControlMap      h_ctr  = makeTimeMap();
+  const fem::HostInitialStateMap h_init = makeInitialMap();
   const HostVector<Real>         prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
   const HostVector<Real>         dir{-0.5, 0.25, 1.0, -2.0, 0.75, 1.5, -1.0, 0.5, 3.0};
   const HostVector<Real>         adj{0.4, -1.25, 2.0, 0.75, -0.5};
 
-  HostVector<Real> expected_vals(host_ctr.numBcs());
-  HostVector<Real> expected_jac(host_ctr.numStates());
-  HostVector<Real> expected_ctr_grad(host_ctr.numParams());
-  HostVector<Real> expected_state(host_init.numStates());
-  HostVector<Real> expected_init_grad(host_init.numParams());
-  fem::controlVals(host_ctr, 2, prm.view(), expected_vals.view());
-  fem::controlJac(host_ctr, 2, dir.view(), expected_jac.view());
+  HostVector<Real> expected_vals(h_ctr.numBcs());
+  HostVector<Real> expected_jac(h_ctr.numStates());
+  HostVector<Real> expected_ctr_grad(h_ctr.numParams());
+  HostVector<Real> expected_state(h_init.numStates());
+  HostVector<Real> expected_init_grad(h_init.numParams());
+  fem::controlVals(h_ctr, 2, prm.view(), expected_vals.view());
+  fem::controlJac(h_ctr, 2, dir.view(), expected_jac.view());
   fem::addControlJacT(
-      host_ctr, 2, adj.view(), expected_ctr_grad.view());
-  fem::initialState(host_init, prm.view(), expected_state.view());
+      h_ctr, 2, adj.view(), expected_ctr_grad.view());
+  fem::initialState(h_init, prm.view(), expected_state.view());
   fem::addInitialJacT(
-      host_init, adj.view(), expected_init_grad.view());
+      h_init, adj.view(), expected_init_grad.view());
 
   linalg::CudaContext        ctx;
   auto&                      vec_handler = ctx.vectors();
   fem::DeviceControlMap      ctr;
   fem::DeviceInitialStateMap init;
-  DeviceVector<Real>         dev_prm;
-  DeviceVector<Real>         dev_dir;
-  DeviceVector<Real>         dev_adj;
-  DeviceVector<Real>         vals(host_ctr.numBcs());
-  DeviceVector<Real>         jac(host_ctr.numStates());
-  DeviceVector<Real>         ctr_grad(host_ctr.numParams());
-  DeviceVector<Real>         state(host_init.numStates());
-  DeviceVector<Real>         init_grad(host_init.numParams());
-  fem::copy(host_ctr, ctr, ctx);
-  fem::copy(host_init, init, ctx);
-  vec_handler.copy(prm, dev_prm);
-  vec_handler.copy(dir, dev_dir);
-  vec_handler.copy(adj, dev_adj);
+  DeviceVector<Real>         d_prm;
+  DeviceVector<Real>         d_dir;
+  DeviceVector<Real>         d_adj;
+  DeviceVector<Real>         vals(h_ctr.numBcs());
+  DeviceVector<Real>         jac(h_ctr.numStates());
+  DeviceVector<Real>         ctr_grad(h_ctr.numParams());
+  DeviceVector<Real>         state(h_init.numStates());
+  DeviceVector<Real>         init_grad(h_init.numParams());
+  fem::copy(h_ctr, ctr, ctx);
+  fem::copy(h_init, init, ctx);
+  vec_handler.copy(prm, d_prm);
+  vec_handler.copy(dir, d_dir);
+  vec_handler.copy(adj, d_adj);
   vec_handler.zero(ctr_grad.view());
   vec_handler.zero(init_grad.view());
 
@@ -247,13 +247,13 @@ TestOutcome cudaMapsMatchHost()
   const Real* ctr_grad_ptr  = ctr_grad.data();
   const Real* state_ptr     = state.data();
   const Real* init_grad_ptr = init_grad.data();
-  fem::controlVals(ctr, 2, dev_prm.view(), vals.view(), ctx);
-  fem::controlJac(ctr, 2, dev_dir.view(), jac.view(), ctx);
+  fem::controlVals(ctr, 2, d_prm.view(), vals.view(), ctx);
+  fem::controlJac(ctr, 2, d_dir.view(), jac.view(), ctx);
   fem::addControlJacT(
-      ctr, 2, dev_adj.view(), ctr_grad.view(), ctx);
-  fem::initialState(init, dev_prm.view(), state.view(), ctx);
+      ctr, 2, d_adj.view(), ctr_grad.view(), ctx);
+  fem::initialState(init, d_prm.view(), state.view(), ctx);
   fem::addInitialJacT(
-      init, dev_adj.view(), init_grad.view(), ctx);
+      init, d_adj.view(), init_grad.view(), ctx);
 
   HostVector<Real> got_vals;
   HostVector<Real> got_jac;
@@ -266,9 +266,9 @@ TestOutcome cudaMapsMatchHost()
   vec_handler.copy(state, got_state);
   vec_handler.copy(init_grad, got_init_grad);
 
-  fem::controlVals(ctr, 2, dev_prm.view(), vals.view(), ctx);
-  fem::controlJac(ctr, 2, dev_dir.view(), jac.view(), ctx);
-  fem::initialState(init, dev_prm.view(), state.view(), ctx);
+  fem::controlVals(ctr, 2, d_prm.view(), vals.view(), ctx);
+  fem::controlJac(ctr, 2, d_dir.view(), jac.view(), ctx);
+  fem::initialState(init, d_prm.view(), state.view(), ctx);
   ctx.sync();
 
   status *= near(got_vals, expected_vals);

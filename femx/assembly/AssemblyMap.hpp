@@ -12,7 +12,7 @@ namespace femx
 {
 namespace fem
 {
-class DofLayout;
+class DofMap;
 }
 
 namespace assembly
@@ -27,41 +27,69 @@ struct AssemblyMapView
   Index num_states{0}; ///< Global state size.
 
   const Index* res_offsets{nullptr};   ///< Element offsets into res_dofs.
-  const Index* res_dofs{nullptr};      ///< Element residual-to-global DOFs.
+  const Index* res_dofs{nullptr};      ///< Element residual-to-global degrees of freedom.
   const Index* state_offsets{nullptr}; ///< Element offsets into state_dofs.
-  const Index* state_dofs{nullptr};    ///< Element state-to-global DOFs.
+  const Index* state_dofs{nullptr};    ///< Element state-to-global degrees of freedom.
   const Index* jac_offsets{nullptr};   ///< Element offsets into jac_map.
   const Index* jac_map{nullptr};       ///< Local Jacobian-to-CSR entries.
 
-  Index max_res{0};   ///< Maximum residual DOFs on one element.
-  Index max_state{0}; ///< Maximum state DOFs on one element.
+  Index max_res{0};   ///< Maximum residual degrees of freedom on one element.
+  Index max_state{0}; ///< Maximum state degrees of freedom on one element.
   Index max_jac{0};   ///< Maximum local Jacobian entries.
 
-  /** @brief Return the number of residual DOFs on element `ie`. */
+  /**
+   * @brief Return the number of residual degrees of freedom on an element.
+   *
+   * @param[in] ie - Element index.
+   * @return Number of residual degrees of freedom.
+   */
   FEMX_HOST_DEVICE Index numResDofs(Index ie) const
   {
     return res_offsets[ie + 1] - res_offsets[ie];
   }
 
-  /** @brief Return the number of state DOFs on element `ie`. */
+  /**
+   * @brief Return the number of state degrees of freedom on an element.
+   *
+   * @param[in] ie - Element index.
+   * @return Number of state degrees of freedom.
+   */
   FEMX_HOST_DEVICE Index numStateDofs(Index ie) const
   {
     return state_offsets[ie + 1] - state_offsets[ie];
   }
 
-  /** @brief Map an element residual row to a global residual DOF. */
+  /**
+   * @brief Map an element residual row to a global residual degree of freedom.
+   *
+   * @param[in] ie - Element index.
+   * @param[in] i - Element-local residual row.
+   * @return Global residual degree of freedom.
+   */
   FEMX_HOST_DEVICE Index resDof(Index ie, Index i) const
   {
     return res_dofs[res_offsets[ie] + i];
   }
 
-  /** @brief Map an element state column to a global state DOF. */
+  /**
+   * @brief Map an element state column to a global state degree of freedom.
+   *
+   * @param[in] ie - Element index.
+   * @param[in] i - Element-local state column.
+   * @return Global state degree of freedom.
+   */
   FEMX_HOST_DEVICE Index stateDof(Index ie, Index i) const
   {
     return state_dofs[state_offsets[ie] + i];
   }
 
-  /** @brief Map a row-major local Jacobian entry to a CSR value index. */
+  /**
+   * @brief Map a local Jacobian entry to a CSR value index.
+   *
+   * @param[in] ie - Element index.
+   * @param[in] i - Row-major local Jacobian index.
+   * @return CSR value index.
+   */
   FEMX_HOST_DEVICE Index jacIndex(Index ie, Index i) const
   {
     return jac_map[jac_offsets[ie] + i];
@@ -78,7 +106,7 @@ using HostAssemblyMap   = AssemblyMap<MemorySpace::Host>;
 using DeviceAssemblyMap = AssemblyMap<MemorySpace::Device>;
 
 /**
- * @brief Runtime element DOFs and local-entry-to-CSR mappings.
+ * @brief Own runtime element degrees of freedom and local-to-CSR mappings.
  *
  * The map is built once on the host. Its flat arrays can then be copied once
  * to device memory without introducing compile-time element traits.
@@ -195,30 +223,30 @@ public:
   }
 
 private:
-  Index num_elems_{0};
-  Index num_res_{0};
-  Index num_states_{0};
+  Index num_elems_{0};  ///< Number of mapped elements.
+  Index num_res_{0};    ///< Global residual size.
+  Index num_states_{0}; ///< Global state size.
 
-  Vector<Space, Index> res_offsets_;
-  Vector<Space, Index> res_dofs_;
-  Vector<Space, Index> state_offsets_;
-  Vector<Space, Index> state_dofs_;
-  Vector<Space, Index> jac_offsets_;
-  Vector<Space, Index> jac_map_;
-  CsrPattern<Space>    pattern_;
+  Vector<Space, Index> res_offsets_;   ///< Residual degree-of-freedom offsets.
+  Vector<Space, Index> res_dofs_;      ///< Residual degrees of freedom.
+  Vector<Space, Index> state_offsets_; ///< State degree-of-freedom offsets.
+  Vector<Space, Index> state_dofs_;    ///< State degrees of freedom.
+  Vector<Space, Index> jac_offsets_;   ///< Local Jacobian offsets.
+  Vector<Space, Index> jac_map_;       ///< Local Jacobian-to-CSR mapping.
+  CsrPattern<Space>    pattern_;       ///< Immutable CSR sparsity pattern.
 
-  Index max_res_{0};
-  Index max_state_{0};
-  Index max_jac_{0};
+  Index max_res_{0};   ///< Largest element residual size.
+  Index max_state_{0}; ///< Largest element state size.
+  Index max_jac_{0};   ///< Largest element Jacobian size.
 };
 
 /**
  * @brief Build a host assembly map from explicit element DOF tables.
  *
- * @param num_res Global residual size.
- * @param num_states Global state size.
- * @param res_dofs Residual DOFs for each element.
- * @param state_dofs State DOFs for each element.
+ * @param[in] num_res - Global residual size.
+ * @param[in] num_states - Global state size.
+ * @param[in] res_dofs - Residual degrees of freedom for each element.
+ * @param[in] state_dofs - State degrees of freedom for each element.
  * @return Validated map and its immutable CSR pattern.
  */
 HostAssemblyMap makeAssemblyMap(
@@ -228,21 +256,32 @@ HostAssemblyMap makeAssemblyMap(
     const HostVector<HostVector<Index>>& state_dofs);
 
 /**
- * @brief Build a rectangular assembly map from residual and state layouts.
- * @param res_lyt Element layout for residual rows.
- * @param state_lyt Element layout for state columns.
+ * @brief Build a rectangular assembly map from residual and state maps.
+ *
+ * @param[in] res_map - Element-to-global map for residual rows.
+ * @param[in] state_map - Element-to-global map for state columns.
+ * @return Validated assembly map and its immutable sparse pattern.
  */
-HostAssemblyMap makeAssemblyMap(fem::DofLayout res_lyt,
-                                fem::DofLayout state_lyt);
+HostAssemblyMap makeAssemblyMap(const fem::DofMap& res_map,
+                                const fem::DofMap& state_map);
 
-/** @brief Build a square assembly map using one layout for rows and columns. */
-HostAssemblyMap makeAssemblyMap(fem::DofLayout layout);
+/**
+ * @brief Build a square assembly map using one degree-of-freedom map.
+ *
+ * @param[in] dof_map - Element-to-global map for rows and columns.
+ * @return Validated assembly map and its immutable sparse pattern.
+ */
+HostAssemblyMap makeAssemblyMap(const fem::DofMap& dof_map);
 
 /**
  * @brief Copy a host assembly map and pattern to device-owned storage.
  *
  * The copy is enqueued on `ctx`; keep `src` alive until earlier queued reads
  * have completed.
+ *
+ * @param[in] src - Host assembly map.
+ * @param[out] dst - Device assembly map.
+ * @param[in,out] ctx - CUDA context receiving the copies.
  */
 void copy(const HostAssemblyMap& src,
           DeviceAssemblyMap&     dst,

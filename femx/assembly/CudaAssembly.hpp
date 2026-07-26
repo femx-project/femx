@@ -22,23 +22,23 @@ namespace detail
 {
 
 inline void checkAssemblyInputs(
-    const fem::DeviceGeometry& geom,
-    const DeviceAssemblyMap&   map,
-    const DeviceVector<Real>&  state)
+    const fem::DeviceMesh&    mesh,
+    const DeviceAssemblyMap&  map,
+    const DeviceVector<Real>& state)
 {
-  require(geom.numElems() == map.numElems(),
-          "Geometry and AssemblyMap have different element counts");
+  require(mesh.numElems() == map.numElems(),
+          "Mesh and AssemblyMap have different element counts");
   require(state.size() == map.numStates(),
           "Assembly state size does not match AssemblyMap");
 }
 
 inline void checkAssemblyInputs(
-    const fem::DeviceGeometry&           geom,
+    const fem::DeviceMesh&               mesh,
     const DeviceAssemblyMap&             map,
     const DeviceVector<Real>&            state,
     const linalg::DeviceCsrAssemblyView& jac)
 {
-  checkAssemblyInputs(geom, map, state);
+  checkAssemblyInputs(mesh, map, state);
   require(jac.rows == map.pattern().rows()
               && jac.columns == map.pattern().cols()
               && jac.nonzeros == map.pattern().nnz(),
@@ -87,12 +87,12 @@ inline void checkTimeAssemblyAliases(DeviceVectorView<const Real> hist,
 }
 
 inline std::size_t assemblySharedBytes(
-    const fem::DeviceGeometry& geom,
-    const DeviceAssemblyMap&   map)
+    const fem::DeviceMesh&   mesh,
+    const DeviceAssemblyMap& map)
 {
   const auto count = static_cast<std::size_t>(map.maxState())
-                     + static_cast<std::size_t>(geom.maxElemNodes())
-                           * static_cast<std::size_t>(geom.dim())
+                     + static_cast<std::size_t>(mesh.maxElemNodes())
+                           * static_cast<std::size_t>(mesh.dim())
                      + static_cast<std::size_t>(map.maxRes())
                      + static_cast<std::size_t>(map.maxJac());
   return count * sizeof(Real);
@@ -112,12 +112,12 @@ inline std::size_t timeAssemblySharedBytes(
 
 template <class ElementKernel>
 __global__ void assembleKernel(
-    ElementKernel                          kernel,
-    fem::GeometryView<MemorySpace::Device> geom,
-    DeviceAssemblyMapView                  map,
-    const Real*                            state,
-    Real*                                  res,
-    Real*                                  jac)
+    ElementKernel                      kernel,
+    fem::MeshView<MemorySpace::Device> mesh,
+    DeviceAssemblyMapView              map,
+    const Real*                        state,
+    Real*                              res,
+    Real*                              jac)
 {
   const Index ie = static_cast<Index>(blockIdx.x);
   if (ie >= map.num_elems)
@@ -127,8 +127,8 @@ __global__ void assembleKernel(
 
   const Index num_rows   = map.numResDofs(ie);
   const Index num_cols   = map.numStateDofs(ie);
-  const Index num_nodes  = geom.elemNumNodes(ie);
-  const Index num_coords = num_nodes * geom.dim();
+  const Index num_nodes  = mesh.elemNumNodes(ie);
+  const Index num_coords = num_nodes * mesh.dim();
   const Index num_jac    = num_rows * num_cols;
   const Index tid        = static_cast<Index>(threadIdx.x);
   const Index stride     = static_cast<Index>(blockDim.x);
@@ -145,10 +145,10 @@ __global__ void assembleKernel(
   }
   for (Index i = tid; i < num_coords; i += stride)
   {
-    const Index in   = i / geom.dim();
-    const Index d    = i - in * geom.dim();
-    const Index node = geom.elemNode(ie, in);
-    coords_e[i]      = geom.coord(node, d);
+    const Index in   = i / mesh.dim();
+    const Index d    = i - in * mesh.dim();
+    const Index node = mesh.elemNode(ie, in);
+    coords_e[i]      = mesh.coord(node, d);
   }
   for (Index row = tid; row < num_rows; row += stride)
   {
@@ -161,7 +161,7 @@ __global__ void assembleKernel(
   __syncthreads();
 
   const DeviceElementView elem{
-      ie, geom.dim(), num_nodes, {state_e, num_cols}, {coords_e, num_coords}};
+      ie, mesh.dim(), num_nodes, {state_e, num_cols}, {coords_e, num_coords}};
 
   for (Index row = tid; row < num_rows; row += stride)
   {
@@ -171,9 +171,12 @@ __global__ void assembleKernel(
   }
   __syncthreads();
 
-  for (Index row = tid; row < num_rows; row += stride)
+  if (res != nullptr)
   {
-    atomicAdd(res + map.resDof(ie, row), res_e[row]);
+    for (Index row = tid; row < num_rows; row += stride)
+    {
+      atomicAdd(res + map.resDof(ie, row), res_e[row]);
+    }
   }
   if (jac != nullptr)
   {
@@ -318,32 +321,33 @@ int configureTimeAssemblyLaunch(std::size_t smem)
 /**
  * @brief Assemble residual and Jacobian with one CUDA block per element.
  *
- * @param kernel Element evaluator copied into the kernel launch.
- * @param geom Device geometry matching the map's element order.
- * @param map Device element-to-global assembly map.
- * @param state Global device state vector.
- * @param res Device residual replaced by the assembled result.
- * @param jac Device CSR matrix zeroed and assembled in place.
- * @param ctx CUDA stream on which all work is enqueued.
+ * @param[in] kernel - Element evaluator copied into the kernel launch.
+ * @param[in] mesh - Device mesh matching the map's element order.
+ * @param[in] map - Device element-to-global assembly map.
+ * @param[in] state - Global Device state vector.
+ * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in,out] jac - Device CSR matrix zeroed and assembled in place.
+ * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
 template <class ElementKernel>
-void assemble(const ElementKernel&       kernel,
-              const fem::DeviceGeometry& geom,
-              const DeviceAssemblyMap&   map,
-              const DeviceVector<Real>&  state,
-              DeviceVector<Real>&        res,
-              linalg::CudaJacobian&      jac,
-              linalg::CudaContext&       ctx)
+void assembleResidualAndJacobian(
+    const ElementKernel&      kernel,
+    const fem::DeviceMesh&    mesh,
+    const DeviceAssemblyMap&  map,
+    const DeviceVector<Real>& state,
+    DeviceVector<Real>&       res,
+    linalg::CudaJacobian&     jac,
+    linalg::CudaContext&      ctx)
 {
   auto& vec_handler = ctx.vectors();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
-  const auto jacobian = jac.assemblyView();
-  detail::checkAssemblyInputs(geom, map, state, jacobian);
+  const auto jac_view = jac.assemblyView();
+  detail::checkAssemblyInputs(mesh, map, state, jac_view);
   require(state.data() != res.data()
-              && state.data() != jacobian.values.data()
-              && res.data() != jacobian.values.data(),
+              && state.data() != jac_view.values.data()
+              && res.data() != jac_view.values.data(),
           "Assembly state, residual, and matrix values must not alias");
 
   if (res.size() != map.numRes())
@@ -357,7 +361,7 @@ void assemble(const ElementKernel&       kernel,
     return;
   }
 
-  const std::size_t smem    = detail::assemblySharedBytes(geom, map);
+  const std::size_t smem    = detail::assemblySharedBytes(mesh, map);
   const int         threads = detail::configureAssemblyLaunch<ElementKernel>(smem);
   const auto        stream  = static_cast<cudaStream_t>(ctx.stream());
 
@@ -366,28 +370,37 @@ void assemble(const ElementKernel&       kernel,
          static_cast<unsigned int>(threads),
          smem,
          stream>>>(kernel,
-                   geom.view(),
+                   mesh.view(),
                    map.view(),
                    state.data(),
                    res.data(),
-                   jacobian.values.data());
+                   jac_view.values.data());
   cuda::checkLastError();
 }
 
-/** @brief Assemble a stationary Device residual without a Jacobian. */
+/**
+ * @brief Assemble a stationary Device residual without a Jacobian.
+ *
+ * @param[in] kernel - Element evaluator copied into the kernel launch.
+ * @param[in] mesh - Device mesh matching the map's element order.
+ * @param[in] map - Device element-to-global assembly map.
+ * @param[in] state - Global Device state vector.
+ * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in,out] ctx - CUDA context on which all work is enqueued.
+ */
 template <class ElementKernel>
-void assembleResidual(const ElementKernel&       kernel,
-                      const fem::DeviceGeometry& geom,
-                      const DeviceAssemblyMap&   map,
-                      const DeviceVector<Real>&  state,
-                      DeviceVector<Real>&        res,
-                      linalg::CudaContext&       ctx)
+void assembleResidual(const ElementKernel&      kernel,
+                      const fem::DeviceMesh&    mesh,
+                      const DeviceAssemblyMap&  map,
+                      const DeviceVector<Real>& state,
+                      DeviceVector<Real>&       res,
+                      linalg::CudaContext&      ctx)
 {
   auto& vec_handler = ctx.vectors();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
-  detail::checkAssemblyInputs(geom, map, state);
+  detail::checkAssemblyInputs(mesh, map, state);
   require(state.data() != res.data(),
           "Assembly state and residual must not alias");
 
@@ -402,7 +415,7 @@ void assembleResidual(const ElementKernel&       kernel,
   }
 
   const std::size_t smem =
-      detail::assemblySharedBytes(geom, map);
+      detail::assemblySharedBytes(mesh, map);
   const int threads =
       detail::configureAssemblyLaunch<ElementKernel>(smem);
   const auto stream = static_cast<cudaStream_t>(ctx.stream());
@@ -412,7 +425,7 @@ void assembleResidual(const ElementKernel&       kernel,
          static_cast<unsigned int>(threads),
          smem,
          stream>>>(kernel,
-                   geom.view(),
+                   mesh.view(),
                    map.view(),
                    state.data(),
                    res.data(),
@@ -420,31 +433,96 @@ void assembleResidual(const ElementKernel&       kernel,
   cuda::checkLastError();
 }
 
-/** @brief Assemble one time residual and state Jacobian on CUDA. */
+/**
+ * @brief Assemble a stationary Device Jacobian without a residual.
+ *
+ * @param[in] kernel - Element evaluator copied into the kernel launch.
+ * @param[in] mesh - Device mesh matching the map's element order.
+ * @param[in] map - Device element-to-global assembly map.
+ * @param[in] state - Global Device state vector.
+ * @param[in,out] jacobian - Device CSR Jacobian receiving element contributions.
+ * @param[in,out] ctx - CUDA context on which all work is enqueued.
+ */
 template <class ElementKernel>
-void assemble(const ElementKernel&         kernel,
-              Index                        step,
-              Index                        num_hist,
-              state::VariableBlock         wrt,
-              const DeviceAssemblyMap&     map,
-              DeviceVectorView<const Real> hist,
-              DeviceVectorView<const Real> nxt,
-              DeviceVector<Real>&          res,
-              linalg::CudaJacobian&        jac,
-              linalg::CudaContext&         ctx)
+void assembleJacobian(
+    const ElementKernel&      kernel,
+    const fem::DeviceMesh&    mesh,
+    const DeviceAssemblyMap&  map,
+    const DeviceVector<Real>& state,
+    linalg::CudaJacobian&     jacobian,
+    linalg::CudaContext&      ctx)
+{
+  static_assert(std::is_trivially_copyable<ElementKernel>::value,
+                "CUDA element kernel must be trivially copyable");
+
+  const auto jacobian_view = jacobian.assemblyView();
+  detail::checkAssemblyInputs(mesh, map, state, jacobian_view);
+  require(state.data() != jacobian_view.values.data(),
+          "Assembly state and matrix values must not alias");
+
+  if (map.numElems() == 0)
+  {
+    return;
+  }
+
+  const std::size_t shared_bytes =
+      detail::assemblySharedBytes(mesh, map);
+  const int threads =
+      detail::configureAssemblyLaunch<ElementKernel>(shared_bytes);
+  const auto stream = static_cast<cudaStream_t>(ctx.stream());
+
+  detail::assembleKernel<ElementKernel>
+      <<<static_cast<unsigned int>(map.numElems()),
+         static_cast<unsigned int>(threads),
+         shared_bytes,
+         stream>>>(kernel,
+                   mesh.view(),
+                   map.view(),
+                   state.data(),
+                   nullptr,
+                   jacobian_view.values.data());
+  cuda::checkLastError();
+}
+
+/**
+ * @brief Assemble one time residual and state Jacobian on CUDA.
+ *
+ * @param[in] kernel - Element evaluator copied into the kernel launch.
+ * @param[in] step - Residual step index.
+ * @param[in] num_hist - Number of history states.
+ * @param[in] wrt - State block differentiated by the Jacobian.
+ * @param[in] map - Device element-to-global assembly map.
+ * @param[in] hist - Global Device history states.
+ * @param[in] nxt - Global Device next state.
+ * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in,out] jac - Device CSR matrix zeroed and assembled in place.
+ * @param[in,out] ctx - CUDA context on which all work is enqueued.
+ */
+template <class ElementKernel>
+void assembleResidualAndJacobian(
+    const ElementKernel&         kernel,
+    Index                        step,
+    Index                        num_hist,
+    state::VariableBlock         wrt,
+    const DeviceAssemblyMap&     map,
+    DeviceVectorView<const Real> hist,
+    DeviceVectorView<const Real> nxt,
+    DeviceVector<Real>&          res,
+    linalg::CudaJacobian&        jac,
+    linalg::CudaContext&         ctx)
 {
   auto& vec_handler = ctx.vectors();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA time element kernel must be trivially copyable");
 
-  const auto jacobian = jac.assemblyView();
+  const auto jac_view = jac.assemblyView();
   detail::checkTimeAssemblyInputs(
-      num_hist, wrt, map, hist, nxt, jacobian);
+      num_hist, wrt, map, hist, nxt, jac_view);
   require(hist.data() != res.data()
-              && hist.data() != jacobian.values.data()
+              && hist.data() != jac_view.values.data()
               && nxt.data() != res.data()
-              && nxt.data() != jacobian.values.data()
-              && res.data() != jacobian.values.data(),
+              && nxt.data() != jac_view.values.data()
+              && res.data() != jac_view.values.data(),
           "CUDA time assembly outputs must not alias inputs or each other");
 
   if (res.size() != map.numRes())
@@ -473,11 +551,22 @@ void assemble(const ElementKernel&         kernel,
                    hist.data(),
                    nxt.data(),
                    res.data(),
-                   jacobian.values.data());
+                   jac_view.values.data());
   cuda::checkLastError();
 }
 
-/** @brief Assemble one time residual on CUDA without allocating a Jacobian. */
+/**
+ * @brief Assemble one time residual on CUDA without allocating a Jacobian.
+ *
+ * @param[in] kernel - Element evaluator copied into the kernel launch.
+ * @param[in] step - Residual step index.
+ * @param[in] num_hist - Number of history states.
+ * @param[in] map - Device element-to-global assembly map.
+ * @param[in] hist - Global Device history states.
+ * @param[in] nxt - Global Device next state.
+ * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in,out] ctx - CUDA context on which all work is enqueued.
+ */
 template <class ElementKernel>
 void assembleResidual(
     const ElementKernel&         kernel,

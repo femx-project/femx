@@ -77,6 +77,16 @@
       }
     },
     {
+      "name": "resolve-petsc-enzyme",
+      "displayName": "ReSolve CUDA + PETSc + Enzyme",
+      "description": "Build TAO optimization with Host/CUDA ReSolve solves and Enzyme differentiation.",
+      "inherits": "resolve-petsc",
+      "binaryDir": "${sourceDir}/build/resolve-petsc-enzyme",
+      "cacheVariables": {
+        "FEMX_ENABLE_ENZYME": "ON"
+      }
+    },
+    {
       "name": "petsc",
       "displayName": "PETSc",
       "description": "Build apps/tests with PETSc enabled and ReSolve disabled.",
@@ -150,6 +160,10 @@
       "configurePreset": "resolve-petsc"
     },
     {
+      "name": "resolve-petsc-enzyme",
+      "configurePreset": "resolve-petsc-enzyme"
+    },
+    {
       "name": "petsc",
       "configurePreset": "petsc"
     },
@@ -193,6 +207,13 @@
     {
       "name": "resolve-petsc",
       "configurePreset": "resolve-petsc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "resolve-petsc-enzyme",
+      "configurePreset": "resolve-petsc-enzyme",
       "output": {
         "outputOnFailure": true
       }
