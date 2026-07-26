@@ -41,7 +41,7 @@ public:
 
 private:
   HostContext                                      ctx_;
-  HostJacobian                                     jacobian_;
+  HostJacobian                                     jac_;
   std::unique_ptr<LinearSolver<MemorySpace::Host>> solver_;
   HostVector<Real>                                 rhs_;
 };

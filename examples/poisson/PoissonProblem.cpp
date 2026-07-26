@@ -223,9 +223,9 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown)
           runtime::requireValue(argc, argv, i, arg), arg);
       continue;
     }
-    if (arg == "--device" || arg == "-d")
+    if (arg == "--memory-space" || arg == "-m")
     {
-      opts.execution_device = parseExecutionDevice(
+      opts.memspace = parseMemorySpace(
           runtime::requireValue(argc, argv, i, arg));
       continue;
     }
@@ -253,19 +253,21 @@ std::string outputStem(const Options& opts)
 
 void printUsage(const char* app_name,
                 bool        petsc_options,
-                const char* device_note)
+                const char* memspace_note)
 {
   std::cout << "Usage: " << app_name
-            << " [--nx N] [--ny N] [-d host|device] [--output yes|no]";
+            << " [--nx N] [--ny N] [-m host|device]"
+            << " [--output yes|no]";
   if (petsc_options)
   {
     std::cout << " [PETSc options]";
   }
   std::cout << '\n';
-  std::cout << "  -d, --device host|device selects the execution device";
-  if (device_note)
+  std::cout
+      << "  -m, --memory-space host|device selects the memory space";
+  if (memspace_note)
   {
-    std::cout << " (" << device_note << ")";
+    std::cout << " (" << memspace_note << ")";
   }
   else if (petsc_options)
   {

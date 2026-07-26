@@ -63,11 +63,10 @@ void HostPoissonOptResidual::assembleResidual(
       out,
       ctx);
 
-  const HostVector<Real> prescribed_vals =
-      boundaryValues(prm);
+  const HostVector<Real> vals = boundaryValues(prm);
   assembly::applyDirichletConditions(prob_.boundaryMap(),
                                      state.view(),
-                                     prescribed_vals.view(),
+                                     vals.view(),
                                      out.view());
 }
 
@@ -127,6 +126,7 @@ HostVector<Real> HostPoissonOptResidual::boundaryValues(
   {
     vals[ip] = prm[ip];
   }
+
   return vals;
 }
 

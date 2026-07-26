@@ -72,12 +72,12 @@ Real solveDevice(const ExampleHelper&  helper,
 int run(const Options& opts)
 {
   constexpr auto solver_type = runtime::SolverType::ReSolve;
-  ExampleHelper  helper(solver_type, opts.execution_device, outputDir());
+  ExampleHelper  helper(solver_type, opts.memspace, outputDir());
   PoissonProblem prob(opts);
 
   HostVector<Real> x;
   Real             rnorm;
-  if (opts.execution_device == runtime::ExecutionDevice::Host)
+  if (opts.memspace == MemorySpace::Host)
   {
     rnorm = solveHost(helper, prob, x);
   }

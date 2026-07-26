@@ -102,17 +102,17 @@ available solver variants.
 Optional solver examples are available when their dependencies are enabled:
 
 ```shell
-./examples/poisson/poisson-resolve --nx 32 --ny 32 --device host --output yes
+./examples/poisson/poisson-resolve --nx 32 --ny 32 --memory-space host --output yes
 ```
 
 Optimization examples use PETSc/TAO, even when the linear solves use ReSolve:
 
 ```shell
 ./examples/poisson-opt/poisson-opt-resolve \
-  --device host --nx 32 --ny 32 --output yes --max-its 50
+  --memory-space host --nx 32 --ny 32 --output yes --max-its 50
 
 ./examples/poisson-opt/poisson-opt-resolve \
-  --device device --nx 32 --ny 32 --output yes --max-its 50
+  --memory-space device --nx 32 --ny 32 --output yes --max-its 50
 
 mpiexec -n 4 ./examples/poisson-opt/poisson-opt-petsc \
   --nx 32 --ny 32 --output yes --max-its 50

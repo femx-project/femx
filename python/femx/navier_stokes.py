@@ -10,9 +10,9 @@ from . import _core
 from .mesh import Mesh
 
 
-_DEVICE_NAMES = {
-    "host": _core.ExecutionDevice.HOST,
-    "device": _core.ExecutionDevice.DEVICE,
+_MEMORY_SPACE_NAMES = {
+    "host": _core.MemorySpace.HOST,
+    "device": _core.MemorySpace.DEVICE,
 }
 _SOLVER_NAMES = {
     "dense": _core.SolverType.DENSE,
@@ -46,16 +46,16 @@ _RESOLVE_OPTIONS = frozenset(
 )
 
 
-def _execution_device(value):
-    if isinstance(value, _core.ExecutionDevice):
+def _memspace(value):
+    if isinstance(value, _core.MemorySpace):
         return value
     if not isinstance(value, str):
-        raise TypeError("execution_device must be an ExecutionDevice or string")
+        raise TypeError("memspace must be a MemorySpace or string")
     try:
-        return _DEVICE_NAMES[value.lower()]
+        return _MEMORY_SPACE_NAMES[value.lower()]
     except KeyError as error:
         raise ValueError(
-            f"unknown execution device {value!r}; available: host, device"
+            f"unknown memory space {value!r}; available: host, device"
         ) from error
 
 
@@ -72,25 +72,25 @@ def _solver_type(value):
         ) from error
 
 
-def execution_devices():
-    """Return execution devices available for complete linear systems."""
+def memspaces():
+    """Return memory spaces available for complete linear systems."""
 
-    devices = [_core.ExecutionDevice.HOST]
+    spaces = [_core.MemorySpace.HOST]
     if (
         _core._has_resolve
         and _core._resolve_uses_cuda
         and _core._cuda_available
     ):
-        devices.append(_core.ExecutionDevice.DEVICE)
-    return tuple(devices)
+        spaces.append(_core.MemorySpace.DEVICE)
+    return tuple(spaces)
 
 
-def solver_types(execution_device=_core.ExecutionDevice.HOST):
-    """Return solver types available on an execution device."""
+def solver_types(memspace=_core.MemorySpace.HOST):
+    """Return solver types available in a memory space."""
 
-    device = _execution_device(execution_device)
+    space = _memspace(memspace)
     solvers = []
-    if device == _core.ExecutionDevice.HOST:
+    if space == _core.MemorySpace.HOST:
         solvers.append(_core.SolverType.DENSE)
         if _core._has_resolve:
             solvers.append(_core.SolverType.RESOLVE)
@@ -105,15 +105,15 @@ def solver_types(execution_device=_core.ExecutionDevice.HOST):
     return tuple(solvers)
 
 
-def _selection(execution_device, solver_type):
-    device = _execution_device(execution_device)
+def _selection(memspace, solver_type):
+    space = _memspace(memspace)
     solver = _solver_type(solver_type)
-    if solver not in solver_types(device):
+    if solver not in solver_types(space):
         raise ValueError(
             f"solver {_enum_name(_SOLVER_NAMES, solver)!r} is unavailable on "
-            f"{_enum_name(_DEVICE_NAMES, device)!r} execution"
+            f"{_enum_name(_MEMORY_SPACE_NAMES, space)!r} memory space"
         )
-    return device, solver
+    return space, solver
 
 
 def petsc_rank():
@@ -701,15 +701,15 @@ class NavierStokesProblem:
 
     def create_solver(
         self,
-        execution_device=_core.ExecutionDevice.HOST,
+        memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
-        """Create a forward solver from independent device and solver values."""
+        """Create a forward solver from memory-space and solver values."""
 
         return NavierStokesSolver(
             self,
-            execution_device,
+            memspace,
             solver_type,
             options=options,
         )
@@ -717,16 +717,16 @@ class NavierStokesProblem:
     def create_reduced(
         self,
         obj,
-        execution_device=_core.ExecutionDevice.HOST,
+        memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
-        """Create a reduced functional with separate execution and solver choices."""
+        """Create a reduced functional with memory-space and solver choices."""
 
         return NavierStokesReducedFunctional(
             self,
             obj,
-            execution_device,
+            memspace,
             solver_type,
             options=options,
         )
@@ -743,36 +743,36 @@ class NavierStokesProblem:
     def solve(
         self,
         param=None,
-        execution_device=_core.ExecutionDevice.HOST,
+        memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
     ):
-        selection = _selection(execution_device, solver_type)
+        selection = _selection(memspace, solver_type)
         if selection not in self._solvers:
             self._solvers[selection] = self.create_solver(*selection)
         return self._solvers[selection].solve(param)
 
 
 class NavierStokesSolver:
-    """Reusable time integrator for one execution-device/solver pair."""
+    """Reusable time integrator for one memory-space/solver pair."""
 
     def __init__(
         self,
         prob,
-        execution_device=_core.ExecutionDevice.HOST,
+        memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
         if not isinstance(prob, NavierStokesProblem):
             raise TypeError("prob must be a NavierStokesProblem")
-        device, solver = _selection(execution_device, solver_type)
+        space, solver = _selection(memspace, solver_type)
         options = _solver_options(solver, options)
         prob._ensure_built()
 
         self._prob = prob
         self._compiled = prob._compiled
-        self._execution_device = device
+        self._memspace = space
         self._solver_type = solver
-        if device == _core.ExecutionDevice.DEVICE:
+        if space == _core.MemorySpace.DEVICE:
             if prob._ctr is None:
                 self._integ = _core._DeviceTimeIntegrator(
                     prob.model._impl,
@@ -806,8 +806,8 @@ class NavierStokesSolver:
         return self._prob
 
     @property
-    def execution_device(self):
-        return self._execution_device
+    def memspace(self):
+        return self._memspace
 
     @property
     def solver_type(self):
@@ -857,7 +857,7 @@ class NavierStokesReducedFunctional:
         self,
         prob,
         obj,
-        execution_device=_core.ExecutionDevice.HOST,
+        memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
     ):
@@ -876,16 +876,16 @@ class NavierStokesReducedFunctional:
         self._prob = prob
         self._compiled = prob._compiled
         self._obj = obj
-        device, solver = _selection(execution_device, solver_type)
+        space, solver = _selection(memspace, solver_type)
         solver_options = _solver_options(solver, options)
-        self._execution_device = device
+        self._memspace = space
         self._solver_type = solver
         self._fwd = prob.create_solver(
-            device,
+            space,
             solver,
             options=options,
         )
-        if device == _core.ExecutionDevice.DEVICE:
+        if space == _core.MemorySpace.DEVICE:
             self._impl = _core._DeviceTimeReducedFunctional(
                 self._fwd._integ,
                 obj,
@@ -908,8 +908,8 @@ class NavierStokesReducedFunctional:
         return self._obj
 
     @property
-    def execution_device(self):
-        return self._execution_device
+    def memspace(self):
+        return self._memspace
 
     @property
     def solver_type(self):

@@ -86,13 +86,13 @@ void copy(const HostBoundaryMap& source,
  *
  * @param[in] map - Constrained rows in prescribed-value order.
  * @param[in] state - Current state.
- * @param[in] prescribed_values - Values prescribed at the constrained rows.
+ * @param[in] vals - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
     const HostBoundaryMap&     map,
     HostVectorView<const Real> state,
-    HostVectorView<const Real> prescribed_values,
+    HostVectorView<const Real> vals,
     HostVectorView<Real>       residual);
 
 /**
@@ -100,13 +100,13 @@ void applyDirichletConditions(
  *
  * @param[in] map - Constrained rows in prescribed-value order.
  * @param[in] state - Current state.
- * @param[in] prescribed_values - Values prescribed at the constrained rows.
+ * @param[in] vals - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
     const HostBoundaryMap&  map,
     const HostVector<Real>& state,
-    const HostVector<Real>& prescribed_values,
+    const HostVector<Real>& vals,
     HostVector<Real>&       residual);
 
 /**
@@ -114,14 +114,14 @@ void applyDirichletConditions(
  *
  * @param[in] map - Constrained rows in prescribed-value order.
  * @param[in] state - Current Device state.
- * @param[in] prescribed_values - Device values prescribed at constrained rows.
+ * @param[in] vals - Device values prescribed at constrained rows.
  * @param[out] residual - Device residual whose constrained entries are replaced.
  * @param[in,out] ctx - CUDA context used for the asynchronous update.
  */
 void applyDirichletConditions(
     const DeviceBoundaryMap&     map,
     DeviceVectorView<const Real> state,
-    DeviceVectorView<const Real> prescribed_values,
+    DeviceVectorView<const Real> vals,
     DeviceVectorView<Real>       residual,
     linalg::CudaContext&         ctx);
 

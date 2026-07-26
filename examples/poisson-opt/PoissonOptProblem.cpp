@@ -71,14 +71,15 @@ Index readNonnegativeIndex(int&               idx,
                            char**             argv,
                            const std::string& option)
 {
-  const long val =
-      std::stol(runtime::requireValue(
-          argc, argv, idx, option));
+  const long val = std::stol(runtime::requireValue(
+      argc, argv, idx, option));
+
   if (val < 0 || val > std::numeric_limits<Index>::max())
   {
     throw std::runtime_error(
         option + " must be a nonnegative integer");
   }
+
   return static_cast<Index>(val);
 }
 
@@ -87,13 +88,14 @@ Real readReal(int&               idx,
               char**             argv,
               const std::string& option)
 {
-  const Real val =
-      std::stod(runtime::requireValue(
-          argc, argv, idx, option));
+  const Real val = std::stod(runtime::requireValue(
+      argc, argv, idx, option));
+
   if (!std::isfinite(val))
   {
     throw std::runtime_error(option + " must be finite");
   }
+
   return val;
 }
 
@@ -107,12 +109,14 @@ std::string lowerAscii(std::string val)
                    return static_cast<char>(
                        std::tolower(character));
                  });
+
   return val;
 }
 
 bool readOutputValue(const std::string& val)
 {
   const std::string output = lowerAscii(val);
+
   if (output == "yes" || output == "no")
   {
     return parseYesNo(output, "--output");
@@ -125,6 +129,7 @@ bool readOutputValue(const std::string& val)
   {
     return false;
   }
+
   throw std::runtime_error("--output expects 'yes' or 'no'");
 }
 
@@ -133,6 +138,7 @@ bool readPositiveAssignment(const std::string& argument,
                             Index&             out)
 {
   const std::string prefix = option + "=";
+
   if (argument.rfind(prefix, 0) != 0)
   {
     return false;
@@ -146,10 +152,12 @@ bool readNonnegativeAssignment(const std::string& argument,
                                Index&             out)
 {
   const std::string prefix = option + "=";
+
   if (argument.rfind(prefix, 0) != 0)
   {
     return false;
   }
+
   const long val = std::stol(argument.substr(prefix.size()));
   if (val < 0 || val > std::numeric_limits<Index>::max())
   {
@@ -157,6 +165,7 @@ bool readNonnegativeAssignment(const std::string& argument,
         option + " must be a nonnegative integer");
   }
   out = static_cast<Index>(val);
+
   return true;
 }
 
@@ -165,29 +174,33 @@ bool readRealAssignment(const std::string& argument,
                         Real&              out)
 {
   const std::string prefix = option + "=";
+
   if (argument.rfind(prefix, 0) != 0)
   {
     return false;
   }
+
   out = std::stod(argument.substr(prefix.size()));
   if (!std::isfinite(out))
   {
     throw std::runtime_error(option + " must be finite");
   }
+
   return true;
 }
 
-bool readDeviceAssignment(const std::string&        argument,
-                          runtime::ExecutionDevice& out)
+bool readMemorySpaceAssignment(const std::string& argument,
+                               MemorySpace&       out)
 {
-  constexpr const char* prefix = "--device=";
+  constexpr const char* prefix = "--memory-space=";
+
   if (argument.rfind(prefix, 0) != 0)
   {
     return false;
   }
-  const std::string val =
-      argument.substr(std::string(prefix).size());
-  out = parseExecutionDevice(val);
+  const std::string val = argument.substr(std::string(prefix).size());
+  out                   = parseMemorySpace(val);
+
   return true;
 }
 
@@ -217,12 +230,14 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
     space_(&mesh_, &fe_)
 {
   space_.setup();
+
   elem_data_ = makeElementQuadData(
       space_,
       GaussQuadrature::make(
           fe_.referenceElement(), 2));
-  assm_map_ =
-      assembly::makeAssemblyMap(space_.dofMap());
+
+  assm_map_ = assembly::makeAssemblyMap(space_.dofMap());
+
   initBoundary();
   initTargetControl();
   initObservations();
@@ -293,13 +308,10 @@ void PoissonOptProblem::prepareObjective(
   target_state_ = std::move(target_state);
 
   HostVector<Real> zero_control(numParameters(), 0.0);
-  HostVector<Real> regularization_weights(
-      numParameters(), 0.0);
-  for (Index idx = 0; idx < regularization_weights.size();
-       ++idx)
+  HostVector<Real> reg_weights(numParameters(), 0.0);
+  for (Index idx = 0; idx < reg_weights.size(); ++idx)
   {
-    regularization_weights[idx] =
-        opts_.alpha * control_weights_[idx];
+    reg_weights[idx] = opts_.alpha * control_weights_[idx];
   }
 
   misfit_ = std::make_unique<LeastSquaresObjective>(
@@ -307,17 +319,16 @@ void PoissonOptProblem::prepareObjective(
   misfit_->setStateTerm(
       target_state_, observationWeights());
 
-  regularization_ =
-      std::make_unique<LeastSquaresObjective>(
-          numStates(), numParameters());
-  regularization_->setParamTerm(
+  reg_ = std::make_unique<LeastSquaresObjective>(
+      numStates(), numParameters());
+  reg_->setParamTerm(
       std::move(zero_control),
-      std::move(regularization_weights));
+      std::move(reg_weights));
 
   obj_ = std::make_unique<SumObjective>(
       numStates(), numParameters());
   obj_->add(*misfit_);
-  obj_->add(*regularization_);
+  obj_->add(*reg_);
 }
 
 Index PoissonOptProblem::numNodes() const noexcept
@@ -373,12 +384,12 @@ Report PoissonOptProblem::report(
   Real control_error_squared = 0.0;
   for (Index idx = 0; idx < control.size(); ++idx)
   {
-    const Real error =
-        control[idx] - target_control_[idx];
+    const Real error       = control[idx] - target_control_[idx];
     control_error_squared += error * error;
     out.control_max_error =
         std::max(out.control_max_error, std::abs(error));
   }
+
   out.control_rms_error =
       control.empty()
           ? 0.0
@@ -409,8 +420,7 @@ void PoissonOptProblem::writeSolution(
         "Poisson optimization target state is not prepared");
   }
 
-  const std::filesystem::path path =
-      vtuPathFromBase(base);
+  const std::filesystem::path path = vtuPathFromBase(base);
   if (path.has_parent_path())
   {
     std::filesystem::create_directories(
@@ -428,6 +438,7 @@ void PoissonOptProblem::writeFields(
   HostVector<Real> state_field(mesh_.numNodes());
   HostVector<Real> target_state_field(mesh_.numNodes());
   HostVector<Real> state_error(mesh_.numNodes());
+
   for (Index node = 0; node < mesh_.numNodes(); ++node)
   {
     const Index dof          = space_.globalDof(node, 0);
@@ -437,16 +448,12 @@ void PoissonOptProblem::writeFields(
         state_field[node] - target_state_field[node];
   }
 
-  HostVector<Real> control_field(
-      mesh_.numNodes(), 0.0);
-  HostVector<Real> target_control_field(
-      mesh_.numNodes(), 0.0);
-  HostVector<Real> control_error(
-      mesh_.numNodes(), 0.0);
-  HostVector<Real> control_mask(
-      mesh_.numNodes(), 0.0);
-  for (Index idx = 0; idx < control_dofs_.size();
-       ++idx)
+  HostVector<Real> control_field(mesh_.numNodes(), 0.0);
+  HostVector<Real> target_control_field(mesh_.numNodes(), 0.0);
+  HostVector<Real> control_error(mesh_.numNodes(), 0.0);
+  HostVector<Real> control_mask(mesh_.numNodes(), 0.0);
+
+  for (Index idx = 0; idx < control_dofs_.size(); ++idx)
   {
     const Index node = control_dofs_[idx];
     if (node < 0 || node >= mesh_.numNodes())
@@ -478,32 +485,25 @@ void PoissonOptProblem::writeObservations(
     const HostVector<Real>& state,
     const std::string&      path) const
 {
-  if (obs_points_.size()
-      != obs_dofs_.size())
+  if (obs_points_.size() != obs_dofs_.size())
   {
     throw std::runtime_error(
         "Poisson optimization observation layout is inconsistent");
   }
 
-  HostVector<Real> target_values(
-      obs_dofs_.size(), 0.0);
-  HostVector<Real> predicted_values(
-      obs_dofs_.size(), 0.0);
-  HostVector<Real> misfit_values(
-      obs_dofs_.size(), 0.0);
-  HostVector<Real> weights(
-      obs_dofs_.size(), 0.0);
-  const Real weight =
-      1.0 / static_cast<Real>(obs_dofs_.size());
-  for (Index idx = 0; idx < obs_dofs_.size();
-       ++idx)
+  HostVector<Real> target_values(obs_dofs_.size(), 0.0);
+  HostVector<Real> predicted_values(obs_dofs_.size(), 0.0);
+  HostVector<Real> misfit_values(obs_dofs_.size(), 0.0);
+  HostVector<Real> weights(obs_dofs_.size(), 0.0);
+
+  const Real weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+  for (Index idx = 0; idx < obs_dofs_.size(); ++idx)
   {
     const Index dof       = obs_dofs_[idx];
     target_values[idx]    = target_state_[dof];
     predicted_values[idx] = state[dof];
-    misfit_values[idx] =
-        state[dof] - target_state_[dof];
-    weights[idx] = weight;
+    misfit_values[idx]    = state[dof] - target_state_[dof];
+    weights[idx]          = weight;
   }
 
   VtuWriter writer;
@@ -549,9 +549,9 @@ void PoissonOptProblem::initBoundary()
   }
 
   HostVector<Index> boundary_rows;
-  boundary_rows.reserve(
-      static_cast<Index>(
-          control_rows.size() + fixed_rows.size()));
+  boundary_rows.reserve(static_cast<Index>(
+      control_rows.size() + fixed_rows.size()));
+
   for (Index row : control_rows)
   {
     control_dofs_.push_back(row);
@@ -561,13 +561,10 @@ void PoissonOptProblem::initBoundary()
   {
     boundary_rows.push_back(row);
   }
-  boundary_map_ =
-      assembly::makeBoundaryMap(boundary_rows);
+  boundary_map_ = assembly::makeBoundaryMap(boundary_rows);
 
-  const Real cell_width =
-      1.0 / static_cast<Real>(opts_.num_x_cells);
-  control_weights_.assign(
-      control_dofs_.size(), cell_width);
+  const Real cell_width = 1.0 / static_cast<Real>(opts_.num_x_cells);
+  control_weights_.assign(control_dofs_.size(), cell_width);
 }
 
 void PoissonOptProblem::initTargetControl()
@@ -594,10 +591,9 @@ void PoissonOptProblem::initObservations()
         "Poisson optimization found no observation points");
   }
 
-  const Real cell_width =
-      1.0 / static_cast<Real>(opts_.num_x_cells);
-  const Real cell_height =
-      1.0 / static_cast<Real>(opts_.num_y_cells);
+  const Real cell_width  = 1.0 / static_cast<Real>(opts_.num_x_cells);
+  const Real cell_height = 1.0 / static_cast<Real>(opts_.num_y_cells);
+
   obs_points_ = observationGridPoints(
       Point3{stride * cell_width,
              stride * cell_height,
@@ -607,18 +603,15 @@ void PoissonOptProblem::initObservations()
              stride * cell_height,
              1.0});
 
-  obs_dofs_.reserve(
-      obs_points_.size());
+  obs_dofs_.reserve(obs_points_.size());
   for (Index iy = 0; iy < count_y; ++iy)
   {
     const Index node_y = stride * (iy + 1);
     for (Index ix = 0; ix < count_x; ++ix)
     {
       const Index node_x = stride * (ix + 1);
-      const Index node =
-          node_y * (opts_.num_x_cells + 1) + node_x;
-      obs_dofs_.push_back(
-          space_.globalDof(node, 0));
+      const Index node   = node_y * (opts_.num_x_cells + 1) + node_x;
+      obs_dofs_.push_back(space_.globalDof(node, 0));
     }
   }
 }
@@ -645,12 +638,13 @@ PoissonOptProblem::observationWeights() const
         "Poisson optimization has no observation degrees of freedom");
   }
   HostVector<Real> weights(numStates(), 0.0);
-  const Real       weight =
-      1.0 / static_cast<Real>(obs_dofs_.size());
+  const Real       weight = 1.0 / static_cast<Real>(obs_dofs_.size());
+
   for (Index dof : obs_dofs_)
   {
     weights[dof] = weight;
   }
+
   return weights;
 }
 
@@ -700,9 +694,9 @@ Options parseOptions(int    argc,
           argument);
       continue;
     }
-    if (argument == "--device")
+    if (argument == "--memory-space")
     {
-      opts.execution_device = parseExecutionDevice(
+      opts.memspace = parseMemorySpace(
           runtime::requireValue(
               argc, argv, idx, argument));
       continue;
@@ -761,8 +755,8 @@ Options parseOptions(int    argc,
             argument,
             "--obs-stride",
             opts.observation_stride)
-        || readDeviceAssignment(
-            argument, opts.execution_device))
+        || readMemorySpaceAssignment(
+            argument, opts.memspace))
     {
       continue;
     }
@@ -795,7 +789,7 @@ void printUsage(std::ostream& out,
                 bool          petsc_options)
 {
   out << "Usage: " << app_name
-      << " [--nx N] [--ny N] [--device host|device]"
+      << " [--nx N] [--ny N] [--memory-space host|device]"
       << " [--output yes|no] [--alpha A]"
       << " [--obs-stride N] [--max-its N]";
   if (petsc_options)
@@ -828,8 +822,8 @@ void printReport(std::ostream&            out,
 {
   const Options& opts = prob.options();
   out << "Poisson optimal control (" << configuration << ")\n";
-  out << "  execution device: "
-      << runtime::name(opts.execution_device) << '\n';
+  out << "  memory space: "
+      << runtime::name(opts.memspace) << '\n';
   out << "  parameter VJP: "
       << (ad::has_enzyme ? "Enzyme" : "analytic fallback")
       << '\n';

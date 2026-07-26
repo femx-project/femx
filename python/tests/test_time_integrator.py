@@ -29,7 +29,7 @@ class ScalarRecurrence(femx.TimeResidual):
             - context["parameters"]
         )
 
-    def apply_jacobian_transpose(self, context, variable, adjoint):
+    def apply_jac_transpose(self, context, variable, adjoint):
         del context
         if variable.is_history_state or variable.is_parameter:
             return -adjoint

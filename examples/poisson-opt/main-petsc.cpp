@@ -25,16 +25,16 @@ namespace
 
 int run(const Options& opts)
 {
-  if (opts.execution_device
-      != runtime::ExecutionDevice::Host)
+  if (opts.memspace != MemorySpace::Host)
   {
     throw std::runtime_error(
         "PETSc Poisson optimization supports only Host execution");
   }
 
-  ExampleHelper     helper(runtime::SolverType::PETSc,
-                       opts.execution_device,
+  ExampleHelper helper(runtime::SolverType::PETSc,
+                       opts.memspace,
                        outputDir());
+
   PoissonOptProblem prob(opts);
 
   linalg::PETScLinearSystem fwd_system(PETSC_COMM_WORLD);

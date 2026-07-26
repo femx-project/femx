@@ -6,6 +6,7 @@
 
 #include "Bindings.hpp"
 #include "PETScInit.hpp"
+#include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
@@ -33,13 +34,13 @@ using femx::DenseMatrix;
 using femx::HostVector;
 using femx::HostVectorView;
 using femx::Index;
+using femx::MemorySpace;
 using femx::Real;
 using femx::fem::HostInitialStateMap;
 #ifdef FEMX_HAS_RESOLVE
 using femx::linalg::ReSolveLinearSolver;
 using femx::linalg::ReSolveOptions;
 #endif
-using femx::runtime::ExecutionDevice;
 using femx::runtime::SolverType;
 using femx::state::EnsembleBasis;
 using femx::state::HostTimeContext;
@@ -321,11 +322,11 @@ public:
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
-        py::get_override(this, "apply_jacobian_transpose");
+        py::get_override(this, "apply_jac_transpose");
     if (!override)
     {
       throw std::runtime_error(
-          "TimeResidual.apply_jacobian_transpose() is not implemented");
+          "TimeResidual.apply_jac_transpose() is not implemented");
     }
     copyArray(override(ctxData(ctx), wrt, vectorArray(adj)),
               out,
@@ -537,9 +538,9 @@ makePythonHostLinearSystem(SolverType        solver,
 
 void bindState(py::module_& module)
 {
-  py::enum_<ExecutionDevice>(module, "ExecutionDevice")
-      .value("HOST", ExecutionDevice::Host)
-      .value("DEVICE", ExecutionDevice::Device);
+  py::enum_<MemorySpace>(module, "MemorySpace")
+      .value("HOST", MemorySpace::Host)
+      .value("DEVICE", MemorySpace::Device);
 
   py::enum_<SolverType>(module, "SolverType")
       .value("DENSE", SolverType::Dense)

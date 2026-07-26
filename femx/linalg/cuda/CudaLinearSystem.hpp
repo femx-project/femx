@@ -38,7 +38,7 @@ public:
 
 private:
   CudaContext                                        ctx_;
-  CudaJacobian                                       jacobian_;
+  CudaJacobian                                       jac_;
   std::unique_ptr<LinearSolver<MemorySpace::Device>> solver_;
   DeviceVector<Real>                                 rhs_;
 };

@@ -42,7 +42,7 @@ def main():
     problem.build()
 
     solver = problem.create_solver(
-        execution_device=femx.ExecutionDevice.HOST,
+        memspace=femx.MemorySpace.HOST,
         solver_type=femx.SolverType.PETSC,
     )
     trajectory = solver.solve(progress=print_progress)

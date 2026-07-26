@@ -108,8 +108,8 @@ class DenseNavierStokesReducedFunctionalTest(unittest.TestCase):
             femx.NavierStokesReducedFunctional,
         )
         self.assertEqual(
-            self.reduced.execution_device,
-            femx.ExecutionDevice.HOST,
+            self.reduced.memspace,
+            femx.MemorySpace.HOST,
         )
         self.assertEqual(self.reduced.solver_type, femx.SolverType.DENSE)
 

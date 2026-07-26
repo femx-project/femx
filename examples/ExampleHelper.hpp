@@ -40,24 +40,24 @@ inline bool hasHelp(int argc, char* const argv[])
 }
 
 /**
- * @brief Parse an example execution-device value.
+ * @brief Parse an example memory-space value.
  *
- * @param[in] val - Value supplied to `--device`.
- * @return Parsed execution device.
+ * @param[in] val - Value supplied to `--memory-space`.
+ * @return Parsed memory space.
  * @throws std::runtime_error - If `val` is neither `host` nor `device`.
  */
-inline runtime::ExecutionDevice parseExecutionDevice(
-    const std::string& val)
+inline MemorySpace parseMemorySpace(const std::string& val)
 {
   if (val == "host")
   {
-    return runtime::ExecutionDevice::Host;
+    return MemorySpace::Host;
   }
   if (val == "device")
   {
-    return runtime::ExecutionDevice::Device;
+    return MemorySpace::Device;
   }
-  throw std::runtime_error("--device expects 'host' or 'device'");
+  throw std::runtime_error(
+      "--memory-space expects 'host' or 'device'");
 }
 
 /**
@@ -113,26 +113,26 @@ class ExampleHelper
 {
 public:
   /**
-   * @brief Bind solver, execution device, and output directory.
+   * @brief Bind solver, memory space, and output directory.
    *
    * @param[in] solver - Solver used by the example.
-   * @param[in] device - Execution device used by the example.
+   * @param[in] space - Memory space used by the example.
    * @param[in] out_dir - Directory for generated output files.
    */
-  ExampleHelper(runtime::SolverType      solver,
-                runtime::ExecutionDevice device,
-                std::string              out_dir)
+  ExampleHelper(runtime::SolverType solver,
+                MemorySpace         space,
+                std::string         out_dir)
     : solver_(solver),
-      device_(device),
+      space_(space),
       out_dir_(std::move(out_dir))
   {
   }
 
-  /** @brief Return the `solver/execution-device` display name. */
+  /** @brief Return the `solver/memory-space` display name. */
   std::string name() const
   {
     return std::string(runtime::name(solver_)) + "/"
-           + runtime::name(device_);
+           + runtime::name(space_);
   }
 
   /**
@@ -185,7 +185,7 @@ public:
 #endif
 
   /**
-   * @brief Build an output path containing solver and execution-device names.
+   * @brief Build an output path containing solver and memory-space names.
    *
    * @param[in] stem - Problem-specific file stem.
    * @return Output path without a file extension.
@@ -194,7 +194,7 @@ public:
   {
     const std::filesystem::path dir(out_dir_);
     const std::string           file =
-        stem + "-" + runtime::name(solver_) + "-" + runtime::name(device_);
+        stem + "-" + runtime::name(solver_) + "-" + runtime::name(space_);
     return (dir / file).string();
   }
 
@@ -211,9 +211,9 @@ public:
   }
 
 private:
-  runtime::SolverType      solver_;  ///< Solver used by the example.
-  runtime::ExecutionDevice device_;  ///< Execution device used by the example.
-  std::string              out_dir_; ///< Directory for generated output files.
+  runtime::SolverType solver_;  ///< Solver used by the example.
+  MemorySpace         space_;   ///< Memory space used by the example.
+  std::string         out_dir_; ///< Directory for generated output files.
 };
 
 /**

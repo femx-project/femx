@@ -1,14 +1,9 @@
 #pragma once
 
+#include <femx/common/Types.hpp>
+
 namespace femx::runtime
 {
-
-/** @brief Identify the execution device independently of the solver. */
-enum class ExecutionDevice
-{
-  Host,
-  Device
-};
 
 /** @brief Identify a linear solver implementation independently of storage. */
 enum class SolverType
@@ -19,12 +14,12 @@ enum class SolverType
 };
 
 /**
- * @brief Return the user-facing execution-device name.
+ * @brief Return the user-facing memory-space name.
  *
- * @param[in] device - Execution device.
- * @return Static lower-case device name.
+ * @param[in] space - Memory space.
+ * @return Static lower-case memory-space name.
  */
-const char* name(ExecutionDevice device) noexcept;
+const char* name(MemorySpace space) noexcept;
 
 /**
  * @brief Return the user-facing solver name.

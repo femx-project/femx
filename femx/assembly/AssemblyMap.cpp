@@ -189,6 +189,7 @@ HostAssemblyMap makeAssemblyMap(const fem::DofMap& res_map,
     res_dofs[ie]   = res_map.elementDofs(ie);
     state_dofs[ie] = state_map.elementDofs(ie);
   }
+  
   return makeAssemblyMap(
       res_map.numDofs(), state_map.numDofs(), res_dofs, state_dofs);
 }
