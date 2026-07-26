@@ -2,8 +2,8 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 
@@ -165,24 +165,20 @@ inline constexpr VariableBlock VariableBlock::NextState{
 inline constexpr VariableBlock VariableBlock::Param{
     VariableBlock::Kind::Param};
 
-template <class Backend>
+template <MemorySpace Space>
 class TimeResidual;
 
-/** @brief Time-residual contract over one concrete execution backend. */
-template <class Backend>
+/** @brief Define a time residual in one memory space. */
+template <MemorySpace Space>
 class TimeResidual
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "TimeResidual requires a valid backend type");
-
 public:
-  static constexpr MemorySpace space = Backend::space;
+  static constexpr MemorySpace space = Space;
 
-  using Vec       = typename Backend::Vec;
-  using VecView   = typename Backend::VecView;
-  using ConstView = typename Backend::ConstView;
-  using Mat       = typename Backend::Mat;
-  using Pattern   = typename Backend::Pattern;
+  using Vec       = Vector<Space, Real>;
+  using VecView   = VectorView<Space, Real>;
+  using ConstView = VectorView<Space, const Real>;
+  using Jac       = linalg::Jacobian<Space>;
   using Ctx       = linalg::Context<space>;
   using StepCtx   = TimeContext<space>;
 
@@ -190,20 +186,16 @@ public:
 
   virtual TimeDims dims() const = 0;
 
-  /** @brief Return the Host pattern used to construct boundary metadata. */
+  /** @brief Return the canonical Host Jacobian pattern. */
   virtual const HostCsrPattern& hostPattern() const = 0;
-
-  /** @brief Return the matrix pattern in this backend's storage. */
-  virtual const Pattern& pattern() const = 0;
 
   /** @brief Evaluate the parameter-dependent initial state. */
   virtual void initialState(ConstView prm, Vec& out, Ctx& ctx) const = 0;
 
   /** @brief Add the initial-state Jacobian transpose product to `out`. */
-  virtual void addInitialStateJacobianTranspose(
-      ConstView state_grad,
-      VecView   out,
-      Ctx&) const
+  virtual void addInitialStateJacT(ConstView state_grad,
+                                   VecView   out,
+                                   Ctx&) const
   {
     const TimeDims dim = dims();
     require(state_grad.size() == dim.num_states
@@ -214,7 +206,7 @@ public:
   /** @brief Assemble the residual and next-state Jacobian together. */
   virtual void assembleNext(const StepCtx& time,
                             Vec&           res,
-                            Mat&           jac,
+                            Jac&           jac,
                             Ctx&           ctx) const = 0;
 
   /** @brief Apply a history or parameter Jacobian transpose. */
@@ -225,7 +217,7 @@ public:
                          Ctx&           ctx) const = 0;
 
   virtual void prepareLinearSolve(const StepCtx& time,
-                                  Mat&           jac,
+                                  Jac&           jac,
                                   Vec&           rhs,
                                   Ctx&           ctx) const
   {
@@ -236,7 +228,7 @@ public:
   }
 };
 
-using HostTimeResidual   = TimeResidual<linalg::HostCsrBackend>;
-using DeviceTimeResidual = TimeResidual<linalg::CudaCsrBackend>;
+using HostTimeResidual   = TimeResidual<MemorySpace::Host>;
+using DeviceTimeResidual = TimeResidual<MemorySpace::Device>;
 
 } // namespace femx::state

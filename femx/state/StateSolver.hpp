@@ -4,25 +4,22 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state
 {
 
-/** @brief Solver contract for one stationary residual backend. */
-template <class Backend>
+/** @brief Define a stationary state solver in one memory space. */
+template <MemorySpace Space>
 class StateSolver
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "StateSolver requires a valid backend type");
-
 public:
-  using Vec = typename Backend::Vec;
-  using Ctx = linalg::Context<Backend::space>;
-  using Res = Residual<Backend>;
+  using Vec = Vector<Space, Real>;
+  using Ctx = linalg::Context<Space>;
+  using Res = Residual<Space>;
 
   virtual ~StateSolver() = default;
 
@@ -37,14 +34,14 @@ public:
 };
 
 /** @brief State solver for affine-linear stationary residuals. */
-template <class Backend>
-class LinearStateSolver final : public StateSolver<Backend>
+template <MemorySpace Space>
+class LinearStateSolver final : public StateSolver<Space>
 {
 public:
-  using Vec    = typename Backend::Vec;
-  using Ctx    = linalg::Context<Backend::space>;
-  using Res    = Residual<Backend>;
-  using System = linalg::LinearSystem<Backend::space>;
+  using Vec    = Vector<Space, Real>;
+  using Ctx    = linalg::Context<Space>;
+  using Res    = Residual<Space>;
+  using System = linalg::LinearSystem<Space>;
 
   LinearStateSolver(const Res& res, System& system)
     : res_(res),
@@ -121,18 +118,18 @@ struct NewtonStateOptions
   Real  step_tol{0.0};
 };
 
-/** @brief Newton state solver for Host-storage backends. */
-template <class Backend>
-class NewtonStateSolver final : public StateSolver<Backend>
+/** @brief Solve a Host stationary residual with Newton's method. */
+template <MemorySpace Space>
+class NewtonStateSolver final : public StateSolver<Space>
 {
-  static_assert(Backend::space == MemorySpace::Host,
+  static_assert(Space == MemorySpace::Host,
                 "NewtonStateSolver requires Host state storage");
 
 public:
-  using Vec    = typename Backend::Vec;
-  using Ctx    = linalg::Context<Backend::space>;
-  using Res    = Residual<Backend>;
-  using System = linalg::LinearSystem<Backend::space>;
+  using Vec    = Vector<Space, Real>;
+  using Ctx    = linalg::Context<Space>;
+  using Res    = Residual<Space>;
+  using System = linalg::LinearSystem<Space>;
 
   NewtonStateSolver(const Res& res, System& system)
     : res_(res),
@@ -273,8 +270,8 @@ private:
   bool               has_init_{false};
 };
 
-using HostStateSolver       = StateSolver<linalg::HostCsrBackend>;
-using HostLinearStateSolver = LinearStateSolver<linalg::HostCsrBackend>;
-using HostNewtonStateSolver = NewtonStateSolver<linalg::HostCsrBackend>;
+using HostStateSolver       = StateSolver<MemorySpace::Host>;
+using HostLinearStateSolver = LinearStateSolver<MemorySpace::Host>;
+using HostNewtonStateSolver = NewtonStateSolver<MemorySpace::Host>;
 
 } // namespace femx::state

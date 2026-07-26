@@ -1,8 +1,9 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/Vector.hpp>
 
 namespace femx::state
 {
@@ -15,30 +16,23 @@ struct Dimensions
   Index num_res{0};
 };
 
-/** @brief Stationary residual contract over one concrete backend. */
-template <class Backend>
+/** @brief Define a stationary residual in one memory space. */
+template <MemorySpace Space>
 class Residual
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "Residual requires a valid backend type");
-
 public:
-  static constexpr MemorySpace space = Backend::space;
+  static constexpr MemorySpace space = Space;
 
-  using Vec     = typename Backend::Vec;
-  using Mat     = typename Backend::Mat;
-  using Pattern = typename Backend::Pattern;
-  using Ctx     = linalg::Context<space>;
+  using Vec = Vector<Space, Real>;
+  using Jac = linalg::Jacobian<Space>;
+  using Ctx = linalg::Context<space>;
 
   virtual ~Residual() = default;
 
   virtual Dimensions dims() const = 0;
 
-  /** @brief Return the Host pattern used for metadata and backend conversion. */
+  /** @brief Return the canonical Host Jacobian pattern. */
   virtual const HostCsrPattern& hostPattern() const = 0;
-
-  /** @brief Return the state-Jacobian pattern in backend storage. */
-  virtual const Pattern& pattern() const = 0;
 
   /** @brief Evaluate R(state, prm). */
   virtual void res(const Vec& state,
@@ -49,7 +43,7 @@ public:
   /** @brief Assemble dR/dstate at the supplied point. */
   virtual void assembleStateJac(const Vec& state,
                                 const Vec& prm,
-                                Mat&       out,
+                                Jac&       out,
                                 Ctx&       ctx) const = 0;
 
   /** @brief Apply (dR/dprm)^T to an adjoint vector. */
@@ -60,7 +54,7 @@ public:
                               Ctx&       ctx) const = 0;
 };
 
-using HostResidual   = Residual<linalg::HostCsrBackend>;
-using DeviceResidual = Residual<linalg::CudaCsrBackend>;
+using HostResidual   = Residual<MemorySpace::Host>;
+using DeviceResidual = Residual<MemorySpace::Device>;
 
 } // namespace femx::state

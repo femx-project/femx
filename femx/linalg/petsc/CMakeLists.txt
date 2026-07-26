@@ -9,7 +9,6 @@ target_sources(
           PETScLinearSystem.cpp
           PETScMatrix.cpp
   PUBLIC MpiContext.hpp
-         PETScBackend.hpp
          PETScJacobian.hpp
          PETScLinearSolver.hpp
          PETScLinearSystem.hpp

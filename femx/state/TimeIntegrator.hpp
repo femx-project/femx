@@ -6,9 +6,9 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
@@ -35,21 +35,18 @@ struct SolveStats
   Index lin_solve_calls{0};
 };
 
-/** @brief Backend-independent implicit time integrator. */
-template <class Backend>
+/** @brief Integrate an implicit time residual in one memory space. */
+template <MemorySpace Space>
 class TimeIntegrator final
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "TimeIntegrator requires a valid backend type");
-
 public:
-  static constexpr MemorySpace space = Backend::space;
+  static constexpr MemorySpace space = Space;
 
-  using Vec       = typename Backend::Vec;
-  using VecView   = typename Backend::VecView;
-  using ConstView = typename Backend::ConstView;
+  using Vec       = Vector<Space, Real>;
+  using VecView   = VectorView<Space, Real>;
+  using ConstView = VectorView<Space, const Real>;
   using Ctx       = linalg::Context<space>;
-  using Res       = TimeResidual<Backend>;
+  using Res       = TimeResidual<Space>;
   using System    = linalg::LinearSystem<space>;
   using Tr        = TimeTrajectory;
   using StepCtx   = TimeStepStateContext;
@@ -101,8 +98,8 @@ private:
   SolveStats stats_;
 };
 
-using HostTimeIntegrator   = TimeIntegrator<linalg::HostCsrBackend>;
-using DeviceTimeIntegrator = TimeIntegrator<linalg::CudaCsrBackend>;
+using HostTimeIntegrator   = TimeIntegrator<MemorySpace::Host>;
+using DeviceTimeIntegrator = TimeIntegrator<MemorySpace::Device>;
 
 namespace detail
 {
@@ -116,9 +113,9 @@ inline Real elapsedSec(const TimeClock::time_point& begin)
 
 } // namespace detail
 
-template <class Backend>
-TimeIntegrator<Backend>::TimeIntegrator(const Res& res,
-                                        System&    system)
+template <MemorySpace Space>
+TimeIntegrator<Space>::TimeIntegrator(const Res& res,
+                                      System&    system)
   : res_(res),
     system_(system),
     ctx_(system.context()),
@@ -141,40 +138,40 @@ TimeIntegrator<Backend>::TimeIntegrator(const Res& res,
   ctx_.sync();
 }
 
-template <class Backend>
-Index TimeIntegrator<Backend>::numSteps() const noexcept
+template <MemorySpace Space>
+Index TimeIntegrator<Space>::numSteps() const noexcept
 {
   return dims_.num_steps;
 }
 
-template <class Backend>
-Index TimeIntegrator<Backend>::numStates() const noexcept
+template <MemorySpace Space>
+Index TimeIntegrator<Space>::numStates() const noexcept
 {
   return dims_.num_states;
 }
 
-template <class Backend>
-Index TimeIntegrator<Backend>::numParams() const noexcept
+template <MemorySpace Space>
+Index TimeIntegrator<Space>::numParams() const noexcept
 {
   return dims_.num_param;
 }
 
-template <class Backend>
-const typename TimeIntegrator<Backend>::Res&
-TimeIntegrator<Backend>::residual() const noexcept
+template <MemorySpace Space>
+const typename TimeIntegrator<Space>::Res&
+TimeIntegrator<Space>::residual() const noexcept
 {
   return res_;
 }
 
-template <class Backend>
-typename TimeIntegrator<Backend>::Ctx&
-TimeIntegrator<Backend>::context() const noexcept
+template <MemorySpace Space>
+typename TimeIntegrator<Space>::Ctx&
+TimeIntegrator<Space>::context() const noexcept
 {
   return ctx_;
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::setInitialState(ConstView state)
+template <MemorySpace Space>
+void TimeIntegrator<Space>::setInitialState(ConstView state)
 {
   require(state.size() == numStates(),
           "TimeIntegrator initial state size mismatch");
@@ -184,54 +181,54 @@ void TimeIntegrator<Backend>::setInitialState(ConstView state)
   has_init_ = true;
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::setInitialState(const Vec& state)
+template <MemorySpace Space>
+void TimeIntegrator<Space>::setInitialState(const Vec& state)
 {
   setInitialState(state.view());
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::clearInitialState() noexcept
+template <MemorySpace Space>
+void TimeIntegrator<Space>::clearInitialState() noexcept
 {
   has_init_ = false;
 }
 
-template <class Backend>
-SolveStats TimeIntegrator<Backend>::solve(ConstView prm, Observer observer)
+template <MemorySpace Space>
+SolveStats TimeIntegrator<Space>::solve(ConstView prm, Observer observer)
 {
   return solveImpl(prm, nullptr, std::move(observer));
 }
 
-template <class Backend>
-SolveStats TimeIntegrator<Backend>::solve(ConstView prm,
-                                          Tr&       tr,
-                                          Observer  observer)
+template <MemorySpace Space>
+SolveStats TimeIntegrator<Space>::solve(ConstView prm,
+                                        Tr&       tr,
+                                        Observer  observer)
 {
   return solveImpl(prm, &tr, std::move(observer));
 }
 
-template <class Backend>
-const SolveStats& TimeIntegrator<Backend>::lastStats() const noexcept
+template <MemorySpace Space>
+const SolveStats& TimeIntegrator<Space>::lastStats() const noexcept
 {
   return stats_;
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::resetStats() noexcept
+template <MemorySpace Space>
+void TimeIntegrator<Space>::resetStats() noexcept
 {
   stats_ = {};
 }
 
-template <class Backend>
-typename TimeIntegrator<Backend>::VecView
-TimeIntegrator<Backend>::histState(Index lag)
+template <MemorySpace Space>
+typename TimeIntegrator<Space>::VecView
+TimeIntegrator<Space>::histState(Index lag)
 {
   return hist_.view().subview(lag * numStates(), numStates());
 }
 
-template <class Backend>
-TimeContext<TimeIntegrator<Backend>::space>
-TimeIntegrator<Backend>::timeCtx(Index step, ConstView prm) const
+template <MemorySpace Space>
+TimeContext<TimeIntegrator<Space>::space>
+TimeIntegrator<Space>::timeCtx(Index step, ConstView prm) const
 {
   return {step,
           nxt_.view(),
@@ -239,8 +236,8 @@ TimeIntegrator<Backend>::timeCtx(Index step, ConstView prm) const
           {hist_.data(), dims_.num_hist, numStates()}};
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::initialize(ConstView prm)
+template <MemorySpace Space>
+void TimeIntegrator<Space>::initialize(ConstView prm)
 {
   auto& vec_handler = ctx_.vectors();
   if (!has_init_)
@@ -254,8 +251,8 @@ void TimeIntegrator<Backend>::initialize(ConstView prm)
   }
 }
 
-template <class Backend>
-void TimeIntegrator<Backend>::advanceHist()
+template <MemorySpace Space>
+void TimeIntegrator<Space>::advanceHist()
 {
   auto& vec_handler = ctx_.vectors();
   for (Index lag = dims_.num_hist - 1; lag > 0; --lag)
@@ -266,8 +263,8 @@ void TimeIntegrator<Backend>::advanceHist()
   vec_handler.copy(sol_.view(), nxt_);
 }
 
-template <class Backend>
-SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
+template <MemorySpace Space>
+SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
 {
   auto&                    vec_handler = ctx_.vectors();
   auto&                    jac         = system_.jacobian();
@@ -296,10 +293,10 @@ SolveStats TimeIntegrator<Backend>::solveStep(Index step, ConstView prm)
   return {assm_sec, lin_solve_sec, 1, 1};
 }
 
-template <class Backend>
-SolveStats TimeIntegrator<Backend>::solveImpl(ConstView prm,
-                                              Tr*       tr,
-                                              Observer  observer)
+template <MemorySpace Space>
+SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
+                                            Tr*       tr,
+                                            Observer  observer)
 {
   auto& vec_handler = ctx_.vectors();
   require(prm.size() == numParams(),

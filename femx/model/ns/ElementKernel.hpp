@@ -6,9 +6,13 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/ElementQuadratureData.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/model/ns/FluidProperties.hpp>
+
+namespace femx::linalg
+{
+class CudaContext;
+class CudaJacobian;
+} // namespace femx::linalg
 
 namespace femx
 {

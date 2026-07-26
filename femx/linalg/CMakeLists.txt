@@ -12,8 +12,7 @@ target_sources(
           native/HostJacobian.cpp
           native/HostLinearSystem.cpp
           native/HostVectorHandler.cpp
-  PUBLIC Backend.hpp
-         Context.hpp
+  PUBLIC Context.hpp
          Jacobian.hpp
          LinearSystem.hpp
          View.hpp

@@ -3,30 +3,28 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/inverse/Objective.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx::inverse
 {
 
-/** @brief Backend-independent stationary reduced objective and adjoint solve. */
-template <class Backend>
+/** @brief Evaluate a stationary reduced objective and its adjoint gradient. */
+template <MemorySpace Space>
 class ReducedFunctional final
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "ReducedFunctional requires a valid backend type");
-  static_assert(Backend::space == MemorySpace::Host,
+  static_assert(Space == MemorySpace::Host,
                 "ReducedFunctional requires Host objective storage");
 
 public:
-  using Vec         = typename Backend::Vec;
-  using Ctx         = linalg::Context<Backend::space>;
-  using Res         = state::Residual<Backend>;
-  using StateSolver = state::StateSolver<Backend>;
-  using System      = linalg::LinearSystem<Backend::space>;
+  using Vec         = Vector<Space, Real>;
+  using Ctx         = linalg::Context<Space>;
+  using Res         = state::Residual<Space>;
+  using StateSolver = state::StateSolver<Space>;
+  using System      = linalg::LinearSystem<Space>;
 
   ReducedFunctional(StateSolver&     state_solver,
                     System&          adj_system,
@@ -132,7 +130,6 @@ private:
   Vec               res_prm_adj_;
 };
 
-using HostReducedFunctional =
-    ReducedFunctional<linalg::HostCsrBackend>;
+using HostReducedFunctional = ReducedFunctional<MemorySpace::Host>;
 
 } // namespace femx::inverse

@@ -30,13 +30,12 @@ void configureMonitor(Monitor&            monitor,
   monitor.setConvergence(time.convergence);
 }
 
-template <class Backend>
-SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
-                      const Problem&                  problem,
-                      const TimeConfig&               time,
-                      const OutputConfig&             output,
-                      std::ostream*                   terminal,
-                      std::ostream*                   log_out)
+SolveResult solveHost(state::HostTimeIntegrator& integrator,
+                      const Problem&             problem,
+                      const TimeConfig&          time,
+                      const OutputConfig&        output,
+                      std::ostream*              terminal,
+                      std::ostream*              log_out)
 {
   Monitor monitor(problem.model.space(),
                   problem.model.dt(),
@@ -44,7 +43,7 @@ SolveResult solveHost(state::TimeIntegrator<Backend>& integrator,
   configureMonitor(monitor, time, output, terminal, log_out);
 
   monitor.start(integrator.numSteps(), integrator.numStates());
-  typename state::TimeIntegrator<Backend>::Observer observer =
+  state::HostTimeIntegrator::Observer observer =
       [&monitor](const state::TimeStepStateContext& context)
   {
     if (context.level == 0)

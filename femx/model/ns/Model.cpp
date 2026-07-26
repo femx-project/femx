@@ -19,11 +19,8 @@
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-
-#if defined(FEMX_HAS_PETSC)
-#include <petscsys.h>
-#endif
 
 namespace femx::model::ns
 {
@@ -226,27 +223,26 @@ void applyHistJacT(
 
 } // namespace detail
 
-template <class Backend>
-class NavierResidual : public state::TimeResidual<Backend>
+template <MemorySpace Space>
+class NavierResidual : public state::TimeResidual<Space>
 {
 public:
-  using Base      = state::TimeResidual<Backend>;
+  using Base      = state::TimeResidual<Space>;
   using Vec       = typename Base::Vec;
   using ConstView = typename Base::ConstView;
-  using Mat       = typename Base::Mat;
-  using Pattern   = typename Base::Pattern;
+  using Jac       = typename Base::Jac;
   using Ctx       = typename Base::Ctx;
   using StepCtx   = typename Base::StepCtx;
-  using Map       = assembly::AssemblyMap<Backend::space>;
-  using Data      = fem::ElementQuadratureData<Backend::space>;
-  using Kernel    = ElementKernel<Backend::space>;
+  using Map       = assembly::AssemblyMap<Space>;
+  using Data      = fem::ElementQuadratureData<Space>;
+  using Kernel    = ElementKernel<Space>;
 
   NavierResidual(Index                            nstep,
                  const assembly::HostAssemblyMap& map,
                  HostElementKernel                kernel)
     : nstep_(nstep)
   {
-    if constexpr (Backend::space == MemorySpace::Host)
+    if constexpr (Space == MemorySpace::Host)
     {
       map_ptr_      = &map;
       host_pattern_ = &map.pattern();
@@ -266,7 +262,7 @@ public:
                  Ctx&                                  ctx)
     : nstep_(nstep)
   {
-    if constexpr (Backend::space == MemorySpace::Device)
+    if constexpr (Space == MemorySpace::Device)
     {
       auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
       owned_map_     = std::make_unique<Map>();
@@ -294,11 +290,6 @@ public:
     return *host_pattern_;
   }
 
-  const Pattern& pattern() const override
-  {
-    return map().pattern();
-  }
-
   void initialState(ConstView prm, Vec& out, Ctx& ctx) const override
   {
     require(prm.empty(), "Navier physics residual is parameter-free");
@@ -308,13 +299,13 @@ public:
 
   void assembleNext(const StepCtx& time,
                     Vec&           res,
-                    Mat&           jac,
+                    Jac&           jac,
                     Ctx&           ctx) const override
   {
     checkCtx(time);
     const auto      range = ctx.elementRange(map().numElems());
     const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
-    if constexpr (Backend::space == MemorySpace::Device)
+    if constexpr (Space == MemorySpace::Device)
     {
       auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
       auto& cuda_jac = dynamic_cast<linalg::CudaJacobian&>(jac);
@@ -374,7 +365,7 @@ public:
 
     const ConstView hist{time.hist.data(), kNumHist * map().numStates()};
     const auto      range = ctx.elementRange(map().numElems());
-    if constexpr (Backend::space == MemorySpace::Device)
+    if constexpr (Space == MemorySpace::Device)
     {
       auto& cuda_ctx = dynamic_cast<linalg::CudaContext&>(ctx);
       detail::applyHistJacT(kernel_,
@@ -433,7 +424,7 @@ private:
 };
 
 class NavierStokesModel::Residual final
-  : public NavierResidual<linalg::HostCsrBackend>
+  : public NavierResidual<MemorySpace::Host>
 {
 public:
   using NavierResidual::NavierResidual;
@@ -537,7 +528,7 @@ std::unique_ptr<state::DeviceTimeResidual> makeDeviceTimeResidual(
     fem::HostInitialStateMap init_state)
 {
   linalg::CudaContext ctx;
-  auto                base = std::make_unique<NavierResidual<linalg::CudaCsrBackend>>(
+  auto                base = std::make_unique<NavierResidual<MemorySpace::Device>>(
       model.numSteps(),
       model.map(),
       model.data(),

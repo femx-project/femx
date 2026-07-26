@@ -6,6 +6,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/cuda/CudaJacobian.hpp>
 
 namespace femx::model::ns::detail
 {

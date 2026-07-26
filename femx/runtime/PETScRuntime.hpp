@@ -79,23 +79,6 @@ inline bool isRoot(MPI_Comm comm = PETSC_COMM_WORLD)
   return commRank(comm) == 0;
 }
 
-inline IndexRange mpiPartitionRange(Index    count,
-                                    MPI_Comm comm = PETSC_COMM_WORLD)
-{
-  return partitionRange(count,
-                        static_cast<Index>(commRank(comm)),
-                        static_cast<Index>(commSize(comm)));
-}
-
-template <typename ElementRangeOwner>
-void setElemRange(ElementRangeOwner& owner,
-                  Index              num_elems,
-                  MPI_Comm           comm = PETSC_COMM_WORLD)
-{
-  const IndexRange elems = mpiPartitionRange(num_elems, comm);
-  owner.setElemRange(elems.begin, elems.end);
-}
-
 inline void setPetscOptionIfMissing(const char* name,
                                     const char* value)
 {

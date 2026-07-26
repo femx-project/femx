@@ -28,7 +28,6 @@
 #include <femx/inverse/ReducedFunctional.hpp>
 #include <femx/inverse/SumObjective.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/Jacobian.hpp>
 #include <femx/linalg/LinearSystem.hpp>
@@ -83,10 +82,9 @@ void setStateJac(const HostCsrMatrix&                 source,
 class PoissonMapResidual final : public HostResidual
 {
 public:
-  using Vec     = HostVector<Real>;
-  using Mat     = linalg::Jacobian<MemorySpace::Host>;
-  using Pattern = HostCsrPattern;
-  using Ctx     = linalg::Context<MemorySpace::Host>;
+  using Vec = HostVector<Real>;
+  using Jac = linalg::Jacobian<MemorySpace::Host>;
+  using Ctx = linalg::Context<MemorySpace::Host>;
 
   PoissonMapResidual(const HostGeometry&              geom,
                      const HostElementQuadratureData& element_data,
@@ -120,11 +118,6 @@ public:
     return map_->pattern();
   }
 
-  const Pattern& pattern() const override
-  {
-    return map_->pattern();
-  }
-
   void res(const Vec& state,
            const Vec& prm,
            Vec&       out,
@@ -137,7 +130,7 @@ public:
 
   void assembleStateJac(const Vec& state,
                         const Vec& prm,
-                        Mat&       out,
+                        Jac&       out,
                         Ctx&       ctx) const override
   {
     checkVectors(state, prm);

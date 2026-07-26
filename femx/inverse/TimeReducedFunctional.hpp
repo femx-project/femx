@@ -7,9 +7,9 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/inverse/TimeObjective.hpp>
-#include <femx/linalg/Backend.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
+#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>
@@ -37,23 +37,19 @@ inline Index histLevel(Index step, Index lag)
 
 } // namespace detail
 
-/** @brief Backend-independent transient reduced functional and adjoint solve. */
-template <class Backend>
+/** @brief Evaluate a transient reduced objective and its adjoint gradient. */
+template <MemorySpace Space>
 class TimeReducedFunctional final
 {
-  static_assert(linalg::is_backend_v<Backend>,
-                "TimeReducedFunctional requires a valid backend type");
-
 public:
-  static constexpr MemorySpace space = Backend::space;
+  static constexpr MemorySpace space = Space;
 
-  using Vec        = typename Backend::Vec;
-  using VecView    = typename Backend::VecView;
-  using ConstView  = typename Backend::ConstView;
-  using Mat        = linalg::Jacobian<space>;
+  using Vec        = Vector<Space, Real>;
+  using VecView    = VectorView<Space, Real>;
+  using ConstView  = VectorView<Space, const Real>;
   using Ctx        = linalg::Context<space>;
-  using Integrator = state::TimeIntegrator<Backend>;
-  using Res        = state::TimeResidual<Backend>;
+  using Integrator = state::TimeIntegrator<Space>;
+  using Res        = state::TimeResidual<Space>;
   using Tr         = state::TimeTrajectory;
   using System     = linalg::LinearSystem<space>;
   using StepCtx    = state::TimeStepStateContext;
@@ -97,7 +93,7 @@ private:
   void                      loadStep(Index step);
   void                      solveFwd(HostVectorView<const Real> prm,
                                      const TimeReducedProgress& progress);
-  Mat&                      assembleNext(Index step);
+  void                      assembleNext(Index step);
   void                      solveAdj(HostVectorView<Real>       out,
                                      const TimeReducedProgress& progress);
   void                      notify(const TimeReducedProgress& progress,
@@ -131,11 +127,13 @@ private:
   Index                carry_head_{0};
 };
 
-using HostTimeReducedFunctional   = TimeReducedFunctional<linalg::HostCsrBackend>;
-using DeviceTimeReducedFunctional = TimeReducedFunctional<linalg::CudaCsrBackend>;
+using HostTimeReducedFunctional =
+    TimeReducedFunctional<MemorySpace::Host>;
+using DeviceTimeReducedFunctional =
+    TimeReducedFunctional<MemorySpace::Device>;
 
-template <class Backend>
-TimeReducedFunctional<Backend>::TimeReducedFunctional(
+template <MemorySpace Space>
+TimeReducedFunctional<Space>::TimeReducedFunctional(
     Integrator&          integrator,
     System&              adj_system,
     const TimeObjective& obj)
@@ -164,14 +162,14 @@ TimeReducedFunctional<Backend>::TimeReducedFunctional(
   ctx_.sync();
 }
 
-template <class Backend>
-Index TimeReducedFunctional<Backend>::numParams() const noexcept
+template <MemorySpace Space>
+Index TimeReducedFunctional<Space>::numParams() const noexcept
 {
   return integrator_.numParams();
 }
 
-template <class Backend>
-Real TimeReducedFunctional<Backend>::value(
+template <MemorySpace Space>
+Real TimeReducedFunctional<Space>::value(
     HostVectorView<const Real> prm,
     TimeReducedProgress        progress)
 {
@@ -180,18 +178,18 @@ Real TimeReducedFunctional<Backend>::value(
   return obj_.value(tr_, host_prm_);
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::grad(HostVectorView<const Real> prm,
-                                          HostVectorView<Real>       out,
-                                          TimeReducedProgress        progress)
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::grad(HostVectorView<const Real> prm,
+                                        HostVectorView<Real>       out,
+                                        TimeReducedProgress        progress)
 {
   resetTiming();
   solveFwd(prm, progress);
   solveAdj(out, progress);
 }
 
-template <class Backend>
-Real TimeReducedFunctional<Backend>::valueGrad(
+template <MemorySpace Space>
+Real TimeReducedFunctional<Space>::valueGrad(
     HostVectorView<const Real> prm,
     HostVectorView<Real>       out,
     TimeReducedProgress        progress)
@@ -203,8 +201,8 @@ Real TimeReducedFunctional<Backend>::valueGrad(
   return val;
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::resetTiming() noexcept
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::resetTiming() noexcept
 {
   assm_sec_    = 0.0;
   solve_sec_   = 0.0;
@@ -212,52 +210,52 @@ void TimeReducedFunctional<Backend>::resetTiming() noexcept
   solve_calls_ = 0;
 }
 
-template <class Backend>
-Real TimeReducedFunctional<Backend>::assemblySeconds() const noexcept
+template <MemorySpace Space>
+Real TimeReducedFunctional<Space>::assemblySeconds() const noexcept
 {
   return assm_sec_;
 }
 
-template <class Backend>
-Real TimeReducedFunctional<Backend>::solveSeconds() const noexcept
+template <MemorySpace Space>
+Real TimeReducedFunctional<Space>::solveSeconds() const noexcept
 {
   return solve_sec_;
 }
 
-template <class Backend>
-Index TimeReducedFunctional<Backend>::assemblyCalls() const noexcept
+template <MemorySpace Space>
+Index TimeReducedFunctional<Space>::assemblyCalls() const noexcept
 {
   return assm_calls_;
 }
 
-template <class Backend>
-Index TimeReducedFunctional<Backend>::solveCalls() const noexcept
+template <MemorySpace Space>
+Index TimeReducedFunctional<Space>::solveCalls() const noexcept
 {
   return solve_calls_;
 }
 
-template <class Backend>
-Index TimeReducedFunctional<Backend>::numSteps() const noexcept
+template <MemorySpace Space>
+Index TimeReducedFunctional<Space>::numSteps() const noexcept
 {
   return integrator_.numSteps();
 }
 
-template <class Backend>
-Index TimeReducedFunctional<Backend>::numStates() const noexcept
+template <MemorySpace Space>
+Index TimeReducedFunctional<Space>::numStates() const noexcept
 {
   return integrator_.numStates();
 }
 
-template <class Backend>
-typename TimeReducedFunctional<Backend>::VecView
-TimeReducedFunctional<Backend>::histState(Index lag)
+template <MemorySpace Space>
+typename TimeReducedFunctional<Space>::VecView
+TimeReducedFunctional<Space>::histState(Index lag)
 {
   return hist_.view().subview(lag * numStates(), numStates());
 }
 
-template <class Backend>
-typename TimeReducedFunctional<Backend>::VecView
-TimeReducedFunctional<Backend>::carry(Index lag)
+template <MemorySpace Space>
+typename TimeReducedFunctional<Space>::VecView
+TimeReducedFunctional<Space>::carry(Index lag)
 {
   require(lag >= 0 && lag < dims_.num_hist,
           "TimeReducedFunctional carry lag is out of range");
@@ -265,25 +263,25 @@ TimeReducedFunctional<Backend>::carry(Index lag)
   return carry_.view().subview(block * numStates(), numStates());
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::resetCarry()
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::resetCarry()
 {
   auto& vec_handler = ctx_.vectors();
   vec_handler.zero(carry_.view());
   carry_head_ = 0;
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::advanceCarry()
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::advanceCarry()
 {
   auto& vec_handler = ctx_.vectors();
   vec_handler.zero(carry(0));
   carry_head_ = (carry_head_ + 1) % dims_.num_hist;
 }
 
-template <class Backend>
-state::TimeContext<TimeReducedFunctional<Backend>::space>
-TimeReducedFunctional<Backend>::timeCtx(Index step) const
+template <MemorySpace Space>
+state::TimeContext<TimeReducedFunctional<Space>::space>
+TimeReducedFunctional<Space>::timeCtx(Index step) const
 {
   return {step,
           nxt_.view(),
@@ -291,8 +289,8 @@ TimeReducedFunctional<Backend>::timeCtx(Index step) const
           {hist_.data(), dims_.num_hist, numStates()}};
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::loadStep(Index step)
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::loadStep(Index step)
 {
   auto&     vec_handler = ctx_.vectors();
   const Tr& tr          = tr_;
@@ -303,8 +301,8 @@ void TimeReducedFunctional<Backend>::loadStep(Index step)
   vec_handler.copy(tr.level(step + 1), nxt_.view());
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::solveFwd(
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::solveFwd(
     HostVectorView<const Real> prm,
     const TimeReducedProgress& progress)
 {
@@ -340,9 +338,8 @@ void TimeReducedFunctional<Backend>::solveFwd(
           "TimeReducedFunctional forward trajectory size mismatch");
 }
 
-template <class Backend>
-typename TimeReducedFunctional<Backend>::Mat&
-TimeReducedFunctional<Backend>::assembleNext(Index step)
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::assembleNext(Index step)
 {
   const auto begin = detail::Clock::now();
   loadStep(step);
@@ -353,11 +350,10 @@ TimeReducedFunctional<Backend>::assembleNext(Index step)
   ctx_.sync();
   assm_sec_ += detail::elapsedSec(begin);
   ++assm_calls_;
-  return jac;
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::solveAdj(
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::solveAdj(
     HostVectorView<Real>       out,
     const TimeReducedProgress& progress)
 {
@@ -383,9 +379,8 @@ void TimeReducedFunctional<Backend>::solveAdj(
     vec_handler.axpby(1.0, carry(0), 1.0, rhs_.view());
     advanceCarry();
 
-    Mat&       nxt_jac     = assembleNext(step);
+    assembleNext(step);
     const auto solve_begin = detail::Clock::now();
-    static_cast<void>(nxt_jac);
     adj_system_.solveT(rhs_.view(), sol_);
     solve_sec_ += detail::elapsedSec(solve_begin);
     ++solve_calls_;
@@ -418,14 +413,14 @@ void TimeReducedFunctional<Backend>::solveAdj(
     vec_handler.axpby(-1.0, prm_adj_.view(), 1.0, grad_.view());
   }
 
-  res_.addInitialStateJacobianTranspose(init_grad_.view(), grad_.view(), ctx_);
+  res_.addInitialStateJacT(init_grad_.view(), grad_.view(), ctx_);
   vec_handler.copy(grad_.view(), out);
   ctx_.sync();
   notify(progress, "adjoint-end", numSteps());
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::notify(
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::notify(
     const TimeReducedProgress& progress,
     const char*                phase,
     Index                      step) const
@@ -436,9 +431,9 @@ void TimeReducedFunctional<Backend>::notify(
   }
 }
 
-template <class Backend>
-void TimeReducedFunctional<Backend>::checkSize(const Vec& vec,
-                                               Index      expected)
+template <MemorySpace Space>
+void TimeReducedFunctional<Space>::checkSize(const Vec& vec,
+                                             Index      expected)
 {
   require(vec.size() == expected,
           "TimeReducedFunctional vector size mismatch");

@@ -4,7 +4,11 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/linalg/View.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
+
+namespace femx::linalg
+{
+class CudaContext;
+}
 
 namespace femx
 {

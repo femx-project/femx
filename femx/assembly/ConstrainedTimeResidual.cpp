@@ -150,10 +150,10 @@ void eliminateJacColumns(
                        rhs.view());
 }
 
-template <class Backend>
-void resizeAndZero(typename Backend::Vec&           out,
-                   Index                            size,
-                   linalg::Context<Backend::space>& ctx)
+template <MemorySpace Space>
+void resizeAndZero(Vector<Space, Real>&    out,
+                   Index                   size,
+                   linalg::Context<Space>& ctx)
 {
   auto& vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, size);
@@ -161,14 +161,14 @@ void resizeAndZero(typename Backend::Vec&           out,
 
 } // namespace
 
-template <class Backend>
-ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
+template <MemorySpace Space>
+ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
     const Base&              base,
     fem::HostControlMap      control,
     fem::HostInitialStateMap init)
   : base_(&base)
 {
-  if constexpr (Backend::space == MemorySpace::Host)
+  if constexpr (Space == MemorySpace::Host)
   {
     initDims(control, init);
     control_  = std::move(control);
@@ -184,15 +184,15 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
   }
 }
 
-template <class Backend>
-ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
+template <MemorySpace Space>
+ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
     std::unique_ptr<Base>    base,
     fem::HostControlMap      control,
     fem::HostInitialStateMap init,
     Ctx&                     ctx)
   : owned_base_(std::move(base)), base_(owned_base_.get())
 {
-  if constexpr (Backend::space == MemorySpace::Device)
+  if constexpr (Space == MemorySpace::Device)
   {
     require(base_ != nullptr,
             "ConstrainedTimeResidual requires a base residual");
@@ -217,38 +217,31 @@ ConstrainedTimeResidual<Backend>::ConstrainedTimeResidual(
   }
 }
 
-template <class Backend>
-state::TimeDims ConstrainedTimeResidual<Backend>::dims() const
+template <MemorySpace Space>
+state::TimeDims ConstrainedTimeResidual<Space>::dims() const
 {
   return dims_;
 }
 
-template <class Backend>
-const HostCsrPattern& ConstrainedTimeResidual<Backend>::hostPattern() const
+template <MemorySpace Space>
+const HostCsrPattern& ConstrainedTimeResidual<Space>::hostPattern() const
 {
   return base_->hostPattern();
 }
 
-template <class Backend>
-const typename ConstrainedTimeResidual<Backend>::Pattern&
-ConstrainedTimeResidual<Backend>::pattern() const
-{
-  return base_->pattern();
-}
-
-template <class Backend>
-const typename ConstrainedTimeResidual<Backend>::Control&
-ConstrainedTimeResidual<Backend>::controlMap() const noexcept
+template <MemorySpace Space>
+const typename ConstrainedTimeResidual<Space>::Control&
+ConstrainedTimeResidual<Space>::controlMap() const noexcept
 {
   return control_;
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::setInitialStateMap(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::setInitialStateMap(
     fem::HostInitialStateMap init)
 {
   checkInitMap(init);
-  if constexpr (Backend::space == MemorySpace::Host)
+  if constexpr (Space == MemorySpace::Host)
   {
     init_ = std::move(init);
   }
@@ -259,16 +252,16 @@ void ConstrainedTimeResidual<Backend>::setInitialStateMap(
   }
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::clearInitialStateMap() noexcept
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::clearInitialStateMap() noexcept
 {
   init_ = {};
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::initialState(ConstView prm,
-                                                    Vec&      out,
-                                                    Ctx&      ctx) const
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::initialState(ConstView prm,
+                                                  Vec&      out,
+                                                  Ctx&      ctx) const
 {
   require(prm.size() == dims_.num_param,
           "ConstrainedTimeResidual initial-state parameter size mismatch");
@@ -284,8 +277,8 @@ void ConstrainedTimeResidual<Backend>::initialState(ConstView prm,
   evalInitState(init_, prm, out.view(), ctx);
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::addInitialStateJacobianTranspose(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::addInitialStateJacT(
     ConstView state_grad,
     VecView   out,
     Ctx&      ctx) const
@@ -299,11 +292,11 @@ void ConstrainedTimeResidual<Backend>::addInitialStateJacobianTranspose(
   }
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::assembleNext(const StepCtx& time,
-                                                    Vec&           res,
-                                                    Mat&           jac,
-                                                    Ctx&           ctx) const
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::assembleNext(const StepCtx& time,
+                                                  Vec&           res,
+                                                  Jac&           jac,
+                                                  Ctx&           ctx) const
 {
   checkCtx(time);
   base_->assembleNext(baseCtx(time), res, jac, ctx);
@@ -317,8 +310,8 @@ void ConstrainedTimeResidual<Backend>::assembleNext(const StepCtx& time,
   replaceJacRows(boundary_, jac, 1.0);
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::applyJacT(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::applyJacT(
     const StepCtx&       time,
     state::VariableBlock wrt,
     ConstView            adj,
@@ -333,7 +326,7 @@ void ConstrainedTimeResidual<Backend>::applyJacT(
           "ConstrainedTimeResidual adjoint size mismatch");
   if (wrt.isParam())
   {
-    resizeAndZero<Backend>(out, dims_.num_param, ctx);
+    resizeAndZero<Space>(out, dims_.num_param, ctx);
     assembly::addControlJacT(
         control_, time.step, adj, out.view(), ctx);
     return;
@@ -346,10 +339,10 @@ void ConstrainedTimeResidual<Backend>::applyJacT(
           "ConstrainedTimeResidual transpose apply size mismatch");
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::prepareLinearSolve(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::prepareLinearSolve(
     const StepCtx& time,
-    Mat&           jac,
+    Jac&           jac,
     Vec&           rhs,
     Ctx&           ctx) const
 {
@@ -360,17 +353,17 @@ void ConstrainedTimeResidual<Backend>::prepareLinearSolve(
   eliminateJacColumns(boundary_, jac, rhs, boundary_vals_);
 }
 
-template <class Backend>
-typename ConstrainedTimeResidual<Backend>::StepCtx
-ConstrainedTimeResidual<Backend>::baseCtx(const StepCtx& time) const
+template <MemorySpace Space>
+typename ConstrainedTimeResidual<Space>::StepCtx
+ConstrainedTimeResidual<Space>::baseCtx(const StepCtx& time) const
 {
   StepCtx base_time = time;
   base_time.prm     = base_prm_.view();
   return base_time;
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::initDims(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::initDims(
     const fem::HostControlMap&      control,
     const fem::HostInitialStateMap& init)
 {
@@ -389,8 +382,8 @@ void ConstrainedTimeResidual<Backend>::initDims(
   checkInitMap(init);
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::checkCtx(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::checkCtx(
     const StepCtx& time) const
 {
   require(time.step >= 0 && time.step < dims_.num_steps
@@ -401,8 +394,8 @@ void ConstrainedTimeResidual<Backend>::checkCtx(
           "ConstrainedTimeResidual context dimensions do not match");
 }
 
-template <class Backend>
-void ConstrainedTimeResidual<Backend>::checkInitMap(
+template <MemorySpace Space>
+void ConstrainedTimeResidual<Space>::checkInitMap(
     const fem::HostInitialStateMap& map) const
 {
   require(map.numStates() == 0
@@ -411,10 +404,10 @@ void ConstrainedTimeResidual<Backend>::checkInitMap(
           "ConstrainedTimeResidual initial-state dimensions do not match");
 }
 
-template class ConstrainedTimeResidual<linalg::HostCsrBackend>;
+template class ConstrainedTimeResidual<MemorySpace::Host>;
 
 #if defined(FEMX_HAS_CUDA)
-template class ConstrainedTimeResidual<linalg::CudaCsrBackend>;
+template class ConstrainedTimeResidual<MemorySpace::Device>;
 #endif
 
 } // namespace femx::assembly

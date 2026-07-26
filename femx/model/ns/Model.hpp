@@ -61,7 +61,7 @@ public:
 
   const assembly::HostAssemblyMap& map() const;
 
-  /** @brief Return flattened element values reusable by either backend. */
+  /** @brief Return flattened element values reusable in either memory space. */
   const fem::HostElementQuadratureData& data() const;
 
   /** @brief Return the Host row operator for generic time assembly. */
