@@ -17,12 +17,11 @@ names may be used when their meaning is clear.
 | ---------- | --------------------------- |
 | `jac`      | `jacobian`                  |
 | `tr`       | `trajectory`                |
-| `sec`      | `section`                   |
 | `lin`      | `linear`, `linearization`   |
 | `init`     | `initial`, `initialize`     |
 | `ctx`      | `context`                   |
 | `hist`     | `history`                   |
-| `res`      | `residual`, `result`        |
+| `res`      | `residual`   |
 | `val`      | `value`                     |
 | `vals`     | `values`                    |
 | `src`      | `source`                    |
@@ -51,24 +50,6 @@ in both memory spaces:
 HostVector<Real> h_state;
 DeviceVector<Real> d_state;
 ```
-
-Use these prefixes only when they distinguish memory spaces. Do not add them
-when the memory space is already unambiguous in the surrounding scope. Keep
-`Host` and `Device` unabbreviated in public type and operation names,
-documentation, diagnostics, and user-facing messages. Reserve `h_` and `d_`
-variable prefixes for Host and Device storage; use descriptive alternatives
-such as `diag_` for other meanings.
-
-Use the same abbreviation consistently in declarations, definitions, and
-nearby tests.
-
-Prefer the full name when an abbreviation would be ambiguous.
-
-Use `problem` rather than `prob` for problem variables, parameters, and
-private data members.
-
-Use `result` rather than `sol` for solution vectors and solver outputs.
-
 Do not shorten words in documentation, comments, diagnostics, or user-facing
 messages.
 
@@ -83,25 +64,6 @@ Use the following semantic names for finite-element loop indices:
 | `id`  | spatial dimension   |
 | `ie`  | element             |
 
-These names apply to index variables, not to the node, component, dimension,
-or element objects and counts they select. When two indices from the same
-domain are nested, use the corresponding `i` and `j` forms, such as `in` and
-`jn` for two node indices.
-
-## Declaration spacing
-
-Place a blank line between class declarations and between function
-declarations. Do not add blank lines between consecutive type aliases.
-
-```cpp
-using Index = int;
-using Value = double;
-
-void initialize();
-
-void finalize();
-```
-
 ## Doxygen documentation
 
 Document public classes and functions at their declarations in header files.
@@ -113,14 +75,6 @@ Every public function, including getters and setters, requires documentation.
 Documentation may be omitted for trivial default constructors, destructors,
 and copy or move operations.
 
-When a function or class has no documentation tags and a brief description is
-sufficient, write the entire comment on one line:
-
-```cpp
-/** @brief Clear all cached data. */
-void clear();
-```
-
 Use the following tags whenever the corresponding element is present:
 
 - `@param` for every function parameter;
@@ -129,8 +83,6 @@ Use the following tags whenever the corresponding element is present:
 
 Document accessors with only a one-line `@brief`.
 
-Separate `@brief` or a detailed description from the first tag with one blank
-comment line. Do not add blank lines between tags.
 
 ```cpp
 /**
@@ -149,10 +101,6 @@ direction is:
 - `[in]` for values read without being modified;
 - `[out]` for values replaced by the function;
 - `[in,out]` for values both read and modified.
-
-Order tags as `@param`, `@return`, `@throws`, `@note`, and `@warning`. Do not add
-`@throws` to `noexcept` functions or list incidental allocation failures unless
-they are part of the public contract.
 
 Document each class member variable with a trailing `///<` comment:
 
