@@ -11,7 +11,7 @@
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/model/ns/StateFields.hpp>
+#include <femx/model/navier/StateFields.hpp>
 #include <femx/runtime/Output.hpp>
 
 namespace femx::apps::navier
@@ -24,11 +24,11 @@ namespace
 Real elemMinEdge(const fem::Element& elem)
 {
   Real h = std::numeric_limits<Real>::infinity();
-  for (Index i = 0; i < elem.numNodes(); ++i)
+  for (Index in = 0; in < elem.numNodes(); ++in)
   {
-    for (Index j = i + 1; j < elem.numNodes(); ++j)
+    for (Index jn = in + 1; jn < elem.numNodes(); ++jn)
     {
-      h = std::min(h, distance(elem.node(i), elem.node(j)));
+      h = std::min(h, distance(elem.node(in), elem.node(jn)));
     }
   }
   return std::isfinite(h) ? h : 0.0;
@@ -276,7 +276,7 @@ void Monitor::writeFieldOutput(Index                   level,
     return;
   }
 
-  model::ns::splitStateFields(
+  model::navier::splitStateFields(
       HostVectorView<const Real>(state.data(), state.size()),
       *space_,
       field_out_->ux,
@@ -361,12 +361,12 @@ Real velocityRelativeChange(const fem::MixedFESpace& space,
   Real ref2  = 0.0;
   for (Index in = 0; in < num_nodes; ++in)
   {
-    for (Index d = 0; d < comps; ++d)
+    for (Index ic = 0; ic < comps; ++ic)
     {
-      const Index id    = vel.globalDof(in, d);
-      const Real  diff  = curr[id] - prev[id];
+      const Index dof   = vel.globalDof(in, ic);
+      const Real  diff  = curr[dof] - prev[dof];
       diff2            += diff * diff;
-      ref2             += prev[id] * prev[id];
+      ref2             += prev[dof] * prev[dof];
     }
   }
 
@@ -405,11 +405,11 @@ Real maxVelocityCfl(const fem::MixedFESpace& space,
 
     for (Index in = 0; in < elem.numNodes(); ++in)
     {
-      const Index id   = elem.nodeIds()[in];
+      const Index node = elem.nodeIds()[in];
       Real        vel2 = 0.0;
-      for (Index d = 0; d < comps; ++d)
+      for (Index ic = 0; ic < comps; ++ic)
       {
-        const Real val  = state[vel.globalDof(id, d)];
+        const Real val  = state[vel.globalDof(node, ic)];
         vel2           += val * val;
       }
       max_cfl = std::max(max_cfl, std::sqrt(vel2) * dt / h);

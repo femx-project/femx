@@ -7,11 +7,11 @@
 
 #include "CommandLine.hpp"
 #include "Config.hpp"
-#include "NavierStokesProblem.hpp"
+#include "NavierProblem.hpp"
 #include "Solve.hpp"
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/linalg/petsc/PETScLinearSystem.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
@@ -122,17 +122,17 @@ int run(const Config& prm)
     writeBuildInfo(out.directory, makeBuildInfo());
   }
 
-  NavierStokesProblem prob(prm);
+  NavierProblem problem(prm);
 
   PETScLinearSystem system(PETSC_COMM_WORLD);
 
   setKspOptions(system.solver(), prm.solver);
 
-  model::ns::HostNavierStokesResidual   navier(prob.model());
-  assembly::HostConstrainedTimeResidual res(navier, prob.controlMap());
+  model::navier::HostNavierResidual     navier(problem.model());
+  assembly::HostConstrainedTimeResidual res(navier, problem.controlMap());
 
   HostTimeIntegrator integ(res, system);
-  integ.setInitialState(prob.initialState());
+  integ.setInitialState(problem.initialState());
 
   std::ofstream log_out;
   if (out.enabled)
@@ -140,15 +140,15 @@ int run(const Config& prm)
     log_out = openOutputFile(out.directory, "run-info.txt");
   }
 
-  const SolveResult sol =
+  const SolveResult result =
       solve(integ,
-            prob,
+            problem,
             prm.time,
             out,
             rank == 0 ? &std::cout : nullptr,
             out.enabled ? &log_out : nullptr);
 
-  if (!hasFiniteValues(sol.final_state))
+  if (!hasFiniteValues(result.final_state))
   {
     throw std::runtime_error("Linear solve produced non-finite values in x");
   }

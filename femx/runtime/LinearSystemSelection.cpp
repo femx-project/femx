@@ -3,18 +3,6 @@
 namespace femx::runtime
 {
 
-const char* name(MemorySpace space) noexcept
-{
-  switch (space)
-  {
-  case MemorySpace::Host:
-    return "host";
-  case MemorySpace::Device:
-    return "device";
-  }
-  return "unknown";
-}
-
 const char* name(SolverType solver) noexcept
 {
   switch (solver)

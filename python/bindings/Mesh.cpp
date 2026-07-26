@@ -47,11 +47,11 @@ py::array_t<Real> meshCoordinates(const Mesh& mesh)
 {
   py::array_t<Real> out({mesh.numNodes(), Index{3}});
   auto              data = out.mutable_unchecked<2>();
-  for (Index i = 0; i < mesh.numNodes(); ++i)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    for (Index d = 0; d < 3; ++d)
+    for (Index id = 0; id < 3; ++id)
     {
-      data(i, d) = mesh.node(i)[d];
+      data(in, id) = mesh.node(in)[id];
     }
   }
   return out;
@@ -61,11 +61,11 @@ py::array_t<Real> surfaceCoordinates(const BoundarySurface& surface)
 {
   py::array_t<Real> out({surface.numNodes(), Index{3}});
   auto              data = out.mutable_unchecked<2>();
-  for (Index i = 0; i < surface.numNodes(); ++i)
+  for (Index in = 0; in < surface.numNodes(); ++in)
   {
-    for (Index d = 0; d < 3; ++d)
+    for (Index id = 0; id < 3; ++id)
     {
-      data(i, d) = surface.nodes()[i][d];
+      data(in, id) = surface.nodes()[in][id];
     }
   }
   return out;
@@ -86,9 +86,9 @@ py::array_t<Index> surfaceElements(const BoundarySurface& surface)
     {
       throw std::runtime_error("Boundary surface contains mixed element sizes");
     }
-    for (Index i = 0; i < nodes_per_element; ++i)
+    for (Index in = 0; in < nodes_per_element; ++in)
     {
-      data(ie, i) = surface.elements()[ie][i];
+      data(ie, in) = surface.elements()[ie][in];
     }
   }
   return out;
@@ -118,9 +118,9 @@ py::array_t<Index> rimMeshNodeIds(const BoundarySurface& surface)
 {
   py::array_t<Index> out(surface.rimNodeIds().size());
   auto               data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < surface.rimNodeIds().size(); ++i)
+  for (Index in = 0; in < surface.rimNodeIds().size(); ++in)
   {
-    data(i) = surface.meshNodeIds()[surface.rimNodeIds()[i]];
+    data(in) = surface.meshNodeIds()[surface.rimNodeIds()[in]];
   }
   return out;
 }

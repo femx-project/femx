@@ -189,17 +189,17 @@ bool readRealAssignment(const std::string& argument,
   return true;
 }
 
-bool readMemorySpaceAssignment(const std::string& argument,
-                               MemorySpace&       out)
+bool readBackendAssignment(const std::string& argument,
+                           MemorySpace&       out)
 {
-  constexpr const char* prefix = "--memory-space=";
+  constexpr const char* prefix = "--backend=";
 
   if (argument.rfind(prefix, 0) != 0)
   {
     return false;
   }
   const std::string val = argument.substr(std::string(prefix).size());
-  out                   = parseMemorySpace(val);
+  out                   = parseBackend(val);
 
   return true;
 }
@@ -439,13 +439,13 @@ void PoissonOptProblem::writeFields(
   HostVector<Real> target_state_field(mesh_.numNodes());
   HostVector<Real> state_error(mesh_.numNodes());
 
-  for (Index node = 0; node < mesh_.numNodes(); ++node)
+  for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
-    const Index dof          = space_.globalDof(node, 0);
-    state_field[node]        = state[dof];
-    target_state_field[node] = target_state_[dof];
-    state_error[node] =
-        state_field[node] - target_state_field[node];
+    const Index dof        = space_.globalDof(in, 0);
+    state_field[in]        = state[dof];
+    target_state_field[in] = target_state_[dof];
+    state_error[in] =
+        state_field[in] - target_state_field[in];
   }
 
   HostVector<Real> control_field(mesh_.numNodes(), 0.0);
@@ -529,10 +529,10 @@ void PoissonOptProblem::initBoundary()
   std::set<Index> control_rows;
   std::set<Index> fixed_rows;
 
-  for (Index node = 0; node < mesh_.numNodes(); ++node)
+  for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
-    const Mesh::Node& point = mesh_.node(node);
-    const Index       dof   = space_.globalDof(node, 0);
+    const Mesh::Node& point = mesh_.node(in);
+    const Index       dof   = space_.globalDof(in, 0);
     if (isControlNode(point))
     {
       control_rows.insert(dof);
@@ -694,9 +694,9 @@ Options parseOptions(int    argc,
           argument);
       continue;
     }
-    if (argument == "--memory-space")
+    if (argument == "--backend" || argument == "-b")
     {
-      opts.memspace = parseMemorySpace(
+      opts.memspace = parseBackend(
           runtime::requireValue(
               argc, argv, idx, argument));
       continue;
@@ -755,7 +755,7 @@ Options parseOptions(int    argc,
             argument,
             "--obs-stride",
             opts.observation_stride)
-        || readMemorySpaceAssignment(
+        || readBackendAssignment(
             argument, opts.memspace))
     {
       continue;
@@ -789,7 +789,7 @@ void printUsage(std::ostream& out,
                 bool          petsc_options)
 {
   out << "Usage: " << app_name
-      << " [--nx N] [--ny N] [--memory-space host|device]"
+      << " [--nx N] [--ny N] [-b cpu|cuda]"
       << " [--output yes|no] [--alpha A]"
       << " [--obs-stride N] [--max-its N]";
   if (petsc_options)
@@ -797,6 +797,7 @@ void printUsage(std::ostream& out,
     out << " [PETSc/TAO options]";
   }
   out << '\n';
+  out << "  -b, --backend cpu|cuda selects the execution backend\n";
   out << "  --output yes writes VTU files under "
       << outputDir() << '\n';
 }
@@ -815,24 +816,23 @@ std::string outputStem(const Options& opts)
 
 void printReport(std::ostream&            out,
                  const std::string&       configuration,
-                 const PoissonOptProblem& prob,
+                 const PoissonOptProblem& problem,
                  const Report&            rep,
                  Index                    iterations,
                  int                      reason)
 {
-  const Options& opts = prob.options();
+  const Options& opts = problem.options();
   out << "Poisson optimal control (" << configuration << ")\n";
-  out << "  memory space: "
-      << runtime::name(opts.memspace) << '\n';
+  out << "  backend: " << backendName(opts.memspace) << '\n';
   out << "  parameter VJP: "
       << (ad::has_enzyme ? "Enzyme" : "analytic fallback")
       << '\n';
   out << "  cells: " << opts.num_x_cells << " x "
       << opts.num_y_cells << '\n';
-  out << "  nodes: " << prob.numNodes() << '\n';
-  out << "  states: " << prob.numStates() << '\n';
-  out << "  controls: " << prob.numParameters() << '\n';
-  out << "  observations: " << prob.numObservations()
+  out << "  nodes: " << problem.numNodes() << '\n';
+  out << "  states: " << problem.numStates() << '\n';
+  out << "  controls: " << problem.numParameters() << '\n';
+  out << "  observations: " << problem.numObservations()
       << '\n';
   out << "  observation stride: ";
   if (opts.observation_stride > 0)

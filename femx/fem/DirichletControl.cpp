@@ -91,9 +91,9 @@ DirichletControl makeVelocityControlFromPredicate(
 
     for (Index in : facet.nids)
     {
-      for (Index d = 0; d < u_dof.numComponents(); ++d)
+      for (Index ic = 0; ic < u_dof.numComponents(); ++ic)
       {
-        dof_set.insert(u_dof.globalDof(in, d));
+        dof_set.insert(u_dof.globalDof(in, ic));
       }
     }
   }
@@ -102,9 +102,9 @@ DirichletControl makeVelocityControlFromPredicate(
           "DirichletControl found no velocity boundary dofs");
 
   HostVector<Index> dofs;
-  for (Index id : dof_set)
+  for (Index dof : dof_set)
   {
-    dofs.push_back(id);
+    dofs.push_back(dof);
   }
 
   return DirichletControl(std::move(dofs));
@@ -129,9 +129,9 @@ HostVector<Real> normalizedVelocityDirection(const MixedFESpace&     space,
 
   HostVector<Real> dir(ncomp);
   const Real       inv_norm = 1.0 / std::sqrt(norm2);
-  for (Index comp = 0; comp < ncomp; ++comp)
+  for (Index ic = 0; ic < ncomp; ++ic)
   {
-    dir[comp] = inv_norm * nrm[comp];
+    dir[ic] = inv_norm * nrm[ic];
   }
   return dir;
 }
@@ -161,15 +161,15 @@ DirichletControl makeNormalVelocityControlFromPredicate(
   state_dofs.reserve(nodes.size() * u_dof.numComponents());
   entries.reserve(nodes.size() * u_dof.numComponents());
   Index col = 0;
-  for (Index node : nodes)
+  for (Index in : nodes)
   {
-    for (Index comp = 0; comp < u_dof.numComponents(); ++comp)
+    for (Index ic = 0; ic < u_dof.numComponents(); ++ic)
     {
       const Index row = state_dofs.size();
-      state_dofs.push_back(u_dof.globalDof(node, comp));
-      if (dir[comp] != 0.0)
+      state_dofs.push_back(u_dof.globalDof(in, ic));
+      if (dir[ic] != 0.0)
       {
-        entries.push_back({row, col, dir[comp]});
+        entries.push_back({row, col, dir[ic]});
       }
     }
     ++col;
@@ -202,10 +202,10 @@ DirichletControl::DirichletControl(
         dofs_.size(), num_ctr_params, map_entries))
 {
   std::set<Index> seen;
-  for (Index id : dofs_)
+  for (Index dof : dofs_)
   {
-    require(id >= 0, "DirichletControl received negative state id");
-    require(seen.insert(id).second,
+    require(dof >= 0, "DirichletControl received negative state id");
+    require(seen.insert(dof).second,
             "DirichletControl received duplicate state id");
   }
 }

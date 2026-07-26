@@ -93,7 +93,7 @@ private:
   Vec        nxt_;
   Vec        res_vec_;
   Vec        rhs_;
-  Vec        sol_;
+  Vec        result_;
   bool       has_init_{false};
   SolveStats stats_;
 };
@@ -134,7 +134,7 @@ TimeIntegrator<Space>::TimeIntegrator(const Res& res,
   nxt_.resize(numStates());
   res_vec_.resize(dims_.num_res);
   rhs_.resize(dims_.num_res);
-  sol_.resize(numStates());
+  result_.resize(numStates());
   ctx_.sync();
 }
 
@@ -259,8 +259,8 @@ void TimeIntegrator<Space>::advanceHist()
   {
     vec_handler.copy(histState(lag - 1), histState(lag));
   }
-  vec_handler.copy(sol_.view(), histState(0));
-  vec_handler.copy(sol_.view(), nxt_);
+  vec_handler.copy(result_.view(), histState(0));
+  vec_handler.copy(result_.view(), nxt_);
 }
 
 template <MemorySpace Space>
@@ -285,10 +285,10 @@ SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
   const Real assm_sec = detail::elapsedSec(assm_begin);
 
   const auto solve_begin = detail::TimeClock::now();
-  system_.solve(rhs_.view(), sol_);
+  system_.solve(rhs_.view(), result_);
   const Real solve_sec = detail::elapsedSec(solve_begin);
 
-  require(sol_.size() == numStates(), "TimeIntegrator solution size mismatch");
+  require(result_.size() == numStates(), "TimeIntegrator solution size mismatch");
   advanceHist();
   return {assm_sec, solve_sec, 1, 1};
 }

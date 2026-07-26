@@ -109,15 +109,15 @@ TestOutcome resolveZeroRhsReturnsZero()
     HostCsrMatrix mat(map.pattern());
     solver::fillTestMat(mat);
     const HostVector<Real> rhs(3, 0.0);
-    HostVector<Real>       sol{1.0, 2.0, 3.0};
+    HostVector<Real>       result{1.0, 2.0, 3.0};
     linalg::HostContext    ctx;
 
     linalg::ReSolveLinearSolver h_solver;
-    h_solver.solve(mat, rhs, sol, ctx);
-    status *= solver::vecNear(sol, rhs, 0.0);
-    sol     = {1.0, 2.0, 3.0};
-    h_solver.solveT(mat, rhs, sol, ctx);
-    status *= solver::vecNear(sol, rhs, 0.0);
+    h_solver.solve(mat, rhs, result, ctx);
+    status *= solver::vecNear(result, rhs, 0.0);
+    result  = {1.0, 2.0, 3.0};
+    h_solver.solveT(mat, rhs, result, ctx);
+    status *= solver::vecNear(result, rhs, 0.0);
   }
   catch (const std::exception& e)
   {

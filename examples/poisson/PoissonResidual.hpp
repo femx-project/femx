@@ -21,9 +21,9 @@ public:
   /**
    * @brief Bind to a Host Poisson problem.
    *
-   * @param[in] prob - Problem data kept alive while this residual is used.
+   * @param[in] problem - Problem data kept alive while this residual is used.
    */
-  explicit HostPoissonResidual(const PoissonProblem& prob);
+  explicit HostPoissonResidual(const PoissonProblem& problem);
 
   /** @brief Return the state, parameter, and residual dimensions. */
   state::Dimensions dims() const override;
@@ -75,7 +75,7 @@ public:
       linalg::Context<MemorySpace::Host>& ctx) const override;
 
 private:
-  const PoissonProblem& prob_; ///< Host problem data.
+  const PoissonProblem& problem_; ///< Host problem data.
 };
 
 /** @brief Own Device data and assemble the Poisson residual with CUDA. */
@@ -85,10 +85,10 @@ public:
   /**
    * @brief Copy a Host Poisson problem to Device storage.
    *
-   * @param[in] prob - Source Host problem.
+   * @param[in] problem - Source Host problem.
    * @param[in,out] ctx - CUDA context receiving the copies.
    */
-  DevicePoissonResidual(const PoissonProblem& prob,
+  DevicePoissonResidual(const PoissonProblem& problem,
                         linalg::CudaContext&  ctx);
 
   /** @brief Return the state, parameter, and residual dimensions. */

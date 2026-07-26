@@ -10,15 +10,15 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/FluidProperties.hpp>
+#include <femx/model/navier/FluidProperties.hpp>
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 
 /**
  * @brief Spatial and temporal finite-element discretization of Navier-Stokes.
  */
-class NavierStokesModel
+class NavierModel
 {
 public:
   /**
@@ -29,10 +29,10 @@ public:
    * @param[in] dt - Time-step size.
    * @param[in] fluid - Fluid properties.
    */
-  NavierStokesModel(const std::string& path,
-                    Index              num_steps,
-                    Real               dt,
-                    FluidProperties    fluid);
+  NavierModel(const std::string& path,
+              Index              num_steps,
+              Real               dt,
+              FluidProperties    fluid);
 
   /**
    * @brief Construct the Navier-Stokes discretization on an owned mesh.
@@ -42,15 +42,15 @@ public:
    * @param[in] dt - Time-step size.
    * @param[in] fluid - Fluid properties.
    */
-  NavierStokesModel(fem::Mesh       mesh,
-                    Index           num_steps,
-                    Real            dt,
-                    FluidProperties fluid);
+  NavierModel(fem::Mesh       mesh,
+              Index           num_steps,
+              Real            dt,
+              FluidProperties fluid);
 
-  NavierStokesModel(const NavierStokesModel&)            = delete;
-  NavierStokesModel& operator=(const NavierStokesModel&) = delete;
-  NavierStokesModel(NavierStokesModel&&)                 = delete;
-  NavierStokesModel& operator=(NavierStokesModel&&)      = delete;
+  NavierModel(const NavierModel&)            = delete;
+  NavierModel& operator=(const NavierModel&) = delete;
+  NavierModel(NavierModel&&)                 = delete;
+  NavierModel& operator=(NavierModel&&)      = delete;
 
   /** @brief Return the number of time steps. */
   Index numSteps() const noexcept;
@@ -100,8 +100,8 @@ private:
   std::unique_ptr<fem::FiniteElement> elem_;      ///< Finite element.
   fem::MixedFESpace                   space_;     ///< Velocity-pressure space.
   FluidProperties                     fluid_;     ///< Fluid properties.
-  fem::HostElementQuadData      elem_data_; ///< Host integration data.
+  fem::HostElementQuadData            elem_data_; ///< Host integration data.
   assembly::HostAssemblyMap           assm_map_;  ///< Element assembly mapping.
 };
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

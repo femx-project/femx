@@ -5,7 +5,7 @@
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 
-namespace femx::model::ns
+namespace femx::model::navier
 {
 
 /**
@@ -26,4 +26,4 @@ void splitStateFields(HostVectorView<const Real> state,
                       HostVector<Real>&          uz,
                       HostVector<Real>&          pressure);
 
-} // namespace femx::model::ns
+} // namespace femx::model::navier

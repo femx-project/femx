@@ -37,5 +37,5 @@ PYBIND11_MODULE(_core, module)
   bindMesh(module);
   bindState(module);
   bindInverse(module);
-  bindNavierStokes(module);
+  bindNavier(module);
 }

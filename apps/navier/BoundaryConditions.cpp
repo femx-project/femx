@@ -123,7 +123,10 @@ Real catmullRom(Real y0,
 {
   const Real a2 = a * a;
   const Real a3 = a2 * a;
-  return 0.5 * ((2.0 * y1) + (-y0 + y2) * a + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2 + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
+  return 0.5
+         * ((2.0 * y1) + (-y0 + y2) * a
+            + (2.0 * y0 - 5.0 * y1 + 4.0 * y2 - y3) * a2
+            + (-y0 + 3.0 * y1 - 3.0 * y2 + y3) * a3);
 }
 
 Real sampleVelocityCubic(const VelocityBoundaryConfig& velocity,
@@ -255,12 +258,12 @@ fem::DirichletBC makeDirichletBoundaryConditions(
         throw std::runtime_error("3D velocity normal requires a 3D mesh");
       }
 
-      for (Index d = 0; d < u_dof.numComponents(); ++d)
+      for (Index ic = 0; ic < u_dof.numComponents(); ++ic)
       {
-        bc.addBoundary(u_dof, cond.tag, [ctx, d](const fem::Mesh::Node& point, Real)
-                       { return velocityComponent(ctx, point, d); },
+        bc.addBoundary(u_dof, cond.tag, [ctx, ic](const fem::Mesh::Node& point, Real)
+                       { return velocityComponent(ctx, point, ic); },
                        time,
-                       d);
+                       ic);
       }
     }
     if (cond.ux)

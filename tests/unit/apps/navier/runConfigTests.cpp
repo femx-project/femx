@@ -4,7 +4,7 @@
 #include <string>
 
 #include "Config.hpp"
-#include "NavierStokesProblem.hpp"
+#include "NavierProblem.hpp"
 #include "TestHelper.hpp"
 
 #ifndef FEMX_TEST_SOURCE_DIR
@@ -17,10 +17,10 @@ namespace
 {
 
 std::string configPath(const char* solver,
-                       const char* prob)
+                       const char* problem)
 {
   return std::string(FEMX_TEST_SOURCE_DIR)
-         + "/apps/navier/configs/" + solver + "/" + prob
+         + "/apps/navier/configs/" + solver + "/" + problem
          + "/Config.json";
 }
 
@@ -33,10 +33,10 @@ TestOutcome shippedConfigsUseCanonicalOptions()
       {"cavity", "stenosis", "straighttube"}};
   for (const char* solver : solvers)
   {
-    for (const char* prob : problems)
+    for (const char* problem : problems)
     {
       const auto prm =
-          apps::navier::loadConfig(configPath(solver, prob));
+          apps::navier::loadConfig(configPath(solver, problem));
       status *= prm.solver.max_itrs == 5000;
       status *= std::abs(prm.solver.relative_tolerance - 1.0e-8)
                 <= 1.0e-16;
@@ -68,9 +68,9 @@ TestOutcome shippedCavityResolvesSharedCorners()
   auto prm =
       apps::navier::loadConfig(configPath("resolve", "cavity"));
   prm.time.steps = 1;
-  const apps::navier::NavierStokesProblem prob(prm);
+  const apps::navier::NavierProblem problem(prm);
 
-  const auto&           boundary_data = prob.boundaryData();
+  const auto&           boundary_data = problem.boundaryData();
   const std::set<Index> dofs(boundary_data.dofs.begin(),
                              boundary_data.dofs.end());
   status *= !dofs.empty();

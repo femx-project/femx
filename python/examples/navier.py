@@ -7,7 +7,7 @@ import femx
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = ROOT / "python/runs/navier_stokes"
+OUTPUT_DIR = ROOT / "python/runs/navier"
 
 
 def inlet_velocity(point, _time):
@@ -26,7 +26,7 @@ def print_progress(event):
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    model = femx.NavierStokesModel(
+    model = femx.NavierModel(
         ROOT / "data/meshes/2d_rectangle.msh",
         num_steps=100,
         dt=1.0e-4,
@@ -34,7 +34,7 @@ def main():
         mu=4.0e-5,
     )
 
-    problem = femx.NavierStokesProblem(model)
+    problem = femx.NavierProblem(model)
     problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
     problem.add_bc(femx.DirichletBC("inlet", "velocity", inlet_velocity))
     problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))

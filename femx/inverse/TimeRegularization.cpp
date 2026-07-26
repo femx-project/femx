@@ -76,10 +76,11 @@ Real TimeRegularization::value(const TimeTrajectory&   tr,
   }
   for (Index level = 1; level < num_levels_; ++level)
   {
-    for (Index c = 0; c < block_size_; ++c)
+    for (Index ic = 0; ic < block_size_; ++ic)
     {
-      const Real diff  = centered(prm, level, c) - centered(prm, level - 1, c);
-      val             += 0.5 * beta_diff_ * diff * diff;
+      const Real diff =
+          centered(prm, level, ic) - centered(prm, level - 1, ic);
+      val += 0.5 * beta_diff_ * diff * diff;
     }
   }
   return val;
@@ -114,11 +115,12 @@ void TimeRegularization::paramGrad(const TimeTrajectory&   tr,
   }
   for (Index level = 1; level < num_levels_; ++level)
   {
-    for (Index c = 0; c < block_size_; ++c)
+    for (Index ic = 0; ic < block_size_; ++ic)
     {
-      const Real diff           = centered(prm, level, c) - centered(prm, level - 1, c);
-      out[index(level, c)]     += beta_diff_ * diff;
-      out[index(level - 1, c)] -= beta_diff_ * diff;
+      const Real diff =
+          centered(prm, level, ic) - centered(prm, level - 1, ic);
+      out[index(level, ic)]     += beta_diff_ * diff;
+      out[index(level - 1, ic)] -= beta_diff_ * diff;
     }
   }
 }

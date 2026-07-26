@@ -197,10 +197,10 @@ $R(\mathbf{x}^{n+1})=K\mathbf{x}^{n+1}-F$, and solves the resulting linear
 system $K\mathbf{x}^{n+1}=F$ once per time step. It does not perform a Newton
 iteration on the fully nonlinear Navier-Stokes residual.
 
-`NavierStokesModel` owns the mesh, finite-element space, element data, and
-immutable `AssemblyMap`. `HostNavierStokesResidual` uses that data directly,
-while `DeviceNavierStokesResidual` copies the execution data to the GPU.
-`NavierStokesProblem` adds the configured boundary data and initial state.
+`NavierModel` owns the mesh, finite-element space, element data, and
+immutable `AssemblyMap`. `HostNavierResidual` uses that data directly,
+while `DeviceNavierResidual` copies the execution data to the GPU.
+`NavierProblem` adds the configured boundary data and initial state.
 Each app entry point then composes the physics residual with
 `ConstrainedTimeResidual` before constructing its time integrator.
 

@@ -1,4 +1,4 @@
-#include "../poisson/ElementKernel.hpp"
+#include "../poisson/PoissonElementKernel.hpp"
 #include "PoissonOptResidual.hpp"
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
@@ -45,18 +45,18 @@ __global__ void parameterVjpKernel(
 } // namespace
 
 DevicePoissonOptResidual::DevicePoissonOptResidual(
-    const PoissonOptProblem& prob,
+    const PoissonOptProblem& problem,
     linalg::CudaContext&     ctx)
-  : num_states_(prob.numStates()),
-    num_prm_(prob.numParameters()),
-    h_pattern_(prob.assemblyMap().pattern())
+  : num_states_(problem.numStates()),
+    num_prm_(problem.numParameters()),
+    h_pattern_(problem.assemblyMap().pattern())
 {
-  fem::copy(prob.mesh(), mesh_, ctx);
-  fem::copy(prob.elementData(), elem_data_, ctx);
-  assembly::copy(prob.assemblyMap(), assm_map_, ctx);
-  assembly::copy(prob.boundaryMap(), boundary_map_, ctx);
-  ctx.vectors().copy(prob.controlDofs(), control_dofs_);
-  boundary_vals_.resize(prob.boundaryMap().numBcs());
+  fem::copy(problem.mesh(), mesh_, ctx);
+  fem::copy(problem.elementData(), elem_data_, ctx);
+  assembly::copy(problem.assemblyMap(), assm_map_, ctx);
+  assembly::copy(problem.boundaryMap(), boundary_map_, ctx);
+  ctx.vectors().copy(problem.controlDofs(), control_dofs_);
+  boundary_vals_.resize(problem.boundaryMap().numBcs());
   ctx.sync();
 }
 
@@ -80,7 +80,7 @@ void DevicePoissonOptResidual::assembleResidual(
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
 
   assembly::assembleResidual(
-      poisson::ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      poisson::DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
       assm_map_,
       state,
@@ -105,7 +105,7 @@ void DevicePoissonOptResidual::assembleJacobian(
   auto& jac = static_cast<linalg::CudaJacobian&>(out);
 
   assembly::assembleJacobian(
-      poisson::ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      poisson::DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
       assm_map_,
       state,

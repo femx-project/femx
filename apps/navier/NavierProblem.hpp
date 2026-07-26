@@ -4,13 +4,13 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/Model.hpp>
+#include <femx/model/navier/NavierModel.hpp>
 
 namespace femx::apps::navier
 {
 
 /** @brief Own the model, constraints, and initial state for a forward run. */
-class NavierStokesProblem
+class NavierProblem
 {
 public:
   /**
@@ -18,15 +18,15 @@ public:
    *
    * @param[in] prm - Validated application configuration.
    */
-  explicit NavierStokesProblem(const Config& prm);
+  explicit NavierProblem(const Config& prm);
 
-  NavierStokesProblem(const NavierStokesProblem&)            = delete;
-  NavierStokesProblem& operator=(const NavierStokesProblem&) = delete;
-  NavierStokesProblem(NavierStokesProblem&&)                 = delete;
-  NavierStokesProblem& operator=(NavierStokesProblem&&)      = delete;
+  NavierProblem(const NavierProblem&)            = delete;
+  NavierProblem& operator=(const NavierProblem&) = delete;
+  NavierProblem(NavierProblem&&)                 = delete;
+  NavierProblem& operator=(NavierProblem&&)      = delete;
 
   /** @brief Return the Navier-Stokes discretization. */
-  const model::ns::NavierStokesModel& model() const noexcept;
+  const model::navier::NavierModel& model() const noexcept;
 
   /** @brief Return the fixed boundary data. */
   const fem::TimeDirichletData& boundaryData() const noexcept;
@@ -38,9 +38,9 @@ public:
   const HostVector<Real>& initialState() const noexcept;
 
 private:
-  model::ns::NavierStokesModel model_;         ///< Navier-Stokes discretization.
-  fem::TimeDirichletData       boundary_data_; ///< Time-dependent boundary values.
-  fem::HostControlMap          control_map_;   ///< Boundary constraint mapping.
+  model::navier::NavierModel model_;         ///< Navier-Stokes discretization.
+  fem::TimeDirichletData     boundary_data_; ///< Time-dependent boundary values.
+  fem::HostControlMap        control_map_;   ///< Boundary constraint mapping.
 };
 
 } // namespace femx::apps::navier

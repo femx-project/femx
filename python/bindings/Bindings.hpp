@@ -104,5 +104,5 @@ private:
 
 void bindMesh(pybind11::module_& module);
 void bindInverse(pybind11::module_& module);
-void bindNavierStokes(pybind11::module_& module);
+void bindNavier(pybind11::module_& module);
 void bindState(pybind11::module_& module);

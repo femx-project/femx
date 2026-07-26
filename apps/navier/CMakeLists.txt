@@ -17,9 +17,9 @@ add_library(femx::apps::navier ALIAS femx_navier_support)
 target_sources(
   femx_navier_support
   PRIVATE BoundaryConditions.cpp CommandLine.cpp Config.cpp Monitor.cpp
-          NavierStokesProblem.cpp Solve.cpp
+          NavierProblem.cpp Solve.cpp
   PUBLIC BoundaryConditions.hpp CommandLine.hpp Config.hpp Monitor.hpp
-         NavierStokesProblem.hpp Solve.hpp)
+         NavierProblem.hpp Solve.hpp)
 
 target_include_directories(
   femx_navier_support
@@ -36,7 +36,7 @@ target_link_libraries(
          femx::fem
          femx::io
          femx::linalg
-         femx::model::ns
+         femx::model::navier
          femx::runtime
          femx::state)
 

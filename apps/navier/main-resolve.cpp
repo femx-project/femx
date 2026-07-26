@@ -12,11 +12,11 @@
 
 #include "CommandLine.hpp"
 #include "Config.hpp"
-#include "NavierStokesProblem.hpp"
+#include "NavierProblem.hpp"
 #include "Solve.hpp"
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
 #include <femx/runtime/BuildInfo.hpp>
 #include <femx/runtime/Output.hpp>
 #include <femx/state/TimeIntegrator.hpp>
@@ -121,7 +121,7 @@ int run(const Config& prm)
     writeBuildInfo(prm.output.directory, makeBuildInfo());
   }
 
-  NavierStokesProblem prob(prm);
+  NavierProblem problem(prm);
 
   ReSolveOptions opts;
   setSolverOptions(opts, prm.solver);
@@ -141,17 +141,18 @@ int run(const Config& prm)
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  model::ns::DeviceNavierStokesResidual   navier(prob.model(), ctx);
-  assembly::DeviceConstrainedTimeResidual res(navier, prob.controlMap(), {}, ctx);
-  DeviceTimeIntegrator                    integ(res, system);
+  model::navier::DeviceNavierResidual     navier(problem.model(), ctx);
+  assembly::DeviceConstrainedTimeResidual res(navier, problem.controlMap(), {}, ctx);
+
+  DeviceTimeIntegrator integ(res, system);
 
   DeviceVector<Real> init_state;
-  ctx.vectors().copy(prob.initialState(), init_state);
+  ctx.vectors().copy(problem.initialState(), init_state);
   ctx.sync();
 
   integ.setInitialState(init_state);
   result = solve(integ,
-                 prob,
+                 problem,
                  prm.time,
                  prm.output,
                  &std::cout,
@@ -162,13 +163,14 @@ int run(const Config& prm)
   auto             solver = std::make_unique<ReSolveLinearSolver>(opts);
   HostLinearSystem system(std::move(solver));
 
-  model::ns::HostNavierStokesResidual   navier(prob.model());
-  assembly::HostConstrainedTimeResidual res(navier, prob.controlMap());
-  HostTimeIntegrator                    integ(res, system);
+  model::navier::HostNavierResidual     navier(problem.model());
+  assembly::HostConstrainedTimeResidual res(navier, problem.controlMap());
 
-  integ.setInitialState(prob.initialState());
+  HostTimeIntegrator integ(res, system);
+
+  integ.setInitialState(problem.initialState());
   result = solve(integ,
-                 prob,
+                 problem,
                  prm.time,
                  prm.output,
                  &std::cout,

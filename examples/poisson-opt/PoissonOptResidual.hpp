@@ -33,9 +33,9 @@ public:
   /**
    * @brief Bind to a Host Poisson optimization problem.
    *
-   * @param[in] prob - Problem data kept alive while this residual is used.
+   * @param[in] problem - Problem data kept alive while this residual is used.
    */
-  explicit HostPoissonOptResidual(const PoissonOptProblem& prob);
+  explicit HostPoissonOptResidual(const PoissonOptProblem& problem);
 
   /** @brief Return the residual dimensions. */
   state::Dimensions dims() const override;
@@ -91,7 +91,7 @@ private:
   HostVector<Real> boundaryValues(
       const HostVector<Real>& prm) const;
 
-  const PoissonOptProblem& prob_; ///< Bound Host problem.
+  const PoissonOptProblem& problem_; ///< Bound Host problem.
 };
 
 /** @brief Own Device data and assemble the controlled Poisson residual on CUDA. */
@@ -101,10 +101,10 @@ public:
   /**
    * @brief Copy a Host Poisson optimization problem to Device storage.
    *
-   * @param[in] prob - Source Host problem.
+   * @param[in] problem - Source Host problem.
    * @param[in,out] ctx - CUDA context receiving the copies.
    */
-  DevicePoissonOptResidual(const PoissonOptProblem& prob,
+  DevicePoissonOptResidual(const PoissonOptProblem& problem,
                            linalg::CudaContext&     ctx);
 
   /** @brief Return the residual dimensions. */

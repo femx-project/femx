@@ -18,29 +18,29 @@ public:
   virtual ~LinearSolver() = default;
 
   /**
-   * @brief Solve `mat * sol = rhs`.
+   * @brief Solve `mat * result = rhs`.
    *
    * @param[in] mat - System matrix.
    * @param[in] rhs - Right-hand side vector.
-   * @param[in,out] sol - Initial guess replaced by the solution.
+   * @param[in,out] result - Initial guess replaced by the solution.
    * @param[in] ctx - Execution context.
    */
   virtual void solve(const Matrix&     mat,
                      const Vector&     rhs,
-                     Vector&           sol,
+                     Vector&           result,
                      ExecutionContext& ctx) = 0;
 
   /**
-   * @brief Solve `mat^T * sol = rhs`.
+   * @brief Solve `mat^T * result = rhs`.
    *
    * @param[in] mat - System matrix.
    * @param[in] rhs - Right-hand side vector.
-   * @param[in,out] sol - Initial guess replaced by the solution.
+   * @param[in,out] result - Initial guess replaced by the solution.
    * @param[in] ctx - Execution context.
    */
   virtual void solveT(const Matrix&     mat,
                       const Vector&     rhs,
-                      Vector&           sol,
+                      Vector&           result,
                       ExecutionContext& ctx) = 0;
 };
 

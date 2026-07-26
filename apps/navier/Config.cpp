@@ -72,9 +72,9 @@ std::array<Real, 3> parseVector3(const json&        node,
   }
 
   std::array<Real, 3> vals{};
-  for (Index i = 0; i < 3; ++i)
+  for (Index ic = 0; ic < 3; ++ic)
   {
-    vals[i] = node.at(i).get<Real>();
+    vals[ic] = node.at(ic).get<Real>();
   }
   return vals;
 }

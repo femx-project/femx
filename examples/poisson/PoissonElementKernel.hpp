@@ -10,7 +10,7 @@ namespace femx::examples::poisson
  * @brief Evaluate the scalar Laplace operator from element quadrature data.
  */
 template <MemorySpace Space>
-class ElementKernel
+class PoissonElementKernel
 {
 public:
   /**
@@ -18,7 +18,7 @@ public:
    *
    * @param[in] data - Shape gradients and weighted Jacobians.
    */
-  FEMX_HOST_DEVICE explicit ElementKernel(
+  FEMX_HOST_DEVICE explicit PoissonElementKernel(
       fem::ElementQuadDataView<Space> data)
     : data_(data)
   {
@@ -49,9 +49,10 @@ public:
       for (Index col = 0; col < jac.size(); ++col)
       {
         Real grad_dot = 0.0;
-        for (Index d = 0; d < data_.dim(); ++d)
+        for (Index id = 0; id < data_.dim(); ++id)
         {
-          grad_dot += data_.dNdx(e.ie, iq, row, d) * data_.dNdx(e.ie, iq, col, d);
+          grad_dot += data_.dNdx(e.ie, iq, row, id)
+                      * data_.dNdx(e.ie, iq, col, id);
         }
         jac[col] += grad_dot * data_.JxW(e.ie, iq);
       }
@@ -66,5 +67,10 @@ public:
 private:
   fem::ElementQuadDataView<Space> data_; ///< Element integration data.
 };
+
+using HostPoissonElementKernel =
+    PoissonElementKernel<MemorySpace::Host>;
+using DevicePoissonElementKernel =
+    PoissonElementKernel<MemorySpace::Device>;
 
 } // namespace femx::examples::poisson

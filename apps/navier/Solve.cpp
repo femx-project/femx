@@ -21,8 +21,8 @@ void configureMonitor(Monitor&            monitor,
   if (terminal != nullptr || log_out != nullptr)
   {
     monitor.setDetailedLog(terminal,
-                       log_out,
-                       time.convergence.enabled);
+                           log_out,
+                           time.convergence.enabled);
   }
   monitor.setConvergence(time.convergence);
 }
@@ -42,15 +42,15 @@ bool hasFiniteValues(const HostVector<Real>& vals)
 }
 
 SolveResult solve(state::HostTimeIntegrator& integ,
-                  const NavierStokesProblem& prob,
+                  const NavierProblem&       problem,
                   const TimeConfig&          time,
                   const OutputConfig&        out,
                   std::ostream*              terminal,
                   std::ostream*              log_out)
 {
-  Monitor monitor(prob.model().space(),
-              prob.model().dt(),
-              prob.model().numSteps());
+  Monitor monitor(problem.model().space(),
+                  problem.model().dt(),
+                  problem.model().numSteps());
   configureMonitor(monitor, time, out, terminal, log_out);
 
   monitor.start(integ.numSteps(), integ.numStates());
@@ -81,15 +81,15 @@ SolveResult solve(state::HostTimeIntegrator& integ,
 
 #if defined(FEMX_HAS_CUDA)
 SolveResult solve(state::DeviceTimeIntegrator& integ,
-                  const NavierStokesProblem&   prob,
+                  const NavierProblem&         problem,
                   const TimeConfig&            time,
                   const OutputConfig&          out,
                   std::ostream*                terminal,
                   std::ostream*                log_out)
 {
-  Monitor monitor(prob.model().space(),
-              prob.model().dt(),
-              prob.model().numSteps());
+  Monitor monitor(problem.model().space(),
+                  problem.model().dt(),
+                  problem.model().numSteps());
   configureMonitor(monitor, time, out, terminal, log_out);
 
   monitor.start(integ.numSteps(), integ.numStates());

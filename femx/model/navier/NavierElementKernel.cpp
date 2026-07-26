@@ -1,4 +1,4 @@
-#include "ElementKernel.hpp"
+#include "NavierElementKernel.hpp"
 
 #include <algorithm>
 
@@ -9,10 +9,10 @@ namespace femx
 {
 namespace model
 {
-namespace ns
+namespace navier
 {
 
-void histVjp(const HostElementKernel&             kernel,
+void histVjp(const HostNavierElementKernel&       kernel,
              const assembly::HostTimeElementView& e,
              HostVectorView<const Real>           adj,
              HostVectorView<Real>                 out)
@@ -21,7 +21,7 @@ void histVjp(const HostElementKernel&             kernel,
   const Index ncol = (data.dim() + 1) * data.numShapes();
   require(e.hist.size() == e.num_hist * ncol && e.nxt.size() == ncol
               && adj.size() == ncol && out.size() == e.hist.size(),
-          "Navier history VJP element dimensions do not match");
+          "Navier-Stokes history VJP element dimensions do not match");
 
 #if defined(FEMX_HAS_ENZYME)
   std::fill(out.data(), out.data() + out.size(), 0.0);
@@ -66,11 +66,11 @@ void histVjp(const HostElementKernel&             kernel,
   (void) adj;
   (void) out;
   throw std::runtime_error(
-      "Navier history VJP requires Enzyme. Configure with "
+      "Navier-Stokes history VJP requires Enzyme. Configure with "
       "-DFEMX_ENABLE_ENZYME=ON and provide Enzyme_DIR.");
 #endif
 }
 
-} // namespace ns
+} // namespace navier
 } // namespace model
 } // namespace femx

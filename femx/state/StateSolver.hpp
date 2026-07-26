@@ -282,8 +282,9 @@ private:
   bool               has_init_{false};
 };
 
-using HostStateSolver       = StateSolver<MemorySpace::Host>;
-using HostLinearStateSolver = LinearStateSolver<MemorySpace::Host>;
-using HostNewtonStateSolver = NewtonStateSolver<MemorySpace::Host>;
+using HostStateSolver         = StateSolver<MemorySpace::Host>;
+using HostLinearStateSolver   = LinearStateSolver<MemorySpace::Host>;
+using DeviceLinearStateSolver = LinearStateSolver<MemorySpace::Device>;
+using HostNewtonStateSolver   = NewtonStateSolver<MemorySpace::Host>;
 
 } // namespace femx::state

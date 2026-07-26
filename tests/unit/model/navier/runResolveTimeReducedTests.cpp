@@ -17,8 +17,8 @@
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
-#include <femx/model/ns/Model.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
+#include <femx/model/navier/NavierModel.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::tests
@@ -73,7 +73,7 @@ struct ProblemData
   Index                           init_dof{-1};
 };
 
-ProblemData makeProblemData(const model::ns::NavierStokesModel& model)
+ProblemData makeProblemData(const model::navier::NavierModel& model)
 {
   const auto vel = model.space().field(0);
   const auto pre = model.space().field(1);
@@ -132,8 +132,8 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 
   try
   {
-    constexpr Index              steps = 3;
-    model::ns::NavierStokesModel model(
+    constexpr Index            steps = 3;
+    model::navier::NavierModel model(
         fem::Mesh::makeStructuredQuad(4, 4),
         steps,
         0.1,
@@ -175,7 +175,7 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         steps, model.numStates(), num_prm);
     obj.add(misfit).add(reg);
 
-    model::ns::HostNavierStokesResidual   navier(model);
+    model::navier::HostNavierResidual     navier(model);
     assembly::HostConstrainedTimeResidual cpu_res(
         navier, ctr, init);
     linalg::HostLinearSystem cpu_fwd_system(
@@ -190,7 +190,7 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         std::make_unique<linalg::ReSolveLinearSolver>());
     auto& cuda_ctx =
         static_cast<linalg::CudaContext&>(cuda_fwd_system.context());
-    model::ns::DeviceNavierStokesResidual d_navier(
+    model::navier::DeviceNavierResidual d_navier(
         model, cuda_ctx);
     assembly::DeviceConstrainedTimeResidual cuda_res(
         d_navier,

@@ -2,7 +2,7 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/fem/ElementQuadData.hpp>
-#include <femx/model/ns/ElementKernel.hpp>
+#include <femx/model/navier/NavierElementKernel.hpp>
 #include <femx/state/TimeResidual.hpp>
 
 namespace femx
@@ -12,13 +12,13 @@ namespace linalg
 class CudaContext;
 }
 
-namespace model::ns
+namespace model::navier
 {
 
-class NavierStokesModel;
+class NavierModel;
 
 /** @brief Assemble the Navier-Stokes time residual with Host data. */
-class HostNavierStokesResidual final : public state::HostTimeResidual
+class HostNavierResidual final : public state::HostTimeResidual
 {
 public:
   /**
@@ -26,7 +26,7 @@ public:
    *
    * @param[in] model - Model data kept alive while this residual is used.
    */
-  explicit HostNavierStokesResidual(const NavierStokesModel& model);
+  explicit HostNavierResidual(const NavierModel& model);
 
   /** @brief Return the time-residual dimensions. */
   state::TimeDims dims() const override;
@@ -74,11 +74,11 @@ public:
                  Ctx&                 ctx) const override;
 
 private:
-  const NavierStokesModel& model_; ///< Host model data.
+  const NavierModel& model_; ///< Host model data.
 };
 
 /** @brief Own Device data and assemble the Navier-Stokes residual with CUDA. */
-class DeviceNavierStokesResidual final : public state::DeviceTimeResidual
+class DeviceNavierResidual final : public state::DeviceTimeResidual
 {
 public:
   /**
@@ -87,8 +87,8 @@ public:
    * @param[in] model - Source Host model.
    * @param[in,out] ctx - CUDA context receiving the copies.
    */
-  DeviceNavierStokesResidual(const NavierStokesModel& model,
-                             linalg::CudaContext&     ctx);
+  DeviceNavierResidual(const NavierModel&   model,
+                       linalg::CudaContext& ctx);
 
   /** @brief Return the time-residual dimensions. */
   state::TimeDims dims() const override;
@@ -140,8 +140,8 @@ private:
   HostCsrPattern              h_pattern_; ///< Canonical sparsity pattern.
   fem::DeviceElementQuadData  elem_data_; ///< Device integration data.
   assembly::DeviceAssemblyMap assm_map_;  ///< Device assembly mapping.
-  DeviceElementKernel         kernel_;    ///< Device element operator.
+  DeviceNavierElementKernel   kernel_;    ///< Device element operator.
 };
 
-} // namespace model::ns
+} // namespace model::navier
 } // namespace femx

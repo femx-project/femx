@@ -139,11 +139,12 @@ TestOutcome meshProvidesRuntimeAssemblyData()
   const auto                 view  = mesh.view();
   const std::array<Real, 12> coords{
       {0.0, 0.0, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 0.5, 1.0, 1.0, 1.0}};
-  for (Index node = 0; node < mesh.numNodes(); ++node)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    for (Index d = 0; d < mesh.dim(); ++d)
+    for (Index id = 0; id < mesh.dim(); ++id)
     {
-      status *= near(view.coord(node, d), coords[node * mesh.dim() + d]);
+      status *=
+          near(view.coord(in, id), coords[in * mesh.dim() + id]);
     }
   }
   const std::array<Index, 8> conn{{0, 1, 4, 3, 1, 2, 5, 4}};
@@ -232,8 +233,8 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
   jac_only.setup(map.pattern());
   assembly::assembleJacobian(
       AffineElementKernel{}, mesh, map, state, jac_only, ctx);
-  const HostCsrMatrix& jac_only_mat = jac_only.matrix();
-  status *= jac_only_mat.nnz() == jac.nnz();
+  const HostCsrMatrix& jac_only_mat  = jac_only.matrix();
+  status                            *= jac_only_mat.nnz() == jac.nnz();
   for (Index entry = 0; entry < jac.nnz(); ++entry)
   {
     status *=

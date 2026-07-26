@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "ElementKernel.hpp"
+#include "NavierElementKernel.hpp"
 #include <femx/ad/Enzyme.hpp>
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/common/Checks.hpp>
@@ -8,7 +8,7 @@
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaJacobian.hpp>
 
-namespace femx::model::ns::detail
+namespace femx::model::navier::detail
 {
 namespace
 {
@@ -18,14 +18,14 @@ void checkRange(Index                              ie_begin,
                 const assembly::DeviceAssemblyMap& map)
 {
   require(ie_begin == 0 && ie_end == map.numElems(),
-          "CUDA Navier assembly requires the full element range");
+          "CUDA Navier-Stokes assembly requires the full element range");
 }
 
 #if defined(FEMX_HAS_ENZYME)
 
 template <Index NumQpts, Index NumNodes, Index Dim>
 __global__ void histVjpKernel(
-    DeviceElementKernel             kernel,
+    DeviceNavierElementKernel       kernel,
     Index                           step,
     Index                           lag,
     assembly::DeviceAssemblyMapView map,
@@ -101,7 +101,7 @@ __global__ void histVjpKernel(
 
 template <Index NumQpts, Index NumNodes, Index Dim>
 void launchHistVjp(
-    const DeviceElementKernel&         kernel,
+    const DeviceNavierElementKernel&   kernel,
     Index                              step,
     Index                              lag,
     const assembly::DeviceAssemblyMap& map,
@@ -132,7 +132,7 @@ void launchHistVjp(
 } // namespace
 
 void assembleNext(
-    const DeviceElementKernel&         kernel,
+    const DeviceNavierElementKernel&   kernel,
     Index                              step,
     Index                              num_hist,
     Index                              ie_begin,
@@ -158,7 +158,7 @@ void assembleNext(
 }
 
 void applyHistJacT(
-    const DeviceElementKernel&         kernel,
+    const DeviceNavierElementKernel&   kernel,
     Index                              step,
     Index                              num_hist,
     Index                              lag,
@@ -173,13 +173,13 @@ void applyHistJacT(
 {
   checkRange(ie_begin, ie_end, map);
   require(num_hist == 2 && lag >= 0 && lag < num_hist,
-          "CUDA Navier history VJP requires two valid history states");
+          "CUDA Navier-Stokes history VJP requires two valid history states");
   require(map.maxRes() <= kMaxNd && map.maxState() <= kMaxNd,
-          "CUDA Navier history VJP element dimensions are unsupported");
+          "CUDA Navier-Stokes history VJP element dimensions are unsupported");
   require(hist.size() == num_hist * map.numStates()
               && nxt.size() == map.numStates()
               && adj.size() == map.numRes(),
-          "CUDA Navier history VJP dimensions do not match");
+          "CUDA Navier-Stokes history VJP dimensions do not match");
   if (out.size() != map.numStates())
   {
     out.resize(map.numStates());
@@ -211,16 +211,16 @@ void applyHistJacT(
   else
   {
     throw std::runtime_error(
-        "CUDA Navier history VJP received unsupported element dimensions");
+        "CUDA Navier-Stokes history VJP received unsupported element dimensions");
   }
   cuda::checkLastError();
 #else
   (void) kernel;
   (void) step;
   throw std::runtime_error(
-      "CUDA Navier history VJP requires Enzyme. Configure with "
+      "CUDA Navier-Stokes history VJP requires Enzyme. Configure with "
       "-DFEMX_ENABLE_ENZYME=ON and use Clang as the CUDA compiler.");
 #endif
 }
 
-} // namespace femx::model::ns::detail
+} // namespace femx::model::navier::detail

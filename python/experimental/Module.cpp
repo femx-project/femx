@@ -62,13 +62,13 @@ py::object boundsObject(const Mesh& mesh)
       std::numeric_limits<Real>::lowest(),
       std::numeric_limits<Real>::lowest()};
 
-  for (Index i = 0; i < mesh.numNodes(); ++i)
+  for (Index in = 0; in < mesh.numNodes(); ++in)
   {
-    const auto& point = mesh.node(i);
-    for (Index d = 0; d < 3; ++d)
+    const auto& point = mesh.node(in);
+    for (Index id = 0; id < 3; ++id)
     {
-      lower[d] = std::min(lower[d], point[d]);
-      upper[d] = std::max(upper[d], point[d]);
+      lower[id] = std::min(lower[id], point[id]);
+      upper[id] = std::max(upper[id], point[id]);
     }
   }
 

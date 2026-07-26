@@ -6,7 +6,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/fem/ElementQuadData.hpp>
 #include <femx/linalg/Vector.hpp>
-#include <femx/model/ns/FluidProperties.hpp>
+#include <femx/model/navier/FluidProperties.hpp>
 
 namespace femx::linalg
 {
@@ -18,12 +18,12 @@ namespace femx
 {
 namespace model
 {
-namespace ns
+namespace navier
 {
 
-// NavierStokesModel currently accepts Q1 quadrilaterals, P1 triangles, and P1
-// tetrahedra. A tetrahedron therefore has the largest local system: four
-// nodes times three velocity components plus pressure.
+// The Navier-Stokes model currently accepts Q1 quadrilaterals, P1 triangles,
+// and P1 tetrahedra. A tetrahedron therefore has the largest local system:
+// four nodes times three velocity components plus pressure.
 constexpr Index kMaxNn   = 4;
 constexpr Index kMaxNd   = 16;
 constexpr Index kMaxNq   = 4;
@@ -47,9 +47,9 @@ FEMX_HOST_DEVICE inline Real absVal(Real val)
   return val >= 0.0 ? val : -val;
 }
 
-FEMX_HOST_DEVICE inline Index vdof(Index in, Index comp, Index dim)
+FEMX_HOST_DEVICE inline Index vdof(Index in, Index ic, Index dim)
 {
-  return dim * in + comp;
+  return dim * in + ic;
 }
 
 FEMX_HOST_DEVICE inline Index pdof(Index in,
@@ -62,15 +62,15 @@ FEMX_HOST_DEVICE inline Index pdof(Index in,
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real gradDot(
     const fem::ElementQuadDataView<Space>& data,
-    Index                                        ie,
-    Index                                        iq,
-    Index                                        i,
-    Index                                        j)
+    Index                                  ie,
+    Index                                  iq,
+    Index                                  in,
+    Index                                  jn)
 {
   Real val = 0.0;
-  for (Index d = 0; d < data.dim(); ++d)
+  for (Index id = 0; id < data.dim(); ++id)
   {
-    val += data.dNdx(ie, iq, i, d) * data.dNdx(ie, iq, j, d);
+    val += data.dNdx(ie, iq, in, id) * data.dNdx(ie, iq, jn, id);
   }
   return val;
 }
@@ -78,15 +78,15 @@ FEMX_HOST_DEVICE Real gradDot(
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real advDeriv(
     const fem::ElementQuadDataView<Space>& data,
-    const QuadraturePoint&                       qp,
-    Index                                        ie,
-    Index                                        iq,
-    Index                                        in)
+    const QuadraturePoint&                 qp,
+    Index                                  ie,
+    Index                                  iq,
+    Index                                  in)
 {
   Real val = 0.0;
-  for (Index d = 0; d < data.dim(); ++d)
+  for (Index id = 0; id < data.dim(); ++id)
   {
-    val += data.dNdx(ie, iq, in, d) * qp.adv[d];
+    val += data.dNdx(ie, iq, in, id) * qp.adv[id];
   }
   return val;
 }
@@ -94,31 +94,31 @@ FEMX_HOST_DEVICE Real advDeriv(
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real elemLength(
     const fem::ElementQuadDataView<Space>& data,
-    const QuadraturePoint&                       qp,
-    Index                                        ie,
-    Index                                        iq)
+    const QuadraturePoint&                 qp,
+    Index                                  ie,
+    Index                                  iq)
 {
   Real speed2 = 0.0;
-  for (Index d = 0; d < data.dim(); ++d)
+  for (Index ic = 0; ic < data.dim(); ++ic)
   {
-    speed2 += qp.u[d] * qp.u[d];
+    speed2 += qp.u[ic] * qp.u[ic];
   }
 
   const Real speed = sqrt(speed2);
   Real       dir[3]{};
   if (speed > 1.0e-10)
   {
-    for (Index d = 0; d < data.dim(); ++d)
+    for (Index id = 0; id < data.dim(); ++id)
     {
-      dir[d] = qp.u[d] / speed;
+      dir[id] = qp.u[id] / speed;
     }
   }
   else
   {
     const Real val = 1.0 / sqrt(static_cast<Real>(data.dim()));
-    for (Index d = 0; d < data.dim(); ++d)
+    for (Index id = 0; id < data.dim(); ++id)
     {
-      dir[d] = val;
+      dir[id] = val;
     }
   }
 
@@ -126,9 +126,9 @@ FEMX_HOST_DEVICE Real elemLength(
   for (Index in = 0; in < data.numShapes(); ++in)
   {
     Real grad = 0.0;
-    for (Index d = 0; d < data.dim(); ++d)
+    for (Index id = 0; id < data.dim(); ++id)
     {
-      grad += dir[d] * data.dNdx(ie, iq, in, d);
+      grad += dir[id] * data.dNdx(ie, iq, in, id);
     }
     sum += absVal(grad);
   }
@@ -137,21 +137,21 @@ FEMX_HOST_DEVICE Real elemLength(
 
 template <MemorySpace Space>
 FEMX_HOST_DEVICE void evalQp(
-    const fem::ElementQuadDataView<Space>& data,
-    const assembly::TimeElementView<Space>&      e,
-    Index                                        iq,
-    FluidProperties                              fluid,
-    Real                                         dt,
-    QuadraturePoint&                             qp)
+    const fem::ElementQuadDataView<Space>&  data,
+    const assembly::TimeElementView<Space>& e,
+    Index                                   iq,
+    FluidProperties                         fluid,
+    Real                                    dt,
+    QuadraturePoint&                        qp)
 {
-  for (Index c = 0; c < kMaxDim; ++c)
+  for (Index ic = 0; ic < kMaxDim; ++ic)
   {
-    qp.u[c]        = 0.0;
-    qp.adv[c]      = 0.0;
-    qp.adv_grad[c] = 0.0;
-    for (Index d = 0; d < kMaxDim; ++d)
+    qp.u[ic]        = 0.0;
+    qp.adv[ic]      = 0.0;
+    qp.adv_grad[ic] = 0.0;
+    for (Index id = 0; id < kMaxDim; ++id)
     {
-      qp.grad[c][d] = 0.0;
+      qp.grad[ic][id] = 0.0;
     }
   }
   qp.tau         = 0.0;
@@ -159,32 +159,32 @@ FEMX_HOST_DEVICE void evalQp(
   for (Index in = 0; in < data.numShapes(); ++in)
   {
     const Real N = data.N(iq, in);
-    for (Index c = 0; c < data.dim(); ++c)
+    for (Index ic = 0; ic < data.dim(); ++ic)
     {
-      const Index id   = vdof(in, c, data.dim());
-      const Real  val  = cur[id];
-      qp.u[c]         += N * val;
-      for (Index d = 0; d < data.dim(); ++d)
+      const Index dof  = vdof(in, ic, data.dim());
+      const Real  val  = cur[dof];
+      qp.u[ic]        += N * val;
+      for (Index id = 0; id < data.dim(); ++id)
       {
-        qp.grad[c][d] += data.dNdx(e.ie, iq, in, d) * val;
+        qp.grad[ic][id] += data.dNdx(e.ie, iq, in, id) * val;
       }
 
       Real adv = val;
       if (e.step > 0 && e.num_hist > 1)
       {
-        adv = 1.5 * val - 0.5 * e.histState(1)[id];
+        adv = 1.5 * val - 0.5 * e.histState(1)[dof];
       }
-      qp.adv[c] += N * adv;
+      qp.adv[ic] += N * adv;
     }
   }
 
   Real speed2 = 0.0;
-  for (Index c = 0; c < data.dim(); ++c)
+  for (Index ic = 0; ic < data.dim(); ++ic)
   {
-    speed2 += qp.u[c] * qp.u[c];
-    for (Index d = 0; d < data.dim(); ++d)
+    speed2 += qp.u[ic] * qp.u[ic];
+    for (Index id = 0; id < data.dim(); ++id)
     {
-      qp.adv_grad[c] += qp.grad[c][d] * qp.adv[d];
+      qp.adv_grad[ic] += qp.grad[ic][id] * qp.adv[id];
     }
   }
 
@@ -206,15 +206,15 @@ FEMX_HOST_DEVICE void evalQp(
 
 /** @brief Evaluate element rows for CPU and CUDA time assembly. */
 template <MemorySpace Space>
-class ElementKernel
+class NavierElementKernel
 {
 public:
-  FEMX_HOST_DEVICE ElementKernel() = default;
+  FEMX_HOST_DEVICE NavierElementKernel() = default;
 
-  FEMX_HOST_DEVICE ElementKernel(
+  FEMX_HOST_DEVICE NavierElementKernel(
       fem::ElementQuadDataView<Space> data,
-      FluidProperties                       fluid,
-      Real                                  dt)
+      FluidProperties                 fluid,
+      Real                            dt)
     : data_(data), fluid_(fluid), dt_(dt)
   {
   }
@@ -282,8 +282,8 @@ private:
     const Index num_nodes = data_.numShapes();
     const Index num_vel   = dim * num_nodes;
     const bool  vel_row   = row < num_vel;
-    const Index i         = vel_row ? row / dim : row - num_vel;
-    const Index c         = vel_row ? row - i * dim : 0;
+    const Index in        = vel_row ? row / dim : row - num_vel;
+    const Index ic        = vel_row ? row - in * dim : 0;
     Real        rhs       = 0.0;
 
     for (Index iq = 0; iq < data_.numQuadraturePoints(); ++iq)
@@ -291,35 +291,36 @@ private:
       detail::QuadraturePoint qp;
       detail::evalQp(data_, e, iq, fluid_, dt_, qp);
       const Real Jw  = data_.JxW(e.ie, iq);
-      const Real Ni  = data_.N(iq, i);
-      const Real dvi = detail::advDeriv(data_, qp, e.ie, iq, i);
+      const Real Ni  = data_.N(iq, in);
+      const Real dvi = detail::advDeriv(data_, qp, e.ie, iq, in);
 
       if (vel_row)
       {
         // Galerkin transient term.
-        rhs += fluid_.rho / dt_ * Ni * qp.u[c] * Jw;
+        rhs += fluid_.rho / dt_ * Ni * qp.u[ic] * Jw;
 
         // Galerkin advection term.
-        rhs -= 0.5 * fluid_.rho * Ni * qp.adv_grad[c] * Jw;
+        rhs -= 0.5 * fluid_.rho * Ni * qp.adv_grad[ic] * Jw;
 
         // Galerkin diffusion term.
-        for (Index d = 0; d < dim; ++d)
+        for (Index id = 0; id < dim; ++id)
         {
-          rhs -= 0.5 * fluid_.mu * data_.dNdx(e.ie, iq, i, d) * qp.grad[c][d] * Jw;
+          rhs -= 0.5 * fluid_.mu
+                 * data_.dNdx(e.ie, iq, in, id) * qp.grad[ic][id] * Jw;
         }
 
         // SUPG transient term.
-        rhs += qp.tau * fluid_.rho / dt_ * dvi * qp.u[c] * Jw;
+        rhs += qp.tau * fluid_.rho / dt_ * dvi * qp.u[ic] * Jw;
 
         // SUPG advection term.
-        rhs -= 0.5 * qp.tau * fluid_.rho * dvi * qp.adv_grad[c] * Jw;
+        rhs -= 0.5 * qp.tau * fluid_.rho * dvi * qp.adv_grad[ic] * Jw;
 
-        for (Index j = 0; j < num_nodes; ++j)
+        for (Index jn = 0; jn < num_nodes; ++jn)
         {
-          const Real  Nj  = data_.N(iq, j);
-          const Real  dvj = detail::advDeriv(data_, qp, e.ie, iq, j);
-          const Index ju  = detail::vdof(j, c, dim);
-          const Index jp  = detail::pdof(j, num_nodes, dim);
+          const Real  Nj  = data_.N(iq, jn);
+          const Real  dvj = detail::advDeriv(data_, qp, e.ie, iq, jn);
+          const Index ju  = detail::vdof(jn, ic, dim);
+          const Index jp  = detail::pdof(jn, num_nodes, dim);
 
           // Galerkin transient term.
           lhs[ju] += fluid_.rho / dt_ * Ni * Nj * Jw;
@@ -328,7 +329,8 @@ private:
           lhs[ju] += 0.5 * fluid_.rho * Ni * dvj * Jw;
 
           // Galerkin diffusion term.
-          lhs[ju] += 0.5 * fluid_.mu * detail::gradDot(data_, e.ie, iq, i, j) * Jw;
+          lhs[ju] += 0.5 * fluid_.mu
+                     * detail::gradDot(data_, e.ie, iq, in, jn) * Jw;
 
           // SUPG transient term.
           lhs[ju] += qp.tau * fluid_.rho / dt_ * dvi * Nj * Jw;
@@ -337,44 +339,49 @@ private:
           lhs[ju] += 0.5 * qp.tau * fluid_.rho * dvi * dvj * Jw;
 
           // Galerkin pressure term.
-          lhs[jp] -= data_.dNdx(e.ie, iq, i, c) * Nj * Jw;
+          lhs[jp] -= data_.dNdx(e.ie, iq, in, ic) * Nj * Jw;
 
           // SUPG pressure term.
-          lhs[jp] += qp.tau * dvi * data_.dNdx(e.ie, iq, j, c) * Jw;
+          lhs[jp] += qp.tau * dvi * data_.dNdx(e.ie, iq, jn, ic) * Jw;
         }
       }
       else
       {
-        for (Index d = 0; d < dim; ++d)
+        for (Index id = 0; id < dim; ++id)
         {
           // PSPG transient term.
-          rhs += qp.tau / dt_ * data_.dNdx(e.ie, iq, i, d) * qp.u[d] * Jw;
+          rhs += qp.tau / dt_
+                 * data_.dNdx(e.ie, iq, in, id) * qp.u[id] * Jw;
 
           // PSPG advection term.
-          rhs -= 0.5 * qp.tau * data_.dNdx(e.ie, iq, i, d) * qp.adv_grad[d] * Jw;
+          rhs -= 0.5 * qp.tau
+                 * data_.dNdx(e.ie, iq, in, id) * qp.adv_grad[id] * Jw;
         }
 
-        for (Index j = 0; j < num_nodes; ++j)
+        for (Index jn = 0; jn < num_nodes; ++jn)
         {
-          const Real Nj  = data_.N(iq, j);
-          const Real dvj = detail::advDeriv(data_, qp, e.ie, iq, j);
-          for (Index d = 0; d < dim; ++d)
+          const Real Nj  = data_.N(iq, jn);
+          const Real dvj = detail::advDeriv(data_, qp, e.ie, iq, jn);
+          for (Index id = 0; id < dim; ++id)
           {
-            const Index ju = detail::vdof(j, d, dim);
+            const Index ju = detail::vdof(jn, id, dim);
 
             // Galerkin continuity term.
-            lhs[ju] += Ni * data_.dNdx(e.ie, iq, j, d) * Jw;
+            lhs[ju] += Ni * data_.dNdx(e.ie, iq, jn, id) * Jw;
 
             // PSPG transient term.
-            lhs[ju] += qp.tau / dt_ * data_.dNdx(e.ie, iq, i, d) * Nj * Jw;
+            lhs[ju] += qp.tau / dt_
+                       * data_.dNdx(e.ie, iq, in, id) * Nj * Jw;
 
             // PSPG advection term.
-            lhs[ju] += 0.5 * qp.tau * data_.dNdx(e.ie, iq, i, d) * dvj * Jw;
+            lhs[ju] += 0.5 * qp.tau
+                       * data_.dNdx(e.ie, iq, in, id) * dvj * Jw;
           }
-          const Index jp = detail::pdof(j, num_nodes, dim);
+          const Index jp = detail::pdof(jn, num_nodes, dim);
 
           // PSPG pressure term.
-          lhs[jp] += qp.tau / fluid_.rho * detail::gradDot(data_, e.ie, iq, i, j) * Jw;
+          lhs[jp] += qp.tau / fluid_.rho
+                     * detail::gradDot(data_, e.ie, iq, in, jn) * Jw;
         }
       }
     }
@@ -388,12 +395,12 @@ private:
   }
 
   fem::ElementQuadDataView<Space> data_;
-  FluidProperties                       fluid_;
-  Real                                  dt_{0.0};
+  FluidProperties                 fluid_;
+  Real                            dt_{0.0};
 };
 
-using HostElementKernel   = ElementKernel<MemorySpace::Host>;
-using DeviceElementKernel = ElementKernel<MemorySpace::Device>;
+using HostNavierElementKernel   = NavierElementKernel<MemorySpace::Host>;
+using DeviceNavierElementKernel = NavierElementKernel<MemorySpace::Device>;
 
 namespace detail
 {
@@ -425,6 +432,7 @@ FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
       {N, num_qpts * num_nodes},
       {dNdx, num_elems * num_qpts * num_nodes * dim},
       {JxW, num_elems * num_qpts}};
+
   const assembly::TimeElementView<Space> elem{
       ie,
       step,
@@ -432,8 +440,8 @@ FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
       {hist, num_hist * (data.dim() + 1) * data.numShapes()},
       {nxt, (data.dim() + 1) * data.numShapes()}};
 
-  const ElementKernel<Space> kernel(data, {rho, mu}, dt);
-  Real                       val = 0.0;
+  const NavierElementKernel<Space> kernel(data, {rho, mu}, dt);
+  Real                             val = 0.0;
 
   const Index num_dofs = (data.dim() + 1) * data.numShapes();
   for (Index row = 0; row < num_dofs; ++row)
@@ -463,7 +471,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
                                     Real        adj)
 {
   static_assert(NumQpts > 0 && NumNodes > 0 && Dim > 0,
-                "Fixed Navier dimensions must be positive");
+                "Fixed Navier-Stokes dimensions must be positive");
 
   const fem::ElementQuadDataView<Space> data{
       num_elems,
@@ -482,7 +490,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
       {nxt, (data.dim() + 1) * data.numShapes()}};
 
   Real res = 0.0;
-  ElementKernel<Space>(data, {rho, mu}, dt)
+  NavierElementKernel<Space>(data, {rho, mu}, dt)
       .evalRow(elem, state::VariableBlock::NextState, row, res, {});
 
   return res * adj;
@@ -491,7 +499,7 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
 } // namespace detail
 
 /** @brief Evaluate every Host element history VJP without a matrix. */
-void histVjp(const HostElementKernel&             kernel,
+void histVjp(const HostNavierElementKernel&       kernel,
              const assembly::HostTimeElementView& e,
              HostVectorView<const Real>           adj,
              HostVectorView<Real>                 out);
@@ -500,7 +508,7 @@ namespace detail
 {
 
 void assembleNext(
-    const DeviceElementKernel&         kernel,
+    const DeviceNavierElementKernel&   kernel,
     Index                              step,
     Index                              num_hist,
     Index                              ie_begin,
@@ -513,7 +521,7 @@ void assembleNext(
     linalg::CudaContext&               ctx);
 
 void applyHistJacT(
-    const DeviceElementKernel&         kernel,
+    const DeviceNavierElementKernel&   kernel,
     Index                              step,
     Index                              num_hist,
     Index                              lag,
@@ -528,6 +536,6 @@ void applyHistJacT(
 
 } // namespace detail
 
-} // namespace ns
+} // namespace navier
 } // namespace model
 } // namespace femx

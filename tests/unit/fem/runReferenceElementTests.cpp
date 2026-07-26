@@ -79,12 +79,12 @@ bool gradientColumnsSumToZero(const FiniteElement&   elem,
                               const QuadraturePoint& qp)
 {
   const DenseMatrix gradients = shapeGradients(elem, qp);
-  for (Index dim = 0; dim < elem.dim(); ++dim)
+  for (Index id = 0; id < elem.dim(); ++id)
   {
     Real total = 0.0;
-    for (Index node = 0; node < elem.numDofsPerElement(); ++node)
+    for (Index in = 0; in < elem.numDofsPerElement(); ++in)
     {
-      total += gradients(node, dim);
+      total += gradients(in, id);
     }
     if (!near(total, 0.0))
     {
@@ -128,12 +128,12 @@ TestOutcome ElementQuadDataMapsToPhysicalSpace()
   {
     Real shape_sum = 0.0;
     Real grad_sum[2]{0.0, 0.0};
-    for (Index shape = 0; shape < data.numShapes(); ++shape)
+    for (Index in = 0; in < data.numShapes(); ++in)
     {
-      shape_sum += view.N(iq, shape);
-      for (Index d = 0; d < data.dim(); ++d)
+      shape_sum += view.N(iq, in);
+      for (Index id = 0; id < data.dim(); ++id)
       {
-        grad_sum[d] += view.dNdx(0, iq, shape, d);
+        grad_sum[id] += view.dNdx(0, iq, in, id);
       }
     }
     status *= near(shape_sum, 1.0);
@@ -195,13 +195,13 @@ TestOutcome triangleP1ShapeFunctions()
       QuadraturePoint{{1.0, 0.0, 0.0}, 0.0},
       QuadraturePoint{{0.0, 1.0, 0.0}, 0.0},
   }};
-  for (Index node = 0; node < tri.numNodes(); ++node)
+  for (Index in = 0; in < tri.numNodes(); ++in)
   {
     const HostVector<Real> vals = shapeVals(
-        tri, nodes[static_cast<std::size_t>(node)]);
-    for (Index i = 0; i < tri.numNodes(); ++i)
+        tri, nodes[static_cast<std::size_t>(in)]);
+    for (Index jn = 0; jn < tri.numNodes(); ++jn)
     {
-      status *= near(vals[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[jn], jn == in ? 1.0 : 0.0);
     }
   }
 
@@ -226,13 +226,13 @@ TestOutcome quadQ1ShapeFunctions()
       QuadraturePoint{{1.0, 1.0, 0.0}, 0.0},
       QuadraturePoint{{-1.0, 1.0, 0.0}, 0.0},
   }};
-  for (Index node = 0; node < quad.numNodes(); ++node)
+  for (Index in = 0; in < quad.numNodes(); ++in)
   {
     const HostVector<Real> vals = shapeVals(
-        quad, nodes[static_cast<std::size_t>(node)]);
-    for (Index i = 0; i < quad.numNodes(); ++i)
+        quad, nodes[static_cast<std::size_t>(in)]);
+    for (Index jn = 0; jn < quad.numNodes(); ++jn)
     {
-      status *= near(vals[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[jn], jn == in ? 1.0 : 0.0);
     }
   }
 
@@ -257,13 +257,13 @@ TestOutcome tetrahedronP1ShapeFunctions()
       QuadraturePoint{{0.0, 1.0, 0.0}, 0.0},
       QuadraturePoint{{0.0, 0.0, 1.0}, 0.0},
   }};
-  for (Index node = 0; node < tet.numNodes(); ++node)
+  for (Index in = 0; in < tet.numNodes(); ++in)
   {
     const HostVector<Real> vals = shapeVals(
-        tet, nodes[static_cast<std::size_t>(node)]);
-    for (Index i = 0; i < tet.numNodes(); ++i)
+        tet, nodes[static_cast<std::size_t>(in)]);
+    for (Index jn = 0; jn < tet.numNodes(); ++jn)
     {
-      status *= near(vals[i], i == node ? 1.0 : 0.0);
+      status *= near(vals[jn], jn == in ? 1.0 : 0.0);
     }
   }
 

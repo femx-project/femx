@@ -23,7 +23,7 @@ target_link_libraries(
             femx_assembly
             femx_fem
             femx_io
-            femx_model_ns
+            femx_model_navier
             femx_inverse
             femx_runtime
             femx_state)

@@ -282,16 +282,16 @@ const KspOptions& PETScLinearSolver::opts() const
 
 void PETScLinearSolver::solve(const PETScMatrix&      mat,
                               const HostVector<Real>& rhs,
-                              HostVector<Real>&       sol)
+                              HostVector<Real>&       result)
 {
-  impl_->solve(mat, rhs, sol);
+  impl_->solve(mat, rhs, result);
 }
 
 void PETScLinearSolver::solveT(const PETScMatrix&      mat,
                                const HostVector<Real>& rhs,
-                               HostVector<Real>&       sol)
+                               HostVector<Real>&       result)
 {
-  impl_->solveT(mat, rhs, sol);
+  impl_->solveT(mat, rhs, result);
 }
 
 KSPConvergedReason PETScLinearSolver::convergedReason() const

@@ -3,8 +3,8 @@
 #include "TestHelper.hpp"
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/model/ns/Model.hpp>
-#include <femx/model/ns/NavierStokesResidual.hpp>
+#include <femx/model/navier/NavierModel.hpp>
+#include <femx/model/navier/NavierResidual.hpp>
 
 namespace femx
 {
@@ -19,11 +19,11 @@ TestOutcome ownsReusableDiscretization()
 {
   TestStatus status(__func__);
 
-  model::ns::FluidProperties fluid;
+  model::navier::FluidProperties fluid;
   fluid.rho = 1.2;
   fluid.mu  = 0.03;
 
-  model::ns::NavierStokesModel model(
+  model::navier::NavierModel model(
       Mesh::makeStructuredQuad(2, 1), 4, 0.05, fluid);
 
   status *= model.numSteps() == 4;
@@ -33,12 +33,12 @@ TestOutcome ownsReusableDiscretization()
   status *= model.mesh().numElems() == 2;
   status *= model.numStates() == model.space().numDofs();
 
-  model::ns::HostNavierStokesResidual res(model);
-  const state::TimeDims               dims  = res.dims();
-  status                                   *= dims.num_steps == model.numSteps();
-  status                                   *= dims.num_states == model.numStates();
-  status                                   *= dims.num_param == 0;
-  status                                   *= dims.num_res == model.numStates();
+  model::navier::HostNavierResidual res(model);
+  const state::TimeDims             dims  = res.dims();
+  status                                 *= dims.num_steps == model.numSteps();
+  status                                 *= dims.num_states == model.numStates();
+  status                                 *= dims.num_param == 0;
+  status                                 *= dims.num_res == model.numStates();
 
   status *= model.assemblyMap().pattern().rows() == model.numStates();
   status *= model.assemblyMap().pattern().cols() == model.numStates();
@@ -53,7 +53,7 @@ TestOutcome modelPublishesAssemblyInputs()
 {
   TestStatus status(__func__);
 
-  model::ns::NavierStokesModel model(
+  model::navier::NavierModel model(
       Mesh::makeStructuredQuad(2, 2), 2, 0.1, {});
 
   const auto&   mesh = model.mesh();
@@ -79,7 +79,7 @@ TestOutcome modelRejectsInvalidTimeConfiguration()
   bool threw = false;
   try
   {
-    model::ns::NavierStokesModel model(
+    model::navier::NavierModel model(
         Mesh::makeStructuredQuad(1, 1), 0, 0.1, {});
   }
   catch (const std::runtime_error&)
@@ -91,7 +91,7 @@ TestOutcome modelRejectsInvalidTimeConfiguration()
   threw = false;
   try
   {
-    model::ns::NavierStokesModel model(
+    model::navier::NavierModel model(
         Mesh::makeStructuredQuad(1, 1), 1, 0.0, {});
   }
   catch (const std::runtime_error&)

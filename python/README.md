@@ -15,7 +15,7 @@ python -m pip install .
 Run the example from the repository root:
 
 ```shell
-python python/examples/navier_stokes.py
+python python/examples/navier.py
 ```
 
 ```python
@@ -37,7 +37,7 @@ def print_progress(event):
     )
 
 
-model = femx.NavierStokesModel(
+model = femx.NavierModel(
     "data/meshes/2d_rectangle.msh",
     num_steps=100,
     dt=1.0e-4,
@@ -45,7 +45,7 @@ model = femx.NavierStokesModel(
     mu=4.0e-5,
 )
 
-problem = femx.NavierStokesProblem(model)
+problem = femx.NavierProblem(model)
 problem.add_bc(femx.DirichletBC("wall", "velocity", (0.0, 0.0)))
 problem.add_bc(femx.DirichletBC("inlet", "velocity", inlet_velocity))
 problem.add_bc(femx.DirichletBC("outlet", "pressure", 0.0))
@@ -58,10 +58,10 @@ solver = problem.create_solver(
 trajectory = solver.solve(progress=print_progress)
 print()
 
-output_dir = Path("python/runs/navier_stokes")
+output_dir = Path("python/runs/navier")
 output_dir.mkdir(parents=True, exist_ok=True)
 model.write_xdmf(output_dir / "flow.xdmf", trajectory)
 ```
 
 This setup has a Reynolds number of 100 and a maximum CFL of about 0.64.
-The output in `python/runs/navier_stokes` can be opened in ParaView.
+The output in `python/runs/navier` can be opened in ParaView.

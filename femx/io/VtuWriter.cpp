@@ -183,9 +183,9 @@ HostVector<int64_t> connectivityVals(const Mesh& mesh)
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
     const auto& elem = mesh.elem(ie);
-    for (Index i = 0; i < elem.numNodes(); ++i)
+    for (Index in = 0; in < elem.numNodes(); ++in)
     {
-      vals.push_back(static_cast<int64_t>(elem.nodeIds()[i]));
+      vals.push_back(static_cast<int64_t>(elem.nodeIds()[in]));
     }
   }
   return vals;

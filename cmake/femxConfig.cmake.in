@@ -41,6 +41,6 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/femxTargets.cmake")
 
-if(TARGET femx::model_ns AND NOT TARGET femx::model::ns)
-  add_library(femx::model::ns ALIAS femx::model_ns)
+if(TARGET femx::model_navier AND NOT TARGET femx::model::navier)
+  add_library(femx::model::navier ALIAS femx::model_navier)
 endif()

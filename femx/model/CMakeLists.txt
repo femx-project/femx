@@ -1,1 +1,1 @@
-add_subdirectory(ns)
+add_subdirectory(navier)

@@ -3,7 +3,7 @@
 import numpy as np
 
 from . import _core
-from .navier_stokes import NavierStokesModel
+from .navier import NavierModel
 
 
 class VelocityObservationOperator:
@@ -14,8 +14,8 @@ class VelocityObservationOperator:
     """
 
     def __init__(self, model, points, times, components=None):
-        if not isinstance(model, NavierStokesModel):
-            raise TypeError("model must be a NavierStokesModel")
+        if not isinstance(model, NavierModel):
+            raise TypeError("model must be a NavierModel")
 
         points = np.asarray(points, dtype=float)
         dim = model.mesh.dimension

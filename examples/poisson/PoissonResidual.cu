@@ -1,4 +1,4 @@
-#include "ElementKernel.hpp"
+#include "PoissonElementKernel.hpp"
 #include "PoissonResidual.hpp"
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
@@ -8,16 +8,16 @@ namespace femx::examples::poisson
 {
 
 DevicePoissonResidual::DevicePoissonResidual(
-    const PoissonProblem& prob,
+    const PoissonProblem& problem,
     linalg::CudaContext&  ctx)
-  : num_dofs_(prob.numDofs()),
-    h_pattern_(prob.assemblyMap().pattern())
+  : num_dofs_(problem.numDofs()),
+    h_pattern_(problem.assemblyMap().pattern())
 {
-  fem::copy(prob.mesh(), mesh_, ctx);
-  fem::copy(prob.elementData(), elem_data_, ctx);
-  assembly::copy(prob.assemblyMap(), assm_map_, ctx);
-  assembly::copy(prob.boundaryMap(), boundary_map_, ctx);
-  ctx.vectors().copy(prob.boundaryValues(), boundary_vals_);
+  fem::copy(problem.mesh(), mesh_, ctx);
+  fem::copy(problem.elementData(), elem_data_, ctx);
+  assembly::copy(problem.assemblyMap(), assm_map_, ctx);
+  assembly::copy(problem.boundaryMap(), boundary_map_, ctx);
+  ctx.vectors().copy(problem.boundaryValues(), boundary_vals_);
 }
 
 state::Dimensions DevicePoissonResidual::dims() const
@@ -39,7 +39,7 @@ void DevicePoissonResidual::assembleResidual(
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
 
   assembly::assembleResidual(
-      ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
       assm_map_,
       state,
@@ -64,7 +64,7 @@ void DevicePoissonResidual::assembleJacobian(
   auto& jac = static_cast<linalg::CudaJacobian&>(out);
 
   assembly::assembleJacobian(
-      ElementKernel<MemorySpace::Device>(elem_data_.view()),
+      DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
       assm_map_,
       state,
