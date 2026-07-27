@@ -5,7 +5,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Cuda.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
 namespace femx::examples::poisson_opt
 {
@@ -95,14 +95,14 @@ void DevicePoissonOptResidual::assembleResidual(
 }
 
 void DevicePoissonOptResidual::assembleJacobian(
-    const DeviceVector<Real>&              state,
-    const DeviceVector<Real>&              prm,
-    linalg::Jacobian<MemorySpace::Device>& out,
-    linalg::Context<MemorySpace::Device>&  base_ctx) const
+    const DeviceVector<Real>&                  state,
+    const DeviceVector<Real>&                  prm,
+    linalg::SystemMatrix<MemorySpace::Device>& out,
+    linalg::Context<MemorySpace::Device>&      base_ctx) const
 {
   checkVectors(state, prm);
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  auto& jac = static_cast<linalg::CudaJacobian&>(out);
+  auto& jac = static_cast<linalg::CudaSystemMatrix&>(out);
 
   assembly::assembleJacobian(
       poisson::DevicePoissonElementKernel(elem_data_.view()),

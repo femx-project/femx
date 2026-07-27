@@ -97,7 +97,7 @@ public:
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
 
     vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-    auto& jac = system_.jacobian();
+    auto& jac = system_.matrix();
     jac.setup(res_.hostPattern());
     res_.assembleJacobian(zero_, prm, jac, ctx_);
 
@@ -230,7 +230,7 @@ public:
 
       vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
 
-      auto& jac = system_.jacobian();
+      auto& jac = system_.matrix();
       jac.setup(res_.hostPattern());
 
       res_.assembleJacobian(state, prm, jac, ctx_);

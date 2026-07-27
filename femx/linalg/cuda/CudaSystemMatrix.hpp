@@ -3,28 +3,28 @@
 #include <cstdint>
 
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx::linalg
 {
 
 /**
- * @brief Own and operate on a Device CSR Jacobian.
+ * @brief Own and operate on a Device CSR system matrix.
  *
  * Assembly, constraint kernels, matrix application, and copies use the stream
  * owned by the bound CUDA context. Constraint metadata is cached in Device
  * storage.
  */
-class CudaJacobian final : public Jacobian<MemorySpace::Device>
+class CudaSystemMatrix final : public SystemMatrix<MemorySpace::Device>
 {
 public:
   /**
-   * @brief Bind the Jacobian to a CUDA execution context.
+   * @brief Bind the system matrix to a CUDA execution context.
    *
    * @param[in] ctx - Context providing the stream and CUDA handles.
    */
-  explicit CudaJacobian(CudaContext& ctx) noexcept;
+  explicit CudaSystemMatrix(CudaContext& ctx) noexcept;
 
   void setup(const HostCsrPattern& pattern) override;
   void replaceRows(DeviceVectorView<const Index> rows,

@@ -10,7 +10,7 @@
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -203,9 +203,9 @@ TestOutcome denseMatrixApplies()
   mat(1, 1) = 5.0;
   mat(1, 2) = 6.0;
 
-  const HostVector<Real> x{1.0, 2.0, 3.0};
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  const HostVector<Real>   x{1.0, 2.0, 3.0};
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
 
   HostVector<Real> y(2);
   jacobian.apply(mat.view(), x.view(), y.view());
@@ -315,9 +315,9 @@ TestOutcome csrMatrixTranspose()
   HostCsrMatrix src(pattern);
   src.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
-  linalg::HostContext  ctx;
-  linalg::HostJacobian jacobian(ctx);
-  HostCsrMatrix        dst;
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
+  HostCsrMatrix            dst;
   jacobian.transpose(src, dst);
 
   status *= dst.rows() == 4 && dst.cols() == 3 && dst.nnz() == 7;

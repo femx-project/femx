@@ -11,7 +11,7 @@
 namespace femx::linalg
 {
 class CudaContext;
-class CudaJacobian;
+class CudaSystemMatrix;
 } // namespace femx::linalg
 
 namespace femx
@@ -517,7 +517,7 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    linalg::CudaJacobian&              jac,
+    linalg::CudaSystemMatrix&          jac,
     linalg::CudaContext&               ctx);
 
 void applyHistJacT(

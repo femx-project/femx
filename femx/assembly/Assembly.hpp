@@ -8,7 +8,7 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeResidual.hpp>
 
@@ -128,12 +128,12 @@ inline void checkTimeAssemblyAliases(HostVectorView<const Real> hist,
 }
 
 inline void addTimeElement(
-    const HostAssemblyMap&               map,
-    Index                                ie,
-    const DenseMatrix&                   elem_mat,
-    HostVector<Index>&                   rows,
-    HostVector<Index>&                   cols,
-    linalg::Jacobian<MemorySpace::Host>& jac)
+    const HostAssemblyMap&                   map,
+    Index                                    ie,
+    const DenseMatrix&                       elem_mat,
+    HostVector<Index>&                       rows,
+    HostVector<Index>&                       cols,
+    linalg::SystemMatrix<MemorySpace::Host>& jac)
 {
   const auto map_v = map.view();
   rows.resize(map_v.numResDofs(ie));
@@ -165,13 +165,13 @@ inline void reduceTimeResidual(HostVector<Real>& res,
 
 template <class ElementKernel>
 void assembleHostElements(
-    const ElementKernel&                 kernel,
-    const fem::Mesh&                     mesh,
-    const HostAssemblyMap&               map,
-    const HostVector<Real>&              state,
-    HostVector<Real>*                    res,
-    linalg::Jacobian<MemorySpace::Host>* jac,
-    linalg::Context<MemorySpace::Host>&  ctx)
+    const ElementKernel&                     kernel,
+    const fem::Mesh&                         mesh,
+    const HostAssemblyMap&                   map,
+    const HostVector<Real>&                  state,
+    HostVector<Real>*                        res,
+    linalg::SystemMatrix<MemorySpace::Host>* jac,
+    linalg::Context<MemorySpace::Host>&      ctx)
 {
   checkAssemblyInputs(mesh, map, state);
   require(res != nullptr || jac != nullptr,
@@ -265,13 +265,13 @@ void assembleHostElements(
  */
 template <class ElementKernel>
 void assembleResidualAndJacobian(
-    const ElementKernel&                 kernel,
-    const fem::Mesh&                     mesh,
-    const HostAssemblyMap&               map,
-    const HostVector<Real>&              state,
-    HostVector<Real>&                    res,
-    linalg::Jacobian<MemorySpace::Host>& jac,
-    linalg::Context<MemorySpace::Host>&  ctx)
+    const ElementKernel&                     kernel,
+    const fem::Mesh&                         mesh,
+    const HostAssemblyMap&                   map,
+    const HostVector<Real>&                  state,
+    HostVector<Real>&                        res,
+    linalg::SystemMatrix<MemorySpace::Host>& jac,
+    linalg::Context<MemorySpace::Host>&      ctx)
 {
   detail::assembleHostElements(
       kernel, mesh, map, state, &res, &jac, ctx);
@@ -311,12 +311,12 @@ void assembleResidual(const ElementKernel&                kernel,
  */
 template <class ElementKernel>
 void assembleJacobian(
-    const ElementKernel&                 kernel,
-    const fem::Mesh&                     mesh,
-    const HostAssemblyMap&               map,
-    const HostVector<Real>&              state,
-    linalg::Jacobian<MemorySpace::Host>& jacobian,
-    linalg::Context<MemorySpace::Host>&  ctx)
+    const ElementKernel&                     kernel,
+    const fem::Mesh&                         mesh,
+    const HostAssemblyMap&                   map,
+    const HostVector<Real>&                  state,
+    linalg::SystemMatrix<MemorySpace::Host>& jacobian,
+    linalg::Context<MemorySpace::Host>&      ctx)
 {
   detail::assembleHostElements(
       kernel, mesh, map, state, nullptr, &jacobian, ctx);
@@ -342,18 +342,18 @@ void assembleJacobian(
  */
 template <class ElementKernel>
 void assembleResidualAndJacobian(
-    const ElementKernel&                 kernel,
-    Index                                step,
-    Index                                num_hist,
-    state::VariableBlock                 wrt,
-    const HostAssemblyMap&               map,
-    Index                                elem_begin,
-    Index                                elem_end,
-    HostVectorView<const Real>           hist,
-    HostVectorView<const Real>           nxt,
-    HostVector<Real>&                    res,
-    linalg::Jacobian<MemorySpace::Host>& jac,
-    linalg::Context<MemorySpace::Host>&  ctx)
+    const ElementKernel&                     kernel,
+    Index                                    step,
+    Index                                    num_hist,
+    state::VariableBlock                     wrt,
+    const HostAssemblyMap&                   map,
+    Index                                    elem_begin,
+    Index                                    elem_end,
+    HostVectorView<const Real>               hist,
+    HostVectorView<const Real>               nxt,
+    HostVector<Real>&                        res,
+    linalg::SystemMatrix<MemorySpace::Host>& jac,
+    linalg::Context<MemorySpace::Host>&      ctx)
 {
   detail::checkTimeAssemblyInputs(num_hist, wrt, map, hist, nxt);
   detail::checkElementRange(map, elem_begin, elem_end);

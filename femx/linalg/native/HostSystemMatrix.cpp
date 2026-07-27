@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx::linalg
 {
@@ -54,7 +54,7 @@ void checkDenseApply(HostMatrixView<const Real> matrix,
 
 } // namespace
 
-class HostJacobian::ConstraintCache
+class HostSystemMatrix::ConstraintCache
 {
 public:
   bool matches(const HostCsrPattern&       pattern,
@@ -79,7 +79,7 @@ public:
              HostVectorView<const Index> rows)
   {
     require(pattern.rows() == pattern.cols(),
-            "Jacobian constraints require a square CSR pattern");
+            "System matrix constraints require a square CSR pattern");
 
     layout_id = pattern.layoutId();
     constrained_rows.resize(rows.size());
@@ -95,9 +95,9 @@ public:
     {
       const Index row = rows[ib];
       require(row >= 0 && row < pattern.rows(),
-              "Jacobian constrained row is out of range");
+              "System matrix constrained row is out of range");
       require(row_to_constraint[row] < 0,
-              "Jacobian constrained rows must be unique");
+              "System matrix constrained rows must be unique");
       row_to_constraint[row] = ib;
     }
 
@@ -115,7 +115,7 @@ public:
           if (row == column)
           {
             require(diagonal_entries[ib] < 0,
-                    "Jacobian constrained row has duplicate diagonal entries");
+                    "System matrix constrained row has duplicate diagonal entries");
             diagonal_entries[ib] = entry;
           }
         }
@@ -125,7 +125,7 @@ public:
     for (Index ib = 0; ib < rows.size(); ++ib)
     {
       require(diagonal_entries[ib] >= 0,
-              "Jacobian constrained row has no diagonal entry");
+              "System matrix constrained row has no diagonal entry");
       column_offsets[ib + 1] += column_offsets[ib];
     }
 
@@ -158,14 +158,14 @@ public:
   HostVector<Index> row_to_constraint;
 };
 
-HostJacobian::HostJacobian(Context<MemorySpace::Host>& ctx) noexcept
+HostSystemMatrix::HostSystemMatrix(Context<MemorySpace::Host>& ctx) noexcept
   : ctx_(ctx), constraints_(std::make_unique<ConstraintCache>())
 {
 }
 
-HostJacobian::~HostJacobian() = default;
+HostSystemMatrix::~HostSystemMatrix() = default;
 
-void HostJacobian::setup(const HostCsrPattern& pattern)
+void HostSystemMatrix::setup(const HostCsrPattern& pattern)
 {
   if (matrix_.pattern().layoutId() != pattern.layoutId())
   {
@@ -178,7 +178,7 @@ void HostJacobian::setup(const HostCsrPattern& pattern)
   }
 }
 
-void HostJacobian::addElement(const ElementJacobianView& element)
+void HostSystemMatrix::addElement(const ElementJacobianView& element)
 {
   checkElement(element);
   for (Index i = 0; i < element.csr_entries.size(); ++i)
@@ -191,8 +191,8 @@ void HostJacobian::addElement(const ElementJacobianView& element)
   }
 }
 
-void HostJacobian::replaceRows(HostVectorView<const Index> rows,
-                               Real                        diagonal)
+void HostSystemMatrix::replaceRows(HostVectorView<const Index> rows,
+                                   Real                        diagonal)
 {
   ConstraintCache& cache = constraints(rows);
   for (Index ib = 0; ib < rows.size(); ++ib)
@@ -208,12 +208,12 @@ void HostJacobian::replaceRows(HostVectorView<const Index> rows,
   }
 }
 
-void HostJacobian::eliminateColumns(HostVectorView<const Index> rows,
-                                    HostVectorView<const Real>  values,
-                                    HostVectorView<Real>        rhs)
+void HostSystemMatrix::eliminateColumns(HostVectorView<const Index> rows,
+                                        HostVectorView<const Real>  values,
+                                        HostVectorView<Real>        rhs)
 {
   require(values.size() == rows.size() && rhs.size() == matrix_.rows(),
-          "Jacobian constraint vectors have incompatible dimensions");
+          "System matrix constraint vectors have incompatible dimensions");
   ConstraintCache& cache = constraints(rows);
 
   for (Index ib = 0; ib < rows.size(); ++ib)
@@ -239,12 +239,12 @@ void HostJacobian::eliminateColumns(HostVectorView<const Index> rows,
   }
 }
 
-void HostJacobian::finalize()
+void HostSystemMatrix::finalize()
 {
 }
 
-void HostJacobian::apply(HostVectorView<const Real> direction,
-                         HostVector<Real>&          out) const
+void HostSystemMatrix::apply(HostVectorView<const Real> direction,
+                             HostVector<Real>&          out) const
 {
   if (out.size() != matrix_.rows())
   {
@@ -253,8 +253,8 @@ void HostJacobian::apply(HostVectorView<const Real> direction,
   detail::applyHost(matrix_, direction, out.view());
 }
 
-void HostJacobian::applyT(HostVectorView<const Real> direction,
-                          HostVector<Real>&          out) const
+void HostSystemMatrix::applyT(HostVectorView<const Real> direction,
+                              HostVector<Real>&          out) const
 {
   if (out.size() != matrix_.cols())
   {
@@ -263,54 +263,54 @@ void HostJacobian::applyT(HostVectorView<const Real> direction,
   detail::applyHostT(matrix_, direction, out.view());
 }
 
-const HostCsrMatrix& HostJacobian::matrix() const noexcept
+const HostCsrMatrix& HostSystemMatrix::matrix() const noexcept
 {
   return matrix_;
 }
 
-void HostJacobian::transpose(const HostCsrMatrix& source,
-                             HostCsrMatrix&       destination) const
+void HostSystemMatrix::transpose(const HostCsrMatrix& source,
+                                 HostCsrMatrix&       destination) const
 {
   detail::transposeHostCsr(source, destination);
 }
 
-void HostJacobian::apply(const HostCsrMatrix&       matrix,
-                         HostVectorView<const Real> direction,
-                         HostVectorView<Real>       out,
-                         Real                       alpha,
-                         Real                       beta) const
+void HostSystemMatrix::apply(const HostCsrMatrix&       matrix,
+                             HostVectorView<const Real> direction,
+                             HostVectorView<Real>       out,
+                             Real                       alpha,
+                             Real                       beta) const
 {
   detail::applyHost(matrix, direction, out, alpha, beta);
 }
 
-void HostJacobian::applyT(const HostCsrMatrix&       matrix,
-                          HostVectorView<const Real> direction,
-                          HostVectorView<Real>       out,
-                          Real                       alpha,
-                          Real                       beta) const
+void HostSystemMatrix::applyT(const HostCsrMatrix&       matrix,
+                              HostVectorView<const Real> direction,
+                              HostVectorView<Real>       out,
+                              Real                       alpha,
+                              Real                       beta) const
 {
   detail::applyHostT(matrix, direction, out, alpha, beta);
 }
 
-void HostJacobian::apply(HostMatrixView<const Real> matrix,
-                         HostVectorView<const Real> direction,
-                         HostVectorView<Real>       out,
-                         Real                       alpha,
-                         Real                       beta) const
+void HostSystemMatrix::apply(HostMatrixView<const Real> matrix,
+                             HostVectorView<const Real> direction,
+                             HostVectorView<Real>       out,
+                             Real                       alpha,
+                             Real                       beta) const
 {
   detail::applyHost(matrix, direction, out, alpha, beta);
 }
 
-void HostJacobian::applyT(HostMatrixView<const Real> matrix,
-                          HostVectorView<const Real> direction,
-                          HostVectorView<Real>       out,
-                          Real                       alpha,
-                          Real                       beta) const
+void HostSystemMatrix::applyT(HostMatrixView<const Real> matrix,
+                              HostVectorView<const Real> direction,
+                              HostVectorView<Real>       out,
+                              Real                       alpha,
+                              Real                       beta) const
 {
   detail::applyHostT(matrix, direction, out, alpha, beta);
 }
 
-HostJacobian::ConstraintCache& HostJacobian::constraints(
+HostSystemMatrix::ConstraintCache& HostSystemMatrix::constraints(
     HostVectorView<const Index> rows)
 {
   if (!constraints_->matches(matrix_.pattern(), rows))

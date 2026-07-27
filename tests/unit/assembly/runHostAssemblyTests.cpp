@@ -13,7 +13,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -204,10 +204,10 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
 
   const auto map = assembly::makeAssemblyMap(space.dofMap());
 
-  HostVector<Real>       res;
-  const HostVector<Real> state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  HostVector<Real>         res;
+  const HostVector<Real>   state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
 
   jacobian.setup(map.pattern());
   assembly::assembleResidualAndJacobian(AffineElementKernel{},
@@ -229,7 +229,7 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
   status *= near(csrVal(jac, 1, 4), 2.0);
   status *= near(csrVal(jac, 0, 2), 0.0);
 
-  linalg::HostJacobian jac_only(ctx);
+  linalg::HostSystemMatrix jac_only(ctx);
   jac_only.setup(map.pattern());
   assembly::assembleJacobian(
       AffineElementKernel{}, mesh, map, state, jac_only, ctx);
@@ -254,10 +254,10 @@ TestOutcome hostAssemblySupportsRectangularLocalLayouts()
   const auto                          map =
       assembly::makeAssemblyMap(2, 2, res_dofs, state_dofs);
 
-  const HostVector<Real> state{2.0, 3.0};
-  HostVector<Real>       res;
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  const HostVector<Real>   state{2.0, 3.0};
+  HostVector<Real>         res;
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.setup(map.pattern());
   assembly::assembleResidualAndJacobian(RectangularElementKernel{},
                                         mesh,
@@ -285,11 +285,11 @@ TestOutcome hostTimeAssemblyHandlesHistoryBlocks()
       3,
       HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
       HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
-  const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  const HostVector<Real> nxt{7.0, 8.0, 9.0};
-  HostVector<Real>       res;
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  const HostVector<Real>   hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector<Real>   nxt{7.0, 8.0, 9.0};
+  HostVector<Real>         res;
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
 
   jacobian.setup(map.pattern());
   assembly::assembleResidualAndJacobian(TimeElementKernel{},
@@ -339,11 +339,11 @@ TestOutcome hostTimeAssemblySupportsElementRangesAndResidualOnly()
       3,
       HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
       HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
-  const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-  const HostVector<Real> nxt{7.0, 8.0, 9.0};
-  HostVector<Real>       res;
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  const HostVector<Real>   hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  const HostVector<Real>   nxt{7.0, 8.0, 9.0};
+  HostVector<Real>         res;
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
 
   jacobian.setup(map.pattern());
   assembly::assembleResidualAndJacobian(TimeElementKernel{},
@@ -403,10 +403,10 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
       HostVector<HostVector<Index>>{{0, 1, 2, 3}});
   auto moved_map = std::move(map);
 
-  HostVector<Real>       res;
-  const HostVector<Real> state{1.0, 2.0, 3.0, 4.0};
-  linalg::HostContext    ctx;
-  linalg::HostJacobian   jacobian(ctx);
+  HostVector<Real>         res;
+  const HostVector<Real>   state{1.0, 2.0, 3.0, 4.0};
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.setup(moved_map.pattern());
   assembly::assembleResidualAndJacobian(AffineElementKernel{},
                                         mesh,
@@ -448,10 +448,10 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   fem::LagrangeQuadQ1 element;
   fem::FESpace        space(&mesh, &element);
   space.setup();
-  const auto           map = assembly::makeAssemblyMap(space.dofMap());
-  HostVector<Real>     alias_vec{1.0, 2.0, 3.0, 4.0};
-  linalg::HostContext  ctx;
-  linalg::HostJacobian jacobian(ctx);
+  const auto               map = assembly::makeAssemblyMap(space.dofMap());
+  HostVector<Real>         alias_vec{1.0, 2.0, 3.0, 4.0};
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.setup(map.pattern());
 
   bool alias_rejected = false;

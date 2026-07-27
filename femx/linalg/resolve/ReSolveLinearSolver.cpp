@@ -11,9 +11,9 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -182,7 +182,7 @@ public:
     ensureCuda();
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Device transpose dimensions");
-    CudaJacobian jacobian(ctx);
+    CudaSystemMatrix jacobian(ctx);
     jacobian.transpose(mat, cuda_tr_mat_);
     bindCuda(cuda_tr_sys_, cuda_tr_mat_, *cuda_work_);
     solveDeviceWith(cuda_tr_sys_, cuda_vecs_, rhs, result, ctx);
@@ -681,7 +681,7 @@ private:
 
   ReSolveOptions       opts_;
   HostContext          h_matrix_ctx_;
-  HostJacobian         h_jac_{h_matrix_ctx_};
+  HostSystemMatrix     h_jac_{h_matrix_ctx_};
   const HostCsrMatrix* h_op_{nullptr};
   Index                cpu_rows_{0};
   Index                cpu_cols_{0};

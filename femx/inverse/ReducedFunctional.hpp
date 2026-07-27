@@ -139,7 +139,7 @@ private:
             "ReducedFunctional objective state-gradient size mismatch");
     vec_handler.copy(h_state_grad_.view(), state_grad_);
 
-    auto& jac = adj_system_.jacobian();
+    auto& jac = adj_system_.matrix();
     jac.setup(res_.hostPattern());
     res_.assembleJacobian(state_, prm_, jac, adj_ctx_);
     jac.finalize();

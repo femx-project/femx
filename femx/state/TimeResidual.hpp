@@ -3,7 +3,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/View.hpp>
 
@@ -178,7 +178,7 @@ public:
   using Vec       = Vector<Space, Real>;
   using VecView   = VectorView<Space, Real>;
   using ConstView = VectorView<Space, const Real>;
-  using Jac       = linalg::Jacobian<Space>;
+  using Jac       = linalg::SystemMatrix<Space>;
   using Ctx       = linalg::Context<space>;
   using StepCtx   = TimeContext<space>;
 

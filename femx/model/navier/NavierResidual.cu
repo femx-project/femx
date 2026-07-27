@@ -4,7 +4,7 @@
 #include <femx/ad/Enzyme.hpp>
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/model/navier/NavierModel.hpp>
 
 namespace femx::model::navier
@@ -70,7 +70,7 @@ void DeviceNavierResidual::assembleNext(
   validateTimeContext(time, num_steps_, assm_map_.numStates());
 
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  auto& jac = static_cast<linalg::CudaJacobian&>(base_jac);
+  auto& jac = static_cast<linalg::CudaSystemMatrix&>(base_jac);
 
   const auto range = ctx.elementRange(assm_map_.numElems());
   const auto hist  = ConstView(time.hist.data(), kNumHist * assm_map_.numStates());

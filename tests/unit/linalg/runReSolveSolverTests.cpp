@@ -74,7 +74,7 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
 
     linalg::ReSolveLinearSolver lin_solver;
     linalg::HostContext         ctx;
-    linalg::HostJacobian        jacobian(ctx);
+    linalg::HostSystemMatrix    jacobian(ctx);
 
     const HostVector<Real> expected = solver::expectedGridSolution(nx, ny);
     HostVector<Real>       rhs(expected.size());

@@ -8,9 +8,9 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -304,9 +304,9 @@ void DirichletControl::apply(const HostVector<Real>& dir,
                              HostVector<Real>&       out) const
 {
   checkControlVector(dir);
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jacobian(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numStateDofs());
   jacobian.apply(matrix_, dir.view(), out.view());
 }
@@ -315,9 +315,9 @@ void DirichletControl::applyTranspose(const HostVector<Real>& dir,
                                       HostVector<Real>&       out) const
 {
   checkStateVector(dir);
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jacobian(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numControlParams());
   jacobian.applyT(matrix_, dir.view(), out.view());
 }

@@ -72,10 +72,10 @@ void HostPoissonOptResidual::assembleResidual(
 }
 
 void HostPoissonOptResidual::assembleJacobian(
-    const HostVector<Real>&              state,
-    const HostVector<Real>&              prm,
-    linalg::Jacobian<MemorySpace::Host>& out,
-    linalg::Context<MemorySpace::Host>&  ctx) const
+    const HostVector<Real>&                  state,
+    const HostVector<Real>&                  prm,
+    linalg::SystemMatrix<MemorySpace::Host>& out,
+    linalg::Context<MemorySpace::Host>&      ctx) const
 {
   checkVectors(state, prm);
   assembly::assembleJacobian(

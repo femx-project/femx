@@ -10,7 +10,7 @@
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx::tests::solver
 {
@@ -195,9 +195,9 @@ inline TestOutcome solvesForwardAndTranspose(
 
   try
   {
-    linalg::HostContext  ctx;
-    linalg::HostJacobian jacobian(ctx);
-    HostVector<Real>     rhs(mat.rows());
+    linalg::HostContext      ctx;
+    linalg::HostSystemMatrix jacobian(ctx);
+    HostVector<Real>         rhs(mat.rows());
     jacobian.apply(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;

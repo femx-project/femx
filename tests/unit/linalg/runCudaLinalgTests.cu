@@ -6,9 +6,9 @@
 #include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -95,12 +95,12 @@ TestOutcome persistentCudaCsrOps()
     const HostVector<Real> h_affine_input{1.0, 2.0, 3.0};
     const HostVector<Real> h_tr_input{2.0, -1.0, 0.5};
 
-    linalg::HostContext  cpu_ctx;
-    linalg::CudaContext  ctx;
-    linalg::HostJacobian h_jacobian(cpu_ctx);
-    linalg::CudaJacobian jacobian(ctx);
-    auto&                vec_handler = ctx.vectors();
-    DeviceCsrPattern     d_graph;
+    linalg::HostContext      cpu_ctx;
+    linalg::CudaContext      ctx;
+    linalg::HostSystemMatrix h_jacobian(cpu_ctx);
+    linalg::CudaSystemMatrix jacobian(ctx);
+    auto&                    vec_handler = ctx.vectors();
+    DeviceCsrPattern         d_graph;
     copy(pattern, d_graph, ctx);
     record(status,
            d_graph.layoutId() == pattern.layoutId(),

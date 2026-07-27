@@ -2,7 +2,7 @@
 #include "PoissonResidual.hpp"
 #include <femx/assembly/CudaAssembly.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
 namespace femx::examples::poisson
 {
@@ -57,11 +57,11 @@ void DevicePoissonResidual::assembleResidual(
 void DevicePoissonResidual::assembleJacobian(
     const DeviceVector<Real>& state,
     const DeviceVector<Real>& /* prm */,
-    linalg::Jacobian<MemorySpace::Device>& out,
-    linalg::Context<MemorySpace::Device>&  base_ctx) const
+    linalg::SystemMatrix<MemorySpace::Device>& out,
+    linalg::Context<MemorySpace::Device>&      base_ctx) const
 {
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  auto& jac = static_cast<linalg::CudaJacobian&>(out);
+  auto& jac = static_cast<linalg::CudaSystemMatrix&>(out);
 
   assembly::assembleJacobian(
       DevicePoissonElementKernel(elem_data_.view()),

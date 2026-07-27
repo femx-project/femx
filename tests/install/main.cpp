@@ -46,7 +46,7 @@ int main()
     rhs[1] = 5.0;
 
     femx::linalg::HostLinearSystem system;
-    auto&                          jacobian = system.jacobian();
+    auto&                          jacobian = system.matrix();
     jacobian.setup(A.pattern());
 
     femx::HostVector<femx::Index> rows{0, 1};

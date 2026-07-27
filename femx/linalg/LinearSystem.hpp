@@ -1,13 +1,13 @@
 #pragma once
 
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 
 namespace femx::linalg
 {
 
 /**
- * @brief Own a valid context, Jacobian, and solver combination.
+ * @brief Own a valid context, system matrix, and solver combination.
  *
  * @tparam Space - Vector storage memory space.
  */
@@ -23,8 +23,8 @@ public:
   /** @brief Return the system-owned execution context. */
   virtual Context<Space>& context() noexcept = 0;
 
-  /** @brief Return the system-owned Jacobian. */
-  virtual Jacobian<Space>& jacobian() noexcept = 0;
+  /** @brief Return the system-owned matrix. */
+  virtual SystemMatrix<Space>& matrix() noexcept = 0;
 
   /**
    * @brief Solve the assembled system.

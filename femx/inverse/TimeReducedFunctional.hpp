@@ -343,7 +343,7 @@ void TimeReducedFunctional<Space>::assembleNext(Index step)
 {
   const auto begin = detail::Clock::now();
   loadStep(step);
-  auto& jac = adj_system_.jacobian();
+  auto& jac = adj_system_.matrix();
   jac.setup(res_.hostPattern());
   res_.assembleNext(timeCtx(step), result_, jac, ctx_);
   jac.finalize();

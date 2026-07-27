@@ -134,10 +134,10 @@ void zeroBoundaryVals(const DeviceBoundaryMap&              map,
 
 template <MemorySpace Space>
 void eliminateJacColumns(
-    const BoundaryMap<Space>&  boundary,
-    linalg::Jacobian<Space>&   jac,
-    Vector<Space, Real>&       rhs,
-    const Vector<Space, Real>& values)
+    const BoundaryMap<Space>&    boundary,
+    linalg::SystemMatrix<Space>& jac,
+    Vector<Space, Real>&         rhs,
+    const Vector<Space, Real>&   values)
 {
   jac.eliminateColumns(boundary.view().constrained_rows,
                        values.view(),

@@ -2,14 +2,14 @@
 
 #include <femx/linalg/LinearSystem.hpp>
 #include <femx/linalg/petsc/MpiContext.hpp>
-#include <femx/linalg/petsc/PETScJacobian.hpp>
 #include <femx/linalg/petsc/PETScLinearSolver.hpp>
+#include <femx/linalg/petsc/PETScSystemMatrix.hpp>
 
 namespace femx::linalg
 {
 
 /**
- * @brief Own an MPI context, PETSc Jacobian, and PETSc solver.
+ * @brief Own an MPI context, PETSc system matrix, and PETSc solver.
  */
 class PETScLinearSystem final : public LinearSystem<MemorySpace::Host>
 {
@@ -26,10 +26,10 @@ public:
   PETScLinearSystem(PETScLinearSystem&&)                 = delete;
   PETScLinearSystem& operator=(PETScLinearSystem&&)      = delete;
 
-  Context<MemorySpace::Host>&  context() noexcept override;
-  Jacobian<MemorySpace::Host>& jacobian() noexcept override;
-  void                         solve(ConstView rhs, Vector& solution) override;
-  void                         solveT(ConstView rhs, Vector& solution) override;
+  Context<MemorySpace::Host>&      context() noexcept override;
+  SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
+  void                             solve(ConstView rhs, Vector& solution) override;
+  void                             solveT(ConstView rhs, Vector& solution) override;
 
   /** @brief Return the owned PETSc solver for option configuration. */
   PETScLinearSolver& solver() noexcept;
@@ -39,7 +39,7 @@ public:
 
 private:
   MpiContext        ctx_;
-  PETScJacobian     jac_;
+  PETScSystemMatrix jac_;
   PETScLinearSolver solver_;
   HostVector<Real>  rhs_;
 };

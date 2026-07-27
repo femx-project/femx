@@ -5,13 +5,13 @@
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/LinearSystem.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx::linalg
 {
 
 /**
- * @brief Own a serial Host context, CSR Jacobian, and Host solver.
+ * @brief Own a serial Host context, CSR system matrix, and Host solver.
  */
 class HostLinearSystem final : public LinearSystem<MemorySpace::Host>
 {
@@ -34,14 +34,14 @@ public:
   HostLinearSystem(HostLinearSystem&&)                 = delete;
   HostLinearSystem& operator=(HostLinearSystem&&)      = delete;
 
-  Context<MemorySpace::Host>&  context() noexcept override;
-  Jacobian<MemorySpace::Host>& jacobian() noexcept override;
-  void                         solve(ConstView rhs, Vector& solution) override;
-  void                         solveT(ConstView rhs, Vector& solution) override;
+  Context<MemorySpace::Host>&      context() noexcept override;
+  SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
+  void                             solve(ConstView rhs, Vector& solution) override;
+  void                             solveT(ConstView rhs, Vector& solution) override;
 
 private:
   HostContext                                      ctx_;
-  HostJacobian                                     jac_;
+  HostSystemMatrix                                 jac_;
   std::unique_ptr<LinearSolver<MemorySpace::Host>> solver_;
   HostVector<Real>                                 rhs_;
 };

@@ -9,7 +9,7 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -91,9 +91,9 @@ TestOutcome hostFlatObserveAndTranspose()
   HostVector<Real> expected_obs;
   op.observe(1, state, prm, expected_obs);
 
-  HostVector<Real>     flat_obs(op.numObservations());
-  linalg::HostContext  ctx;
-  linalg::HostJacobian jacobian(ctx);
+  HostVector<Real>         flat_obs(op.numObservations());
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.apply(op.data().matrix(), state.view(), flat_obs.view());
 
   HostVector<Real> expected_tr;

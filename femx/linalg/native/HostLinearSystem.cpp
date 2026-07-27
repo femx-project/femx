@@ -27,7 +27,7 @@ Context<MemorySpace::Host>& HostLinearSystem::context() noexcept
   return ctx_;
 }
 
-Jacobian<MemorySpace::Host>& HostLinearSystem::jacobian() noexcept
+SystemMatrix<MemorySpace::Host>& HostLinearSystem::matrix() noexcept
 {
   return jac_;
 }

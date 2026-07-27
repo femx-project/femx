@@ -5,28 +5,28 @@ target_sources(
   femx_linalg
   PRIVATE ../common/Math.cpp
           cuda/CudaContext.cpp
-          cuda/CudaJacobian.cpp
+          cuda/CudaSystemMatrix.cpp
           cuda/CudaLinearSystem.cpp
           cuda/CudaVectorHandler.cpp
           native/DenseLinearSolver.cpp
-          native/HostJacobian.cpp
+          native/HostSystemMatrix.cpp
           native/HostLinearSystem.cpp
           native/HostVectorHandler.cpp
   PUBLIC Context.hpp
-         Jacobian.hpp
+         SystemMatrix.hpp
          LinearSystem.hpp
          View.hpp
          CsrPattern.hpp
          CsrMatrix.hpp
          DenseMatrix.hpp
          cuda/CudaContext.hpp
-         cuda/CudaJacobian.hpp
+         cuda/CudaSystemMatrix.hpp
          cuda/CudaLinearSystem.hpp
          cuda/CudaVectorHandler.hpp
          LinearSolver.hpp
          native/DenseLinearSolver.hpp
          native/HostContext.hpp
-         native/HostJacobian.hpp
+         native/HostSystemMatrix.hpp
          native/HostLinearSystem.hpp
          native/HostVectorHandler.hpp
          Vector.hpp)
@@ -36,7 +36,7 @@ target_link_libraries(femx_linalg PUBLIC femx_config femx_common)
 if(FEMX_HAS_CUDA)
   target_sources(
     femx_linalg PRIVATE ../common/Cuda.cu cuda/CudaHandles.cu
-                        cuda/CudaJacobian.cu cuda/CudaVectorHandler.cu)
+                        cuda/CudaSystemMatrix.cu cuda/CudaVectorHandler.cu)
   target_link_libraries(femx_linalg PUBLIC CUDA::cudart CUDA::cusparse
                                            CUDA::cublas)
   set_target_properties(femx_linalg PROPERTIES CUDA_STANDARD 17

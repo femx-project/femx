@@ -267,7 +267,7 @@ template <MemorySpace Space>
 SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
 {
   auto&                    vec_handler = ctx_.vectors();
-  auto&                    jac         = system_.jacobian();
+  auto&                    jac         = system_.matrix();
   const TimeContext<space> time        = timeCtx(step, prm);
   const auto               assm_begin  = detail::TimeClock::now();
 

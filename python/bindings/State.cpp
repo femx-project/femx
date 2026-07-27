@@ -8,7 +8,7 @@
 #include "PETScInit.hpp"
 #include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #ifdef FEMX_HAS_PETSC
@@ -333,9 +333,9 @@ public:
               "transpose Jacobian result");
   }
 
-  void assembleNext(const HostTimeContext&                           ctx,
-                    HostVector<Real>&                                res_out,
-                    femx::linalg::Jacobian<femx::MemorySpace::Host>& jac,
+  void assembleNext(const HostTimeContext&                               ctx,
+                    HostVector<Real>&                                    res_out,
+                    femx::linalg::SystemMatrix<femx::MemorySpace::Host>& jac,
                     femx::linalg::Context<femx::MemorySpace::Host>&)
       const override
   {
@@ -394,7 +394,7 @@ public:
   }
 
   void setup(const HostTimeContext& ctx,
-             femx::linalg::Jacobian<femx::MemorySpace::Host>&,
+             femx::linalg::SystemMatrix<femx::MemorySpace::Host>&,
              HostVector<Real>& rhs,
              femx::linalg::Context<femx::MemorySpace::Host>&)
       const override

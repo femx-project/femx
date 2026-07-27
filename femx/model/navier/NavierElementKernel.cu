@@ -6,7 +6,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
 namespace femx::model::navier::detail
 {
@@ -141,7 +141,7 @@ void assembleNext(
     DeviceVectorView<const Real>       hist,
     DeviceVectorView<const Real>       nxt,
     DeviceVector<Real>&                res,
-    linalg::CudaJacobian&              jac,
+    linalg::CudaSystemMatrix&          jac,
     linalg::CudaContext&               ctx)
 {
   checkRange(ie_begin, ie_end, map);

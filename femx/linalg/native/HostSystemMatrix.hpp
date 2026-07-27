@@ -4,33 +4,33 @@
 
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 
 namespace femx::linalg
 {
 
 /**
- * @brief Own and operate on a Host CSR Jacobian.
+ * @brief Own and operate on a Host CSR system matrix.
  *
  * Constraint metadata derived from the current pattern and constrained rows
  * is cached by this object.
  */
-class HostJacobian final : public Jacobian<MemorySpace::Host>
+class HostSystemMatrix final : public SystemMatrix<MemorySpace::Host>
 {
 public:
   /**
-   * @brief Bind the Jacobian to a Host execution context.
+   * @brief Bind the system matrix to a Host execution context.
    *
    * @param[in] ctx - Context providing Host vector operations.
    */
-  explicit HostJacobian(Context<MemorySpace::Host>& ctx) noexcept;
+  explicit HostSystemMatrix(Context<MemorySpace::Host>& ctx) noexcept;
 
-  ~HostJacobian() override;
+  ~HostSystemMatrix() override;
 
-  HostJacobian(const HostJacobian&)            = delete;
-  HostJacobian& operator=(const HostJacobian&) = delete;
-  HostJacobian(HostJacobian&&)                 = delete;
-  HostJacobian& operator=(HostJacobian&&)      = delete;
+  HostSystemMatrix(const HostSystemMatrix&)            = delete;
+  HostSystemMatrix& operator=(const HostSystemMatrix&) = delete;
+  HostSystemMatrix(HostSystemMatrix&&)                 = delete;
+  HostSystemMatrix& operator=(HostSystemMatrix&&)      = delete;
 
   void setup(const HostCsrPattern& pattern) override;
   void addElement(const ElementJacobianView& element) override;
