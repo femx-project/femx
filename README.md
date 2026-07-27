@@ -74,13 +74,6 @@ install the supported Python package:
 python3 -m pip install .
 ```
 
-For Bash or Zsh, an existing virtual environment can be activated with
-`source .venv/bin/activate` before running the install command.
-
-See the
-[Python API documentation](https://github.com/femx-project/femx/blob/main/python/README.md)
-for details.
-
 ## Install
 
 ```shell
