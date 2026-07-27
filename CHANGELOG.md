@@ -1,14 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.6.0
 
 ### Changed
 
-- Renamed the public `Jacobian` API and its Host, CUDA, and PETSc
-  implementations to `SystemMatrix` to reflect their responsibility for
-  matrix assembly, boundary-condition application, and matrix-vector
-  products. Renamed `LinearSystem::jacobian()` to `LinearSystem::matrix()`.
-  Numerical behavior is unchanged.
+- Renamed the public `Jacobian` API to `SystemMatrix`.
 
 ## v0.5.0
 

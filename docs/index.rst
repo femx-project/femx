@@ -3,9 +3,9 @@ femx
 ****
 
 femx is a research finite-element code for forward and inverse PDE workflows.
-v0.5.0 is a major pre-1.0 update that simplifies the finite-element, assembly,
-linear-system, Poisson, and Navier APIs. This documentation links the C++ and
-Python examples to Doxygen-generated API references.
+v0.6.0 renames the linear-algebra ``Jacobian`` API to ``SystemMatrix`` to
+reflect its responsibility for matrix assembly, boundary conditions, and
+matrix-vector products. Numerical behavior is unchanged.
 
 Documentation
 -------------
