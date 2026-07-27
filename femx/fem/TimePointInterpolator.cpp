@@ -11,9 +11,9 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/View.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -309,7 +309,7 @@ void DeviceTimePointInterpolator::observe(Index                        level,
                                           linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaJacobian jacobian(ctx);
+  linalg::CudaSystemMatrix jacobian(ctx);
   jacobian.apply(data_.matrix(), state, out);
 }
 
@@ -320,7 +320,7 @@ void DeviceTimePointInterpolator::addStateJacT(
     linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaJacobian jacobian(ctx);
+  linalg::CudaSystemMatrix jacobian(ctx);
   jacobian.applyT(data_.matrix(), dir, out, 1.0, 1.0);
 }
 
@@ -401,8 +401,8 @@ void TimePointInterpolator::observe(Index                   level,
   {
     out.resize(numObservations());
   }
-  linalg::HostContext  ctx;
-  linalg::HostJacobian jacobian(ctx);
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.apply(data_.matrix(), state.view(), out.view());
 }
 
@@ -421,8 +421,8 @@ void TimePointInterpolator::applyStateJac(Index                   level,
   {
     out.resize(numObservations());
   }
-  linalg::HostContext  ctx;
-  linalg::HostJacobian jacobian(ctx);
+  linalg::HostContext      ctx;
+  linalg::HostSystemMatrix jacobian(ctx);
   jacobian.apply(data_.matrix(), dir.view(), out.view());
 }
 
@@ -437,9 +437,9 @@ void TimePointInterpolator::applyStateJacT(Index                   level,
   require(dir.size() == numObservations(),
           "TimePointInterpolator observation direction size mismatch");
 
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jacobian(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numStates());
   jacobian.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }

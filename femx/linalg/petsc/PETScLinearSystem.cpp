@@ -13,7 +13,7 @@ Context<MemorySpace::Host>& PETScLinearSystem::context() noexcept
   return ctx_;
 }
 
-Jacobian<MemorySpace::Host>& PETScLinearSystem::jacobian() noexcept
+SystemMatrix<MemorySpace::Host>& PETScLinearSystem::matrix() noexcept
 {
   return jac_;
 }

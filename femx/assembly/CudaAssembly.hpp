@@ -11,7 +11,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
 namespace femx
 {
@@ -336,7 +336,7 @@ void assembleResidualAndJacobian(
     const DeviceAssemblyMap&  map,
     const DeviceVector<Real>& state,
     DeviceVector<Real>&       res,
-    linalg::CudaJacobian&     jac,
+    linalg::CudaSystemMatrix& jac,
     linalg::CudaContext&      ctx)
 {
   auto& vec_handler = ctx.vectors();
@@ -447,7 +447,7 @@ void assembleJacobian(
     const fem::DeviceMesh&    mesh,
     const DeviceAssemblyMap&  map,
     const DeviceVector<Real>& state,
-    linalg::CudaJacobian&     jacobian,
+    linalg::CudaSystemMatrix& jacobian,
     linalg::CudaContext&      ctx)
 {
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
@@ -504,7 +504,7 @@ void assembleResidualAndJacobian(
     DeviceVectorView<const Real> hist,
     DeviceVectorView<const Real> nxt,
     DeviceVector<Real>&          res,
-    linalg::CudaJacobian&        jac,
+    linalg::CudaSystemMatrix&    jac,
     linalg::CudaContext&         ctx)
 {
   auto& vec_handler = ctx.vectors();

@@ -4,8 +4,8 @@
 #include "PoissonProblem.hpp"
 #include "PoissonResidual.hpp"
 #include "TestHelper.hpp"
-#include <femx/linalg/native/HostJacobian.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx::tests
@@ -35,7 +35,7 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   solver.solve(state);
 
   auto& jac =
-      dynamic_cast<linalg::HostJacobian&>(system.jacobian());
+      dynamic_cast<linalg::HostSystemMatrix&>(system.matrix());
   const HostCsrMatrix& mat = jac.matrix();
 
   status *= mat.pattern().layoutId()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/petsc/MpiContext.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
 
@@ -8,17 +8,17 @@ namespace femx::linalg
 {
 
 /**
- * @brief Own and assemble a PETSc-native Host Jacobian.
+ * @brief Own and assemble a PETSc-native Host system matrix.
  */
-class PETScJacobian final : public Jacobian<MemorySpace::Host>
+class PETScSystemMatrix final : public SystemMatrix<MemorySpace::Host>
 {
 public:
   /**
-   * @brief Construct a PETSc Jacobian on an MPI context communicator.
+   * @brief Construct a PETSc system matrix on an MPI context communicator.
    *
    * @param[in] ctx - System-owned MPI execution context.
    */
-  explicit PETScJacobian(MpiContext& ctx);
+  explicit PETScSystemMatrix(MpiContext& ctx);
 
   void setup(const HostCsrPattern& pattern) override;
   void addElement(const ElementJacobianView& element) override;

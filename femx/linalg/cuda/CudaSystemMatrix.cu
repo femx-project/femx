@@ -10,7 +10,7 @@
 
 #include <cublas_v2.h>
 #include <femx/linalg/cuda/CudaHandles.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
 namespace femx::linalg
 {
@@ -475,7 +475,7 @@ void spmv(const DeviceCsrMatrix&       mat,
 }
 } // namespace
 
-void CudaJacobian::ensureConstraints(
+void CudaSystemMatrix::ensureConstraints(
     DeviceVectorView<const Index> rows)
 {
   require(rows.isValid(), "CUDA constrained-row view is invalid");
@@ -516,8 +516,8 @@ void CudaJacobian::ensureConstraints(
   }
 }
 
-void CudaJacobian::replaceRows(DeviceVectorView<const Index> rows,
-                               Real                          diagonal)
+void CudaSystemMatrix::replaceRows(DeviceVectorView<const Index> rows,
+                                   Real                          diagonal)
 {
   ensureConstraints(rows);
   if (rows.empty())
@@ -539,13 +539,13 @@ void CudaJacobian::replaceRows(DeviceVectorView<const Index> rows,
   cuda::checkLastError();
 }
 
-void CudaJacobian::eliminateColumns(
+void CudaSystemMatrix::eliminateColumns(
     DeviceVectorView<const Index> rows,
     DeviceVectorView<const Real>  values,
     DeviceVectorView<Real>        rhs)
 {
   require(values.size() == rows.size() && rhs.size() == matrix_.rows(),
-          "CUDA Jacobian constraint vectors have incompatible dimensions");
+          "CUDA system matrix constraint vectors have incompatible dimensions");
   ensureConstraints(rows);
   if (rows.empty())
   {
@@ -579,7 +579,7 @@ void CudaJacobian::eliminateColumns(
   cuda::checkLastError();
 }
 
-void CudaJacobian::transpose(
+void CudaSystemMatrix::transpose(
     const DeviceCsrMatrix& src,
     DeviceCsrMatrix&       dst) const
 {
@@ -697,11 +697,11 @@ void CudaJacobian::transpose(
   cuda::checkLastError();
 }
 
-void CudaJacobian::apply(const DeviceCsrMatrix&       mat,
-                         DeviceVectorView<const Real> x,
-                         DeviceVectorView<Real>       y,
-                         Real                         alpha,
-                         Real                         beta) const
+void CudaSystemMatrix::apply(const DeviceCsrMatrix&       mat,
+                             DeviceVectorView<const Real> x,
+                             DeviceVectorView<Real>       y,
+                             Real                         alpha,
+                             Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, false);
   if (mat.rows() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -712,11 +712,11 @@ void CudaJacobian::apply(const DeviceCsrMatrix&       mat,
   spmv(mat, x, y, ctx_, alpha, beta, false);
 }
 
-void CudaJacobian::applyT(const DeviceCsrMatrix&       mat,
-                          DeviceVectorView<const Real> x,
-                          DeviceVectorView<Real>       y,
-                          Real                         alpha,
-                          Real                         beta) const
+void CudaSystemMatrix::applyT(const DeviceCsrMatrix&       mat,
+                              DeviceVectorView<const Real> x,
+                              DeviceVectorView<Real>       y,
+                              Real                         alpha,
+                              Real                         beta) const
 {
   checkCsrMatvec(mat, x, y, true);
   if (mat.cols() == 0 || mat.nnz() == 0 || alpha == 0.0)
@@ -727,11 +727,11 @@ void CudaJacobian::applyT(const DeviceCsrMatrix&       mat,
   spmv(mat, x, y, ctx_, alpha, beta, true);
 }
 
-void CudaJacobian::apply(DeviceMatrixView<const Real> mat,
-                         DeviceVectorView<const Real> x,
-                         DeviceVectorView<Real>       y,
-                         Real                         alpha,
-                         Real                         beta) const
+void CudaSystemMatrix::apply(DeviceMatrixView<const Real> mat,
+                             DeviceVectorView<const Real> x,
+                             DeviceVectorView<Real>       y,
+                             Real                         alpha,
+                             Real                         beta) const
 {
   checkDenseMatvec(mat, x, y, false);
   if (mat.rows() == 0)
@@ -761,11 +761,11 @@ void CudaJacobian::apply(DeviceMatrixView<const Real> mat,
               "cublasDgemv failed");
 }
 
-void CudaJacobian::applyT(DeviceMatrixView<const Real> mat,
-                          DeviceVectorView<const Real> x,
-                          DeviceVectorView<Real>       y,
-                          Real                         alpha,
-                          Real                         beta) const
+void CudaSystemMatrix::applyT(DeviceMatrixView<const Real> mat,
+                              DeviceVectorView<const Real> x,
+                              DeviceVectorView<Real>       y,
+                              Real                         alpha,
+                              Real                         beta) const
 {
   checkDenseMatvec(mat, x, y, true);
   if (mat.cols() == 0)

@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
@@ -133,8 +133,8 @@ void applyDirichletConditions(
  */
 template <MemorySpace Space>
 void applyDirichletConditions(
-    const BoundaryMap<Space>& map,
-    linalg::Jacobian<Space>&  jacobian)
+    const BoundaryMap<Space>&    map,
+    linalg::SystemMatrix<Space>& jacobian)
 {
   jacobian.replaceRows(map.view().constrained_rows, 1.0);
 }

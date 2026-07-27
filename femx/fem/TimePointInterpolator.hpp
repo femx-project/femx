@@ -6,8 +6,8 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {

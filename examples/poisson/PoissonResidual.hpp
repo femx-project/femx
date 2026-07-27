@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PoissonProblem.hpp"
-#include <femx/linalg/Jacobian.hpp>
+#include <femx/linalg/SystemMatrix.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx
@@ -53,10 +53,10 @@ public:
    * @param[in,out] ctx - Linear algebra context.
    */
   void assembleJacobian(
-      const HostVector<Real>&              state,
-      const HostVector<Real>&              prm,
-      linalg::Jacobian<MemorySpace::Host>& out,
-      linalg::Context<MemorySpace::Host>&  ctx) const override;
+      const HostVector<Real>&                  state,
+      const HostVector<Real>&                  prm,
+      linalg::SystemMatrix<MemorySpace::Host>& out,
+      linalg::Context<MemorySpace::Host>&      ctx) const override;
 
   /**
    * @brief Apply the transpose parameter Jacobian.
@@ -119,10 +119,10 @@ public:
    * @param[in,out] ctx - Device linear algebra context.
    */
   void assembleJacobian(
-      const DeviceVector<Real>&              state,
-      const DeviceVector<Real>&              prm,
-      linalg::Jacobian<MemorySpace::Device>& out,
-      linalg::Context<MemorySpace::Device>&  ctx) const override;
+      const DeviceVector<Real>&                  state,
+      const DeviceVector<Real>&                  prm,
+      linalg::SystemMatrix<MemorySpace::Device>& out,
+      linalg::Context<MemorySpace::Device>&      ctx) const override;
 
   /**
    * @brief Apply the transpose parameter Jacobian.

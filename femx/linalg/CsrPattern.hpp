@@ -17,7 +17,7 @@ namespace femx
 
 namespace linalg
 {
-class CudaJacobian;
+class CudaSystemMatrix;
 } // namespace linalg
 
 namespace detail
@@ -179,7 +179,7 @@ private:
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
                    linalg::CudaContext&);
-  friend class linalg::CudaJacobian;
+  friend class linalg::CudaSystemMatrix;
 
   void checkSizes() const
   {

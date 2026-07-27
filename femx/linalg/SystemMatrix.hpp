@@ -10,7 +10,7 @@ namespace femx::linalg
 {
 
 /**
- * @brief Non-owning Host element contribution passed to a Jacobian.
+ * @brief Non-owning Host element contribution passed to a system matrix.
  *
  * The values are row-major. CSR entries correspond one-to-one with values and
  * are used only by CSR-backed implementations.
@@ -36,16 +36,16 @@ struct DeviceCsrAssemblyView
   DeviceVectorView<Real> values;
 };
 
-/** @brief Define Jacobian assembly and application in one memory space. */
+/** @brief Define system-matrix assembly and application in one memory space. */
 template <MemorySpace Space>
-class Jacobian;
+class SystemMatrix;
 
-/** @brief Define Host Jacobian assembly and application. */
+/** @brief Define Host system-matrix assembly and application. */
 template <>
-class Jacobian<MemorySpace::Host>
+class SystemMatrix<MemorySpace::Host>
 {
 public:
-  virtual ~Jacobian() = default;
+  virtual ~SystemMatrix() = default;
 
   /**
    * @brief Prepare zero-valued storage for a Host CSR pattern.
@@ -87,7 +87,7 @@ public:
   virtual void finalize() = 0;
 
   /**
-   * @brief Compute the Jacobian product.
+   * @brief Compute the system-matrix product.
    *
    * @param[in] direction - Input direction.
    * @param[out] out - Resized output vector.
@@ -96,7 +96,7 @@ public:
                      HostVector<Real>&          out) const = 0;
 
   /**
-   * @brief Compute the transposed Jacobian product.
+   * @brief Compute the transposed system-matrix product.
    *
    * @param[in] direction - Input direction.
    * @param[out] out - Resized output vector.
@@ -105,12 +105,12 @@ public:
                       HostVector<Real>&          out) const = 0;
 };
 
-/** @brief Define Device Jacobian assembly and application. */
+/** @brief Define Device system-matrix assembly and application. */
 template <>
-class Jacobian<MemorySpace::Device>
+class SystemMatrix<MemorySpace::Device>
 {
 public:
-  virtual ~Jacobian() = default;
+  virtual ~SystemMatrix() = default;
 
   /**
    * @brief Prepare zero-valued Device storage from a Host CSR pattern.
@@ -143,7 +143,7 @@ public:
   virtual void finalize() = 0;
 
   /**
-   * @brief Compute the Device Jacobian product.
+   * @brief Compute the Device system-matrix product.
    *
    * @param[in] direction - Device input direction.
    * @param[out] out - Resized Device output vector.
@@ -152,7 +152,7 @@ public:
                      DeviceVector<Real>&          out) const = 0;
 
   /**
-   * @brief Compute the transposed Device Jacobian product.
+   * @brief Compute the transposed Device system-matrix product.
    *
    * @param[in] direction - Device input direction.
    * @param[out] out - Resized Device output vector.

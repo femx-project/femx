@@ -8,9 +8,9 @@
 #include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 namespace femx
@@ -167,11 +167,11 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     HostCsrMatrix h_mat_tr_source(h_graph);
     fillGridMat(h_mat_tr_source);
 
-    linalg::HostContext  cpu_ctx;
-    linalg::CudaContext  ctx;
-    linalg::HostJacobian h_jacobian(cpu_ctx);
-    auto&                vec_handler = ctx.vectors();
-    DeviceCsrPattern     d_graph;
+    linalg::HostContext      cpu_ctx;
+    linalg::CudaContext      ctx;
+    linalg::HostSystemMatrix h_jacobian(cpu_ctx);
+    auto&                    vec_handler = ctx.vectors();
+    DeviceCsrPattern         d_graph;
     copy(h_graph, d_graph, ctx);
 
     DeviceCsrMatrix d_mat(d_graph);

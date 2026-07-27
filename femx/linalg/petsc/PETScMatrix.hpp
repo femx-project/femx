@@ -12,7 +12,7 @@ class DenseMatrix;
 namespace linalg
 {
 
-class PETScJacobian;
+class PETScSystemMatrix;
 
 /**
  * @brief Own and assemble a PETSc-backed matrix.

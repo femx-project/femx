@@ -43,8 +43,8 @@ void HostPoissonResidual::assembleResidual(
 void HostPoissonResidual::assembleJacobian(
     const HostVector<Real>& state,
     const HostVector<Real>& /* prm */,
-    linalg::Jacobian<MemorySpace::Host>& out,
-    linalg::Context<MemorySpace::Host>&  ctx) const
+    linalg::SystemMatrix<MemorySpace::Host>& out,
+    linalg::Context<MemorySpace::Host>&      ctx) const
 {
   assembly::assembleJacobian(
       HostPoissonElementKernel(problem_.elementData().view()),

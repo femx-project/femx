@@ -13,9 +13,9 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -144,8 +144,8 @@ void copyMatrix(const DeviceCsrMatrix& source,
   ctx.vectors().copy(source.vals().view(), destination.vals().view());
 }
 
-void loadMatrix(const HostCsrMatrix&  source,
-                linalg::HostJacobian& destination)
+void loadMatrix(const HostCsrMatrix&      source,
+                linalg::HostSystemMatrix& destination)
 {
   destination.setup(source.pattern());
   HostVector<Index> row(1);
@@ -168,9 +168,9 @@ void loadMatrix(const HostCsrMatrix&  source,
   }
 }
 
-void loadMatrix(const HostCsrMatrix&  source,
-                linalg::CudaJacobian& destination,
-                linalg::CudaContext&  ctx)
+void loadMatrix(const HostCsrMatrix&      source,
+                linalg::CudaSystemMatrix& destination,
+                linalg::CudaContext&      ctx)
 {
   destination.setup(source.pattern());
   ctx.vectors().copy(source.vals().view(),
@@ -210,9 +210,9 @@ TestOutcome cudaAssemblyMatchesCpuReference()
         assembly::makeAssemblyMap(space.dofMap());
     const HostVector<Real> h_state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    HostVector<Real>     cpu_res;
-    linalg::HostContext  cpu_ctx;
-    linalg::HostJacobian cpu_jacobian(cpu_ctx);
+    HostVector<Real>         cpu_res;
+    linalg::HostContext      cpu_ctx;
+    linalg::HostSystemMatrix cpu_jacobian(cpu_ctx);
     cpu_jacobian.setup(h_map.pattern());
     assembly::assembleResidualAndJacobian(AffineElementKernel{},
                                           mesh,
@@ -235,8 +235,8 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     DeviceVector<Real> state_clone;
     vec_handler.copy(d_state, state_clone);
 
-    DeviceVector<Real>   d_res;
-    linalg::CudaJacobian d_jacobian(cuda_ctx);
+    DeviceVector<Real>       d_res;
+    linalg::CudaSystemMatrix d_jacobian(cuda_ctx);
     d_jacobian.setup(h_map.pattern());
     auto moved_d_map = std::move(d_map);
     assembly::assembleResidualAndJacobian(AffineElementKernel{},
@@ -260,7 +260,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
                 matsNear(gpu_jac, cpu_jac),
                 "CUDA Jacobian matches CPU");
 
-    linalg::CudaJacobian d_jac_only(cuda_ctx);
+    linalg::CudaSystemMatrix d_jac_only(cuda_ctx);
     d_jac_only.setup(h_map.pattern());
     assembly::assembleJacobian(AffineElementKernel{},
                                d_mesh,
@@ -325,11 +325,11 @@ TestOutcome cudaBoundaryMatchesCpuReference()
 
     HostCsrMatrix h_mat(h_graph);
     setDenseVals(h_mat);
-    const HostVector<Real> initial_rhs{10.0, 20.0, 30.0};
-    HostVector<Real>       expected_rhs = initial_rhs;
-    const HostVector<Real> bc_vals{2.0, -1.0};
-    linalg::HostContext    h_ctx;
-    linalg::HostJacobian   expected_jacobian(h_ctx);
+    const HostVector<Real>   initial_rhs{10.0, 20.0, 30.0};
+    HostVector<Real>         expected_rhs = initial_rhs;
+    const HostVector<Real>   bc_vals{2.0, -1.0};
+    linalg::HostContext      h_ctx;
+    linalg::HostSystemMatrix expected_jacobian(h_ctx);
     loadMatrix(h_mat, expected_jacobian);
     expected_jacobian.eliminateColumns(h_map.view().constrained_rows,
                                        bc_vals.view(),
@@ -342,7 +342,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
     assembly::DeviceBoundaryMap d_map;
     assembly::copy(h_map, d_map, ctx);
 
-    linalg::CudaJacobian d_jacobian(ctx);
+    linalg::CudaSystemMatrix d_jacobian(ctx);
     loadMatrix(h_mat, d_jacobian, ctx);
     DeviceVector<Real> d_rhs;
     DeviceVector<Real> d_bc;
@@ -364,7 +364,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                 vecsNear(actual_rhs, expected_rhs),
                 "CUDA forward RHS matches CPU");
 
-    linalg::HostJacobian expected_hist_jacobian(h_ctx);
+    linalg::HostSystemMatrix expected_hist_jacobian(h_ctx);
     loadMatrix(h_mat, expected_hist_jacobian);
     expected_hist_jacobian.replaceRows(
         h_map.view().constrained_rows, 0.0);
@@ -379,7 +379,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
                 matsNear(actual_mat, expected_hist),
                 "CUDA history rows match CPU");
 
-    linalg::HostJacobian expected_dirichlet_jacobian(h_ctx);
+    linalg::HostSystemMatrix expected_dirichlet_jacobian(h_ctx);
     loadMatrix(h_mat, expected_dirichlet_jacobian);
     assembly::applyDirichletConditions(
         h_map, expected_dirichlet_jacobian);
@@ -476,11 +476,11 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
         3,
         HostVector<HostVector<Index>>{{0, 1}, {1, 2}},
         HostVector<HostVector<Index>>{{0, 1}, {1, 2}});
-    const HostVector<Real> hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    const HostVector<Real> nxt{7.0, 8.0, 9.0};
-    HostVector<Real>       cpu_res;
-    linalg::HostContext    cpu_ctx;
-    linalg::HostJacobian   cpu_jacobian(cpu_ctx);
+    const HostVector<Real>   hist{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    const HostVector<Real>   nxt{7.0, 8.0, 9.0};
+    HostVector<Real>         cpu_res;
+    linalg::HostContext      cpu_ctx;
+    linalg::HostSystemMatrix cpu_jacobian(cpu_ctx);
     cpu_jacobian.setup(map.pattern());
     assembly::assembleResidualAndJacobian(TimeElementKernel{},
                                           3,
@@ -505,7 +505,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     assembly::copy(map, d_map, ctx);
     vec_handler.copy(hist, d_hist);
     vec_handler.copy(nxt, d_nxt);
-    linalg::CudaJacobian d_jac(ctx);
+    linalg::CudaSystemMatrix d_jac(ctx);
     d_jac.setup(map.pattern());
     assembly::assembleResidualAndJacobian(TimeElementKernel{},
                                           3,

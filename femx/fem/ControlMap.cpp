@@ -6,9 +6,9 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaJacobian.hpp>
+#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -183,10 +183,10 @@ void controlVals(const HostControlMap&      map,
   const Real  lo_wt = 1.0 - hi_wt;
   const Index block = map.control_.cols();
 
-  HostVectorView<Real> controlled = out.subview(0, map.control_.rows());
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jac(ctx);
+  HostVectorView<Real>     controlled = out.subview(0, map.control_.rows());
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jac(ctx);
 
   jac.apply(map.control_,
             prm.subview(map.ctr_off_ + lo * block, block),
@@ -214,8 +214,8 @@ void controlVals(const DeviceControlMap&      map,
                  DeviceVectorView<Real>       out,
                  linalg::CudaContext&         ctx)
 {
-  auto&                vec_handler = ctx.vectors();
-  linalg::CudaJacobian jac(ctx);
+  auto&                    vec_handler = ctx.vectors();
+  linalg::CudaSystemMatrix jac(ctx);
   require(step >= 0 && step < map.num_steps_ && prm.size() == map.num_prm_
               && out.size() == map.numBcs(),
           "ControlMap Device vector size mismatch");
@@ -252,9 +252,9 @@ void controlJac(const HostControlMap&      map,
   require(step >= 0 && step < map.num_steps_ && dir.size() == map.num_prm_
               && out.size() == map.num_states_,
           "ControlMap Jacobian vector size mismatch");
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jac(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.zero(out);
 
   const Index lo    = map.lower_[step];
@@ -286,8 +286,8 @@ void controlJac(const DeviceControlMap&      map,
                 DeviceVectorView<Real>       out,
                 linalg::CudaContext&         ctx)
 {
-  auto&                vec_handler = ctx.vectors();
-  linalg::CudaJacobian jac(ctx);
+  auto&                    vec_handler = ctx.vectors();
+  linalg::CudaSystemMatrix jac(ctx);
   require(step >= 0 && step < map.num_steps_ && dir.size() == map.num_prm_
               && out.size() == map.num_states_,
           "ControlMap Device Jacobian size mismatch");
@@ -324,9 +324,9 @@ void addControlJacT(const HostControlMap&      map,
   require(step >= 0 && step < map.num_steps_ && adj.size() == map.num_states_
               && grad.size() == map.num_prm_,
           "ControlMap transpose vector size mismatch");
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jac(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.gather(adj,
                      map.dofs_.view().subview(0, map.control_.rows()),
                      map.compact_.view());
@@ -357,8 +357,8 @@ void addControlJacT(const DeviceControlMap&      map,
                     DeviceVectorView<Real>       grad,
                     linalg::CudaContext&         ctx)
 {
-  auto&                vec_handler = ctx.vectors();
-  linalg::CudaJacobian jac(ctx);
+  auto&                    vec_handler = ctx.vectors();
+  linalg::CudaSystemMatrix jac(ctx);
   require(step >= 0 && step < map.num_steps_ && adj.size() == map.num_states_
               && grad.size() == map.num_prm_,
           "ControlMap Device transpose size mismatch");
@@ -457,9 +457,9 @@ void initialState(const HostInitialStateMap& map,
                   HostVectorView<Real>       out)
 {
   checkInitVecs(map.num_states_, map.num_prm_, prm, out);
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jac(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.copy(map.mean_.view(), out);
   if (map.num_modes_ > 0)
   {
@@ -485,8 +485,8 @@ void initialState(const DeviceInitialStateMap& map,
                   DeviceVectorView<Real>       out,
                   linalg::CudaContext&         ctx)
 {
-  auto&                vec_handler = ctx.vectors();
-  linalg::CudaJacobian jac(ctx);
+  auto&                    vec_handler = ctx.vectors();
+  linalg::CudaSystemMatrix jac(ctx);
   checkInitVecs(map.num_states_, map.num_prm_, prm, out);
   vec_handler.copy(map.mean_.view(), out);
   if (map.num_modes_ > 0)
@@ -513,9 +513,9 @@ void addInitialJacT(const HostInitialStateMap& map,
                     HostVectorView<Real>       grad)
 {
   checkInitVecs(map.num_prm_, map.num_states_, adj, grad);
-  linalg::HostContext  ctx;
-  auto&                vec_handler = ctx.vectors();
-  linalg::HostJacobian jac(ctx);
+  linalg::HostContext      ctx;
+  auto&                    vec_handler = ctx.vectors();
+  linalg::HostSystemMatrix jac(ctx);
   if (map.num_modes_ > 0)
   {
     jac.applyT(HostMatrixView<const Real>(map.modes_.data(),
@@ -542,8 +542,8 @@ void addInitialJacT(const DeviceInitialStateMap& map,
                     DeviceVectorView<Real>       grad,
                     linalg::CudaContext&         ctx)
 {
-  auto&                vec_handler = ctx.vectors();
-  linalg::CudaJacobian jac(ctx);
+  auto&                    vec_handler = ctx.vectors();
+  linalg::CudaSystemMatrix jac(ctx);
   checkInitVecs(map.num_prm_, map.num_states_, adj, grad);
   if (map.num_modes_ > 0)
   {

@@ -21,7 +21,7 @@ Context<MemorySpace::Device>& CudaLinearSystem::context() noexcept
   return ctx_;
 }
 
-Jacobian<MemorySpace::Device>& CudaLinearSystem::jacobian() noexcept
+SystemMatrix<MemorySpace::Device>& CudaLinearSystem::matrix() noexcept
 {
   return jac_;
 }

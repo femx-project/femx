@@ -9,7 +9,7 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostJacobian.hpp>
+#include <femx/linalg/native/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -67,9 +67,9 @@ public:
     ctx.vectors().resizeOrZero(out, 3);
   }
 
-  void assembleNext(const state::HostTimeContext&        time,
-                    HostVector<Real>&                    res,
-                    linalg::Jacobian<MemorySpace::Host>& out,
+  void assembleNext(const state::HostTimeContext&            time,
+                    HostVector<Real>&                        res,
+                    linalg::SystemMatrix<MemorySpace::Host>& out,
                     linalg::Context<MemorySpace::Host>&) const override
   {
     res = time.nxt;
@@ -169,7 +169,7 @@ TestOutcome mappedTimeDirichletResidual()
       initial_adj.view(), initial_grad.view(), cpu);
   status *= valsNear(initial_grad, std::array<Real, 2>{{5.0, 0.0}});
 
-  linalg::HostJacobian jac(cpu);
+  linalg::HostSystemMatrix jac(cpu);
   res.assembleNext(ctx, out, jac, cpu);
   status *= valsNear(out, std::array<Real, 3>{{0.0, 20.0, 35.0}});
 
