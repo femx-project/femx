@@ -42,7 +42,7 @@ HostElementQuadData makeElementQuadData(
  */
 void copy(const HostElementQuadData& src,
           DeviceElementQuadData&     dst,
-          linalg::CudaContext&             ctx);
+          linalg::CudaContext&       ctx);
 
 /**
  * @brief Provide non-owning access to element quadrature data.
@@ -238,7 +238,7 @@ private:
 
   friend void copy(const HostElementQuadData& src,
                    DeviceElementQuadData&     dst,
-                   linalg::CudaContext&             ctx);
+                   linalg::CudaContext&       ctx);
 
   Index               num_elems_{0};  ///< Number of elements.
   Index               num_qpts_{0};   ///< Quadrature points per element.
@@ -251,7 +251,7 @@ private:
 
 inline void copy(const HostElementQuadData& src,
                  DeviceElementQuadData&     dst,
-                 linalg::CudaContext&             ctx)
+                 linalg::CudaContext&       ctx)
 {
   auto& vec_handler = ctx.vectors();
   dst.num_elems_    = src.num_elems_;

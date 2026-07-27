@@ -111,7 +111,7 @@ HostControlMap makeControlMap(
     linalg::HostContext ctx;
     auto&               vec_handler = ctx.vectors();
     HostVector<Real>    vals(num_steps * num_fixed);
-    
+
     for (Index step = 0; step < num_steps; ++step)
     {
       vec_handler.copy(fixed_vals.view(),
@@ -177,11 +177,11 @@ void controlVals(const HostControlMap&      map,
               && out.size() == map.numBcs(),
           "ControlMap vector size mismatch");
 
-  const Index          lo         = map.lower_[step];
-  const Index          hi         = map.upper_[step];
-  const Real           hi_wt      = map.upper_wts_[step];
-  const Real           lo_wt      = 1.0 - hi_wt;
-  const Index          block      = map.control_.cols();
+  const Index lo    = map.lower_[step];
+  const Index hi    = map.upper_[step];
+  const Real  hi_wt = map.upper_wts_[step];
+  const Real  lo_wt = 1.0 - hi_wt;
+  const Index block = map.control_.cols();
 
   HostVectorView<Real> controlled = out.subview(0, map.control_.rows());
   linalg::HostContext  ctx;
@@ -189,19 +189,19 @@ void controlVals(const HostControlMap&      map,
   linalg::HostJacobian jac(ctx);
 
   jac.apply(map.control_,
-                 prm.subview(map.ctr_off_ + lo * block, block),
-                 controlled,
-                 lo_wt,
-                 0.0);
+            prm.subview(map.ctr_off_ + lo * block, block),
+            controlled,
+            lo_wt,
+            0.0);
 
   if (hi != lo && hi_wt != 0.0)
   {
     jac.apply(map.control_,
-                   prm.subview(map.ctr_off_ + hi * block, block),
-                   controlled,
-                   hi_wt,
-         
-                   1.0);
+              prm.subview(map.ctr_off_ + hi * block, block),
+              controlled,
+              hi_wt,
+
+              1.0);
   }
   vec_handler.copy(map.fixed_vals_.view().subview(step * map.num_fixed_,
                                                   map.num_fixed_),
@@ -227,17 +227,17 @@ void controlVals(const DeviceControlMap&      map,
   const Index            block      = map.control_.cols();
   DeviceVectorView<Real> controlled = out.subview(0, map.control_.rows());
   jac.apply(map.control_,
-                 prm.subview(map.ctr_off_ + lo * block, block),
-                 controlled,
-                 lo_wt,
-                 0.0);
+            prm.subview(map.ctr_off_ + lo * block, block),
+            controlled,
+            lo_wt,
+            0.0);
   if (hi != lo && hi_wt != 0.0)
   {
     jac.apply(map.control_,
-                   prm.subview(map.ctr_off_ + hi * block, block),
-                   controlled,
-                   hi_wt,
-                   1.0);
+              prm.subview(map.ctr_off_ + hi * block, block),
+              controlled,
+              hi_wt,
+              1.0);
   }
   vec_handler.copy(map.fixed_vals_.view().subview(step * map.num_fixed_,
                                                   map.num_fixed_),
@@ -263,17 +263,17 @@ void controlJac(const HostControlMap&      map,
   const Real  lo_wt = 1.0 - hi_wt;
   const Index block = map.control_.cols();
   jac.apply(map.control_,
-                 dir.subview(map.ctr_off_ + lo * block, block),
-                 map.compact_.view(),
-                 -lo_wt,
-                 0.0);
+            dir.subview(map.ctr_off_ + lo * block, block),
+            map.compact_.view(),
+            -lo_wt,
+            0.0);
   if (hi != lo && hi_wt != 0.0)
   {
     jac.apply(map.control_,
-                   dir.subview(map.ctr_off_ + hi * block, block),
-                   map.compact_.view(),
-                   -hi_wt,
-                   1.0);
+              dir.subview(map.ctr_off_ + hi * block, block),
+              map.compact_.view(),
+              -hi_wt,
+              1.0);
   }
   vec_handler.scatter(map.compact_.view(),
                       map.dofs_.view().subview(0, map.control_.rows()),
@@ -299,17 +299,17 @@ void controlJac(const DeviceControlMap&      map,
   const Real  lo_wt = 1.0 - hi_wt;
   const Index block = map.control_.cols();
   jac.apply(map.control_,
-                 dir.subview(map.ctr_off_ + lo * block, block),
-                 map.compact_.view(),
-                 -lo_wt,
-                 0.0);
+            dir.subview(map.ctr_off_ + lo * block, block),
+            map.compact_.view(),
+            -lo_wt,
+            0.0);
   if (hi != lo && hi_wt != 0.0)
   {
     jac.apply(map.control_,
-                   dir.subview(map.ctr_off_ + hi * block, block),
-                   map.compact_.view(),
-                   -hi_wt,
-                   1.0);
+              dir.subview(map.ctr_off_ + hi * block, block),
+              map.compact_.view(),
+              -hi_wt,
+              1.0);
   }
   vec_handler.scatter(map.compact_.view(),
                       map.dofs_.view().subview(0, map.control_.rows()),
@@ -337,17 +337,17 @@ void addControlJacT(const HostControlMap&      map,
   const Real  lo_wt = 1.0 - hi_wt;
   const Index block = map.control_.cols();
   jac.applyT(map.control_,
-                  map.compact_.view(),
-                  grad.subview(map.ctr_off_ + lo * block, block),
-                  -lo_wt,
-                  1.0);
+             map.compact_.view(),
+             grad.subview(map.ctr_off_ + lo * block, block),
+             -lo_wt,
+             1.0);
   if (hi != lo && hi_wt != 0.0)
   {
     jac.applyT(map.control_,
-                    map.compact_.view(),
-                    grad.subview(map.ctr_off_ + hi * block, block),
-                    -hi_wt,
-                    1.0);
+               map.compact_.view(),
+               grad.subview(map.ctr_off_ + hi * block, block),
+               -hi_wt,
+               1.0);
   }
 }
 
@@ -372,17 +372,17 @@ void addControlJacT(const DeviceControlMap&      map,
   const Real  lo_wt = 1.0 - hi_wt;
   const Index block = map.control_.cols();
   jac.applyT(map.control_,
-                  map.compact_.view(),
-                  grad.subview(map.ctr_off_ + lo * block, block),
-                  -lo_wt,
-                  1.0);
+             map.compact_.view(),
+             grad.subview(map.ctr_off_ + lo * block, block),
+             -lo_wt,
+             1.0);
   if (hi != lo && hi_wt != 0.0)
   {
     jac.applyT(map.control_,
-                    map.compact_.view(),
-                    grad.subview(map.ctr_off_ + hi * block, block),
-                    -hi_wt,
-                    1.0);
+               map.compact_.view(),
+               grad.subview(map.ctr_off_ + hi * block, block),
+               -hi_wt,
+               1.0);
   }
 }
 
@@ -464,18 +464,18 @@ void initialState(const HostInitialStateMap& map,
   if (map.num_modes_ > 0)
   {
     jac.apply(HostMatrixView<const Real>(map.modes_.data(),
-                                              map.num_states_,
-                                              map.num_modes_),
-                   prm.subview(map.init_off_, map.num_modes_),
-                   out,
-                   1.0,
-                   1.0);
+                                         map.num_states_,
+                                         map.num_modes_),
+              prm.subview(map.init_off_, map.num_modes_),
+              out,
+              1.0,
+              1.0);
   }
   if (map.control_.rows() > 0)
   {
     jac.apply(map.control_,
-                   prm.subview(map.ctr_off_, map.control_.cols()),
-                   map.compact_.view());
+              prm.subview(map.ctr_off_, map.control_.cols()),
+              map.compact_.view());
     vec_handler.scatter(map.compact_.view(), map.ctr_dofs_.view(), out);
   }
 }
@@ -492,18 +492,18 @@ void initialState(const DeviceInitialStateMap& map,
   if (map.num_modes_ > 0)
   {
     jac.apply(DeviceMatrixView<const Real>(map.modes_.data(),
-                                                map.num_states_,
-                                                map.num_modes_),
-                   prm.subview(map.init_off_, map.num_modes_),
-                   out,
-                   1.0,
-                   1.0);
+                                           map.num_states_,
+                                           map.num_modes_),
+              prm.subview(map.init_off_, map.num_modes_),
+              out,
+              1.0,
+              1.0);
   }
   if (map.control_.rows() > 0)
   {
     jac.apply(map.control_,
-                   prm.subview(map.ctr_off_, map.control_.cols()),
-                   map.compact_.view());
+              prm.subview(map.ctr_off_, map.control_.cols()),
+              map.compact_.view());
     vec_handler.scatter(map.compact_.view(), map.ctr_dofs_.view(), out);
   }
 }
@@ -519,21 +519,21 @@ void addInitialJacT(const HostInitialStateMap& map,
   if (map.num_modes_ > 0)
   {
     jac.applyT(HostMatrixView<const Real>(map.modes_.data(),
-                                               map.num_states_,
-                                               map.num_modes_),
-                    adj,
-                    grad.subview(map.init_off_, map.num_modes_),
-                    1.0,
-                    1.0);
+                                          map.num_states_,
+                                          map.num_modes_),
+               adj,
+               grad.subview(map.init_off_, map.num_modes_),
+               1.0,
+               1.0);
   }
   if (map.control_.rows() > 0)
   {
     vec_handler.gather(adj, map.ctr_dofs_.view(), map.compact_.view());
     jac.applyT(map.control_,
-                    map.compact_.view(),
-                    grad.subview(map.ctr_off_, map.control_.cols()),
-                    1.0,
-                    1.0);
+               map.compact_.view(),
+               grad.subview(map.ctr_off_, map.control_.cols()),
+               1.0,
+               1.0);
   }
 }
 
@@ -548,21 +548,21 @@ void addInitialJacT(const DeviceInitialStateMap& map,
   if (map.num_modes_ > 0)
   {
     jac.applyT(DeviceMatrixView<const Real>(map.modes_.data(),
-                                                 map.num_states_,
-                                                 map.num_modes_),
-                    adj,
-                    grad.subview(map.init_off_, map.num_modes_),
-                    1.0,
-                    1.0);
+                                            map.num_states_,
+                                            map.num_modes_),
+               adj,
+               grad.subview(map.init_off_, map.num_modes_),
+               1.0,
+               1.0);
   }
   if (map.control_.rows() > 0)
   {
     vec_handler.gather(adj, map.ctr_dofs_.view(), map.compact_.view());
     jac.applyT(map.control_,
-                    map.compact_.view(),
-                    grad.subview(map.ctr_off_, map.control_.cols()),
-                    1.0,
-                    1.0);
+               map.compact_.view(),
+               grad.subview(map.ctr_off_, map.control_.cols()),
+               1.0,
+               1.0);
   }
 }
 
