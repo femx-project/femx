@@ -71,7 +71,7 @@ public:
   void clearInitialState() noexcept;
 
   SolveStats solve(ConstView prm, Observer observer = {});
-  SolveStats solve(ConstView prm, Tr& tr, Observer observer = {});
+  SolveStats solve(ConstView prm, Tr& traj, Observer observer = {});
 
   const SolveStats& lastStats() const noexcept;
   void              resetStats() noexcept;
@@ -82,7 +82,7 @@ private:
   void               initialize(ConstView prm);
   void               advanceHist();
   SolveStats         solveStep(Index step, ConstView prm);
-  SolveStats         solveImpl(ConstView prm, Tr* tr, Observer observer);
+  SolveStats         solveImpl(ConstView prm, Tr* traj, Observer observer);
 
   const Res& res_;
   System&    system_;
@@ -201,10 +201,10 @@ SolveStats TimeIntegrator<Space>::solve(ConstView prm, Observer observer)
 
 template <MemorySpace Space>
 SolveStats TimeIntegrator<Space>::solve(ConstView prm,
-                                        Tr&       tr,
+                                        Tr&       traj,
                                         Observer  observer)
 {
-  return solveImpl(prm, &tr, std::move(observer));
+  return solveImpl(prm, &traj, std::move(observer));
 }
 
 template <MemorySpace Space>
@@ -295,7 +295,7 @@ SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
 
 template <MemorySpace Space>
 SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
-                                            Tr*       tr,
+                                            Tr*       traj,
                                             Observer  observer)
 {
   auto& vec_handler = ctx_.vectors();
@@ -303,15 +303,15 @@ SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
           "TimeIntegrator parameter size mismatch");
 
   stats_ = {};
-  if (tr != nullptr)
+  if (traj != nullptr)
   {
-    tr->resize(numSteps(), numStates());
+    traj->resize(numSteps(), numStates());
   }
 
   initialize(prm);
-  if (tr != nullptr)
+  if (traj != nullptr)
   {
-    vec_handler.copy(nxt_.view(), tr->level(0));
+    vec_handler.copy(nxt_.view(), traj->level(0));
   }
 
   HostVector<Real> obs_prev;
@@ -319,10 +319,10 @@ SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
   if (observer)
   {
     HostVectorView<const Real> init;
-    if (tr != nullptr)
+    if (traj != nullptr)
     {
       ctx_.sync();
-      init = static_cast<const Tr&>(*tr).level(0);
+      init = static_cast<const Tr&>(*traj).level(0);
     }
     else
     {
@@ -346,21 +346,21 @@ SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
     stats_.assm_calls           += step_stats.assm_calls;
     stats_.lin_solve_calls      += step_stats.lin_solve_calls;
 
-    if (tr != nullptr)
+    if (traj != nullptr)
     {
-      vec_handler.copy(nxt_.view(), tr->level(step + 1));
+      vec_handler.copy(nxt_.view(), traj->level(step + 1));
     }
 
     if (observer)
     {
       HostVectorView<const Real> prev;
       HostVectorView<const Real> curr;
-      if (tr != nullptr)
+      if (traj != nullptr)
       {
         ctx_.sync();
-        const Tr& const_tr = *tr;
-        prev               = const_tr.level(step);
-        curr               = const_tr.level(step + 1);
+        const Tr& const_traj = *traj;
+        prev                 = const_traj.level(step);
+        curr                 = const_traj.level(step + 1);
       }
       else
       {
@@ -376,7 +376,7 @@ SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
                                   curr,
                                   step_stats.assm_sec,
                                   step_stats.lin_solve_sec});
-      if (tr == nullptr)
+      if (traj == nullptr)
       {
         std::swap(obs_prev, obs_curr);
       }

@@ -131,7 +131,7 @@ public:
             "ReSolveLinearSolver received inconsistent Host transpose dimensions");
     checkHostAliases(mat, rhs, result);
 #if defined(FEMX_HAS_RESOLVE)
-    solveTr(mat, rhs, result);
+    solveTranspose(mat, rhs, result);
 #else
     unavailableHost();
 #endif
@@ -182,10 +182,10 @@ public:
     ensureCuda();
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Device transpose dimensions");
-    CudaSystemMatrix jacobian(ctx);
-    jacobian.transpose(mat, cuda_tr_mat_);
-    bindCuda(cuda_tr_sys_, cuda_tr_mat_, *cuda_work_);
-    solveDeviceWith(cuda_tr_sys_, cuda_vecs_, rhs, result, ctx);
+    CudaSystemMatrix system_mat(ctx);
+    system_mat.transpose(mat, d_trans_mat_);
+    bindCuda(cuda_trans_system_, d_trans_mat_, *cuda_work_);
+    solveDeviceWith(cuda_trans_system_, cuda_vecs_, rhs, result, ctx);
 #else
     (void) mat;
     (void) rhs;
@@ -309,7 +309,7 @@ private:
     cpu_solver_ = makeCpuSolver();
   }
 
-  std::unique_ptr<ReSolve::SystemSolver> makeTrSolver()
+  std::unique_ptr<ReSolve::SystemSolver> makeTransposeSolver()
   {
     auto solver = std::make_unique<ReSolve::SystemSolver>(
         cpu_work_.get(),
@@ -322,10 +322,10 @@ private:
     return solver;
   }
 
-  void resetTrSolver()
+  void resetTransposeSolver()
   {
     ensureCpu();
-    tr_solver_ = makeTrSolver();
+    trans_solver_ = makeTransposeSolver();
   }
 
   void applyIterativeOpts(ReSolve::SystemSolver& solver,
@@ -417,9 +417,9 @@ private:
           "ReSolve Host solution Vector::copyToExternal failed");
   }
 
-  void solveTr(const HostCsrMatrix&    mat,
-               const HostVector<Real>& rhs,
-               HostVector<Real>&       result)
+  void solveTranspose(const HostCsrMatrix&    mat,
+                      const HostVector<Real>& rhs,
+                      HostVector<Real>&       result)
   {
     HostContext ctx;
     auto&       vec_handler = ctx.vectors();
@@ -429,51 +429,51 @@ private:
       return;
     }
 
-    setTrOperator(mat);
-    solveHostWith(*tr_solver_,
+    setTransposeOperator(mat);
+    solveHostWith(*trans_solver_,
                   h_vecs_,
                   rhs,
                   result,
                   "ReSolve transpose SystemSolver::solve failed");
   }
 
-  void setTrOperator(const HostCsrMatrix& mat)
+  void setTransposeOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    h_jac_.transpose(mat, tr_mat_data_);
+    h_mat_.transpose(mat, h_trans_mat_);
 
-    const bool reuse = tr_mat_ != nullptr
-                       && tr_rows_ == mat.cols()
-                       && tr_cols_ == mat.rows()
-                       && tr_nnz_ == mat.nnz()
+    const bool reuse = trans_mat_ != nullptr
+                       && trans_rows_ == mat.cols()
+                       && trans_cols_ == mat.rows()
+                       && trans_nnz_ == mat.nnz()
                        && opts_.factor == "none"
                        && opts_.refactor == "none";
     if (!reuse)
     {
-      resetTrSolver();
-      tr_mat_ = std::make_unique<ReSolve::matrix::Csr>(
+      resetTransposeSolver();
+      trans_mat_ = std::make_unique<ReSolve::matrix::Csr>(
           mat.cols(), mat.rows(), mat.nnz());
-      check(tr_mat_->allocateAll(ReSolve::memory::HOST),
+      check(trans_mat_->allocateAll(ReSolve::memory::HOST),
             "ReSolve transpose Csr::allocateAll failed");
-      tr_rows_ = mat.cols();
-      tr_cols_ = mat.rows();
-      tr_nnz_  = mat.nnz();
+      trans_rows_ = mat.cols();
+      trans_cols_ = mat.rows();
+      trans_nnz_  = mat.nnz();
     }
 
-    updateHostMat(tr_mat_data_, *tr_mat_, "ReSolve transpose");
+    updateHostMat(h_trans_mat_, *trans_mat_, "ReSolve transpose");
     if (reuse)
     {
       if (opts_.precond != "none")
       {
-        check(tr_solver_->resetPreconditioner(tr_mat_.get()),
+        check(trans_solver_->resetPreconditioner(trans_mat_.get()),
               "ReSolve transpose preconditioner update failed");
       }
     }
     else
     {
-      check(tr_solver_->setMatrix(tr_mat_.get()),
+      check(trans_solver_->setMatrix(trans_mat_.get()),
             "ReSolve transpose SystemSolver::setMatrix failed");
-      setupCpu(*tr_solver_, "ReSolve transpose");
+      setupCpu(*trans_solver_, "ReSolve transpose");
     }
   }
 #endif
@@ -681,22 +681,22 @@ private:
 
   ReSolveOptions       opts_;
   HostContext          h_matrix_ctx_;
-  HostSystemMatrix     h_jac_{h_matrix_ctx_};
+  HostSystemMatrix     h_mat_{h_matrix_ctx_};
   const HostCsrMatrix* h_op_{nullptr};
   Index                cpu_rows_{0};
   Index                cpu_cols_{0};
   Index                cpu_nnz_{0};
-  HostCsrMatrix        tr_mat_data_;
-  Index                tr_rows_{0};
-  Index                tr_cols_{0};
-  Index                tr_nnz_{0};
+  HostCsrMatrix        h_trans_mat_;
+  Index                trans_rows_{0};
+  Index                trans_cols_{0};
+  Index                trans_nnz_{0};
 
 #if defined(FEMX_HAS_RESOLVE)
   std::unique_ptr<ReSolve::LinAlgWorkspaceCpu> cpu_work_;
   std::unique_ptr<ReSolve::SystemSolver>       cpu_solver_;
   std::unique_ptr<ReSolve::matrix::Csr>        cpu_mat_;
-  std::unique_ptr<ReSolve::SystemSolver>       tr_solver_;
-  std::unique_ptr<ReSolve::matrix::Csr>        tr_mat_;
+  std::unique_ptr<ReSolve::SystemSolver>       trans_solver_;
+  std::unique_ptr<ReSolve::matrix::Csr>        trans_mat_;
   HostVecs                                     h_vecs_;
 #endif
 
@@ -704,8 +704,8 @@ private:
   std::unique_ptr<ReSolve::LinAlgWorkspaceCUDA> cuda_work_;
   CudaSystem                                    cuda_sys_;
   CudaVecs                                      cuda_vecs_;
-  DeviceCsrMatrix                               cuda_tr_mat_;
-  CudaSystem                                    cuda_tr_sys_;
+  DeviceCsrMatrix                               d_trans_mat_;
+  CudaSystem                                    cuda_trans_system_;
 #endif
 };
 

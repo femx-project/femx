@@ -93,7 +93,7 @@ TestOutcome persistentCudaCsrOps()
 
     const HostVector<Real> h_input{1.0, 2.0, 3.0, 4.0};
     const HostVector<Real> h_affine_input{1.0, 2.0, 3.0};
-    const HostVector<Real> h_tr_input{2.0, -1.0, 0.5};
+    const HostVector<Real> h_trans_input{2.0, -1.0, 0.5};
 
     linalg::HostContext      cpu_ctx;
     linalg::CudaContext      ctx;
@@ -174,18 +174,18 @@ TestOutcome persistentCudaCsrOps()
     HostVector<Real> affine_result;
     vec_handler.copy(output, affine_result);
 
-    DeviceVector<Real> tr_input;
-    vec_handler.copy(h_tr_input, tr_input);
-    DeviceVector<Real> direct_tr_product(4);
+    DeviceVector<Real> d_trans_input;
+    vec_handler.copy(h_trans_input, d_trans_input);
+    DeviceVector<Real> d_direct_trans_product(4);
     jacobian.applyT(d_mat,
-                    tr_input.view(),
-                    direct_tr_product.view());
-    HostVector<Real> actual_direct_tr_product;
-    vec_handler.copy(direct_tr_product, actual_direct_tr_product);
-    HostVector<Real> expected_tr_product(4);
+                    d_trans_input.view(),
+                    d_direct_trans_product.view());
+    HostVector<Real> actual_direct_trans_product;
+    vec_handler.copy(d_direct_trans_product, actual_direct_trans_product);
+    HostVector<Real> expected_trans_product(4);
     h_jacobian.applyT(h_mat,
-                      h_tr_input.view(),
-                      expected_tr_product.view());
+                      h_trans_input.view(),
+                      expected_trans_product.view());
     ctx.sync();
 
     record(status,
@@ -229,24 +229,24 @@ TestOutcome persistentCudaCsrOps()
     jacobian.apply(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
                    input.view().subview(0, 3),
                    dense_product.view());
-    DeviceVector<Real> dense_tr_product(3);
+    DeviceVector<Real> d_dense_trans_product(3);
     jacobian.applyT(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
                     dense_product.view(),
-                    dense_tr_product.view());
+                    d_dense_trans_product.view());
     HostVector<Real> actual_dense;
-    HostVector<Real> actual_dense_tr;
+    HostVector<Real> actual_dense_trans;
     vec_handler.copy(dense_product, actual_dense);
-    vec_handler.copy(dense_tr_product, actual_dense_tr);
+    vec_handler.copy(d_dense_trans_product, actual_dense_trans);
     ctx.sync();
     record(status,
            near(actual_dense, HostVector<Real>{14.0, 32.0}),
            "cuBLAS row-major dense apply");
     record(status,
-           near(actual_dense_tr, HostVector<Real>{142.0, 188.0, 234.0}),
+           near(actual_dense_trans, HostVector<Real>{142.0, 188.0, 234.0}),
            "cuBLAS row-major dense transpose");
 
     record(status,
-           near(actual_direct_tr_product, expected_tr_product),
+           near(actual_direct_trans_product, expected_trans_product),
            "transposed CSR apply");
 
     h_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
@@ -256,25 +256,25 @@ TestOutcome persistentCudaCsrOps()
                    sliced_input.view().subview(3, 4),
                    output.view());
     jacobian.applyT(d_mat,
-                    tr_input.view(),
-                    direct_tr_product.view());
+                    d_trans_input.view(),
+                    d_direct_trans_product.view());
 
     HostVector<Real> updated_product;
-    HostVector<Real> updated_direct_tr_product;
+    HostVector<Real> updated_direct_trans_product;
     HostVector<Real> updated_transpose_vals;
     vec_handler.copy(output, updated_product);
-    vec_handler.copy(direct_tr_product, updated_direct_tr_product);
+    vec_handler.copy(d_direct_trans_product, updated_direct_trans_product);
     vec_handler.copy(d_transpose.vals(), updated_transpose_vals);
     h_jacobian.applyT(h_mat,
-                      h_tr_input.view(),
-                      expected_tr_product.view());
+                      h_trans_input.view(),
+                      expected_trans_product.view());
     ctx.sync();
 
     record(status,
            near(updated_product, HostVector<Real>{5.0, -11.0, -1.0}),
            "updated CSR values");
     record(status,
-           near(updated_direct_tr_product, expected_tr_product),
+           near(updated_direct_trans_product, expected_trans_product),
            "updated transpose values");
     record(status,
            near(updated_transpose_vals,

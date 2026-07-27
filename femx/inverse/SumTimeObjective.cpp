@@ -49,19 +49,19 @@ Index SumTimeObjective::numParams() const
   return num_param_;
 }
 
-Real SumTimeObjective::value(const TimeTrajectory&   tr,
+Real SumTimeObjective::value(const TimeTrajectory&   traj,
                              const HostVector<Real>& prm) const
 {
   Real val = 0.0;
   for (const TimeObjective* term : terms_)
   {
-    val += term->value(tr, prm);
+    val += term->value(traj, prm);
   }
   return val;
 }
 
 void SumTimeObjective::stateGrad(Index                   level,
-                                 const TimeTrajectory&   tr,
+                                 const TimeTrajectory&   traj,
                                  const HostVector<Real>& prm,
                                  HostVector<Real>&       out) const
 {
@@ -71,12 +71,12 @@ void SumTimeObjective::stateGrad(Index                   level,
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
-    term->stateGrad(level, tr, prm, term_grad);
+    term->stateGrad(level, traj, prm, term_grad);
     addInto(term_grad, out, numStates());
   }
 }
 
-void SumTimeObjective::paramGrad(const TimeTrajectory&   tr,
+void SumTimeObjective::paramGrad(const TimeTrajectory&   traj,
                                  const HostVector<Real>& prm,
                                  HostVector<Real>&       out) const
 {
@@ -86,7 +86,7 @@ void SumTimeObjective::paramGrad(const TimeTrajectory&   tr,
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
   {
-    term->paramGrad(tr, prm, term_grad);
+    term->paramGrad(traj, prm, term_grad);
     addInto(term_grad, out, numParams());
   }
 }

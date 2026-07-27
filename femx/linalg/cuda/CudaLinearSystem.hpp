@@ -38,7 +38,7 @@ public:
 
 private:
   CudaContext                                        ctx_;
-  CudaSystemMatrix                                   jac_;
+  CudaSystemMatrix                                   mat_;
   std::unique_ptr<LinearSolver<MemorySpace::Device>> solver_;
   DeviceVector<Real>                                 rhs_;
 };

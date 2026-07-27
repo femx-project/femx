@@ -287,9 +287,9 @@ TestOutcome dirichletControlBasics()
   control.apply(HostVector<Real>{1.0, 2.0, 3.0}, mapped);
   status *= valsNear(mapped, std::array<Real, 3>{{1.0, 2.0, 3.0}});
 
-  HostVector<Real> tr;
-  control.applyTranspose(HostVector<Real>{4.0, 5.0, 6.0}, tr);
-  status *= valsNear(tr,
+  HostVector<Real> trans;
+  control.applyTranspose(HostVector<Real>{4.0, 5.0, 6.0}, trans);
+  status *= valsNear(trans,
                      std::array<Real, 3>{{4.0, 5.0, 6.0}});
 
   bool threw = false;
@@ -339,9 +339,9 @@ TestOutcome mappedDirichletControl()
                      std::array<Real, 3>{{4.0, -5.0, -0.5}});
 
   const HostVector<Real> state_direction{1.0, 2.0, -4.0};
-  HostVector<Real>       tr;
-  control.applyTranspose(state_direction, tr);
-  status *= valsNear(tr, std::array<Real, 2>{{0.0, 4.0}});
+  HostVector<Real>       trans;
+  control.applyTranspose(state_direction, trans);
+  status *= valsNear(trans, std::array<Real, 2>{{0.0, 4.0}});
 
   Real state_dot = 0.0;
   for (Index i = 0; i < linear.size(); ++i)
@@ -351,7 +351,7 @@ TestOutcome mappedDirichletControl()
   Real ctr_dot = 0.0;
   for (Index i = 0; i < parameters.size(); ++i)
   {
-    ctr_dot += parameters[i] * tr[i];
+    ctr_dot += parameters[i] * trans[i];
   }
   status *= near(state_dot, ctr_dot);
 

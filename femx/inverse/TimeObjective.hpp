@@ -23,15 +23,15 @@ public:
   virtual Index numStates() const = 0;
   virtual Index numParams() const = 0;
 
-  virtual Real value(const state::TimeTrajectory& tr,
+  virtual Real value(const state::TimeTrajectory& traj,
                      const HostVector<Real>&      prm) const = 0;
 
   virtual void stateGrad(Index                        level,
-                         const state::TimeTrajectory& tr,
+                         const state::TimeTrajectory& traj,
                          const HostVector<Real>&      prm,
                          HostVector<Real>&            out) const = 0;
 
-  virtual void paramGrad(const state::TimeTrajectory& tr,
+  virtual void paramGrad(const state::TimeTrajectory& traj,
                          const HostVector<Real>&      prm,
                          HostVector<Real>&            out) const = 0;
 };

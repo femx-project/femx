@@ -70,7 +70,7 @@ private:
 };
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
-                                  const state::TimeTrajectory&   tr,
+                                  const state::TimeTrajectory&   traj,
                                   const HostVector<Real>&        prm);
 
 void writeTimeObsData(const std::string& path, const TimeObservationData& data);

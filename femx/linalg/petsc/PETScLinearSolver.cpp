@@ -101,7 +101,7 @@ private:
   void solveSystem(const PETScMatrix&      op,
                    const HostVector<Real>& rhs,
                    HostVector<Real>&       out,
-                   bool                    tr)
+                   bool                    trans)
   {
     require(op.rows() == op.cols(),
             "PETScLinearSolver requires a square PETSc matrix");
@@ -122,7 +122,7 @@ private:
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
-    if (tr)
+    if (trans)
     {
       check(KSPSolveTranspose(ksp_, rhs_vec.get(), out_vec.get()),
             "KSPSolveTranspose");

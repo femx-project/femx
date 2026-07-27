@@ -209,11 +209,11 @@ void TimeObservationData::checkTimeValues() const
 }
 
 TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
-                                  const TimeTrajectory&          tr,
+                                  const TimeTrajectory&          traj,
                                   const HostVector<Real>&        prm)
 {
-  require(tr.numSteps() == obs.numSteps()
-              && tr.numStates() == obs.numStates()
+  require(traj.numSteps() == obs.numSteps()
+              && traj.numStates() == obs.numStates()
               && prm.size() == obs.numParams(),
           "sampleTimeObs received inconsistent inputs");
 
@@ -221,7 +221,7 @@ TimeObservationData sampleTimeObs(const TimeObservationOperator& obs,
   for (Index level = 0; level < data.numTimeLevels(); ++level)
   {
     HostVector<Real> vals(obs.numObservations());
-    obs.observe(level, tr[level], prm, vals);
+    obs.observe(level, traj[level], prm, vals);
     data[level] = vals;
   }
   return data;
