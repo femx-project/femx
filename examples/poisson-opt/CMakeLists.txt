@@ -1,8 +1,5 @@
-set(
-  FEMX_POISSON_OPT_SOURCES
-  PoissonOptProblem.cpp
-  PoissonOptResidual.cpp
-  PoissonOptSolve.cpp)
+set(FEMX_POISSON_OPT_SOURCES PoissonOptProblem.cpp PoissonOptResidual.cpp
+                             PoissonOptSolve.cpp)
 
 function(configure_poisson_opt_example target)
   target_link_libraries(${target} PRIVATE femx::femx femx::opt)
@@ -32,8 +29,8 @@ if(FEMX_HAS_RESOLVE
      AND FEMX_HAS_CUDA
      AND NOT FEMX_RESOLVE_DEVICE_MODE STREQUAL "HOST")
     target_sources(poisson-opt-resolve PRIVATE PoissonOptResidual.cu)
-    set_target_properties(poisson-opt-resolve PROPERTIES CUDA_STANDARD 17
-                                                         CUDA_STANDARD_REQUIRED ON)
+    set_target_properties(poisson-opt-resolve
+                          PROPERTIES CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
   endif()
 endif()
 

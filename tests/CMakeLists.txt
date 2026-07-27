@@ -146,18 +146,17 @@ target_link_libraries(runInverseTests PRIVATE femx::inverse)
 add_test(NAME InverseTests COMMAND runInverseTests)
 
 add_executable(runNavierModelTests unit/model/navier/runModelTests.cpp)
-target_include_directories(runNavierModelTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(runNavierModelTests
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runNavierModelTests PRIVATE femx::femx)
 add_test(NAME NavierModelTests COMMAND runNavierModelTests)
 
 if(TARGET femx_navier_support)
-  add_executable(runNavierConfigTests
-                 unit/apps/navier/runConfigTests.cpp)
+  add_executable(runNavierConfigTests unit/apps/navier/runConfigTests.cpp)
   target_include_directories(runNavierConfigTests
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(
-    runNavierConfigTests
-    PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    runNavierConfigTests PRIVATE FEMX_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   target_link_libraries(runNavierConfigTests PRIVATE femx::apps::navier)
   add_test(NAME NavierConfigTests COMMAND runNavierConfigTests)
   set_tests_properties(NavierConfigTests PROPERTIES LABELS "navier;app;focused")
