@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.5.0
+
+v0.5.0 is a major pre-1.0 update that simplifies femx's public architecture
+and removes the superseded APIs. Existing C++ and Python applications may
+require migration.
+
+### Added
+
+- Explicit Host, CUDA, and PETSc linear-system, Jacobian, and execution-context
+  implementations, with Host and CUDA vector handlers.
+- Clear problem, element-kernel, residual, and solve components for the
+  forward and boundary-control Poisson examples.
+- Matching ReSolve CPU/CUDA and PETSc MPI paths for Poisson boundary-control
+  optimization, with analytic or Enzyme parameter derivatives and PETSc/TAO.
+- Dedicated Navier element-kernel, residual, model, problem, and solve
+  components shared across the ReSolve and PETSc applications.
+
+### Changed
+
+- Replaced the generic backend and matrix-handler architecture with linear
+  systems that directly own storage and compose with the selected solver.
+- Merged `DofLayout` into `DofMap`, moved geometric data into `Mesh`, and
+  simplified finite-element space and assembly-map construction.
+- Unified Host and Device selection around `MemSpace` and standardized
+  memory-space-specific aliases and local naming.
+- Reorganized the Poisson examples and Navier application around the same
+  problem-residual-solver flow. Renamed `ns-forward` to `navier` and shortened
+  Navier-Stokes implementation type names to `Navier`.
+- Made state-solver parameters optional for forward problems and clarified
+  residual and Dirichlet-condition setup operations.
+- Updated the supported Python API and tests to follow the revised mesh,
+  state, inverse, and Navier interfaces.
+
+### Removed
+
+- The legacy backend abstractions, `DofLayout`, `Geometry`,
+  `LinearSystemFactory`, and superseded Navier-Stokes model and application
+  APIs.
+
 ## v0.4.0
 
 v0.4.0 refactors the linear algebra API by separating storage from

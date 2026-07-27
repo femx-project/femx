@@ -16,5 +16,5 @@ problems.  The public API is organized around a few core layers:
 - `%femx::runtime` provides runtime, CLI, and parallel-execution utilities.
 - `%femx::model::navier` provides the Navier--Stokes forward model.
 
-For v0.3.0, start with the C++ Poisson examples or the supported Python
-Navier--Stokes example for end-to-end usage.
+For v0.5.0, start with the C++ Poisson examples or the supported Python Navier
+example for end-to-end usage. This release is a major pre-1.0 API update.

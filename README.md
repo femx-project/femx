@@ -2,10 +2,9 @@
 
 femx is a C++ finite element library for forward and inverse analysis.
 
-The v0.3.0 release adds a supported Python API for Navier--Stokes forward and
-inverse workflows, including observations, controls, reduced functionals, and
-optimization. The C++ and Python APIs remain pre-1.0 and may change between
-minor releases.
+v0.5.0 is a major pre-1.0 update that simplifies the finite-element,
+assembly, linear-system, Poisson, and Navier APIs. The C++ and Python APIs
+remain pre-1.0 and may change between minor releases.
 
 ## Requirements
 
