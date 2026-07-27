@@ -77,10 +77,10 @@ Index TimeBlockRegularization::numParams() const
   return num_levels_ * block_size_;
 }
 
-Real TimeBlockRegularization::value(const TimeTrajectory&   tr,
+Real TimeBlockRegularization::value(const TimeTrajectory&   traj,
                                     const HostVector<Real>& prm) const
 {
-  (void) tr;
+  (void) traj;
   checkParamSize(prm);
 
   Real out = 0.0;
@@ -97,23 +97,23 @@ Real TimeBlockRegularization::value(const TimeTrajectory&   tr,
 }
 
 void TimeBlockRegularization::stateGrad(Index                   level,
-                                        const TimeTrajectory&   tr,
+                                        const TimeTrajectory&   traj,
                                         const HostVector<Real>& prm,
                                         HostVector<Real>&       out) const
 {
   (void) level;
-  (void) tr;
+  (void) traj;
   (void) prm;
   linalg::HostContext ctx;
   auto&               vec_handler = ctx.vectors();
   vec_handler.resizeOrZero(out, numStates());
 }
 
-void TimeBlockRegularization::paramGrad(const TimeTrajectory&   tr,
+void TimeBlockRegularization::paramGrad(const TimeTrajectory&   traj,
                                         const HostVector<Real>& prm,
                                         HostVector<Real>&       out) const
 {
-  (void) tr;
+  (void) traj;
   checkParamSize(prm);
   linalg::HostContext ctx;
   auto&               vec_handler = ctx.vectors();

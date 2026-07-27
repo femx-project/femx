@@ -26,7 +26,7 @@ std::unique_ptr<CudaHandles> makeCudaHandles(void* stream)
 
 CudaContext::CudaContext()
   : stream_(cuda::createStream()),
-    vectors_(*this)
+    vec_handler_(*this)
 {
 #if defined(FEMX_HAS_CUDA)
   try
@@ -51,7 +51,7 @@ CudaContext::~CudaContext()
 
 CudaVectorHandler& CudaContext::vectors() noexcept
 {
-  return vectors_;
+  return vec_handler_;
 }
 
 IndexRange CudaContext::elementRange(Index count) const

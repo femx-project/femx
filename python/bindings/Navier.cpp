@@ -135,14 +135,14 @@ py::array_t<Index> boundaryVelocityDofs(
 
 void writeNavierXdmf(const NavierModel&    model,
                      const std::string&    path,
-                     const TimeTrajectory& tr)
+                     const TimeTrajectory& traj)
 {
   if (path.empty())
   {
     throw std::runtime_error("XDMF output path must not be empty");
   }
-  if (tr.numSteps() != model.numSteps()
-      || tr.numStates() != model.numStates())
+  if (traj.numSteps() != model.numSteps()
+      || traj.numStates() != model.numStates())
   {
     throw std::runtime_error(
         "XDMF trajectory dimensions do not match the Navier-Stokes model");
@@ -156,9 +156,9 @@ void writeNavierXdmf(const NavierModel&    model,
 
   femx::io::TimeSeriesDataOut out;
   out.attachMesh(model.mesh());
-  for (Index level = 0; level < tr.numTimeLevels(); ++level)
+  for (Index level = 0; level < traj.numTimeLevels(); ++level)
   {
-    femx::model::navier::splitStateFields(tr[level],
+    femx::model::navier::splitStateFields(traj[level],
                                           model.space(),
                                           ux,
                                           uy,
@@ -894,10 +894,10 @@ public:
     interpolator_.applyParamJacT(level, state, prm, dir, out);
   }
 
-  py::array_t<Real> sample(const femx::state::TimeTrajectory& tr) const
+  py::array_t<Real> sample(const femx::state::TimeTrajectory& traj) const
   {
-    if (tr.numSteps() != interpolator_.numSteps()
-        || tr.numStates() != interpolator_.numStates())
+    if (traj.numSteps() != interpolator_.numSteps()
+        || traj.numStates() != interpolator_.numStates())
     {
       throw std::runtime_error(
           "observation trajectory dimensions do not match the model");
@@ -906,13 +906,13 @@ public:
     const Index       num_points     = interpolator_.pts().size();
     const Index       num_components = interpolator_.comps().size();
     py::array_t<Real> out(
-        {tr.numTimeLevels(), num_points, num_components});
+        {traj.numTimeLevels(), num_points, num_components});
     auto             data = out.mutable_unchecked<3>();
     HostVector<Real> prm(numParams());
-    for (Index level = 0; level < tr.numTimeLevels(); ++level)
+    for (Index level = 0; level < traj.numTimeLevels(); ++level)
     {
       HostVector<Real> vals;
-      observe(level, tr[level], prm, vals);
+      observe(level, traj[level], prm, vals);
       for (Index point = 0; point < num_points; ++point)
       {
         for (Index ic = 0; ic < num_components; ++ic)
@@ -1366,11 +1366,11 @@ void bindNavier(py::module_& module)
             const HostVector<Real> vals =
                 realVector(prm_array, "parameters");
             auto           d_vals = owner.copyParameters(vals);
-            TimeTrajectory tr;
+            TimeTrajectory traj;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
-              integ.solve(d_vals.view(), tr);
+              integ.solve(d_vals.view(), traj);
             }
             else
             {
@@ -1398,9 +1398,9 @@ void bindNavier(py::module_& module)
                 return false;
               };
               py::gil_scoped_release release;
-              integ.solve(d_vals.view(), tr, std::move(observer));
+              integ.solve(d_vals.view(), traj, std::move(observer));
             }
-            return tr;
+            return traj;
           },
           py::arg("param"),
           py::arg("progress") = py::none())

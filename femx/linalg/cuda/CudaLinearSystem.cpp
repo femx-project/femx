@@ -8,7 +8,7 @@ namespace femx::linalg
 
 CudaLinearSystem::CudaLinearSystem(
     std::unique_ptr<LinearSolver<MemorySpace::Device>> solver)
-  : jac_(ctx_), solver_(std::move(solver))
+  : mat_(ctx_), solver_(std::move(solver))
 {
   require(solver_ != nullptr,
           "CudaLinearSystem requires a Device linear solver");
@@ -23,19 +23,19 @@ Context<MemorySpace::Device>& CudaLinearSystem::context() noexcept
 
 SystemMatrix<MemorySpace::Device>& CudaLinearSystem::matrix() noexcept
 {
-  return jac_;
+  return mat_;
 }
 
 void CudaLinearSystem::solve(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_->solve(jac_.matrix(), rhs_, solution, ctx_);
+  solver_->solve(mat_.matrix(), rhs_, solution, ctx_);
 }
 
 void CudaLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
   ctx_.vectors().copy(rhs, rhs_);
-  solver_->solveT(jac_.matrix(), rhs_, solution, ctx_);
+  solver_->solveT(mat_.matrix(), rhs_, solution, ctx_);
 }
 
 } // namespace femx::linalg

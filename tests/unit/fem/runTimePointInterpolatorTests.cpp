@@ -96,18 +96,18 @@ TestOutcome hostFlatObserveAndTranspose()
   linalg::HostSystemMatrix jacobian(ctx);
   jacobian.apply(op.data().matrix(), state.view(), flat_obs.view());
 
-  HostVector<Real> expected_tr;
-  op.applyStateJacT(1, state, prm, dir, expected_tr);
+  HostVector<Real> expected_trans;
+  op.applyStateJacT(1, state, prm, dir, expected_trans);
 
-  HostVector<Real> flat_tr(op.numStates());
-  jacobian.applyT(op.data().matrix(), dir.view(), flat_tr.view(), 1.0, 1.0);
+  HostVector<Real> flat_trans(op.numStates());
+  jacobian.applyT(op.data().matrix(), dir.view(), flat_trans.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;
   status *= near(flat_obs, HostVector<Real>{2.5, 17.5, 4.5, 27.5});
   status *= near(flat_obs, expected_obs);
-  status *= near(flat_tr, expected_tr);
-  status *= near(innerProduct(flat_obs, dir), innerProduct(state, flat_tr));
+  status *= near(flat_trans, expected_trans);
+  status *= near(innerProduct(flat_obs, dir), innerProduct(state, flat_trans));
   return status.report();
 }
 
@@ -128,9 +128,9 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   const HostVector<Real> prm;
 
   HostVector<Real> expected_obs;
-  HostVector<Real> expected_tr;
+  HostVector<Real> expected_trans;
   op.observe(0, state, prm, expected_obs);
-  op.applyStateJacT(0, state, prm, dir, expected_tr);
+  op.applyStateJacT(0, state, prm, dir, expected_trans);
 
   linalg::CudaContext         ctx;
   auto&                       vec_handler = ctx.vectors();
@@ -138,33 +138,33 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   DeviceVector<Real>          d_state;
   DeviceVector<Real>          d_dir;
   DeviceVector<Real>          d_obs(op.numObservations());
-  DeviceVector<Real>          d_tr(op.numStates());
+  DeviceVector<Real>          d_trans(op.numStates());
 
   fem::copy(op, d_op, ctx);
   vec_handler.copy(state, d_state);
   vec_handler.copy(dir, d_dir);
 
-  const inverse::DeviceTimeObservationOperator& iface   = d_op;
-  const Real*                                   obs_ptr = d_obs.data();
-  const Real*                                   tr_ptr  = d_tr.data();
+  const inverse::DeviceTimeObservationOperator& iface     = d_op;
+  const Real*                                   obs_ptr   = d_obs.data();
+  const Real*                                   trans_ptr = d_trans.data();
   iface.observe(1, d_state.view(), d_obs.view(), ctx);
-  vec_handler.zero(d_tr.view());
-  iface.addStateJacT(1, d_dir.view(), d_tr.view(), ctx);
+  vec_handler.zero(d_trans.view());
+  iface.addStateJacT(1, d_dir.view(), d_trans.view(), ctx);
 
   HostVector<Real> got_obs;
-  HostVector<Real> got_tr;
+  HostVector<Real> got_trans;
   vec_handler.copy(d_obs, got_obs);
-  vec_handler.copy(d_tr, got_tr);
+  vec_handler.copy(d_trans, got_trans);
   ctx.sync();
 
   status *= near(got_obs, expected_obs);
-  status *= near(got_tr, expected_tr);
-  status *= near(innerProduct(got_obs, dir), innerProduct(state, got_tr));
+  status *= near(got_trans, expected_trans);
+  status *= near(innerProduct(got_obs, dir), innerProduct(state, got_trans));
   status *= iface.numSteps() == op.numSteps();
   status *= iface.numStates() == op.numStates();
   status *= iface.numObservations() == op.numObservations();
   status *= d_obs.data() == obs_ptr;
-  status *= d_tr.data() == tr_ptr;
+  status *= d_trans.data() == trans_ptr;
   return status.report();
 }
 #endif

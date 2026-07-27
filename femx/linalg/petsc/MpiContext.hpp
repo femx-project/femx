@@ -56,7 +56,7 @@ public:
 
 private:
   MPI_Comm          comm_{MPI_COMM_NULL}; ///< Owned MPI communicator.
-  HostVectorHandler vectors_;             ///< Owned Host vector operations.
+  HostVectorHandler vec_handler_;         ///< Owned Host vector operations.
 };
 
 } // namespace femx::linalg

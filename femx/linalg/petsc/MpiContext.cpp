@@ -47,7 +47,7 @@ MpiContext::~MpiContext()
 
 HostVectorHandler& MpiContext::vectors() noexcept
 {
-  return vectors_;
+  return vec_handler_;
 }
 
 IndexRange MpiContext::elementRange(Index count) const

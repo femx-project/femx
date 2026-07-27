@@ -28,15 +28,15 @@ public:
   Index numStates() const override;
   Index numParams() const override;
 
-  Real value(const state::TimeTrajectory& tr,
+  Real value(const state::TimeTrajectory& traj,
              const HostVector<Real>&      prm) const override;
 
   void stateGrad(Index                        level,
-                 const state::TimeTrajectory& tr,
+                 const state::TimeTrajectory& traj,
                  const HostVector<Real>&      prm,
                  HostVector<Real>&            out) const override;
 
-  void paramGrad(const state::TimeTrajectory& tr,
+  void paramGrad(const state::TimeTrajectory& traj,
                  const HostVector<Real>&      prm,
                  HostVector<Real>&            out) const override;
 

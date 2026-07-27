@@ -41,7 +41,7 @@ public:
 
 private:
   HostContext                                      ctx_;
-  HostSystemMatrix                                 jac_;
+  HostSystemMatrix                                 mat_;
   std::unique_ptr<LinearSolver<MemorySpace::Host>> solver_;
   HostVector<Real>                                 rhs_;
 };

@@ -16,12 +16,13 @@ names may be used when their meaning is clear.
 | Short form | Full form                   |
 | ---------- | --------------------------- |
 | `jac`      | `jacobian`                  |
-| `tr`       | `trajectory`                |
+| `traj`     | `trajectory`                |
+| `trans`    | `transpose`                 |
 | `lin`      | `linear`, `linearization`   |
 | `init`     | `initial`, `initialize`     |
 | `ctx`      | `context`                   |
 | `hist`     | `history`                   |
-| `res`      | `residual`   |
+| `res`      | `residual`                  |
 | `val`      | `value`                     |
 | `vals`     | `values`                    |
 | `src`      | `source`                    |

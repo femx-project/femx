@@ -39,7 +39,7 @@ public:
 
 private:
   MpiContext        ctx_;
-  PETScSystemMatrix jac_;
+  PETScSystemMatrix mat_;
   PETScLinearSolver solver_;
   HostVector<Real>  rhs_;
 };

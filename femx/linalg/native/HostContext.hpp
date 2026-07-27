@@ -14,7 +14,7 @@ public:
   /** @brief Return the owned Host vector operations. */
   HostVectorHandler& vectors() noexcept override
   {
-    return vectors_;
+    return vec_handler_;
   }
 
   /**
@@ -47,7 +47,7 @@ public:
   }
 
 private:
-  HostVectorHandler vectors_; ///< Owned Host vector operations.
+  HostVectorHandler vec_handler_; ///< Owned Host vector operations.
 };
 
 } // namespace femx::linalg

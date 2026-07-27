@@ -107,7 +107,7 @@ private:
   Ctx&                 ctx_;
   const TimeObjective& obj_;
   state::TimeDims      dims_;
-  Tr                   tr_;
+  Tr                   traj_;
   HostVector<Real>     h_prm_;
   HostVector<Real>     h_rhs_;
   HostVector<Real>     h_grad_;
@@ -175,7 +175,7 @@ Real TimeReducedFunctional<Space>::value(
 {
   resetTiming();
   solveFwd(prm, progress);
-  return obj_.value(tr_, h_prm_);
+  return obj_.value(traj_, h_prm_);
 }
 
 template <MemorySpace Space>
@@ -196,7 +196,7 @@ Real TimeReducedFunctional<Space>::valueGrad(
 {
   resetTiming();
   solveFwd(prm, progress);
-  const Real val = obj_.value(tr_, h_prm_);
+  const Real val = obj_.value(traj_, h_prm_);
   solveAdj(out, progress);
   return val;
 }
@@ -293,12 +293,12 @@ template <MemorySpace Space>
 void TimeReducedFunctional<Space>::loadStep(Index step)
 {
   auto&     vec_handler = ctx_.vectors();
-  const Tr& tr          = tr_;
+  const Tr& traj        = traj_;
   for (Index lag = 0; lag < dims_.num_hist; ++lag)
   {
-    vec_handler.copy(tr.level(detail::histLevel(step, lag)), histState(lag));
+    vec_handler.copy(traj.level(detail::histLevel(step, lag)), histState(lag));
   }
-  vec_handler.copy(tr.level(step + 1), nxt_.view());
+  vec_handler.copy(traj.level(step + 1), nxt_.view());
 }
 
 template <MemorySpace Space>
@@ -326,7 +326,8 @@ void TimeReducedFunctional<Space>::solveFwd(
     };
   }
 
-  const state::SolveStats stats = integrator_.solve(prm_.view(), tr_, std::move(observer));
+  const state::SolveStats stats =
+      integrator_.solve(prm_.view(), traj_, std::move(observer));
 
   assm_sec_    += stats.assm_sec;
   solve_sec_   += stats.lin_solve_sec;
@@ -334,7 +335,7 @@ void TimeReducedFunctional<Space>::solveFwd(
   solve_calls_ += stats.lin_solve_calls;
 
   notify(progress, "forward-end", numSteps());
-  require(tr_.numSteps() == numSteps() && tr_.numStates() == numStates(),
+  require(traj_.numSteps() == numSteps() && traj_.numStates() == numStates(),
           "TimeReducedFunctional forward trajectory size mismatch");
 }
 
@@ -360,10 +361,10 @@ void TimeReducedFunctional<Space>::solveAdj(
   auto& vec_handler = ctx_.vectors();
   require(out.size() == numParams(),
           "TimeReducedFunctional gradient size mismatch");
-  obj_.paramGrad(tr_, h_prm_, h_grad_);
+  obj_.paramGrad(traj_, h_prm_, h_grad_);
   vec_handler.copy(h_grad_.view(), grad_.view());
   checkSize(grad_, numParams());
-  obj_.stateGrad(0, tr_, h_prm_, h_rhs_);
+  obj_.stateGrad(0, traj_, h_prm_, h_rhs_);
   vec_handler.copy(h_rhs_.view(), init_grad_.view());
   checkSize(init_grad_, numStates());
   resetCarry();
@@ -372,7 +373,7 @@ void TimeReducedFunctional<Space>::solveAdj(
   for (Index step = numSteps(); step-- > 0;)
   {
     notify(progress, "adjoint-step", numSteps() - step);
-    obj_.stateGrad(step + 1, tr_, h_prm_, h_rhs_);
+    obj_.stateGrad(step + 1, traj_, h_prm_, h_rhs_);
     vec_handler.copy(h_rhs_.view(), rhs_.view());
     checkSize(rhs_, numStates());
 
