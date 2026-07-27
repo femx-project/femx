@@ -20,7 +20,7 @@ Optional dependencies:
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
-- Python >= 3.9, pybind11, NumPy, and SciPy, for the Python API
+- Python >= 3.9 with pip, pybind11, NumPy, and SciPy, for the Python API
 
 ## Build
 
@@ -67,13 +67,19 @@ Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
 
 ## Python API
 
-Build and install the supported Python package directly from the repository:
+From the repository root, activate a Python environment that provides pip and
+install the supported Python package:
 
 ```shell
 python3 -m pip install .
 ```
 
-See [python/README.md](python/README.md) for details.
+For Bash or Zsh, an existing virtual environment can be activated with
+`source .venv/bin/activate` before running the install command.
+
+See the
+[Python API documentation](https://github.com/femx-project/femx/blob/main/python/README.md)
+for details.
 
 ## Install
 
@@ -124,8 +130,8 @@ definition, Enzyme configuration, and backend details.
 ## Run Apps
 
 The Navier-Stokes forward app provides separate configuration sets for ReSolve
-and PETSc. From your build directory, run the executable for the solver you
-enabled:
+and PETSc. From the top-level `build/` directory created in the Build section,
+run the executable for the solver you enabled:
 
 ```shell
 ./apps/navier/navier-resolve \
