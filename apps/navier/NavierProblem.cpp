@@ -36,14 +36,14 @@ NavierProblem::NavierProblem(const Config& prm)
                                     prm.boundary_conditions,
                                     model_.numSteps(),
                                     model_.dt())),
-    control_map_(fem::makeControlMap(model_.numSteps(),
-                                     model_.numStates(),
-                                     {},
-                                     boundary_data_.dofs,
-                                     boundary_data_.vals,
-                                     {},
-                                     0,
-                                     0))
+    ctr_map_(fem::makeControlMap(model_.numSteps(),
+                                 model_.numStates(),
+                                 {},
+                                 boundary_data_.dofs,
+                                 boundary_data_.vals,
+                                 {},
+                                 0,
+                                 0))
 {
 }
 
@@ -62,7 +62,7 @@ NavierProblem::boundaryData() const noexcept
 const fem::HostControlMap&
 NavierProblem::controlMap() const noexcept
 {
-  return control_map_;
+  return ctr_map_;
 }
 
 const HostVector<Real>&

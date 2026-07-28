@@ -147,7 +147,7 @@ int run(const Config& prm)
   DeviceTimeIntegrator integ(res, system);
 
   DeviceVector<Real> init_state;
-  ctx.vectors().copy(problem.initialState(), init_state);
+  ctx.vectorHandler().copy(problem.initialState(), init_state);
   ctx.sync();
 
   integ.setInitialState(init_state);

@@ -20,13 +20,13 @@ SystemMatrix<MemorySpace::Host>& PETScLinearSystem::matrix() noexcept
 
 void PETScLinearSystem::solve(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_.solve(mat_.matrix(), rhs_, solution);
 }
 
 void PETScLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_.solveT(mat_.matrix(), rhs_, solution);
 }
 

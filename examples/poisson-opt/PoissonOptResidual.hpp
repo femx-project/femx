@@ -19,9 +19,9 @@ namespace examples::poisson_opt
 namespace detail
 {
 
-FEMX_HOST_DEVICE inline Real controlResidual(Real state, Real control)
+FEMX_HOST_DEVICE inline Real controlResidual(Real state, Real ctr)
 {
-  return state - control;
+  return state - ctr;
 }
 
 } // namespace detail
@@ -169,7 +169,7 @@ private:
   fem::DeviceElementQuadData  elem_data_;     ///< Device integration data.
   assembly::DeviceAssemblyMap assm_map_;      ///< Device assembly mapping.
   assembly::DeviceBoundaryMap boundary_map_;  ///< Device constrained rows.
-  DeviceVector<Index>         control_dofs_;  ///< Device control rows.
+  DeviceVector<Index>         ctr_dofs_;      ///< Device control rows.
   mutable DeviceVector<Real>  boundary_vals_; ///< Device boundary workspace.
 };
 

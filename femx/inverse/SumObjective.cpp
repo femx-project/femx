@@ -50,7 +50,7 @@ void SumObjective::stateGrad(const HostVector<Real>& state,
                              HostVector<Real>&       out) const
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, num_states_);
 
   HostVector<Real> term_grad;
@@ -66,7 +66,7 @@ void SumObjective::paramGrad(const HostVector<Real>& state,
                              HostVector<Real>&       out) const
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, num_param_);
 
   HostVector<Real> term_grad;

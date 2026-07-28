@@ -60,7 +60,7 @@ TestOutcome vectorBasics()
 {
   TestStatus          status(__func__);
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
 
   HostVector<Real> v(3, 2.0);
   status *= v.size() == 3;
@@ -99,7 +99,7 @@ TestOutcome vectorViewCopiesAndAssigns()
 {
   TestStatus          status(__func__);
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
 
   Real                 raw[3] = {1.0, 2.0, 3.0};
   HostVectorView<Real> view(raw, 3);
@@ -138,7 +138,7 @@ TestOutcome vectorGatherScatter()
   const HostVector<Index> indices{4, 1, 3};
   HostVector<Real>        compact(3);
   linalg::HostContext     ctx;
-  auto&                   vec_handler = ctx.vectors();
+  auto&                   vec_handler = ctx.vectorHandler();
   vec_handler.gather(source.view(), indices.view(), compact.view());
   status *= valsNear(compact.data(),
                      std::array<Real, 3>{{50.0, 20.0, 40.0}});
@@ -272,7 +272,7 @@ TestOutcome csrMatrixOwnsValuesForGraph()
 {
   TestStatus          status(__func__);
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
 
   const auto    map = makeSharedElementMap();
   HostCsrMatrix mat(map.pattern());

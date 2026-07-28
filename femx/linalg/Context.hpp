@@ -27,7 +27,7 @@ public:
   virtual ~Context() = default;
 
   /** @brief Return the owned Host vector operations. */
-  virtual HostVectorHandler& vectors() noexcept = 0;
+  virtual HostVectorHandler& vectorHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.
@@ -63,7 +63,7 @@ public:
   virtual ~Context() = default;
 
   /** @brief Return the owned CUDA vector operations. */
-  virtual CudaVectorHandler& vectors() noexcept = 0;
+  virtual CudaVectorHandler& vectorHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.

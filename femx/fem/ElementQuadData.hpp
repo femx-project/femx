@@ -253,7 +253,7 @@ inline void copy(const HostElementQuadData& src,
                  DeviceElementQuadData&     dst,
                  linalg::CudaContext&       ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   dst.num_elems_    = src.num_elems_;
   dst.num_qpts_     = src.num_qpts_;
   dst.num_shapes_   = src.num_shapes_;

@@ -28,13 +28,13 @@ SystemMatrix<MemorySpace::Device>& CudaLinearSystem::matrix() noexcept
 
 void CudaLinearSystem::solve(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_->solve(mat_.matrix(), rhs_, solution, ctx_);
 }
 
 void CudaLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_->solveT(mat_.matrix(), rhs_, solution, ctx_);
 }
 

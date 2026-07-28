@@ -58,10 +58,12 @@ void applyDirichletConditions(
   require(state.data() != residual.data()
               && vals.data() != residual.data(),
           "BoundaryMap residual output must not alias its inputs");
+
   if (rows.empty())
   {
     return;
   }
+
   applyDirichletConditionsKernel<<<cuda::numBlocks(rows.size(), kThreads),
                                    kThreads,
                                    0,
@@ -78,10 +80,12 @@ void zeroBoundary(const DeviceBoundaryMap& map,
                   linalg::CudaContext&     ctx)
 {
   const auto rows = map.view().constrained_rows;
+
   if (rows.empty())
   {
     return;
   }
+
   zeroBoundaryKernel<<<cuda::numBlocks(rows.size(), kThreads),
                        kThreads,
                        0,

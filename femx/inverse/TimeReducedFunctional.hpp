@@ -266,7 +266,7 @@ TimeReducedFunctional<Space>::carry(Index lag)
 template <MemorySpace Space>
 void TimeReducedFunctional<Space>::resetCarry()
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   vec_handler.zero(carry_.view());
   carry_head_ = 0;
 }
@@ -274,7 +274,7 @@ void TimeReducedFunctional<Space>::resetCarry()
 template <MemorySpace Space>
 void TimeReducedFunctional<Space>::advanceCarry()
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   vec_handler.zero(carry(0));
   carry_head_ = (carry_head_ + 1) % dims_.num_hist;
 }
@@ -292,7 +292,7 @@ TimeReducedFunctional<Space>::timeCtx(Index step) const
 template <MemorySpace Space>
 void TimeReducedFunctional<Space>::loadStep(Index step)
 {
-  auto&     vec_handler = ctx_.vectors();
+  auto&     vec_handler = ctx_.vectorHandler();
   const Tr& traj        = traj_;
   for (Index lag = 0; lag < dims_.num_hist; ++lag)
   {
@@ -306,7 +306,7 @@ void TimeReducedFunctional<Space>::solveFwd(
     HostVectorView<const Real> prm,
     const TimeReducedProgress& progress)
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   require(prm.size() == numParams(),
           "TimeReducedFunctional parameter size mismatch");
   h_prm_ = prm;
@@ -358,7 +358,7 @@ void TimeReducedFunctional<Space>::solveAdj(
     HostVectorView<Real>       out,
     const TimeReducedProgress& progress)
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   require(out.size() == numParams(),
           "TimeReducedFunctional gradient size mismatch");
   obj_.paramGrad(traj_, h_prm_, h_grad_);

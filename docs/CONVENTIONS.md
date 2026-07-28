@@ -16,6 +16,7 @@ names may be used when their meaning is clear.
 | Short form | Full form                   |
 | ---------- | --------------------------- |
 | `jac`      | `jacobian`                  |
+| `ctr`      | `control`                   |
 | `traj`     | `trajectory`                |
 | `trans`    | `transpose`                 |
 | `lin`      | `linear`, `linearization`   |

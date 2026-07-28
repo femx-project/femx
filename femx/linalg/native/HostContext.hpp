@@ -12,7 +12,7 @@ class HostContext final : public Context<MemorySpace::Host>
 {
 public:
   /** @brief Return the owned Host vector operations. */
-  HostVectorHandler& vectors() noexcept override
+  HostVectorHandler& vectorHandler() noexcept override
   {
     return vec_handler_;
   }

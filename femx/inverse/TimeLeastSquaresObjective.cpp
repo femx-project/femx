@@ -131,7 +131,7 @@ void TimeLeastSquaresObjective::stateGrad(Index                   level,
 {
   checkLevel(level);
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numStates());
 
   HostVector<Real> weighted_res;
@@ -175,7 +175,7 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory&   traj,
                                           HostVector<Real>&       out) const
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numParams());
 
   HostVector<Real> weighted_res;

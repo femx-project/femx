@@ -122,7 +122,7 @@ private:
             "ReducedFunctional parameter size mismatch");
     h_prm_ = prm;
 
-    auto& vec_handler = fwd_ctx_.vectors();
+    auto& vec_handler = fwd_ctx_.vectorHandler();
     vec_handler.copy(h_prm_.view(), prm_);
     state_solver_.solve(state_, prm_);
     vec_handler.copy(state_.view(), h_state_);
@@ -132,30 +132,33 @@ private:
 
   void gradAtState(HostVector<Real>& out)
   {
-    auto& vec_handler = adj_ctx_.vectors();
-    obj_.stateGrad(
-        h_state_, h_prm_, h_state_grad_);
+    auto& vec_handler = adj_ctx_.vectorHandler();
+    obj_.stateGrad(h_state_, h_prm_, h_state_grad_);
+
     require(h_state_grad_.size() == dims_.num_states,
             "ReducedFunctional objective state-gradient size mismatch");
+
     vec_handler.copy(h_state_grad_.view(), state_grad_);
 
     auto& jac = adj_system_.matrix();
     jac.setup(res_.hostPattern());
     res_.assembleJacobian(state_, prm_, jac, adj_ctx_);
     jac.finalize();
+
     adj_system_.solveT(state_grad_.view(), adj_);
     checkSize(adj_, dims_.num_res);
 
     obj_.paramGrad(h_state_, h_prm_, h_prm_grad_);
+
     require(h_prm_grad_.size() == numParams(),
             "ReducedFunctional objective parameter-gradient size mismatch");
+
     vec_handler.copy(h_prm_grad_.view(), prm_grad_);
 
-    res_.applyParamJacT(
-        state_, prm_, adj_, res_prm_adj_, adj_ctx_);
+    res_.applyParamJacT(state_, prm_, adj_, res_prm_adj_, adj_ctx_);
     checkSize(res_prm_adj_, numParams());
-    vec_handler.axpby(
-        -1.0, res_prm_adj_.view(), 1.0, prm_grad_.view());
+
+    vec_handler.axpby(-1.0, res_prm_adj_.view(), 1.0, prm_grad_.view());
     vec_handler.copy(prm_grad_.view(), out);
     adj_ctx_.sync();
   }

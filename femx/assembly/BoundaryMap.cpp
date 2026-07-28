@@ -27,7 +27,7 @@ void copy(const HostBoundaryMap& source,
           linalg::CudaContext&   ctx)
 {
   DeviceVector<Index> constrained_rows;
-  ctx.vectors().copy(source.constrained_rows_, constrained_rows);
+  ctx.vectorHandler().copy(source.constrained_rows_, constrained_rows);
   destination = DeviceBoundaryMap(std::move(constrained_rows));
 }
 

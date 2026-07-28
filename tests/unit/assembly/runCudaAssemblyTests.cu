@@ -129,7 +129,7 @@ void copyMatrix(const HostCsrMatrix& source,
     throw std::runtime_error(
         "Test matrix copy requires matching CSR layouts");
   }
-  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+  ctx.vectorHandler().copy(source.vals().view(), destination.vals().view());
 }
 
 void copyMatrix(const DeviceCsrMatrix& source,
@@ -141,7 +141,7 @@ void copyMatrix(const DeviceCsrMatrix& source,
     throw std::runtime_error(
         "Test matrix copy requires matching CSR layouts");
   }
-  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+  ctx.vectorHandler().copy(source.vals().view(), destination.vals().view());
 }
 
 void loadMatrix(const HostCsrMatrix&      source,
@@ -173,8 +173,8 @@ void loadMatrix(const HostCsrMatrix&      source,
                 linalg::CudaContext&      ctx)
 {
   destination.setup(source.pattern());
-  ctx.vectors().copy(source.vals().view(),
-                     destination.assemblyView().values);
+  ctx.vectorHandler().copy(source.vals().view(),
+                           destination.assemblyView().values);
 }
 
 HostCsrPattern denseThreeByThreeGraph()
@@ -224,7 +224,7 @@ TestOutcome cudaAssemblyMatchesCpuReference()
     const HostCsrMatrix& cpu_jac = cpu_jacobian.matrix();
 
     linalg::CudaContext         cuda_ctx;
-    auto&                       vec_handler = cuda_ctx.vectors();
+    auto&                       vec_handler = cuda_ctx.vectorHandler();
     fem::DeviceMesh             d_mesh;
     assembly::DeviceAssemblyMap d_map;
     DeviceVector<Real>          d_state;
@@ -338,7 +338,7 @@ TestOutcome cudaBoundaryMatchesCpuReference()
         expected_jacobian.matrix();
 
     linalg::CudaContext         ctx;
-    auto&                       vec_handler = ctx.vectors();
+    auto&                       vec_handler = ctx.vectorHandler();
     assembly::DeviceBoundaryMap d_map;
     assembly::copy(h_map, d_map, ctx);
 
@@ -497,7 +497,7 @@ TestOutcome cudaTimeAssemblyMatchesCpuReference()
     const HostCsrMatrix& cpu_jac = cpu_jacobian.matrix();
 
     linalg::CudaContext         ctx;
-    auto&                       vec_handler = ctx.vectors();
+    auto&                       vec_handler = ctx.vectorHandler();
     assembly::DeviceAssemblyMap d_map;
     DeviceVector<Real>          d_hist;
     DeviceVector<Real>          d_nxt;

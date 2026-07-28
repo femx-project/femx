@@ -34,6 +34,7 @@ void HostPoissonResidual::assembleResidual(
       state,
       out,
       ctx);
+
   assembly::applyDirichletConditions(problem_.boundaryMap(),
                                      state.view(),
                                      problem_.boundaryValues().view(),
@@ -53,6 +54,7 @@ void HostPoissonResidual::assembleJacobian(
       state,
       out,
       ctx);
+
   assembly::applyDirichletConditions(problem_.boundaryMap(), out);
 }
 

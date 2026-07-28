@@ -138,14 +138,17 @@ inline void addTimeElement(
   const auto map_v = map.view();
   rows.resize(map_v.numResDofs(ie));
   cols.resize(map_v.numStateDofs(ie));
+
   for (Index row = 0; row < rows.size(); ++row)
   {
     rows[row] = map_v.resDof(ie, row);
   }
+
   for (Index col = 0; col < cols.size(); ++col)
   {
     cols[col] = map_v.stateDof(ie, col);
   }
+
   const Index num_entries = rows.size() * cols.size();
   jac.addElement(
       {rows.view(),
@@ -176,10 +179,11 @@ void assembleHostElements(
   checkAssemblyInputs(mesh, map, state);
   require(res != nullptr || jac != nullptr,
           "Assembly requires a residual or Jacobian output");
+
   if (res != nullptr)
   {
     checkAssemblyAliases(state, *res);
-    ctx.vectors().resizeOrZero(*res, map.numRes());
+    ctx.vectorHandler().resizeOrZero(*res, map.numRes());
   }
 
   const auto mesh_v = mesh.view();
@@ -359,7 +363,7 @@ void assembleResidualAndJacobian(
   detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
 
-  ctx.vectors().resizeOrZero(res, map.numRes());
+  ctx.vectorHandler().resizeOrZero(res, map.numRes());
 
   const auto map_v = map.view();
 
@@ -446,7 +450,7 @@ void assembleResidual(
       num_hist, state::VariableBlock::NextState, map, hist, nxt);
   detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
-  ctx.vectors().resizeOrZero(res, map.numRes());
+  ctx.vectorHandler().resizeOrZero(res, map.numRes());
 
   const auto map_v = map.view();
 #pragma omp parallel

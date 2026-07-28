@@ -184,7 +184,7 @@ public:
     const py::function     override = py::get_override(this, "initial_state");
     if (!override)
     {
-      ctx.vectors().resizeOrZero(out, dims().num_states);
+      ctx.vectorHandler().resizeOrZero(out, dims().num_states);
       return;
     }
     copyArray(override(vectorArray(prm)), out, "initial state");
@@ -197,7 +197,7 @@ public:
   {
     py::gil_scoped_acquire gil;
     const py::function     override =
-        py::get_override(this, "add_initial_state_jac_t");
+        py::get_override(this, "add_initial_state_jac_transpose");
     if (!override)
     {
       TimeResidual::addInitialStateJacT(state_grad, out, ctx);

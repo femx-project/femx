@@ -45,7 +45,7 @@ MpiContext::~MpiContext()
   }
 }
 
-HostVectorHandler& MpiContext::vectors() noexcept
+HostVectorHandler& MpiContext::vectorHandler() noexcept
 {
   return vec_handler_;
 }

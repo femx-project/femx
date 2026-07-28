@@ -29,7 +29,7 @@ public:
   MpiContext& operator=(MpiContext&&)      = delete;
 
   /** @brief Return the owned Host vector operations. */
-  HostVectorHandler& vectors() noexcept override;
+  HostVectorHandler& vectorHandler() noexcept override;
 
   /**
    * @brief Return this rank's contiguous element range.

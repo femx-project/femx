@@ -10,7 +10,7 @@ namespace femx::examples::poisson_opt
 namespace
 {
 
-Real controlDerivative(Real state, Real control)
+Real controlDerivative(Real state, Real ctr)
 {
 #if defined(FEMX_HAS_ENZYME)
   return __enzyme_fwddiff<Real>(
@@ -18,11 +18,11 @@ Real controlDerivative(Real state, Real control)
       enzyme_const,
       state,
       enzyme_dup,
-      control,
+      ctr,
       1.0);
 #else
   (void) state;
-  (void) control;
+  (void) ctr;
   return -1.0;
 #endif
 }

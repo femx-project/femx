@@ -17,7 +17,7 @@ DevicePoissonResidual::DevicePoissonResidual(
   fem::copy(problem.elementData(), elem_data_, ctx);
   assembly::copy(problem.assemblyMap(), assm_map_, ctx);
   assembly::copy(problem.boundaryMap(), boundary_map_, ctx);
-  ctx.vectors().copy(problem.boundaryValues(), boundary_vals_);
+  ctx.vectorHandler().copy(problem.boundaryValues(), boundary_vals_);
 }
 
 state::Dimensions DevicePoissonResidual::dims() const

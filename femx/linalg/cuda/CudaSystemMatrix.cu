@@ -489,8 +489,8 @@ void CudaSystemMatrix::ensureConstraints(
   constraints_.layout_id = matrix_.pattern().layoutId();
   constraints_.rows      = rows.data();
   constraints_.count     = rows.size();
-  ctx_.vectors().resizeOrZero(constraints_.row_to_constraint,
-                              matrix_.rows());
+  ctx_.vectorHandler().resizeOrZero(constraints_.row_to_constraint,
+                                    matrix_.rows());
   if (!constraints_.row_to_constraint.empty())
   {
     fillIndexKernel<<<cuda::numBlocks(constraints_.row_to_constraint.size(), kThreads),

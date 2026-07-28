@@ -62,7 +62,7 @@ Real solveDevice(const ExampleHelper&  helper,
   state_solver.solve(d_x);
 
   const Real rnorm = helper.resNorm(res, d_x, ctx);
-  ctx.vectors().copy(d_x, h_x);
+  ctx.vectorHandler().copy(d_x, h_x);
   ctx.sync();
 
   return rnorm;

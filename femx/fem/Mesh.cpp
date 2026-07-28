@@ -85,7 +85,7 @@ void copy(const Mesh&          src,
   dst.num_elems_      = src.numElems();
   dst.max_elem_nodes_ = src.max_elem_nodes_;
 
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   vec_handler.copy(src.coords_, dst.coords_);
   vec_handler.copy(src.elem_offsets_, dst.elem_offsets_);
   vec_handler.copy(src.conn_, dst.conn_);

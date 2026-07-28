@@ -97,7 +97,7 @@ public:
     checkHostAliases(*h_op_, rhs, result);
 
     HostContext ctx;
-    auto&       vec_handler = ctx.vectors();
+    auto&       vec_handler = ctx.vectorHandler();
     vec_handler.resizeOrZero(result, h_op_->cols());
     if (isZero(rhs))
     {
@@ -131,7 +131,7 @@ public:
             "ReSolveLinearSolver received inconsistent Host transpose dimensions");
     checkHostAliases(mat, rhs, result);
 #if defined(FEMX_HAS_RESOLVE)
-    solveTranspose(mat, rhs, result);
+    solveHostT(mat, rhs, result);
 #else
     unavailableHost();
 #endif
@@ -417,12 +417,12 @@ private:
           "ReSolve Host solution Vector::copyToExternal failed");
   }
 
-  void solveTranspose(const HostCsrMatrix&    mat,
-                      const HostVector<Real>& rhs,
-                      HostVector<Real>&       result)
+  void solveHostT(const HostCsrMatrix&    mat,
+                  const HostVector<Real>& rhs,
+                  HostVector<Real>&       result)
   {
     HostContext ctx;
-    auto&       vec_handler = ctx.vectors();
+    auto&       vec_handler = ctx.vectorHandler();
     vec_handler.resizeOrZero(result, mat.rows());
     if (isZero(rhs))
     {
@@ -647,7 +647,7 @@ private:
     require(rhs.size() == sys.rows,
             "ReSolveLinearSolver Device RHS has incompatible dimensions");
     checkCudaAliases(sys, rhs, result);
-    auto& vec_handler = ctx.vectors();
+    auto& vec_handler = ctx.vectorHandler();
     vec_handler.resizeOrZero(result, sys.cols);
 
     // femx assembly owns this stream. ReSolve currently has no complete stream

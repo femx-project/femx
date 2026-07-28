@@ -16,14 +16,14 @@ Real dot(const HostVector<Real>& x, const HostVector<Real>& y)
   }
 
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   return vec_handler.dot(x.view(), y.view());
 }
 
 Real squaredNorm(const HostVector<Real>& x)
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   return vec_handler.squaredNorm(x.view());
 }
 

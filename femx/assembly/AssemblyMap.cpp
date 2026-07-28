@@ -203,7 +203,7 @@ void copy(const HostAssemblyMap& src,
           DeviceAssemblyMap&     dst,
           linalg::CudaContext&   ctx)
 {
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   DeviceVector<Index> res_offsets;
   DeviceVector<Index> res_dofs;
   DeviceVector<Index> state_offsets;

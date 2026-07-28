@@ -68,9 +68,7 @@ private:
   fem::ElementQuadDataView<Space> data_; ///< Element integration data.
 };
 
-using HostPoissonElementKernel =
-    PoissonElementKernel<MemorySpace::Host>;
-using DevicePoissonElementKernel =
-    PoissonElementKernel<MemorySpace::Device>;
+using HostPoissonElementKernel   = PoissonElementKernel<MemorySpace::Host>;
+using DevicePoissonElementKernel = PoissonElementKernel<MemorySpace::Device>;
 
 } // namespace femx::examples::poisson
