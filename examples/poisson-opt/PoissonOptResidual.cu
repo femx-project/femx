@@ -15,20 +15,19 @@ namespace
 #if defined(FEMX_HAS_ENZYME)
 
 __global__ void parameterVjpKernel(
-    DeviceVectorView<const Index> control_dofs,
+    DeviceVectorView<const Index> ctr_dofs,
     DeviceVectorView<const Real>  state,
     DeviceVectorView<const Real>  prm,
     DeviceVectorView<const Real>  adj,
     DeviceVectorView<Real>        out)
 {
-  const Index ip =
-      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  const Index ip = static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
   if (ip >= prm.size())
   {
     return;
   }
 
-  const Index state_dof = control_dofs[ip];
+  const Index state_dof = ctr_dofs[ip];
   const Real  derivative =
       __enzyme_fwddiff<Real>(
           reinterpret_cast<void*>(detail::controlResidual),
@@ -37,6 +36,7 @@ __global__ void parameterVjpKernel(
           enzyme_dup,
           prm[ip],
           1.0);
+
   out[ip] = derivative * adj[state_dof];
 }
 
@@ -55,7 +55,7 @@ DevicePoissonOptResidual::DevicePoissonOptResidual(
   fem::copy(problem.elementData(), elem_data_, ctx);
   assembly::copy(problem.assemblyMap(), assm_map_, ctx);
   assembly::copy(problem.boundaryMap(), boundary_map_, ctx);
-  ctx.vectors().copy(problem.controlDofs(), control_dofs_);
+  ctx.vectorHandler().copy(problem.controlDofs(), ctr_dofs_);
   boundary_vals_.resize(problem.boundaryMap().numBcs());
   ctx.sync();
 }
@@ -127,7 +127,7 @@ void DevicePoissonOptResidual::applyParamJacT(
           "Poisson optimization adjoint size mismatch");
 
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  ctx.vectors().resizeOrZero(out, num_prm_);
+  ctx.vectorHandler().resizeOrZero(out, num_prm_);
 
 #if defined(FEMX_HAS_ENZYME)
 
@@ -137,7 +137,7 @@ void DevicePoissonOptResidual::applyParamJacT(
   parameterVjpKernel<<<cuda::numBlocks(num_prm_, threads),
                        threads,
                        0,
-                       stream>>>(control_dofs_.view(),
+                       stream>>>(ctr_dofs_.view(),
                                  state.view(),
                                  prm.view(),
                                  adj.view(),
@@ -146,8 +146,8 @@ void DevicePoissonOptResidual::applyParamJacT(
 
 #else
 
-  ctx.vectors().gather(adj.view(), control_dofs_.view(), out.view());
-  ctx.vectors().axpby(-1.0, out.view(), 0.0, out.view());
+  ctx.vectorHandler().gather(adj.view(), ctr_dofs_.view(), out.view());
+  ctx.vectorHandler().axpby(-1.0, out.view(), 0.0, out.view());
 
 #endif
 }
@@ -167,8 +167,8 @@ DevicePoissonOptResidual::boundaryValues(
     const DeviceVector<Real>& prm,
     linalg::CudaContext&      ctx) const
 {
-  ctx.vectors().zero(boundary_vals_.view());
-  ctx.vectors().copy(
+  ctx.vectorHandler().zero(boundary_vals_.view());
+  ctx.vectorHandler().copy(
       prm.view(),
       DeviceVectorView<Real>(
           boundary_vals_.data(), num_prm_));

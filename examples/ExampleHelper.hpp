@@ -168,7 +168,7 @@ public:
     HostVector<Real>       res;
     const HostVector<Real> prm;
     op.assembleResidual(state, prm, res, ctx);
-    return std::sqrt(ctx.vectors().squaredNorm(res.view()));
+    return std::sqrt(ctx.vectorHandler().squaredNorm(res.view()));
   }
 
 #if defined(FEMX_HAS_CUDA)
@@ -187,7 +187,7 @@ public:
       const DeviceVector<Real>&             state,
       linalg::Context<MemorySpace::Device>& ctx) const
   {
-    auto&                    vec_handler = ctx.vectors();
+    auto&                    vec_handler = ctx.vectorHandler();
     const DeviceVector<Real> prm;
     DeviceVector<Real>       res;
     op.assembleResidual(state, prm, res, ctx);

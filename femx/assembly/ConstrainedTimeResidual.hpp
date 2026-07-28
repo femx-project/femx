@@ -28,23 +28,23 @@ public:
    * @brief Decorate a non-owning Host residual.
    *
    * @param[in] base - Residual kept alive while this decorator is used.
-   * @param[in] control - Host control map copied into the decorator.
+   * @param[in] ctr - Host control map copied into the decorator.
    * @param[in] init - Host initial-state map copied into the decorator.
    */
   ConstrainedTimeResidual(const Base&              base,
-                          fem::HostControlMap      control,
+                          fem::HostControlMap      ctr,
                           fem::HostInitialStateMap init = {});
 
   /**
    * @brief Decorate a non-owning Device residual and copy constraint data.
    *
    * @param[in] base - Residual kept alive while this decorator is used.
-   * @param[in] control - Host control map copied to Device storage.
+   * @param[in] ctr - Host control map copied to Device storage.
    * @param[in] init - Host initial-state map copied to Device storage.
    * @param[in,out] ctx - Device context receiving the copies.
    */
   ConstrainedTimeResidual(const Base&              base,
-                          fem::HostControlMap      control,
+                          fem::HostControlMap      ctr,
                           fem::HostInitialStateMap init,
                           Ctx&                     ctx);
 
@@ -82,13 +82,13 @@ public:
 private:
   StepCtx baseCtx(const StepCtx& time) const;
 
-  void initDims(const fem::HostControlMap&      control,
+  void initDims(const fem::HostControlMap&      ctr,
                 const fem::HostInitialStateMap& init);
   void checkCtx(const StepCtx& time) const;
   void checkInitMap(const fem::HostInitialStateMap& map) const;
 
   const Base&     base_;          ///< Decorated residual.
-  Control         control_;       ///< Control mapping in the target memory space.
+  Control         ctr_;           ///< Control mapping in the target memory space.
   InitMap         init_;          ///< Initial-state mapping in the target memory space.
   Boundary        boundary_;      ///< Constrained degrees of freedom.
   Vec             base_prm_;      ///< Parameters passed to the decorated residual.

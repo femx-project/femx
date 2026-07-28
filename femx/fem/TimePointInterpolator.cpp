@@ -438,7 +438,7 @@ void TimePointInterpolator::applyStateJacT(Index                   level,
           "TimePointInterpolator observation direction size mismatch");
 
   linalg::HostContext      ctx;
-  auto&                    vec_handler = ctx.vectors();
+  auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numStates());
   jacobian.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
@@ -456,7 +456,7 @@ void TimePointInterpolator::applyParamJac(Index                   level,
           "TimePointInterpolator parameter direction size mismatch");
 
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numObservations());
 }
 
@@ -472,7 +472,7 @@ void TimePointInterpolator::applyParamJacT(Index                   level,
           "TimePointInterpolator observation direction size mismatch");
 
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numParams());
 }
 

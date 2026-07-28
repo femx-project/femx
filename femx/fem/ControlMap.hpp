@@ -48,12 +48,12 @@ public:
 
   Index numControlParams() const noexcept
   {
-    return control_.cols();
+    return ctr_mat_.cols();
   }
 
   Index numControlledDofs() const noexcept
   {
-    return control_.rows();
+    return ctr_mat_.rows();
   }
 
   Index numBcs() const noexcept
@@ -68,7 +68,7 @@ public:
 
   const CsrMatrix<Space>& controlMatrix() const noexcept
   {
-    return control_;
+    return ctr_mat_;
   }
 
 private:
@@ -120,7 +120,7 @@ private:
   Index num_fixed_{0};
   Index ctr_off_{0};
 
-  CsrMatrix<Space>            control_;
+  CsrMatrix<Space>            ctr_mat_;
   Vector<Space, Index>        dofs_;
   Vector<Space, Real>         fixed_vals_;
   // Time interpolation is orchestration metadata consumed on Host even when
@@ -249,7 +249,7 @@ private:
 
   Vector<Space, Real>         mean_;
   Vector<Space, Real>         modes_;
-  CsrMatrix<Space>            control_;
+  CsrMatrix<Space>            ctr_mat_;
   Vector<Space, Index>        ctr_dofs_;
   mutable Vector<Space, Real> compact_;
 };

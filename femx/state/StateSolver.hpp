@@ -89,7 +89,7 @@ public:
 
   void solve(Vec& state, const Vec& prm = Vec{}) override
   {
-    auto& vec_handler = ctx_.vectors();
+    auto& vec_handler = ctx_.vectorHandler();
     require(prm.size() == numParams(),
             "LinearStateSolver parameter size mismatch");
 
@@ -167,7 +167,7 @@ public:
     require(state.size() == numStates(),
             "NewtonStateSolver initial state size mismatch");
 
-    auto& vec_handler = ctx_.vectors();
+    auto& vec_handler = ctx_.vectorHandler();
     vec_handler.copy(state.view(), init_);
 
     ctx_.sync();
@@ -206,7 +206,7 @@ public:
 
   void solve(Vec& state, const Vec& prm = Vec{}) override
   {
-    auto& vec_handler = ctx_.vectors();
+    auto& vec_handler = ctx_.vectorHandler();
 
     require(prm.size() == numParams(),
             "NewtonStateSolver parameter size mismatch");
@@ -255,7 +255,7 @@ public:
 private:
   void initState(Vec& state)
   {
-    auto& vec_handler = ctx_.vectors();
+    auto& vec_handler = ctx_.vectorHandler();
     if (state.size() != numStates())
     {
       state.resize(numStates());

@@ -34,13 +34,13 @@ SystemMatrix<MemorySpace::Host>& HostLinearSystem::matrix() noexcept
 
 void HostLinearSystem::solve(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_->solve(mat_.matrix(), rhs_, solution, ctx_);
 }
 
 void HostLinearSystem::solveT(ConstView rhs, Vector& solution)
 {
-  ctx_.vectors().copy(rhs, rhs_);
+  ctx_.vectorHandler().copy(rhs, rhs_);
   solver_->solveT(mat_.matrix(), rhs_, solution, ctx_);
 }
 

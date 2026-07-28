@@ -223,7 +223,7 @@ TestOutcome cudaMapsMatchHost()
       h_init, adj.view(), expected_init_grad.view());
 
   linalg::CudaContext        ctx;
-  auto&                      vec_handler = ctx.vectors();
+  auto&                      vec_handler = ctx.vectorHandler();
   fem::DeviceControlMap      ctr;
   fem::DeviceInitialStateMap init;
   DeviceVector<Real>         d_prm;

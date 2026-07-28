@@ -184,7 +184,7 @@ void applyHistJacT(
   {
     out.resize(map.numStates());
   }
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   vec_handler.zero(out.view());
 
 #if defined(FEMX_HAS_ENZYME)

@@ -175,7 +175,7 @@ void TimeIntegrator<Space>::setInitialState(ConstView state)
 {
   require(state.size() == numStates(),
           "TimeIntegrator initial state size mismatch");
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   vec_handler.copy(state, init_);
   ctx_.sync();
   has_init_ = true;
@@ -239,7 +239,7 @@ TimeIntegrator<Space>::timeCtx(Index step, ConstView prm) const
 template <MemorySpace Space>
 void TimeIntegrator<Space>::initialize(ConstView prm)
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   if (!has_init_)
   {
     res_.initialState(prm, init_, ctx_);
@@ -254,7 +254,7 @@ void TimeIntegrator<Space>::initialize(ConstView prm)
 template <MemorySpace Space>
 void TimeIntegrator<Space>::advanceHist()
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   for (Index lag = dims_.num_hist - 1; lag > 0; --lag)
   {
     vec_handler.copy(histState(lag - 1), histState(lag));
@@ -266,7 +266,7 @@ void TimeIntegrator<Space>::advanceHist()
 template <MemorySpace Space>
 SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
 {
-  auto&                    vec_handler = ctx_.vectors();
+  auto&                    vec_handler = ctx_.vectorHandler();
   auto&                    jac         = system_.matrix();
   const TimeContext<space> time        = timeCtx(step, prm);
   const auto               assm_begin  = detail::TimeClock::now();
@@ -298,7 +298,7 @@ SolveStats TimeIntegrator<Space>::solveImpl(ConstView prm,
                                             Tr*       traj,
                                             Observer  observer)
 {
-  auto& vec_handler = ctx_.vectors();
+  auto& vec_handler = ctx_.vectorHandler();
   require(prm.size() == numParams(),
           "TimeIntegrator parameter size mismatch");
 

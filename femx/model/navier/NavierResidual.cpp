@@ -74,7 +74,7 @@ void applyHistoryJacT(
     HostVector<Real>&                   out,
     linalg::Context<MemorySpace::Host>& ctx)
 {
-  ctx.vectors().resizeOrZero(out, map.numStates());
+  ctx.vectorHandler().resizeOrZero(out, map.numStates());
 
   const auto hist =
       HostVectorView<const Real>(time.hist.data(),
@@ -149,7 +149,7 @@ void HostNavierResidual::initialState(
 {
   require(prm.empty(),
           "Navier-Stokes physics residual is parameter-free");
-  ctx.vectors().resizeOrZero(out, model_.numStates());
+  ctx.vectorHandler().resizeOrZero(out, model_.numStates());
 }
 
 void HostNavierResidual::assembleNext(

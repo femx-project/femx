@@ -48,7 +48,7 @@ public:
                     linalg::Context<MemorySpace::Host>& ctx) const override
   {
     require(prm.empty(), "Identity residual is parameter-free");
-    ctx.vectors().resizeOrZero(out, 3);
+    ctx.vectorHandler().resizeOrZero(out, 3);
   }
 
   void applyJacT(const state::HostTimeContext&,
@@ -64,7 +64,7 @@ public:
       out.resize(0);
       return;
     }
-    ctx.vectors().resizeOrZero(out, 3);
+    ctx.vectorHandler().resizeOrZero(out, 3);
   }
 
   void assembleNext(const state::HostTimeContext&            time,

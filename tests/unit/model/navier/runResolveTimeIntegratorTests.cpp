@@ -102,7 +102,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
     state::TimeTrajectory expected;
     cpu.solve(prm.view(), expected);
 
-    auto control = fem::makeControlMap(
+    auto ctr = fem::makeControlMap(
         steps, model.numStates(), {}, dofs, vals, {}, 0, 0);
     linalg::CudaLinearSystem cuda_system(
         std::make_unique<linalg::ReSolveLinearSolver>());
@@ -112,13 +112,13 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         model, cuda_ctx);
     assembly::DeviceConstrainedTimeResidual cuda_res(
         d_navier,
-        std::move(control),
+        std::move(ctr),
         {},
         cuda_ctx);
     state::DeviceTimeIntegrator cuda(cuda_res, cuda_system);
     DeviceVector<Real>          d_init;
     DeviceVector<Real>          d_prm;
-    auto&                       vec_handler = cuda_ctx.vectors();
+    auto&                       vec_handler = cuda_ctx.vectorHandler();
     vec_handler.copy(init, d_init);
     vec_handler.copy(prm, d_prm);
     cuda_ctx.sync();

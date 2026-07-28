@@ -84,7 +84,7 @@ inline void copy(const HostPointInterpolatorData& src,
                  DevicePointInterpolatorData&     dst,
                  linalg::CudaContext&             ctx)
 {
-  auto&            vec_handler = ctx.vectors();
+  auto&            vec_handler = ctx.vectorHandler();
   DeviceCsrPattern pattern;
   femx::copy(src.mat_.pattern(), pattern, ctx);
   DeviceCsrMatrix mat(pattern);

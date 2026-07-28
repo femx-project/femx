@@ -141,7 +141,7 @@ void copyMatrix(const HostCsrMatrix& source,
     throw std::runtime_error(
         "Test matrix copy requires matching CSR layouts");
   }
-  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+  ctx.vectorHandler().copy(source.vals().view(), destination.vals().view());
 }
 
 TestOutcome unifiedResolveSolvesDeviceStorage()
@@ -170,7 +170,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     linalg::HostContext      cpu_ctx;
     linalg::CudaContext      ctx;
     linalg::HostSystemMatrix h_jacobian(cpu_ctx);
-    auto&                    vec_handler = ctx.vectors();
+    auto&                    vec_handler = ctx.vectorHandler();
     DeviceCsrPattern         d_graph;
     copy(h_graph, d_graph, ctx);
 

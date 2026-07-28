@@ -133,7 +133,7 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   op.applyStateJacT(0, state, prm, dir, expected_trans);
 
   linalg::CudaContext         ctx;
-  auto&                       vec_handler = ctx.vectors();
+  auto&                       vec_handler = ctx.vectorHandler();
   DeviceTimePointInterpolator d_op;
   DeviceVector<Real>          d_state;
   DeviceVector<Real>          d_dir;

@@ -10,12 +10,12 @@ namespace femx::assembly
 namespace
 {
 
-HostVector<Index> boundaryDofs(const fem::HostControlMap& control)
+HostVector<Index> boundaryDofs(const fem::HostControlMap& ctr)
 {
-  HostVector<Index> dofs(control.numBcs());
+  HostVector<Index> dofs(ctr.numBcs());
   for (Index i = 0; i < dofs.size(); ++i)
   {
-    dofs[i] = control.dofs()[i];
+    dofs[i] = ctr.dofs()[i];
   }
   return dofs;
 }
@@ -149,7 +149,7 @@ void resizeAndZero(Vector<Space, Real>&    out,
                    Index                   size,
                    linalg::Context<Space>& ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, size);
 }
 
@@ -158,21 +158,21 @@ void resizeAndZero(Vector<Space, Real>&    out,
 template <MemorySpace Space>
 ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
     const Base&              base,
-    fem::HostControlMap      control,
+    fem::HostControlMap      ctr,
     fem::HostInitialStateMap init)
   : base_(base)
 {
   if constexpr (Space == MemorySpace::Host)
   {
-    initDims(control, init);
-    control_  = std::move(control);
-    boundary_ = makeBoundaryMap(boundaryDofs(control_));
+    initDims(ctr, init);
+    ctr_      = std::move(ctr);
+    boundary_ = makeBoundaryMap(boundaryDofs(ctr_));
 
     setInitialStateMap(std::move(init));
 
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
-    boundary_vals_.resize(control_.numBcs());
+    boundary_vals_.resize(ctr_.numBcs());
   }
   else
   {
@@ -183,26 +183,28 @@ ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
 template <MemorySpace Space>
 ConstrainedTimeResidual<Space>::ConstrainedTimeResidual(
     const Base&              base,
-    fem::HostControlMap      control,
+    fem::HostControlMap      ctr,
     fem::HostInitialStateMap init,
     Ctx&                     ctx)
   : base_(base)
 {
   if constexpr (Space == MemorySpace::Device)
   {
-    initDims(control, init);
+    initDims(ctr, init);
 
-    const HostBoundaryMap h_boundary = makeBoundaryMap(boundaryDofs(control));
+    const HostBoundaryMap h_boundary = makeBoundaryMap(boundaryDofs(ctr));
     auto&                 cuda_ctx   = cudaContext(ctx);
+
     copy(h_boundary, boundary_, cuda_ctx);
-    fem::copy(control, control_, cuda_ctx);
+    fem::copy(ctr, ctr_, cuda_ctx);
     if (init.numStates() != 0)
     {
       fem::copy(init, init_, cuda_ctx);
     }
+
     base_prm_.resize(base_dims_.num_param);
     base_adj_.resize(dims_.num_res);
-    boundary_vals_.resize(control.numBcs());
+    boundary_vals_.resize(ctr.numBcs());
   }
   else
   {
@@ -226,7 +228,7 @@ template <MemorySpace Space>
 const typename ConstrainedTimeResidual<Space>::Control&
 ConstrainedTimeResidual<Space>::controlMap() const noexcept
 {
-  return control_;
+  return ctr_;
 }
 
 template <MemorySpace Space>
@@ -298,7 +300,7 @@ void ConstrainedTimeResidual<Space>::assembleNext(const StepCtx& time,
           "ConstrainedTimeResidual base residual size mismatch");
 
   assembly::controlVals(
-      control_, time.step, time.prm, boundary_vals_.view(), ctx);
+      ctr_, time.step, time.prm, boundary_vals_.view(), ctx);
   applyDirichletConditionsForContext(
       boundary_, time.nxt, boundary_vals_.view(), res.view(), ctx);
   assembly::applyDirichletConditions(boundary_, jac);
@@ -312,7 +314,7 @@ void ConstrainedTimeResidual<Space>::applyJacT(
     Vec&                 out,
     Ctx&                 ctx) const
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   checkCtx(time);
 
   require(!wrt.isNextState(),
@@ -324,7 +326,7 @@ void ConstrainedTimeResidual<Space>::applyJacT(
   {
     resizeAndZero<Space>(out, dims_.num_param, ctx);
     assembly::addControlJacT(
-        control_, time.step, adj, out.view(), ctx);
+        ctr_, time.step, adj, out.view(), ctx);
     return;
   }
 
@@ -347,7 +349,7 @@ void ConstrainedTimeResidual<Space>::setup(
   checkCtx(time);
   base_.setup(baseCtx(time), jac, rhs, ctx);
 
-  assembly::controlVals(control_, time.step, time.prm, boundary_vals_.view(), ctx);
+  assembly::controlVals(ctr_, time.step, time.prm, boundary_vals_.view(), ctx);
   eliminateJacColumns(boundary_, jac, rhs, boundary_vals_);
 }
 
@@ -362,7 +364,7 @@ ConstrainedTimeResidual<Space>::baseCtx(const StepCtx& time) const
 
 template <MemorySpace Space>
 void ConstrainedTimeResidual<Space>::initDims(
-    const fem::HostControlMap&      control,
+    const fem::HostControlMap&      ctr,
     const fem::HostInitialStateMap& init)
 {
   base_dims_ = base_.dims();
@@ -371,10 +373,10 @@ void ConstrainedTimeResidual<Space>::initDims(
           "ConstrainedTimeResidual requires square state residuals");
   require(base_dims_.num_param == 0,
           "ConstrainedTimeResidual requires a parameter-free base residual");
-  require(control.numSteps() == dims_.num_steps
-              && control.numStates() == dims_.num_states,
+  require(ctr.numSteps() == dims_.num_steps
+              && ctr.numStates() == dims_.num_states,
           "ConstrainedTimeResidual control dimensions do not match");
-  dims_.num_param = control.numParams();
+  dims_.num_param = ctr.numParams();
   checkInitMap(init);
 }
 

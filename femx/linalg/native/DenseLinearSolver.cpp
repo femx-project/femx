@@ -108,7 +108,7 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
     }
   }
 
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, size);
   for (Index row = size; row-- > 0;)
   {

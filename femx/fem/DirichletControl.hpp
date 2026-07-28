@@ -48,7 +48,7 @@ public:
   void apply(const HostVector<Real>& dir, HostVector<Real>& out) const;
 
   /** Compute P^T * direction. */
-  void applyTranspose(const HostVector<Real>& dir, HostVector<Real>& out) const;
+  void applyT(const HostVector<Real>& dir, HostVector<Real>& out) const;
 
 private:
   void checkDofIndex(Index i) const;

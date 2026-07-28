@@ -69,7 +69,7 @@ void copyMatrix(const HostCsrMatrix& source,
     throw std::runtime_error(
         "Test matrix copy requires matching CSR layouts");
   }
-  ctx.vectors().copy(source.vals().view(), destination.vals().view());
+  ctx.vectorHandler().copy(source.vals().view(), destination.vals().view());
 }
 
 TestOutcome persistentCudaCsrOps()
@@ -99,7 +99,7 @@ TestOutcome persistentCudaCsrOps()
     linalg::CudaContext      ctx;
     linalg::HostSystemMatrix h_jacobian(cpu_ctx);
     linalg::CudaSystemMatrix jacobian(ctx);
-    auto&                    vec_handler = ctx.vectors();
+    auto&                    vec_handler = ctx.vectorHandler();
     DeviceCsrPattern         d_graph;
     copy(pattern, d_graph, ctx);
     record(status,

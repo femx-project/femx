@@ -153,7 +153,7 @@ HostVectorView<const Real> TimeObservationData::operator[](Index level) const
 void TimeObservationData::setZero()
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.zero(data_.view());
 }
 

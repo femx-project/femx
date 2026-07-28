@@ -339,7 +339,7 @@ void assembleResidualAndJacobian(
     linalg::CudaSystemMatrix& jac,
     linalg::CudaContext&      ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
@@ -396,7 +396,7 @@ void assembleResidual(const ElementKernel&      kernel,
                       DeviceVector<Real>&       res,
                       linalg::CudaContext&      ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
@@ -507,7 +507,7 @@ void assembleResidualAndJacobian(
     linalg::CudaSystemMatrix&    jac,
     linalg::CudaContext&         ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA time element kernel must be trivially copyable");
 
@@ -574,7 +574,7 @@ void assembleResidual(
     DeviceVector<Real>&          res,
     linalg::CudaContext&         ctx)
 {
-  auto& vec_handler = ctx.vectors();
+  auto& vec_handler = ctx.vectorHandler();
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA time element kernel must be trivially copyable");
 

@@ -174,7 +174,7 @@ void HostSystemMatrix::setup(const HostCsrPattern& pattern)
   }
   else
   {
-    ctx_.vectors().zero(matrix_.vals().view());
+    ctx_.vectorHandler().zero(matrix_.vals().view());
   }
 }
 

@@ -145,7 +145,7 @@ void LeastSquaresObjective::termGrad(const HostVector<Real>& x,
                                      HostVector<Real>&       out)
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, x.size());
   if (target.empty())
   {

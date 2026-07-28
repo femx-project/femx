@@ -84,7 +84,7 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
 
-    ctx.vectors().zero(mat.vals().view());
+    ctx.vectorHandler().zero(mat.vals().view());
     solver::fillGrid5PointMat(mat, nx, ny);
     jacobian.apply(mat, expected.view(), rhs.view());
     lin_solver.solve(mat, rhs, x, ctx);

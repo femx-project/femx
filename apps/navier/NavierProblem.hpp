@@ -40,7 +40,7 @@ public:
 private:
   model::navier::NavierModel model_;         ///< Navier-Stokes discretization.
   fem::TimeDirichletData     boundary_data_; ///< Time-dependent boundary values.
-  fem::HostControlMap        control_map_;   ///< Boundary constraint mapping.
+  fem::HostControlMap        ctr_map_;       ///< Boundary constraint mapping.
 };
 
 } // namespace femx::apps::navier

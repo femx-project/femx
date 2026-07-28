@@ -30,7 +30,7 @@ public:
   CudaContext& operator=(CudaContext&&)      = delete;
 
   /** @brief Return the owned CUDA vector operations. */
-  CudaVectorHandler& vectors() noexcept override;
+  CudaVectorHandler& vectorHandler() noexcept override;
 
   /**
    * @brief Return the full Device element range.

@@ -314,16 +314,16 @@ femx::fem::DirichletControl makePythonNormalControl(
 {
   const py::object            selector = specification.attr("boundary");
   const HostVector<Real>      normal   = pythonNormal(model, specification);
-  femx::fem::DirichletControl control;
+  femx::fem::DirichletControl ctr;
   if (py::isinstance<py::str>(selector))
   {
-    control = femx::fem::makeNormalVelocityControl(
+    ctr = femx::fem::makeNormalVelocityControl(
         model.space(), selector.cast<std::string>(), normal);
   }
   else if (py::isinstance<py::int_>(selector)
            && !py::isinstance<py::bool_>(selector))
   {
-    control = femx::fem::makeNormalVelocityControl(
+    ctr = femx::fem::makeNormalVelocityControl(
         model.space(), selector.cast<Index>(), normal);
   }
   else
@@ -332,13 +332,13 @@ femx::fem::DirichletControl makePythonNormalControl(
         "Boundary selector must be a physical name or tag");
   }
 
-  control = control.withoutStateDofs(fixed_dofs);
-  if (control.numStateDofs() == 0 || control.numControlParams() == 0)
+  ctr = ctr.withoutStateDofs(fixed_dofs);
+  if (ctr.numStateDofs() == 0 || ctr.numControlParams() == 0)
   {
     throw std::runtime_error(
         "Normal velocity control has no active boundary nodes");
   }
-  return control;
+  return ctr;
 }
 
 femx::fem::DirichletControl makePythonVelocityControl(
@@ -347,28 +347,28 @@ femx::fem::DirichletControl makePythonVelocityControl(
     const HostVector<Index>& fixed_dofs)
 {
   const py::object            selector = specification.attr("boundary");
-  femx::fem::DirichletControl control;
+  femx::fem::DirichletControl ctr;
   if (py::isinstance<py::str>(selector))
   {
-    control = femx::fem::makeVelocityControl(
+    ctr = femx::fem::makeVelocityControl(
         model.space(), selector.cast<std::string>());
   }
   else if (py::isinstance<py::int_>(selector)
            && !py::isinstance<py::bool_>(selector))
   {
-    control = femx::fem::makeVelocityControl(
+    ctr = femx::fem::makeVelocityControl(
         model.space(), selector.cast<Index>());
   }
   else
   {
     throw std::runtime_error("Boundary selector must be a physical name or tag");
   }
-  control = control.withoutStateDofs(fixed_dofs);
-  if (control.numStateDofs() == 0 || control.numControlParams() == 0)
+  ctr = ctr.withoutStateDofs(fixed_dofs);
+  if (ctr.numStateDofs() == 0 || ctr.numControlParams() == 0)
   {
     throw std::runtime_error("Velocity control has no active boundary dofs");
   }
-  return control;
+  return ctr;
 }
 
 femx::fem::DirichletControl makePythonControl(
@@ -864,7 +864,7 @@ public:
     return out;
   }
 
-  py::array_t<Real> applyTranspose(const RealArray& directions) const
+  py::array_t<Real> applyT(const RealArray& directions) const
   {
     if (directions.ndim() != 2
         || directions.shape(0) != numSteps() + 1
@@ -919,7 +919,7 @@ class PythonDeviceTimeIntegrator final
 public:
   PythonDeviceTimeIntegrator(
       const NavierModel&             model,
-      femx::fem::HostControlMap      control,
+      femx::fem::HostControlMap      ctr,
       femx::fem::HostInitialStateMap init,
       femx::linalg::ReSolveOptions   opts)
     : system_(
@@ -929,7 +929,7 @@ public:
               static_cast<femx::linalg::CudaContext&>(
                   system_.context())),
       res_(navier_,
-           std::move(control),
+           std::move(ctr),
            std::move(init),
            system_.context()),
       integ_(res_, system_)
@@ -951,7 +951,7 @@ public:
     auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
         system_.context());
     femx::DeviceVector<Real> state;
-    ctx.vectors().copy(init, state);
+    ctx.vectorHandler().copy(init, state);
     ctx.sync();
     integ_.setInitialState(state);
   }
@@ -962,7 +962,7 @@ public:
     auto& ctx = dynamic_cast<femx::linalg::CudaContext&>(
         system_.context());
     femx::DeviceVector<Real> out;
-    ctx.vectors().copy(prm, out);
+    ctx.vectorHandler().copy(prm, out);
     ctx.sync();
     return out;
   }
@@ -1392,6 +1392,6 @@ void bindNavier(py::module_& module)
            py::keep_alive<1, 2>())
       .def("sample", &VelocityPointSampler::sample, py::arg("trajectory"))
       .def("apply_transpose",
-           &VelocityPointSampler::applyTranspose,
+           &VelocityPointSampler::applyT,
            py::arg("solve_level_directions"));
 }

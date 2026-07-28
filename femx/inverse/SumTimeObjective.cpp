@@ -66,7 +66,7 @@ void SumTimeObjective::stateGrad(Index                   level,
                                  HostVector<Real>&       out) const
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numStates());
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)
@@ -81,7 +81,7 @@ void SumTimeObjective::paramGrad(const TimeTrajectory&   traj,
                                  HostVector<Real>&       out) const
 {
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numParams());
   HostVector<Real> term_grad;
   for (const TimeObjective* term : terms_)

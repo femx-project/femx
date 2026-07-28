@@ -95,7 +95,7 @@ void TimeRegularization::stateGrad(Index                   level,
   (void) traj;
   (void) prm;
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numStates());
 }
 
@@ -106,7 +106,7 @@ void TimeRegularization::paramGrad(const TimeTrajectory&   traj,
   (void) traj;
   checkParamSize(prm);
   linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectors();
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.resizeOrZero(out, numParams());
 
   for (Index i = 0; i < numParams(); ++i)

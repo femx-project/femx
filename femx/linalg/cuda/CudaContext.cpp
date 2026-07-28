@@ -49,7 +49,7 @@ CudaContext::~CudaContext()
   cuda::destroyStream(stream_);
 }
 
-CudaVectorHandler& CudaContext::vectors() noexcept
+CudaVectorHandler& CudaContext::vectorHandler() noexcept
 {
   return vec_handler_;
 }

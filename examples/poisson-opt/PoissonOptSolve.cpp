@@ -21,11 +21,11 @@ HostVector<Real> solveState(
   auto& ctx = state_solver.context();
   Vec   prm;
   Vec   state;
-  ctx.vectors().copy(h_prm.view(), prm);
+  ctx.vectorHandler().copy(h_prm.view(), prm);
   state_solver.solve(state, prm);
 
   HostVector<Real> h_state;
-  ctx.vectors().copy(state.view(), h_state);
+  ctx.vectorHandler().copy(state.view(), h_state);
   ctx.sync();
   return h_state;
 }
@@ -46,11 +46,11 @@ Result optimizeImpl(
   opt::TaoOptimizer optimizer(functional, comm);
   optimizer.opts().max_its = problem.options().max_iterations;
 
-  const HostVector<Real> init_control(problem.numParameters(), 0.0);
+  const HostVector<Real> init_ctr(problem.numParameters(), 0.0);
   opt::TaoResult         tao_res;
 
   runtime::checkPetsc(
-      optimizer.solve(init_control, tao_res),
+      optimizer.solve(init_ctr, tao_res),
       "TaoOptimizer::solve");
 
   HostVector<Real> final_state = solveState(state_solver, tao_res.prm);

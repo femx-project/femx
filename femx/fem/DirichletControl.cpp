@@ -305,18 +305,18 @@ void DirichletControl::apply(const HostVector<Real>& dir,
 {
   checkControlVector(dir);
   linalg::HostContext      ctx;
-  auto&                    vec_handler = ctx.vectors();
+  auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numStateDofs());
   jacobian.apply(matrix_, dir.view(), out.view());
 }
 
-void DirichletControl::applyTranspose(const HostVector<Real>& dir,
-                                      HostVector<Real>&       out) const
+void DirichletControl::applyT(const HostVector<Real>& dir,
+                              HostVector<Real>&       out) const
 {
   checkStateVector(dir);
   linalg::HostContext      ctx;
-  auto&                    vec_handler = ctx.vectors();
+  auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
   vec_handler.resizeOrZero(out, numControlParams());
   jacobian.applyT(matrix_, dir.view(), out.view());
