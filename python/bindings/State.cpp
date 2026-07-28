@@ -1,13 +1,14 @@
-#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "Bindings.hpp"
+#include "NumpyConversions.hpp"
 #include "PETScInit.hpp"
 #include <femx/common/Types.hpp>
 #include <femx/fem/ControlMap.hpp>
+#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
@@ -41,6 +42,13 @@ using femx::fem::HostInitialStateMap;
 using femx::linalg::ReSolveLinearSolver;
 using femx::linalg::ReSolveOptions;
 #endif
+using femx::python::bindings::denseMatrixArray;
+using femx::python::bindings::denseMatrixFromArray;
+using femx::python::bindings::FiniteCheck;
+using femx::python::bindings::RealArray;
+using femx::python::bindings::requireFinite;
+using femx::python::bindings::vectorArray;
+using femx::python::bindings::vectorFromArray;
 using femx::runtime::SolverType;
 using femx::state::EnsembleBasis;
 using femx::state::HostTimeContext;
@@ -51,48 +59,6 @@ using femx::state::TimeStepStateContext;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 using femx::state::VariableBlock;
-
-using RealArray = py::array_t<Real,
-                              py::array::c_style | py::array::forcecast>;
-
-HostVector<Real> vectorFromArray(const RealArray& vals,
-                                 const char*      name)
-{
-  if (vals.ndim() != 1)
-  {
-    throw std::runtime_error(std::string(name) + " must be one-dimensional");
-  }
-
-  HostVector<Real> out(static_cast<Index>(vals.shape(0)));
-  const auto       data = vals.unchecked<1>();
-  for (Index i = 0; i < out.size(); ++i)
-  {
-    out[i] = data(i);
-  }
-  return out;
-}
-
-py::array_t<Real> vectorArray(const HostVector<Real>& vals)
-{
-  py::array_t<Real> out(vals.size());
-  auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
-py::array_t<Real> vectorArray(HostVectorView<const Real> vals)
-{
-  py::array_t<Real> out(vals.size());
-  auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
 
 class PythonTimeObserver
 {
@@ -133,74 +99,13 @@ private:
   py::object progress_;
 };
 
-DenseMatrix denseMatrixFromArray(const RealArray& vals,
-                                 const char*      name)
-{
-  if (vals.ndim() != 2)
-  {
-    throw std::runtime_error(
-        std::string(name) + " must be two-dimensional");
-  }
-
-  const Index rows = static_cast<Index>(vals.shape(0));
-  const Index cols = static_cast<Index>(vals.shape(1));
-  DenseMatrix out(rows, cols);
-  const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < rows; ++row)
-  {
-    for (Index col = 0; col < cols; ++col)
-    {
-      out(row, col) = data(row, col);
-    }
-  }
-  return out;
-}
-
-py::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
-{
-  py::array_t<Real> out({vals.rows(), vals.cols()});
-  auto              data = out.mutable_unchecked<2>();
-  for (Index row = 0; row < vals.rows(); ++row)
-  {
-    for (Index col = 0; col < vals.cols(); ++col)
-    {
-      data(row, col) = vals(row, col);
-    }
-  }
-  return out;
-}
-
-void checkFinite(const HostVector<Real>& vals, const char* name)
-{
-  for (Real value : vals)
-  {
-    if (!std::isfinite(value))
-    {
-      throw std::runtime_error(std::string(name) + " must be finite");
-    }
-  }
-}
-
-void checkFinite(const DenseMatrix& vals, const char* name)
-{
-  for (Index row = 0; row < vals.rows(); ++row)
-  {
-    for (Index col = 0; col < vals.cols(); ++col)
-    {
-      if (!std::isfinite(vals(row, col)))
-      {
-        throw std::runtime_error(std::string(name) + " must be finite");
-      }
-    }
-  }
-}
-
 EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
                                       const RealArray& perturbations)
 {
-  HostVector<Real> mean_vals = vectorFromArray(mean, "mean");
-  DenseMatrix      perturb_vals =
-      denseMatrixFromArray(perturbations, "perturbations");
+  HostVector<Real> mean_vals =
+      vectorFromArray(mean, "mean", FiniteCheck::Skip);
+  DenseMatrix perturb_vals = denseMatrixFromArray(
+      perturbations, "perturbations", FiniteCheck::Skip);
   if (mean_vals.empty())
   {
     throw std::runtime_error("mean must not be empty");
@@ -211,8 +116,8 @@ EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
     throw std::runtime_error(
         "perturbations must have shape (value_size, num_coefficients)");
   }
-  checkFinite(mean_vals, "mean");
-  checkFinite(perturb_vals, "perturbations");
+  requireFinite(mean_vals, "mean");
+  requireFinite(perturb_vals, "perturbations");
   return EnsembleBasis(
       std::move(mean_vals), std::move(perturb_vals));
 }
@@ -226,7 +131,7 @@ void copyArray(const py::handle& value,
   {
     throw std::runtime_error(std::string(name) + " must be a real NumPy array");
   }
-  out = vectorFromArray(vals, name);
+  out = vectorFromArray(vals, name, FiniteCheck::Skip);
 }
 
 py::array_t<Real> historyArray(const HostTimeHistoryView& history)
@@ -573,9 +478,8 @@ void bindState(py::module_& module)
           "evaluate",
           [](const EnsembleBasis& basis, const RealArray& coefficients)
           {
-            HostVector<Real> coeffs =
-                vectorFromArray(coefficients, "coefficients");
-            checkFinite(coeffs, "coefficients");
+            HostVector<Real> coeffs = vectorFromArray(
+                coefficients, "coefficients", FiniteCheck::Require);
             HostVector<Real> out;
             basis.apply(coeffs, out);
             return vectorArray(out);
@@ -585,8 +489,8 @@ void bindState(py::module_& module)
           "apply_transpose",
           [](const EnsembleBasis& basis, const RealArray& vals)
           {
-            HostVector<Real> phys = vectorFromArray(vals, "values");
-            checkFinite(phys, "values");
+            HostVector<Real> phys =
+                vectorFromArray(vals, "values", FiniteCheck::Require);
             HostVector<Real> out;
             basis.applyT(phys, out);
             return vectorArray(out);
@@ -747,8 +651,9 @@ void bindState(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            HostVector<Real> vals = vectorFromArray(parameters, "parameters");
-            TimeTrajectory   trajectory;
+            HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Skip);
+            TimeTrajectory trajectory;
             if (progress.is_none())
             {
               py::gil_scoped_release release;
@@ -774,7 +679,8 @@ void bindState(py::module_& module)
           [](PythonHostTimeIntegrator& owner, const RealArray& state)
           {
             owner.get().setInitialState(
-                vectorFromArray(state, "initial_state"));
+                vectorFromArray(
+                    state, "initial_state", FiniteCheck::Skip));
           },
           py::arg("initial_state"))
       .def("clear_initial_state",
@@ -812,8 +718,9 @@ void bindState(py::module_& module)
           [](const HostInitialStateMap& map,
              const RealArray&           param)
           {
-            const HostVector<Real> prm = vectorFromArray(param, "param");
-            HostVector<Real>       out(map.numStates());
+            const HostVector<Real> prm =
+                vectorFromArray(param, "param", FiniteCheck::Skip);
+            HostVector<Real> out(map.numStates());
             femx::fem::initialState(map, prm.view(), out.view());
             return vectorArray(out);
           },

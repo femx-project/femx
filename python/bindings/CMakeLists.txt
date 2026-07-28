@@ -35,7 +35,14 @@ if(NOT pybind11_FOUND)
       "-DFEMX_PYBIND11_SOURCE_DIR=/path/to/pybind11.")
 endif()
 
-pybind11_add_module(_core Inverse.cpp Mesh.cpp Module.cpp Navier.cpp State.cpp)
+pybind11_add_module(
+  _core
+  Inverse.cpp
+  Mesh.cpp
+  Module.cpp
+  Navier.cpp
+  NumpyConversions.hpp
+  State.cpp)
 
 foreach(
   _target

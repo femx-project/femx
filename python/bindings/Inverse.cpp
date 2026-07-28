@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "Bindings.hpp"
+#include "NumpyConversions.hpp"
 #include "PETScInit.hpp"
 #include <femx/fem/ControlMap.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
@@ -15,7 +16,6 @@
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/opt/TaoOptimizer.hpp>
@@ -32,7 +32,6 @@ namespace py = pybind11;
 namespace
 {
 
-using femx::DenseMatrix;
 using femx::HostVector;
 using femx::HostVectorView;
 using femx::Index;
@@ -45,6 +44,13 @@ using femx::inverse::TimeObjective;
 using femx::inverse::TimeObservationData;
 using femx::inverse::TimeObservationOperator;
 using femx::inverse::TimeRegularization;
+using femx::python::bindings::FiniteCheck;
+using femx::python::bindings::flattenedVectorFromArray;
+using femx::python::bindings::IndexArray;
+using femx::python::bindings::indexVectorFromArray;
+using femx::python::bindings::RealArray;
+using femx::python::bindings::vectorArray;
+using femx::python::bindings::vectorFromArray;
 using femx::runtime::SolverType;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
@@ -122,120 +128,6 @@ private:
   TimeReducedFunctional impl_;
 };
 
-using RealArray  = py::array_t<Real,
-                               py::array::c_style | py::array::forcecast>;
-using IndexArray = py::array_t<Index,
-                               py::array::c_style | py::array::forcecast>;
-
-HostVector<Real> vectorFromArray(const RealArray& vals,
-                                 const char*      name)
-{
-  if (vals.ndim() != 1)
-  {
-    throw std::runtime_error(std::string(name) + " must be one-dimensional");
-  }
-
-  HostVector<Real> out(vals.shape(0));
-  const auto       data = vals.unchecked<1>();
-  for (Index i = 0; i < out.size(); ++i)
-  {
-    out[i] = data(i);
-    if (!std::isfinite(out[i]))
-    {
-      throw std::runtime_error(std::string(name) + " must be finite");
-    }
-  }
-  return out;
-}
-
-HostVector<Index> indexVectorFromArray(const IndexArray& vals,
-                                       const char*       name)
-{
-  if (vals.ndim() != 1)
-  {
-    throw std::runtime_error(std::string(name) + " must be one-dimensional");
-  }
-
-  HostVector<Index> out(vals.shape(0));
-  const auto        data = vals.unchecked<1>();
-  for (Index i = 0; i < out.size(); ++i)
-  {
-    out[i] = data(i);
-  }
-  return out;
-}
-
-DenseMatrix denseMatrixFromArray(const RealArray& vals,
-                                 const char*      name)
-{
-  if (vals.ndim() != 2)
-  {
-    throw std::runtime_error(
-        std::string(name) + " must be two-dimensional");
-  }
-
-  DenseMatrix out(vals.shape(0), vals.shape(1));
-  const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < out.rows(); ++row)
-  {
-    for (Index col = 0; col < out.cols(); ++col)
-    {
-      out(row, col) = data(row, col);
-      if (!std::isfinite(out(row, col)))
-      {
-        throw std::runtime_error(
-            std::string(name) + " must be finite");
-      }
-    }
-  }
-  return out;
-}
-
-HostVector<Real> flattenedVectorFromArray(const RealArray& vals,
-                                          Index            expected_size,
-                                          const char*      name)
-{
-  if (vals.size() != expected_size)
-  {
-    throw std::runtime_error(
-        std::string(name) + " has an inconsistent size");
-  }
-
-  HostVector<Real> out(expected_size);
-  const Real*      data = vals.data();
-  for (Index i = 0; i < out.size(); ++i)
-  {
-    out[i] = data[i];
-    if (!std::isfinite(out[i]))
-    {
-      throw std::runtime_error(std::string(name) + " must be finite");
-    }
-  }
-  return out;
-}
-
-py::array_t<Real> vectorArray(const HostVector<Real>& vals)
-{
-  py::array_t<Real> out(vals.size());
-  auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
-py::array_t<Index> indexArray(const HostVector<Index>& vals)
-{
-  py::array_t<Index> out(vals.size());
-  auto               data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
 TimeObservationData observationDataFromArrays(
     const RealArray&  vals,
     const py::object& times,
@@ -275,7 +167,8 @@ TimeObservationData observationDataFromArrays(
     {
       throw std::runtime_error("times must be real-valued");
     }
-    out.setTimeValues(vectorFromArray(time_vals, "times"));
+    out.setTimeValues(
+        vectorFromArray(time_vals, "times", FiniteCheck::Require));
   }
   else if (!time_levels.is_none())
   {
@@ -320,11 +213,13 @@ std::unique_ptr<TimeLeastSquaresObjective> timeLeastSquaresFromArrays(
     Real                           dt,
     Real                           time_offset)
 {
-  HostVector<Real> levels  = vectorFromArray(level_weights, "level_weights");
+  HostVector<Real> levels = vectorFromArray(
+      level_weights, "level_weights", FiniteCheck::Require);
   HostVector<Real> entries = flattenedVectorFromArray(
       obs_weights,
       data.numTimeLevels() * data.numObservations(),
-      "obs_weights");
+      "obs_weights",
+      FiniteCheck::Require);
   return std::make_unique<TimeLeastSquaresObjective>(
       observation,
       std::move(data),
@@ -351,8 +246,10 @@ std::unique_ptr<TimeRegularization> timeRegularizationFromArray(
     {
       throw std::runtime_error("reference must be real-valued");
     }
-    vals = flattenedVectorFromArray(
-        array, num_levels * block_size, "reference");
+    vals = flattenedVectorFromArray(array,
+                                    num_levels * block_size,
+                                    "reference",
+                                    FiniteCheck::Require);
   }
   return std::make_unique<TimeRegularization>(
       num_steps,
@@ -383,8 +280,10 @@ std::unique_ptr<TimeBlockRegularization> timeBlockRegularizationFromArrays(
     {
       throw std::runtime_error("reference must be real-valued");
     }
-    ref = flattenedVectorFromArray(
-        array, num_levels * block_size, "reference");
+    ref = flattenedVectorFromArray(array,
+                                   num_levels * block_size,
+                                   "reference",
+                                   FiniteCheck::Require);
   }
   return std::make_unique<TimeBlockRegularization>(
       num_steps,
@@ -393,7 +292,7 @@ std::unique_ptr<TimeBlockRegularization> timeBlockRegularizationFromArrays(
       block_size,
       indexVectorFromArray(rows, "rows"),
       indexVectorFromArray(cols, "cols"),
-      vectorFromArray(vals, "vals"),
+      vectorFromArray(vals, "vals", FiniteCheck::Require),
       weight,
       ref);
 }
@@ -477,8 +376,9 @@ py::dict taoSolve(PythonTimeReducedFunctional& functional,
     throw std::runtime_error("lower and upper must be provided together");
   }
 
-  const HostVector<Real> init      = vectorFromArray(initial, "init_param");
-  Index                  num_evals = 0;
+  const HostVector<Real> init =
+      vectorFromArray(initial, "init_param", FiniteCheck::Require);
+  Index num_evals = 0;
 
   struct CalculationInterrupted
   {
@@ -678,7 +578,7 @@ void bindInverse(py::module_& module)
             {
               return py::none();
             }
-            return indexArray(data.timeLevels());
+            return vectorArray(data.timeLevels());
           });
 
   py::class_<TimeObjective>(module, "TimeObjective")
@@ -691,8 +591,8 @@ void bindInverse(py::module_& module)
              const TimeTrajectory& trajectory,
              const RealArray&      parameters)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             py::gil_scoped_release release;
             return objective.value(trajectory, vals);
           },
@@ -705,8 +605,8 @@ void bindInverse(py::module_& module)
              const TimeTrajectory& trajectory,
              const RealArray&      parameters)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             HostVector<Real> out;
             {
               py::gil_scoped_release release;
@@ -723,8 +623,8 @@ void bindInverse(py::module_& module)
              const TimeTrajectory& trajectory,
              const RealArray&      parameters)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             HostVector<Real> out;
             {
               py::gil_scoped_release release;
@@ -805,8 +705,8 @@ void bindInverse(py::module_& module)
           [](PythonTimeReducedFunctional& fn,
              const RealArray&             parameters)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             py::gil_scoped_release release;
             return fn.value(vals.view());
           },
@@ -816,8 +716,8 @@ void bindInverse(py::module_& module)
           [](PythonTimeReducedFunctional& fn,
              const RealArray&             parameters)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             HostVector<Real> out(fn.numParams());
             {
               py::gil_scoped_release release;
@@ -832,8 +732,8 @@ void bindInverse(py::module_& module)
              const RealArray&             parameters,
              const py::object&            progress)
           {
-            const HostVector<Real> vals =
-                vectorFromArray(parameters, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Require);
             PythonTimeProgressMonitor monitor(progress);
             HostVector<Real>          out(fn.numParams());
             Real                      value = 0.0;
