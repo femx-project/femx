@@ -2,6 +2,7 @@
 #include <string>
 
 #include "Bindings.hpp"
+#include "NumpyConversions.hpp"
 #include <femx/fem/BoundarySurface.hpp>
 #include <femx/fem/GmshReader.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -20,28 +21,7 @@ using femx::fem::BoundaryScalarMatrices;
 using femx::fem::BoundarySurface;
 using femx::fem::Mesh;
 using femx::fem::SparseTripletMatrix;
-
-py::array_t<Index> indexArray(const femx::HostVector<Index>& vals)
-{
-  py::array_t<Index> out(vals.size());
-  auto               data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
-py::array_t<Real> realArray(const femx::HostVector<Real>& vals)
-{
-  py::array_t<Real> out(vals.size());
-  auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
+using femx::python::bindings::vectorArray;
 
 py::array_t<Real> meshCoordinates(const Mesh& mesh)
 {
@@ -98,9 +78,9 @@ py::dict tripletData(const SparseTripletMatrix& mat)
 {
   py::dict out;
   out["shape"] = py::make_tuple(mat.rows, mat.cols);
-  out["rows"]  = indexArray(mat.row_indices);
-  out["cols"]  = indexArray(mat.col_indices);
-  out["data"]  = realArray(mat.vals);
+  out["rows"]  = vectorArray(mat.row_indices);
+  out["cols"]  = vectorArray(mat.col_indices);
+  out["data"]  = vectorArray(mat.vals);
   return out;
 }
 
@@ -110,7 +90,7 @@ py::dict scalarMatrixData(const BoundarySurface& surface)
   py::dict                     out;
   out["stiffness"] = tripletData(matrices.stiffness);
   out["mass"]      = tripletData(matrices.mass);
-  out["load"]      = realArray(matrices.load);
+  out["load"]      = vectorArray(matrices.load);
   return out;
 }
 
@@ -165,7 +145,7 @@ void bindMesh(py::module_& module)
           "mesh_node_ids",
           [](const BoundarySurface& surface)
           {
-            return indexArray(surface.meshNodeIds());
+            return vectorArray(surface.meshNodeIds());
           })
       .def_property_readonly("coordinates", &surfaceCoordinates)
       .def_property_readonly("elements", &surfaceElements)
@@ -173,7 +153,7 @@ void bindMesh(py::module_& module)
           "rim_node_ids",
           [](const BoundarySurface& surface)
           {
-            return indexArray(surface.rimNodeIds());
+            return vectorArray(surface.rimNodeIds());
           })
       .def_property_readonly("rim_mesh_node_ids", &rimMeshNodeIds)
       .def("scalar_matrix_data", &scalarMatrixData);

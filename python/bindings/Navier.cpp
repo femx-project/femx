@@ -5,6 +5,7 @@
 #include <string>
 
 #include "Bindings.hpp"
+#include "NumpyConversions.hpp"
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
@@ -15,7 +16,6 @@
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/model/navier/FluidProperties.hpp>
 #include <femx/model/navier/NavierModel.hpp>
@@ -37,7 +37,6 @@ namespace py = pybind11;
 namespace
 {
 
-using femx::DenseMatrix;
 using femx::HostVector;
 using femx::Index;
 using femx::Real;
@@ -45,76 +44,14 @@ using femx::assembly::HostConstrainedTimeResidual;
 using femx::model::navier::FluidProperties;
 using femx::model::navier::HostNavierResidual;
 using femx::model::navier::NavierModel;
+using femx::python::bindings::denseMatrixFromArray;
+using femx::python::bindings::FiniteCheck;
+using femx::python::bindings::IndexArray;
+using femx::python::bindings::RealArray;
+using femx::python::bindings::vectorArray;
+using femx::python::bindings::vectorFromArray;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
-
-using RealArray  = py::array_t<Real,
-                               py::array::c_style | py::array::forcecast>;
-using IndexArray = py::array_t<Index,
-                               py::array::c_style | py::array::forcecast>;
-
-py::array_t<Index> indexArray(const HostVector<Index>& vals)
-{
-  py::array_t<Index> out(vals.size());
-  auto               data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
-HostVector<Real> realVector(const RealArray& vals, const char* name)
-{
-  if (vals.ndim() != 1)
-  {
-    throw std::runtime_error(std::string(name) + " must be one-dimensional");
-  }
-  HostVector<Real> out(vals.shape(0));
-  const auto       data = vals.unchecked<1>();
-  for (Index i = 0; i < out.size(); ++i)
-  {
-    out[i] = data(i);
-    if (!std::isfinite(out[i]))
-    {
-      throw std::runtime_error(std::string(name) + " must be finite");
-    }
-  }
-  return out;
-}
-
-py::array_t<Real> vectorArray(const HostVector<Real>& vals)
-{
-  py::array_t<Real> out(vals.size());
-  auto              data = out.mutable_unchecked<1>();
-  for (Index i = 0; i < vals.size(); ++i)
-  {
-    data(i) = vals[i];
-  }
-  return out;
-}
-
-DenseMatrix realMatrix(const RealArray& vals, const char* name)
-{
-  if (vals.ndim() != 2)
-  {
-    throw std::runtime_error(std::string(name) + " must be two-dimensional");
-  }
-  DenseMatrix out(vals.shape(0), vals.shape(1));
-  const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < out.rows(); ++row)
-  {
-    for (Index col = 0; col < out.cols(); ++col)
-    {
-      out(row, col) = data(row, col);
-      if (!std::isfinite(out(row, col)))
-      {
-        throw std::runtime_error(std::string(name) + " must be finite");
-      }
-    }
-  }
-  return out;
-}
 
 py::array_t<Index> boundaryVelocityDofs(
     const NavierModel& model,
@@ -122,13 +59,13 @@ py::array_t<Index> boundaryVelocityDofs(
 {
   if (py::isinstance<py::str>(selector))
   {
-    return indexArray(
+    return vectorArray(
         model.velocityBoundaryDofs(selector.cast<std::string>()));
   }
   if (py::isinstance<py::int_>(selector)
       && !py::isinstance<py::bool_>(selector))
   {
-    return indexArray(model.velocityBoundaryDofs(selector.cast<Index>()));
+    return vectorArray(model.velocityBoundaryDofs(selector.cast<Index>()));
   }
   throw std::runtime_error("Boundary selector must be a physical name or tag");
 }
@@ -787,8 +724,10 @@ public:
       const RealArray& modes)
   {
     auto map = femx::fem::makeInitialStateMap(
-        realVector(mean, "initial_state_mean"),
-        realMatrix(modes, "initial_state_modes"),
+        vectorFromArray(
+            mean, "initial_state_mean", FiniteCheck::Require),
+        denseMatrixFromArray(
+            modes, "initial_state_modes", FiniteCheck::Require),
         ctr_,
         0,
         ctr_param_offset_,
@@ -1049,8 +988,8 @@ makeDeviceIntegrator(NavierModel&           model,
       problem.controlMap(),
       femx::fem::HostInitialStateMap{},
       resolveOptions(opts));
-  const HostVector<Real> h_init =
-      realVector(init, "initial_state");
+  const HostVector<Real> h_init = vectorFromArray(
+      init, "initial_state", FiniteCheck::Require);
   integ->setInitialState(h_init);
   return integ;
 }
@@ -1063,9 +1002,11 @@ makeDeviceIntegrator(NavierModel&                model,
                      const py::object&           opts_obj)
 {
   const Index num_prm = problem.residual().dims().num_param;
-  auto        init    = realVector(mean, "initial_state_mean");
-  auto        basis   = realMatrix(modes, "initial_state_modes");
-  const auto  opts    = resolveOptions(opts_obj);
+  auto        init    = vectorFromArray(
+      mean, "initial_state_mean", FiniteCheck::Require);
+  auto basis = denseMatrixFromArray(
+      modes, "initial_state_modes", FiniteCheck::Require);
+  const auto opts = resolveOptions(opts_obj);
   if (basis.cols() == 0)
   {
     auto integ = std::make_unique<PythonDeviceTimeIntegrator>(
@@ -1200,7 +1141,7 @@ void bindNavier(py::module_& module)
           "velocity_dofs",
           [](const NavierModel& model)
           {
-            return indexArray(model.velocityDofs());
+            return vectorArray(model.velocityDofs());
           })
       .def("velocity_boundary_dofs",
            &boundaryVelocityDofs,
@@ -1224,7 +1165,7 @@ void bindNavier(py::module_& module)
           "fixed_dofs",
           [](const FixedDirichletProblem& problem)
           {
-            return indexArray(problem.data().dofs);
+            return vectorArray(problem.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
@@ -1264,7 +1205,7 @@ void bindNavier(py::module_& module)
           "fixed_dofs",
           [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(problem.data().dofs);
+            return vectorArray(problem.data().dofs);
           })
       .def_property_readonly(
           "fixed_values",
@@ -1288,7 +1229,7 @@ void bindNavier(py::module_& module)
           "ctr_state_dofs",
           [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(problem.control().stateDofs());
+            return vectorArray(problem.control().stateDofs());
           })
       .def_property_readonly(
           "num_ctr_parameters",
@@ -1306,7 +1247,7 @@ void bindNavier(py::module_& module)
           "ctr_mesh_node_ids",
           [](const ControlledDirichletProblem& problem)
           {
-            return indexArray(problem.controlMeshNodeIds());
+            return vectorArray(problem.controlMeshNodeIds());
           })
       .def("make_initial_state_map",
            &ControlledDirichletProblem::makeInitialStateMap,
@@ -1363,8 +1304,8 @@ void bindNavier(py::module_& module)
             {
               throw py::type_error("progress must be callable");
             }
-            const HostVector<Real> vals =
-                realVector(prm_array, "parameters");
+            const HostVector<Real> vals = vectorFromArray(
+                prm_array, "parameters", FiniteCheck::Require);
             auto           d_vals = owner.copyParameters(vals);
             TimeTrajectory traj;
             if (progress.is_none())
