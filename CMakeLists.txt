@@ -7,7 +7,7 @@ option(FEMX_ENABLE_CUDA "Enable CUDA execution and Device storage" OFF)
 
 project(
   femx
-  VERSION 0.6.0
+  VERSION 0.7.0
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)

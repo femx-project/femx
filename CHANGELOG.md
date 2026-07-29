@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.0
+
+### Changed
+
+- Aligned public C++ function names with the project naming conventions.
+- Reduced preprocessing time and memory for time-dependent Dirichlet
+  conditions, storing constant boundary values only once.
+
 ## v0.6.0
 
 ### Changed
