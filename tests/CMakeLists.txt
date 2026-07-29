@@ -9,8 +9,8 @@ if(TARGET femx_linalg_petsc)
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(runPETScLinalgTests PRIVATE femx::linalg_petsc)
   add_test(NAME PETScLinalgTests COMMAND runPETScLinalgTests)
-  set_tests_properties(PETScLinalgTests
-                       PROPERTIES LABELS "petsc;optional;focused")
+  set_tests_properties(PETScLinalgTests PROPERTIES LABELS
+                                                   "petsc;optional;focused")
 endif()
 
 add_executable(runHostAssemblyTests unit/assembly/runHostAssemblyTests.cpp)
