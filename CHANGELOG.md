@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.1
+
+### Fixed
+
+- Preserved PETSc sparse matrix nonzero patterns across Dirichlet row
+  replacement, avoiding repeated reallocation during assembly.
+
 ## v0.7.0
 
 ### Changed
