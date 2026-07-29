@@ -3,9 +3,8 @@ femx
 ****
 
 femx is a research finite-element code for forward and inverse PDE workflows.
-v0.6.0 renames the linear-algebra ``Jacobian`` API to ``SystemMatrix`` to
-reflect its responsibility for matrix assembly, boundary conditions, and
-matrix-vector products. Numerical behavior is unchanged.
+v0.7.0 aligns public function names with the project naming conventions and
+reduces preprocessing time and memory for time-dependent Dirichlet conditions.
 
 Documentation
 -------------

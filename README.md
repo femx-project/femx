@@ -2,7 +2,15 @@
 
 femx is a C++ finite element library for forward and inverse analysis.
 
-The C++ and Python APIs are pre-1.0 and may change between minor releases.
+Current features include:
+
+- Finite-element utilities for meshes, function spaces, quadrature, and sparse assembly.
+- Inverse-analysis components for controls, observations, objectives, regularization, and adjoint gradients.
+- A Navier–Stokes forward application and Poisson forward and inverse examples.
+- Native CPU, ReSolve CPU/CUDA, and PETSc MPI execution paths.
+- Python bindings and HDF5/XDMF output.
+
+Note: The C++ and Python APIs are pre-1.0 and may change between minor releases.
 
 ## Requirements
 
