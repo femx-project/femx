@@ -697,6 +697,14 @@ class NavierProblem:
     @property
     def fixed_values(self):
         self._ensure_built()
+        if (
+            self._fixed_values.shape[0] == 1
+            and self._model.num_steps != 1
+        ):
+            return np.broadcast_to(
+                self._fixed_values,
+                (self._model.num_steps, self._fixed_values.shape[1]),
+            ).copy()
         return self._fixed_values.copy()
 
     def create_solver(

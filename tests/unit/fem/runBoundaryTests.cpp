@@ -474,6 +474,30 @@ TestOutcome timeDirichletValueCompilation()
       vals.init_state,
       std::array<Real, 5>{{0.0, 1.0, 0.0, 0.0, 0.0}});
 
+  const TimeDirichletData reordered = makeTimeDirichletData(
+      5,
+      2,
+      0.5,
+      [](Real time)
+      {
+        DirichletBC condition;
+        if (time == 0.0)
+        {
+          condition.addDof(1, 1.0);
+          condition.addDof(3, 0.0);
+          return condition;
+        }
+        condition.addDof(3, -time);
+        condition.addDof(1, 1.0 + time);
+        condition.addDof(3, -time);
+        return condition;
+      });
+  status *= valsEqual(reordered.dofs,
+                      std::array<Index, 2>{{1, 3}});
+  status *= valsNear(
+      reordered.vals,
+      std::array<Real, 4>{{1.5, -0.5, 2.0, -1.0}});
+
   bool threw = false;
   try
   {
@@ -486,6 +510,50 @@ TestOutcome timeDirichletValueCompilation()
           DirichletBC condition;
           condition.addDof(0, 1.0);
           condition.addDof(0, 2.0);
+          return condition;
+        });
+  }
+  catch (const std::runtime_error&)
+  {
+    threw = true;
+  }
+  status *= threw;
+
+  threw = false;
+  try
+  {
+    makeTimeDirichletData(
+        3,
+        1,
+        1.0,
+        [](Real time)
+        {
+          DirichletBC condition;
+          condition.addDof(time == 0.0 ? 0 : 1, 1.0);
+          return condition;
+        });
+  }
+  catch (const std::runtime_error&)
+  {
+    threw = true;
+  }
+  status *= threw;
+
+  threw = false;
+  try
+  {
+    makeTimeDirichletData(
+        2,
+        1,
+        1.0,
+        [](Real time)
+        {
+          DirichletBC condition;
+          condition.addDof(0, 1.0);
+          if (time > 0.0)
+          {
+            condition.addDof(0, 2.0);
+          }
           return condition;
         });
   }

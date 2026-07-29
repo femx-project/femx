@@ -36,6 +36,11 @@ class NavierProblemTest(unittest.TestCase):
         wall_dofs = self.model.velocity_boundary_dofs("wall")
         self.assertTrue(set(wall_dofs).issubset(set(problem.fixed_dofs)))
         self.assertEqual(problem.fixed_dofs.size, wall_dofs.size + 1)
+        self.assertEqual(problem._fixed_values.shape[0], 1)
+        self.assertEqual(
+            problem.fixed_values.shape,
+            (self.model.num_steps, problem.fixed_dofs.size),
+        )
         np.testing.assert_array_equal(problem.fixed_values, 0.0)
         np.testing.assert_array_equal(problem.initial_state, 0.0)
 
