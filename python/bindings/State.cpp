@@ -63,8 +63,12 @@ using femx::state::VariableBlock;
 class PythonTimeObserver
 {
 public:
-  explicit PythonTimeObserver(py::object progress)
-    : progress_(std::move(progress))
+  explicit PythonTimeObserver(py::object progress,
+                              py::object sample       = py::none(),
+                              Index      sample_every = 1)
+    : progress_(std::move(progress)),
+      sample_(std::move(sample)),
+      sample_every_(sample_every)
   {
   }
 
@@ -72,18 +76,23 @@ public:
   {
     py::gil_scoped_acquire acquire;
     checkSignals();
-    if (ctx.level == 0)
+    if (!progress_.is_none() && ctx.level > 0)
     {
-      return false;
+      py::dict event;
+      event["type"]                 = "solve";
+      event["phase"]                = "forward";
+      event["step"]                 = ctx.level;
+      event["total"]                = ctx.total_steps;
+      event["assembly_seconds"]     = ctx.assm_sec;
+      event["linear_solve_seconds"] = ctx.lin_solve_sec;
+      progress_(std::move(event));
     }
-    py::dict event;
-    event["type"]                 = "solve";
-    event["phase"]                = "forward";
-    event["step"]                 = ctx.level;
-    event["total"]                = ctx.total_steps;
-    event["assembly_seconds"]     = ctx.assm_sec;
-    event["linear_solve_seconds"] = ctx.lin_solve_sec;
-    progress_(std::move(event));
+    if (!sample_.is_none()
+        && (ctx.level == 0 || ctx.level % sample_every_ == 0
+            || ctx.level == ctx.total_steps))
+    {
+      sample_(ctx.level, vectorArray(ctx.curr));
+    }
     return false;
   }
 
@@ -97,6 +106,8 @@ private:
   }
 
   py::object progress_;
+  py::object sample_;
+  Index      sample_every_{1};
 };
 
 EnsembleBasis ensembleBasisFromArrays(const RealArray& mean,
@@ -674,6 +685,51 @@ void bindState(py::module_& module)
           },
           py::arg("param"),
           py::arg("progress") = py::none())
+      .def(
+          "run",
+          [](PythonHostTimeIntegrator& owner,
+             const RealArray&          parameters,
+             Index                     sample_every,
+             const py::object&         sample,
+             const py::object&         progress)
+          {
+            if (sample_every <= 0)
+            {
+              throw py::value_error("sample_every must be positive");
+            }
+            if (!sample.is_none() && !PyCallable_Check(sample.ptr()))
+            {
+              throw py::type_error("sample must be callable");
+            }
+            if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
+            {
+              throw py::type_error("progress must be callable");
+            }
+
+            auto&            integrator = owner.get();
+            HostVector<Real> vals       = vectorFromArray(
+                parameters, "parameters", FiniteCheck::Skip);
+            if (sample.is_none() && progress.is_none())
+            {
+              py::gil_scoped_release release;
+              integrator.solve(vals.view());
+              return;
+            }
+
+            PythonTimeObserver observer(
+                progress, sample, sample_every);
+            HostTimeIntegrator::Observer callback =
+                [&observer](const TimeStepStateContext& context)
+            {
+              return observer(context);
+            };
+            py::gil_scoped_release release;
+            integrator.solve(vals.view(), callback);
+          },
+          py::arg("param"),
+          py::arg("sample_every") = 1,
+          py::arg("sample")       = py::none(),
+          py::arg("progress")     = py::none())
       .def(
           "set_initial_state",
           [](PythonHostTimeIntegrator& owner, const RealArray& state)

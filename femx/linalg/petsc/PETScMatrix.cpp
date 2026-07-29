@@ -170,6 +170,8 @@ void PETScMatrix::resize(Index rows, Index cols)
         "MatCreateAIJ");
   check(MatSetOption(mat_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE),
         "MatSetOption");
+  check(MatSetOption(mat_, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE),
+        "MatSetOption");
 }
 
 void PETScMatrix::resize(const HostCsrPattern& pattern)
@@ -228,6 +230,8 @@ void PETScMatrix::resize(const HostCsrPattern& pattern)
         "MatCreateAIJ");
 
   check(MatSetOption(mat_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE),
+        "MatSetOption");
+  check(MatSetOption(mat_, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE),
         "MatSetOption");
   check(MatSetUp(mat_), "MatSetUp");
 }

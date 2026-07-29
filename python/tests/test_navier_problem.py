@@ -43,6 +43,10 @@ class NavierProblemTest(unittest.TestCase):
         )
         np.testing.assert_array_equal(problem.fixed_values, 0.0)
         np.testing.assert_array_equal(problem.initial_state, 0.0)
+        self.assertEqual(
+            self.model.mesh.elements.shape[0],
+            self.model.mesh.num_elements,
+        )
 
         dims = problem.residual.dims()
         self.assertEqual(dims.num_steps, self.model.num_steps)
@@ -158,8 +162,23 @@ class NavierProblemTest(unittest.TestCase):
         self.assertEqual(solver.memspace, femx.MemorySpace.HOST)
         self.assertEqual(solver.solver_type, femx.SolverType.DENSE)
         second = solver.solve(np.array([0.2, 0.6]))
+        velocity, pressure = model.state_fields(second[-1])
+        self.assertEqual(velocity.shape, (model.mesh.num_nodes, 3))
+        self.assertEqual(pressure.shape, (model.mesh.num_nodes,))
+
+        samples = []
+        result = solver.run(
+            np.array([0.2, 0.6]),
+            sample_every=2,
+            sample=lambda level, state: samples.append(
+                (level, np.asarray(state).copy())
+            ),
+        )
+        self.assertIsNone(result)
+        self.assertEqual([level for level, _ in samples], [0, 2, 3])
+        np.testing.assert_allclose(samples[-1][1], second[-1])
         third = solver.solve(np.array([0.1, 0.3]))
-        self.assertEqual(solver.num_solves, 2)
+        self.assertEqual(solver.num_solves, 3)
         self.assertEqual(solver.assembly_calls, model.num_steps)
         self.assertEqual(solver.linear_solve_calls, model.num_steps)
         np.testing.assert_allclose(second.values, trajectory.values)

@@ -109,6 +109,30 @@ void writeNavierXdmf(const NavierModel&    model,
   out.write(path);
 }
 
+py::tuple navierStateFields(const NavierModel& model,
+                            const RealArray&   state_array)
+{
+  const HostVector<Real> state = vectorFromArray(
+      state_array, "state", FiniteCheck::Skip);
+  const Index      num_nodes = model.mesh().numNodes();
+  HostVector<Real> ux(num_nodes);
+  HostVector<Real> uy(num_nodes);
+  HostVector<Real> uz(num_nodes);
+  HostVector<Real> pressure(num_nodes);
+  femx::model::navier::splitStateFields(
+      state.view(), model.space(), ux, uy, uz, pressure);
+
+  py::array_t<Real> velocity({num_nodes, Index{3}});
+  auto              values = velocity.mutable_unchecked<2>();
+  for (Index in = 0; in < num_nodes; ++in)
+  {
+    values(in, 0) = ux[in];
+    values(in, 1) = uy[in];
+    values(in, 2) = uz[in];
+  }
+  return py::make_tuple(std::move(velocity), vectorArray(pressure));
+}
+
 Index fieldId(const std::string& field)
 {
   if (field == "velocity")
@@ -1242,7 +1266,10 @@ void bindNavier(py::module_& module)
            &writeNavierXdmf,
            py::arg("path"),
            py::arg("trajectory"),
-           py::call_guard<py::gil_scoped_release>());
+           py::call_guard<py::gil_scoped_release>())
+      .def("state_fields",
+           &navierStateFields,
+           py::arg("state"));
 
   py::class_<FixedDirichletProblem>(module, "_FixedDirichletProblem")
       .def(py::init<NavierModel&, const py::iterable&>(),
@@ -1437,6 +1464,74 @@ void bindNavier(py::module_& module)
           },
           py::arg("param"),
           py::arg("progress") = py::none())
+      .def(
+          "run",
+          [](PythonDeviceTimeIntegrator& owner,
+             const RealArray&            prm_array,
+             Index                       sample_every,
+             const py::object&           sample,
+             const py::object&           progress)
+          {
+            if (sample_every <= 0)
+            {
+              throw py::value_error("sample_every must be positive");
+            }
+            if (!sample.is_none() && !PyCallable_Check(sample.ptr()))
+            {
+              throw py::type_error("sample must be callable");
+            }
+            if (!progress.is_none() && !PyCallable_Check(progress.ptr()))
+            {
+              throw py::type_error("progress must be callable");
+            }
+
+            auto&                  integ = owner.get();
+            const HostVector<Real> vals  = vectorFromArray(
+                prm_array, "parameters", FiniteCheck::Require);
+            auto d_vals = owner.copyParameters(vals);
+            if (sample.is_none() && progress.is_none())
+            {
+              py::gil_scoped_release release;
+              integ.solve(d_vals.view());
+              return;
+            }
+
+            femx::state::DeviceTimeIntegrator::Observer observer =
+                [sample_every, &sample, &progress](
+                    const femx::state::TimeStepStateContext& step)
+            {
+              py::gil_scoped_acquire acquire;
+              if (PyErr_CheckSignals() != 0)
+              {
+                throw py::error_already_set();
+              }
+              if (!progress.is_none() && step.level > 0)
+              {
+                py::dict event;
+                event["type"]                 = "solve";
+                event["phase"]                = "forward";
+                event["step"]                 = step.level;
+                event["total"]                = step.total_steps;
+                event["assembly_seconds"]     = step.assm_sec;
+                event["linear_solve_seconds"] = step.lin_solve_sec;
+                progress(std::move(event));
+              }
+              if (!sample.is_none()
+                  && (step.level == 0
+                      || step.level % sample_every == 0
+                      || step.level == step.total_steps))
+              {
+                sample(step.level, vectorArray(step.curr));
+              }
+              return false;
+            };
+            py::gil_scoped_release release;
+            integ.solve(d_vals.view(), std::move(observer));
+          },
+          py::arg("param"),
+          py::arg("sample_every") = 1,
+          py::arg("sample")       = py::none(),
+          py::arg("progress")     = py::none())
       .def("reset_timing",
            [](PythonDeviceTimeIntegrator& owner)
            { owner.get().resetStats(); })

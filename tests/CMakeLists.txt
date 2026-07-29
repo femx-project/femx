@@ -3,6 +3,16 @@ target_include_directories(runLinalgTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(runLinalgTests PRIVATE femx::femx)
 add_test(NAME LinalgTests COMMAND runLinalgTests)
 
+if(TARGET femx_linalg_petsc)
+  add_executable(runPETScLinalgTests unit/linalg/runPETScLinalgTests.cpp)
+  target_include_directories(runPETScLinalgTests
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(runPETScLinalgTests PRIVATE femx::linalg_petsc)
+  add_test(NAME PETScLinalgTests COMMAND runPETScLinalgTests)
+  set_tests_properties(PETScLinalgTests PROPERTIES LABELS
+                                                   "petsc;optional;focused")
+endif()
+
 add_executable(runHostAssemblyTests unit/assembly/runHostAssemblyTests.cpp)
 target_include_directories(runHostAssemblyTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

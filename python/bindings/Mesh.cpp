@@ -51,6 +51,31 @@ py::array_t<Real> surfaceCoordinates(const BoundarySurface& surface)
   return out;
 }
 
+py::array_t<Index> meshElements(const Mesh& mesh)
+{
+  if (mesh.numElems() <= 0)
+  {
+    return py::array_t<Index>(py::array::ShapeContainer{0, 0});
+  }
+  const Index        nodes_per_element = mesh.elems().front().numNodes();
+  py::array_t<Index> out({mesh.numElems(), nodes_per_element});
+  auto               data = out.mutable_unchecked<2>();
+  for (Index ie = 0; ie < mesh.numElems(); ++ie)
+  {
+    const auto& element = mesh.elem(ie);
+    if (element.numNodes() != nodes_per_element)
+    {
+      throw std::runtime_error("Mesh contains mixed element sizes");
+    }
+    const Index* node_ids = mesh.elemNodeIds(ie);
+    for (Index in = 0; in < nodes_per_element; ++in)
+    {
+      data(ie, in) = node_ids[in];
+    }
+  }
+  return out;
+}
+
 py::array_t<Index> surfaceElements(const BoundarySurface& surface)
 {
   if (surface.numElements() <= 0)
@@ -170,6 +195,7 @@ void bindMesh(py::module_& module)
       .def_property_readonly("num_nodes", &Mesh::numNodes)
       .def_property_readonly("num_elements", &Mesh::numElems)
       .def_property_readonly("coordinates", &meshCoordinates)
+      .def_property_readonly("elements", &meshElements)
       .def_property_readonly("physical_names", &physicalNames)
       .def(
           "boundary",
