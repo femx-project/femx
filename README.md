@@ -2,10 +2,7 @@
 
 femx is a C++ finite element library for forward and inverse analysis.
 
-v0.6.0 renames the linear-algebra `Jacobian` API to `SystemMatrix` so its name
-matches its responsibility for matrix assembly, boundary conditions, and
-matrix-vector products. Numerical behavior is unchanged. The C++ and Python
-APIs remain pre-1.0 and may change between minor releases.
+The C++ and Python APIs are pre-1.0 and may change between minor releases.
 
 ## Requirements
 
