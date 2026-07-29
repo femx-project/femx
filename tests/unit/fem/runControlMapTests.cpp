@@ -157,6 +157,31 @@ TestOutcome hostControlMapJacobian()
   return status.report();
 }
 
+TestOutcome hostConstantFixedValues()
+{
+  TestStatus                status(__func__);
+  const fem::HostControlMap map = fem::makeControlMap(
+      3,
+      5,
+      makeControl(),
+      HostVector<Index>{0, 3},
+      HostVector<Real>{10.0, 11.0},
+      HostVector<LinearInterpolation>{
+          {0, 0, 0.0}, {0, 1, 0.25}, {1, 2, 0.5}},
+      2,
+      9);
+  const HostVector<Real> prm{0.75, -1.25, 1.0, 2.0, 3.0, -2.0, 5.0, 4.0, 8.0};
+
+  HostVector<Real> vals(map.numBcs());
+  for (Index step = 0; step < 3; ++step)
+  {
+    fem::controlVals(map, step, prm.view(), vals.view());
+    status *= near(vals[2], 10.0);
+    status *= near(vals[3], 11.0);
+  }
+  return status.report();
+}
+
 TestOutcome hostInitialStateTranspose()
 {
   TestStatus                     status(__func__);
@@ -292,6 +317,7 @@ int main()
 {
   femx::tests::TestingResults results;
   results += femx::tests::hostControlMapJacobian();
+  results += femx::tests::hostConstantFixedValues();
   results += femx::tests::hostInitialStateTranspose();
 #if defined(FEMX_HAS_CUDA)
   results += femx::tests::cudaMapsMatchHost();

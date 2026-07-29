@@ -104,22 +104,11 @@ HostControlMap makeControlMap(
   const Index num_fixed = fixed_dofs.size();
   if (fixed_vals.empty())
   {
-    fixed_vals.resize(num_steps * num_fixed);
+    fixed_vals.resize(num_fixed);
   }
-  else if (fixed_vals.size() == num_fixed)
-  {
-    linalg::HostContext ctx;
-    auto&               vec_handler = ctx.vectorHandler();
-    HostVector<Real>    vals(num_steps * num_fixed);
-
-    for (Index step = 0; step < num_steps; ++step)
-    {
-      vec_handler.copy(fixed_vals.view(),
-                       vals.view().subview(step * num_fixed, num_fixed));
-    }
-    fixed_vals = std::move(vals);
-  }
-  else
+  const bool fixed_vals_are_constant =
+      fixed_vals.size() == num_fixed;
+  if (!fixed_vals_are_constant)
   {
     require(fixed_vals.size() == num_steps * num_fixed,
             "ControlMap fixed value size mismatch");
@@ -203,8 +192,10 @@ void controlVals(const HostControlMap&      map,
 
               1.0);
   }
-  vec_handler.copy(map.fixed_vals_.view().subview(step * map.num_fixed_,
-                                                  map.num_fixed_),
+  const Index fixed_step_stride =
+      map.fixed_vals_.size() == map.num_fixed_ ? 0 : map.num_fixed_;
+  vec_handler.copy(map.fixed_vals_.view().subview(
+                       step * fixed_step_stride, map.num_fixed_),
                    out.subview(map.ctr_mat_.rows(), map.num_fixed_));
 }
 
@@ -239,8 +230,10 @@ void controlVals(const DeviceControlMap&      map,
               hi_wt,
               1.0);
   }
-  vec_handler.copy(map.fixed_vals_.view().subview(step * map.num_fixed_,
-                                                  map.num_fixed_),
+  const Index fixed_step_stride =
+      map.fixed_vals_.size() == map.num_fixed_ ? 0 : map.num_fixed_;
+  vec_handler.copy(map.fixed_vals_.view().subview(
+                       step * fixed_step_stride, map.num_fixed_),
                    out.subview(map.ctr_mat_.rows(), map.num_fixed_));
 }
 

@@ -3,6 +3,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "Bindings.hpp"
 #include "NumpyConversions.hpp"
@@ -179,17 +180,11 @@ py::array_t<Real> pointArray(const femx::fem::Mesh::Node& point, Index dim)
   return out;
 }
 
-HostVector<Real> pythonBoundaryValue(const py::object&            val,
-                                     const femx::fem::Mesh::Node& point,
-                                     Index                        dim,
-                                     Real                         time,
-                                     Index                        components,
-                                     const std::string&           field)
+HostVector<Real> pythonBoundaryComponents(const py::object&  raw,
+                                          Index              components,
+                                          const std::string& field)
 {
-  const py::object raw  = PyCallable_Check(val.ptr())
-                              ? val(pointArray(point, dim), time)
-                              : val;
-  const RealArray  vals = RealArray::ensure(raw);
+  const RealArray vals = RealArray::ensure(raw);
   if (!vals)
   {
     throw std::runtime_error(field + " boundary value must be real-valued");
@@ -226,63 +221,150 @@ HostVector<Real> pythonBoundaryValue(const py::object&            val,
   return out;
 }
 
-femx::fem::DirichletBC pythonDirichletBC(
-    const NavierModel& model,
-    const py::list&    specifications,
-    Real               time)
+HostVector<Real> pythonBoundaryValue(const py::object&            val,
+                                     const femx::fem::Mesh::Node& point,
+                                     Index                        dim,
+                                     Real                         time,
+                                     Index                        components,
+                                     const std::string&           field)
 {
-  femx::fem::DirichletBC out;
-  bool                   has_pressure = false;
+  return pythonBoundaryComponents(
+      val(pointArray(point, dim), time), components, field);
+}
+
+struct PythonTimeDirichletValue
+{
+  std::string       field;
+  py::object        val;
+  HostVector<Index> nodes;
+  HostVector<Index> dofs;
+  Index             num_components{0};
+};
+
+struct PreparedPythonDirichletData
+{
+  femx::fem::DirichletBC                fixed;
+  std::vector<PythonTimeDirichletValue> time_dependent;
+};
+
+PreparedPythonDirichletData preparePythonDirichletData(
+    const NavierModel&  model,
+    const py::iterable& specifications)
+{
+  PreparedPythonDirichletData out;
+  bool                        has_pressure = false;
   for (const py::handle item : specifications)
   {
     const py::object specification =
         py::reinterpret_borrow<py::object>(item);
     const std::string field =
         specification.attr("field").cast<std::string>();
-    const py::object selector    = specification.attr("boundary");
-    const py::object val         = specification.attr("value");
-    const auto       field_view  = model.space().field(fieldId(field));
-    has_pressure                |= field == "pressure";
+    const py::object      selector        = specification.attr("boundary");
+    const py::object      val             = specification.attr("value");
+    const Index           field_id        = fieldId(field);
+    const auto            field_view      = model.space().field(field_id);
+    const Index           num_components  = field_view.numComponents();
+    const std::set<Index> nodes           = selectBoundaryNodes(model, selector);
+    has_pressure                         |= field == "pressure";
 
-    for (Index in : selectBoundaryNodes(model, selector))
+    if (PyCallable_Check(val.ptr()))
     {
-      const HostVector<Real> components = pythonBoundaryValue(
-          val,
-          model.mesh().node(in),
-          model.mesh().dim(),
-          time,
-          field_view.numComponents(),
-          field);
-      for (Index ic = 0; ic < components.size(); ++ic)
+      PythonTimeDirichletValue time_value;
+      time_value.field          = field;
+      time_value.val            = val;
+      time_value.num_components = num_components;
+      time_value.nodes.reserve(static_cast<Index>(nodes.size()));
+      time_value.dofs.reserve(
+          static_cast<Index>(nodes.size()) * num_components);
+      for (Index in : nodes)
       {
-        out.addDof(field_view.globalDof(in, ic), components[ic]);
+        time_value.nodes.push_back(in);
+        for (Index ic = 0; ic < num_components; ++ic)
+        {
+          time_value.dofs.push_back(field_view.globalDof(in, ic));
+        }
+      }
+      out.time_dependent.push_back(std::move(time_value));
+      continue;
+    }
+
+    const HostVector<Real> components =
+        pythonBoundaryComponents(val, num_components, field);
+    for (Index in : nodes)
+    {
+      for (Index ic = 0; ic < num_components; ++ic)
+      {
+        out.fixed.addDof(field_view.globalDof(in, ic), components[ic]);
       }
     }
   }
 
   if (!has_pressure)
   {
-    out.addDof(model.space().field(fieldId("pressure")).globalDof(0), 0.0);
+    out.fixed.addDof(
+        model.space().field(fieldId("pressure")).globalDof(0), 0.0);
   }
   return out;
+}
+
+femx::fem::DirichletBC pythonDirichletBC(
+    const NavierModel&                 model,
+    const PreparedPythonDirichletData& data,
+    Real                               time)
+{
+  femx::fem::DirichletBC out = data.fixed;
+  for (const PythonTimeDirichletValue& value : data.time_dependent)
+  {
+    for (Index point = 0; point < value.nodes.size(); ++point)
+    {
+      const HostVector<Real> components = pythonBoundaryValue(
+          value.val,
+          model.mesh().node(value.nodes[point]),
+          model.mesh().dim(),
+          time,
+          value.num_components,
+          value.field);
+      for (Index ic = 0; ic < components.size(); ++ic)
+      {
+        out.addDof(
+            value.dofs[point * value.num_components + ic], components[ic]);
+      }
+    }
+  }
+  return out;
+}
+
+femx::fem::TimeDirichletData makeConstantDirichletData(
+    const NavierModel&            model,
+    const femx::fem::DirichletBC& fixed)
+{
+  return femx::fem::makeTimeDirichletData(
+      model.numStates(),
+      1,
+      model.dt(),
+      [&fixed](Real)
+      {
+        return fixed;
+      });
 }
 
 femx::fem::TimeDirichletData makePythonDirichletData(
     const NavierModel&  model,
     const py::iterable& specifications)
 {
-  py::list items;
-  for (const py::handle item : specifications)
+  const PreparedPythonDirichletData data =
+      preparePythonDirichletData(model, specifications);
+  if (data.time_dependent.empty())
   {
-    items.append(item);
+    return makeConstantDirichletData(model, data.fixed);
   }
   return femx::fem::makeTimeDirichletData(
       model.numStates(),
       model.numSteps(),
       model.dt(),
-      [&model, &items](Real time)
+      [&model, &data](Real time)
       {
-        return pythonDirichletBC(model, items, time);
+        return pythonDirichletBC(model, data, time);
       });
 }
 
@@ -552,9 +634,19 @@ py::array_t<Real> timeDirichletValueArray(
     const femx::fem::TimeDirichletData& data,
     Index                               steps)
 {
-  py::array_t<Real> out({steps, data.dofs.size()});
+  Index stored_steps = steps;
+  if (!data.dofs.empty())
+  {
+    femx::require(data.vals.size() % data.dofs.size() == 0,
+                  "Dirichlet value storage has inconsistent dimensions");
+    stored_steps = data.vals.size() / data.dofs.size();
+    femx::require(stored_steps == 1 || stored_steps == steps,
+                  "Dirichlet value storage has inconsistent time levels");
+  }
+
+  py::array_t<Real> out({stored_steps, data.dofs.size()});
   auto              vals = out.mutable_unchecked<2>();
-  for (Index step = 0; step < steps; ++step)
+  for (Index step = 0; step < stored_steps; ++step)
   {
     for (Index col = 0; col < data.dofs.size(); ++col)
     {

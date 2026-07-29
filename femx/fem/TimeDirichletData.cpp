@@ -31,25 +31,20 @@ ValueMap conditionVals(const DirichletBC& bc,
     require(std::isfinite(val), "Dirichlet value must be finite");
 
     const auto [it, inserted] = vals.emplace(dof, val);
-    require(inserted || std::abs(it->second - val) <= 1.0e-12,
-            "conflicting Dirichlet values at dof " + std::to_string(dof)
-                + ", time " + std::to_string(t));
+    if (!inserted && std::abs(it->second - val) > 1.0e-12)
+    {
+      throw std::runtime_error(
+          "conflicting Dirichlet values at dof " + std::to_string(dof)
+          + ", time " + std::to_string(t));
+    }
   }
   return vals;
 }
 
-void checkDofSet(const ValueMap& ref, const ValueMap& curr, Real t)
+[[noreturn]] void throwChangedDofSet(Real t)
 {
-  require(ref.size() == curr.size(),
-          "Dirichlet constrained dofs changed at time " + std::to_string(t));
-  auto ref_it  = ref.begin();
-  auto curr_it = curr.begin();
-  for (; ref_it != ref.end(); ++ref_it, ++curr_it)
-  {
-    require(ref_it->first == curr_it->first,
-            "Dirichlet constrained dofs changed at time "
-                + std::to_string(t));
-  }
+  throw std::runtime_error(
+      "Dirichlet constrained dofs changed at time " + std::to_string(t));
 }
 
 } // namespace
@@ -75,21 +70,55 @@ TimeDirichletData makeTimeDirichletData(
     out.init_state[dof] = val;
   }
 
+  HostVector<Index> col_by_dof(nstate, -1);
+  for (Index col = 0; col < out.dofs.size(); ++col)
+  {
+    col_by_dof[out.dofs[col]] = col;
+  }
+  HostVector<Index> seen(out.dofs.size(), -1);
+
   out.vals.resize(nstep * out.dofs.size());
   BlockVectorView<MemorySpace::Host, Real> vals(
       out.vals.data(), nstep, out.dofs.size());
   for (Index step = 0; step < nstep; ++step)
   {
-    const Real     t    = static_cast<Real>(step + 1) * dt;
-    const ValueMap curr = conditionVals(
-        bc_at_time(t), nstate, t);
-    checkDofSet(init, curr, t);
+    const Real        t    = static_cast<Real>(step + 1) * dt;
+    const DirichletBC curr = bc_at_time(t);
+    require(curr.dofs().size() == curr.vals().size(),
+            "DirichletBC has inconsistent data");
 
-    Index col = 0;
-    for (const auto& [dof, val] : curr)
+    Index unique_dofs = 0;
+    for (Index i = 0; i < curr.dofs().size(); ++i)
     {
-      (void) dof;
-      vals(step, col++) = val;
+      const Index dof = curr.dofs()[i];
+      const Real  val = curr.vals()[i];
+      require(dof >= 0 && dof < nstate,
+              "Dirichlet dof is out of range");
+      require(std::isfinite(val), "Dirichlet value must be finite");
+
+      const Index col = col_by_dof[dof];
+      if (col < 0)
+      {
+        throwChangedDofSet(t);
+      }
+      if (seen[col] == step)
+      {
+        if (std::abs(vals(step, col) - val) > 1.0e-12)
+        {
+          throw std::runtime_error(
+              "conflicting Dirichlet values at dof "
+              + std::to_string(dof) + ", time " + std::to_string(t));
+        }
+        continue;
+      }
+
+      seen[col]       = step;
+      vals(step, col) = val;
+      ++unique_dofs;
+    }
+    if (unique_dofs != out.dofs.size())
+    {
+      throwChangedDofSet(t);
     }
   }
   return out;
