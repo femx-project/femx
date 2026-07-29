@@ -129,6 +129,38 @@ class TimeIntegratorTest(unittest.TestCase):
             all(event["linear_solve_seconds"] >= 0.0 for event in events)
         )
 
+    def test_runs_without_trajectory_and_samples_selected_levels(self):
+        integrator = self.make_integrator()
+        samples = []
+        events = []
+
+        result = integrator.run(
+            np.array([2.0]),
+            sample_every=2,
+            sample=lambda level, state: samples.append(
+                (level, np.asarray(state).copy())
+            ),
+            progress=lambda event: events.append(dict(event)),
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual([level for level, _ in samples], [0, 2, 3])
+        np.testing.assert_allclose(
+            [state[0] for _, state in samples],
+            [1.0, 5.0, 7.0],
+        )
+        self.assertEqual([event["step"] for event in events], [1, 2, 3])
+        self.assertEqual(integrator.assembly_calls, 3)
+        self.assertEqual(integrator.solve_calls, 3)
+
+    def test_run_rejects_invalid_sampling_arguments(self):
+        integrator = self.make_integrator()
+
+        with self.assertRaisesRegex(ValueError, "sample_every"):
+            integrator.run(np.array([2.0]), sample_every=0)
+        with self.assertRaisesRegex(TypeError, "sample must be callable"):
+            integrator.run(np.array([2.0]), sample=object())
+
     def test_callback_exception_clears_monitor_and_solver_is_reusable(self):
         integrator = self.make_integrator()
         steps = []

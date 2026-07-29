@@ -456,6 +456,14 @@ class NavierModel:
         except RuntimeError as error:
             raise ValueError(str(error)) from error
 
+    def state_fields(self, state):
+        """Split one state into nodal velocity and pressure arrays."""
+
+        state = np.ascontiguousarray(state, dtype=float).reshape(-1)
+        if state.size != self.num_states:
+            raise ValueError(f"state must contain {self.num_states} values")
+        return self._impl.state_fields(state)
+
 
 class NavierProblem:
     """A Navier-Stokes model with boundary values and optional inlet control."""
@@ -856,6 +864,41 @@ class NavierSolver:
         traj = self._integ.solve(param, progress=progress)
         self._num_solves += 1
         return traj
+
+    def run(
+        self,
+        param=None,
+        *,
+        sample_every=1,
+        sample=None,
+        progress=None,
+    ):
+        """Run without retaining a complete trajectory."""
+
+        if self._problem._compiled is not self._compiled:
+            raise RuntimeError(
+                "problem configuration changed; create a new solver"
+            )
+        if (
+            isinstance(sample_every, (bool, np.bool_))
+            or not isinstance(sample_every, Integral)
+        ):
+            raise TypeError("sample_every must be an integer")
+        if sample_every <= 0:
+            raise ValueError("sample_every must be positive")
+        if sample is not None and not callable(sample):
+            raise TypeError("sample must be callable")
+        if progress is not None and not callable(progress):
+            raise TypeError("progress must be callable")
+
+        param = self._problem._check_param(param)
+        self._integ.run(
+            param,
+            sample_every=int(sample_every),
+            sample=sample,
+            progress=progress,
+        )
+        self._num_solves += 1
 
 
 class NavierReducedFunctional:

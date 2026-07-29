@@ -171,6 +171,10 @@ class Mesh:
         return self._impl.coordinates
 
     @property
+    def elements(self):
+        return self._impl.elements
+
+    @property
     def physical_names(self):
         return self._impl.physical_names
 
