@@ -87,9 +87,17 @@ void applyHistoryJacT(
 #pragma omp for
     for (Index ie = range.begin; ie < range.end; ++ie)
     {
+      const auto                        map_view = map.view();
+      const HostVectorView<const Index> element_rows(
+          map_view.res_dofs + map_view.res_offsets[ie],
+          map_view.numResDofs(ie));
+      if (!ctx.ownsElement(ie, map.numElems(), element_rows))
+      {
+        continue;
+      }
+
       gatherElement(map, hist, time.nxt, ie, work);
 
-      const auto  map_view       = map.view();
       const Index num_res_dofs   = map_view.numResDofs(ie);
       const Index num_state_dofs = map_view.numStateDofs(ie);
       work.adj.resize(num_res_dofs);

@@ -40,6 +40,26 @@ public:
   virtual IndexRange elementRange(Index count) const = 0;
 
   /**
+   * @brief Report whether this context owns an element contribution.
+   *
+   * @param[in] element - Global element index.
+   * @param[in] count - Global element count.
+   * @param[in] rows - Element residual rows in application numbering.
+   * @return `true` when this context should evaluate the element.
+   * @throws std::runtime_error - If the element data or execution environment
+   * is invalid.
+   */
+  virtual bool ownsElement(
+      Index                       element,
+      Index                       count,
+      HostVectorView<const Index> rows) const
+  {
+    static_cast<void>(rows);
+    const IndexRange range = elementRange(count);
+    return element >= range.begin && element < range.end;
+  }
+
+  /**
    * @brief Sum replicated Host values across the execution context.
    *
    * @param[in,out] vals - Values replaced by their global sums.

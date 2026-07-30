@@ -32,6 +32,26 @@ public:
   }
 
   /**
+   * @brief Report ownership of every valid serial Host element.
+   *
+   * @param[in] element - Global element index.
+   * @param[in] count - Global element count.
+   * @param[in] rows - Element rows, which may be empty.
+   * @return `true` for every valid element.
+   * @throws std::runtime_error - If `element` or `count` is invalid.
+   */
+  bool ownsElement(
+      Index                       element,
+      Index                       count,
+      HostVectorView<const Index> rows) const override
+  {
+    static_cast<void>(rows);
+    require(count >= 0 && element >= 0 && element < count,
+            "HostContext element index is out of range");
+    return true;
+  }
+
+  /**
    * @brief Leave serial Host values unchanged.
    *
    * @param[in,out] vals - Values left unchanged.

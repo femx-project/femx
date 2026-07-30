@@ -6,6 +6,7 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScPartition.hpp>
 #include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx
@@ -36,10 +37,17 @@ void detail::checkInit()
   require(init == PETSC_TRUE, "PETSc must be initialized");
 }
 
-PetscErrorCode detail::copyFromPETSc(Vec src, HostVector<Real>& dst)
+PetscErrorCode detail::copyFromPETSc(
+    Vec                                          src,
+    HostVector<Real>&                            dst,
+    const std::shared_ptr<const PETScPartition>& partition)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(src, &size));
+  if (partition && partition->size() != size)
+  {
+    return PETSC_ERR_ARG_SIZ;
+  }
   dst.resize(static_cast<Index>(size));
 
   VecScatter scatter = nullptr;
@@ -54,7 +62,10 @@ PetscErrorCode detail::copyFromPETSc(Vec src, HostVector<Real>& dst)
   PetscCall(VecGetArrayRead(all, &vals));
   for (PetscInt i = 0; i < size; ++i)
   {
-    dst[static_cast<Index>(i)] = PetscRealPart(vals[i]);
+    const Index app_index =
+        partition ? partition->applicationIndex(i)
+                  : static_cast<Index>(i);
+    dst[app_index] = PetscRealPart(vals[i]);
   }
   PetscCall(VecRestoreArrayRead(all, &vals));
   PetscCall(VecScatterDestroy(&scatter));
@@ -62,11 +73,15 @@ PetscErrorCode detail::copyFromPETSc(Vec src, HostVector<Real>& dst)
   return PETSC_SUCCESS;
 }
 
-PetscErrorCode detail::copyToPETSc(HostVectorView<const Real> src, Vec dst)
+PetscErrorCode detail::copyToPETSc(
+    HostVectorView<const Real>                   src,
+    Vec                                          dst,
+    const std::shared_ptr<const PETScPartition>& partition)
 {
   PetscInt size = 0;
   PetscCall(VecGetSize(dst, &size));
-  if (src.size() != static_cast<Index>(size))
+  if (src.size() != static_cast<Index>(size)
+      || (partition && partition->size() != size))
   {
     return PETSC_ERR_ARG_SIZ;
   }
@@ -78,8 +93,11 @@ PetscErrorCode detail::copyToPETSc(HostVectorView<const Real> src, Vec dst)
   PetscCall(VecGetArray(dst, &vals));
   for (PetscInt i = begin; i < end; ++i)
   {
+    const Index app_index =
+        partition ? partition->applicationIndex(i)
+                  : static_cast<Index>(i);
     vals[i - begin] =
-        static_cast<PetscScalar>(src[static_cast<Index>(i)]);
+        static_cast<PetscScalar>(src[app_index]);
   }
   PetscCall(VecRestoreArray(dst, &vals));
   return PETSC_SUCCESS;
@@ -123,11 +141,18 @@ MPI_Comm PETScMatrix::comm() const
   return comm_;
 }
 
+std::shared_ptr<const PETScPartition>
+PETScMatrix::partition() const noexcept
+{
+  return partition_;
+}
+
 void PETScMatrix::resize(Index rows, Index cols)
 {
   checkInit();
 
-  if (mat_ != nullptr && rows_ == rows && cols_ == cols)
+  if (mat_ != nullptr && layout_id_ == 0 && !partition_
+      && rows_ == rows && cols_ == cols)
   {
     setZero();
     return;
@@ -138,8 +163,10 @@ void PETScMatrix::resize(Index rows, Index cols)
     check(MatDestroy(&mat_), "MatDestroy");
   }
 
-  rows_ = rows;
-  cols_ = cols;
+  rows_      = rows;
+  cols_      = cols;
+  layout_id_ = 0;
+  partition_.reset();
 
   const PetscInt nrow = static_cast<PetscInt>(rows_);
   const PetscInt ncol = static_cast<PetscInt>(cols_);
@@ -178,7 +205,7 @@ void PETScMatrix::resize(const HostCsrPattern& pattern)
 {
   checkInit();
 
-  if (mat_ != nullptr && rows_ == pattern.rows() && cols_ == pattern.cols())
+  if (mat_ != nullptr && layout_id_ == pattern.layoutId())
   {
     setZero();
     return;
@@ -189,37 +216,54 @@ void PETScMatrix::resize(const HostCsrPattern& pattern)
     check(MatDestroy(&mat_), "MatDestroy");
   }
 
-  rows_ = pattern.rows();
-  cols_ = pattern.cols();
+  rows_      = pattern.rows();
+  cols_      = pattern.cols();
+  layout_id_ = pattern.layoutId();
 
-  PetscInt local_rows  = PETSC_DECIDE;
-  PetscInt global_rows = static_cast<PetscInt>(rows_);
-  check(PetscSplitOwnership(comm_, &local_rows, &global_rows),
-        "PetscSplitOwnership");
-
-  PetscInt begin = 0;
-  checkMPI(MPI_Exscan(&local_rows,
-                      &begin,
-                      1,
-                      MPIU_INT,
-                      MPI_SUM,
-                      comm_),
-           "MPI_Exscan");
-  PetscMPIInt rank = 0;
-  checkMPI(MPI_Comm_rank(comm_, &rank), "MPI_Comm_rank");
-  if (rank == 0)
-  {
-    begin = 0;
-  }
-  const PetscInt end = begin + local_rows;
+  PetscInt begin      = 0;
+  PetscInt local_rows = PETSC_DECIDE;
+  PetscInt local_cols = PETSC_DECIDE;
 
   HostVector<PetscInt> diag_nnz;
   HostVector<PetscInt> offdiag_nnz;
-  computePrealloc(pattern, begin, end, diag_nnz, offdiag_nnz);
+  if (rows_ == cols_)
+  {
+    partition_ = PETScPartition::create(comm_, pattern);
+    begin      = partition_->begin();
+    local_rows = partition_->localSize();
+    local_cols = partition_->localSize();
+    computePrealloc(pattern, *partition_, diag_nnz, offdiag_nnz);
+  }
+  else
+  {
+    partition_.reset();
+    PetscInt global_rows = static_cast<PetscInt>(rows_);
+    check(PetscSplitOwnership(comm_, &local_rows, &global_rows),
+          "PetscSplitOwnership");
+
+    checkMPI(MPI_Exscan(&local_rows,
+                        &begin,
+                        1,
+                        MPIU_INT,
+                        MPI_SUM,
+                        comm_),
+             "MPI_Exscan");
+    PetscMPIInt rank = 0;
+    checkMPI(MPI_Comm_rank(comm_, &rank), "MPI_Comm_rank");
+    if (rank == 0)
+    {
+      begin = 0;
+    }
+    computePrealloc(pattern,
+                    begin,
+                    begin + local_rows,
+                    diag_nnz,
+                    offdiag_nnz);
+  }
 
   check(MatCreateAIJ(comm_,
-                     end - begin,
-                     PETSC_DECIDE,
+                     local_rows,
+                     local_cols,
                      static_cast<PetscInt>(rows_),
                      static_cast<PetscInt>(cols_),
                      0,
@@ -249,8 +293,8 @@ void PETScMatrix::set(Index row, Index col, Real val)
 {
   require(mat_ != nullptr, "PETScMatrix is not initialized");
   check(MatSetValue(mat_,
-                    static_cast<PetscInt>(row),
-                    static_cast<PetscInt>(col),
+                    mappedIndex(row),
+                    mappedIndex(col),
                     static_cast<PetscScalar>(val),
                     INSERT_VALUES),
         "MatSetValue");
@@ -269,11 +313,11 @@ void PETScMatrix::addBlock(HostVectorView<const Index> rows,
   petsc_cols.resize(columns.size());
   for (Index i = 0; i < rows.size(); ++i)
   {
-    petsc_rows[i] = static_cast<PetscInt>(rows[i]);
+    petsc_rows[i] = mappedIndex(rows[i]);
   }
   for (Index i = 0; i < columns.size(); ++i)
   {
-    petsc_cols[i] = static_cast<PetscInt>(columns[i]);
+    petsc_cols[i] = mappedIndex(columns[i]);
   }
   addBlock(petsc_rows.data(),
            petsc_rows.size(),
@@ -327,7 +371,7 @@ void PETScMatrix::zeroRows(HostVectorView<const Index> rows,
   {
     require(row >= 0 && row < rows_,
             "PETScMatrix zeroRows row is out of range");
-    prows.push_back(static_cast<PetscInt>(row));
+    prows.push_back(mappedIndex(row));
   }
 
   check(MatZeroRows(mat(),
@@ -358,7 +402,7 @@ void PETScMatrix::eliminateColumns(
   {
     require(rows[i] >= 0 && rows[i] < rows_,
             "PETSc matrix constrained row is out of range");
-    petsc_rows[i]       = static_cast<PetscInt>(rows[i]);
+    petsc_rows[i]       = mappedIndex(rows[i]);
     prescribed[rows[i]] = values[i];
   }
 
@@ -366,9 +410,11 @@ void PETScMatrix::eliminateColumns(
   ScopedVec rhs_vector;
   createVec(cols_, prescribed_vector);
   createVec(rows_, rhs_vector);
-  check(detail::copyToPETSc(prescribed.view(), prescribed_vector.get()),
+  check(detail::copyToPETSc(
+            prescribed.view(), prescribed_vector.get(), partition_),
         "copyToPETSc");
-  check(detail::copyToPETSc(rhs, rhs_vector.get()), "copyToPETSc");
+  check(detail::copyToPETSc(rhs, rhs_vector.get(), partition_),
+        "copyToPETSc");
   check(MatZeroRowsColumns(mat(),
                            static_cast<PetscInt>(petsc_rows.size()),
                            petsc_rows.data(),
@@ -378,7 +424,8 @@ void PETScMatrix::eliminateColumns(
         "MatZeroRowsColumns");
 
   HostVector<Real> corrected;
-  check(detail::copyFromPETSc(rhs_vector.get(), corrected),
+  check(detail::copyFromPETSc(
+            rhs_vector.get(), corrected, partition_),
         "copyFromPETSc");
   rhs = corrected;
 }
@@ -392,9 +439,9 @@ void PETScMatrix::apply(HostVectorView<const Real> dir, HostVector<Real>& out) c
   ScopedVec y;
   createVec(cols(), x);
   createVec(rows(), y);
-  check(detail::copyToPETSc(dir, x.get()), "copyToPETSc");
+  check(detail::copyToPETSc(dir, x.get(), partition_), "copyToPETSc");
   check(MatMult(mat(), x.get(), y.get()), "MatMult");
-  check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
+  check(detail::copyFromPETSc(y.get(), out, partition_), "copyFromPETSc");
 }
 
 void PETScMatrix::applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const
@@ -406,9 +453,9 @@ void PETScMatrix::applyT(HostVectorView<const Real> dir, HostVector<Real>& out) 
   ScopedVec y;
   createVec(rows(), x);
   createVec(cols(), y);
-  check(detail::copyToPETSc(dir, x.get()), "copyToPETSc");
+  check(detail::copyToPETSc(dir, x.get(), partition_), "copyToPETSc");
   check(MatMultTranspose(mat(), x.get(), y.get()), "MatMultTranspose");
-  check(detail::copyFromPETSc(y.get(), out), "copyFromPETSc");
+  check(detail::copyFromPETSc(y.get(), out, partition_), "copyFromPETSc");
 }
 
 PETScMatrix::ScopedVec::~ScopedVec()
@@ -434,8 +481,11 @@ void PETScMatrix::createVec(Index size, ScopedVec& out) const
   PetscMPIInt comm_size = 1;
   checkMPI(MPI_Comm_size(comm_, &comm_size), "MPI_Comm_size");
 
-  const PetscInt n       = static_cast<PetscInt>(size);
-  const PetscInt n_local = comm_size == 1 ? n : PETSC_DECIDE;
+  const PetscInt n = static_cast<PetscInt>(size);
+  const PetscInt n_local =
+      partition_ && partition_->size() == size
+          ? partition_->localSize()
+          : (comm_size == 1 ? n : PETSC_DECIDE);
 
   check(VecCreate(comm_, out.put()), "VecCreate");
   check(VecSetSizes(out.get(), n_local, n), "VecSetSizes");
@@ -473,6 +523,50 @@ void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
     diag_nnz[row - begin]    = diag;
     offdiag_nnz[row - begin] = off;
   }
+}
+
+void PETScMatrix::computePrealloc(
+    const HostCsrPattern& pattern,
+    const PETScPartition& partition,
+    HostVector<PetscInt>& diag_nnz,
+    HostVector<PetscInt>& offdiag_nnz)
+{
+  diag_nnz.assign(partition.localSize(), 0);
+  offdiag_nnz.assign(partition.localSize(), 0);
+
+  const Index* rp = pattern.rowPtrData();
+  const Index* ci = pattern.colIndData();
+  for (Index app_row = 0; app_row < pattern.rows(); ++app_row)
+  {
+    const PetscInt row = partition.petscIndex(app_row);
+    if (row < partition.begin() || row >= partition.end())
+    {
+      continue;
+    }
+
+    PetscInt diag = 0;
+    PetscInt off  = 0;
+    for (Index k = rp[app_row]; k < rp[app_row + 1]; ++k)
+    {
+      const PetscInt col = partition.petscIndex(ci[k]);
+      if (col >= partition.begin() && col < partition.end())
+      {
+        ++diag;
+      }
+      else
+      {
+        ++off;
+      }
+    }
+    diag_nnz[row - partition.begin()]    = diag;
+    offdiag_nnz[row - partition.begin()] = off;
+  }
+}
+
+PetscInt PETScMatrix::mappedIndex(Index index) const
+{
+  return partition_ ? partition_->petscIndex(index)
+                    : static_cast<PetscInt>(index);
 }
 
 } // namespace linalg

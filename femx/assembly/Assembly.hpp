@@ -204,9 +204,15 @@ void assembleHostElements(
 #pragma omp for
     for (Index ie = range.begin; ie < range.end; ++ie)
     {
-      const Index num_rows  = map_v.numResDofs(ie);
-      const Index num_cols  = map_v.numStateDofs(ie);
-      const Index num_nodes = mesh_v.elemNumNodes(ie);
+      const Index                       num_rows  = map_v.numResDofs(ie);
+      const Index                       num_cols  = map_v.numStateDofs(ie);
+      const Index                       num_nodes = mesh_v.elemNumNodes(ie);
+      const HostVectorView<const Index> element_rows(
+          map_v.res_dofs + map_v.res_offsets[ie], num_rows);
+      if (!ctx.ownsElement(ie, map.numElems(), element_rows))
+      {
+        continue;
+      }
 
       state_e.resize(num_cols);
       coords_e.resize(num_nodes * mesh.dim());
@@ -376,8 +382,14 @@ void assembleResidualAndJacobian(
 #pragma omp for
     for (Index ie = elem_begin; ie < elem_end; ++ie)
     {
-      const Index num_rows = map_v.numResDofs(ie);
-      const Index num_cols = map_v.numStateDofs(ie);
+      const Index                       num_rows = map_v.numResDofs(ie);
+      const Index                       num_cols = map_v.numStateDofs(ie);
+      const HostVectorView<const Index> element_rows(
+          map_v.res_dofs + map_v.res_offsets[ie], num_rows);
+      if (!ctx.ownsElement(ie, map.numElems(), element_rows))
+      {
+        continue;
+      }
       work.hist.resize(num_hist * num_cols);
       work.nxt.resize(num_cols);
       work.mat.resize(num_rows, num_cols);
@@ -462,8 +474,14 @@ void assembleResidual(
 #pragma omp for
     for (Index ie = elem_begin; ie < elem_end; ++ie)
     {
-      const Index num_rows = map_v.numResDofs(ie);
-      const Index num_cols = map_v.numStateDofs(ie);
+      const Index                       num_rows = map_v.numResDofs(ie);
+      const Index                       num_cols = map_v.numStateDofs(ie);
+      const HostVectorView<const Index> element_rows(
+          map_v.res_dofs + map_v.res_offsets[ie], num_rows);
+      if (!ctx.ownsElement(ie, map.numElems(), element_rows))
+      {
+        continue;
+      }
       work.hist.resize(num_hist * num_cols);
       work.nxt.resize(num_cols);
 

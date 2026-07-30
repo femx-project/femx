@@ -11,6 +11,7 @@ PETScSystemMatrix::PETScSystemMatrix(MpiContext& ctx)
 void PETScSystemMatrix::setup(const HostCsrPattern& pattern)
 {
   matrix_.resize(pattern);
+  ctx_.setPartition(matrix_.partition());
 }
 
 void PETScSystemMatrix::addElement(const ElementJacobianView& element)

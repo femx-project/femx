@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/petsc/MpiContext.hpp>
+#include <femx/linalg/petsc/PETScPartition.hpp>
 
 namespace femx::linalg
 {
@@ -18,6 +20,18 @@ void checkMPI(int status, const char* operation)
   }
 }
 
+IndexRange contiguousRange(Index count, int rank, int size)
+{
+  const Index rank_index = static_cast<Index>(rank);
+  const Index comm_size  = static_cast<Index>(size);
+  const Index base       = count / comm_size;
+  const Index extra      = count % comm_size;
+  const Index begin =
+      rank_index * base + std::min(rank_index, extra);
+  const Index width = base + (rank_index < extra ? 1 : 0);
+  return {begin, begin + width};
+}
+
 } // namespace
 
 MpiContext::MpiContext(MPI_Comm comm)
@@ -29,6 +43,8 @@ MpiContext::MpiContext(MPI_Comm comm)
   require(comm != MPI_COMM_NULL,
           "MpiContext requires a valid communicator");
   checkMPI(MPI_Comm_dup(comm, &comm_), "MPI_Comm_dup");
+  checkMPI(MPI_Comm_rank(comm_, &rank_), "MPI_Comm_rank");
+  checkMPI(MPI_Comm_size(comm_, &size_), "MPI_Comm_size");
 }
 
 MpiContext::~MpiContext()
@@ -55,19 +71,30 @@ IndexRange MpiContext::elementRange(Index count) const
   require(count >= 0,
           "MpiContext element count must be nonnegative");
 
-  int rank = 0;
-  int size = 1;
-  checkMPI(MPI_Comm_rank(comm_, &rank), "MPI_Comm_rank");
-  checkMPI(MPI_Comm_size(comm_, &size), "MPI_Comm_size");
+  if (partition_)
+  {
+    return {0, count};
+  }
 
-  const Index rank_index = static_cast<Index>(rank);
-  const Index comm_size  = static_cast<Index>(size);
-  const Index base       = count / comm_size;
-  const Index extra      = count % comm_size;
-  const Index begin =
-      rank_index * base + std::min(rank_index, extra);
-  const Index width = base + (rank_index < extra ? 1 : 0);
-  return {begin, begin + width};
+  return contiguousRange(count, rank_, size_);
+}
+
+bool MpiContext::ownsElement(
+    Index                       element,
+    Index                       count,
+    HostVectorView<const Index> rows) const
+{
+  require(count >= 0 && element >= 0 && element < count,
+          "MpiContext element index is out of range");
+
+  if (partition_ && !rows.empty())
+  {
+    return partition_->elementOwner(rows)
+           == static_cast<PetscMPIInt>(rank_);
+  }
+
+  const IndexRange range = contiguousRange(count, rank_, size_);
+  return element >= range.begin && element < range.end;
 }
 
 void MpiContext::allReduceSum(HostVectorView<Real> vals) const
@@ -92,6 +119,12 @@ void MpiContext::sync() const
 MPI_Comm MpiContext::comm() const noexcept
 {
   return comm_;
+}
+
+void MpiContext::setPartition(
+    std::shared_ptr<const PETScPartition> partition) noexcept
+{
+  partition_ = std::move(partition);
 }
 
 } // namespace femx::linalg

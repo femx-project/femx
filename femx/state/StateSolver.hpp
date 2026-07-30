@@ -93,12 +93,13 @@ public:
     require(prm.size() == numParams(),
             "LinearStateSolver parameter size mismatch");
 
+    auto& jac = system_.matrix();
+    jac.setup(res_.hostPattern());
+
     res_.assembleResidual(zero_, prm, res_vec_, ctx_);
     require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
 
     vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
-    auto& jac = system_.matrix();
-    jac.setup(res_.hostPattern());
     res_.assembleJacobian(zero_, prm, jac, ctx_);
 
     jac.finalize();
@@ -212,6 +213,9 @@ public:
             "NewtonStateSolver parameter size mismatch");
     initState(state);
 
+    auto& jac = system_.matrix();
+    jac.setup(res_.hostPattern());
+
     for (Index i = 0; i <= opts_.max_its; ++i)
     {
       res_.assembleResidual(state, prm, res_vec_, ctx_);
@@ -230,8 +234,10 @@ public:
 
       vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
 
-      auto& jac = system_.matrix();
-      jac.setup(res_.hostPattern());
+      if (i > 0)
+      {
+        jac.setup(res_.hostPattern());
+      }
 
       res_.assembleJacobian(state, prm, jac, ctx_);
       jac.finalize();

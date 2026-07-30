@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -349,6 +350,60 @@ private:
     }
   }
 
+  void solveWithConvergenceCheck(ReSolve::SystemSolver&  solver,
+                                 ReSolve::vector::Vector* rhs,
+                                 ReSolve::vector::Vector* result,
+                                 const char*              operation)
+  {
+    check(solver.solve(rhs, result), operation);
+
+    // ReSolve may satisfy its Krylov residual estimate before the reported
+    // true residual reaches the requested tolerance. Restart from the current
+    // solution in that case.
+    for (Index correction = 0;
+         correction < 2 && needsResidualCorrection(solver);
+         ++correction)
+    {
+      check(solver.solve(rhs, result), operation);
+    }
+    checkIterativeConvergence(solver);
+  }
+
+  void checkIterativeConvergence(ReSolve::SystemSolver& solver) const
+  {
+    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
+    {
+      return;
+    }
+
+    const auto& iterative = solver.getIterativeSolver();
+    const Real  residual  = iterative.getFinalResidualNorm();
+    if (!std::isfinite(residual) || residual > 10.0 * opts_.rtol)
+    {
+      std::ostringstream message;
+      message << "ReSolve iterative solve did not converge: final relative "
+              << "residual = " << residual
+              << ", tolerance = " << opts_.rtol
+              << ", its = " << iterative.getNumIter()
+              << " / " << opts_.max_its;
+      throw std::runtime_error(message.str());
+    }
+  }
+
+  bool needsResidualCorrection(ReSolve::SystemSolver& solver) const
+  {
+    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
+    {
+      return false;
+    }
+
+    const auto& iterative = solver.getIterativeSolver();
+    const Real  residual  = iterative.getFinalResidualNorm();
+    return std::isfinite(residual)
+           && residual > 10.0 * opts_.rtol
+           && iterative.getNumIter() < opts_.max_its;
+  }
+
   void setupCpu(ReSolve::SystemSolver& solver, const char* prefix)
   {
     if (opts_.factor != "none")
@@ -386,11 +441,11 @@ private:
           std::string(prefix) + " Csr::copyFromExternal failed");
   }
 
-  static void solveHostWith(ReSolve::SystemSolver&  solver,
-                            HostVecs&               vecs,
-                            const HostVector<Real>& rhs,
-                            HostVector<Real>&       result,
-                            const char*             op)
+  void solveHostWith(ReSolve::SystemSolver&  solver,
+                     HostVecs&               vecs,
+                     const HostVector<Real>& rhs,
+                     HostVector<Real>&       result,
+                     const char*             op)
   {
     constexpr auto memspace = ReSolve::memory::HOST;
     if (vecs.size != rhs.size())
@@ -411,7 +466,8 @@ private:
           "ReSolve Host rhs Vector::copyFromExternal failed");
     check(vecs.result->setToZero(memspace),
           "ReSolve Host solution Vector::setToZero failed");
-    check(solver.solve(vecs.rhs.get(), vecs.result.get()), op);
+    solveWithConvergenceCheck(
+        solver, vecs.rhs.get(), vecs.result.get(), op);
     check(vecs.result->copyToExternal(
               result.data(), memspace, ReSolve::memory::HOST),
           "ReSolve Host solution Vector::copyToExternal failed");
@@ -669,8 +725,10 @@ private:
     }
 
     bindCudaVecs(vecs, rhs, result);
-    check(sys.solver->solve(vecs.rhs.get(), vecs.result.get()),
-          "ReSolve Device solve failed");
+    solveWithConvergenceCheck(*sys.solver,
+                              vecs.rhs.get(),
+                              vecs.result.get(),
+                              "ReSolve Device solve failed");
 
     // ReSolve currently launches on its own/default stream. Complete it before
     // the caller resumes work on the femx non-blocking stream.

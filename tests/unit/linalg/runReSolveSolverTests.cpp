@@ -1,4 +1,6 @@
 #include "SolverTestFixtures.hpp"
+#include <string>
+
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <resolve/resolve_defs.hpp>
 
@@ -128,6 +130,55 @@ TestOutcome resolveZeroRhsReturnsZero()
   return status.report();
 }
 
+TestOutcome resolveReportsIterativeNonconvergence()
+{
+  TestStatus status(__func__);
+
+  try
+  {
+    constexpr Index nx = 16;
+    constexpr Index ny = 16;
+
+    const auto    map = solver::makeGrid5PointMap(nx, ny);
+    HostCsrMatrix mat(map.pattern());
+    solver::fillGrid5PointMat(mat, nx, ny);
+
+    const HostVector<Real> expected =
+        solver::expectedGridSolution(nx, ny);
+    HostVector<Real>    rhs(expected.size());
+    HostVector<Real>    result;
+    linalg::HostContext ctx;
+    linalg::HostSystemMatrix system_matrix(ctx);
+    system_matrix.apply(mat, expected.view(), rhs.view());
+
+    linalg::ReSolveOptions opts;
+    opts.max_its = 1;
+    opts.restart = 1;
+    opts.rtol    = 1.0e-14;
+    linalg::ReSolveLinearSolver lin_solver(opts);
+
+    bool nonconvergence_reported = false;
+    try
+    {
+      lin_solver.solve(mat, rhs, result, ctx);
+    }
+    catch (const std::runtime_error& error)
+    {
+      nonconvergence_reported =
+          std::string(error.what()).find("did not converge")
+          != std::string::npos;
+    }
+    status *= nonconvergence_reported;
+  }
+  catch (const std::exception& error)
+  {
+    std::cout << "    exception: " << error.what() << '\n';
+    status *= false;
+  }
+
+  return status.report();
+}
+
 } // namespace
 } // namespace femx::tests
 
@@ -142,5 +193,6 @@ int main(int, char**)
 #endif
   results += femx::tests::resolveCpuConcreteMatrixReusesStorage();
   results += femx::tests::resolveZeroRhsReturnsZero();
+  results += femx::tests::resolveReportsIterativeNonconvergence();
   return results.summary();
 }

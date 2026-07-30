@@ -5,6 +5,7 @@
 #include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
+#include <femx/linalg/petsc/PETScPartition.hpp>
 #include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx
@@ -114,10 +115,13 @@ private:
 
     ScopedVec rhs_vec;
     ScopedVec out_vec;
-    createVec(op.comm(), size, rhs_vec);
+    createVec(op.comm(), size, op.partition(), rhs_vec);
     check(VecDuplicate(rhs_vec.get(), out_vec.put()), "VecDuplicate");
-    check(detail::copyToPETSc(rhs.view(), rhs_vec.get()), "copyToPETSc");
-    setInitialGuess(out_vec.get(), out, op.rows());
+    check(detail::copyToPETSc(
+              rhs.view(), rhs_vec.get(), op.partition()),
+          "copyToPETSc");
+    setInitialGuess(
+        out_vec.get(), out, op.rows(), op.partition());
 
     ensureKsp();
     configureKsp(ksp_);
@@ -135,29 +139,39 @@ private:
     updateStats(ksp_);
     checkConverged();
 
-    check(detail::copyFromPETSc(out_vec.get(), out), "copyFromPETSc");
+    check(detail::copyFromPETSc(
+              out_vec.get(), out, op.partition()),
+          "copyFromPETSc");
   }
 
-  static void createVec(MPI_Comm   comm,
-                        PetscInt   size,
-                        ScopedVec& vec)
+  static void createVec(
+      MPI_Comm                                     comm,
+      PetscInt                                     size,
+      const std::shared_ptr<const PETScPartition>& partition,
+      ScopedVec&                                   vec)
   {
     PetscMPIInt comm_size = 1;
     checkMPI(MPI_Comm_size(comm, &comm_size), "MPI_Comm_size");
-    const PetscInt num_local_dofs = comm_size == 1 ? size : PETSC_DECIDE;
+    const PetscInt num_local_dofs =
+        partition && partition->size() == size
+            ? partition->localSize()
+            : (comm_size == 1 ? size : PETSC_DECIDE);
 
     check(VecCreate(comm, vec.put()), "VecCreate");
     check(VecSetSizes(vec.get(), num_local_dofs, size), "VecSetSizes");
     check(VecSetFromOptions(vec.get()), "VecSetFromOptions");
   }
 
-  void setInitialGuess(Vec                     vec,
-                       const HostVector<Real>& guess,
-                       Index                   size)
+  void setInitialGuess(Vec                                          vec,
+                       const HostVector<Real>&                      guess,
+                       Index                                        size,
+                       const std::shared_ptr<const PETScPartition>& partition)
   {
     if (opts_.nonzero_guess && guess.size() == size)
     {
-      check(detail::copyToPETSc(guess.view(), vec), "copyToPETSc");
+      check(detail::copyToPETSc(
+                guess.view(), vec, partition),
+            "copyToPETSc");
       return;
     }
     check(VecSet(vec, 0.0), "VecSet");
