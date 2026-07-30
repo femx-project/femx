@@ -2,12 +2,15 @@ cmake_minimum_required(VERSION 3.22)
 
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(FEMX_ENABLE_ENZYME "Enable Enzyme automatic differentiation support" OFF)
+option(
+  FEMX_ENABLE_ENZYME
+  "Enable Enzyme automatic differentiation support (CUDA path experimental)"
+  OFF)
 option(FEMX_ENABLE_CUDA "Enable CUDA execution and Device storage" OFF)
 
 project(
   femx
-  VERSION 0.7.1
+  VERSION 0.8.0
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)

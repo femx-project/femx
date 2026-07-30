@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.8.0
+
+### Added
+
+- Added graph-partitioned PETSc MPI assembly, preferring ParMETIS with
+  PT-Scotch and average partitioner fallbacks.
+- Added `FEMX_REQUIRE_PETSC_PARMETIS` to reject PETSc builds without ParMETIS
+  when graph partitioning is required.
+
+### Changed
+
+- Moved the public `Vector` and `View` headers from `femx/linalg` to
+  `femx/common`.
+- Renamed abbreviated math operations to descriptive names, including
+  `rootMeanSquareError`, `normalized`, `squaredDistance`, `triangleArea`, and
+  `squaredDistanceToLine`.
+- Documented the CUDA Enzyme path as experimental, as the gradients computed on
+  CUDA are not yet reliable.
+
 ## v0.7.1
 
 ### Fixed
