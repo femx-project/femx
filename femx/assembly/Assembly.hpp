@@ -4,12 +4,12 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeResidual.hpp>
 
 namespace femx
@@ -183,7 +183,7 @@ void assembleHostElements(
   if (res != nullptr)
   {
     checkAssemblyAliases(state, *res);
-    ctx.vectorHandler().resizeOrZero(*res, map.numRes());
+    ctx.vectorHandler().assign(*res, map.numRes(), 0);
   }
 
   const auto mesh_v = mesh.view();
@@ -369,7 +369,7 @@ void assembleResidualAndJacobian(
   detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
 
-  ctx.vectorHandler().resizeOrZero(res, map.numRes());
+  ctx.vectorHandler().assign(res, map.numRes(), 0);
 
   const auto map_v = map.view();
 
@@ -462,7 +462,7 @@ void assembleResidual(
       num_hist, state::VariableBlock::NextState, map, hist, nxt);
   detail::checkElementRange(map, elem_begin, elem_end);
   detail::checkTimeAssemblyAliases(hist, nxt, res);
-  ctx.vectorHandler().resizeOrZero(res, map.numRes());
+  ctx.vectorHandler().assign(res, map.numRes(), 0);
 
   const auto map_v = map.view();
 #pragma omp parallel

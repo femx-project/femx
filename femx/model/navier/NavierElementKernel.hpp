@@ -4,8 +4,8 @@
 
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ElementQuadData.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/model/navier/FluidProperties.hpp>
 
 namespace femx::linalg

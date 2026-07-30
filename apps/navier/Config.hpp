@@ -11,7 +11,7 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/model/navier/FluidProperties.hpp>
 
 #ifndef FEMX_NAVIER_OUTPUT_DIR

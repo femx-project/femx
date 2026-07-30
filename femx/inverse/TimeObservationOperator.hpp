@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/View.hpp>
+#include <femx/common/View.hpp>
 
 namespace femx::linalg
 {

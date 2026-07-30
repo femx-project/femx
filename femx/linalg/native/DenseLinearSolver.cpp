@@ -109,7 +109,7 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
   }
 
   auto& vec_handler = ctx.vectorHandler();
-  vec_handler.resizeOrZero(out, size);
+  vec_handler.assign(out, size, 0);
   for (Index row = size; row-- > 0;)
   {
     Real sum = b[row];

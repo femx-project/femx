@@ -1,9 +1,9 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
+#include <femx/common/View.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/View.hpp>
 
 namespace femx::model::navier
 {

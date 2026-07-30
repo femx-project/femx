@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 
 namespace femx::linalg
 {
@@ -79,23 +79,20 @@ public:
   }
 
   /**
-   * @brief Resize a Host vector if needed and set every value to zero.
+   * @brief Replace a Host vector with copies of one value.
    *
-   * @param[in,out] out - Vector to resize or clear.
+   * @param[out] out - Vector to replace.
    * @param[in] size - Required vector size.
+   * @param[in] val - Value assigned to every entry.
    * @throws std::runtime_error - If `size` is negative.
    */
   template <class T>
-  void resizeOrZero(Vector<MemorySpace::Host, T>& out, Index size) const
+  void assign(
+      Vector<MemorySpace::Host, T>&                            out,
+      Index                                                    size,
+      const typename Vector<MemorySpace::Host, T>::value_type& val) const
   {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else
-    {
-      std::fill(out.begin(), out.end(), T{});
-    }
+    out.assign(size, val);
   }
 
   /**

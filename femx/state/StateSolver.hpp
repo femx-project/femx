@@ -4,9 +4,9 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/Residual.hpp>
 
 namespace femx::state

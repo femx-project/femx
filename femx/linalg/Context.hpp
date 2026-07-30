@@ -1,7 +1,7 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/View.hpp>
+#include <femx/common/View.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
 #include <femx/linalg/native/HostVectorHandler.hpp>
 

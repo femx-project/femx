@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Config.hpp"
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/model/navier/NavierModel.hpp>
 
 namespace femx::apps::navier

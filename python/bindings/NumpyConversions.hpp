@@ -5,8 +5,8 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <pybind11/numpy.h>
 
 namespace femx::python::bindings

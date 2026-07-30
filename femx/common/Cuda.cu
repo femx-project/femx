@@ -1,5 +1,6 @@
 #include <cuda_runtime_api.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -19,6 +20,8 @@ void check(cudaError_t status, const char* operation)
 
 namespace
 {
+constexpr unsigned int kThreads = 256;
+
 cudaStream_t asStream(void* stream)
 {
   return static_cast<cudaStream_t>(stream);
@@ -39,6 +42,47 @@ cudaMemcpyKind copyKind(MemorySpace dst, MemorySpace src)
     return cudaMemcpyDeviceToDevice;
   }
   return cudaMemcpyHostToHost;
+}
+
+template <class T>
+__global__ void fillKernel(Index size, T val, T* out)
+{
+  const Index i =
+      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
+  if (i < size)
+  {
+    out[i] = val;
+  }
+}
+
+template <class T>
+bool hasZeroBytes(const T& val)
+{
+  const auto* begin = reinterpret_cast<const unsigned char*>(&val);
+  return std::all_of(begin,
+                     begin + sizeof(T),
+                     [](unsigned char byte)
+                     { return byte == 0; });
+}
+
+template <class T>
+void fillValues(T* ptr, Index size, T val, void* stream)
+{
+  if (size <= 0)
+  {
+    return;
+  }
+  if (hasZeroBytes(val))
+  {
+    zero(ptr, static_cast<std::size_t>(size) * sizeof(T), stream);
+    return;
+  }
+
+  fillKernel<<<numBlocks(size, kThreads),
+               kThreads,
+               0,
+               asStream(stream)>>>(size, val, ptr);
+  checkLastError();
 }
 } // namespace
 
@@ -111,6 +155,16 @@ void zero(void* ptr, std::size_t bytes, void* stream)
   {
     check(cudaMemset(ptr, 0, bytes), "cudaMemset failed");
   }
+}
+
+void fill(Real* ptr, Index size, Real val, void* stream)
+{
+  fillValues(ptr, size, val, stream);
+}
+
+void fill(Index* ptr, Index size, Index val, void* stream)
+{
+  fillValues(ptr, size, val, stream);
 }
 
 void* createStream()

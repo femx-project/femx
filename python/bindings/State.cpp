@@ -7,10 +7,10 @@
 #include "NumpyConversions.hpp"
 #include "PETScInit.hpp"
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/linalg/petsc/PETScLinearSystem.hpp>
@@ -195,7 +195,7 @@ public:
     const py::function     override = py::get_override(this, "initial_state");
     if (!override)
     {
-      ctx.vectorHandler().resizeOrZero(out, dims().num_states);
+      ctx.vectorHandler().assign(out, dims().num_states, 0);
       return;
     }
     copyArray(override(vectorArray(prm)), out, "initial state");

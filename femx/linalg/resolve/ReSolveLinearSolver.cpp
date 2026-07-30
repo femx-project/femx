@@ -1,16 +1,15 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
@@ -99,7 +98,7 @@ public:
 
     HostContext ctx;
     auto&       vec_handler = ctx.vectorHandler();
-    vec_handler.resizeOrZero(result, h_op_->cols());
+    vec_handler.assign(result, h_op_->cols(), 0);
     if (isZero(rhs))
     {
       return;
@@ -350,60 +349,6 @@ private:
     }
   }
 
-  void solveWithConvergenceCheck(ReSolve::SystemSolver&  solver,
-                                 ReSolve::vector::Vector* rhs,
-                                 ReSolve::vector::Vector* result,
-                                 const char*              operation)
-  {
-    check(solver.solve(rhs, result), operation);
-
-    // ReSolve may satisfy its Krylov residual estimate before the reported
-    // true residual reaches the requested tolerance. Restart from the current
-    // solution in that case.
-    for (Index correction = 0;
-         correction < 2 && needsResidualCorrection(solver);
-         ++correction)
-    {
-      check(solver.solve(rhs, result), operation);
-    }
-    checkIterativeConvergence(solver);
-  }
-
-  void checkIterativeConvergence(ReSolve::SystemSolver& solver) const
-  {
-    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
-    {
-      return;
-    }
-
-    const auto& iterative = solver.getIterativeSolver();
-    const Real  residual  = iterative.getFinalResidualNorm();
-    if (!std::isfinite(residual) || residual > 10.0 * opts_.rtol)
-    {
-      std::ostringstream message;
-      message << "ReSolve iterative solve did not converge: final relative "
-              << "residual = " << residual
-              << ", tolerance = " << opts_.rtol
-              << ", its = " << iterative.getNumIter()
-              << " / " << opts_.max_its;
-      throw std::runtime_error(message.str());
-    }
-  }
-
-  bool needsResidualCorrection(ReSolve::SystemSolver& solver) const
-  {
-    if (opts_.solve != "fgmres" && opts_.solve != "randgmres")
-    {
-      return false;
-    }
-
-    const auto& iterative = solver.getIterativeSolver();
-    const Real  residual  = iterative.getFinalResidualNorm();
-    return std::isfinite(residual)
-           && residual > 10.0 * opts_.rtol
-           && iterative.getNumIter() < opts_.max_its;
-  }
-
   void setupCpu(ReSolve::SystemSolver& solver, const char* prefix)
   {
     if (opts_.factor != "none")
@@ -441,11 +386,11 @@ private:
           std::string(prefix) + " Csr::copyFromExternal failed");
   }
 
-  void solveHostWith(ReSolve::SystemSolver&  solver,
-                     HostVecs&               vecs,
-                     const HostVector<Real>& rhs,
-                     HostVector<Real>&       result,
-                     const char*             op)
+  static void solveHostWith(ReSolve::SystemSolver&  solver,
+                            HostVecs&               vecs,
+                            const HostVector<Real>& rhs,
+                            HostVector<Real>&       result,
+                            const char*             op)
   {
     constexpr auto memspace = ReSolve::memory::HOST;
     if (vecs.size != rhs.size())
@@ -466,8 +411,7 @@ private:
           "ReSolve Host rhs Vector::copyFromExternal failed");
     check(vecs.result->setToZero(memspace),
           "ReSolve Host solution Vector::setToZero failed");
-    solveWithConvergenceCheck(
-        solver, vecs.rhs.get(), vecs.result.get(), op);
+    check(solver.solve(vecs.rhs.get(), vecs.result.get()), op);
     check(vecs.result->copyToExternal(
               result.data(), memspace, ReSolve::memory::HOST),
           "ReSolve Host solution Vector::copyToExternal failed");
@@ -479,7 +423,7 @@ private:
   {
     HostContext ctx;
     auto&       vec_handler = ctx.vectorHandler();
-    vec_handler.resizeOrZero(result, mat.rows());
+    vec_handler.assign(result, mat.rows(), 0);
     if (isZero(rhs))
     {
       return;
@@ -704,7 +648,7 @@ private:
             "ReSolveLinearSolver Device RHS has incompatible dimensions");
     checkCudaAliases(sys, rhs, result);
     auto& vec_handler = ctx.vectorHandler();
-    vec_handler.resizeOrZero(result, sys.cols);
+    vec_handler.assign(result, sys.cols, 0);
 
     // femx assembly owns this stream. ReSolve currently has no complete stream
     // hand-off API, so this is the explicit producer/solver boundary.
@@ -725,10 +669,8 @@ private:
     }
 
     bindCudaVecs(vecs, rhs, result);
-    solveWithConvergenceCheck(*sys.solver,
-                              vecs.rhs.get(),
-                              vecs.result.get(),
-                              "ReSolve Device solve failed");
+    check(sys.solver->solve(vecs.rhs.get(), vecs.result.get()),
+          "ReSolve Device solve failed");
 
     // ReSolve currently launches on its own/default stream. Complete it before
     // the caller resumes work on the femx non-blocking stream.

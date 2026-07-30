@@ -4,7 +4,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 
 namespace femx
 {
@@ -41,7 +41,7 @@ public:
     const Index size = checkedSize(rows, cols);
     rows_            = rows;
     cols_            = cols;
-    vals_.resize(size);
+    vals_.assign(size, 0);
   }
 
   /** @brief Return the number of rows. */

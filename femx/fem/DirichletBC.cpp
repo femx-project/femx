@@ -2,11 +2,11 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/common/Vector.hpp>
 #include <femx/fem/DirichletBC.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

@@ -150,7 +150,7 @@ void resizeAndZero(Vector<Space, Real>&    out,
                    linalg::Context<Space>& ctx)
 {
   auto& vec_handler = ctx.vectorHandler();
-  vec_handler.resizeOrZero(out, size);
+  vec_handler.assign(out, size, 0);
 }
 
 } // namespace

@@ -3,9 +3,9 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/View.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
 #include <femx/fem/ReferenceElement.hpp>
-#include <femx/linalg/View.hpp>
 
 namespace femx
 {

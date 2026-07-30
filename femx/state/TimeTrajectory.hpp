@@ -5,8 +5,8 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 
 namespace femx::state
@@ -29,7 +29,7 @@ public:
     const Index size = checkedSize(num_steps, num_states);
     if (data_.size() != size)
     {
-      data_.resize(size);
+      data_.assign(size, 0);
     }
     num_steps_  = num_steps;
     num_states_ = num_states;

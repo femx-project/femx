@@ -1,8 +1,8 @@
 #pragma once
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx

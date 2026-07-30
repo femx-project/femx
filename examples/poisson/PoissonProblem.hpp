@@ -6,11 +6,11 @@
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ElementQuadData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx::examples::poisson
 {

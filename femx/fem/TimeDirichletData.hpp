@@ -3,8 +3,8 @@
 #include <functional>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/DirichletBC.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx::fem
 {

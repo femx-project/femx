@@ -8,8 +8,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <femx/common/Vector.hpp>
 #include <femx/io/VtiWriter.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

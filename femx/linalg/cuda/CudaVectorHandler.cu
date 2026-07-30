@@ -135,7 +135,40 @@ __global__ void axpbyKernel(Index       size,
     y[i] = a * x[i] + b * y[i];
   }
 }
+
+template <class T>
+void assignVector(Vector<MemorySpace::Device, T>& out,
+                  Index                           size,
+                  T                               val,
+                  CudaContext&                    ctx)
+{
+  require(size >= 0, "Vector size must be non-negative");
+  if (out.size() != size)
+  {
+    out.assign(size, val);
+    return;
+  }
+  if (out.empty())
+  {
+    return;
+  }
+  cuda::fill(out.data(), out.size(), val, ctx.stream());
+}
 } // namespace
+
+void CudaVectorHandler::assign(DeviceVector<Real>& out,
+                               Index               size,
+                               Real                val) const
+{
+  assignVector(out, size, val, ctx_);
+}
+
+void CudaVectorHandler::assign(DeviceVector<Index>& out,
+                               Index                size,
+                               Index                val) const
+{
+  assignVector(out, size, val, ctx_);
+}
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
                              DeviceVectorView<Real>       dst) const

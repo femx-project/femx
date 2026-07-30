@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>

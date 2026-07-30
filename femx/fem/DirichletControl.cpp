@@ -307,7 +307,7 @@ void DirichletControl::apply(const HostVector<Real>& dir,
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
-  vec_handler.resizeOrZero(out, numStateDofs());
+  vec_handler.assign(out, numStateDofs(), 0);
   jacobian.apply(matrix_, dir.view(), out.view());
 }
 
@@ -318,7 +318,7 @@ void DirichletControl::applyT(const HostVector<Real>& dir,
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
-  vec_handler.resizeOrZero(out, numControlParams());
+  vec_handler.assign(out, numControlParams(), 0);
   jacobian.applyT(matrix_, dir.view(), out.view());
 }
 

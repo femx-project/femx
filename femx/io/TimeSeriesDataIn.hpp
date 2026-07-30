@@ -4,8 +4,8 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

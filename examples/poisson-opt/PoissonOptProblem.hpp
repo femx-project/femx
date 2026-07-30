@@ -8,6 +8,7 @@
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ElementQuadData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/Mesh.hpp>
@@ -15,7 +16,6 @@
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/inverse/Objective.hpp>
 #include <femx/inverse/SumObjective.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx::examples::poisson_opt
 {

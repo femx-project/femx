@@ -9,7 +9,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx

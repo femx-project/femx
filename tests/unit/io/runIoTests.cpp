@@ -5,11 +5,11 @@
 #include <string>
 
 #include "TestHelper.hpp"
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 #include <femx/io/VtiWriter.hpp>
 #include <femx/io/VtuWriter.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

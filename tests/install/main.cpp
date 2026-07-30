@@ -4,11 +4,12 @@
 #include <string>
 
 #include <femx/ad/Enzyme.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 
 namespace
@@ -44,6 +45,7 @@ int main()
     femx::HostVector<femx::Real> rhs(2);
     rhs[0] = 5.0;
     rhs[1] = 5.0;
+    checkClose(femx::norm(rhs), std::sqrt(50.0), "rhs norm");
 
     femx::linalg::HostLinearSystem system;
     auto&                          jacobian = system.matrix();

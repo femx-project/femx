@@ -3,7 +3,7 @@
 #include <cstddef>
 
 #include <femx/common/Cuda.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 
 namespace femx::linalg
 {
@@ -104,27 +104,26 @@ public:
             Vector<MemorySpace::Device, T>&  dst) const = delete;
 
   /**
-   * @brief Resize a Device vector if needed and set every value to zero.
+   * @brief Replace a Device vector with copies of one value.
    *
-   * @param[in,out] out - Device vector to resize or clear.
+   * @param[out] out - Device vector to replace.
    * @param[in] size - Required vector size.
+   * @param[in] val - Value assigned to every entry.
    * @throws std::runtime_error - If `size` is negative or a CUDA operation
    * fails.
    */
-  template <class T>
-  void resizeOrZero(Vector<MemorySpace::Device, T>& out, Index size) const
-  {
-    if (out.size() != size)
-    {
-      out.resize(size);
-    }
-    else if (!out.empty())
-    {
-      cuda::zero(out.data(),
-                 static_cast<std::size_t>(out.size()) * sizeof(T),
-                 stream());
-    }
-  }
+  void assign(DeviceVector<Real>& out, Index size, Real val) const;
+
+  /**
+   * @brief Replace a Device index vector with copies of one value.
+   *
+   * @param[out] out - Device vector to replace.
+   * @param[in] size - Required vector size.
+   * @param[in] val - Value assigned to every entry.
+   * @throws std::runtime_error - If `size` is negative or a CUDA operation
+   * fails.
+   */
+  void assign(DeviceVector<Index>& out, Index size, Index val) const;
 
   /**
    * @brief Copy between same-sized Device views.

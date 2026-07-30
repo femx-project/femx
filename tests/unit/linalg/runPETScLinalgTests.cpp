@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "TestHelper.hpp"
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/MpiContext.hpp>
 #include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>

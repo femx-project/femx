@@ -98,7 +98,7 @@ void assembleTriangle(const HostVector<Index>&  element,
   const Real    g01  = dot(e1, e2);
   const Real    g11  = dot(e2, e2);
   const Real    det  = g00 * g11 - g01 * g01;
-  const Real    area = triArea(a, b, c);
+  const Real    area = triangleArea(a, b, c);
   if (det <= min_measure || area <= min_measure)
   {
     throw std::runtime_error("Boundary surface contains a degenerate triangle");

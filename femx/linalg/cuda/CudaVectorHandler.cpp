@@ -51,6 +51,16 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real>,
   cudaUnavailable();
 }
 
+void CudaVectorHandler::assign(DeviceVector<Real>&, Index, Real) const
+{
+  cudaUnavailable();
+}
+
+void CudaVectorHandler::assign(DeviceVector<Index>&, Index, Index) const
+{
+  cudaUnavailable();
+}
+
 void CudaVectorHandler::zero(DeviceVectorView<Real>) const
 {
   cudaUnavailable();

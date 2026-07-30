@@ -4,9 +4,9 @@
 
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

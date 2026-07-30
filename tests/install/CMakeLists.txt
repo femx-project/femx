@@ -4,14 +4,18 @@ project(femx_install_test LANGUAGES CXX)
 
 find_package(femx CONFIG REQUIRED)
 
-foreach(_target femx::femx femx::ad femx::linalg femx::model_navier
-                femx::model::navier)
+foreach(_target femx::femx femx::common femx::ad femx::linalg
+                femx::model_navier femx::model::navier)
   if(NOT TARGET "${_target}")
     message(FATAL_ERROR "Expected installed femx target ${_target}")
   endif()
 endforeach()
 
 enable_testing()
+
+add_executable(femx_common_install_test common.cpp)
+target_link_libraries(femx_common_install_test PRIVATE femx::common)
+add_test(NAME femxCommonInstall COMMAND femx_common_install_test)
 
 add_executable(femx_install_test main.cpp)
 target_link_libraries(femx_install_test PRIVATE femx::femx)
