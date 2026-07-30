@@ -3,6 +3,9 @@
 #include <petscmat.h>
 #include <petscvec.h>
 
+#include <cstdint>
+#include <memory>
+
 #include <femx/common/Types.hpp>
 
 namespace femx
@@ -13,6 +16,7 @@ namespace linalg
 {
 
 class PETScSystemMatrix;
+class PETScPartition;
 
 /**
  * @brief Own and assemble a PETSc-backed matrix.
@@ -52,6 +56,9 @@ public:
 
   /** @brief Return the PETSc communicator used by the matrix. */
   MPI_Comm comm() const;
+
+  /** @brief Return the graph partition used by this matrix, if any. */
+  std::shared_ptr<const PETScPartition> partition() const noexcept;
 
   /**
    * @brief Allocate an AIJ matrix with fallback preallocation.
@@ -181,11 +188,21 @@ private:
                               HostVector<PetscInt>& diag_nnz,
                               HostVector<PetscInt>& offdiag_nnz);
 
+  static void computePrealloc(const HostCsrPattern& pattern,
+                              const PETScPartition& partition,
+                              HostVector<PetscInt>& diag_nnz,
+                              HostVector<PetscInt>& offdiag_nnz);
+
+  PetscInt mappedIndex(Index index) const;
+
 private:
-  MPI_Comm comm_{PETSC_COMM_SELF}; ///< Communicator used by the matrix.
-  Mat      mat_{nullptr};          ///< Owned PETSc matrix handle.
-  Index    rows_{0};               ///< Global row count.
-  Index    cols_{0};               ///< Global column count.
+  MPI_Comm      comm_{PETSC_COMM_SELF}; ///< Communicator used by the matrix.
+  Mat           mat_{nullptr};          ///< Owned PETSc matrix handle.
+  Index         rows_{0};               ///< Global row count.
+  Index         cols_{0};               ///< Global column count.
+  std::uint64_t layout_id_{0};          ///< CSR layout used to create the matrix.
+  std::shared_ptr<const PETScPartition>
+      partition_; ///< Graph partition and application/PETSc numbering.
 };
 
 } // namespace linalg

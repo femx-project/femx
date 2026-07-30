@@ -11,6 +11,15 @@ if(TARGET femx_linalg_petsc)
   add_test(NAME PETScLinalgTests COMMAND runPETScLinalgTests)
   set_tests_properties(PETScLinalgTests PROPERTIES LABELS
                                                    "petsc;optional;focused")
+  if(MPIEXEC_EXECUTABLE)
+    add_test(
+      NAME PETScMpiLinalgTests
+      COMMAND
+        ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+        $<TARGET_FILE:runPETScLinalgTests> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(PETScMpiLinalgTests
+                         PROPERTIES LABELS "petsc;mpi;optional;focused")
+  endif()
 endif()
 
 add_executable(runHostAssemblyTests unit/assembly/runHostAssemblyTests.cpp)

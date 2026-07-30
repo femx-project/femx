@@ -21,7 +21,8 @@ Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
 - Re::Solve built from the `develop` branch, for Host/Device linear solves
-- PETSc 3.19 or later (tested with PETSc 3.19.6)
+- PETSc 3.19 or later (tested with PETSc 3.19.6); a ParMETIS-enabled build is
+  recommended for MPI graph partitioning
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
 - Enzyme + Clang, for automatic differentiation kernels
@@ -69,6 +70,9 @@ make
 ```
 
 Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
+Add `-DFEMX_REQUIRE_PETSC_PARMETIS=ON` to reject a PETSc build that does not
+provide ParMETIS. See [PETSc MPI graph partitioning](docs/petsc-partitioning.rst)
+for a reproducible PETSc configuration and runtime options.
 
 ## Python API
 
@@ -150,6 +154,7 @@ Common options:
 - `FEMX_ENABLE_RESOLVE=ON|OFF`
 - `FEMX_RESOLVE_DEVICE=AUTO|HOST|DEVICE`
 - `FEMX_ENABLE_PETSC=ON|OFF`
+- `FEMX_REQUIRE_PETSC_PARMETIS=ON|OFF`
 - `PETSC_DIR=/path/to/petsc`
 - `PETSC_ARCH=...`
 - `FEMX_ENABLE_OPENMP=ON|OFF`

@@ -19,6 +19,8 @@ option(FEMX_ENABLE_RESOLVE "Enable ReSolve linear systems" OFF)
 option(FEMX_ENABLE_HDF5 "Require HDF5 output support" OFF)
 option(FEMX_ENABLE_OPENMP "Require OpenMP parallel assembly" OFF)
 option(FEMX_ENABLE_PETSC "Enable PETSc applications and linear systems" OFF)
+option(FEMX_REQUIRE_PETSC_PARMETIS
+       "Fail configuration unless PETSc provides ParMETIS" OFF)
 option(FEMX_BUILD_APPS "Build femx apps" ON)
 option(FEMX_BUILD_EXAMPLES "Build femx examples" ON)
 option(FEMX_BUILD_TESTS "Build femx tests" OFF)
@@ -448,8 +450,50 @@ if(FEMX_ENABLE_PETSC)
         "MPI development files, or configure with -DFEMX_ENABLE_PETSC=OFF.")
   endif()
 
+  include(CheckCXXSourceCompiles)
+  include(CMakePushCheckState)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_INCLUDES "${PETSC_INCLUDE_DIRS}")
+  set(CMAKE_REQUIRED_QUIET TRUE)
+  unset(FEMX_PETSC_HAS_PARMETIS CACHE)
+  check_cxx_source_compiles(
+    "
+    #include <petscconf.h>
+    #if !defined(PETSC_HAVE_PARMETIS)
+    #error PETSc does not provide ParMETIS
+    #endif
+    int main() { return 0; }
+    "
+    FEMX_PETSC_HAS_PARMETIS)
+  unset(FEMX_PETSC_HAS_PTSCOTCH CACHE)
+  check_cxx_source_compiles(
+    "
+    #include <petscconf.h>
+    #if !defined(PETSC_HAVE_PTSCOTCH)
+    #error PETSc does not provide PT-Scotch
+    #endif
+    int main() { return 0; }
+    "
+    FEMX_PETSC_HAS_PTSCOTCH)
+  cmake_pop_check_state()
+
+  if(FEMX_REQUIRE_PETSC_PARMETIS AND NOT FEMX_PETSC_HAS_PARMETIS)
+    message(
+      FATAL_ERROR
+        "FEMX_REQUIRE_PETSC_PARMETIS=ON but the selected PETSc was not "
+        "configured with ParMETIS. Rebuild PETSc with --download-metis "
+        "--download-parmetis, or select a compatible PETSC_DIR/PETSC_ARCH.")
+  endif()
+
   set(FEMX_HAS_PETSC ON)
   message(STATUS "Found PETSc: ${PETSC_VERSION}")
+  if(FEMX_PETSC_HAS_PARMETIS)
+    message(STATUS "PETSc graph partitioner: ParMETIS (default)")
+  elseif(FEMX_PETSC_HAS_PTSCOTCH)
+    message(STATUS "PETSc graph partitioner: PT-Scotch (fallback)")
+  else()
+    message(STATUS "PETSc graph partitioner: average (fallback)")
+  endif()
 endif()
 
 add_library(femx_config INTERFACE)

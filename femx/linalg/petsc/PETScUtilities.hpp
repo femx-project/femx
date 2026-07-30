@@ -2,10 +2,17 @@
 
 #include <petscvec.h>
 
+#include <memory>
+
 #include <femx/common/Types.hpp>
 #include <femx/linalg/Vector.hpp>
 
-namespace femx::linalg::detail
+namespace femx::linalg
+{
+
+class PETScPartition;
+
+namespace detail
 {
 
 void check(PetscErrorCode error, const char* operation);
@@ -14,9 +21,15 @@ void checkMPI(int error, const char* operation);
 
 void checkInit();
 
-PetscErrorCode copyFromPETSc(Vec source, HostVector<Real>& destination);
+PetscErrorCode copyFromPETSc(
+    Vec                                          source,
+    HostVector<Real>&                            destination,
+    const std::shared_ptr<const PETScPartition>& partition = {});
 
-PetscErrorCode copyToPETSc(HostVectorView<const Real> source,
-                           Vec                        destination);
+PetscErrorCode copyToPETSc(
+    HostVectorView<const Real>                   source,
+    Vec                                          destination,
+    const std::shared_ptr<const PETScPartition>& partition = {});
 
-} // namespace femx::linalg::detail
+} // namespace detail
+} // namespace femx::linalg
