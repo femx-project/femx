@@ -11,8 +11,8 @@ u &= 0 && \text{on } \Gamma_{\mathrm{other}}.
 \end{aligned}
 ```
 
-The control vector `m` contains the values at the non-corner nodes of the top
-boundary. Synthetic observations are generated from
+The control vector `m` contains the control values at the top boundary nodes.
+Synthetic observations are generated from
 
 ```math
 u_{\mathrm{exact}}(x,y)
@@ -32,38 +32,9 @@ w_i\left(u_i(m)-d_i\right)^2
 The initial control is zero. `--obs-stride 0` selects an observation spacing
 equal to one eighth of the smaller mesh dimension.
 
-## Code layout
-
-The files follow the same flow as the forward Poisson example:
-
-```text
-PoissonOptProblem.hpp/.cpp   mesh, FE data, boundary control, observations
-PoissonOptResidual.hpp       common residual interface
-PoissonOptResidual.cpp       Host assembly and Host parameter VJP
-PoissonOptResidual.cu        CUDA assembly and CUDA parameter VJP
-PoissonOptSolve.hpp/.cpp     state solve, reduced functional, and TAO
-main-resolve.cpp             ReSolve Host/CUDA selection
-main-petsc.cpp               distributed PETSc execution
-```
-
 `PoissonOptProblem` contains only the mathematical and discretization data.
 `HostPoissonOptResidual` and `DevicePoissonOptResidual` implement the same
-controlled PDE in different memory spaces. `optimize()` is shared by both
-executables, so the sequence visible to a user is always:
-
-```text
-make problem -> make residual -> make state solver -> optimize -> report
-```
-
-The reduced functional keeps TAO's control vector and the objective on the
-Host. Forward assembly, adjoint assembly, linear solves, and the PDE parameter
-VJP stay in the selected Host or Device memory space.
-
-When Enzyme is enabled, it differentiates the small boundary-control residual
-`u - m`. The Host path invokes Enzyme from C++, and the Device path invokes it
-inside a CUDA kernel. Builds without Enzyme use the equivalent analytic
-derivative, which keeps the example usable for ordinary ReSolve and PETSc
-builds.
+controlled PDE in different memory spaces. `optimize()` is shared by both executables.
 
 ## Backends
 
@@ -79,43 +50,47 @@ adjoint solve. Only rank zero prints the report and writes visualization files.
 
 ## Build
 
-For one build containing ReSolve CPU/CUDA, PETSc/TAO, and Enzyme:
+PETSc version (ReSolve is not required):
 
 ```shell
-CXX=clang++ CUDACXX=clang++ \
-  cmake --preset resolve-petsc-enzyme \
-  -DReSolve_DIR=/path/to/resolve/lib/cmake/resolve \
-  -DEnzyme_DIR=/path/to/enzyme/lib/cmake/Enzyme
-cmake --build --preset resolve-petsc-enzyme \
-  --target poisson-opt-resolve poisson-opt-petsc
+cmake --preset petsc
+cmake --build --preset petsc --target poisson-opt-petsc
 ```
 
-CUDA Enzyme requires Clang as both the C++ and CUDA compiler. The ordinary
-`resolve-petsc` preset builds the same Host/CUDA and TAO paths with the analytic
-parameter derivative. The `petsc-enzyme` preset builds the PETSc MPI and Host
-Enzyme path without ReSolve.
+ReSolve version (PETSc provides TAO):
+
+```shell
+cmake --preset resolve-petsc \
+  -DReSolve_DIR=/path/to/resolve/lib/cmake/resolve
+cmake --build --preset resolve-petsc --target poisson-opt-resolve
+```
+
+Both versions use the analytic parameter derivative by default. To use Enzyme,
+select the `petsc-enzyme` or `resolve-petsc-enzyme` preset and set `Enzyme_DIR`.
+CUDA Enzyme also requires Clang as both the C++ and CUDA compiler.
+The CUDA Enzyme path is experimental.
 
 ## Run
 
 ReSolve on the CPU:
 
 ```shell
-./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
+./build/resolve-petsc/examples/poisson-opt/poisson-opt-resolve \
   -b cpu --nx 32 --ny 32 --max-its 50
 ```
 
-ReSolve and the Enzyme VJP on CUDA:
+ReSolve on CUDA:
 
 ```shell
-./build/resolve-petsc-enzyme/examples/poisson-opt/poisson-opt-resolve \
+./build/resolve-petsc/examples/poisson-opt/poisson-opt-resolve \
   -b cuda --nx 32 --ny 32 --max-its 50
 ```
 
-PETSc, Enzyme, and TAO on four MPI ranks:
+PETSc and TAO on four MPI ranks:
 
 ```shell
 mpiexec -n 4 \
-  ./build/petsc-enzyme/examples/poisson-opt/poisson-opt-petsc \
+  ./build/petsc/examples/poisson-opt/poisson-opt-petsc \
   -b cpu --nx 32 --ny 32 --max-its 50
 ```
 

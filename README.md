@@ -25,8 +25,13 @@ Optional dependencies:
   recommended for MPI graph partitioning
 - MPI, used with PETSc for linear solvers and TAO optimization
 - OpenMP, for parallel assembly
-- Enzyme + Clang, for automatic differentiation kernels
+- Enzyme + Clang, for automatic differentiation kernels; the CUDA path is
+  experimental
 - Python >= 3.9 with pip, pybind11, NumPy, and SciPy, for the Python API
+
+The CUDA Enzyme path is experimental. Validate its derivatives against finite
+differences for the intended Clang/Enzyme/CUDA/GPU combination before relying
+on them. Builds without Enzyme use analytic derivative paths where available.
 
 ## Build
 
@@ -177,9 +182,9 @@ Component targets such as `femx::linalg`, `femx::ad`, `femx::fem`,
 `femx::assembly`, `femx::state`, `femx::inverse`, and `femx::io` are also
 available. `femx::opt` is available when PETSc is enabled.
 
-`femx::ad` exposes the optional C++ Enzyme entry point in
-`<femx/ad/Enzyme.hpp>`. Enable it with a Clang compiler and
-`FEMX_ENABLE_ENZYME=ON`; the Python API does not expose Enzyme yet.
+`femx::ad` exposes the C++ Enzyme entry point in `<femx/ad/Enzyme.hpp>`.
+Enable it with a Clang compiler and `FEMX_ENABLE_ENZYME=ON`; the Python API
+does not expose Enzyme yet.
 
 ## Documentation
 
