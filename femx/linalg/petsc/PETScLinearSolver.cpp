@@ -2,7 +2,7 @@
 #include <string>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/petsc/PETScLinearSolver.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
 #include <femx/linalg/petsc/PETScPartition.hpp>

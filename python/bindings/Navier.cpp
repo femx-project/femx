@@ -10,6 +10,7 @@
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
 #include <femx/common/LinearInterpolation.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
@@ -17,7 +18,6 @@
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/model/navier/FluidProperties.hpp>
 #include <femx/model/navier/NavierModel.hpp>
 #include <femx/model/navier/NavierResidual.hpp>

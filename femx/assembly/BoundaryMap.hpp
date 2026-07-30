@@ -3,8 +3,8 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx::assembly

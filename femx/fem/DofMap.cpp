@@ -40,7 +40,7 @@ void DofMap::allocate(Index num_dofs,
   {
     elem_offsets_[ie] = ie * num_dofs_per_elem;
   }
-  elem_dofs_.resize(num_entries);
+  elem_dofs_.assign(num_entries, 0);
 }
 
 Index DofMap::numElems() const noexcept

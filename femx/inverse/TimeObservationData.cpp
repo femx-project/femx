@@ -31,7 +31,7 @@ void TimeObservationData::resize(Index num_levels, Index num_obs)
           "TimeObservationData received invalid dimensions");
   num_levels_ = num_levels;
   num_obs_    = num_obs;
-  data_.resize(num_levels_ * num_obs_);
+  data_.assign(num_levels_ * num_obs_, 0);
   sampler_.clear();
   pts_         = HostVector<Point3>{};
   comps_       = HostVector<Index>{};

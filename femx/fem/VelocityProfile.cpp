@@ -56,9 +56,9 @@ Real facetWeight(const Mesh& mesh, const Mesh::BoundaryFacet& facet)
   }
   if (facet.nids.size() == 3)
   {
-    return triArea(mesh.node(facet.nids[0]),
-                   mesh.node(facet.nids[1]),
-                   mesh.node(facet.nids[2]));
+    return triangleArea(mesh.node(facet.nids[0]),
+                        mesh.node(facet.nids[1]),
+                        mesh.node(facet.nids[2]));
   }
   return 1.0;
 }
@@ -126,7 +126,7 @@ AxialVelocityProfile uniformProfile(const Point3& nrm)
 {
   AxialVelocityProfile prof;
   prof.type = "uniform";
-  prof.nrm  = unit(nrm);
+  prof.nrm  = normalized(nrm);
   return prof;
 }
 
@@ -139,7 +139,7 @@ AxialVelocityProfile poiseuilleProfile(const Point3& cen,
   AxialVelocityProfile prof;
   prof.type = "poiseuille";
   prof.cen  = cen;
-  prof.nrm  = unit(nrm);
+  prof.nrm  = normalized(nrm);
   prof.rad  = rad;
   return prof;
 }
@@ -161,7 +161,10 @@ Real profileFactor(const AxialVelocityProfile& prof,
 
   const Real radius2 = prof.rad * prof.rad;
   return std::max<Real>(
-      0.0, 1.0 - radialSq(p, prof.cen, prof.nrm) / radius2);
+      0.0,
+      1.0
+          - squaredDistanceToLine(p, prof.cen, prof.nrm)
+                / radius2);
 }
 
 Real velocityComponent(const AxialVelocityProfile& prof,
@@ -170,7 +173,7 @@ Real velocityComponent(const AxialVelocityProfile& prof,
                        Index                       comp)
 {
   requireValidComponent(comp);
-  const Point3 nrm = unit(prof.nrm);
+  const Point3 nrm = normalized(prof.nrm);
   return peak_speed * profileFactor(prof, p) * nrm[comp];
 }
 

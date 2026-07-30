@@ -7,6 +7,7 @@
 #include "Bindings.hpp"
 #include "NumpyConversions.hpp"
 #include "PETScInit.hpp"
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
@@ -16,7 +17,6 @@
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
-#include <femx/linalg/Vector.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/opt/TaoOptimizer.hpp>
 #include <femx/runtime/PETScRuntime.hpp>

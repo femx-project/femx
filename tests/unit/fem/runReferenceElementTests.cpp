@@ -4,6 +4,8 @@
 #include <string>
 
 #include "TestHelper.hpp"
+#include <femx/common/Vector.hpp>
+#include <femx/common/View.hpp>
 #include <femx/fem/ElementQuadData.hpp>
 #include <femx/fem/FESpace.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
@@ -12,8 +14,6 @@
 #include <femx/fem/elements/LagrangeTetrahedronP1.hpp>
 #include <femx/fem/elements/LagrangeTriangleP1.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/View.hpp>
 
 namespace femx
 {

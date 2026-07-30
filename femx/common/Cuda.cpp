@@ -44,6 +44,22 @@ void zero(void*, std::size_t bytes, void*)
   }
 }
 
+void fill(Real*, Index size, Real, void*)
+{
+  if (size != 0)
+  {
+    unavailable();
+  }
+}
+
+void fill(Index*, Index size, Index, void*)
+{
+  if (size != 0)
+  {
+    unavailable();
+  }
+}
+
 void* createStream()
 {
   unavailable();

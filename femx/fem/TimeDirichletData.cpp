@@ -4,8 +4,8 @@
 #include <string>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/View.hpp>
 #include <femx/fem/TimeDirichletData.hpp>
-#include <femx/linalg/View.hpp>
 
 namespace femx::fem
 {

@@ -2,10 +2,10 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
+#include <femx/common/View.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/View.hpp>
 
 namespace femx::state
 {

@@ -46,6 +46,7 @@ pybind11_add_module(
 
 foreach(
   _target
+  femx_common
   femx_linalg
   femx_linalg_petsc
   femx_linalg_resolve

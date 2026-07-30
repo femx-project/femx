@@ -41,6 +41,28 @@ void copy(void*       dst,
 
 void zero(void* ptr, std::size_t bytes, void* stream = nullptr);
 
+/**
+ * @brief Fill Device values with one scalar value.
+ *
+ * @param[out] ptr - Device values to replace.
+ * @param[in] size - Number of values.
+ * @param[in] val - Value assigned to every entry.
+ * @param[in] stream - CUDA stream, or `nullptr` for the default stream.
+ * @throws std::runtime_error - If a CUDA operation fails.
+ */
+void fill(Real* ptr, Index size, Real val, void* stream = nullptr);
+
+/**
+ * @brief Fill Device index values with one scalar value.
+ *
+ * @param[out] ptr - Device values to replace.
+ * @param[in] size - Number of values.
+ * @param[in] val - Value assigned to every entry.
+ * @param[in] stream - CUDA stream, or `nullptr` for the default stream.
+ * @throws std::runtime_error - If a CUDA operation fails.
+ */
+void fill(Index* ptr, Index size, Index val, void* stream = nullptr);
+
 void* createStream();
 void  destroyStream(void* stream) noexcept;
 void  sync(void* stream);

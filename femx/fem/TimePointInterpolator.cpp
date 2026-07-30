@@ -4,12 +4,12 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/View.hpp>
 #include <femx/fem/Element.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/View.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/native/HostContext.hpp>
@@ -440,7 +440,7 @@ void TimePointInterpolator::applyStateJacT(Index                   level,
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
   linalg::HostSystemMatrix jacobian(ctx);
-  vec_handler.resizeOrZero(out, numStates());
+  vec_handler.assign(out, numStates(), 0);
   jacobian.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }
 
@@ -457,7 +457,7 @@ void TimePointInterpolator::applyParamJac(Index                   level,
 
   linalg::HostContext ctx;
   auto&               vec_handler = ctx.vectorHandler();
-  vec_handler.resizeOrZero(out, numObservations());
+  vec_handler.assign(out, numObservations(), 0);
 }
 
 void TimePointInterpolator::applyParamJacT(Index                   level,
@@ -473,7 +473,7 @@ void TimePointInterpolator::applyParamJacT(Index                   level,
 
   linalg::HostContext ctx;
   auto&               vec_handler = ctx.vectorHandler();
-  vec_handler.resizeOrZero(out, numParams());
+  vec_handler.assign(out, numParams(), 0);
 }
 
 const HostPointInterpolatorData& TimePointInterpolator::data() const noexcept

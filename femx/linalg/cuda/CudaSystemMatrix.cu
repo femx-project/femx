@@ -130,16 +130,6 @@ __global__ void markConstraintsKernel(Index        count,
   }
 }
 
-__global__ void fillIndexKernel(Index size, Index value, Index* out)
-{
-  const Index index =
-      static_cast<Index>(blockIdx.x * blockDim.x + threadIdx.x);
-  if (index < size)
-  {
-    out[index] = value;
-  }
-}
-
 __global__ void replaceConstraintRowsKernel(
     Index        count,
     const Index* rows,
@@ -489,19 +479,9 @@ void CudaSystemMatrix::ensureConstraints(
   constraints_.layout_id = matrix_.pattern().layoutId();
   constraints_.rows      = rows.data();
   constraints_.count     = rows.size();
-  ctx_.vectorHandler().resizeOrZero(constraints_.row_to_constraint,
-                                    matrix_.rows());
-  if (!constraints_.row_to_constraint.empty())
-  {
-    fillIndexKernel<<<cuda::numBlocks(constraints_.row_to_constraint.size(), kThreads),
-                      kThreads,
-                      0,
-                      static_cast<cudaStream_t>(ctx_.stream())>>>(
-        constraints_.row_to_constraint.size(),
-        -1,
-        constraints_.row_to_constraint.data());
-    cuda::checkLastError();
-  }
+  ctx_.vectorHandler().assign(constraints_.row_to_constraint,
+                              matrix_.rows(),
+                              -1);
   if (!rows.empty())
   {
     markConstraintsKernel<<<cuda::numBlocks(rows.size(), kThreads),

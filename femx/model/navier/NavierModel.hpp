@@ -5,11 +5,11 @@
 
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ElementQuadData.hpp>
 #include <femx/fem/FiniteElement.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/model/navier/FluidProperties.hpp>
 
 namespace femx::model::navier

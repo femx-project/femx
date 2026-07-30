@@ -2,9 +2,9 @@
 #include <string>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/CsrPattern.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/petsc/PETScMatrix.hpp>
 #include <femx/linalg/petsc/PETScPartition.hpp>
 #include <femx/linalg/petsc/PETScUtilities.hpp>

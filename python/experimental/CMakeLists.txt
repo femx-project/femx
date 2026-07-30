@@ -37,7 +37,7 @@ endif()
 
 pybind11_add_module(femx_experimental Module.cpp)
 
-foreach(_target femx_linalg femx_state femx_inverse femx_fem)
+foreach(_target femx_common femx_linalg femx_state femx_inverse femx_fem)
   if(TARGET "${_target}")
     set_target_properties("${_target}" PROPERTIES POSITION_INDEPENDENT_CODE ON)
   endif()

@@ -6,9 +6,9 @@
 
 #include "Config.hpp"
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 
 namespace femx::apps::navier

@@ -6,10 +6,10 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/inverse/TimeObjective.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/LinearSystem.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeIntegrator.hpp>
 #include <femx/state/TimeResidual.hpp>
 #include <femx/state/TimeTrajectory.hpp>

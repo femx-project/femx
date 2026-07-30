@@ -1,11 +1,11 @@
 #include <stdexcept>
 
 #include "TestHelper.hpp"
+#include <femx/common/Vector.hpp>
 #include <femx/inverse/TimeBlockRegularization.hpp>
 #include <femx/inverse/TimeLeastSquaresObjective.hpp>
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 
 namespace femx

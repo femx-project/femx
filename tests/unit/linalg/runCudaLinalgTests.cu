@@ -100,7 +100,25 @@ TestOutcome persistentCudaCsrOps()
     linalg::HostSystemMatrix h_jacobian(cpu_ctx);
     linalg::CudaSystemMatrix jacobian(ctx);
     auto&                    vec_handler = ctx.vectorHandler();
-    DeviceCsrPattern         d_graph;
+
+    DeviceVector<Real> assigned_reals;
+    vec_handler.assign(assigned_reals, 3, 2);
+    HostVector<Real> actual_assigned_reals;
+    vec_handler.copy(assigned_reals, actual_assigned_reals);
+
+    DeviceVector<Index> assigned_indices;
+    vec_handler.assign(assigned_indices, 3, -1);
+    HostVector<Index> actual_assigned_indices;
+    vec_handler.copy(assigned_indices, actual_assigned_indices);
+    ctx.sync();
+    record(status,
+           near(actual_assigned_reals, HostVector<Real>{2.0, 2.0, 2.0}),
+           "CUDA Real assignment");
+    record(status,
+           equal(actual_assigned_indices, HostVector<Index>{-1, -1, -1}),
+           "CUDA Index assignment");
+
+    DeviceCsrPattern d_graph;
     copy(pattern, d_graph, ctx);
     record(status,
            d_graph.layoutId() == pattern.layoutId(),

@@ -5,10 +5,11 @@
 
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
+#include <femx/common/Math.hpp>
+#include <femx/common/Vector.hpp>
+#include <femx/common/View.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
-#include <femx/linalg/View.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostSystemMatrix.hpp>
 
@@ -70,14 +71,24 @@ TestOutcome vectorBasics()
   status *= v.size() == 3;
   status *= near(v.front(), 1.0) && near(v.back(), 3.0);
 
-  vec_handler.zero(v.view());
-  status *= valsNear(v.data(), std::array<Real, 3>{{0.0, 0.0, 0.0}});
+  v.resize(5);
+  status *= valsNear(v.data(),
+                     std::array<Real, 5>{{1.0, 2.0, 3.0, 0.0, 0.0}});
 
-  vec_handler.resizeOrZero(v, 3);
+  v.resize(2);
+  status *= valsNear(v.data(), std::array<Real, 2>{{1.0, 2.0}});
+
+  vec_handler.zero(v.view());
+  status *= valsNear(v.data(), std::array<Real, 2>{{0.0, 0.0}});
+
+  vec_handler.assign(v, 3, 4);
+  status *= valsNear(v.data(), std::array<Real, 3>{{4.0, 4.0, 4.0}});
+
+  vec_handler.assign(v, 3, 0);
   status *= v.size() == 3;
   status *= valsNear(v.data(), std::array<Real, 3>{{0.0, 0.0, 0.0}});
 
-  vec_handler.resizeOrZero(v, 5);
+  vec_handler.assign(v, 5, 0);
   status *= v.size() == 5;
   status *= valsNear(v.data(), std::array<Real, 5>{{0.0, 0.0, 0.0, 0.0, 0.0}});
 
@@ -91,6 +102,47 @@ TestOutcome vectorBasics()
     threw = true;
   }
   status *= threw;
+
+  return status.report();
+}
+
+TestOutcome mathOperations()
+{
+  TestStatus status(__func__);
+
+  const Point3 a{1.0, 2.0, 3.0};
+  const Point3 b{4.0, 6.0, 3.0};
+
+  status *= near(dot(a, b), 25.0);
+  status *= near(squaredNorm(a), 14.0);
+  status *= near(norm(Point3{3.0, 4.0, 0.0}), 5.0);
+  status *= near(squaredDistance(a, b), 25.0);
+  status *= near(distance(a, b), 5.0);
+  status *= near(triangleArea(Point3{0.0, 0.0, 0.0},
+                              Point3{1.0, 0.0, 0.0},
+                              Point3{0.0, 2.0, 0.0}),
+                 1.0);
+  status *= near(squaredDistanceToLine(Point3{1.0, 2.0, 3.0},
+                                       Point3{0.0, 0.0, 0.0},
+                                       Point3{0.0, 0.0, 1.0}),
+                 5.0);
+  status *= valsNear(difference(a, b).data(),
+                     std::array<Real, 3>{{-3.0, -4.0, 0.0}});
+  status *= valsNear(normalized(Point3{0.0, 3.0, 4.0}).data(),
+                     std::array<Real, 3>{{0.0, 0.6, 0.8}});
+
+  const HostVector<Real> x{1.0, 2.0, 3.0};
+  const HostVector<Real> y{4.0, 6.0, 3.0};
+
+  status *= near(dot(x, y), 25.0);
+  status *= near(squaredNorm(x), 14.0);
+  status *= near(norm(HostVector<Real>{3.0, 4.0}), 5.0);
+  status *= near(rootMeanSquareError(x, y),
+                 std::sqrt(25.0 / 3.0));
+
+  const HostVector<Real> diff  = difference(x, y);
+  status                      *= valsNear(diff.data(),
+                     std::array<Real, 3>{{-3.0, -4.0, 0.0}});
 
   return status.report();
 }
@@ -380,6 +432,7 @@ int main(int, char**)
   femx::tests::TestingResults results;
 
   results += femx::tests::vectorBasics();
+  results += femx::tests::mathOperations();
   results += femx::tests::vectorViewCopiesAndAssigns();
   results += femx::tests::vectorGatherScatter();
   results += femx::tests::denseMatrixBasics();

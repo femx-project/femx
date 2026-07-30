@@ -2,8 +2,6 @@
 #include <stdexcept>
 
 #include <femx/common/Math.hpp>
-#include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/HostContext.hpp>
 
 namespace femx
 {
@@ -15,16 +13,28 @@ Real dot(const HostVector<Real>& x, const HostVector<Real>& y)
     throw std::runtime_error("dot received incompatible vectors");
   }
 
-  linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectorHandler();
-  return vec_handler.dot(x.view(), y.view());
+  Real result = 0.0;
+  for (Index i = 0; i < x.size(); ++i)
+  {
+    result += x[i] * y[i];
+  }
+
+  return result;
+}
+
+Real dot(const Point3& x, const Point3& y)
+{
+  return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
 }
 
 Real squaredNorm(const HostVector<Real>& x)
 {
-  linalg::HostContext ctx;
-  auto&               vec_handler = ctx.vectorHandler();
-  return vec_handler.squaredNorm(x.view());
+  return dot(x, x);
+}
+
+Real squaredNorm(const Point3& x)
+{
+  return dot(x, x);
 }
 
 Real norm(const HostVector<Real>& x)
@@ -32,11 +42,18 @@ Real norm(const HostVector<Real>& x)
   return std::sqrt(squaredNorm(x));
 }
 
-Real rmse(const HostVector<Real>& x, const HostVector<Real>& y)
+Real norm(const Point3& x)
+{
+  return std::sqrt(squaredNorm(x));
+}
+
+Real rootMeanSquareError(const HostVector<Real>& x,
+                         const HostVector<Real>& y)
 {
   if (x.size() != y.size())
   {
-    throw std::runtime_error("rmse received incompatible vectors");
+    throw std::runtime_error(
+        "rootMeanSquareError received incompatible vectors");
   }
 
   Real sum = 0.0;
@@ -45,10 +62,12 @@ Real rmse(const HostVector<Real>& x, const HostVector<Real>& y)
     const Real diff  = x[i] - y[i];
     sum             += diff * diff;
   }
+
   return std::sqrt(sum / x.size());
 }
 
-HostVector<Real> difference(const HostVector<Real>& x, const HostVector<Real>& y)
+HostVector<Real> difference(const HostVector<Real>& x,
+                            const HostVector<Real>& y)
 {
   if (x.size() != y.size())
   {
@@ -60,12 +79,8 @@ HostVector<Real> difference(const HostVector<Real>& x, const HostVector<Real>& y
   {
     diff[i] = x[i] - y[i];
   }
-  return diff;
-}
 
-Real dot(const Point3& x, const Point3& y)
-{
-  return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+  return diff;
 }
 
 Point3 difference(const Point3& x, const Point3& y)
@@ -80,48 +95,41 @@ Point3 cross(const Point3& x, const Point3& y)
           x[0] * y[1] - x[1] * y[0]};
 }
 
-Real squaredNorm(const Point3& x)
+Point3 normalized(const Point3& x)
 {
-  return dot(x, x);
-}
-
-Real norm(const Point3& x)
-{
-  return std::sqrt(squaredNorm(x));
-}
-
-Point3 unit(const Point3& x)
-{
-  const Real len = norm(x);
-  if (len <= 0.0)
+  const Real length = norm(x);
+  if (length <= 0.0)
   {
-    throw std::runtime_error("unit received zero vector");
+    throw std::runtime_error("cannot normalize zero vector");
   }
-  return {x[0] / len, x[1] / len, x[2] / len};
+  return {x[0] / length, x[1] / length, x[2] / length};
 }
 
-Real sqDist(const Point3& x, const Point3& y)
+Real squaredDistance(const Point3& x, const Point3& y)
 {
   return squaredNorm(difference(x, y));
 }
 
 Real distance(const Point3& x, const Point3& y)
 {
-  return std::sqrt(sqDist(x, y));
+  return std::sqrt(squaredDistance(x, y));
 }
 
-Real triArea(const Point3& a, const Point3& b, const Point3& c)
+Real triangleArea(const Point3& a, const Point3& b, const Point3& c)
 {
   return 0.5 * norm(cross(difference(b, a), difference(c, a)));
 }
 
-Real radialSq(const Point3& point, const Point3& origin, const Point3& axis)
+Real squaredDistanceToLine(const Point3& point,
+                           const Point3& line_point,
+                           const Point3& line_direction)
 {
-  const Point3 delta     = difference(point, origin);
-  const Point3 axis_unit = unit(axis);
-  const Real   axial     = dot(delta, axis_unit);
-  const Real   radial    = squaredNorm(delta) - axial * axial;
-  return radial > 0.0 ? radial : 0.0;
+  const Point3 delta            = difference(point, line_point);
+  const Point3 unit_direction   = normalized(line_direction);
+  const Real   projection       = dot(delta, unit_direction);
+  const Real   squared_distance = squaredNorm(delta) - projection * projection;
+
+  return squared_distance > 0.0 ? squared_distance : 0.0;
 }
 
 } // namespace femx

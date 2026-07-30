@@ -7,7 +7,7 @@
 #include <string>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 
 namespace femx::linalg
 {

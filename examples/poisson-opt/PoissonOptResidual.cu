@@ -127,7 +127,7 @@ void DevicePoissonOptResidual::applyParamJacT(
           "Poisson optimization adjoint size mismatch");
 
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  ctx.vectorHandler().resizeOrZero(out, num_prm_);
+  ctx.vectorHandler().assign(out, num_prm_, 0);
 
 #if defined(FEMX_HAS_ENZYME)
 

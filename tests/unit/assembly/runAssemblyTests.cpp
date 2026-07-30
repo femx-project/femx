@@ -4,10 +4,10 @@
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
 #include <femx/assembly/ConstrainedTimeResidual.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostSystemMatrix.hpp>
 
@@ -48,7 +48,7 @@ public:
                     linalg::Context<MemorySpace::Host>& ctx) const override
   {
     require(prm.empty(), "Identity residual is parameter-free");
-    ctx.vectorHandler().resizeOrZero(out, 3);
+    ctx.vectorHandler().assign(out, 3, 0);
   }
 
   void applyJacT(const state::HostTimeContext&,
@@ -64,7 +64,7 @@ public:
       out.resize(0);
       return;
     }
-    ctx.vectorHandler().resizeOrZero(out, 3);
+    ctx.vectorHandler().assign(out, 3, 0);
   }
 
   void assembleNext(const state::HostTimeContext&            time,

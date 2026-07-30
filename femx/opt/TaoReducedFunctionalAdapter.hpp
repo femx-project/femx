@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
-#include <femx/linalg/Vector.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/petsc/PETScUtilities.hpp>
 
 namespace femx

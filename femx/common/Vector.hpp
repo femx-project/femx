@@ -8,7 +8,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Cuda.hpp>
 #include <femx/common/Types.hpp>
-#include <femx/linalg/View.hpp>
+#include <femx/common/View.hpp>
 
 namespace femx
 {
@@ -16,13 +16,16 @@ namespace femx
 /**
  * @brief Own a contiguous Host vector of values.
  *
- * Its container interface follows `std::vector`; resizing value-initializes
- * all entries and host views remain valid only until storage is reallocated.
+ * Its container interface follows `std::vector`; resizing preserves retained
+ * entries, value-initializes new entries, and invalidates Host views when
+ * storage is reallocated.
  */
 template <class T>
 class Vector<MemorySpace::Host, T>
 {
 public:
+  using value_type = T; ///< Stored value type.
+
   Vector() = default;
 
   /**
@@ -105,14 +108,17 @@ public:
   }
 
   /**
-   * @brief Replace storage with value-initialized entries.
+   * @brief Change the number of entries.
+   *
+   * Retained entries preserve their values and new entries are
+   * value-initialized.
    *
    * @param[in] size - New number of entries.
    * @throws std::runtime_error - If `size` is negative.
    */
   void resize(Index size)
   {
-    vals_.assign(checkedSize(size), T{});
+    vals_.resize(checkedSize(size));
   }
 
   /**
@@ -316,6 +322,8 @@ class Vector<MemorySpace::Device, T>
                 "Device vectors require trivially copyable values");
 
 public:
+  using value_type = T; ///< Stored value type.
+
   Vector() = default;
 
   /**
@@ -372,6 +380,39 @@ public:
       {
         cuda::zero(replacement, bytesFor(size));
         // The context-free memset runs on the default stream. CudaContext uses
+        // a non-blocking stream, so make initialization complete before the
+        // replacement pointer becomes visible to work on another stream.
+        cuda::sync(nullptr);
+      }
+      catch (...)
+      {
+        cuda::release(replacement);
+        throw;
+      }
+    }
+    cuda::release(data_);
+    data_ = replacement;
+    size_ = size;
+  }
+
+  /**
+   * @brief Replace storage with copies of one value.
+   *
+   * @param[in] size - New number of values.
+   * @param[in] val - Value assigned to every entry.
+   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   */
+  void assign(Index size, const T& val)
+  {
+    require(size >= 0, "Vector size must be non-negative");
+    T* replacement = nullptr;
+    if (size > 0)
+    {
+      replacement = static_cast<T*>(cuda::allocate(bytesFor(size)));
+      try
+      {
+        cuda::fill(replacement, size, val);
+        // The context-free fill runs on the default stream. CudaContext uses
         // a non-blocking stream, so make initialization complete before the
         // replacement pointer becomes visible to work on another stream.
         cuda::sync(nullptr);

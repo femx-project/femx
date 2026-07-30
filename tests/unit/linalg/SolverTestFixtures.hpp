@@ -6,9 +6,9 @@
 
 #include "TestHelper.hpp"
 #include <femx/assembly/AssemblyMap.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostSystemMatrix.hpp>
 

@@ -6,8 +6,8 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/fem/Element.hpp>
-#include <femx/linalg/Vector.hpp>
 
 namespace femx
 {

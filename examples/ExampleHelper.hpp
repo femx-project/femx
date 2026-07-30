@@ -11,8 +11,8 @@
 #include <utility>
 
 #include <femx/common/Types.hpp>
+#include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/Vector.hpp>
 #include <femx/runtime/LinearSystemSelection.hpp>
 #include <femx/state/Residual.hpp>
 

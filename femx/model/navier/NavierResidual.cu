@@ -58,7 +58,7 @@ void DeviceNavierResidual::initialState(
 {
   require(prm.empty(), "Navier-Stokes physics residual is parameter-free");
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
-  ctx.vectorHandler().resizeOrZero(out, assm_map_.numStates());
+  ctx.vectorHandler().assign(out, assm_map_.numStates(), 0);
 }
 
 void DeviceNavierResidual::assembleNext(
