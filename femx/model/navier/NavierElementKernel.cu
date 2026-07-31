@@ -50,6 +50,7 @@ __global__ void histVjpKernel(
   Real hist_e[kNumHist * ndof];
   Real hist_dir[kNumHist * ndof];
   Real nxt_e[ndof];
+  Real nxt_dir[ndof];
 
   for (Index i = 0; i < kNumHist * ndof; ++i)
   {
@@ -62,7 +63,8 @@ __global__ void histVjpKernel(
   hist_dir[lag * ndof + col] = 1.0;
   for (Index col = 0; col < ndof; ++col)
   {
-    nxt_e[col] = nxt[map.stateDof(ie, col)];
+    nxt_e[col]   = nxt[map.stateDof(ie, col)];
+    nxt_dir[col] = 0.0;
   }
   const auto data = kernel.data();
   const Real val  = __enzyme_fwddiff<Real>(
@@ -91,8 +93,9 @@ __global__ void histVjpKernel(
       enzyme_dup,
       hist_e,
       hist_dir,
-      enzyme_const,
+      enzyme_dup,
       nxt_e,
+      nxt_dir,
       enzyme_const,
       adj[map.resDof(ie, row)]);
 

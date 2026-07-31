@@ -14,7 +14,9 @@
 #include <femx/inverse/TimeReducedFunctional.hpp>
 #include <femx/inverse/TimeRegularization.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
+#include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/navier/NavierModel.hpp>
@@ -119,6 +121,95 @@ ProblemData makeProblemData(const model::navier::NavierModel& model)
           std::move(vals),
           std::move(time),
           init_dof};
+}
+
+TestOutcome resolveCudaHistoryVjpMatchesCpu()
+{
+  TestStatus status(__func__);
+  if (!linalg::CudaContext::available() || !ad::has_enzyme)
+  {
+    status.skipTest();
+    return status.report();
+  }
+
+  try
+  {
+    constexpr Index            steps = 2;
+    model::navier::NavierModel model(
+        fem::Mesh::makeStructuredQuad(4, 4),
+        steps,
+        0.1,
+        {1.0, 0.1});
+    model::navier::HostNavierResidual   host_res(model);
+    linalg::HostContext                 host_ctx;
+    linalg::CudaContext                 cuda_ctx;
+    model::navier::DeviceNavierResidual device_res(model, cuda_ctx);
+
+    const Index      num_states = model.numStates();
+    HostVector<Real> hist(2 * num_states);
+    HostVector<Real> nxt(num_states);
+    HostVector<Real> adj(num_states);
+    HostVector<Real> prm;
+    for (Index i = 0; i < hist.size(); ++i)
+    {
+      hist[i] = 0.01 * std::sin(0.17 * (i + 1));
+    }
+    for (Index i = 0; i < num_states; ++i)
+    {
+      nxt[i] = 0.02 * std::cos(0.11 * (i + 1));
+      adj[i] = 0.03 * std::sin(0.13 * (i + 1));
+    }
+
+    DeviceVector<Real> d_hist;
+    DeviceVector<Real> d_nxt;
+    DeviceVector<Real> d_adj;
+    DeviceVector<Real> d_out;
+    auto&              vec_handler = cuda_ctx.vectorHandler();
+    vec_handler.copy(hist, d_hist);
+    vec_handler.copy(nxt, d_nxt);
+    vec_handler.copy(adj, d_adj);
+
+    for (Index step = 0; step < steps; ++step)
+    {
+      for (Index lag = 0; lag < 2; ++lag)
+      {
+        const state::HostTimeContext host_time{
+            step,
+            nxt.view(),
+            prm.view(),
+            {hist.data(), 2, num_states}};
+        HostVector<Real> expected;
+        host_res.applyJacT(host_time,
+                           state::VariableBlock::hist(lag),
+                           adj.view(),
+                           expected,
+                           host_ctx);
+
+        const state::DeviceTimeContext device_time{
+            step,
+            d_nxt.view(),
+            {},
+            {d_hist.data(), 2, num_states}};
+        device_res.applyJacT(device_time,
+                             state::VariableBlock::hist(lag),
+                             d_adj.view(),
+                             d_out,
+                             cuda_ctx);
+
+        HostVector<Real> actual;
+        vec_handler.copy(d_out, actual);
+        cuda_ctx.sync();
+        status *= vectorsNear(actual, expected, 1.0e-11);
+      }
+    }
+  }
+  catch (const std::exception& error)
+  {
+    std::cout << "    exception: " << error.what() << '\n';
+    status *= false;
+  }
+
+  return status.report();
 }
 
 TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
@@ -249,6 +340,7 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
 int main()
 {
   femx::tests::TestingResults results;
+  results += femx::tests::resolveCudaHistoryVjpMatchesCpu();
   results +=
       femx::tests::resolveCudaReducedGradientMatchesCpuAndFd();
   return results.summary();
