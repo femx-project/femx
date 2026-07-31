@@ -9,11 +9,38 @@ if(@FEMX_HAS_CUDA@)
 endif()
 
 if(@FEMX_ENABLE_OPENMP@)
-  find_dependency(OpenMP)
+  find_package(OpenMP QUIET COMPONENTS CXX)
+  if(NOT TARGET OpenMP::OpenMP_CXX)
+    include("${CMAKE_CURRENT_LIST_DIR}/FemxClangOpenMP.cmake")
+    femx_find_clang_openmp()
+  endif()
+  if(NOT TARGET OpenMP::OpenMP_CXX)
+    set(femx_FOUND FALSE)
+    set(femx_NOT_FOUND_MESSAGE
+        "femx requires OpenMP, but the C++ OpenMP runtime was not found.")
+    return()
+  endif()
 endif()
 
 if(@FEMX_HAS_RESOLVE@)
-  find_dependency(ReSolve CONFIG)
+  if(@FEMX_HAS_ENZYME@ AND @FEMX_HAS_CUDA@)
+    find_path(
+      ReSolve_DIR
+      NAMES ReSolveTargets.cmake
+      HINTS "${ReSolve_ROOT}" "$ENV{ReSolve_ROOT}"
+      PATH_SUFFIXES share/resolve/cmake lib/cmake/ReSolve)
+    if(NOT EXISTS "${ReSolve_DIR}/ReSolveTargets.cmake")
+      set(femx_FOUND FALSE)
+      set(femx_NOT_FOUND_MESSAGE
+          "femx requires a ReSolve develop package. Set ReSolve_DIR or "
+          "add its installation prefix to CMAKE_PREFIX_PATH.")
+      return()
+    endif()
+    include("${ReSolve_DIR}/ReSolveTargets.cmake")
+    set(ReSolve_FOUND TRUE)
+  else()
+    find_dependency(ReSolve CONFIG)
+  endif()
 endif()
 
 if(@FEMX_HAS_HDF5@)
@@ -36,6 +63,18 @@ if(@FEMX_HAS_PETSC@)
 endif()
 
 if(@FEMX_HAS_ENZYME@)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(femx_FOUND FALSE)
+    set(femx_NOT_FOUND_MESSAGE
+        "This femx package was built with Enzyme and requires Clang C++.")
+    return()
+  endif()
+  if(CMAKE_CUDA_COMPILER_ID AND NOT CMAKE_CUDA_COMPILER_ID MATCHES "Clang")
+    set(femx_FOUND FALSE)
+    set(femx_NOT_FOUND_MESSAGE
+        "This femx package was built with CUDA Enzyme and requires Clang CUDA.")
+    return()
+  endif()
   find_dependency(Enzyme)
 endif()
 

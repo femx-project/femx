@@ -5,8 +5,12 @@ target_sources(
   femx_linalg_petsc
   PRIVATE MpiContext.cpp PETScSystemMatrix.cpp PETScLinearSolver.cpp
           PETScLinearSystem.cpp PETScMatrix.cpp PETScPartition.cpp
-  PUBLIC MpiContext.hpp PETScSystemMatrix.hpp PETScLinearSolver.hpp
-         PETScLinearSystem.hpp PETScMatrix.hpp PETScPartition.hpp
+  PUBLIC MpiContext.hpp
+         PETScSystemMatrix.hpp
+         PETScLinearSolver.hpp
+         PETScLinearSystem.hpp
+         PETScMatrix.hpp
+         PETScPartition.hpp
          PETScUtilities.hpp)
 
 target_link_libraries(femx_linalg_petsc PUBLIC femx_linalg PkgConfig::PETSC

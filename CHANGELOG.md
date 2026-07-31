@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.1
+
+### Fixed
+
+- Fixed incorrect CUDA Enzyme history gradients in the Navier–Stokes adjoint path.
+- Fixed installed CUDA Enzyme packages to preserve the Clang toolchain while
+  resolving ReSolve and OpenMP dependencies.
+
 ## v0.8.0
 
 ### Added
