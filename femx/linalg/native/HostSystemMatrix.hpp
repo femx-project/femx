@@ -43,7 +43,7 @@ public:
    * @brief Add one element contribution.
    *
    * @param[in] elem - Element rows, columns, CSR entries, and values.
-   * @throws std::runtime_error - If the element views are incompatible.
+   * @throws - If the element views are incompatible.
    */
   void addElement(const ElementJacobianView& elem) override;
 
@@ -52,7 +52,7 @@ public:
    *
    * @param[in] rows - Constrained global row indices.
    * @param[in] diag - Replacement diagonal value.
-   * @throws std::runtime_error - If the constrained rows are invalid.
+   * @throws - If the constrained rows are invalid.
    */
   void replaceRows(HostVectorView<const Index> rows,
                    Real                        diag) override;
@@ -60,22 +60,24 @@ public:
   /**
    * @brief Eliminate constrained columns and correct a right-hand side.
    *
-   * @param[in] rows - Constrained global row indices.
-   * @param[in] vals - Prescribed values.
+   * @param[in]     rows - Constrained global row indices.
+   * @param[in]     vals - Prescribed values.
    * @param[in,out] rhs - Right-hand side corrected in place.
-   * @throws std::runtime_error - If the constraint vectors are incompatible.
+   * @throws - If the constraint vectors are incompatible.
    */
   void eliminateColumns(HostVectorView<const Index> rows,
                         HostVectorView<const Real>  vals,
                         HostVectorView<Real>        rhs) override;
 
-  /** @brief Complete assembly before matrix application. */
+  /**
+   * @brief Complete assembly before matrix application.
+   */
   void finalize() override;
 
   /**
    * @brief Compute the Host system-matrix product.
    *
-   * @param[in] dir - Input direction.
+   * @param[in]  dir - Input direction.
    * @param[out] out - Resized output vector.
    */
   void apply(HostVectorView<const Real> dir,
@@ -84,21 +86,23 @@ public:
   /**
    * @brief Compute the transposed Host system-matrix product.
    *
-   * @param[in] dir - Input direction.
+   * @param[in]  dir - Input direction.
    * @param[out] out - Resized output vector.
    */
   void applyT(HostVectorView<const Real> dir,
               HostVector<Real>&          out) const override;
 
-  /** @brief Return the owned CSR matrix for a native Host solver. */
+  /**
+   * @brief Return the owned CSR matrix for a native Host solver.
+   */
   const HostCsrMatrix& matrix() const noexcept;
 
   /**
    * @brief Construct a Host CSR transpose.
    *
-   * @param[in] src - Source matrix.
+   * @param[in]  src - Source matrix.
    * @param[out] dst - Transposed destination.
-   * @throws std::runtime_error - If `src` and `dst` are the same matrix.
+   * @throws - If `src` and `dst` are the same matrix.
    */
   void transpose(const HostCsrMatrix& src,
                  HostCsrMatrix&       dst) const;
@@ -108,12 +112,12 @@ public:
    *
    * Compute `out = alpha * mat * dir + beta * out`.
    *
-   * @param[in] mat - Host CSR matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Host CSR matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void apply(const HostCsrMatrix&       mat,
              HostVectorView<const Real> dir,
@@ -126,12 +130,12 @@ public:
    *
    * Compute `out = alpha * transpose(mat) * dir + beta * out`.
    *
-   * @param[in] mat - Host CSR matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Host CSR matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void applyT(const HostCsrMatrix&       mat,
               HostVectorView<const Real> dir,
@@ -144,12 +148,12 @@ public:
    *
    * Compute `out = alpha * mat * dir + beta * out`.
    *
-   * @param[in] mat - Row-major dense Host matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Row-major dense Host matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void apply(HostMatrixView<const Real> mat,
              HostVectorView<const Real> dir,
@@ -162,12 +166,12 @@ public:
    *
    * Compute `out = alpha * transpose(mat) * dir + beta * out`.
    *
-   * @param[in] mat - Row-major dense Host matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Row-major dense Host matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void applyT(HostMatrixView<const Real> mat,
               HostVectorView<const Real> dir,

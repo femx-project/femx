@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/LinearSystem.hpp>
 #include <femx/linalg/native/HostContext.hpp>
 #include <femx/linalg/native/HostSystemMatrix.hpp>
@@ -16,7 +15,9 @@ namespace femx::linalg
 class HostLinearSystem final : public LinearSystem<MemorySpace::Host>
 {
 public:
-  /** @brief Construct a Host system using a dense fallback solver. */
+  /**
+   * @brief Construct a Host system using a dense fallback solver.
+   */
   HostLinearSystem();
 
   /**
@@ -24,8 +25,7 @@ public:
    *
    * @param[in] solver - Solver whose ownership is transferred to the system.
    */
-  explicit HostLinearSystem(
-      std::unique_ptr<LinearSolver<MemorySpace::Host>> solver);
+  explicit HostLinearSystem(std::unique_ptr<Solver> solver);
 
   ~HostLinearSystem() override;
 
@@ -40,10 +40,10 @@ public:
   void                             solveT(ConstView rhs, Vector& x) override;
 
 private:
-  HostContext                                      ctx_;
-  HostSystemMatrix                                 mat_;
-  std::unique_ptr<LinearSolver<MemorySpace::Host>> solver_;
-  HostVector<Real>                                 rhs_;
+  HostContext             ctx_;
+  HostSystemMatrix        mat_;
+  std::unique_ptr<Solver> solver_;
+  HostVector<Real>        rhs_;
 };
 
 } // namespace femx::linalg

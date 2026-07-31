@@ -26,16 +26,20 @@ public:
   PETScLinearSystem(PETScLinearSystem&&)                 = delete;
   PETScLinearSystem& operator=(PETScLinearSystem&&)      = delete;
 
-  /** @brief Return the system-owned MPI execution context. */
+  /**
+   * @brief Return the system-owned MPI execution context.
+   */
   Context<MemorySpace::Host>& context() noexcept override;
 
-  /** @brief Return the system-owned PETSc matrix. */
+  /**
+   * @brief Return the system-owned PETSc matrix.
+   */
   SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
 
   /**
    * @brief Solve the assembled PETSc system.
    *
-   * @param[in] rhs - Right-hand side view.
+   * @param[in]  rhs - Right-hand side view.
    * @param[out] x - Solution vector.
    */
   void solve(ConstView rhs, Vector& x) override;
@@ -43,15 +47,19 @@ public:
   /**
    * @brief Solve the transposed assembled PETSc system.
    *
-   * @param[in] rhs - Right-hand side view.
+   * @param[in]  rhs - Right-hand side view.
    * @param[out] x - Solution vector.
    */
   void solveT(ConstView rhs, Vector& x) override;
 
-  /** @brief Return the owned PETSc solver for option configuration. */
+  /**
+   * @brief Return the owned PETSc solver for option configuration.
+   */
   PETScLinearSolver& solver() noexcept;
 
-  /** @brief Return the owned PETSc solver for option inspection. */
+  /**
+   * @brief Return the owned PETSc solver for option inspection.
+   */
   const PETScLinearSolver& solver() const noexcept;
 
 private:

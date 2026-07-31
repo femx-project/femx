@@ -3,7 +3,9 @@
 namespace femx::runtime
 {
 
-/** @brief Identify a linear solver implementation independently of storage. */
+/**
+ * @brief Identify a linear solver implementation independently of storage.
+ */
 enum class SolverType
 {
   Dense,

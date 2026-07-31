@@ -18,7 +18,9 @@ class DofMap;
 namespace assembly
 {
 
-/** @brief Non-owning assembly mapping consumed by host and device kernels. */
+/**
+ * @brief Non-owning assembly mapping consumed by host and device kernels.
+ */
 template <MemorySpace Space>
 struct AssemblyMapView
 {
@@ -163,49 +165,65 @@ private:
                    linalg::CudaContext&   ctx);
 
 public:
-  /** @brief Return the number of mapped elements. */
+  /**
+   * @brief Return the number of mapped elements.
+   */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
-  /** @brief Return the global residual size. */
+  /**
+   * @brief Return the global residual size.
+   */
   Index numRes() const noexcept
   {
     return num_res_;
   }
 
-  /** @brief Return the global state size. */
+  /**
+   * @brief Return the global state size.
+   */
   Index numStates() const noexcept
   {
     return num_states_;
   }
 
-  /** @brief Return the largest element residual workspace size. */
+  /**
+   * @brief Return the largest element residual workspace size.
+   */
   Index maxRes() const noexcept
   {
     return max_res_;
   }
 
-  /** @brief Return the largest element state workspace size. */
+  /**
+   * @brief Return the largest element state workspace size.
+   */
   Index maxState() const noexcept
   {
     return max_state_;
   }
 
-  /** @brief Return the largest element Jacobian workspace size. */
+  /**
+   * @brief Return the largest element Jacobian workspace size.
+   */
   Index maxJac() const noexcept
   {
     return max_jac_;
   }
 
-  /** @brief Return the immutable global Jacobian sparsity pattern. */
+  /**
+   * @brief Return the immutable global Jacobian sparsity pattern.
+   */
   const CsrPattern<Space>& pattern() const noexcept
   {
     return pattern_;
   }
 
-  /** @brief Return a non-owning kernel view valid while this map is alive. */
+  /**
+   * @brief Return a non-owning kernel view valid while this map is alive.
+   */
   AssemblyMapView<Space> view() const noexcept
   {
     return {num_elems_,
@@ -279,8 +297,8 @@ HostAssemblyMap makeAssemblyMap(const fem::DofMap& dof_map);
  * The copy is enqueued on `ctx`; keep `src` alive until earlier queued reads
  * have completed.
  *
- * @param[in] src - Host assembly map.
- * @param[out] dst - Device assembly map.
+ * @param[in]     src - Host assembly map.
+ * @param[out]    dst - Device assembly map.
  * @param[in,out] ctx - CUDA context receiving the copies.
  */
 void copy(const HostAssemblyMap& src,

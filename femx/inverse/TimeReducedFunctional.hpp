@@ -37,7 +37,9 @@ inline Index histLevel(Index step, Index lag)
 
 } // namespace detail
 
-/** @brief Evaluate a transient reduced objective and its adjoint gradient. */
+/**
+ * @brief Evaluate a transient reduced objective and its adjoint gradient.
+ */
 template <MemorySpace Space>
 class TimeReducedFunctional final
 {

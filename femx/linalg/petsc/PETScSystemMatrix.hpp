@@ -33,7 +33,9 @@ public:
   void applyT(HostVectorView<const Real> direction,
               HostVector<Real>&          out) const override;
 
-  /** @brief Return the owned PETSc matrix for the native solver. */
+  /**
+   * @brief Return the owned PETSc matrix for the native solver.
+   */
   const PETScMatrix& matrix() const noexcept;
 
 private:

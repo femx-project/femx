@@ -9,7 +9,9 @@
 namespace femx::fem
 {
 
-/** Fixed Dirichlet data sampled at every time level. */
+/**
+ * Fixed Dirichlet data sampled at every time level.
+ */
 struct TimeDirichletData
 {
   HostVector<Index> dofs;       ///< Fixed state dofs.

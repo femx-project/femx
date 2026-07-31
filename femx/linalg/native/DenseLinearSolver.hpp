@@ -6,7 +6,9 @@
 namespace femx::linalg
 {
 
-/** @brief Solve small Host CSR systems through dense factorization. */
+/**
+ * @brief Solve small Host CSR systems through dense factorization.
+ */
 class DenseLinearSolver final : public LinearSolver<MemorySpace::Host>
 {
 public:
@@ -14,18 +16,18 @@ public:
    * @brief Construct a dense solver with a pivot tolerance.
    *
    * @param[in] pivot_tolerance - Minimum accepted pivot magnitude.
-   * @throws std::runtime_error - If `pivot_tolerance` is negative.
+   * @throws - If `pivot_tolerance` is negative.
    */
   explicit DenseLinearSolver(Real pivot_tolerance = 1.0e-14);
 
   /**
    * @brief Solve a Host CSR system through dense factorization.
    *
-   * @param[in] mat - Square system matrix.
-   * @param[in] rhs - Right-hand side vector.
+   * @param[in]  mat - Square system matrix.
+   * @param[in]  rhs - Right-hand side vector.
    * @param[out] x - Solution vector.
-   * @param[in] ctx - CPU execution context.
-   * @throws std::runtime_error - If dimensions are inconsistent or the matrix
+   * @param[in]  ctx - CPU execution context.
+   * @throws - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
   void solve(const HostCsrMatrix&        mat,
@@ -36,11 +38,11 @@ public:
   /**
    * @brief Solve a transposed Host CSR system through dense factorization.
    *
-   * @param[in] mat - Square system matrix.
-   * @param[in] rhs - Right-hand side vector.
+   * @param[in]  mat - Square system matrix.
+   * @param[in]  rhs - Right-hand side vector.
    * @param[out] x - Solution vector.
-   * @param[in] ctx - CPU execution context.
-   * @throws std::runtime_error - If dimensions are inconsistent or the matrix
+   * @param[in]  ctx - CPU execution context.
+   * @throws - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
   void solveT(const HostCsrMatrix&        mat,

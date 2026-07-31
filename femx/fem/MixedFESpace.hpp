@@ -23,13 +23,21 @@ public:
                  Index          local_offset,
                  Index          global_offset);
 
-  /** @brief Return the underlying field space. */
+  /**
+   * @brief Return the underlying field space.
+   */
   const FESpace& space() const noexcept;
-  /** @brief Return the number of field components. */
+  /**
+   * @brief Return the number of field components.
+   */
   Index          numComponents() const noexcept;
-  /** @brief Return the number of shapes per element. */
+  /**
+   * @brief Return the number of shapes per element.
+   */
   Index          numShapesPerElem() const noexcept;
-  /** @brief Return the number of field degrees of freedom per element. */
+  /**
+   * @brief Return the number of field degrees of freedom per element.
+   */
   Index          numDofsPerElem() const noexcept;
 
   /**
@@ -68,7 +76,9 @@ public:
    */
   void addField(const FESpace& space);
 
-  /** @brief Build offsets and degree-of-freedom maps for all fields. */
+  /**
+   * @brief Build offsets and degree-of-freedom maps for all fields.
+   */
   void setup();
 
   /**
@@ -76,27 +86,39 @@ public:
    *
    * @param[in] fid - Field identifier.
    * @return View of the selected field.
-   * @throws std::runtime_error - If the field identifier is out of range.
+   * @throws - If the field identifier is out of range.
    */
   MixedFieldView field(Index fid) const;
-  /** @brief Return the shared finite-element mesh. */
+  /**
+   * @brief Return the shared finite-element mesh.
+   */
   const Mesh&    mesh() const noexcept;
 
-  /** @brief Return the element-to-global degree-of-freedom map. */
+  /**
+   * @brief Return the element-to-global degree-of-freedom map.
+   */
   const DofMap& dofMap() const noexcept;
-  /** @brief Return the number of fields. */
+  /**
+   * @brief Return the number of fields.
+   */
   Index         numFields() const noexcept;
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   Index         numElems() const noexcept;
-  /** @brief Return the number of global degrees of freedom. */
+  /**
+   * @brief Return the number of global degrees of freedom.
+   */
   Index         numDofs() const noexcept;
-  /** @brief Return the number of mixed degrees of freedom per element. */
+  /**
+   * @brief Return the number of mixed degrees of freedom per element.
+   */
   Index         numDofsPerElem() const noexcept;
 
   /**
    * @brief Fill the mixed-space global degrees of freedom for one element.
    *
-   * @param[in] ie - Element index.
+   * @param[in]  ie - Element index.
    * @param[out] dofs - Global degrees of freedom.
    */
   void elemDofs(Index              ie,

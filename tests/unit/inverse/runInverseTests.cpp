@@ -100,27 +100,27 @@ TestOutcome timeLeastSquaresUsesObservationWeights()
       {4.0, 9.0},
       0.5);
 
-  state::TimeTrajectory trajectory(1, 2);
-  trajectory[0][0] = 1.0;
-  trajectory[0][1] = 2.0;
-  trajectory[1][0] = 3.0;
-  trajectory[1][1] = 4.0;
+  state::TimeTrajectory traj(1, 2);
+  traj[0][0] = 1.0;
+  traj[0][1] = 2.0;
+  traj[1][0] = 3.0;
+  traj[1][1] = 4.0;
   const HostVector<Real> parameters{0.5};
 
-  status *= std::abs(objective.value(trajectory, parameters) - 6.5)
+  status *= std::abs(objective.value(traj, parameters) - 6.5)
             < 1.0e-14;
 
   HostVector<Real> state_gradient;
-  objective.stateGrad(0, trajectory, parameters, state_gradient);
+  objective.stateGrad(0, traj, parameters, state_gradient);
   status *= state_gradient.size() == 2;
   status *= std::abs(state_gradient[0] - 2.0) < 1.0e-14;
   status *= std::abs(state_gradient[1] - 9.0) < 1.0e-14;
-  objective.stateGrad(1, trajectory, parameters, state_gradient);
+  objective.stateGrad(1, traj, parameters, state_gradient);
   status *= std::abs(state_gradient[0] - 2.0) < 1.0e-14;
   status *= std::abs(state_gradient[1] - 9.0) < 1.0e-14;
 
   HostVector<Real> param_gradient;
-  objective.paramGrad(trajectory, parameters, param_gradient);
+  objective.paramGrad(traj, parameters, param_gradient);
   status *= param_gradient.size() == 1;
   status *= std::abs(param_gradient[0] - 4.0) < 1.0e-14;
 
@@ -169,13 +169,13 @@ TestOutcome timeBlockRegularizationUsesSparseQuadraticForm()
       {2.0, -1.0, -1.0, 3.0},
       2.0,
       {1.0, 1.0, 0.0, 0.0});
-  state::TimeTrajectory  trajectory(1, 2);
+  state::TimeTrajectory  traj(1, 2);
   const HostVector<Real> param{2.0, 0.0, 1.0, 2.0};
 
-  status *= std::abs(objective.value(trajectory, param) - 17.0)
+  status *= std::abs(objective.value(traj, param) - 17.0)
             < 1.0e-14;
   HostVector<Real> grad;
-  objective.paramGrad(trajectory, param, grad);
+  objective.paramGrad(traj, param, grad);
   status *= grad.size() == 4;
   status *= std::abs(grad[0] - 6.0) < 1.0e-14;
   status *= std::abs(grad[1] + 8.0) < 1.0e-14;

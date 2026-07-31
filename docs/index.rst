@@ -74,13 +74,6 @@ parameters:
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Guides
-
-   petsc-partitioning
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
    :caption: API Reference
 
    doxygen/index

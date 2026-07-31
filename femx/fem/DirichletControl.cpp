@@ -306,9 +306,9 @@ void DirichletControl::apply(const HostVector<Real>& dir,
   checkControlVector(dir);
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.assign(out, numStateDofs(), 0);
-  jacobian.apply(matrix_, dir.view(), out.view());
+  jac.apply(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::applyT(const HostVector<Real>& dir,
@@ -317,9 +317,9 @@ void DirichletControl::applyT(const HostVector<Real>& dir,
   checkStateVector(dir);
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.assign(out, numControlParams(), 0);
-  jacobian.applyT(matrix_, dir.view(), out.view());
+  jac.applyT(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::checkDofIndex(Index i) const

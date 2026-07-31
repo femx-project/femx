@@ -8,7 +8,9 @@
 namespace femx
 {
 
-/** @brief Provide a non-owning view of a contiguous array. */
+/**
+ * @brief Provide a non-owning view of a contiguous array.
+ */
 template <MemorySpace Space, class T>
 class VectorView
 {
@@ -58,13 +60,17 @@ public:
     return data_;
   }
 
-  /** @brief Return the number of viewed values. */
+  /**
+   * @brief Return the number of viewed values.
+   */
   FEMX_HOST_DEVICE Index size() const
   {
     return size_;
   }
 
-  /** @brief Report whether the view is empty. */
+  /**
+   * @brief Report whether the view is empty.
+   */
   FEMX_HOST_DEVICE bool empty() const
   {
     return size_ == 0;
@@ -92,7 +98,9 @@ public:
     return VectorView(data_ + offset, count);
   }
 
-  /** @brief Return a Host iterator to the first viewed value. */
+  /**
+   * @brief Return a Host iterator to the first viewed value.
+   */
   T* begin() const
   {
     static_assert(Space == MemorySpace::Host,
@@ -100,7 +108,9 @@ public:
     return data_;
   }
 
-  /** @brief Return a Host iterator past the last viewed value. */
+  /**
+   * @brief Return a Host iterator past the last viewed value.
+   */
   T* end() const
   {
     return begin() + size_;
@@ -111,7 +121,7 @@ public:
    *
    * @param[in] vals - Values to copy.
    * @return This view.
-   * @throws std::runtime_error - If the source and destination sizes differ.
+   * @throws - If the source and destination sizes differ.
    */
   template <class Values>
   VectorView& operator=(const Values& vals)
@@ -132,7 +142,9 @@ private:
   Index size_{0};       ///< Number of viewed values.
 };
 
-/** @brief Provide a non-owning row-major view of equal-sized vector blocks. */
+/**
+ * @brief Provide a non-owning row-major view of equal-sized vector blocks.
+ */
 template <MemorySpace Space, class T>
 class BlockVectorView
 {
@@ -176,31 +188,41 @@ public:
     return {data_ + i * block_size_, block_size_};
   }
 
-  /** @brief Return a flat view of all values. */
+  /**
+   * @brief Return a flat view of all values.
+   */
   FEMX_HOST_DEVICE VectorView<Space, T> flat() const
   {
     return {data_, size()};
   }
 
-  /** @brief Return the address of the first viewed value. */
+  /**
+   * @brief Return the address of the first viewed value.
+   */
   FEMX_HOST_DEVICE T* data() const
   {
     return data_;
   }
 
-  /** @brief Return the number of blocks. */
+  /**
+   * @brief Return the number of blocks.
+   */
   FEMX_HOST_DEVICE Index blocks() const
   {
     return blocks_;
   }
 
-  /** @brief Return the number of values per block. */
+  /**
+   * @brief Return the number of values per block.
+   */
   FEMX_HOST_DEVICE Index blockSize() const
   {
     return block_size_;
   }
 
-  /** @brief Return the total number of values. */
+  /**
+   * @brief Return the total number of values.
+   */
   FEMX_HOST_DEVICE Index size() const
   {
     return blocks_ * block_size_;
@@ -212,7 +234,9 @@ private:
   Index block_size_{0}; ///< Number of values per block.
 };
 
-/** @brief Provide a non-owning row-major dense matrix view. */
+/**
+ * @brief Provide a non-owning row-major dense matrix view.
+ */
 template <MemorySpace Space, class T>
 class MatrixView
 {
@@ -254,19 +278,25 @@ public:
     return data_[i * cols_ + j];
   }
 
-  /** @brief Return the address of the first viewed entry. */
+  /**
+   * @brief Return the address of the first viewed entry.
+   */
   T* data() const
   {
     return data_;
   }
 
-  /** @brief Return the number of rows. */
+  /**
+   * @brief Return the number of rows.
+   */
   Index rows() const
   {
     return rows_;
   }
 
-  /** @brief Return the number of columns. */
+  /**
+   * @brief Return the number of columns.
+   */
   Index cols() const
   {
     return cols_;
@@ -278,10 +308,14 @@ private:
   Index cols_{0};       ///< Number of columns.
 };
 
-/** @brief Provide a Host dense matrix view. */
+/**
+ * @brief Provide a Host dense matrix view.
+ */
 template <class T>
 using HostMatrixView = MatrixView<MemorySpace::Host, T>;
-/** @brief Provide a Device dense matrix view. */
+/**
+ * @brief Provide a Device dense matrix view.
+ */
 template <class T>
 using DeviceMatrixView = MatrixView<MemorySpace::Device, T>;
 
@@ -289,7 +323,9 @@ using DeviceMatrixView = MatrixView<MemorySpace::Device, T>;
 namespace detail
 {
 
-/** @brief Return whether two contiguous pointer ranges share any byte. */
+/**
+ * @brief Return whether two contiguous pointer ranges share any byte.
+ */
 template <class T, class U>
 inline bool overlaps(const T* lhs,
                      Index    lhs_size,
@@ -307,7 +343,9 @@ inline bool overlaps(const T* lhs,
   return lhs_begin < rhs_end && rhs_begin < lhs_end;
 }
 
-/** @brief Return whether two contiguous views share any byte. */
+/**
+ * @brief Return whether two contiguous views share any byte.
+ */
 template <MemorySpace Space, class T, class U>
 inline bool overlaps(VectorView<Space, T> lhs,
                      VectorView<Space, U> rhs) noexcept

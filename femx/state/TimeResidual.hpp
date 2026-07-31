@@ -10,7 +10,9 @@
 namespace femx::state
 {
 
-/** @brief Dimensions of a time-dependent residual problem. */
+/**
+ * @brief Dimensions of a time-dependent residual problem.
+ */
 struct TimeDims
 {
   Index num_steps  = 0;
@@ -20,7 +22,9 @@ struct TimeDims
   Index num_hist   = 1;
 };
 
-/** @brief Non-owning lag-major history window. */
+/**
+ * @brief Non-owning lag-major history window.
+ */
 template <MemorySpace Space>
 class TimeHistoryView
 {
@@ -75,7 +79,9 @@ private:
   Index       num_states_{0};
 };
 
-/** @brief Native-memory inputs at one residual step. */
+/**
+ * @brief Native-memory inputs at one residual step.
+ */
 template <MemorySpace Space>
 struct TimeContext
 {
@@ -90,7 +96,9 @@ using DeviceTimeHistoryView = TimeHistoryView<MemorySpace::Device>;
 using HostTimeContext       = TimeContext<MemorySpace::Host>;
 using DeviceTimeContext     = TimeContext<MemorySpace::Device>;
 
-/** @brief Variable block of a time-residual Jacobian. */
+/**
+ * @brief Variable block of a time-residual Jacobian.
+ */
 class VariableBlock final
 {
 public:
@@ -168,7 +176,9 @@ inline constexpr VariableBlock VariableBlock::Param{
 template <MemorySpace Space>
 class TimeResidual;
 
-/** @brief Define a time residual in one memory space. */
+/**
+ * @brief Define a time residual in one memory space.
+ */
 template <MemorySpace Space>
 class TimeResidual
 {
@@ -186,13 +196,19 @@ public:
 
   virtual TimeDims dims() const = 0;
 
-  /** @brief Return the canonical Host Jacobian pattern. */
+  /**
+   * @brief Return the canonical Host Jacobian pattern.
+   */
   virtual const HostCsrPattern& hostPattern() const = 0;
 
-  /** @brief Evaluate the parameter-dependent initial state. */
+  /**
+   * @brief Evaluate the parameter-dependent initial state.
+   */
   virtual void initialState(ConstView prm, Vec& out, Ctx& ctx) const = 0;
 
-  /** @brief Add the initial-state Jacobian transpose product to `out`. */
+  /**
+   * @brief Add the initial-state Jacobian transpose product to `out`.
+   */
   virtual void addInitialStateJacT(ConstView state_grad,
                                    VecView   out,
                                    Ctx&) const
@@ -203,13 +219,17 @@ public:
             "TimeResidual initial-state transpose size mismatch");
   }
 
-  /** @brief Assemble the residual and next-state Jacobian together. */
+  /**
+   * @brief Assemble the residual and next-state Jacobian together.
+   */
   virtual void assembleNext(const StepCtx& time,
                             Vec&           res,
                             Jac&           jac,
                             Ctx&           ctx) const = 0;
 
-  /** @brief Apply a history or parameter Jacobian transpose. */
+  /**
+   * @brief Apply a history or parameter Jacobian transpose.
+   */
   virtual void applyJacT(const StepCtx& time,
                          VariableBlock  wrt,
                          ConstView      adj,
@@ -219,7 +239,7 @@ public:
   /**
    * @brief Set up the Jacobian and right-hand side before a linear solve.
    *
-   * @param[in] time - Current time-step context.
+   * @param[in]     time - Current time-step context.
    * @param[in,out] jac - Assembled Jacobian.
    * @param[in,out] rhs - Linear-system right-hand side.
    * @param[in,out] ctx - Linear algebra context.

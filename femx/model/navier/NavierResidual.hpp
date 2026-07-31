@@ -17,7 +17,9 @@ namespace model::navier
 
 class NavierModel;
 
-/** @brief Assemble the Navier-Stokes time residual with Host data. */
+/**
+ * @brief Assemble the Navier-Stokes time residual with Host data.
+ */
 class HostNavierResidual final : public state::HostTimeResidual
 {
 public:
@@ -28,17 +30,21 @@ public:
    */
   explicit HostNavierResidual(const NavierModel& model);
 
-  /** @brief Return the time-residual dimensions. */
+  /**
+   * @brief Return the time-residual dimensions.
+   */
   state::TimeDims dims() const override;
 
-  /** @brief Return the Host Jacobian sparsity pattern. */
+  /**
+   * @brief Return the Host Jacobian sparsity pattern.
+   */
   const HostCsrPattern& hostPattern() const override;
 
   /**
    * @brief Return the parameter-free zero initial state.
    *
-   * @param[in] prm - Empty parameter vector.
-   * @param[out] out - Initial state.
+   * @param[in]     prm - Empty parameter vector.
+   * @param[out]    out - Initial state.
    * @param[in,out] ctx - Linear algebra context.
    */
   void initialState(ConstView prm,
@@ -48,9 +54,9 @@ public:
   /**
    * @brief Assemble the next-state residual and Jacobian.
    *
-   * @param[in] time - Time-step context.
-   * @param[out] res - Next-state residual.
-   * @param[out] jac - Next-state Jacobian.
+   * @param[in]     time - Time-step context.
+   * @param[out]    res - Next-state residual.
+   * @param[out]    jac - Next-state Jacobian.
    * @param[in,out] ctx - Linear algebra context.
    */
   void assembleNext(const StepCtx& time,
@@ -61,10 +67,10 @@ public:
   /**
    * @brief Apply a history or parameter Jacobian transpose.
    *
-   * @param[in] time - Time-step context.
-   * @param[in] with_respect_to - Differentiated variable block.
-   * @param[in] adj - Residual adjoint.
-   * @param[out] out - Transpose-product result.
+   * @param[in]     time - Time-step context.
+   * @param[in]     with_respect_to - Differentiated variable block.
+   * @param[in]     adj - Residual adjoint.
+   * @param[out]    out - Transpose-product result.
    * @param[in,out] ctx - Linear algebra context.
    */
   void applyJacT(const StepCtx&       time,
@@ -77,30 +83,36 @@ private:
   const NavierModel& model_; ///< Host model data.
 };
 
-/** @brief Own Device data and assemble the Navier-Stokes residual with CUDA. */
+/**
+ * @brief Own Device data and assemble the Navier-Stokes residual with CUDA.
+ */
 class DeviceNavierResidual final : public state::DeviceTimeResidual
 {
 public:
   /**
    * @brief Copy a Host Navier-Stokes model to Device storage.
    *
-   * @param[in] model - Source Host model.
+   * @param[in]     model - Source Host model.
    * @param[in,out] ctx - CUDA context receiving the copies.
    */
   DeviceNavierResidual(const NavierModel&   model,
                        linalg::CudaContext& ctx);
 
-  /** @brief Return the time-residual dimensions. */
+  /**
+   * @brief Return the time-residual dimensions.
+   */
   state::TimeDims dims() const override;
 
-  /** @brief Return the Host Jacobian sparsity pattern. */
+  /**
+   * @brief Return the Host Jacobian sparsity pattern.
+   */
   const HostCsrPattern& hostPattern() const override;
 
   /**
    * @brief Return the parameter-free zero initial state.
    *
-   * @param[in] prm - Empty Device parameter vector.
-   * @param[out] out - Device initial state.
+   * @param[in]     prm - Empty Device parameter vector.
+   * @param[out]    out - Device initial state.
    * @param[in,out] ctx - Device linear algebra context.
    */
   void initialState(ConstView prm,
@@ -110,9 +122,9 @@ public:
   /**
    * @brief Assemble the next-state residual and Jacobian.
    *
-   * @param[in] time - Device time-step context.
-   * @param[out] res - Device next-state residual.
-   * @param[out] jac - Device next-state Jacobian.
+   * @param[in]     time - Device time-step context.
+   * @param[out]    res - Device next-state residual.
+   * @param[out]    jac - Device next-state Jacobian.
    * @param[in,out] ctx - Device linear algebra context.
    */
   void assembleNext(const StepCtx& time,
@@ -123,10 +135,10 @@ public:
   /**
    * @brief Apply a history or parameter Jacobian transpose.
    *
-   * @param[in] time - Device time-step context.
-   * @param[in] with_respect_to - Differentiated variable block.
-   * @param[in] adj - Device residual adjoint.
-   * @param[out] out - Device transpose-product result.
+   * @param[in]     time - Device time-step context.
+   * @param[in]     with_respect_to - Differentiated variable block.
+   * @param[in]     adj - Device residual adjoint.
+   * @param[out]    out - Device transpose-product result.
    * @param[in,out] ctx - Device linear algebra context.
    */
   void applyJacT(const StepCtx&       time,

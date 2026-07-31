@@ -29,20 +29,30 @@ public:
 
   virtual ~DeviceTimeObservationOperator() = default;
 
-  /** @brief Return the number of residual time steps. */
+  /**
+   * @brief Return the number of residual time steps.
+   */
   virtual Index numSteps() const        = 0;
-  /** @brief Return the state size at one time level. */
+  /**
+   * @brief Return the state size at one time level.
+   */
   virtual Index numStates() const       = 0;
-  /** @brief Return the observation size at one time level. */
+  /**
+   * @brief Return the observation size at one time level.
+   */
   virtual Index numObservations() const = 0;
 
-  /** @brief Overwrite a preallocated observation vector on `ctx`. */
+  /**
+   * @brief Overwrite a preallocated observation vector on `ctx`.
+   */
   virtual void observe(Index                level,
                        ConstView            state,
                        View                 out,
                        linalg::CudaContext& ctx) const = 0;
 
-  /** @brief Add the state-transpose product to preallocated `out` on `ctx`. */
+  /**
+   * @brief Add the state-transpose product to preallocated `out` on `ctx`.
+   */
   virtual void addStateJacT(Index                level,
                             ConstView            dir,
                             View                 out,
@@ -60,13 +70,21 @@ class TimeObservationOperator
 public:
   virtual ~TimeObservationOperator() = default;
 
-  /** @brief Return the number of residual time steps. */
+  /**
+   * @brief Return the number of residual time steps.
+   */
   virtual Index numSteps() const        = 0;
-  /** @brief Return the state size at one time level. */
+  /**
+   * @brief Return the state size at one time level.
+   */
   virtual Index numStates() const       = 0;
-  /** @brief Return the full parameter-vector size. */
+  /**
+   * @brief Return the full parameter-vector size.
+   */
   virtual Index numParams() const       = 0;
-  /** @brief Return the observation size at one time level. */
+  /**
+   * @brief Return the observation size at one time level.
+   */
   virtual Index numObservations() const = 0;
 
   /**

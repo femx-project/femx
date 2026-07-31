@@ -10,7 +10,9 @@ namespace femx
 namespace inverse
 {
 
-/** Sparse block quadratic regularization repeated over control levels. */
+/**
+ * Sparse block quadratic regularization repeated over control levels.
+ */
 class TimeBlockRegularization final : public TimeObjective
 {
 public:

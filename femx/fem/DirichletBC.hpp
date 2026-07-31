@@ -23,67 +23,89 @@ class FESpace;
 class DirichletBC
 {
 public:
-  /** @brief Marks whether a mesh node belongs to the constrained boundary. */
+  /**
+   * @brief Marks whether a mesh node belongs to the constrained boundary.
+   */
   using BoundaryMarker = std::function<bool(const Mesh::Node&, Real)>;
 
-  /** @brief Evaluates the prescribed boundary value at a mesh node and time. */
+  /**
+   * @brief Evaluates the prescribed boundary value at a mesh node and time.
+   */
   using BoundaryValue = std::function<Real(const Mesh::Node&, Real)>;
 
   DirichletBC() = default;
 
-  /** @brief Add one constrained degree of freedom. */
+  /**
+   * @brief Add one constrained degree of freedom.
+   */
   void addDof(Index id, Real value);
 
-  /** @brief Add a constant value on a physical boundary tag. */
+  /**
+   * @brief Add a constant value on a physical boundary tag.
+   */
   void addBoundary(const FESpace& space,
                    Index          ptag,
                    Real           value,
                    Real           time = 0.0,
                    Index          comp = 0);
 
-  /** @brief Add a value function on a physical boundary tag. */
+  /**
+   * @brief Add a value function on a physical boundary tag.
+   */
   void addBoundary(const FESpace&       space,
                    Index                ptag,
                    const BoundaryValue& value,
                    Real                 time = 0.0,
                    Index                comp = 0);
 
-  /** @brief Add a constant value on a mixed field physical boundary tag. */
+  /**
+   * @brief Add a constant value on a mixed field physical boundary tag.
+   */
   void addBoundary(const MixedFieldView& field,
                    Index                 ptag,
                    Real                  value,
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  /** @brief Add a value function on a mixed field physical boundary tag. */
+  /**
+   * @brief Add a value function on a mixed field physical boundary tag.
+   */
   void addBoundary(const MixedFieldView& field,
                    Index                 ptag,
                    const BoundaryValue&  value,
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  /** @brief Add a constant value on nodes selected by a boundary marker. */
+  /**
+   * @brief Add a constant value on nodes selected by a boundary marker.
+   */
   void addBoundary(const FESpace&        space,
                    const BoundaryMarker& mark,
                    Real                  value,
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  /** @brief Add a value function on nodes selected by a boundary marker. */
+  /**
+   * @brief Add a value function on nodes selected by a boundary marker.
+   */
   void addBoundary(const FESpace&        space,
                    const BoundaryMarker& mark,
                    const BoundaryValue&  value,
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  /** @brief Add a constant value on mixed field nodes selected by a marker. */
+  /**
+   * @brief Add a constant value on mixed field nodes selected by a marker.
+   */
   void addBoundary(const MixedFieldView& field,
                    const BoundaryMarker& mark,
                    Real                  value,
                    Real                  time = 0.0,
                    Index                 comp = 0);
 
-  /** @brief Add a value function on mixed field nodes selected by a marker. */
+  /**
+   * @brief Add a value function on mixed field nodes selected by a marker.
+   */
   void addBoundary(const MixedFieldView& field,
                    const BoundaryMarker& mark,
                    const BoundaryValue&  value,
@@ -93,7 +115,9 @@ public:
   const HostVector<Index>& dofs() const noexcept;
   const HostVector<Real>&  vals() const noexcept;
 
-  /** @brief Apply the constraints to a matrix and right-hand side. */
+  /**
+   * @brief Apply the constraints to a matrix and right-hand side.
+   */
   void apply(HostCsrMatrix& A, HostVector<Real>& b) const;
 
 private:

@@ -26,7 +26,7 @@ using DeviceElementQuadData = ElementQuadData<MemorySpace::Device>;
  * @param[in] quad - Quadrature rule for the space's reference element.
  * @return Shape values, physical gradients, and weighted Jacobians for every
  * element.
- * @throws std::runtime_error - If the space is not initialized or its finite
+ * @throws - If the space is not initialized or its finite
  * element and quadrature rule are incompatible.
  */
 HostElementQuadData makeElementQuadData(
@@ -36,8 +36,8 @@ HostElementQuadData makeElementQuadData(
 /**
  * @brief Copy Host element quadrature data to Device storage.
  *
- * @param[in] src - Host data kept alive while copies are queued.
- * @param[out] dst - Device data replaced by the copy.
+ * @param[in]     src - Host data kept alive while copies are queued.
+ * @param[out]    dst - Device data replaced by the copy.
  * @param[in,out] ctx - CUDA execution context receiving the copies.
  */
 void copy(const HostElementQuadData& src,
@@ -85,25 +85,33 @@ public:
   {
   }
 
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   FEMX_HOST_DEVICE Index numElems() const
   {
     return num_elems_;
   }
 
-  /** @brief Return the number of quadrature points per element. */
+  /**
+   * @brief Return the number of quadrature points per element.
+   */
   FEMX_HOST_DEVICE Index numQuadraturePoints() const
   {
     return num_qpts_;
   }
 
-  /** @brief Return the number of scalar shape functions per element. */
+  /**
+   * @brief Return the number of scalar shape functions per element.
+   */
   FEMX_HOST_DEVICE Index numShapes() const
   {
     return num_shapes_;
   }
 
-  /** @brief Return the spatial dimension. */
+  /**
+   * @brief Return the spatial dimension.
+   */
   FEMX_HOST_DEVICE Index dim() const
   {
     return dim_;
@@ -151,19 +159,25 @@ public:
     return JxW_[ie * num_qpts_ + iq];
   }
 
-  /** @brief Return the shape-function value storage. */
+  /**
+   * @brief Return the shape-function value storage.
+   */
   FEMX_HOST_DEVICE const Real* NData() const
   {
     return N_.data();
   }
 
-  /** @brief Return the physical-gradient storage. */
+  /**
+   * @brief Return the physical-gradient storage.
+   */
   FEMX_HOST_DEVICE const Real* dNdxData() const
   {
     return dNdx_.data();
   }
 
-  /** @brief Return the weighted-Jacobian storage. */
+  /**
+   * @brief Return the weighted-Jacobian storage.
+   */
   FEMX_HOST_DEVICE const Real* JxWData() const
   {
     return JxW_.data();
@@ -195,31 +209,41 @@ public:
   ElementQuadData& operator=(const ElementQuadData&)     = default;
   ElementQuadData& operator=(ElementQuadData&&) noexcept = default;
 
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
-  /** @brief Return the number of quadrature points per element. */
+  /**
+   * @brief Return the number of quadrature points per element.
+   */
   Index numQuadraturePoints() const noexcept
   {
     return num_qpts_;
   }
 
-  /** @brief Return the number of scalar shape functions per element. */
+  /**
+   * @brief Return the number of scalar shape functions per element.
+   */
   Index numShapes() const noexcept
   {
     return num_shapes_;
   }
 
-  /** @brief Return the spatial dimension. */
+  /**
+   * @brief Return the spatial dimension.
+   */
   Index dim() const noexcept
   {
     return dim_;
   }
 
-  /** @brief Return a non-owning view valid while this object is alive. */
+  /**
+   * @brief Return a non-owning view valid while this object is alive.
+   */
   ElementQuadDataView<Space> view() const noexcept
   {
     return {num_elems_,

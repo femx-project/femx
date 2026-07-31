@@ -12,7 +12,9 @@ namespace femx::linalg
 
 class PETScPartition;
 
-/** @brief Own MPI execution resources for Host assembly. */
+/**
+ * @brief Own MPI execution resources for Host assembly.
+ */
 class MpiContext final : public Context<MemorySpace::Host>
 {
 public:
@@ -20,11 +22,13 @@ public:
    * @brief Duplicate and own an MPI communicator.
    *
    * @param[in] comm - Communicator to duplicate.
-   * @throws std::runtime_error - If MPI is unavailable or duplication fails.
+   * @throws - If MPI is unavailable or duplication fails.
    */
   explicit MpiContext(MPI_Comm comm = MPI_COMM_SELF);
 
-  /** @brief Release the owned MPI communicator. */
+  /**
+   * @brief Release the owned MPI communicator.
+   */
   ~MpiContext() override;
 
   MpiContext(const MpiContext&)            = delete;
@@ -32,7 +36,9 @@ public:
   MpiContext(MpiContext&&)                 = delete;
   MpiContext& operator=(MpiContext&&)      = delete;
 
-  /** @brief Return the owned Host vector operations. */
+  /**
+   * @brief Return the owned Host vector operations.
+   */
   HostVectorHandler& vectorHandler() noexcept override;
 
   /**
@@ -44,7 +50,7 @@ public:
    *
    * @param[in] count - Global element count.
    * @return Rank-local half-open element range.
-   * @throws std::runtime_error - If `count` is negative or MPI fails.
+   * @throws - If `count` is negative or MPI fails.
    */
   IndexRange elementRange(Index count) const override;
 
@@ -58,7 +64,7 @@ public:
    * @param[in] count - Global element count.
    * @param[in] rows - Element residual rows in application numbering.
    * @return `true` when this rank should evaluate the element.
-   * @throws std::runtime_error - If an index is invalid or MPI fails.
+   * @throws - If an index is invalid or MPI fails.
    */
   bool ownsElement(
       Index                       element,
@@ -69,14 +75,18 @@ public:
    * @brief Sum replicated Host values over the communicator.
    *
    * @param[in,out] vals - Values replaced by their communicator-wide sums.
-   * @throws std::runtime_error - If MPI fails.
+   * @throws - If MPI fails.
    */
   void allReduceSum(HostVectorView<Real> vals) const override;
 
-  /** @brief Complete pending Host work; MPI operations are synchronous here. */
+  /**
+   * @brief Complete pending Host work; MPI operations are synchronous here.
+   */
   void sync() const override;
 
-  /** @brief Return the owned MPI communicator. */
+  /**
+   * @brief Return the owned MPI communicator.
+   */
   MPI_Comm comm() const noexcept;
 
   /**

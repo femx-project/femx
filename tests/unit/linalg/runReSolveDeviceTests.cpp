@@ -169,7 +169,7 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
 
     linalg::HostContext      cpu_ctx;
     linalg::CudaContext      ctx;
-    linalg::HostSystemMatrix h_jacobian(cpu_ctx);
+    linalg::HostSystemMatrix h_jac(cpu_ctx);
     auto&                    vec_handler = ctx.vectorHandler();
     DeviceCsrPattern         d_graph;
     copy(h_graph, d_graph, ctx);
@@ -205,9 +205,9 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     status *= vecNear(fwd_result, expected);
 
     HostVector<Real> trans_rhs(h_trans_mat.cols());
-    h_jacobian.applyT(h_trans_mat,
-                      expected.view(),
-                      trans_rhs.view());
+    h_jac.applyT(h_trans_mat,
+                 expected.view(),
+                 trans_rhs.view());
 
     DeviceVector<Real> d_trans_rhs;
     DeviceVector<Real> d_trans_result;
@@ -252,9 +252,9 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     copyMatrix(h_trans_mat, d_trans_mat, ctx);
     const HostVector<Real> rhs2 = mul(h_mat, expected);
     HostVector<Real>       trans_rhs2(h_trans_mat.cols());
-    h_jacobian.applyT(h_trans_mat,
-                      expected.view(),
-                      trans_rhs2.view());
+    h_jac.applyT(h_trans_mat,
+                 expected.view(),
+                 trans_rhs2.view());
     vec_handler.copy(rhs2, d_rhs);
     vec_handler.copy(trans_rhs2, d_trans_rhs);
     solver.solve(d_mat, d_rhs, d_result, ctx);

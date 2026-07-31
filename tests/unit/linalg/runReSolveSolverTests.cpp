@@ -74,11 +74,11 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
 
     linalg::ReSolveLinearSolver lin_solver;
     linalg::HostContext         ctx;
-    linalg::HostSystemMatrix    jacobian(ctx);
+    linalg::HostSystemMatrix    jac(ctx);
 
     const HostVector<Real> expected = solver::expectedGridSolution(nx, ny);
     HostVector<Real>       rhs(expected.size());
-    jacobian.apply(mat, expected.view(), rhs.view());
+    jac.apply(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;
     lin_solver.solve(mat, rhs, x, ctx);
@@ -86,7 +86,7 @@ TestOutcome resolveCpuConcreteMatrixReusesStorage()
 
     ctx.vectorHandler().zero(mat.vals().view());
     solver::fillGrid5PointMat(mat, nx, ny);
-    jacobian.apply(mat, expected.view(), rhs.view());
+    jac.apply(mat, expected.view(), rhs.view());
     lin_solver.solve(mat, rhs, x, ctx);
     status *= solver::vecNear(x, expected, 1.0e-7);
   }

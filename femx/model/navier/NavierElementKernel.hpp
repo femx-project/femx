@@ -204,7 +204,9 @@ FEMX_HOST_DEVICE void evalQp(
 
 } // namespace detail
 
-/** @brief Evaluate element rows for CPU and CUDA time assembly. */
+/**
+ * @brief Evaluate element rows for CPU and CUDA time assembly.
+ */
 template <MemorySpace Space>
 class NavierElementKernel
 {
@@ -245,7 +247,9 @@ public:
     res = evalRowImpl(e, row, lhs);
   }
 
-  /** @brief Return the element quadrature data used by this operator. */
+  /**
+   * @brief Return the element quadrature data used by this operator.
+   */
   FEMX_HOST_DEVICE fem::ElementQuadDataView<Space> data() const
   {
     return data_;
@@ -405,7 +409,9 @@ using DeviceNavierElementKernel = NavierElementKernel<MemorySpace::Device>;
 namespace detail
 {
 
-/** @brief Scalar local residual-adjoint product used as an Enzyme VJP root. */
+/**
+ * @brief Scalar local residual-adjoint product used as an Enzyme VJP root.
+ */
 template <MemorySpace Space>
 FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
                                  Index       num_qpts,
@@ -454,7 +460,9 @@ FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
   return val;
 }
 
-/** @brief One residual row used as the CUDA Enzyme differentiation root. */
+/**
+ * @brief One residual row used as the CUDA Enzyme differentiation root.
+ */
 template <MemorySpace Space, Index NumQpts, Index NumNodes, Index Dim>
 FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
                                     const Real* N,
@@ -498,7 +506,9 @@ FEMX_HOST_DEVICE Real evalResRowAdj(Index       num_elems,
 
 } // namespace detail
 
-/** @brief Evaluate every Host element history VJP without a matrix. */
+/**
+ * @brief Evaluate every Host element history VJP without a matrix.
+ */
 void histVjp(const HostNavierElementKernel&       kernel,
              const assembly::HostTimeElementView& e,
              HostVectorView<const Real>           adj,

@@ -8,7 +8,9 @@
 namespace femx::state
 {
 
-/** @brief Sizes for a parameter-dependent stationary residual. */
+/**
+ * @brief Sizes for a parameter-dependent stationary residual.
+ */
 struct Dimensions
 {
   Index num_states{0};
@@ -16,7 +18,9 @@ struct Dimensions
   Index num_res{0};
 };
 
-/** @brief Define a stationary residual in one memory space. */
+/**
+ * @brief Define a stationary residual in one memory space.
+ */
 template <MemorySpace Space>
 class Residual
 {
@@ -31,15 +35,17 @@ public:
 
   virtual Dimensions dims() const = 0;
 
-  /** @brief Return the canonical Host Jacobian pattern. */
+  /**
+   * @brief Return the canonical Host Jacobian pattern.
+   */
   virtual const HostCsrPattern& hostPattern() const = 0;
 
   /**
    * @brief Assemble the residual at a state and parameter point.
    *
-   * @param[in] state - State vector.
-   * @param[in] prm - Parameter vector.
-   * @param[out] out - Assembled residual.
+   * @param[in]     state - State vector.
+   * @param[in]     prm - Parameter vector.
+   * @param[out]    out - Assembled residual.
    * @param[in,out] ctx - Linear algebra context.
    */
   virtual void assembleResidual(const Vec& state,
@@ -50,8 +56,8 @@ public:
   /**
    * @brief Assemble the state Jacobian at a state and parameter point.
    *
-   * @param[in] state - State vector.
-   * @param[in] prm - Parameter vector.
+   * @param[in]     state - State vector.
+   * @param[in]     prm - Parameter vector.
    * @param[in,out] out - State Jacobian receiving assembled entries.
    * @param[in,out] ctx - Linear algebra context.
    */
@@ -60,7 +66,9 @@ public:
                                 Jac&       out,
                                 Ctx&       ctx) const = 0;
 
-  /** @brief Apply (dR/dprm)^T to an adjoint vector. */
+  /**
+   * @brief Apply (dR/dprm)^T to an adjoint vector.
+   */
   virtual void applyParamJacT(const Vec& state,
                               const Vec& prm,
                               const Vec& adj,

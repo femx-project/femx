@@ -12,7 +12,9 @@
 namespace femx::state
 {
 
-/** @brief Define a stationary state solver in one memory space. */
+/**
+ * @brief Define a stationary state solver in one memory space.
+ */
 template <MemorySpace Space>
 class StateSolver
 {
@@ -39,7 +41,9 @@ public:
   virtual void solve(Vec& state, const Vec& prm = Vec{}) = 0;
 };
 
-/** @brief State solver for affine-linear stationary residuals. */
+/**
+ * @brief State solver for affine-linear stationary residuals.
+ */
 template <MemorySpace Space>
 class LinearStateSolver final : public StateSolver<Space>
 {
@@ -126,7 +130,9 @@ struct NewtonStateOptions
   Real  step_tol{0.0};
 };
 
-/** @brief Solve a Host stationary residual with Newton's method. */
+/**
+ * @brief Solve a Host stationary residual with Newton's method.
+ */
 template <MemorySpace Space>
 class NewtonStateSolver final : public StateSolver<Space>
 {

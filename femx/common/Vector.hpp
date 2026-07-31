@@ -42,7 +42,7 @@ public:
    * @brief Construct a value-initialized vector.
    *
    * @param[in] size - Number of values.
-   * @throws std::runtime_error - If `size` is negative.
+   * @throws - If `size` is negative.
    */
   explicit Vector(Index size)
     : vals_(checkedSize(size), T{})
@@ -54,7 +54,7 @@ public:
    *
    * @param[in] size - Number of values.
    * @param[in] val - Initial value for every entry.
-   * @throws std::runtime_error - If `size` is negative.
+   * @throws - If `size` is negative.
    */
   Vector(Index size, const T& val)
     : vals_(checkedSize(size), val)
@@ -65,7 +65,7 @@ public:
    * @brief Construct a vector by copying a Host view.
    *
    * @param[in] view - Values to copy.
-   * @throws std::runtime_error - If the view size is negative.
+   * @throws - If the view size is negative.
    */
   template <class U>
   Vector(VectorView<MemorySpace::Host, U> view)
@@ -98,7 +98,7 @@ public:
    *
    * @param[in] view - Values to copy.
    * @return This vector.
-   * @throws std::runtime_error - If the view size is negative.
+   * @throws - If the view size is negative.
    */
   template <class U>
   Vector& operator=(VectorView<MemorySpace::Host, U> view)
@@ -114,7 +114,7 @@ public:
    * value-initialized.
    *
    * @param[in] size - New number of entries.
-   * @throws std::runtime_error - If `size` is negative.
+   * @throws - If `size` is negative.
    */
   void resize(Index size)
   {
@@ -126,26 +126,32 @@ public:
    *
    * @param[in] size - New number of entries.
    * @param[in] val - Value assigned to every entry.
-   * @throws std::runtime_error - If `size` is negative.
+   * @throws - If `size` is negative.
    */
   void assign(Index size, const T& val)
   {
     vals_.assign(checkedSize(size), val);
   }
 
-  /** @brief Return the number of stored values. */
+  /**
+   * @brief Return the number of stored values.
+   */
   Index size() const noexcept
   {
     return static_cast<Index>(vals_.size());
   }
 
-  /** @brief Report whether the vector is empty. */
+  /**
+   * @brief Report whether the vector is empty.
+   */
   bool empty() const noexcept
   {
     return vals_.empty();
   }
 
-  /** @brief Remove all values. */
+  /**
+   * @brief Remove all values.
+   */
   void clear() noexcept
   {
     vals_.clear();
@@ -155,7 +161,7 @@ public:
    * @brief Reserve storage for at least the requested number of values.
    *
    * @param[in] size - Requested capacity.
-   * @throws std::runtime_error - If `size` is negative.
+   * @throws - If `size` is negative.
    */
   void reserve(Index size)
   {
@@ -194,25 +200,33 @@ public:
     return vals_.emplace_back(std::forward<Args>(args)...);
   }
 
-  /** @brief Access the first value. */
+  /**
+   * @brief Access the first value.
+   */
   T& front()
   {
     return vals_.front();
   }
 
-  /** @brief Access the first value. */
+  /**
+   * @brief Access the first value.
+   */
   const T& front() const
   {
     return vals_.front();
   }
 
-  /** @brief Access the last value. */
+  /**
+   * @brief Access the last value.
+   */
   T& back()
   {
     return vals_.back();
   }
 
-  /** @brief Access the last value. */
+  /**
+   * @brief Access the last value.
+   */
   const T& back() const
   {
     return vals_.back();
@@ -240,49 +254,65 @@ public:
     return vals_[static_cast<std::size_t>(i)];
   }
 
-  /** @brief Return the address of the first stored value. */
+  /**
+   * @brief Return the address of the first stored value.
+   */
   T* data() noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return the address of the first stored value. */
+  /**
+   * @brief Return the address of the first stored value.
+   */
   const T* data() const noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return an iterator to the first value. */
+  /**
+   * @brief Return an iterator to the first value.
+   */
   T* begin() noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return a read-only iterator to the first value. */
+  /**
+   * @brief Return a read-only iterator to the first value.
+   */
   const T* begin() const noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return an iterator past the last value. */
+  /**
+   * @brief Return an iterator past the last value.
+   */
   T* end() noexcept
   {
     return vals_.data() + vals_.size();
   }
 
-  /** @brief Return a read-only iterator past the last value. */
+  /**
+   * @brief Return a read-only iterator past the last value.
+   */
   const T* end() const noexcept
   {
     return vals_.data() + vals_.size();
   }
 
-  /** @brief Return a mutable view of the stored values. */
+  /**
+   * @brief Return a mutable view of the stored values.
+   */
   VectorView<MemorySpace::Host, T> view() noexcept
   {
     return {data(), size()};
   }
 
-  /** @brief Return a read-only view of the stored values. */
+  /**
+   * @brief Return a read-only view of the stored values.
+   */
   VectorView<MemorySpace::Host, const T> view() const noexcept
   {
     return {data(), size()};
@@ -330,7 +360,7 @@ public:
    * @brief Construct a zeroed Device vector.
    *
    * @param[in] size - Number of values.
-   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a CUDA operation fails.
    */
   explicit Vector(Index size)
   {
@@ -367,7 +397,7 @@ public:
    * @brief Replace storage with a zeroed Device allocation.
    *
    * @param[in] size - New number of values.
-   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a CUDA operation fails.
    */
   void resize(Index size)
   {
@@ -400,7 +430,7 @@ public:
    *
    * @param[in] size - New number of values.
    * @param[in] val - Value assigned to every entry.
-   * @throws std::runtime_error - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a CUDA operation fails.
    */
   void assign(Index size, const T& val)
   {
@@ -428,7 +458,9 @@ public:
     size_ = size;
   }
 
-  /** @brief Release the Device allocation. */
+  /**
+   * @brief Release the Device allocation.
+   */
   void clear() noexcept
   {
     cuda::release(data_);
@@ -436,37 +468,49 @@ public:
     size_ = 0;
   }
 
-  /** @brief Return the number of allocated values. */
+  /**
+   * @brief Return the number of allocated values.
+   */
   Index size() const noexcept
   {
     return size_;
   }
 
-  /** @brief Report whether the vector is empty. */
+  /**
+   * @brief Report whether the vector is empty.
+   */
   bool empty() const noexcept
   {
     return size_ == 0;
   }
 
-  /** @brief Return the Device address of the first value. */
+  /**
+   * @brief Return the Device address of the first value.
+   */
   T* data() noexcept
   {
     return data_;
   }
 
-  /** @brief Return the Device address of the first value. */
+  /**
+   * @brief Return the Device address of the first value.
+   */
   const T* data() const noexcept
   {
     return data_;
   }
 
-  /** @brief Return a mutable Device view of the allocation. */
+  /**
+   * @brief Return a mutable Device view of the allocation.
+   */
   VectorView<MemorySpace::Device, T> view() noexcept
   {
     return {data_, size_};
   }
 
-  /** @brief Return a read-only Device view of the allocation. */
+  /**
+   * @brief Return a read-only Device view of the allocation.
+   */
   VectorView<MemorySpace::Device, const T> view() const noexcept
   {
     return {data_, size_};

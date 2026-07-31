@@ -40,13 +40,17 @@ public:
   {
   }
 
-  /** @brief Return the number of constrained rows. */
+  /**
+   * @brief Return the number of constrained rows.
+   */
   Index numBcs() const noexcept
   {
     return constrained_rows_.size();
   }
 
-  /** @brief Return a non-owning view of constrained rows. */
+  /**
+   * @brief Return a non-owning view of constrained rows.
+   */
   BoundaryMapView<Space> view() const noexcept
   {
     return {constrained_rows_.view()};
@@ -73,9 +77,9 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& rows);
 /**
  * @brief Copy constrained rows to Device storage.
  *
- * @param[in] source - Host boundary map.
+ * @param[in]  source - Host boundary map.
  * @param[out] destination - Replaced Device boundary map.
- * @param[in] ctx - CUDA context used for the asynchronous copy.
+ * @param[in]  ctx - CUDA context used for the asynchronous copy.
  */
 void copy(const HostBoundaryMap& source,
           DeviceBoundaryMap&     destination,
@@ -84,9 +88,9 @@ void copy(const HostBoundaryMap& source,
 /**
  * @brief Apply Dirichlet conditions to a Host residual.
  *
- * @param[in] map - Constrained rows in prescribed-value order.
- * @param[in] state - Current state.
- * @param[in] vals - Values prescribed at the constrained rows.
+ * @param[in]  map - Constrained rows in prescribed-value order.
+ * @param[in]  state - Current state.
+ * @param[in]  vals - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
@@ -98,9 +102,9 @@ void applyDirichletConditions(
 /**
  * @brief Apply Dirichlet conditions to an owning Host residual vector.
  *
- * @param[in] map - Constrained rows in prescribed-value order.
- * @param[in] state - Current state.
- * @param[in] vals - Values prescribed at the constrained rows.
+ * @param[in]  map - Constrained rows in prescribed-value order.
+ * @param[in]  state - Current state.
+ * @param[in]  vals - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
@@ -112,10 +116,10 @@ void applyDirichletConditions(
 /**
  * @brief Apply Dirichlet conditions to a Device residual.
  *
- * @param[in] map - Constrained rows in prescribed-value order.
- * @param[in] state - Current Device state.
- * @param[in] vals - Device values prescribed at constrained rows.
- * @param[out] residual - Device residual whose constrained entries are replaced.
+ * @param[in]     map - Constrained rows in prescribed-value order.
+ * @param[in]     state - Current Device state.
+ * @param[in]     vals - Device values prescribed at constrained rows.
+ * @param[out]    residual - Device residual whose constrained entries are replaced.
  * @param[in,out] ctx - CUDA context used for the asynchronous update.
  */
 void applyDirichletConditions(
@@ -128,21 +132,25 @@ void applyDirichletConditions(
 /**
  * @brief Apply Dirichlet conditions to a Jacobian.
  *
- * @param[in] map - Constrained rows.
- * @param[in,out] jacobian - Jacobian whose constrained rows become identity rows.
+ * @param[in]     map - Constrained rows.
+ * @param[in,out] jac - Jacobian whose constrained rows become identity rows.
  */
 template <MemorySpace Space>
 void applyDirichletConditions(
     const BoundaryMap<Space>&    map,
-    linalg::SystemMatrix<Space>& jacobian)
+    linalg::SystemMatrix<Space>& jac)
 {
-  jacobian.replaceRows(map.view().constrained_rows, 1.0);
+  jac.replaceRows(map.view().constrained_rows, 1.0);
 }
 
-/** @brief Set constrained Host vector entries to zero. */
+/**
+ * @brief Set constrained Host vector entries to zero.
+ */
 void zeroBoundary(const HostBoundaryMap& map, HostVectorView<Real> values);
 
-/** @brief Asynchronously set constrained Device vector entries to zero. */
+/**
+ * @brief Asynchronously set constrained Device vector entries to zero.
+ */
 void zeroBoundary(const DeviceBoundaryMap& map,
                   DeviceVectorView<Real>   values,
                   linalg::CudaContext&     ctx);

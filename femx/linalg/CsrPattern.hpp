@@ -45,7 +45,9 @@ class CsrPattern
   using DeviceOnly = std::enable_if_t<S == MemorySpace::Device, int>;
 
 public:
-  /** @brief Construct an empty zero-by-zero CSR pattern. */
+  /**
+   * @brief Construct an empty zero-by-zero CSR pattern.
+   */
   CsrPattern()
     : storage_(std::make_shared<Storage>())
   {
@@ -66,7 +68,7 @@ public:
    * @param[in] cols - Number of columns.
    * @param[in] row_ptr - CSR row offsets.
    * @param[in] col_ind - CSR column indices.
-   * @throws std::runtime_error - If dimensions or CSR indices are invalid.
+   * @throws - If dimensions or CSR indices are invalid.
    */
   template <MemorySpace S = Space, HostOnly<S> = 0>
   CsrPattern(Index                rows,
@@ -82,19 +84,25 @@ public:
     checkSizes();
   }
 
-  /** @brief Return the number of rows. */
+  /**
+   * @brief Return the number of rows.
+   */
   Index rows() const noexcept
   {
     return storage_->rows;
   }
 
-  /** @brief Return the number of columns. */
+  /**
+   * @brief Return the number of columns.
+   */
   Index cols() const noexcept
   {
     return storage_->cols;
   }
 
-  /** @brief Return the number of stored column indices. */
+  /**
+   * @brief Return the number of stored column indices.
+   */
   Index nnz() const noexcept
   {
     return storage_->col_ind.size();
@@ -110,25 +118,33 @@ public:
     return storage_->layout_id;
   }
 
-  /** @brief Return the owned CSR row offsets. */
+  /**
+   * @brief Return the owned CSR row offsets.
+   */
   const Vector<Space, Index>& rowPtr() const noexcept
   {
     return storage_->row_ptr;
   }
 
-  /** @brief Return the owned CSR column indices. */
+  /**
+   * @brief Return the owned CSR column indices.
+   */
   const Vector<Space, Index>& colInd() const noexcept
   {
     return storage_->col_ind;
   }
 
-  /** @brief Return the CSR row-offset data. */
+  /**
+   * @brief Return the CSR row-offset data.
+   */
   const Index* rowPtrData() const noexcept
   {
     return storage_->row_ptr.data();
   }
 
-  /** @brief Return the CSR column-index data. */
+  /**
+   * @brief Return the CSR column-index data.
+   */
   const Index* colIndData() const noexcept
   {
     return storage_->col_ind.data();
@@ -214,10 +230,10 @@ private:
 /**
  * @brief Copy a Host CSR pattern to Device-owned storage.
  *
- * @param[in] src - Source Host pattern.
+ * @param[in]  src - Source Host pattern.
  * @param[out] dst - Destination Device pattern.
- * @param[in] ctx - CUDA context used to enqueue the copy.
- * @throws std::runtime_error - If a CUDA allocation or copy fails.
+ * @param[in]  ctx - CUDA context used to enqueue the copy.
+ * @throws - If a CUDA allocation or copy fails.
  */
 inline void copy(const HostCsrPattern& src,
                  DeviceCsrPattern&     dst,

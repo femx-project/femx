@@ -8,25 +8,33 @@
 namespace femx::linalg
 {
 
-/** @brief Represent a half-open element range. */
+/**
+ * @brief Represent a half-open element range.
+ */
 struct IndexRange
 {
   Index begin{0}; ///< First element index.
   Index end{0};   ///< One-past-the-last element index.
 };
 
-/** @brief Define execution resources for a memory space. */
+/**
+ * @brief Define execution resources for a memory space.
+ */
 template <MemorySpace Space>
 class Context;
 
-/** @brief Define Host execution resources and collective operations. */
+/**
+ * @brief Define Host execution resources and collective operations.
+ */
 template <>
 class Context<MemorySpace::Host>
 {
 public:
   virtual ~Context() = default;
 
-  /** @brief Return the owned Host vector operations. */
+  /**
+   * @brief Return the owned Host vector operations.
+   */
   virtual HostVectorHandler& vectorHandler() noexcept = 0;
 
   /**
@@ -34,7 +42,7 @@ public:
    *
    * @param[in] count - Global element count.
    * @return Assigned half-open element range.
-   * @throws std::runtime_error - If `count` is negative or the execution
+   * @throws - If `count` is negative or the execution
    * environment is invalid.
    */
   virtual IndexRange elementRange(Index count) const = 0;
@@ -46,7 +54,7 @@ public:
    * @param[in] count - Global element count.
    * @param[in] rows - Element residual rows in application numbering.
    * @return `true` when this context should evaluate the element.
-   * @throws std::runtime_error - If the element data or execution environment
+   * @throws - If the element data or execution environment
    * is invalid.
    */
   virtual bool ownsElement(
@@ -63,26 +71,30 @@ public:
    * @brief Sum replicated Host values across the execution context.
    *
    * @param[in,out] vals - Values replaced by their global sums.
-   * @throws std::runtime_error - If a collective operation fails.
+   * @throws - If a collective operation fails.
    */
   virtual void allReduceSum(HostVectorView<Real> vals) const = 0;
 
   /**
    * @brief Wait for work submitted to this context.
    *
-   * @throws std::runtime_error - If synchronization fails.
+   * @throws - If synchronization fails.
    */
   virtual void sync() const = 0;
 };
 
-/** @brief Define Device execution resources. */
+/**
+ * @brief Define Device execution resources.
+ */
 template <>
 class Context<MemorySpace::Device>
 {
 public:
   virtual ~Context() = default;
 
-  /** @brief Return the owned CUDA vector operations. */
+  /**
+   * @brief Return the owned CUDA vector operations.
+   */
   virtual CudaVectorHandler& vectorHandler() noexcept = 0;
 
   /**
@@ -90,14 +102,14 @@ public:
    *
    * @param[in] count - Global element count.
    * @return Assigned half-open element range.
-   * @throws std::runtime_error - If `count` is negative.
+   * @throws - If `count` is negative.
    */
   virtual IndexRange elementRange(Index count) const = 0;
 
   /**
    * @brief Wait for work submitted to this context.
    *
-   * @throws std::runtime_error - If synchronization fails.
+   * @throws - If synchronization fails.
    */
   virtual void sync() const = 0;
 };

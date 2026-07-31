@@ -14,7 +14,9 @@ namespace fem
 
 using BoundaryFacetSelector = std::function<bool(const Mesh::BoundaryFacet&)>;
 
-/** @brief Describe an axial boundary velocity profile. */
+/**
+ * @brief Describe an axial boundary velocity profile.
+ */
 struct AxialVelocityProfile
 {
   std::string type = "uniform";       ///< Profile type.
@@ -30,7 +32,7 @@ struct AxialVelocityProfile
  * @param[in] sel - Boundary-facet selector.
  * @param[in] label - Boundary label used in diagnostics.
  * @return Weighted boundary center.
- * @throws std::runtime_error - If no selected facets are found.
+ * @throws - If no selected facets are found.
  */
 Point3 boundaryCenter(const Mesh&                  mesh,
                       const BoundaryFacetSelector& sel,
@@ -42,7 +44,7 @@ Point3 boundaryCenter(const Mesh&                  mesh,
  * @param[in] mesh - Finite-element mesh.
  * @param[in] ptag - Physical boundary tag.
  * @return Weighted boundary center.
- * @throws std::runtime_error - If no matching facets are found.
+ * @throws - If no matching facets are found.
  */
 Point3 boundaryCenter(const Mesh& mesh, Index ptag);
 
@@ -52,7 +54,7 @@ Point3 boundaryCenter(const Mesh& mesh, Index ptag);
  * @param[in] mesh - Finite-element mesh.
  * @param[in] pname - Physical boundary name.
  * @return Weighted boundary center.
- * @throws std::runtime_error - If no matching facets are found.
+ * @throws - If no matching facets are found.
  */
 Point3 boundaryCenter(const Mesh& mesh, const std::string& pname);
 
@@ -71,7 +73,7 @@ AxialVelocityProfile uniformProfile(const Point3& nrm);
  * @param[in] nrm - Axial direction.
  * @param[in] rad - Profile radius.
  * @return Poiseuille velocity profile.
- * @throws std::runtime_error - If the radius is not positive.
+ * @throws - If the radius is not positive.
  */
 AxialVelocityProfile poiseuilleProfile(const Point3& cen,
                                        const Point3& nrm,

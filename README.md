@@ -76,8 +76,7 @@ make
 
 Add `-DPETSC_ARCH=...` when using a PETSc build with an architecture directory.
 Add `-DFEMX_REQUIRE_PETSC_PARMETIS=ON` to reject a PETSc build that does not
-provide ParMETIS. See [PETSc MPI graph partitioning](docs/petsc-partitioning.rst)
-for a reproducible PETSc configuration and runtime options.
+provide ParMETIS.
 
 ## Python API
 

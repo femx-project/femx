@@ -12,7 +12,9 @@
 namespace femx::state
 {
 
-/** @brief Host-owned state values for all time levels of one solve. */
+/**
+ * @brief Host-owned state values for all time levels of one solve.
+ */
 class TimeTrajectory
 {
 public:
@@ -23,7 +25,9 @@ public:
     resize(num_steps, num_states);
   }
 
-  /** @brief Set dimensions, retaining an allocation of the required size. */
+  /**
+   * @brief Set dimensions, retaining an allocation of the required size.
+   */
   void resize(Index num_steps, Index num_states)
   {
     const Index size = checkedSize(num_steps, num_states);
