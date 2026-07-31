@@ -10,7 +10,7 @@ option(FEMX_ENABLE_CUDA "Enable CUDA execution and Device storage" OFF)
 
 project(
   femx
-  VERSION 0.8.0
+  VERSION 0.8.1
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
@@ -181,63 +181,9 @@ endif()
 if(FEMX_ENABLE_OPENMP)
   find_package(OpenMP QUIET)
 
-  if(NOT OpenMP_CXX_FOUND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    string(REGEX MATCH "^[0-9]+" FEMX_CLANG_MAJOR
-                 "${CMAKE_CXX_COMPILER_VERSION}")
-
-    set(FEMX_CLANG_OPENMP_ROOT_HINTS)
-    if(FEMX_OPENMP_ROOT)
-      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "${FEMX_OPENMP_ROOT}")
-    endif()
-    if(DEFINED ENV{FEMX_OPENMP_ROOT})
-      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "$ENV{FEMX_OPENMP_ROOT}")
-    endif()
-    if(DEFINED ENV{HOME} AND FEMX_CLANG_MAJOR)
-      list(APPEND FEMX_CLANG_OPENMP_ROOT_HINTS
-           "$ENV{HOME}/opt/libomp-${FEMX_CLANG_MAJOR}")
-    endif()
-    if(FEMX_CLANG_MAJOR)
-      list(
-        APPEND FEMX_CLANG_OPENMP_ROOT_HINTS "/usr/lib/llvm-${FEMX_CLANG_MAJOR}"
-        "/usr/local/opt/llvm@${FEMX_CLANG_MAJOR}"
-        "/opt/homebrew/opt/llvm@${FEMX_CLANG_MAJOR}")
-    endif()
-
-    find_path(
-      FEMX_CLANG_OPENMP_INCLUDE_DIR
-      NAMES omp.h
-      HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
-      PATH_SUFFIXES
-        include lib/clang/${FEMX_CLANG_MAJOR}/include
-        lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include
-        usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib/clang/${FEMX_CLANG_MAJOR}/include)
-
-    find_library(
-      FEMX_CLANG_OPENMP_LIBRARY
-      NAMES omp libomp
-      HINTS ${FEMX_CLANG_OPENMP_ROOT_HINTS}
-      PATH_SUFFIXES lib lib64 usr/lib usr/lib/llvm-${FEMX_CLANG_MAJOR}/lib
-                    usr/lib/x86_64-linux-gnu)
-
-    if(FEMX_CLANG_OPENMP_INCLUDE_DIR
-       AND FEMX_CLANG_OPENMP_LIBRARY
-       AND NOT TARGET OpenMP::OpenMP_CXX)
-      get_filename_component(FEMX_CLANG_OPENMP_LIBRARY_DIR
-                             "${FEMX_CLANG_OPENMP_LIBRARY}" DIRECTORY)
-      add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED)
-      set_target_properties(
-        OpenMP::OpenMP_CXX
-        PROPERTIES
-          INTERFACE_COMPILE_OPTIONS "-fopenmp=libomp"
-          INTERFACE_INCLUDE_DIRECTORIES "${FEMX_CLANG_OPENMP_INCLUDE_DIR}"
-          INTERFACE_LINK_LIBRARIES "${FEMX_CLANG_OPENMP_LIBRARY}"
-          INTERFACE_LINK_OPTIONS
-          "$<$<PLATFORM_ID:Linux>:-Wl,-rpath,${FEMX_CLANG_OPENMP_LIBRARY_DIR}>")
-      set(OpenMP_CXX_FOUND TRUE)
-      set(OpenMP_FOUND TRUE)
-      message(
-        STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
-    endif()
+  if(NOT OpenMP_CXX_FOUND)
+    include(cmake/FemxClangOpenMP.cmake)
+    femx_find_clang_openmp()
   endif()
 
   if(NOT OpenMP_CXX_FOUND)
@@ -649,14 +595,34 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/femxConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/femxConfigVersion.cmake"
         DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
 
-install(FILES cmake/FindEnzyme.cmake cmake/FindReSolve.cmake
-        DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
+install(FILES cmake/FemxClangOpenMP.cmake cmake/FindEnzyme.cmake
+              cmake/FindReSolve.cmake DESTINATION "${FEMX_INSTALL_CMAKEDIR}")
 
 set(FEMX_INSTALL_TEST_DIR "${CMAKE_CURRENT_BINARY_DIR}/install")
 set(FEMX_INSTALL_TEST_PREFIX "${FEMX_INSTALL_TEST_DIR}/prefix")
 set(FEMX_INSTALL_TEST_BUILD_DIR "${FEMX_INSTALL_TEST_DIR}/consumer-build")
 set(FEMX_INSTALL_TEST_CONFIGURE_ARGS
-    -DCMAKE_PREFIX_PATH="${FEMX_INSTALL_TEST_PREFIX}")
+    -DCMAKE_PREFIX_PATH="${FEMX_INSTALL_TEST_PREFIX}"
+    -DCMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER}")
+
+if(FEMX_HAS_CUDA)
+  list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+       -DFEMX_INSTALL_TEST_ENABLE_CUDA=ON
+       -DCMAKE_CUDA_COMPILER="${CMAKE_CUDA_COMPILER}")
+  if(CMAKE_CUDA_ARCHITECTURES)
+    list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+         -DCMAKE_CUDA_ARCHITECTURES="${CMAKE_CUDA_ARCHITECTURES}")
+  endif()
+  if(FEMX_HAS_ENZYME)
+    list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+         -DFEMX_INSTALL_TEST_EXPECT_CLANG_CUDA=ON)
+  endif()
+endif()
+
+if(FEMX_ENABLE_OPENMP AND FEMX_OPENMP_ROOT)
+  list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+       -DFEMX_OPENMP_ROOT="${FEMX_OPENMP_ROOT}")
+endif()
 
 if(FEMX_HAS_RESOLVE AND ReSolve_DIR)
   list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS -DReSolve_DIR="${ReSolve_DIR}")
