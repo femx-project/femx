@@ -15,7 +15,9 @@ namespace linalg
 
 class PETScMatrix;
 
-/** @brief Configure the PETSc KSP linear solver. */
+/**
+ * @brief Configure the PETSc KSP linear solver.
+ */
 struct KspOptions
 {
   std::string type    = KSPGMRES; ///< PETSc KSP type.
@@ -54,19 +56,23 @@ public:
 
   ~PETScLinearSolver();
 
-  /** @brief Return mutable solver options. */
+  /**
+   * @brief Return mutable solver options.
+   */
   KspOptions& opts();
 
-  /** @brief Return read-only solver options. */
+  /**
+   * @brief Return read-only solver options.
+   */
   const KspOptions& opts() const;
 
   /**
    * @brief Solve `mat * x = rhs`.
    *
-   * @param[in] mat - Square PETSc system matrix.
-   * @param[in] rhs - Replicated Host right-hand side.
+   * @param[in]     mat - Square PETSc system matrix.
+   * @param[in]     rhs - Replicated Host right-hand side.
    * @param[in,out] x - Initial guess replaced by the replicated solution.
-   * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
+   * @throws - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
   void solve(const PETScMatrix&      mat,
@@ -76,23 +82,29 @@ public:
   /**
    * @brief Solve `mat^T * x = rhs`.
    *
-   * @param[in] mat - Square PETSc system matrix.
-   * @param[in] rhs - Replicated Host right-hand side.
+   * @param[in]     mat - Square PETSc system matrix.
+   * @param[in]     rhs - Replicated Host right-hand side.
    * @param[in,out] x - Initial guess replaced by the replicated solution.
-   * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
+   * @throws - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
   void solveT(const PETScMatrix&      mat,
               const HostVector<Real>& rhs,
               HostVector<Real>&       x);
 
-  /** @brief Return the most recent KSP convergence reason. */
+  /**
+   * @brief Return the most recent KSP convergence reason.
+   */
   KSPConvergedReason convergedReason() const;
 
-  /** @brief Return the most recent KSP iteration count. */
+  /**
+   * @brief Return the most recent KSP iteration count.
+   */
   PetscInt its() const;
 
-  /** @brief Return the most recent KSP residual norm. */
+  /**
+   * @brief Return the most recent KSP residual norm.
+   */
   PetscReal rnorm() const;
 
 private:

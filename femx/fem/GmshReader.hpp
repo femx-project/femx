@@ -15,7 +15,9 @@ namespace fem
 class GmshReader
 {
 public:
-  /** @brief Read a Gmsh `.msh` file into a Mesh object. */
+  /**
+   * @brief Read a Gmsh `.msh` file into a Mesh object.
+   */
   static Mesh read(const std::string& path);
 };
 

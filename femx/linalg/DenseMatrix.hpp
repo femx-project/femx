@@ -9,7 +9,9 @@
 namespace femx
 {
 
-/** @brief Own row-major Host matrix storage. */
+/**
+ * @brief Own row-major Host matrix storage.
+ */
 class DenseMatrix final
 {
 public:
@@ -20,7 +22,7 @@ public:
    *
    * @param[in] rows - Number of rows.
    * @param[in] cols - Number of columns.
-   * @throws std::runtime_error - If either dimension is negative or their
+   * @throws - If either dimension is negative or their
    * product exceeds the supported size.
    */
   DenseMatrix(Index rows, Index cols)
@@ -33,7 +35,7 @@ public:
    *
    * @param[in] rows - Number of rows.
    * @param[in] cols - Number of columns.
-   * @throws std::runtime_error - If either dimension is negative or their
+   * @throws - If either dimension is negative or their
    * product exceeds the supported size.
    */
   void resize(Index rows, Index cols)
@@ -44,25 +46,33 @@ public:
     vals_.assign(size, 0);
   }
 
-  /** @brief Return the number of rows. */
+  /**
+   * @brief Return the number of rows.
+   */
   Index rows() const noexcept
   {
     return rows_;
   }
 
-  /** @brief Return the number of columns. */
+  /**
+   * @brief Return the number of columns.
+   */
   Index cols() const noexcept
   {
     return cols_;
   }
 
-  /** @brief Return the number of entries. */
+  /**
+   * @brief Return the number of entries.
+   */
   Index size() const noexcept
   {
     return vals_.size();
   }
 
-  /** @brief Report whether the matrix has no entries. */
+  /**
+   * @brief Report whether the matrix has no entries.
+   */
   bool empty() const noexcept
   {
     return vals_.empty();
@@ -92,37 +102,49 @@ public:
     return vals_[row * cols_ + col];
   }
 
-  /** @brief Return the address of the first entry. */
+  /**
+   * @brief Return the address of the first entry.
+   */
   Real* data() noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return the address of the first entry. */
+  /**
+   * @brief Return the address of the first entry.
+   */
   const Real* data() const noexcept
   {
     return vals_.data();
   }
 
-  /** @brief Return a mutable row-major Host view of the matrix. */
+  /**
+   * @brief Return a mutable row-major Host view of the matrix.
+   */
   HostMatrixView<Real> view() noexcept
   {
     return {data(), rows_, cols_};
   }
 
-  /** @brief Return a read-only row-major Host view of the matrix. */
+  /**
+   * @brief Return a read-only row-major Host view of the matrix.
+   */
   HostMatrixView<const Real> view() const noexcept
   {
     return {data(), rows_, cols_};
   }
 
-  /** @brief Return the owned row-major entry storage. */
+  /**
+   * @brief Return the owned row-major entry storage.
+   */
   HostVector<Real>& vals() noexcept
   {
     return vals_;
   }
 
-  /** @brief Return the owned row-major entry storage. */
+  /**
+   * @brief Return the owned row-major entry storage.
+   */
   const HostVector<Real>& vals() const noexcept
   {
     return vals_;

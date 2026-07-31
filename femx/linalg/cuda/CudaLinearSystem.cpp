@@ -6,8 +6,7 @@
 namespace femx::linalg
 {
 
-CudaLinearSystem::CudaLinearSystem(
-    std::unique_ptr<LinearSolver<MemorySpace::Device>> solver)
+CudaLinearSystem::CudaLinearSystem(std::unique_ptr<Solver> solver)
   : mat_(ctx_), solver_(std::move(solver))
 {
   require(solver_ != nullptr,

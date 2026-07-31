@@ -24,28 +24,40 @@ class FiniteElement
 public:
   virtual ~FiniteElement() = default;
 
-  /** @brief Return a human-readable elem type name. */
+  /**
+   * @brief Return a human-readable elem type name.
+   */
   virtual std::string name() const = 0;
 
-  /** @brief Return the spatial dimension of the reference elem. */
+  /**
+   * @brief Return the spatial dimension of the reference elem.
+   */
   virtual Index dim() const = 0;
 
-  /** @brief Return the number of interpolation nodes in one elem. */
+  /**
+   * @brief Return the number of interpolation nodes in one elem.
+   */
   virtual Index numNodes() const = 0;
 
-  /** @brief Return the number of scalar shape functions in one elem. */
+  /**
+   * @brief Return the number of scalar shape functions in one elem.
+   */
   virtual Index numDofsPerElement() const = 0;
 
-  /** @brief Return the polynomial order of the elem. */
+  /**
+   * @brief Return the polynomial order of the elem.
+   */
   virtual Index order() const = 0;
 
-  /** @brief Return the element topology. */
+  /**
+   * @brief Return the element topology.
+   */
   virtual ElementShape shape() const = 0;
 
   /**
    * @brief Evaluate shape functions at a reference quadrature point.
    *
-   * @param[in] qp - Reference quadrature point.
+   * @param[in]  qp - Reference quadrature point.
    * @param[out] N - Output vector of length numDofsPerElement().
    */
   virtual void calcN(const QuadraturePoint& qp,
@@ -54,7 +66,7 @@ public:
   /**
    * @brief Evaluate shape-function gradients in reference coordinates.
    *
-   * @param[in] qp - Reference quadrature point.
+   * @param[in]  qp - Reference quadrature point.
    * @param[out] dNdxi - Matrix with one row per shape and one column per
    * reference coordinate.
    */

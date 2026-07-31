@@ -12,7 +12,9 @@ namespace femx
 namespace fem
 {
 
-/** Sparse matrix entries in coordinate (COO) form. */
+/**
+ * Sparse matrix entries in coordinate (COO) form.
+ */
 struct SparseTripletMatrix
 {
   Index             rows{0};
@@ -22,7 +24,9 @@ struct SparseTripletMatrix
   HostVector<Real>  vals;
 };
 
-/** Scalar P1 mass, stiffness, and constant-load data on a boundary surface. */
+/**
+ * Scalar P1 mass, stiffness, and constant-load data on a boundary surface.
+ */
 struct BoundaryScalarMatrices
 {
   SparseTripletMatrix stiffness;
@@ -78,13 +82,17 @@ public:
     return element_shapes_;
   }
 
-  /** Local node ids on the boundary of this boundary surface. */
+  /**
+   * Local node ids on the boundary of this boundary surface.
+   */
   const HostVector<Index>& rimNodeIds() const noexcept
   {
     return rim_node_ids_;
   }
 
-  /** Assemble scalar linear finite-element matrices on the surface. */
+  /**
+   * Assemble scalar linear finite-element matrices on the surface.
+   */
   BoundaryScalarMatrices scalarMatrices() const;
 
 private:

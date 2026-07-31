@@ -52,13 +52,14 @@ public:
 
 private:
   static HostVector<Real> uniformWeights(Index size, Real weight);
-  static Real             termValue(const HostVector<Real>& x,
-                                    const HostVector<Real>& target,
-                                    const HostVector<Real>& weights);
-  static void             termGrad(const HostVector<Real>& x,
-                                   const HostVector<Real>& target,
-                                   const HostVector<Real>& weights,
-                                   HostVector<Real>&       out);
+
+  static Real termValue(const HostVector<Real>& x,
+                        const HostVector<Real>& target,
+                        const HostVector<Real>& weights);
+  static void termGrad(const HostVector<Real>& x,
+                       const HostVector<Real>& target,
+                       const HostVector<Real>& weights,
+                       HostVector<Real>&       out);
 
   void checkInputSizes(const HostVector<Real>& state,
                        const HostVector<Real>& prm) const;

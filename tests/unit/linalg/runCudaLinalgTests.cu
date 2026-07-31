@@ -97,8 +97,8 @@ TestOutcome persistentCudaCsrOps()
 
     linalg::HostContext      cpu_ctx;
     linalg::CudaContext      ctx;
-    linalg::HostSystemMatrix h_jacobian(cpu_ctx);
-    linalg::CudaSystemMatrix jacobian(ctx);
+    linalg::HostSystemMatrix h_jac(cpu_ctx);
+    linalg::CudaSystemMatrix jac(ctx);
     auto&                    vec_handler = ctx.vectorHandler();
 
     DeviceVector<Real> assigned_reals;
@@ -127,7 +127,7 @@ TestOutcome persistentCudaCsrOps()
     copyMatrix(h_mat, d_mat, ctx);
 
     DeviceCsrMatrix d_transpose;
-    jacobian.transpose(d_mat, d_transpose);
+    jac.transpose(d_mat, d_transpose);
     const Index* transpose_row_ptr = d_transpose.rowPtrData();
     const Index* transpose_col_ind = d_transpose.colIndData();
     Real*        transpose_vals    = d_transpose.valsData();
@@ -175,9 +175,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(input.view(), sliced_input.view().subview(3, 4));
 
     DeviceVector<Real> output(3);
-    jacobian.apply(d_mat,
-                   sliced_input.view().subview(3, 4),
-                   output.view());
+    jac.apply(d_mat,
+              sliced_input.view().subview(3, 4),
+              output.view());
     HostVector<Real> first_product;
     vec_handler.copy(output, first_product);
 
@@ -195,15 +195,15 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real> d_trans_input;
     vec_handler.copy(h_trans_input, d_trans_input);
     DeviceVector<Real> d_direct_trans_product(4);
-    jacobian.applyT(d_mat,
-                    d_trans_input.view(),
-                    d_direct_trans_product.view());
+    jac.applyT(d_mat,
+               d_trans_input.view(),
+               d_direct_trans_product.view());
     HostVector<Real> actual_direct_trans_product;
     vec_handler.copy(d_direct_trans_product, actual_direct_trans_product);
     HostVector<Real> expected_trans_product(4);
-    h_jacobian.applyT(h_mat,
-                      h_trans_input.view(),
-                      expected_trans_product.view());
+    h_jac.applyT(h_mat,
+                 h_trans_input.view(),
+                 expected_trans_product.view());
     ctx.sync();
 
     record(status,
@@ -244,13 +244,13 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real>     d_dense;
     vec_handler.copy(h_dense, d_dense);
     DeviceVector<Real> dense_product(2);
-    jacobian.apply(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
-                   input.view().subview(0, 3),
-                   dense_product.view());
+    jac.apply(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
+              input.view().subview(0, 3),
+              dense_product.view());
     DeviceVector<Real> d_dense_trans_product(3);
-    jacobian.applyT(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
-                    dense_product.view(),
-                    d_dense_trans_product.view());
+    jac.applyT(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
+               dense_product.view(),
+               d_dense_trans_product.view());
     HostVector<Real> actual_dense;
     HostVector<Real> actual_dense_trans;
     vec_handler.copy(dense_product, actual_dense);
@@ -269,13 +269,13 @@ TestOutcome persistentCudaCsrOps()
 
     h_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
     copyMatrix(h_mat, d_mat, ctx);
-    jacobian.transpose(d_mat, d_transpose);
-    jacobian.apply(d_mat,
-                   sliced_input.view().subview(3, 4),
-                   output.view());
-    jacobian.applyT(d_mat,
-                    d_trans_input.view(),
-                    d_direct_trans_product.view());
+    jac.transpose(d_mat, d_transpose);
+    jac.apply(d_mat,
+              sliced_input.view().subview(3, 4),
+              output.view());
+    jac.applyT(d_mat,
+               d_trans_input.view(),
+               d_direct_trans_product.view());
 
     HostVector<Real> updated_product;
     HostVector<Real> updated_direct_trans_product;
@@ -283,9 +283,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(output, updated_product);
     vec_handler.copy(d_direct_trans_product, updated_direct_trans_product);
     vec_handler.copy(d_transpose.vals(), updated_transpose_vals);
-    h_jacobian.applyT(h_mat,
-                      h_trans_input.view(),
-                      expected_trans_product.view());
+    h_jac.applyT(h_mat,
+                 h_trans_input.view(),
+                 expected_trans_product.view());
     ctx.sync();
 
     record(status,
@@ -310,9 +310,9 @@ TestOutcome persistentCudaCsrOps()
     bool overlap_rejected = false;
     try
     {
-      jacobian.apply(d_mat,
-                     sliced_input.view().subview(3, 4),
-                     sliced_input.view().subview(4, 3));
+      jac.apply(d_mat,
+                sliced_input.view().subview(3, 4),
+                sliced_input.view().subview(4, 3));
     }
     catch (const std::runtime_error&)
     {

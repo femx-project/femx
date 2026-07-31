@@ -21,7 +21,9 @@ namespace fem
 class Mesh;
 class DeviceMesh;
 
-/** @brief Identify the topology of a mesh element. */
+/**
+ * @brief Identify the topology of a mesh element.
+ */
 enum class ElementShape
 {
   Unknown,
@@ -32,7 +34,9 @@ enum class ElementShape
   Hexahedron
 };
 
-/** @brief Provide lightweight access to mesh coordinates and connectivity. */
+/**
+ * @brief Provide lightweight access to mesh coordinates and connectivity.
+ */
 template <MemorySpace Space>
 class MeshView
 {
@@ -68,25 +72,33 @@ public:
   {
   }
 
-  /** @brief Return the spatial dimension. */
+  /**
+   * @brief Return the spatial dimension.
+   */
   FEMX_HOST_DEVICE Index dim() const
   {
     return dim_;
   }
 
-  /** @brief Return the number of global nodes. */
+  /**
+   * @brief Return the number of global nodes.
+   */
   FEMX_HOST_DEVICE Index numNodes() const
   {
     return num_nodes_;
   }
 
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   FEMX_HOST_DEVICE Index numElems() const
   {
     return num_elems_;
   }
 
-  /** @brief Return the largest element node count. */
+  /**
+   * @brief Return the largest element node count.
+   */
   FEMX_HOST_DEVICE Index maxElemNodes() const
   {
     return max_elem_nodes_;
@@ -152,31 +164,41 @@ public:
   DeviceMesh& operator=(const DeviceMesh&)     = delete;
   DeviceMesh& operator=(DeviceMesh&&) noexcept = default;
 
-  /** @brief Return the spatial dimension. */
+  /**
+   * @brief Return the spatial dimension.
+   */
   Index dim() const noexcept
   {
     return dim_;
   }
 
-  /** @brief Return the number of global nodes. */
+  /**
+   * @brief Return the number of global nodes.
+   */
   Index numNodes() const noexcept
   {
     return num_nodes_;
   }
 
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   Index numElems() const noexcept
   {
     return num_elems_;
   }
 
-  /** @brief Return the largest element node count. */
+  /**
+   * @brief Return the largest element node count.
+   */
   Index maxElemNodes() const noexcept
   {
     return max_elem_nodes_;
   }
 
-  /** @brief Return a non-owning view valid while this object is alive. */
+  /**
+   * @brief Return a non-owning view valid while this object is alive.
+   */
   MeshView<MemorySpace::Device> view() const noexcept
   {
     return {dim_,
@@ -213,7 +235,9 @@ private:
 class Mesh
 {
 public:
-  /** @brief Three-component storage for a mesh node coordinate. */
+  /**
+   * @brief Three-component storage for a mesh node coordinate.
+   */
   using Node = std::array<Real, 3>;
 
   /**
@@ -262,25 +286,33 @@ public:
                                  Real  y_min = 0.0,
                                  Real  y_max = 1.0);
 
-  /** @brief Return the spatial dimension. */
+  /**
+   * @brief Return the spatial dimension.
+   */
   Index dim() const noexcept
   {
     return dim_;
   }
 
-  /** @brief Return the number of mesh nodes. */
+  /**
+   * @brief Return the number of mesh nodes.
+   */
   Index numNodes() const noexcept
   {
     return nodes_.size();
   }
 
-  /** @brief Return the number of mesh elements. */
+  /**
+   * @brief Return the number of mesh elements.
+   */
   Index numElems() const noexcept
   {
     return elem_shapes_.size();
   }
 
-  /** @brief Return the largest element node count. */
+  /**
+   * @brief Return the largest element node count.
+   */
   Index maxElemNodes() const noexcept
   {
     return max_elem_nodes_;
@@ -290,7 +322,7 @@ public:
    * @brief Return a non-owning Host view of coordinates and connectivity.
    *
    * @return View valid until nodes or elements are added.
-   * @throws std::runtime_error - If the mesh dimension or internal storage is
+   * @throws - If the mesh dimension or internal storage is
    * invalid.
    */
   MeshView<MemorySpace::Host> view() const;
@@ -397,7 +429,9 @@ public:
     return physicalName(elemEntityDim(ie), elemPhysicalTag(ie));
   }
 
-  /** @brief Return all classified boundary facets. */
+  /**
+   * @brief Return all classified boundary facets.
+   */
   const HostVector<BoundaryFacet>& boundaryFacets() const noexcept
   {
     return boundary_facets_;
@@ -422,7 +456,9 @@ public:
     return facets;
   }
 
-  /** @brief Return physical names keyed by dimension and tag. */
+  /**
+   * @brief Return physical names keyed by dimension and tag.
+   */
   const std::map<std::pair<Index, Index>, std::string>&
   physicalNames() const noexcept
   {
@@ -538,9 +574,9 @@ private:
 /**
  * @brief Copy a Host mesh to Device-owned execution storage.
  *
- * @param[in] src - Host mesh kept alive while copies are queued.
+ * @param[in]  src - Host mesh kept alive while copies are queued.
  * @param[out] dst - Device mesh replaced by the copy.
- * @param[in] ctx - CUDA context used for the asynchronous copy.
+ * @param[in]  ctx - CUDA context used for the asynchronous copy.
  */
 void copy(const Mesh&          src,
           DeviceMesh&          dst,

@@ -28,7 +28,9 @@ using HostPointInterpolatorData =
 using DevicePointInterpolatorData =
     PointInterpolatorData<MemorySpace::Device>;
 
-/** @brief Memory-space owner of the reusable observation CSR matrix. */
+/**
+ * @brief Memory-space owner of the reusable observation CSR matrix.
+ */
 template <MemorySpace Space>
 class PointInterpolatorData
 {
@@ -40,25 +42,33 @@ public:
   PointInterpolatorData& operator=(const PointInterpolatorData&)     = default;
   PointInterpolatorData& operator=(PointInterpolatorData&&) noexcept = default;
 
-  /** @brief Number of entries in one state vector. */
+  /**
+   * @brief Number of entries in one state vector.
+   */
   Index numStates() const noexcept
   {
     return mat_.cols();
   }
 
-  /** @brief Number of point-component observations. */
+  /**
+   * @brief Number of point-component observations.
+   */
   Index numObservations() const noexcept
   {
     return mat_.rows();
   }
 
-  /** @brief Number of flattened interpolation entries. */
+  /**
+   * @brief Number of flattened interpolation entries.
+   */
   Index numEntries() const noexcept
   {
     return mat_.nnz();
   }
 
-  /** @brief Return the interpolation matrix `H`. */
+  /**
+   * @brief Return the interpolation matrix `H`.
+   */
   const CsrMatrix<Space>& matrix() const noexcept
   {
     return mat_;
@@ -112,13 +122,19 @@ public:
   DeviceTimePointInterpolator& operator=(
       DeviceTimePointInterpolator&&) noexcept = default;
 
-  /** @brief Number of residual time steps. */
+  /**
+   * @brief Number of residual time steps.
+   */
   Index numSteps() const override;
 
-  /** @brief Number of entries in one state vector. */
+  /**
+   * @brief Number of entries in one state vector.
+   */
   Index numStates() const override;
 
-  /** @brief Number of point-component observations. */
+  /**
+   * @brief Number of point-component observations.
+   */
   Index numObservations() const override;
 
   void observe(Index                        level,
@@ -166,7 +182,9 @@ public:
 
   Index numObservations() const override;
 
-  /** @brief Create an independently owned explicit Device copy. */
+  /**
+   * @brief Create an independently owned explicit Device copy.
+   */
   std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
       linalg::CudaContext& ctx) const override;
 
@@ -199,7 +217,9 @@ public:
                       const HostVector<Real>& dir,
                       HostVector<Real>&       out) const override;
 
-  /** @brief Flat Host stencils owned by this interpolator. */
+  /**
+   * @brief Flat Host stencils owned by this interpolator.
+   */
   const HostPointInterpolatorData& data() const noexcept;
 
   const HostVector<Point3>& pts() const;
@@ -235,7 +255,9 @@ private:
   HostPointInterpolatorData data_;  ///< Flat interpolation stencils.
 };
 
-/** @brief Explicitly copy the Host data owned by `src` to Device. */
+/**
+ * @brief Explicitly copy the Host data owned by `src` to Device.
+ */
 inline void copy(const TimePointInterpolator& src,
                  DevicePointInterpolatorData& dst,
                  linalg::CudaContext&         ctx)
@@ -243,7 +265,9 @@ inline void copy(const TimePointInterpolator& src,
   copy(src.data(), dst, ctx);
 }
 
-/** @brief Explicitly initialize a Device observation operator from `src`. */
+/**
+ * @brief Explicitly initialize a Device observation operator from `src`.
+ */
 inline void copy(const TimePointInterpolator& src,
                  DeviceTimePointInterpolator& dst,
                  linalg::CudaContext&         ctx)

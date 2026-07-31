@@ -12,8 +12,7 @@ HostLinearSystem::HostLinearSystem()
 {
 }
 
-HostLinearSystem::HostLinearSystem(
-    std::unique_ptr<LinearSolver<MemorySpace::Host>> solver)
+HostLinearSystem::HostLinearSystem(std::unique_ptr<Solver> solver)
   : mat_(ctx_), solver_(std::move(solver))
 {
   require(solver_ != nullptr,

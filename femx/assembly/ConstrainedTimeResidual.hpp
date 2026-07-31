@@ -8,7 +8,9 @@
 namespace femx::assembly
 {
 
-/** @brief Decorate a time residual with constraints in one memory space. */
+/**
+ * @brief Decorate a time residual with constraints in one memory space.
+ */
 template <MemorySpace Space>
 class ConstrainedTimeResidual final : public state::TimeResidual<Space>
 {
@@ -38,9 +40,9 @@ public:
   /**
    * @brief Decorate a non-owning Device residual and copy constraint data.
    *
-   * @param[in] base - Residual kept alive while this decorator is used.
-   * @param[in] ctr - Host control map copied to Device storage.
-   * @param[in] init - Host initial-state map copied to Device storage.
+   * @param[in]     base - Residual kept alive while this decorator is used.
+   * @param[in]     ctr - Host control map copied to Device storage.
+   * @param[in]     init - Host initial-state map copied to Device storage.
    * @param[in,out] ctx - Device context receiving the copies.
    */
   ConstrainedTimeResidual(const Base&              base,
@@ -54,7 +56,9 @@ public:
 
   const Control& controlMap() const noexcept;
 
-  /** @brief Host-only convenience API used when rebuilding inverse metadata. */
+  /**
+   * @brief Host-only convenience API used when rebuilding inverse metadata.
+   */
   void setInitialStateMap(fem::HostInitialStateMap init);
   void clearInitialStateMap() noexcept;
 
@@ -73,7 +77,9 @@ public:
                  Vec&                 out,
                  Ctx&                 ctx) const override;
 
-  /** @copydoc state::TimeResidual<Space>::setup */
+  /**
+   * @copydoc state::TimeResidual<Space>::setup
+   */
   void setup(const StepCtx& time,
              Jac&           jac,
              Vec&           rhs,

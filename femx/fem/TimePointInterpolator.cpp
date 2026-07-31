@@ -315,8 +315,8 @@ void DeviceTimePointInterpolator::observe(Index                        level,
                                           linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaSystemMatrix jacobian(ctx);
-  jacobian.apply(data_.matrix(), state, out);
+  linalg::CudaSystemMatrix jac(ctx);
+  jac.apply(data_.matrix(), state, out);
 }
 
 void DeviceTimePointInterpolator::addStateJacT(
@@ -326,8 +326,8 @@ void DeviceTimePointInterpolator::addStateJacT(
     linalg::CudaContext&         ctx) const
 {
   checkLevel(level);
-  linalg::CudaSystemMatrix jacobian(ctx);
-  jacobian.applyT(data_.matrix(), dir, out, 1.0, 1.0);
+  linalg::CudaSystemMatrix jac(ctx);
+  jac.applyT(data_.matrix(), dir, out, 1.0, 1.0);
 }
 
 void DeviceTimePointInterpolator::checkLevel(Index level) const
@@ -408,8 +408,8 @@ void TimePointInterpolator::observe(Index                   level,
     out.resize(numObservations());
   }
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.apply(data_.matrix(), state.view(), out.view());
+  linalg::HostSystemMatrix jac(ctx);
+  jac.apply(data_.matrix(), state.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJac(Index                   level,
@@ -428,8 +428,8 @@ void TimePointInterpolator::applyStateJac(Index                   level,
     out.resize(numObservations());
   }
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.apply(data_.matrix(), dir.view(), out.view());
+  linalg::HostSystemMatrix jac(ctx);
+  jac.apply(data_.matrix(), dir.view(), out.view());
 }
 
 void TimePointInterpolator::applyStateJacT(Index                   level,
@@ -445,9 +445,9 @@ void TimePointInterpolator::applyStateJacT(Index                   level,
 
   linalg::HostContext      ctx;
   auto&                    vec_handler = ctx.vectorHandler();
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac(ctx);
   vec_handler.assign(out, numStates(), 0);
-  jacobian.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
+  jac.applyT(data_.matrix(), dir.view(), out.view(), 1.0, 1.0);
 }
 
 void TimePointInterpolator::applyParamJac(Index                   level,

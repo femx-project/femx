@@ -35,7 +35,7 @@ public:
    *
    * @param[in,out] state_solver - Forward state solver.
    * @param[in,out] adj_system - Linear system used for adjoint solves.
-   * @param[in] obj - Host objective with matching dimensions.
+   * @param[in]     obj - Host objective with matching dimensions.
    */
   ReducedFunctional(StateSolver&     state_solver,
                     System&          adj_system,
@@ -68,7 +68,9 @@ public:
   ReducedFunctional(ReducedFunctional&&)                 = delete;
   ReducedFunctional& operator=(ReducedFunctional&&)      = delete;
 
-  /** @brief Return the number of optimization parameters. */
+  /**
+   * @brief Return the number of optimization parameters.
+   */
   Index numParams() const noexcept
   {
     return dims_.num_param;
@@ -89,7 +91,7 @@ public:
   /**
    * @brief Evaluate the reduced gradient.
    *
-   * @param[in] prm - Host optimization parameters.
+   * @param[in]  prm - Host optimization parameters.
    * @param[out] out - Host reduced gradient.
    */
   void grad(const HostVector<Real>& prm,
@@ -102,7 +104,7 @@ public:
   /**
    * @brief Evaluate the reduced objective and gradient together.
    *
-   * @param[in] prm - Host optimization parameters.
+   * @param[in]  prm - Host optimization parameters.
    * @param[out] out - Host reduced gradient.
    * @return Reduced-objective value.
    */

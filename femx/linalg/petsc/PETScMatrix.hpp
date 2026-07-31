@@ -40,24 +40,32 @@ public:
 
   ~PETScMatrix();
 
-  /** @brief Return the global number of rows. */
+  /**
+   * @brief Return the global number of rows.
+   */
   Index rows() const;
 
-  /** @brief Return the global number of columns. */
+  /**
+   * @brief Return the global number of columns.
+   */
   Index cols() const;
 
   /**
    * @brief Return the initialized PETSc matrix handle.
    *
    * @return Borrowed PETSc matrix handle.
-   * @throws std::runtime_error - If the operator is not initialized.
+   * @throws - If the operator is not initialized.
    */
   Mat mat() const;
 
-  /** @brief Return the PETSc communicator used by the matrix. */
+  /**
+   * @brief Return the PETSc communicator used by the matrix.
+   */
   MPI_Comm comm() const;
 
-  /** @brief Return the graph partition used by this matrix, if any. */
+  /**
+   * @brief Return the graph partition used by this matrix, if any.
+   */
   std::shared_ptr<const PETScPartition> partition() const noexcept;
 
   /**
@@ -65,7 +73,7 @@ public:
    *
    * @param[in] rows - Global number of rows.
    * @param[in] cols - Global number of columns.
-   * @throws std::runtime_error - If PETSc is not initialized or PETSc or MPI
+   * @throws - If PETSc is not initialized or PETSc or MPI
    * reports an error.
    */
   void resize(Index rows, Index cols);
@@ -74,7 +82,7 @@ public:
    * @brief Allocate from an exact Host CSR pattern.
    *
    * @param[in] pattern - CSR pattern used for preallocation.
-   * @throws std::runtime_error - If PETSc is not initialized or PETSc or MPI
+   * @throws - If PETSc is not initialized or PETSc or MPI
    * reports an error.
    */
   void resize(const HostCsrPattern& pattern);
@@ -82,7 +90,7 @@ public:
   /**
    * @brief Zero all numeric entries while retaining sparsity.
    *
-   * @throws std::runtime_error - If PETSc reports an error.
+   * @throws - If PETSc reports an error.
    */
   void setZero();
 
@@ -92,7 +100,7 @@ public:
    * @param[in] row - Global row index.
    * @param[in] col - Global column index.
    * @param[in] val - Replacement value.
-   * @throws std::runtime_error - If the operator is uninitialized or PETSc
+   * @throws - If the operator is uninitialized or PETSc
    * reports an error.
    */
   void set(Index row, Index col, Real val);
@@ -103,7 +111,7 @@ public:
    * @param[in] rows - Global row indices.
    * @param[in] cols - Global column indices.
    * @param[in] mat_e - Dense values matching the index arrays.
-   * @throws std::runtime_error - If dimensions are inconsistent, the operator
+   * @throws - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
   void addBlock(HostVectorView<const Index> rows,
@@ -113,7 +121,7 @@ public:
   /**
    * @brief Complete PETSc matrix assembly.
    *
-   * @throws std::runtime_error - If the operator is uninitialized or PETSc
+   * @throws - If the operator is uninitialized or PETSc
    * reports an error.
    */
   void finalize();
@@ -123,15 +131,15 @@ public:
    *
    * @param[in] rows - Global rows to replace.
    * @param[in] diag - Replacement diagonal value.
-   * @throws std::runtime_error - If a row is invalid or PETSc reports an error.
+   * @throws - If a row is invalid or PETSc reports an error.
    */
   void replaceRows(HostVectorView<const Index> rows, Real diagonal);
 
   /**
    * @brief Eliminate constrained rows and columns with RHS correction.
    *
-   * @param[in] rows - Global constrained rows.
-   * @param[in] values - Prescribed values in row order.
+   * @param[in]     rows - Global constrained rows.
+   * @param[in]     values - Prescribed values in row order.
    * @param[in,out] rhs - Replicated Host right-hand side.
    */
   void eliminateColumns(HostVectorView<const Index> rows,
@@ -141,9 +149,9 @@ public:
   /**
    * @brief Apply the matrix to a replicated Host vector.
    *
-   * @param[in] dir - Input vector.
+   * @param[in]  dir - Input vector.
    * @param[out] out - Replicated result vector.
-   * @throws std::runtime_error - If dimensions are inconsistent, the operator
+   * @throws - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
   void apply(HostVectorView<const Real> dir, HostVector<Real>& out) const;
@@ -151,9 +159,9 @@ public:
   /**
    * @brief Apply the transpose to a replicated Host vector.
    *
-   * @param[in] dir - Input vector.
+   * @param[in]  dir - Input vector.
    * @param[out] out - Replicated result vector.
-   * @throws std::runtime_error - If dimensions are inconsistent, the operator
+   * @throws - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
   void applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const;

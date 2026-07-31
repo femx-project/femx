@@ -15,7 +15,9 @@
 namespace femx::state
 {
 
-/** @brief Host state and timing data observed after one time level. */
+/**
+ * @brief Host state and timing data observed after one time level.
+ */
 struct TimeStepStateContext
 {
   Index                      level{0};
@@ -26,7 +28,9 @@ struct TimeStepStateContext
   Real                       lin_solve_sec{0.0};
 };
 
-/** @brief Timings and operation counts for one time solve. */
+/**
+ * @brief Timings and operation counts for one time solve.
+ */
 struct SolveStats
 {
   Real  assm_sec{0.0};
@@ -35,7 +39,9 @@ struct SolveStats
   Index lin_solve_calls{0};
 };
 
-/** @brief Integrate an implicit time residual in one memory space. */
+/**
+ * @brief Integrate an implicit time residual in one memory space.
+ */
 template <MemorySpace Space>
 class TimeIntegrator final
 {

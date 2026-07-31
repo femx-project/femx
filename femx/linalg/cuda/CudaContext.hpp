@@ -14,14 +14,20 @@ class CudaHandles;
 struct CudaContextAccess;
 } // namespace detail
 
-/** @brief Own CUDA execution resources for one Device pipeline. */
+/**
+ * @brief Own CUDA execution resources for one Device pipeline.
+ */
 class CudaContext final : public Context<MemorySpace::Device>
 {
 public:
-  /** @brief Create a context owning one non-blocking CUDA stream. */
+  /**
+   * @brief Create a context owning one non-blocking CUDA stream.
+   */
   CudaContext();
 
-  /** @brief Destroy CUDA resources after queued work completes. */
+  /**
+   * @brief Destroy CUDA resources after queued work completes.
+   */
   ~CudaContext() override;
 
   CudaContext(const CudaContext&)            = delete;
@@ -29,7 +35,9 @@ public:
   CudaContext(CudaContext&&)                 = delete;
   CudaContext& operator=(CudaContext&&)      = delete;
 
-  /** @brief Return the owned CUDA vector operations. */
+  /**
+   * @brief Return the owned CUDA vector operations.
+   */
   CudaVectorHandler& vectorHandler() noexcept override;
 
   /**
@@ -37,17 +45,23 @@ public:
    *
    * @param[in] count - Element count.
    * @return Full half-open element range.
-   * @throws std::runtime_error - If `count` is negative.
+   * @throws - If `count` is negative.
    */
   IndexRange elementRange(Index count) const override;
 
-  /** @brief Wait for all work queued on this context. */
+  /**
+   * @brief Wait for all work queued on this context.
+   */
   void sync() const override;
 
-  /** @brief Return the opaque native CUDA stream handle. */
+  /**
+   * @brief Return the opaque native CUDA stream handle.
+   */
   void* stream() const noexcept;
 
-  /** @brief Return whether a usable CUDA device is available. */
+  /**
+   * @brief Return whether a usable CUDA device is available.
+   */
   static bool available() noexcept;
 
 private:

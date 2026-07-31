@@ -7,11 +7,15 @@
 namespace femx::linalg
 {
 
-/** @brief Provide serial Host execution resources. */
+/**
+ * @brief Provide serial Host execution resources.
+ */
 class HostContext final : public Context<MemorySpace::Host>
 {
 public:
-  /** @brief Return the owned Host vector operations. */
+  /**
+   * @brief Return the owned Host vector operations.
+   */
   HostVectorHandler& vectorHandler() noexcept override
   {
     return vec_handler_;
@@ -22,7 +26,7 @@ public:
    *
    * @param[in] count - Element count.
    * @return Full half-open element range.
-   * @throws std::runtime_error - If `count` is negative.
+   * @throws - If `count` is negative.
    */
   IndexRange elementRange(Index count) const override
   {
@@ -38,7 +42,7 @@ public:
    * @param[in] count - Global element count.
    * @param[in] rows - Element rows, which may be empty.
    * @return `true` for every valid element.
-   * @throws std::runtime_error - If `element` or `count` is invalid.
+   * @throws - If `element` or `count` is invalid.
    */
   bool ownsElement(
       Index                       element,
@@ -61,7 +65,9 @@ public:
     static_cast<void>(vals);
   }
 
-  /** @brief Complete pending Host work; serial execution is synchronous. */
+  /**
+   * @brief Complete pending Host work; serial execution is synchronous.
+   */
   void sync() const override
   {
   }

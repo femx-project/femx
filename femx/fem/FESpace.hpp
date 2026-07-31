@@ -41,21 +41,37 @@ public:
    */
   void setup();
 
-  /** @brief Return the finite-element mesh. */
+  /**
+   * @brief Return the finite-element mesh.
+   */
   const Mesh&          mesh() const noexcept;
-  /** @brief Return the reference finite element. */
+  /**
+   * @brief Return the reference finite element.
+   */
   const FiniteElement& finiteElement() const noexcept;
-  /** @brief Return the element-to-global degree-of-freedom map. */
+  /**
+   * @brief Return the element-to-global degree-of-freedom map.
+   */
   const DofMap&        dofMap() const noexcept;
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   Index                numElems() const noexcept;
-  /** @brief Return the number of degrees of freedom. */
+  /**
+   * @brief Return the number of degrees of freedom.
+   */
   Index                numDofs() const noexcept;
-  /** @brief Return the number of field components. */
+  /**
+   * @brief Return the number of field components.
+   */
   Index                numComponents() const noexcept;
-  /** @brief Return the number of shapes per element. */
+  /**
+   * @brief Return the number of shapes per element.
+   */
   Index                numShapesPerElem() const noexcept;
-  /** @brief Return the number of degrees of freedom per element. */
+  /**
+   * @brief Return the number of degrees of freedom per element.
+   */
   Index                numDofsPerElem() const noexcept;
 
   /**
@@ -81,7 +97,7 @@ public:
   /**
    * @brief Fill the global degrees of freedom used by one element.
    *
-   * @param[in] ie - Element index.
+   * @param[in]  ie - Element index.
    * @param[out] dofs - Global degrees of freedom.
    */
   void elemDofs(Index              ie,

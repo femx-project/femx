@@ -25,7 +25,7 @@ public:
    * @param[in] num_dofs - Number of global degrees of freedom.
    * @param[in] num_elems - Number of elements.
    * @param[in] num_dofs_per_elem - Number of degrees of freedom per element.
-   * @throws std::runtime_error - If a dimension is invalid.
+   * @throws - If a dimension is invalid.
    */
   DofMap(Index num_dofs, Index num_elems, Index num_dofs_per_elem);
 
@@ -35,7 +35,7 @@ public:
    * @param[in] num_dofs - Number of global degrees of freedom.
    * @param[in] elem_offsets - Offsets into `elem_dofs`, starting at zero.
    * @param[in] elem_dofs - Flattened global degrees of freedom.
-   * @throws std::runtime_error - If the offsets or degrees of freedom are
+   * @throws - If the offsets or degrees of freedom are
    * invalid.
    */
   DofMap(Index             num_dofs,
@@ -48,19 +48,25 @@ public:
    * @param[in] num_dofs - Number of global degrees of freedom.
    * @param[in] num_elems - Number of elements.
    * @param[in] num_dofs_per_elem - Number of degrees of freedom per element.
-   * @throws std::runtime_error - If a dimension is invalid.
+   * @throws - If a dimension is invalid.
    */
   void allocate(Index num_dofs,
                 Index num_elems,
                 Index num_dofs_per_elem);
 
-  /** @brief Return the number of elements. */
+  /**
+   * @brief Return the number of elements.
+   */
   Index numElems() const noexcept;
 
-  /** @brief Return the number of global degrees of freedom. */
+  /**
+   * @brief Return the number of global degrees of freedom.
+   */
   Index numDofs() const noexcept;
 
-  /** @brief Return the uniform element degree-of-freedom count, or zero if it varies. */
+  /**
+   * @brief Return the uniform element degree-of-freedom count, or zero if it varies.
+   */
   Index numDofsPerElem() const noexcept;
 
   /**
@@ -68,7 +74,7 @@ public:
    *
    * @param[in] ie - Element index.
    * @return Number of degrees of freedom on the element.
-   * @throws std::runtime_error - If the element index is out of range.
+   * @throws - If the element index is out of range.
    */
   Index numElementDofs(Index ie) const;
 
@@ -78,7 +84,7 @@ public:
    * @param[in] ie - Element index.
    * @param[in] il - Local degree-of-freedom index.
    * @return Global degree-of-freedom index.
-   * @throws std::runtime_error - If an index is out of range.
+   * @throws - If an index is out of range.
    */
   Index elementDof(Index ie, Index il) const;
 
@@ -88,7 +94,7 @@ public:
    * @param[in] ie - Element index.
    * @param[in] il - Local degree-of-freedom index.
    * @param[in] global_dof - Global degree-of-freedom index.
-   * @throws std::runtime_error - If an index is out of range.
+   * @throws - If an index is out of range.
    */
   void setElementDof(Index ie, Index il, Index global_dof);
 
@@ -97,7 +103,7 @@ public:
    *
    * @param[in] ie - Element index.
    * @return Non-owning view of the element's global degrees of freedom.
-   * @throws std::runtime_error - If the element index is out of range.
+   * @throws - If the element index is out of range.
    */
   HostVectorView<const Index> elementDofs(Index ie) const;
 

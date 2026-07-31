@@ -321,11 +321,11 @@ int checkTimeAssemblyLaunch(std::size_t smem)
 /**
  * @brief Assemble residual and Jacobian with one CUDA block per element.
  *
- * @param[in] kernel - Element evaluator copied into the kernel launch.
- * @param[in] mesh - Device mesh matching the map's element order.
- * @param[in] map - Device element-to-global assembly map.
- * @param[in] state - Global Device state vector.
- * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in]     kernel - Element evaluator copied into the kernel launch.
+ * @param[in]     mesh - Device mesh matching the map's element order.
+ * @param[in]     map - Device element-to-global assembly map.
+ * @param[in]     state - Global Device state vector.
+ * @param[out]    res - Device residual replaced by the assembled result.
  * @param[in,out] jac - Device CSR matrix zeroed and assembled in place.
  * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
@@ -381,11 +381,11 @@ void assembleResidualAndJacobian(
 /**
  * @brief Assemble a stationary Device residual without a Jacobian.
  *
- * @param[in] kernel - Element evaluator copied into the kernel launch.
- * @param[in] mesh - Device mesh matching the map's element order.
- * @param[in] map - Device element-to-global assembly map.
- * @param[in] state - Global Device state vector.
- * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in]     kernel - Element evaluator copied into the kernel launch.
+ * @param[in]     mesh - Device mesh matching the map's element order.
+ * @param[in]     map - Device element-to-global assembly map.
+ * @param[in]     state - Global Device state vector.
+ * @param[out]    res - Device residual replaced by the assembled result.
  * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
 template <class ElementKernel>
@@ -434,11 +434,11 @@ void assembleResidual(const ElementKernel&      kernel,
 /**
  * @brief Assemble a stationary Device Jacobian without a residual.
  *
- * @param[in] kernel - Element evaluator copied into the kernel launch.
- * @param[in] mesh - Device mesh matching the map's element order.
- * @param[in] map - Device element-to-global assembly map.
- * @param[in] state - Global Device state vector.
- * @param[in,out] jacobian - Device CSR Jacobian receiving element contributions.
+ * @param[in]     kernel - Element evaluator copied into the kernel launch.
+ * @param[in]     mesh - Device mesh matching the map's element order.
+ * @param[in]     map - Device element-to-global assembly map.
+ * @param[in]     state - Global Device state vector.
+ * @param[in,out] jac - Device CSR Jacobian receiving element contributions.
  * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
 template <class ElementKernel>
@@ -447,13 +447,13 @@ void assembleJacobian(
     const fem::DeviceMesh&    mesh,
     const DeviceAssemblyMap&  map,
     const DeviceVector<Real>& state,
-    linalg::CudaSystemMatrix& jacobian,
+    linalg::CudaSystemMatrix& jac,
     linalg::CudaContext&      ctx)
 {
   static_assert(std::is_trivially_copyable<ElementKernel>::value,
                 "CUDA element kernel must be trivially copyable");
 
-  const auto jac_view = jacobian.assemblyView();
+  const auto jac_view = jac.assemblyView();
   detail::checkAssemblyInputs(mesh, map, state, jac_view);
   require(state.data() != jac_view.values.data(),
           "Assembly state and matrix values must not alias");
@@ -483,14 +483,14 @@ void assembleJacobian(
 /**
  * @brief Assemble one time residual and state Jacobian on CUDA.
  *
- * @param[in] kernel - Element evaluator copied into the kernel launch.
- * @param[in] step - Residual step index.
- * @param[in] num_hist - Number of history states.
- * @param[in] wrt - State block differentiated by the Jacobian.
- * @param[in] map - Device element-to-global assembly map.
- * @param[in] hist - Global Device history states.
- * @param[in] nxt - Global Device next state.
- * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in]     kernel - Element evaluator copied into the kernel launch.
+ * @param[in]     step - Residual step index.
+ * @param[in]     num_hist - Number of history states.
+ * @param[in]     wrt - State block differentiated by the Jacobian.
+ * @param[in]     map - Device element-to-global assembly map.
+ * @param[in]     hist - Global Device history states.
+ * @param[in]     nxt - Global Device next state.
+ * @param[out]    res - Device residual replaced by the assembled result.
  * @param[in,out] jac - Device CSR matrix zeroed and assembled in place.
  * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
@@ -554,13 +554,13 @@ void assembleResidualAndJacobian(
 /**
  * @brief Assemble one time residual on CUDA without allocating a Jacobian.
  *
- * @param[in] kernel - Element evaluator copied into the kernel launch.
- * @param[in] step - Residual step index.
- * @param[in] num_hist - Number of history states.
- * @param[in] map - Device element-to-global assembly map.
- * @param[in] hist - Global Device history states.
- * @param[in] nxt - Global Device next state.
- * @param[out] res - Device residual replaced by the assembled result.
+ * @param[in]     kernel - Element evaluator copied into the kernel launch.
+ * @param[in]     step - Residual step index.
+ * @param[in]     num_hist - Number of history states.
+ * @param[in]     map - Device element-to-global assembly map.
+ * @param[in]     hist - Global Device history states.
+ * @param[in]     nxt - Global Device next state.
+ * @param[out]    res - Device residual replaced by the assembled result.
  * @param[in,out] ctx - CUDA context on which all work is enqueued.
  */
 template <class ElementKernel>

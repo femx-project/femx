@@ -16,7 +16,9 @@ class CudaContext;
 namespace detail
 {
 
-/** @brief Own cuBLAS and cuSPARSE handles bound to one CUDA stream. */
+/**
+ * @brief Own cuBLAS and cuSPARSE handles bound to one CUDA stream.
+ */
 class CudaHandles final
 {
 public:
@@ -24,22 +26,30 @@ public:
    * @brief Create CUDA library handles bound to a stream.
    *
    * @param[in] stream - CUDA stream used by both handles.
-   * @throws std::runtime_error - If handle creation or stream binding fails.
+   * @throws - If handle creation or stream binding fails.
    */
   explicit CudaHandles(void* stream);
 
-  /** @brief Destroy the owned CUDA library handles. */
+  /**
+   * @brief Destroy the owned CUDA library handles.
+   */
   ~CudaHandles();
 
   CudaHandles(const CudaHandles&)            = delete;
   CudaHandles& operator=(const CudaHandles&) = delete;
 
 #if defined(FEMX_HAS_CUDA)
-  /** @brief Return the owned cuBLAS handle. */
+
+  /**
+   * @brief Return the owned cuBLAS handle.
+   */
   cublasHandle_t cublas() const noexcept;
 
-  /** @brief Return the owned cuSPARSE handle. */
+  /**
+   * @brief Return the owned cuSPARSE handle.
+   */
   cusparseHandle_t cusparse() const noexcept;
+
 #endif
 
 private:
@@ -69,7 +79,7 @@ std::shared_ptr<void>& cudaSparseState(CudaContext& ctx);
  *
  * @param[in] status - cuBLAS status to check.
  * @param[in] operation - Operation name included in an error message.
- * @throws std::runtime_error - If `status` does not indicate success.
+ * @throws - If `status` does not indicate success.
  */
 void checkCublas(cublasStatus_t status, const char* operation);
 
@@ -78,7 +88,7 @@ void checkCublas(cublasStatus_t status, const char* operation);
  *
  * @param[in] status - cuSPARSE status to check.
  * @param[in] operation - Operation name included in an error message.
- * @throws std::runtime_error - If `status` does not indicate success.
+ * @throws - If `status` does not indicate success.
  */
 void checkCusparse(cusparseStatus_t status, const char* operation);
 

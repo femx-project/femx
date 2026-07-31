@@ -93,14 +93,14 @@ TestOutcome hostFlatObserveAndTranspose()
 
   HostVector<Real>         flat_obs(op.numObservations());
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.apply(op.data().matrix(), state.view(), flat_obs.view());
+  linalg::HostSystemMatrix jac(ctx);
+  jac.apply(op.data().matrix(), state.view(), flat_obs.view());
 
   HostVector<Real> expected_trans;
   op.applyStateJacT(1, state, prm, dir, expected_trans);
 
   HostVector<Real> flat_trans(op.numStates());
-  jacobian.applyT(op.data().matrix(), dir.view(), flat_trans.view(), 1.0, 1.0);
+  jac.applyT(op.data().matrix(), dir.view(), flat_trans.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;

@@ -27,23 +27,31 @@ public:
    * @param[in] comm - Communicator receiving the partitioned graph.
    * @param[in] pattern - Replicated square application-order CSR graph.
    * @return Shared immutable partition and numbering.
-   * @throws std::runtime_error - If the graph is invalid or PETSc or MPI
+   * @throws - If the graph is invalid or PETSc or MPI
    * reports an error.
    */
   static std::shared_ptr<const PETScPartition> create(
       MPI_Comm              comm,
       const HostCsrPattern& pattern);
 
-  /** @brief Return the number of global degrees of freedom. */
+  /**
+   * @brief Return the number of global degrees of freedom.
+   */
   Index size() const noexcept;
 
-  /** @brief Return the number of degrees of freedom owned by this rank. */
+  /**
+   * @brief Return the number of degrees of freedom owned by this rank.
+   */
   PetscInt localSize() const noexcept;
 
-  /** @brief Return the first PETSc index owned by this rank. */
+  /**
+   * @brief Return the first PETSc index owned by this rank.
+   */
   PetscInt begin() const noexcept;
 
-  /** @brief Return one past the last PETSc index owned by this rank. */
+  /**
+   * @brief Return one past the last PETSc index owned by this rank.
+   */
   PetscInt end() const noexcept;
 
   /**
@@ -51,7 +59,7 @@ public:
    *
    * @param[in] index - Application degree-of-freedom index.
    * @return Partitioned PETSc index.
-   * @throws std::runtime_error - If `index` is out of range.
+   * @throws - If `index` is out of range.
    */
   PetscInt petscIndex(Index index) const;
 
@@ -60,7 +68,7 @@ public:
    *
    * @param[in] index - Partitioned PETSc index.
    * @return Application degree-of-freedom index.
-   * @throws std::runtime_error - If `index` is out of range.
+   * @throws - If `index` is out of range.
    */
   Index applicationIndex(PetscInt index) const;
 
@@ -69,7 +77,7 @@ public:
    *
    * @param[in] index - Application degree-of-freedom index.
    * @return Owning communicator rank.
-   * @throws std::runtime_error - If `index` is out of range.
+   * @throws - If `index` is out of range.
    */
   PetscMPIInt owner(Index index) const;
 
@@ -80,12 +88,14 @@ public:
    *
    * @param[in] rows - Element rows in application numbering.
    * @return Rank assigned to the element.
-   * @throws std::runtime_error - If `rows` is empty or contains an invalid
+   * @throws - If `rows` is empty or contains an invalid
    * index.
    */
   PetscMPIInt elementOwner(HostVectorView<const Index> rows) const;
 
-  /** @brief Return the PETSc partitioner type used to build this layout. */
+  /**
+   * @brief Return the PETSc partitioner type used to build this layout.
+   */
   const std::string& type() const noexcept;
 
 private:

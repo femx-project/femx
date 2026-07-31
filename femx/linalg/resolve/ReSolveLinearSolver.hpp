@@ -13,7 +13,9 @@ namespace femx
 namespace linalg
 {
 
-/** @brief Configure Host and CUDA ReSolve adapters. */
+/**
+ * @brief Configure Host and CUDA ReSolve adapters.
+ */
 struct ReSolveOptions
 {
   std::string factor   = "none";   ///< Factorization method.
@@ -45,7 +47,9 @@ class ReSolveLinearSolver final
     public LinearSolver<MemorySpace::Device>
 {
 public:
-  /** @brief Construct a solver with default ReSolve options. */
+  /**
+   * @brief Construct a solver with default ReSolve options.
+   */
   ReSolveLinearSolver();
 
   /**
@@ -60,11 +64,11 @@ public:
   /**
    * @brief Solve `mat * x = rhs` on Host.
    *
-   * @param[in] mat - Square Host system matrix.
-   * @param[in] rhs - Host right-hand side vector.
+   * @param[in]  mat - Square Host system matrix.
+   * @param[in]  rhs - Host right-hand side vector.
    * @param[out] x - Host solution vector.
-   * @param[in] ctx - CPU execution context.
-   * @throws std::runtime_error - If the inputs or solver configuration are
+   * @param[in]  ctx - CPU execution context.
+   * @throws - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
   void solve(const HostCsrMatrix&        mat,
@@ -75,11 +79,11 @@ public:
   /**
    * @brief Solve `mat^T * x = rhs` on Host.
    *
-   * @param[in] mat - Square Host system matrix.
-   * @param[in] rhs - Host right-hand side vector.
+   * @param[in]  mat - Square Host system matrix.
+   * @param[in]  rhs - Host right-hand side vector.
    * @param[out] x - Host solution vector.
-   * @param[in] ctx - CPU execution context.
-   * @throws std::runtime_error - If the inputs or solver configuration are
+   * @param[in]  ctx - CPU execution context.
+   * @throws - If the inputs or solver configuration are
    * invalid, initialization fails, or ReSolve reports an error.
    */
   void solveT(const HostCsrMatrix&        mat,
@@ -90,11 +94,11 @@ public:
   /**
    * @brief Solve `mat * x = rhs` on Device without Host staging.
    *
-   * @param[in] mat - Square Device system matrix.
-   * @param[in] rhs - Device right-hand side vector.
+   * @param[in]  mat - Square Device system matrix.
+   * @param[in]  rhs - Device right-hand side vector.
    * @param[out] x - Device solution vector.
-   * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA support, or solver
+   * @param[in]  ctx - CUDA execution context.
+   * @throws - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
   void solve(const DeviceCsrMatrix&        mat,
@@ -105,11 +109,11 @@ public:
   /**
    * @brief Solve `mat^T * x = rhs` on Device.
    *
-   * @param[in] mat - Square Device system matrix.
-   * @param[in] rhs - Device right-hand side vector.
+   * @param[in]  mat - Square Device system matrix.
+   * @param[in]  rhs - Device right-hand side vector.
    * @param[out] x - Device solution vector.
-   * @param[in] ctx - CUDA execution context.
-   * @throws std::runtime_error - If the inputs, CUDA support, or solver
+   * @param[in]  ctx - CUDA execution context.
+   * @throws - If the inputs, CUDA support, or solver
    * configuration are invalid, or ReSolve reports an error.
    */
   void solveT(const DeviceCsrMatrix&        mat,

@@ -51,8 +51,8 @@ void EnsembleBasis::apply(const HostVector<Real>& alpha,
   checkAlpha(alpha);
   out = mean_;
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.apply(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
+  linalg::HostSystemMatrix jac(ctx);
+  jac.apply(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
 }
 
 void EnsembleBasis::applyT(const HostVector<Real>& grad,
@@ -61,8 +61,8 @@ void EnsembleBasis::applyT(const HostVector<Real>& grad,
   checkPhysical(grad);
   out.resize(numCoefficients());
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.applyT(perts_.view(), grad.view(), out.view());
+  linalg::HostSystemMatrix jac(ctx);
+  jac.applyT(perts_.view(), grad.view(), out.view());
 }
 
 void EnsembleBasis::checkDims() const

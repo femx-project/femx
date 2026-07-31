@@ -8,7 +8,9 @@
 namespace femx
 {
 
-/** @brief Three-dimensional point or vector. */
+/**
+ * @brief Three-dimensional point or vector.
+ */
 using Point3 = std::array<Real, 3>;
 
 /**
@@ -17,7 +19,7 @@ using Point3 = std::array<Real, 3>;
  * @param[in] x - First vector.
  * @param[in] y - Second vector.
  * @return Dot product of `x` and `y`.
- * @throws std::runtime_error - If the vector sizes differ.
+ * @throws - If the vector sizes differ.
  */
 Real dot(const HostVector<Real>& x, const HostVector<Real>& y);
 
@@ -68,7 +70,7 @@ Real norm(const Point3& x);
  * @param[in] x - First vector.
  * @param[in] y - Second vector.
  * @return Root mean square error between `x` and `y`.
- * @throws std::runtime_error - If the vector sizes differ.
+ * @throws - If the vector sizes differ.
  */
 Real rootMeanSquareError(const HostVector<Real>& x,
                          const HostVector<Real>& y);
@@ -79,7 +81,7 @@ Real rootMeanSquareError(const HostVector<Real>& x,
  * @param[in] x - Vector to subtract from.
  * @param[in] y - Vector to subtract.
  * @return Component-wise difference `x - y`.
- * @throws std::runtime_error - If the vector sizes differ.
+ * @throws - If the vector sizes differ.
  */
 HostVector<Real> difference(const HostVector<Real>& x,
                             const HostVector<Real>& y);
@@ -107,7 +109,7 @@ Point3 cross(const Point3& x, const Point3& y);
  *
  * @param[in] x - Input vector.
  * @return Unit vector in the direction of `x`.
- * @throws std::runtime_error - If `x` is the zero vector.
+ * @throws - If `x` is the zero vector.
  */
 Point3 normalized(const Point3& x);
 
@@ -146,7 +148,7 @@ Real triangleArea(const Point3& a, const Point3& b, const Point3& c);
  * @param[in] line_point - Point on the line.
  * @param[in] line_direction - Line direction.
  * @return Squared distance from `point` to the line.
- * @throws std::runtime_error - If `line_direction` is the zero vector.
+ * @throws - If `line_direction` is the zero vector.
  */
 Real squaredDistanceToLine(const Point3& point,
                            const Point3& line_point,

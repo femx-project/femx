@@ -207,17 +207,17 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
   HostVector<Real>         res;
   const HostVector<Real>   state{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac_sys(ctx);
 
-  jacobian.setup(map.pattern());
+  jac_sys.setup(map.pattern());
   assembly::assembleResidualAndJacobian(AffineElementKernel{},
                                         mesh,
                                         map,
                                         state,
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
-  const HostCsrMatrix& jac = jacobian.matrix();
+  const HostCsrMatrix& jac = jac_sys.matrix();
 
   status *= valsEqual(
       res,
@@ -257,16 +257,16 @@ TestOutcome hostAssemblySupportsRectangularLocalLayouts()
   const HostVector<Real>   state{2.0, 3.0};
   HostVector<Real>         res;
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.setup(map.pattern());
+  linalg::HostSystemMatrix jac_sys(ctx);
+  jac_sys.setup(map.pattern());
   assembly::assembleResidualAndJacobian(RectangularElementKernel{},
                                         mesh,
                                         map,
                                         state,
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
-  const HostCsrMatrix& jac = jacobian.matrix();
+  const HostCsrMatrix& jac = jac_sys.matrix();
 
   status *= valsEqual(res, std::array<Real, 2>{{3.0, 10.0}});
   status *= near(csrVal(jac, 0, 0), 11.0);
@@ -289,9 +289,9 @@ TestOutcome hostTimeAssemblyHandlesHistoryBlocks()
   const HostVector<Real>   nxt{7.0, 8.0, 9.0};
   HostVector<Real>         res;
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac_sys(ctx);
 
-  jacobian.setup(map.pattern());
+  jac_sys.setup(map.pattern());
   assembly::assembleResidualAndJacobian(TimeElementKernel{},
                                         3,
                                         2,
@@ -302,15 +302,15 @@ TestOutcome hostTimeAssemblyHandlesHistoryBlocks()
                                         hist.view(),
                                         nxt.view(),
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
-  const HostCsrMatrix& jac  = jacobian.matrix();
+  const HostCsrMatrix& jac  = jac_sys.matrix();
   status                   *= valsEqual(res, std::array<Real, 3>{{10.0, 20.0, 10.0}});
   status                   *= near(csrVal(jac, 0, 0), 1.0);
   status                   *= near(csrVal(jac, 1, 1), 2.0);
   status                   *= near(csrVal(jac, 2, 2), 1.0);
 
-  jacobian.setup(map.pattern());
+  jac_sys.setup(map.pattern());
   assembly::assembleResidualAndJacobian(TimeElementKernel{},
                                         3,
                                         2,
@@ -321,7 +321,7 @@ TestOutcome hostTimeAssemblyHandlesHistoryBlocks()
                                         hist.view(),
                                         nxt.view(),
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
   status *= near(csrVal(jac, 0, 0), -2.0);
   status *= near(csrVal(jac, 1, 1), -4.0);
@@ -343,9 +343,9 @@ TestOutcome hostTimeAssemblySupportsElementRangesAndResidualOnly()
   const HostVector<Real>   nxt{7.0, 8.0, 9.0};
   HostVector<Real>         res;
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
+  linalg::HostSystemMatrix jac_sys(ctx);
 
-  jacobian.setup(map.pattern());
+  jac_sys.setup(map.pattern());
   assembly::assembleResidualAndJacobian(TimeElementKernel{},
                                         3,
                                         2,
@@ -356,9 +356,9 @@ TestOutcome hostTimeAssemblySupportsElementRangesAndResidualOnly()
                                         hist.view(),
                                         nxt.view(),
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
-  const HostCsrMatrix& jac  = jacobian.matrix();
+  const HostCsrMatrix& jac  = jac_sys.matrix();
   status                   *= valsEqual(res, std::array<Real, 3>{{10.0, 9.5, 0.0}});
   status                   *= near(csrVal(jac, 0, 0), 1.0);
   status                   *= near(csrVal(jac, 1, 1), 1.0);
@@ -406,16 +406,16 @@ TestOutcome matGraphSurvivesAssemblyMapMove()
   HostVector<Real>         res;
   const HostVector<Real>   state{1.0, 2.0, 3.0, 4.0};
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.setup(moved_map.pattern());
+  linalg::HostSystemMatrix jac_sys(ctx);
+  jac_sys.setup(moved_map.pattern());
   assembly::assembleResidualAndJacobian(AffineElementKernel{},
                                         mesh,
                                         moved_map,
                                         state,
                                         res,
-                                        jacobian,
+                                        jac_sys,
                                         ctx);
-  const HostCsrMatrix& jac = jacobian.matrix();
+  const HostCsrMatrix& jac = jac_sys.matrix();
 
   status *= jac.rows() == 4;
   status *= jac.nnz() == 16;
@@ -451,8 +451,8 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
   const auto               map = assembly::makeAssemblyMap(space.dofMap());
   HostVector<Real>         alias_vec{1.0, 2.0, 3.0, 4.0};
   linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jacobian(ctx);
-  jacobian.setup(map.pattern());
+  linalg::HostSystemMatrix jac_sys(ctx);
+  jac_sys.setup(map.pattern());
 
   bool alias_rejected = false;
   try
@@ -462,7 +462,7 @@ TestOutcome malformedGraphsAndAssemblyAliasesAreRejected()
                                           map,
                                           alias_vec,
                                           alias_vec,
-                                          jacobian,
+                                          jac_sys,
                                           ctx);
   }
   catch (const std::runtime_error&)

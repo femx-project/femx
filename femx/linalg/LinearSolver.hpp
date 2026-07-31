@@ -6,7 +6,9 @@
 namespace femx::linalg
 {
 
-/** @brief Define the CSR linear solve contract for one memory space. */
+/**
+ * @brief Define the CSR linear solve contract for one memory space.
+ */
 template <MemorySpace Space>
 class LinearSolver
 {
@@ -20,10 +22,10 @@ public:
   /**
    * @brief Solve `mat * x = rhs`.
    *
-   * @param[in] mat - System matrix.
-   * @param[in] rhs - Right-hand side vector.
+   * @param[in]     mat - System matrix.
+   * @param[in]     rhs - Right-hand side vector.
    * @param[in,out] x - Initial guess replaced by the solution.
-   * @param[in] ctx - Execution context.
+   * @param[in]     ctx - Execution context.
    */
   virtual void solve(const Matrix&     mat,
                      const Vector&     rhs,
@@ -33,10 +35,10 @@ public:
   /**
    * @brief Solve `mat^T * x = rhs`.
    *
-   * @param[in] mat - System matrix.
-   * @param[in] rhs - Right-hand side vector.
+   * @param[in]     mat - System matrix.
+   * @param[in]     rhs - Right-hand side vector.
    * @param[in,out] x - Initial guess replaced by the solution.
-   * @param[in] ctx - Execution context.
+   * @param[in]     ctx - Execution context.
    */
   virtual void solveT(const Matrix&     mat,
                       const Vector&     rhs,

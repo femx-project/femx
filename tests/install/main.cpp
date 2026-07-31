@@ -48,8 +48,8 @@ int main()
     checkClose(femx::norm(rhs), std::sqrt(50.0), "rhs norm");
 
     femx::linalg::HostLinearSystem system;
-    auto&                          jacobian = system.matrix();
-    jacobian.setup(A.pattern());
+    auto&                          jac = system.matrix();
+    jac.setup(A.pattern());
 
     femx::HostVector<femx::Index> rows{0, 1};
     femx::HostVector<femx::Index> columns{0, 1};
@@ -59,9 +59,9 @@ int main()
     values(0, 1) = 1.0;
     values(1, 0) = 1.0;
     values(1, 1) = 2.0;
-    jacobian.addElement(
+    jac.addElement(
         {rows.view(), columns.view(), entries.view(), values.view()});
-    jacobian.finalize();
+    jac.finalize();
 
     femx::HostVector<femx::Real> x;
     system.solve(rhs.view(), x);
@@ -70,7 +70,7 @@ int main()
     checkClose(x[1], 2.0, "x[1]");
 
     femx::HostVector<femx::Real> Ax;
-    jacobian.apply(x.view(), Ax);
+    jac.apply(x.view(), Ax);
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");
   }

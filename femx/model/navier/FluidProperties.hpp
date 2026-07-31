@@ -5,7 +5,9 @@
 namespace femx::model::navier
 {
 
-/** @brief Store incompressible-fluid material properties. */
+/**
+ * @brief Store incompressible-fluid material properties.
+ */
 struct FluidProperties
 {
   Real rho = 1.0; ///< Fluid density.

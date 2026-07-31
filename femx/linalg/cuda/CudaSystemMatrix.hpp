@@ -38,7 +38,7 @@ public:
    *
    * @param[in] rows - Device constrained row indices.
    * @param[in] diag - Replacement diagonal value.
-   * @throws std::runtime_error - If the constrained rows are invalid.
+   * @throws - If the constrained rows are invalid.
    */
   void replaceRows(DeviceVectorView<const Index> rows,
                    Real                          diag) override;
@@ -46,22 +46,24 @@ public:
   /**
    * @brief Eliminate constrained columns and correct a right-hand side.
    *
-   * @param[in] rows - Device constrained row indices.
-   * @param[in] vals - Device prescribed values.
+   * @param[in]     rows - Device constrained row indices.
+   * @param[in]     vals - Device prescribed values.
    * @param[in,out] rhs - Device right-hand side corrected in place.
-   * @throws std::runtime_error - If the constraint vectors are incompatible.
+   * @throws - If the constraint vectors are incompatible.
    */
   void eliminateColumns(DeviceVectorView<const Index> rows,
                         DeviceVectorView<const Real>  vals,
                         DeviceVectorView<Real>        rhs) override;
 
-  /** @brief Complete assembly before matrix application. */
+  /**
+   * @brief Complete assembly before matrix application.
+   */
   void finalize() override;
 
   /**
    * @brief Compute the Device system-matrix product.
    *
-   * @param[in] dir - Device input direction.
+   * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
   void apply(DeviceVectorView<const Real> dir,
@@ -70,24 +72,28 @@ public:
   /**
    * @brief Compute the transposed Device system-matrix product.
    *
-   * @param[in] dir - Device input direction.
+   * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
   void applyT(DeviceVectorView<const Real> dir,
               DeviceVector<Real>&          out) const override;
 
-  /** @brief Return Device CSR storage for an assembly kernel. */
+  /**
+   * @brief Return Device CSR storage for an assembly kernel.
+   */
   DeviceCsrAssemblyView assemblyView() noexcept;
 
-  /** @brief Return the owned CSR matrix for a native Device solver. */
+  /**
+   * @brief Return the owned CSR matrix for a native Device solver.
+   */
   const DeviceCsrMatrix& matrix() const noexcept;
 
   /**
    * @brief Construct or update a Device CSR transpose.
    *
-   * @param[in] src - Source matrix.
+   * @param[in]     src - Source matrix.
    * @param[in,out] dst - Transposed destination.
-   * @throws std::runtime_error - If `src` and `dst` are the same matrix.
+   * @throws - If `src` and `dst` are the same matrix.
    */
   void transpose(const DeviceCsrMatrix& src,
                  DeviceCsrMatrix&       dst) const;
@@ -97,12 +103,12 @@ public:
    *
    * Compute `out = alpha * mat * dir + beta * out`.
    *
-   * @param[in] mat - Device CSR matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Device CSR matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void apply(const DeviceCsrMatrix&       mat,
              DeviceVectorView<const Real> dir,
@@ -115,12 +121,12 @@ public:
    *
    * Compute `out = alpha * transpose(mat) * dir + beta * out`.
    *
-   * @param[in] mat - Device CSR matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Device CSR matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void applyT(const DeviceCsrMatrix&       mat,
               DeviceVectorView<const Real> dir,
@@ -133,12 +139,12 @@ public:
    *
    * Compute `out = alpha * mat * dir + beta * out`.
    *
-   * @param[in] mat - Row-major dense Device matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Row-major dense Device matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void apply(DeviceMatrixView<const Real> mat,
              DeviceVectorView<const Real> dir,
@@ -151,12 +157,12 @@ public:
    *
    * Compute `out = alpha * transpose(mat) * dir + beta * out`.
    *
-   * @param[in] mat - Row-major dense Device matrix.
-   * @param[in] dir - Input direction.
+   * @param[in]     mat - Row-major dense Device matrix.
+   * @param[in]     dir - Input direction.
    * @param[in,out] out - Output vector.
-   * @param[in] alpha - Matrix-product scale.
-   * @param[in] beta - Existing-output scale.
-   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   * @param[in]     alpha - Matrix-product scale.
+   * @param[in]     beta - Existing-output scale.
+   * @throws - If dimensions or storage are incompatible.
    */
   void applyT(DeviceMatrixView<const Real> mat,
               DeviceVectorView<const Real> dir,

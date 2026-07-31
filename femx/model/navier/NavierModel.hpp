@@ -52,29 +52,47 @@ public:
   NavierModel(NavierModel&&)                 = delete;
   NavierModel& operator=(NavierModel&&)      = delete;
 
-  /** @brief Return the number of time steps. */
+  /**
+   * @brief Return the number of time steps.
+   */
   Index numSteps() const noexcept;
-  /** @brief Return the number of algebraic states. */
+  /**
+   * @brief Return the number of algebraic states.
+   */
   Index numStates() const noexcept;
-  /** @brief Return the time-step size. */
+  /**
+   * @brief Return the time-step size.
+   */
   Real  dt() const noexcept;
 
-  /** @brief Return the fluid properties. */
+  /**
+   * @brief Return the fluid properties.
+   */
   const FluidProperties& fluid() const noexcept;
 
-  /** @brief Return the finite-element mesh. */
+  /**
+   * @brief Return the finite-element mesh.
+   */
   const fem::Mesh& mesh() const noexcept;
 
-  /** @brief Return the mixed velocity-pressure finite-element space. */
+  /**
+   * @brief Return the mixed velocity-pressure finite-element space.
+   */
   const fem::MixedFESpace& space() const noexcept;
 
-  /** @brief Return the element assembly map. */
+  /**
+   * @brief Return the element assembly map.
+   */
   const assembly::HostAssemblyMap& assemblyMap() const noexcept;
 
-  /** @brief Return flattened element values reusable in either memory space. */
+  /**
+   * @brief Return flattened element values reusable in either memory space.
+   */
   const fem::HostElementQuadData& elementData() const noexcept;
 
-  /** @brief Return all velocity state degrees of freedom. */
+  /**
+   * @brief Return all velocity state degrees of freedom.
+   */
   HostVector<Index> velocityDofs() const;
   /**
    * @brief Return velocity degrees of freedom on a boundary tag.

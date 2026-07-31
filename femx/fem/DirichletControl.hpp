@@ -12,7 +12,9 @@ namespace fem
 
 class MixedFESpace;
 
-/** One nonzero entry of the local control map P. */
+/**
+ * One nonzero entry of the local control map P.
+ */
 struct DirichletControlMapEntry
 {
   Index state_row = 0; ///< Row in the controlled state-dof vector.
@@ -20,7 +22,9 @@ struct DirichletControlMapEntry
   Real  weight    = 0.0;
 };
 
-/** @brief Linear map u_D = P q for selected Dirichlet state dofs. */
+/**
+ * @brief Linear map u_D = P q for selected Dirichlet state dofs.
+ */
 class DirichletControl
 {
 public:
@@ -40,14 +44,20 @@ public:
   const HostVector<Index>& stateDofs() const;
   const HostCsrMatrix&     matrix() const noexcept;
 
-  /** Remove state dofs while preserving and compacting the map P. */
+  /**
+   * Remove state dofs while preserving and compacting the map P.
+   */
   DirichletControl withoutStateDofs(
       const HostVector<Index>& excluded) const;
 
-  /** Compute P * direction in local controlled-state ordering. */
+  /**
+   * Compute P * direction in local controlled-state ordering.
+   */
   void apply(const HostVector<Real>& dir, HostVector<Real>& out) const;
 
-  /** Compute P^T * direction. */
+  /**
+   * Compute P^T * direction.
+   */
   void applyT(const HostVector<Real>& dir, HostVector<Real>& out) const;
 
 private:
@@ -68,13 +78,17 @@ DirichletControl makeVelocityControl(
     const MixedFESpace& space,
     const std::string&  pname);
 
-/** One scalar normal-velocity parameter per node on a boundary. */
+/**
+ * One scalar normal-velocity parameter per node on a boundary.
+ */
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace&     space,
     Index                   ptag,
     const HostVector<Real>& nrm);
 
-/** One scalar normal-velocity parameter per node on a boundary. */
+/**
+ * One scalar normal-velocity parameter per node on a boundary.
+ */
 DirichletControl makeNormalVelocityControl(
     const MixedFESpace&     space,
     const std::string&      pname,

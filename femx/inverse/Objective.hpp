@@ -22,16 +22,22 @@ public:
   virtual Index numStates() const = 0;
   virtual Index numParams() const = 0;
 
-  /** @brief Evaluate J(state, prm). */
+  /**
+   * @brief Evaluate J(state, prm).
+   */
   virtual Real value(const HostVector<Real>& state,
                      const HostVector<Real>& prm) const = 0;
 
-  /** @brief Compute dJ/du at (state, prm). */
+  /**
+   * @brief Compute dJ/du at (state, prm).
+   */
   virtual void stateGrad(const HostVector<Real>& state,
                          const HostVector<Real>& prm,
                          HostVector<Real>&       out) const = 0;
 
-  /** @brief Compute dJ/dm at (state, prm). */
+  /**
+   * @brief Compute dJ/dm at (state, prm).
+   */
   virtual void paramGrad(const HostVector<Real>& state,
                          const HostVector<Real>& prm,
                          HostVector<Real>&       out) const = 0;

@@ -1,8 +1,7 @@
 include_guard(GLOBAL)
 
 function(femx_find_clang_openmp)
-  if(TARGET OpenMP::OpenMP_CXX
-     OR NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(TARGET OpenMP::OpenMP_CXX OR NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     return()
   endif()
 
@@ -21,10 +20,9 @@ function(femx_find_clang_openmp)
          "$ENV{HOME}/opt/libomp-${_femx_clang_major}")
   endif()
   if(_femx_clang_major)
-    list(
-      APPEND _femx_openmp_root_hints "/usr/lib/llvm-${_femx_clang_major}"
-      "/usr/local/opt/llvm@${_femx_clang_major}"
-      "/opt/homebrew/opt/llvm@${_femx_clang_major}")
+    list(APPEND _femx_openmp_root_hints "/usr/lib/llvm-${_femx_clang_major}"
+         "/usr/local/opt/llvm@${_femx_clang_major}"
+         "/opt/homebrew/opt/llvm@${_femx_clang_major}")
   endif()
 
   find_path(
@@ -52,15 +50,17 @@ function(femx_find_clang_openmp)
   add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED GLOBAL)
   set_target_properties(
     OpenMP::OpenMP_CXX
-    PROPERTIES
-      INTERFACE_COMPILE_OPTIONS "-fopenmp=libomp"
-      INTERFACE_INCLUDE_DIRECTORIES "${FEMX_CLANG_OPENMP_INCLUDE_DIR}"
-      INTERFACE_LINK_LIBRARIES "${FEMX_CLANG_OPENMP_LIBRARY}"
-      INTERFACE_LINK_OPTIONS
-      "$<$<PLATFORM_ID:Linux>:-Wl,-rpath,${_femx_openmp_library_dir}>")
+    PROPERTIES INTERFACE_COMPILE_OPTIONS "-fopenmp=libomp"
+               INTERFACE_INCLUDE_DIRECTORIES "${FEMX_CLANG_OPENMP_INCLUDE_DIR}"
+               INTERFACE_LINK_LIBRARIES "${FEMX_CLANG_OPENMP_LIBRARY}"
+               INTERFACE_LINK_OPTIONS
+               "$<$<PLATFORM_ID:Linux>:-Wl,-rpath,${_femx_openmp_library_dir}>")
 
-  set(OpenMP_CXX_FOUND TRUE PARENT_SCOPE)
-  set(OpenMP_FOUND TRUE PARENT_SCOPE)
-  message(STATUS
-          "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
+  set(OpenMP_CXX_FOUND
+      TRUE
+      PARENT_SCOPE)
+  set(OpenMP_FOUND
+      TRUE
+      PARENT_SCOPE)
+  message(STATUS "Found OpenMP: ${FEMX_CLANG_OPENMP_LIBRARY} (Clang libomp)")
 endfunction()

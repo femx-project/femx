@@ -83,7 +83,8 @@ Use the following tags whenever the corresponding element is present:
 - `@return` for every non-`void` return value;
 - `@throws` for each exception that is important to the public contract.
 
-Document accessors with only a one-line `@brief`.
+Document accessors with only an `@brief`. Use a multi-line `/** ... */` block
+even when the documentation fits on one line.
 
 
 ```cpp
@@ -92,17 +93,27 @@ Document accessors with only a one-line `@brief`.
  *
  * @param[in] index - Value index.
  * @return Value at `index`.
- * @throws std::runtime_error - If `index` is out of range.
+ * @throws - If `index` is out of range.
  */
 Real value(Index index) const;
 ```
 
-Use the form `@param[direction] name - Description.`, where the optional
-direction is:
+Within each documentation block, align parameter names after the longest
+direction marker used by that block. Do not add padding when all direction
+markers have the same width. For example:
+
+```cpp
+ * @param[in]     src - Source values.
+ * @param[in,out] dst - Destination values.
+```
+
+The directions are:
 
 - `[in]` for values read without being modified;
 - `[out]` for values replaced by the function;
 - `[in,out]` for values both read and modified.
+
+Use the form `@throws - Description.` without an exception type.
 
 Document each class member variable with a trailing `///<` comment:
 

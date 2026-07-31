@@ -196,16 +196,16 @@ inline TestOutcome solvesForwardAndTranspose(
   try
   {
     linalg::HostContext      ctx;
-    linalg::HostSystemMatrix jacobian(ctx);
+    linalg::HostSystemMatrix jac(ctx);
     HostVector<Real>         rhs(mat.rows());
-    jacobian.apply(mat, expected.view(), rhs.view());
+    jac.apply(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;
     solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
     HostVector<Real> rhs_t(mat.cols());
-    jacobian.applyT(mat, expected.view(), rhs_t.view());
+    jac.applyT(mat, expected.view(), rhs_t.view());
 
     HostVector<Real> xt;
     solver.solveT(mat, rhs_t, xt, ctx);
