@@ -88,17 +88,17 @@ public:
 #endif
   }
 
-  void solve(const HostVector<Real>& rhs, HostVector<Real>& result)
+  void solve(const HostVector<Real>& rhs, HostVector<Real>& x)
   {
     require(h_op_ != nullptr,
             "ReSolveLinearSolver Host solve called before setOperator");
     require(rhs.size() == h_op_->rows(),
             "ReSolveLinearSolver Host RHS has incompatible dimensions");
-    checkHostAliases(*h_op_, rhs, result);
+    checkHostAliases(*h_op_, rhs, x);
 
     HostContext ctx;
     auto&       vec_handler = ctx.vectorHandler();
-    vec_handler.assign(result, h_op_->cols(), 0);
+    vec_handler.assign(x, h_op_->cols(), 0);
     if (isZero(rhs))
     {
       return;
@@ -108,7 +108,7 @@ public:
     solveHostWith(*cpu_solver_,
                   h_vecs_,
                   rhs,
-                  result,
+                  x,
                   "ReSolve Host SystemSolver::solve failed");
 #else
     unavailableHost();
@@ -117,21 +117,21 @@ public:
 
   void solve(const HostCsrMatrix&    mat,
              const HostVector<Real>& rhs,
-             HostVector<Real>&       result)
+             HostVector<Real>&       x)
   {
     setOperator(mat);
-    solve(rhs, result);
+    solve(rhs, x);
   }
 
   void solveT(const HostCsrMatrix&    mat,
               const HostVector<Real>& rhs,
-              HostVector<Real>&       result)
+              HostVector<Real>&       x)
   {
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Host transpose dimensions");
-    checkHostAliases(mat, rhs, result);
+    checkHostAliases(mat, rhs, x);
 #if defined(FEMX_HAS_RESOLVE)
-    solveHostT(mat, rhs, result);
+    solveHostT(mat, rhs, x);
 #else
     unavailableHost();
 #endif
@@ -149,16 +149,16 @@ public:
   }
 
   void solve(const DeviceVector<Real>& rhs,
-             DeviceVector<Real>&       result,
+             DeviceVector<Real>&       x,
              CudaContext&              ctx)
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
     require(cuda_work_ != nullptr,
             "ReSolveLinearSolver Device solve called before setOperator");
-    solveDeviceWith(cuda_sys_, cuda_vecs_, rhs, result, ctx);
+    solveDeviceWith(cuda_sys_, cuda_vecs_, rhs, x, ctx);
 #else
     (void) rhs;
-    (void) result;
+    (void) x;
     (void) ctx;
     unavailableCuda();
 #endif
@@ -166,16 +166,16 @@ public:
 
   void solve(const DeviceCsrMatrix&    mat,
              const DeviceVector<Real>& rhs,
-             DeviceVector<Real>&       result,
+             DeviceVector<Real>&       x,
              CudaContext&              ctx)
   {
     setOperator(mat);
-    solve(rhs, result, ctx);
+    solve(rhs, x, ctx);
   }
 
   void solveT(const DeviceCsrMatrix&    mat,
               const DeviceVector<Real>& rhs,
-              DeviceVector<Real>&       result,
+              DeviceVector<Real>&       x,
               CudaContext&              ctx)
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
@@ -185,11 +185,11 @@ public:
     CudaSystemMatrix system_mat(ctx);
     system_mat.transpose(mat, d_trans_mat_);
     bindCuda(cuda_trans_system_, d_trans_mat_, *cuda_work_);
-    solveDeviceWith(cuda_trans_system_, cuda_vecs_, rhs, result, ctx);
+    solveDeviceWith(cuda_trans_system_, cuda_vecs_, rhs, x, ctx);
 #else
     (void) mat;
     (void) rhs;
-    (void) result;
+    (void) x;
     (void) ctx;
     unavailableCuda();
 #endif
@@ -225,15 +225,15 @@ private:
 
   static void checkHostAliases(const HostCsrMatrix&    mat,
                                const HostVector<Real>& rhs,
-                               const HostVector<Real>& result)
+                               const HostVector<Real>& x)
   {
-    const bool rhs_result = &rhs == &result
-                            || (!rhs.empty() && rhs.data() == result.data());
+    const bool rhs_x = &rhs == &x
+                       || (!rhs.empty() && rhs.data() == x.data());
     const bool rhs_mat = &rhs == &mat.vals()
                          || (!rhs.empty() && rhs.data() == mat.valsData());
-    const bool result_mat = &result == &mat.vals()
-                            || (!result.empty() && result.data() == mat.valsData());
-    require(!rhs_result && !rhs_mat && !result_mat,
+    const bool x_mat = &x == &mat.vals()
+                       || (!x.empty() && x.data() == mat.valsData());
+    require(!rhs_x && !rhs_mat && !x_mat,
             "ReSolveLinearSolver Host vectors and matrix values must not alias");
   }
 
@@ -277,7 +277,7 @@ private:
   {
     Index                                    size{-1};
     std::unique_ptr<ReSolve::vector::Vector> rhs;
-    std::unique_ptr<ReSolve::vector::Vector> result;
+    std::unique_ptr<ReSolve::vector::Vector> x;
   };
 
   void ensureCpu()
@@ -389,7 +389,7 @@ private:
   static void solveHostWith(ReSolve::SystemSolver&  solver,
                             HostVecs&               vecs,
                             const HostVector<Real>& rhs,
-                            HostVector<Real>&       result,
+                            HostVector<Real>&       x,
                             const char*             op)
   {
     constexpr auto memspace = ReSolve::memory::HOST;
@@ -397,11 +397,10 @@ private:
     {
       vecs.rhs =
           std::make_unique<ReSolve::vector::Vector>(rhs.size());
-      vecs.result =
-          std::make_unique<ReSolve::vector::Vector>(result.size());
+      vecs.x = std::make_unique<ReSolve::vector::Vector>(x.size());
       check(vecs.rhs->allocate(memspace),
             "ReSolve Host rhs Vector::allocate failed");
-      check(vecs.result->allocate(memspace),
+      check(vecs.x->allocate(memspace),
             "ReSolve Host solution Vector::allocate failed");
       vecs.size = rhs.size();
     }
@@ -409,21 +408,21 @@ private:
     check(vecs.rhs->copyFromExternal(
               rhs.data(), ReSolve::memory::HOST, memspace),
           "ReSolve Host rhs Vector::copyFromExternal failed");
-    check(vecs.result->setToZero(memspace),
+    check(vecs.x->setToZero(memspace),
           "ReSolve Host solution Vector::setToZero failed");
-    check(solver.solve(vecs.rhs.get(), vecs.result.get()), op);
-    check(vecs.result->copyToExternal(
-              result.data(), memspace, ReSolve::memory::HOST),
+    check(solver.solve(vecs.rhs.get(), vecs.x.get()), op);
+    check(vecs.x->copyToExternal(
+              x.data(), memspace, ReSolve::memory::HOST),
           "ReSolve Host solution Vector::copyToExternal failed");
   }
 
   void solveHostT(const HostCsrMatrix&    mat,
                   const HostVector<Real>& rhs,
-                  HostVector<Real>&       result)
+                  HostVector<Real>&       x)
   {
     HostContext ctx;
     auto&       vec_handler = ctx.vectorHandler();
-    vec_handler.assign(result, mat.rows(), 0);
+    vec_handler.assign(x, mat.rows(), 0);
     if (isZero(rhs))
     {
       return;
@@ -433,7 +432,7 @@ private:
     solveHostWith(*trans_solver_,
                   h_vecs_,
                   rhs,
-                  result,
+                  x,
                   "ReSolve transpose SystemSolver::solve failed");
   }
 
@@ -496,7 +495,7 @@ private:
   {
     Index                                    size{-1};
     std::unique_ptr<ReSolve::vector::Vector> rhs;
-    std::unique_ptr<ReSolve::vector::Vector> result;
+    std::unique_ptr<ReSolve::vector::Vector> x;
   };
 
   void ensureCudaWork(
@@ -604,25 +603,25 @@ private:
 
   static void checkCudaAliases(const CudaSystem&         sys,
                                const DeviceVector<Real>& rhs,
-                               const DeviceVector<Real>& result)
+                               const DeviceVector<Real>& x)
   {
-    const bool rhs_result = &rhs == &result
-                            || (!rhs.empty() && rhs.data() == result.data());
-    const bool rhs_mat    = !rhs.empty() && rhs.data() == sys.vals;
-    const bool result_mat = !result.empty() && result.data() == sys.vals;
-    require(!rhs_result && !rhs_mat && !result_mat,
+    const bool rhs_x = &rhs == &x
+                       || (!rhs.empty() && rhs.data() == x.data());
+    const bool rhs_mat = !rhs.empty() && rhs.data() == sys.vals;
+    const bool x_mat   = !x.empty() && x.data() == sys.vals;
+    require(!rhs_x && !rhs_mat && !x_mat,
             "ReSolveLinearSolver Device vectors and matrix values must not alias");
   }
 
   void bindCudaVecs(CudaVecs&                 vecs,
                     const DeviceVector<Real>& rhs,
-                    DeviceVector<Real>&       result)
+                    DeviceVector<Real>&       x)
   {
     if (vecs.size != rhs.size())
     {
-      vecs.rhs    = std::make_unique<ReSolve::vector::Vector>(rhs.size());
-      vecs.result = std::make_unique<ReSolve::vector::Vector>(result.size());
-      vecs.size   = rhs.size();
+      vecs.rhs  = std::make_unique<ReSolve::vector::Vector>(rhs.size());
+      vecs.x    = std::make_unique<ReSolve::vector::Vector>(x.size());
+      vecs.size = rhs.size();
     }
 
     check(vecs.rhs->setData(const_cast<Real*>(rhs.data()),
@@ -630,25 +629,25 @@ private:
           "ReSolve Device rhs Vector::setData failed");
     check(vecs.rhs->setDataUpdated(ReSolve::memory::DEVICE),
           "ReSolve Device rhs Vector::setDataUpdated failed");
-    check(vecs.result->setData(result.data(), ReSolve::memory::DEVICE),
+    check(vecs.x->setData(x.data(), ReSolve::memory::DEVICE),
           "ReSolve Device solution Vector::setData failed");
-    check(vecs.result->setDataUpdated(ReSolve::memory::DEVICE),
+    check(vecs.x->setDataUpdated(ReSolve::memory::DEVICE),
           "ReSolve Device solution Vector::setDataUpdated failed");
   }
 
   void solveDeviceWith(CudaSystem&               sys,
                        CudaVecs&                 vecs,
                        const DeviceVector<Real>& rhs,
-                       DeviceVector<Real>&       result,
+                       DeviceVector<Real>&       x,
                        CudaContext&              ctx)
   {
     require(sys.mat != nullptr && sys.solver != nullptr,
             "ReSolveLinearSolver Device solve called before setOperator");
     require(rhs.size() == sys.rows,
             "ReSolveLinearSolver Device RHS has incompatible dimensions");
-    checkCudaAliases(sys, rhs, result);
+    checkCudaAliases(sys, rhs, x);
     auto& vec_handler = ctx.vectorHandler();
-    vec_handler.assign(result, sys.cols, 0);
+    vec_handler.assign(x, sys.cols, 0);
 
     // femx assembly owns this stream. ReSolve currently has no complete stream
     // hand-off API, so this is the explicit producer/solver boundary.
@@ -668,8 +667,8 @@ private:
             "ReSolve Device preconditioner update failed");
     }
 
-    bindCudaVecs(vecs, rhs, result);
-    check(sys.solver->solve(vecs.rhs.get(), vecs.result.get()),
+    bindCudaVecs(vecs, rhs, x);
+    check(sys.solver->solve(vecs.rhs.get(), vecs.x.get()),
           "ReSolve Device solve failed");
 
     // ReSolve currently launches on its own/default stream. Complete it before
@@ -723,34 +722,34 @@ ReSolveLinearSolver::~ReSolveLinearSolver() = default;
 
 void ReSolveLinearSolver::solve(const HostCsrMatrix&    mat,
                                 const HostVector<Real>& rhs,
-                                HostVector<Real>&       result,
+                                HostVector<Real>&       x,
                                 Context<MemorySpace::Host>&)
 {
-  impl_->solve(mat, rhs, result);
+  impl_->solve(mat, rhs, x);
 }
 
 void ReSolveLinearSolver::solveT(const HostCsrMatrix&    mat,
                                  const HostVector<Real>& rhs,
-                                 HostVector<Real>&       result,
+                                 HostVector<Real>&       x,
                                  Context<MemorySpace::Host>&)
 {
-  impl_->solveT(mat, rhs, result);
+  impl_->solveT(mat, rhs, x);
 }
 
 void ReSolveLinearSolver::solve(const DeviceCsrMatrix&        mat,
                                 const DeviceVector<Real>&     rhs,
-                                DeviceVector<Real>&           result,
+                                DeviceVector<Real>&           x,
                                 Context<MemorySpace::Device>& ctx)
 {
-  impl_->solve(mat, rhs, result, dynamic_cast<CudaContext&>(ctx));
+  impl_->solve(mat, rhs, x, dynamic_cast<CudaContext&>(ctx));
 }
 
 void ReSolveLinearSolver::solveT(const DeviceCsrMatrix&        mat,
                                  const DeviceVector<Real>&     rhs,
-                                 DeviceVector<Real>&           result,
+                                 DeviceVector<Real>&           x,
                                  Context<MemorySpace::Device>& ctx)
 {
-  impl_->solveT(mat, rhs, result, dynamic_cast<CudaContext&>(ctx));
+  impl_->solveT(mat, rhs, x, dynamic_cast<CudaContext&>(ctx));
 }
 
 } // namespace linalg

@@ -23,7 +23,7 @@ using detail::checkCusparse;
 
 struct SpmvOperation
 {
-  cusparseSpMatDescr_t matrix{nullptr};
+  cusparseSpMatDescr_t mat{nullptr};
   cusparseDnVecDescr_t x{nullptr};
   cusparseDnVecDescr_t y{nullptr};
   void*                workspace{nullptr};
@@ -41,9 +41,9 @@ struct SpmvOperation
     {
       cusparseDestroyDnVec(x);
     }
-    if (matrix != nullptr)
+    if (mat != nullptr)
     {
-      cusparseDestroySpMat(matrix);
+      cusparseDestroySpMat(mat);
     }
   }
 
@@ -84,23 +84,23 @@ struct MatrixEntry
 
 struct CsrTransposeEntry
 {
-  std::uint64_t       source_layout{0};
+  std::uint64_t       src_layout{0};
   DeviceCsrPattern    pattern;
-  DeviceVector<Index> source_to_transpose;
+  DeviceVector<Index> src_to_trans;
 };
 
 struct CsrState
 {
   ~CsrState()
   {
-    cuda::release(transpose_workspace);
+    cuda::release(trans_workspace);
   }
 
   std::mutex                                      mutex;
-  std::vector<std::unique_ptr<MatrixEntry>>       matrices;
-  std::vector<std::unique_ptr<CsrTransposeEntry>> transposes;
-  void*                                           transpose_workspace{nullptr};
-  std::size_t                                     transpose_workspace_capacity{0};
+  std::vector<std::unique_ptr<MatrixEntry>>       mats;
+  std::vector<std::unique_ptr<CsrTransposeEntry>> trans_entries;
+  void*                                           trans_workspace{nullptr};
+  std::size_t                                     trans_workspace_capacity{0};
 };
 
 __global__ void scaleKernel(Index size, Real scale, Real* vals)
@@ -115,7 +115,7 @@ __global__ void scaleKernel(Index size, Real scale, Real* vals)
 
 __global__ void markConstraintsKernel(Index        count,
                                       const Index* rows,
-                                      Index        matrix_rows,
+                                      Index        mat_rows,
                                       Index*       row_to_constraint)
 {
   const Index ib =
@@ -123,7 +123,7 @@ __global__ void markConstraintsKernel(Index        count,
   if (ib < count)
   {
     const Index row = rows[ib];
-    if (row >= 0 && row < matrix_rows)
+    if (row >= 0 && row < mat_rows)
     {
       row_to_constraint[row] = ib;
     }
@@ -134,9 +134,9 @@ __global__ void replaceConstraintRowsKernel(
     Index        count,
     const Index* rows,
     const Index* row_offsets,
-    const Index* column_indices,
-    Real*        matrix_values,
-    Real         diagonal,
+    const Index* col_inds,
+    Real*        mat_vals,
+    Real         diag,
     Real*        rhs,
     const Real*  vals)
 {
@@ -151,7 +151,7 @@ __global__ void replaceConstraintRowsKernel(
        entry < row_offsets[row + 1];
        entry += blockDim.x)
   {
-    matrix_values[entry] = column_indices[entry] == row ? diagonal : 0.0;
+    mat_vals[entry] = col_inds[entry] == row ? diag : 0.0;
   }
   if (threadIdx.x == 0 && rhs != nullptr)
   {
@@ -160,16 +160,16 @@ __global__ void replaceConstraintRowsKernel(
 }
 
 __global__ void eliminateConstraintColumnsKernel(
-    Index        matrix_rows,
+    Index        mat_rows,
     const Index* row_offsets,
-    const Index* column_indices,
+    const Index* col_inds,
     const Index* row_to_constraint,
     const Real*  vals,
-    Real*        matrix_values,
+    Real*        mat_vals,
     Real*        rhs)
 {
   const Index row = static_cast<Index>(blockIdx.x);
-  if (row >= matrix_rows)
+  if (row >= mat_rows)
   {
     return;
   }
@@ -178,25 +178,25 @@ __global__ void eliminateConstraintColumnsKernel(
        entry < row_offsets[row + 1];
        entry += blockDim.x)
   {
-    const Index ib = row_to_constraint[column_indices[entry]];
+    const Index ib = row_to_constraint[col_inds[entry]];
     if (ib >= 0)
     {
-      const Real value = matrix_values[entry];
+      const Real val = mat_vals[entry];
       if (row_to_constraint[row] < 0)
       {
-        atomicAdd(rhs + row, -value * vals[ib]);
+        atomicAdd(rhs + row, -val * vals[ib]);
       }
-      matrix_values[entry] = 0.0;
+      mat_vals[entry] = 0.0;
     }
   }
 }
 
 __global__ void buildTransposeMapKernel(Index        rows,
-                                        const Index* source_row_ptr,
-                                        const Index* source_col_ind,
-                                        const Index* transpose_row_ptr,
-                                        const Index* transpose_col_ind,
-                                        Index*       source_to_transpose)
+                                        const Index* src_row_ptr,
+                                        const Index* src_col_ind,
+                                        const Index* trans_row_ptr,
+                                        const Index* trans_col_ind,
+                                        Index*       src_to_trans)
 {
   const Index stride = static_cast<Index>(blockDim.x * gridDim.x);
   for (Index row = static_cast<Index>(blockIdx.x * blockDim.x
@@ -204,23 +204,23 @@ __global__ void buildTransposeMapKernel(Index        rows,
        row < rows;
        row += stride)
   {
-    for (Index k = source_row_ptr[row]; k < source_row_ptr[row + 1]; ++k)
+    for (Index k = src_row_ptr[row]; k < src_row_ptr[row + 1]; ++k)
     {
-      const Index transpose_row = source_col_ind[k];
-      Index       rank          = 0;
-      for (Index previous = source_row_ptr[row]; previous < k; ++previous)
+      const Index trans_row = src_col_ind[k];
+      Index       rank      = 0;
+      for (Index previous = src_row_ptr[row]; previous < k; ++previous)
       {
-        rank += source_col_ind[previous] == transpose_row ? 1 : 0;
+        rank += src_col_ind[previous] == trans_row ? 1 : 0;
       }
-      for (Index transpose_index = transpose_row_ptr[transpose_row];
-           transpose_index < transpose_row_ptr[transpose_row + 1];
-           ++transpose_index)
+      for (Index trans_idx = trans_row_ptr[trans_row];
+           trans_idx < trans_row_ptr[trans_row + 1];
+           ++trans_idx)
       {
-        if (transpose_col_ind[transpose_index] == row)
+        if (trans_col_ind[trans_idx] == row)
         {
           if (rank == 0)
           {
-            source_to_transpose[k] = transpose_index;
+            src_to_trans[k] = trans_idx;
             break;
           }
           --rank;
@@ -232,9 +232,9 @@ __global__ void buildTransposeMapKernel(Index        rows,
 
 __global__ void updateTransposeValuesKernel(
     Index        nnz,
-    const Real*  source_vals,
-    const Index* source_to_transpose,
-    Real*        transpose_vals)
+    const Real*  src_vals,
+    const Index* src_to_trans,
+    Real*        trans_vals)
 {
   const Index stride = static_cast<Index>(blockDim.x * gridDim.x);
   for (Index k = static_cast<Index>(blockIdx.x * blockDim.x
@@ -242,19 +242,19 @@ __global__ void updateTransposeValuesKernel(
        k < nnz;
        k += stride)
   {
-    transpose_vals[source_to_transpose[k]] = source_vals[k];
+    trans_vals[src_to_trans[k]] = src_vals[k];
   }
 }
 
 void checkCsrMatvec(const DeviceCsrMatrix&       mat,
                     DeviceVectorView<const Real> x,
                     DeviceVectorView<Real>       y,
-                    bool                         transpose)
+                    bool                         trans)
 {
   require(x.isValid(), "CSR matvec has an invalid input view");
   require(y.isValid(), "CSR matvec has an invalid output view");
-  const Index in_size  = transpose ? mat.rows() : mat.cols();
-  const Index out_size = transpose ? mat.cols() : mat.rows();
+  const Index in_size  = trans ? mat.rows() : mat.cols();
+  const Index out_size = trans ? mat.cols() : mat.rows();
   require(x.size() == in_size && y.size() == out_size,
           "CSR matvec vector size mismatch");
   require(mat.rows() == 0 || mat.rowPtrData() != nullptr,
@@ -271,10 +271,10 @@ void checkCsrMatvec(const DeviceCsrMatrix&       mat,
 void checkDenseMatvec(DeviceMatrixView<const Real> mat,
                       DeviceVectorView<const Real> x,
                       DeviceVectorView<Real>       y,
-                      bool                         transpose)
+                      bool                         trans)
 {
-  const Index in_size  = transpose ? mat.rows() : mat.cols();
-  const Index out_size = transpose ? mat.cols() : mat.rows();
+  const Index in_size  = trans ? mat.rows() : mat.cols();
+  const Index out_size = trans ? mat.cols() : mat.rows();
   require(mat.rows() >= 0 && mat.cols() >= 0 && x.size() == in_size
               && y.size() == out_size
               && (mat.rows() * mat.cols() == 0 || mat.data() != nullptr),
@@ -325,28 +325,28 @@ MatrixEntry& findOrCreateEntry(CsrState&              state,
                                const DeviceCsrMatrix& mat)
 {
   const auto iter = std::find_if(
-      state.matrices.begin(),
-      state.matrices.end(),
+      state.mats.begin(),
+      state.mats.end(),
       [&mat](const std::unique_ptr<MatrixEntry>& entry)
       { return entry->matches(mat); });
-  if (iter != state.matrices.end())
+  if (iter != state.mats.end())
   {
     return **iter;
   }
 
-  state.matrices.push_back(std::make_unique<MatrixEntry>(mat));
-  return *state.matrices.back();
+  state.mats.push_back(std::make_unique<MatrixEntry>(mat));
+  return *state.mats.back();
 }
 
 CsrTransposeEntry* findTransposeEntry(CsrState&              state,
                                       const DeviceCsrMatrix& src)
 {
   const auto iter = std::find_if(
-      state.transposes.begin(),
-      state.transposes.end(),
+      state.trans_entries.begin(),
+      state.trans_entries.end(),
       [&src](const std::unique_ptr<CsrTransposeEntry>& entry)
-      { return entry->source_layout == src.pattern().layoutId(); });
-  return iter == state.transposes.end() ? nullptr : iter->get();
+      { return entry->src_layout == src.pattern().layoutId(); });
+  return iter == state.trans_entries.end() ? nullptr : iter->get();
 }
 
 void ensureDescriptors(SpmvOperation&               op,
@@ -354,10 +354,10 @@ void ensureDescriptors(SpmvOperation&               op,
                        DeviceVectorView<const Real> x,
                        DeviceVectorView<Real>       y)
 {
-  if (op.matrix == nullptr)
+  if (op.mat == nullptr)
   {
     checkCusparse(
-        cusparseCreateCsr(&op.matrix,
+        cusparseCreateCsr(&op.mat,
                           mat.rows(),
                           mat.cols(),
                           mat.nnz(),
@@ -405,62 +405,61 @@ void spmv(const DeviceCsrMatrix&       mat,
           CudaContext&                 ctx,
           Real                         alpha,
           Real                         beta,
-          bool                         transpose)
+          bool                         trans)
 {
   CsrState&                   state = csrState(ctx);
   std::lock_guard<std::mutex> lock(state.mutex);
-  MatrixEntry&                entry     = findOrCreateEntry(state, mat);
-  SpmvOperation&              operation = transpose ? entry.matvecT
-                                                    : entry.matvec;
-  ensureDescriptors(operation, mat, x, y);
+  MatrixEntry&                entry   = findOrCreateEntry(state, mat);
+  SpmvOperation&              spmv_op = trans ? entry.matvecT : entry.matvec;
+  ensureDescriptors(spmv_op, mat, x, y);
 
-  const auto  op             = transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                                         : CUSPARSE_OPERATION_NON_TRANSPOSE;
+  const auto  cusparse_op    = trans ? CUSPARSE_OPERATION_TRANSPOSE
+                                     : CUSPARSE_OPERATION_NON_TRANSPOSE;
   auto        handle         = detail::cusparseHandle(ctx);
   std::size_t workspace_size = 0;
   checkCusparse(cusparseSpMV_bufferSize(handle,
-                                        op,
+                                        cusparse_op,
                                         &alpha,
-                                        operation.matrix,
-                                        operation.x,
+                                        spmv_op.mat,
+                                        spmv_op.x,
                                         &beta,
-                                        operation.y,
+                                        spmv_op.y,
                                         CUDA_R_64F,
                                         CUSPARSE_SPMV_CSR_ALG1,
                                         &workspace_size),
                 "cusparseSpMV_bufferSize failed");
-  if (workspace_size > operation.workspace_capacity)
+  if (workspace_size > spmv_op.workspace_capacity)
   {
-    cuda::release(operation.workspace);
-    operation.workspace          = cuda::allocate(workspace_size);
-    operation.workspace_capacity = workspace_size;
-    operation.preprocessed       = false;
+    cuda::release(spmv_op.workspace);
+    spmv_op.workspace          = cuda::allocate(workspace_size);
+    spmv_op.workspace_capacity = workspace_size;
+    spmv_op.preprocessed       = false;
   }
-  if (!operation.preprocessed)
+  if (!spmv_op.preprocessed)
   {
     checkCusparse(cusparseSpMV_preprocess(handle,
-                                          op,
+                                          cusparse_op,
                                           &alpha,
-                                          operation.matrix,
-                                          operation.x,
+                                          spmv_op.mat,
+                                          spmv_op.x,
                                           &beta,
-                                          operation.y,
+                                          spmv_op.y,
                                           CUDA_R_64F,
                                           CUSPARSE_SPMV_CSR_ALG1,
-                                          operation.workspace),
+                                          spmv_op.workspace),
                   "cusparseSpMV_preprocess failed");
-    operation.preprocessed = true;
+    spmv_op.preprocessed = true;
   }
   checkCusparse(cusparseSpMV(handle,
-                             op,
+                             cusparse_op,
                              &alpha,
-                             operation.matrix,
-                             operation.x,
+                             spmv_op.mat,
+                             spmv_op.x,
                              &beta,
-                             operation.y,
+                             spmv_op.y,
                              CUDA_R_64F,
                              CUSPARSE_SPMV_CSR_ALG1,
-                             operation.workspace),
+                             spmv_op.workspace),
                 "cusparseSpMV failed");
 }
 } // namespace
@@ -469,18 +468,18 @@ void CudaSystemMatrix::ensureConstraints(
     DeviceVectorView<const Index> rows)
 {
   require(rows.isValid(), "CUDA constrained-row view is invalid");
-  if (constraints_.layout_id == matrix_.pattern().layoutId()
+  if (constraints_.layout_id == mat_.pattern().layoutId()
       && constraints_.rows == rows.data()
       && constraints_.count == rows.size())
   {
     return;
   }
 
-  constraints_.layout_id = matrix_.pattern().layoutId();
+  constraints_.layout_id = mat_.pattern().layoutId();
   constraints_.rows      = rows.data();
   constraints_.count     = rows.size();
   ctx_.vectorHandler().assign(constraints_.row_to_constraint,
-                              matrix_.rows(),
+                              mat_.rows(),
                               -1);
   if (!rows.empty())
   {
@@ -490,14 +489,14 @@ void CudaSystemMatrix::ensureConstraints(
                             static_cast<cudaStream_t>(ctx_.stream())>>>(
         rows.size(),
         rows.data(),
-        matrix_.rows(),
+        mat_.rows(),
         constraints_.row_to_constraint.data());
     cuda::checkLastError();
   }
 }
 
 void CudaSystemMatrix::replaceRows(DeviceVectorView<const Index> rows,
-                                   Real                          diagonal)
+                                   Real                          diag)
 {
   ensureConstraints(rows);
   if (rows.empty())
@@ -510,10 +509,10 @@ void CudaSystemMatrix::replaceRows(DeviceVectorView<const Index> rows,
                                 static_cast<cudaStream_t>(ctx_.stream())>>>(
       rows.size(),
       rows.data(),
-      matrix_.rowPtrData(),
-      matrix_.colIndData(),
-      matrix_.valsData(),
-      diagonal,
+      mat_.rowPtrData(),
+      mat_.colIndData(),
+      mat_.valsData(),
+      diag,
       nullptr,
       nullptr);
   cuda::checkLastError();
@@ -521,10 +520,10 @@ void CudaSystemMatrix::replaceRows(DeviceVectorView<const Index> rows,
 
 void CudaSystemMatrix::eliminateColumns(
     DeviceVectorView<const Index> rows,
-    DeviceVectorView<const Real>  values,
+    DeviceVectorView<const Real>  vals,
     DeviceVectorView<Real>        rhs)
 {
-  require(values.size() == rows.size() && rhs.size() == matrix_.rows(),
+  require(vals.size() == rows.size() && rhs.size() == mat_.rows(),
           "CUDA system matrix constraint vectors have incompatible dimensions");
   ensureConstraints(rows);
   if (rows.empty())
@@ -532,16 +531,16 @@ void CudaSystemMatrix::eliminateColumns(
     return;
   }
 
-  eliminateConstraintColumnsKernel<<<static_cast<unsigned int>(matrix_.rows()),
+  eliminateConstraintColumnsKernel<<<static_cast<unsigned int>(mat_.rows()),
                                      kThreads,
                                      0,
                                      static_cast<cudaStream_t>(ctx_.stream())>>>(
-      matrix_.rows(),
-      matrix_.rowPtrData(),
-      matrix_.colIndData(),
+      mat_.rows(),
+      mat_.rowPtrData(),
+      mat_.colIndData(),
       constraints_.row_to_constraint.data(),
-      values.data(),
-      matrix_.valsData(),
+      vals.data(),
+      mat_.valsData(),
       rhs.data());
   cuda::checkLastError();
   replaceConstraintRowsKernel<<<static_cast<unsigned int>(rows.size()),
@@ -550,12 +549,12 @@ void CudaSystemMatrix::eliminateColumns(
                                 static_cast<cudaStream_t>(ctx_.stream())>>>(
       rows.size(),
       rows.data(),
-      matrix_.rowPtrData(),
-      matrix_.colIndData(),
-      matrix_.valsData(),
+      mat_.rowPtrData(),
+      mat_.colIndData(),
+      mat_.valsData(),
       1.0,
       rhs.data(),
-      values.data());
+      vals.data());
   cuda::checkLastError();
 }
 
@@ -574,22 +573,22 @@ void CudaSystemMatrix::transpose(
 
   if (rebuild_pattern)
   {
-    DeviceVector<Index> transpose_row_ptr(src.cols() + 1);
-    DeviceVector<Index> transpose_col_ind(src.nnz());
-    DeviceVector<Index> source_to_transpose(src.nnz());
+    DeviceVector<Index> trans_row_ptr(src.cols() + 1);
+    DeviceVector<Index> trans_col_ind(src.nnz());
+    DeviceVector<Index> src_to_trans(src.nnz());
 
-    auto created           = std::make_unique<CsrTransposeEntry>();
-    created->source_layout = src.pattern().layoutId();
-    created->pattern       = DeviceCsrPattern(
+    auto created        = std::make_unique<CsrTransposeEntry>();
+    created->src_layout = src.pattern().layoutId();
+    created->pattern    = DeviceCsrPattern(
         src.cols(),
         src.rows(),
-        std::move(transpose_row_ptr),
-        std::move(transpose_col_ind),
+        std::move(trans_row_ptr),
+        std::move(trans_col_ind),
         femx::detail::newCsrLayoutId());
 
-    created->source_to_transpose = std::move(source_to_transpose);
-    state.transposes.push_back(std::move(created));
-    entry = state.transposes.back().get();
+    created->src_to_trans = std::move(src_to_trans);
+    state.trans_entries.push_back(std::move(created));
+    entry = state.trans_entries.back().get();
   }
 
   if (dst.pattern().layoutId() != entry->pattern.layoutId())
@@ -623,12 +622,12 @@ void CudaSystemMatrix::transpose(
                       &workspace_size),
                   "cusparseCsr2cscEx2_bufferSize failed");
 
-    if (workspace_size > state.transpose_workspace_capacity)
+    if (workspace_size > state.trans_workspace_capacity)
     {
       void* replacement = cuda::allocate(workspace_size);
-      cuda::release(state.transpose_workspace);
-      state.transpose_workspace          = replacement;
-      state.transpose_workspace_capacity = workspace_size;
+      cuda::release(state.trans_workspace);
+      state.trans_workspace          = replacement;
+      state.trans_workspace_capacity = workspace_size;
     }
 
     checkCusparse(cusparseCsr2cscEx2(
@@ -646,7 +645,7 @@ void CudaSystemMatrix::transpose(
                       CUSPARSE_ACTION_SYMBOLIC,
                       CUSPARSE_INDEX_BASE_ZERO,
                       CUSPARSE_CSR2CSC_ALG1,
-                      state.transpose_workspace),
+                      state.trans_workspace),
                   "cusparseCsr2cscEx2 symbolic transpose failed");
 
     constexpr unsigned int threads = 128;
@@ -659,7 +658,7 @@ void CudaSystemMatrix::transpose(
         src.colIndData(),
         dst.rowPtrData(),
         dst.colIndData(),
-        entry->source_to_transpose.data());
+        entry->src_to_trans.data());
 
     cuda::checkLastError();
   }
@@ -671,56 +670,56 @@ void CudaSystemMatrix::transpose(
                                 static_cast<cudaStream_t>(ctx_.stream())>>>(
       src.nnz(),
       src.valsData(),
-      entry->source_to_transpose.data(),
+      entry->src_to_trans.data(),
       dst.valsData());
 
   cuda::checkLastError();
 }
 
 void CudaSystemMatrix::apply(const DeviceCsrMatrix&       mat,
-                             DeviceVectorView<const Real> x,
-                             DeviceVectorView<Real>       y,
+                             DeviceVectorView<const Real> dir,
+                             DeviceVectorView<Real>       out,
                              Real                         alpha,
                              Real                         beta) const
 {
-  checkCsrMatvec(mat, x, y, false);
+  checkCsrMatvec(mat, dir, out, false);
   if (mat.rows() == 0 || mat.nnz() == 0 || alpha == 0.0)
   {
-    scaleOutput(y, beta, ctx_);
+    scaleOutput(out, beta, ctx_);
     return;
   }
-  spmv(mat, x, y, ctx_, alpha, beta, false);
+  spmv(mat, dir, out, ctx_, alpha, beta, false);
 }
 
 void CudaSystemMatrix::applyT(const DeviceCsrMatrix&       mat,
-                              DeviceVectorView<const Real> x,
-                              DeviceVectorView<Real>       y,
+                              DeviceVectorView<const Real> dir,
+                              DeviceVectorView<Real>       out,
                               Real                         alpha,
                               Real                         beta) const
 {
-  checkCsrMatvec(mat, x, y, true);
+  checkCsrMatvec(mat, dir, out, true);
   if (mat.cols() == 0 || mat.nnz() == 0 || alpha == 0.0)
   {
-    scaleOutput(y, beta, ctx_);
+    scaleOutput(out, beta, ctx_);
     return;
   }
-  spmv(mat, x, y, ctx_, alpha, beta, true);
+  spmv(mat, dir, out, ctx_, alpha, beta, true);
 }
 
 void CudaSystemMatrix::apply(DeviceMatrixView<const Real> mat,
-                             DeviceVectorView<const Real> x,
-                             DeviceVectorView<Real>       y,
+                             DeviceVectorView<const Real> dir,
+                             DeviceVectorView<Real>       out,
                              Real                         alpha,
                              Real                         beta) const
 {
-  checkDenseMatvec(mat, x, y, false);
+  checkDenseMatvec(mat, dir, out, false);
   if (mat.rows() == 0)
   {
     return;
   }
   if (mat.cols() == 0)
   {
-    scaleOutput(y, beta, ctx_);
+    scaleOutput(out, beta, ctx_);
     return;
   }
   auto handle = detail::cublasHandle(ctx_);
@@ -733,28 +732,28 @@ void CudaSystemMatrix::apply(DeviceMatrixView<const Real> mat,
                           &alpha,
                           mat.data(),
                           mat.cols(),
-                          x.data(),
+                          dir.data(),
                           1,
                           &beta,
-                          y.data(),
+                          out.data(),
                           1),
               "cublasDgemv failed");
 }
 
 void CudaSystemMatrix::applyT(DeviceMatrixView<const Real> mat,
-                              DeviceVectorView<const Real> x,
-                              DeviceVectorView<Real>       y,
+                              DeviceVectorView<const Real> dir,
+                              DeviceVectorView<Real>       out,
                               Real                         alpha,
                               Real                         beta) const
 {
-  checkDenseMatvec(mat, x, y, true);
+  checkDenseMatvec(mat, dir, out, true);
   if (mat.cols() == 0)
   {
     return;
   }
   if (mat.rows() == 0)
   {
-    scaleOutput(y, beta, ctx_);
+    scaleOutput(out, beta, ctx_);
     return;
   }
   auto handle = detail::cublasHandle(ctx_);
@@ -767,10 +766,10 @@ void CudaSystemMatrix::applyT(DeviceMatrixView<const Real> mat,
                           &alpha,
                           mat.data(),
                           mat.cols(),
-                          x.data(),
+                          dir.data(),
                           1,
                           &beta,
-                          y.data(),
+                          out.data(),
                           1),
               "cublasDgemv(transpose) failed");
 }

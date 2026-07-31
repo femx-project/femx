@@ -23,14 +23,14 @@ public:
    *
    * @param[in] mat - Square system matrix.
    * @param[in] rhs - Right-hand side vector.
-   * @param[out] out - Solution vector.
+   * @param[out] x - Solution vector.
    * @param[in] ctx - CPU execution context.
    * @throws std::runtime_error - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
   void solve(const HostCsrMatrix&        mat,
              const HostVector<Real>&     rhs,
-             HostVector<Real>&           out,
+             HostVector<Real>&           x,
              Context<MemorySpace::Host>& ctx) override;
 
   /**
@@ -38,14 +38,14 @@ public:
    *
    * @param[in] mat - Square system matrix.
    * @param[in] rhs - Right-hand side vector.
-   * @param[out] out - Solution vector.
+   * @param[out] x - Solution vector.
    * @param[in] ctx - CPU execution context.
    * @throws std::runtime_error - If dimensions are inconsistent or the matrix
    * is singular within the configured tolerance.
    */
   void solveT(const HostCsrMatrix&        mat,
               const HostVector<Real>&     rhs,
-              HostVector<Real>&           out,
+              HostVector<Real>&           x,
               Context<MemorySpace::Host>& ctx) override;
 
 private:
@@ -55,7 +55,7 @@ private:
 
   void solveDense(DenseMatrix                 mat,
                   const HostVector<Real>&     rhs,
-                  HostVector<Real>&           out,
+                  HostVector<Real>&           x,
                   Context<MemorySpace::Host>& ctx) const;
 
   Real pivot_tolerance_{1.0e-14}; ///< Minimum accepted pivot magnitude.

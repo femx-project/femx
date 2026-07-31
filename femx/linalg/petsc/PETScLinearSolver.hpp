@@ -61,30 +61,30 @@ public:
   const KspOptions& opts() const;
 
   /**
-   * @brief Solve `mat * result = rhs`.
+   * @brief Solve `mat * x = rhs`.
    *
    * @param[in] mat - Square PETSc system matrix.
    * @param[in] rhs - Replicated Host right-hand side.
-   * @param[in,out] result - Initial guess replaced by the replicated solution.
+   * @param[in,out] x - Initial guess replaced by the replicated solution.
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
   void solve(const PETScMatrix&      mat,
              const HostVector<Real>& rhs,
-             HostVector<Real>&       result);
+             HostVector<Real>&       x);
 
   /**
-   * @brief Solve `mat^T * result = rhs`.
+   * @brief Solve `mat^T * x = rhs`.
    *
    * @param[in] mat - Square PETSc system matrix.
    * @param[in] rhs - Replicated Host right-hand side.
-   * @param[in,out] result - Initial guess replaced by the replicated solution.
+   * @param[in,out] x - Initial guess replaced by the replicated solution.
    * @throws std::runtime_error - If inputs are invalid, PETSc reports an error,
    * or the solver does not converge.
    */
   void solveT(const PETScMatrix&      mat,
               const HostVector<Real>& rhs,
-              HostVector<Real>&       result);
+              HostVector<Real>&       x);
 
   /** @brief Return the most recent KSP convergence reason. */
   KSPConvergedReason convergedReason() const;

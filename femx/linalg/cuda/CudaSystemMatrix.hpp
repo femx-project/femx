@@ -26,16 +26,54 @@ public:
    */
   explicit CudaSystemMatrix(CudaContext& ctx) noexcept;
 
+  /**
+   * @brief Prepare zero-valued Device storage from a Host CSR pattern.
+   *
+   * @param[in] pattern - Canonical global sparsity pattern.
+   */
   void setup(const HostCsrPattern& pattern) override;
+
+  /**
+   * @brief Replace constrained rows by diagonal rows.
+   *
+   * @param[in] rows - Device constrained row indices.
+   * @param[in] diag - Replacement diagonal value.
+   * @throws std::runtime_error - If the constrained rows are invalid.
+   */
   void replaceRows(DeviceVectorView<const Index> rows,
-                   Real                          diagonal) override;
+                   Real                          diag) override;
+
+  /**
+   * @brief Eliminate constrained columns and correct a right-hand side.
+   *
+   * @param[in] rows - Device constrained row indices.
+   * @param[in] vals - Device prescribed values.
+   * @param[in,out] rhs - Device right-hand side corrected in place.
+   * @throws std::runtime_error - If the constraint vectors are incompatible.
+   */
   void eliminateColumns(DeviceVectorView<const Index> rows,
-                        DeviceVectorView<const Real>  values,
+                        DeviceVectorView<const Real>  vals,
                         DeviceVectorView<Real>        rhs) override;
+
+  /** @brief Complete assembly before matrix application. */
   void finalize() override;
-  void apply(DeviceVectorView<const Real> direction,
+
+  /**
+   * @brief Compute the Device system-matrix product.
+   *
+   * @param[in] dir - Device input direction.
+   * @param[out] out - Resized Device output vector.
+   */
+  void apply(DeviceVectorView<const Real> dir,
              DeviceVector<Real>&          out) const override;
-  void applyT(DeviceVectorView<const Real> direction,
+
+  /**
+   * @brief Compute the transposed Device system-matrix product.
+   *
+   * @param[in] dir - Device input direction.
+   * @param[out] out - Resized Device output vector.
+   */
+  void applyT(DeviceVectorView<const Real> dir,
               DeviceVector<Real>&          out) const override;
 
   /** @brief Return Device CSR storage for an assembly kernel. */
@@ -47,36 +85,81 @@ public:
   /**
    * @brief Construct or update a Device CSR transpose.
    *
-   * @param[in] source - Source matrix.
-   * @param[in,out] destination - Transposed destination.
+   * @param[in] src - Source matrix.
+   * @param[in,out] dst - Transposed destination.
+   * @throws std::runtime_error - If `src` and `dst` are the same matrix.
    */
-  void transpose(const DeviceCsrMatrix& source,
-                 DeviceCsrMatrix&       destination) const;
+  void transpose(const DeviceCsrMatrix& src,
+                 DeviceCsrMatrix&       dst) const;
 
-  /** @brief Apply an arbitrary Device CSR matrix. */
-  void apply(const DeviceCsrMatrix&       matrix,
-             DeviceVectorView<const Real> direction,
+  /**
+   * @brief Apply an arbitrary Device CSR matrix.
+   *
+   * Compute `out = alpha * mat * dir + beta * out`.
+   *
+   * @param[in] mat - Device CSR matrix.
+   * @param[in] dir - Input direction.
+   * @param[in,out] out - Output vector.
+   * @param[in] alpha - Matrix-product scale.
+   * @param[in] beta - Existing-output scale.
+   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   */
+  void apply(const DeviceCsrMatrix&       mat,
+             DeviceVectorView<const Real> dir,
              DeviceVectorView<Real>       out,
              Real                         alpha = 1.0,
              Real                         beta  = 0.0) const;
 
-  /** @brief Apply the transpose of an arbitrary Device CSR matrix. */
-  void applyT(const DeviceCsrMatrix&       matrix,
-              DeviceVectorView<const Real> direction,
+  /**
+   * @brief Apply the transpose of an arbitrary Device CSR matrix.
+   *
+   * Compute `out = alpha * transpose(mat) * dir + beta * out`.
+   *
+   * @param[in] mat - Device CSR matrix.
+   * @param[in] dir - Input direction.
+   * @param[in,out] out - Output vector.
+   * @param[in] alpha - Matrix-product scale.
+   * @param[in] beta - Existing-output scale.
+   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   */
+  void applyT(const DeviceCsrMatrix&       mat,
+              DeviceVectorView<const Real> dir,
               DeviceVectorView<Real>       out,
               Real                         alpha = 1.0,
               Real                         beta  = 0.0) const;
 
-  /** @brief Apply a row-major dense Device matrix. */
-  void apply(DeviceMatrixView<const Real> matrix,
-             DeviceVectorView<const Real> direction,
+  /**
+   * @brief Apply a row-major dense Device matrix.
+   *
+   * Compute `out = alpha * mat * dir + beta * out`.
+   *
+   * @param[in] mat - Row-major dense Device matrix.
+   * @param[in] dir - Input direction.
+   * @param[in,out] out - Output vector.
+   * @param[in] alpha - Matrix-product scale.
+   * @param[in] beta - Existing-output scale.
+   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   */
+  void apply(DeviceMatrixView<const Real> mat,
+             DeviceVectorView<const Real> dir,
              DeviceVectorView<Real>       out,
              Real                         alpha = 1.0,
              Real                         beta  = 0.0) const;
 
-  /** @brief Apply the transpose of a row-major dense Device matrix. */
-  void applyT(DeviceMatrixView<const Real> matrix,
-              DeviceVectorView<const Real> direction,
+  /**
+   * @brief Apply the transpose of a row-major dense Device matrix.
+   *
+   * Compute `out = alpha * transpose(mat) * dir + beta * out`.
+   *
+   * @param[in] mat - Row-major dense Device matrix.
+   * @param[in] dir - Input direction.
+   * @param[in,out] out - Output vector.
+   * @param[in] alpha - Matrix-product scale.
+   * @param[in] beta - Existing-output scale.
+   * @throws std::runtime_error - If dimensions or storage are incompatible.
+   */
+  void applyT(DeviceMatrixView<const Real> mat,
+              DeviceVectorView<const Real> dir,
               DeviceVectorView<Real>       out,
               Real                         alpha = 1.0,
               Real                         beta  = 0.0) const;
@@ -84,17 +167,17 @@ public:
 private:
   struct ConstraintCache
   {
-    std::uint64_t       layout_id{0};
-    const Index*        rows{nullptr};
-    Index               count{0};
-    DeviceVector<Index> row_to_constraint;
+    std::uint64_t       layout_id{0};      ///< Cached CSR layout identifier.
+    const Index*        rows{nullptr};     ///< Cached constrained-row address.
+    Index               count{0};          ///< Number of constrained rows.
+    DeviceVector<Index> row_to_constraint; ///< Row-to-constraint mapping.
   };
 
   void ensureConstraints(DeviceVectorView<const Index> rows);
 
-  CudaContext&    ctx_;
-  DeviceCsrMatrix matrix_;
-  ConstraintCache constraints_;
+  CudaContext&    ctx_;         ///< Bound CUDA execution context.
+  DeviceCsrMatrix mat_;         ///< Owned Device CSR matrix.
+  ConstraintCache constraints_; ///< Cached constraint metadata.
 };
 
 } // namespace femx::linalg

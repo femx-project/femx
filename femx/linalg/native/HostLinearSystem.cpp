@@ -32,16 +32,16 @@ SystemMatrix<MemorySpace::Host>& HostLinearSystem::matrix() noexcept
   return mat_;
 }
 
-void HostLinearSystem::solve(ConstView rhs, Vector& solution)
+void HostLinearSystem::solve(ConstView rhs, Vector& x)
 {
   ctx_.vectorHandler().copy(rhs, rhs_);
-  solver_->solve(mat_.matrix(), rhs_, solution, ctx_);
+  solver_->solve(mat_.matrix(), rhs_, x, ctx_);
 }
 
-void HostLinearSystem::solveT(ConstView rhs, Vector& solution)
+void HostLinearSystem::solveT(ConstView rhs, Vector& x)
 {
   ctx_.vectorHandler().copy(rhs, rhs_);
-  solver_->solveT(mat_.matrix(), rhs_, solution, ctx_);
+  solver_->solveT(mat_.matrix(), rhs_, x, ctx_);
 }
 
 } // namespace femx::linalg

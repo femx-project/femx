@@ -18,26 +18,26 @@ DenseLinearSolver::DenseLinearSolver(Real pivot_tolerance)
 
 void DenseLinearSolver::solve(const HostCsrMatrix&        mat,
                               const HostVector<Real>&     rhs,
-                              HostVector<Real>&           out,
+                              HostVector<Real>&           x,
                               Context<MemorySpace::Host>& ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.rows(),
           "DenseLinearSolver received inconsistent CSR dimensions");
   DenseMatrix dense;
   sample(mat, false, dense);
-  solveDense(std::move(dense), rhs, out, ctx);
+  solveDense(std::move(dense), rhs, x, ctx);
 }
 
 void DenseLinearSolver::solveT(const HostCsrMatrix&        mat,
                                const HostVector<Real>&     rhs,
-                               HostVector<Real>&           out,
+                               HostVector<Real>&           x,
                                Context<MemorySpace::Host>& ctx)
 {
   require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
           "DenseLinearSolver received inconsistent transposed CSR dimensions");
   DenseMatrix dense;
   sample(mat, true, dense);
-  solveDense(std::move(dense), rhs, out, ctx);
+  solveDense(std::move(dense), rhs, x, ctx);
 }
 
 void DenseLinearSolver::sample(const HostCsrMatrix& mat,
@@ -64,7 +64,7 @@ void DenseLinearSolver::sample(const HostCsrMatrix& mat,
 
 void DenseLinearSolver::solveDense(DenseMatrix                 mat,
                                    const HostVector<Real>&     rhs,
-                                   HostVector<Real>&           out,
+                                   HostVector<Real>&           x,
                                    Context<MemorySpace::Host>& ctx) const
 {
   const Index      size = mat.rows();
@@ -109,15 +109,15 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
   }
 
   auto& vec_handler = ctx.vectorHandler();
-  vec_handler.assign(out, size, 0);
+  vec_handler.assign(x, size, 0);
   for (Index row = size; row-- > 0;)
   {
     Real sum = b[row];
     for (Index col = row + 1; col < size; ++col)
     {
-      sum -= mat(row, col) * out[col];
+      sum -= mat(row, col) * x[col];
     }
-    out[row] = sum / mat(row, row);
+    x[row] = sum / mat(row, row);
   }
 }
 

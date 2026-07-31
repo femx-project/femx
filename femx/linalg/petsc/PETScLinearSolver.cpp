@@ -71,16 +71,16 @@ public:
 
   void solve(const PETScMatrix&      op,
              const HostVector<Real>& rhs,
-             HostVector<Real>&       out)
+             HostVector<Real>&       x)
   {
-    solveSystem(op, rhs, out, false);
+    solveSystem(op, rhs, x, false);
   }
 
   void solveT(const PETScMatrix&      op,
               const HostVector<Real>& rhs,
-              HostVector<Real>&       out)
+              HostVector<Real>&       x)
   {
-    solveSystem(op, rhs, out, true);
+    solveSystem(op, rhs, x, true);
   }
 
   KSPConvergedReason convergedReason() const
@@ -101,7 +101,7 @@ public:
 private:
   void solveSystem(const PETScMatrix&      op,
                    const HostVector<Real>& rhs,
-                   HostVector<Real>&       out,
+                   HostVector<Real>&       x,
                    bool                    trans)
   {
     require(op.rows() == op.cols(),
@@ -114,33 +114,33 @@ private:
     const PetscInt size = static_cast<PetscInt>(op.rows());
 
     ScopedVec rhs_vec;
-    ScopedVec out_vec;
+    ScopedVec x_vec;
     createVec(op.comm(), size, op.partition(), rhs_vec);
-    check(VecDuplicate(rhs_vec.get(), out_vec.put()), "VecDuplicate");
+    check(VecDuplicate(rhs_vec.get(), x_vec.put()), "VecDuplicate");
     check(detail::copyToPETSc(
               rhs.view(), rhs_vec.get(), op.partition()),
           "copyToPETSc");
     setInitialGuess(
-        out_vec.get(), out, op.rows(), op.partition());
+        x_vec.get(), x, op.rows(), op.partition());
 
     ensureKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
     if (trans)
     {
-      check(KSPSolveTranspose(ksp_, rhs_vec.get(), out_vec.get()),
+      check(KSPSolveTranspose(ksp_, rhs_vec.get(), x_vec.get()),
             "KSPSolveTranspose");
     }
     else
     {
-      check(KSPSolve(ksp_, rhs_vec.get(), out_vec.get()), "KSPSolve");
+      check(KSPSolve(ksp_, rhs_vec.get(), x_vec.get()), "KSPSolve");
     }
 
     updateStats(ksp_);
     checkConverged();
 
     check(detail::copyFromPETSc(
-              out_vec.get(), out, op.partition()),
+              x_vec.get(), x, op.partition()),
           "copyFromPETSc");
   }
 
@@ -296,16 +296,16 @@ const KspOptions& PETScLinearSolver::opts() const
 
 void PETScLinearSolver::solve(const PETScMatrix&      mat,
                               const HostVector<Real>& rhs,
-                              HostVector<Real>&       result)
+                              HostVector<Real>&       x)
 {
-  impl_->solve(mat, rhs, result);
+  impl_->solve(mat, rhs, x);
 }
 
 void PETScLinearSolver::solveT(const PETScMatrix&      mat,
                                const HostVector<Real>& rhs,
-                               HostVector<Real>&       result)
+                               HostVector<Real>&       x)
 {
-  impl_->solveT(mat, rhs, result);
+  impl_->solveT(mat, rhs, x);
 }
 
 KSPConvergedReason PETScLinearSolver::convergedReason() const

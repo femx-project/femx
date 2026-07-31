@@ -12,16 +12,16 @@ CudaSystemMatrix::CudaSystemMatrix(CudaContext& ctx) noexcept
 
 void CudaSystemMatrix::setup(const HostCsrPattern& pattern)
 {
-  if (matrix_.pattern().layoutId() != pattern.layoutId())
+  if (mat_.pattern().layoutId() != pattern.layoutId())
   {
     DeviceCsrPattern d_pattern;
     femx::copy(pattern, d_pattern, ctx_);
-    matrix_      = DeviceCsrMatrix(d_pattern);
+    mat_         = DeviceCsrMatrix(d_pattern);
     constraints_ = {};
   }
   else
   {
-    ctx_.vectorHandler().zero(matrix_.vals().view());
+    ctx_.vectorHandler().zero(mat_.vals().view());
   }
 }
 
@@ -29,39 +29,39 @@ void CudaSystemMatrix::finalize()
 {
 }
 
-void CudaSystemMatrix::apply(DeviceVectorView<const Real> direction,
+void CudaSystemMatrix::apply(DeviceVectorView<const Real> dir,
                              DeviceVector<Real>&          out) const
 {
-  if (out.size() != matrix_.rows())
+  if (out.size() != mat_.rows())
   {
-    out.resize(matrix_.rows());
+    out.resize(mat_.rows());
   }
-  apply(matrix_, direction, out.view());
+  apply(mat_, dir, out.view());
 }
 
-void CudaSystemMatrix::applyT(DeviceVectorView<const Real> direction,
+void CudaSystemMatrix::applyT(DeviceVectorView<const Real> dir,
                               DeviceVector<Real>&          out) const
 {
-  if (out.size() != matrix_.cols())
+  if (out.size() != mat_.cols())
   {
-    out.resize(matrix_.cols());
+    out.resize(mat_.cols());
   }
-  applyT(matrix_, direction, out.view());
+  applyT(mat_, dir, out.view());
 }
 
 DeviceCsrAssemblyView CudaSystemMatrix::assemblyView() noexcept
 {
-  return {matrix_.rows(),
-          matrix_.cols(),
-          matrix_.nnz(),
-          matrix_.rowPtrData(),
-          matrix_.colIndData(),
-          matrix_.vals().view()};
+  return {mat_.rows(),
+          mat_.cols(),
+          mat_.nnz(),
+          mat_.rowPtrData(),
+          mat_.colIndData(),
+          mat_.vals().view()};
 }
 
 const DeviceCsrMatrix& CudaSystemMatrix::matrix() const noexcept
 {
-  return matrix_;
+  return mat_;
 }
 
 #if !defined(FEMX_HAS_CUDA)
