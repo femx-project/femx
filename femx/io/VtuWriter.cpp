@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/VtuWriter.hpp>
 
@@ -57,21 +56,21 @@ std::string escapeXml(const std::string& text)
   return out;
 }
 
-int vtkCellType(Element::Shape shape)
+int vtkCellType(ElementShape shape)
 {
   switch (shape)
   {
-  case Element::Shape::Segment:
+  case ElementShape::Segment:
     return 3;
-  case Element::Shape::Triangle:
+  case ElementShape::Triangle:
     return 5;
-  case Element::Shape::Quadrilateral:
+  case ElementShape::Quadrilateral:
     return 9;
-  case Element::Shape::Tetrahedron:
+  case ElementShape::Tetrahedron:
     return 10;
-  case Element::Shape::Hexahedron:
+  case ElementShape::Hexahedron:
     return 12;
-  case Element::Shape::Unknown:
+  case ElementShape::Unknown:
     break;
   }
   throw std::runtime_error("VtuWriter received unsupported elem shape");
@@ -175,17 +174,16 @@ HostVector<int64_t> connectivityVals(const Mesh& mesh)
   Index num_node_ids = 0;
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    num_node_ids += mesh.elem(ie).numNodes();
+    num_node_ids += mesh.elemNumNodes(ie);
   }
 
   HostVector<int64_t> vals;
   vals.reserve(num_node_ids);
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const auto& elem = mesh.elem(ie);
-    for (Index in = 0; in < elem.numNodes(); ++in)
+    for (Index in = 0; in < mesh.elemNumNodes(ie); ++in)
     {
-      vals.push_back(static_cast<int64_t>(elem.nodeIds()[in]));
+      vals.push_back(static_cast<int64_t>(mesh.elemNodeId(ie, in)));
     }
   }
   return vals;
@@ -207,7 +205,7 @@ HostVector<int64_t> offsetVals(const Mesh& mesh)
   int64_t             offset = 0;
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    offset   += static_cast<int64_t>(mesh.elem(ie).numNodes());
+    offset   += static_cast<int64_t>(mesh.elemNumNodes(ie));
     vals[ie]  = offset;
   }
   return vals;
@@ -228,7 +226,7 @@ HostVector<uint8_t> cellTypeVals(const Mesh& mesh)
   HostVector<uint8_t> vals(mesh.numElems());
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    vals[ie] = static_cast<uint8_t>(vtkCellType(mesh.elem(ie).shape()));
+    vals[ie] = static_cast<uint8_t>(vtkCellType(mesh.elemShape(ie)));
   }
   return vals;
 }

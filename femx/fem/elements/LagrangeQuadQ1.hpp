@@ -40,9 +40,9 @@ public:
     return degree;
   }
 
-  ReferenceElement referenceElement() const override
+  ElementShape shape() const override
   {
-    return ReferenceElement::Quadrilateral;
+    return ElementShape::Quadrilateral;
   }
 
   void calcN(const QuadraturePoint& qp,

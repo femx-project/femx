@@ -6,7 +6,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/Vector.hpp>
-#include <femx/fem/ReferenceElement.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {
@@ -29,10 +29,10 @@ class GaussQuadrature
 public:
   GaussQuadrature() = default;
 
-  GaussQuadrature(ReferenceElement            elem,
+  GaussQuadrature(ElementShape                shape,
                   Index                       dim,
                   HostVector<QuadraturePoint> pts)
-    : elem_(elem),
+    : shape_(shape),
       dim_(dim),
       pts_(std::move(pts))
   {
@@ -48,9 +48,9 @@ public:
     return dim_;
   }
 
-  ReferenceElement referenceElement() const
+  ElementShape shape() const
   {
-    return elem_;
+    return shape_;
   }
 
   const QuadraturePoint& operator[](Index iq) const
@@ -58,21 +58,25 @@ public:
     return pts_[iq];
   }
 
-  static GaussQuadrature make(ReferenceElement elem, Index order)
+  static GaussQuadrature make(ElementShape shape, Index order)
   {
-    switch (elem)
+    switch (shape)
     {
-    case ReferenceElement::Segment:
+    case ElementShape::Segment:
       return segment(order);
 
-    case ReferenceElement::Triangle:
+    case ElementShape::Triangle:
       return triangle(order);
 
-    case ReferenceElement::Quadrilateral:
+    case ElementShape::Quadrilateral:
       return quadrilateral(order);
 
-    case ReferenceElement::Tetrahedron:
+    case ElementShape::Tetrahedron:
       return tetrahedron(order);
+
+    case ElementShape::Unknown:
+    case ElementShape::Hexahedron:
+      break;
     }
 
     throw std::runtime_error("Unsupported reference elem");
@@ -85,7 +89,7 @@ public:
     case 1:
     {
       return GaussQuadrature(
-          ReferenceElement::Segment,
+          ElementShape::Segment,
           1,
           {
               QuadraturePoint{{0.0, 0.0, 0.0}, 2.0},
@@ -95,7 +99,7 @@ public:
     case 2:
     {
       return GaussQuadrature(
-          ReferenceElement::Segment,
+          ElementShape::Segment,
           1,
           {
               QuadraturePoint{{-0.5773502691896257, 0.0, 0.0}, 1.0},
@@ -106,7 +110,7 @@ public:
     case 3:
     {
       return GaussQuadrature(
-          ReferenceElement::Segment,
+          ElementShape::Segment,
           1,
           {
               QuadraturePoint{{-0.7745966692414834, 0.0, 0.0}, 5.0 / 9.0},
@@ -127,7 +131,7 @@ public:
     case 1:
     {
       return GaussQuadrature(
-          ReferenceElement::Quadrilateral,
+          ElementShape::Quadrilateral,
           2,
           {
               QuadraturePoint{{0.0, 0.0, 0.0}, 4.0},
@@ -137,7 +141,7 @@ public:
     case 2:
     {
       return GaussQuadrature(
-          ReferenceElement::Quadrilateral,
+          ElementShape::Quadrilateral,
           2,
           {
               QuadraturePoint{{-0.5773502691896257, -0.5773502691896257, 0.0}, 1.0},
@@ -150,7 +154,7 @@ public:
     case 3:
     {
       return GaussQuadrature(
-          ReferenceElement::Quadrilateral,
+          ElementShape::Quadrilateral,
           2,
           {
               QuadraturePoint{{-0.7745966692414834, -0.7745966692414834, 0.0}, 25.0 / 81.0},
@@ -179,7 +183,7 @@ public:
     case 1:
     {
       return GaussQuadrature(
-          ReferenceElement::Triangle,
+          ElementShape::Triangle,
           2,
           {
               QuadraturePoint{{1.0 / 3.0, 1.0 / 3.0, 0.0}, 0.5},
@@ -189,7 +193,7 @@ public:
     case 2:
     {
       return GaussQuadrature(
-          ReferenceElement::Triangle,
+          ElementShape::Triangle,
           2,
           {
               QuadraturePoint{{1.0 / 6.0, 1.0 / 6.0, 0.0}, 1.0 / 6.0},
@@ -210,7 +214,7 @@ public:
     case 1:
     {
       return GaussQuadrature(
-          ReferenceElement::Tetrahedron,
+          ElementShape::Tetrahedron,
           3,
           {
               QuadraturePoint{{0.25, 0.25, 0.25}, 1.0 / 6.0},
@@ -222,7 +226,7 @@ public:
       constexpr Real a = 0.1381966011250105;
       constexpr Real b = 0.5854101966249685;
       return GaussQuadrature(
-          ReferenceElement::Tetrahedron,
+          ElementShape::Tetrahedron,
           3,
           {
               QuadraturePoint{{a, a, a}, 1.0 / 24.0},
@@ -238,8 +242,8 @@ public:
   }
 
 private:
-  ReferenceElement            elem_ = ReferenceElement::Segment;
-  Index                       dim_  = 0;
+  ElementShape                shape_ = ElementShape::Segment;
+  Index                       dim_   = 0;
   HostVector<QuadraturePoint> pts_;
 };
 

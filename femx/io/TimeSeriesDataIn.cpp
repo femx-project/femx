@@ -64,37 +64,37 @@ SeriesPaths seriesPaths(const std::string& path)
   return {root, root + ".h5", root + ".xdmf"};
 }
 
-Element::Shape shapeFromName(const std::string& name)
+ElementShape shapeFromName(const std::string& name)
 {
   if (name == "Triangle")
   {
-    return Element::Shape::Triangle;
+    return ElementShape::Triangle;
   }
   if (name == "Quadrilateral")
   {
-    return Element::Shape::Quadrilateral;
+    return ElementShape::Quadrilateral;
   }
   if (name == "Tetrahedron")
   {
-    return Element::Shape::Tetrahedron;
+    return ElementShape::Tetrahedron;
   }
-  return Element::Shape::Unknown;
+  return ElementShape::Unknown;
 }
 
-Element::Shape inferShape(Index cn,
-                          Index mesh_dim)
+ElementShape inferShape(Index cn,
+                        Index mesh_dim)
 {
   if (cn == 3 && mesh_dim == 2)
   {
-    return Element::Shape::Triangle;
+    return ElementShape::Triangle;
   }
   if (cn == 4 && mesh_dim == 2)
   {
-    return Element::Shape::Quadrilateral;
+    return ElementShape::Quadrilateral;
   }
   if (cn == 4 && mesh_dim == 3)
   {
-    return Element::Shape::Tetrahedron;
+    return ElementShape::Tetrahedron;
   }
   throw std::runtime_error("TimeSeriesDataIn cannot infer mesh elem shape");
 }
@@ -103,7 +103,7 @@ struct XdmfInfo
 {
   HostVector<Real>        times;
   HostVector<std::string> vec_fields;
-  Element::Shape          shape = Element::Shape::Unknown;
+  ElementShape            shape = ElementShape::Unknown;
 };
 
 std::string xmlAttribute(const std::string& text,
@@ -175,9 +175,9 @@ XdmfInfo readXdmfInfo(const std::string& path)
 }
 
 Index meshDim(const HostVector<Real>& geometry,
-              Element::Shape          shape)
+              ElementShape            shape)
 {
-  if (shape == Element::Shape::Tetrahedron)
+  if (shape == ElementShape::Tetrahedron)
   {
     return 3;
   }
@@ -284,7 +284,7 @@ HostVector<Index> readIntDataset(hid_t                file,
   return data;
 }
 
-Mesh readMesh(hid_t file, Element::Shape shape)
+Mesh readMesh(hid_t file, ElementShape shape)
 {
   HostVector<hsize_t> geom_dims;
   const auto          geometry =
@@ -306,7 +306,7 @@ Mesh readMesh(hid_t file, Element::Shape shape)
   const Index elems     = static_cast<Index>(topo_dims[0]);
   const Index cn        = static_cast<Index>(topo_dims[1]);
   const Index dim       = meshDim(geometry, shape);
-  if (shape == Element::Shape::Unknown)
+  if (shape == ElementShape::Unknown)
   {
     shape = inferShape(cn, dim);
   }

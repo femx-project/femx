@@ -2,7 +2,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/io/TimeSeriesDataOut.hpp>
 
@@ -68,9 +67,9 @@ void checkMesh(const Mesh& mesh)
     throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const Index          cn    = mesh.elems().front().numNodes();
-  const Element::Shape shape = mesh.elems().front().shape();
-  if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
+  const Index        cn    = mesh.elemNumNodes(0);
+  const ElementShape shape = mesh.elemShape(0);
+  if (shape != ElementShape::Triangle && shape != ElementShape::Quadrilateral && shape != ElementShape::Tetrahedron)
   {
     throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
@@ -78,8 +77,7 @@ void checkMesh(const Mesh& mesh)
 
   for (Index ie = 1; ie < mesh.numElems(); ++ie)
   {
-    const auto& elem = mesh.elem(ie);
-    if (elem.numNodes() != cn || elem.shape() != shape)
+    if (mesh.elemNumNodes(ie) != cn || mesh.elemShape(ie) != shape)
     {
       throw std::runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
@@ -236,9 +234,9 @@ void writeMesh(hid_t file, const Mesh& mesh)
     throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
   }
 
-  const Index          cn    = mesh.elems().front().numNodes();
-  const Element::Shape shape = mesh.elems().front().shape();
-  if (shape != Element::Shape::Triangle && shape != Element::Shape::Quadrilateral && shape != Element::Shape::Tetrahedron)
+  const Index        cn    = mesh.elemNumNodes(0);
+  const ElementShape shape = mesh.elemShape(0);
+  if (shape != ElementShape::Triangle && shape != ElementShape::Quadrilateral && shape != ElementShape::Tetrahedron)
   {
     throw std::runtime_error(
         "TimeSeriesDataOut supports triangle, quadrilateral, and tetrahedron elems");
@@ -247,12 +245,11 @@ void writeMesh(hid_t file, const Mesh& mesh)
   HostVector<Index> topology(mesh.numElems() * cn);
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const auto& elem = mesh.elem(ie);
-    if (elem.numNodes() != cn || elem.shape() != shape)
+    if (mesh.elemNumNodes(ie) != cn || mesh.elemShape(ie) != shape)
     {
       throw std::runtime_error("TimeSeriesDataOut supports one elem type per mesh");
     }
-    const Index* nids = mesh.elemNodeIds(ie);
+    const auto nids = mesh.elemNodeIds(ie);
     for (Index in = 0; in < cn; ++in)
     {
       topology[ie * cn + in] = nids[in];
@@ -334,14 +331,14 @@ void writeXdmf(const std::string&                         fname,
     {
       throw std::runtime_error("TimeSeriesDataOut needs a non-empty mesh");
     }
-    const Index          cn            = mesh.elems().front().numNodes();
-    const Element::Shape shape         = mesh.elems().front().shape();
-    const char*          topology_type = "Triangle";
-    if (shape == Element::Shape::Quadrilateral)
+    const Index        cn            = mesh.elemNumNodes(0);
+    const ElementShape shape         = mesh.elemShape(0);
+    const char*        topology_type = "Triangle";
+    if (shape == ElementShape::Quadrilateral)
     {
       topology_type = "Quadrilateral";
     }
-    else if (shape == Element::Shape::Tetrahedron)
+    else if (shape == ElementShape::Tetrahedron)
     {
       topology_type = "Tetrahedron";
     }

@@ -225,7 +225,7 @@ void assembleHostElements(
       }
       for (Index in = 0; in < num_nodes; ++in)
       {
-        const Index node = mesh_v.elemNode(ie, in);
+        const Index node = mesh_v.elemNodeId(ie, in);
         for (Index id = 0; id < mesh.dim(); ++id)
         {
           coords_e[in * mesh.dim() + id] = mesh_v.coord(node, id);

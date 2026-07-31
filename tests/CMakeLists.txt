@@ -96,11 +96,11 @@ if(FEMX_HAS_CUDA
                        PROPERTIES LABELS "resolve;cuda;inverse;optional")
 endif()
 
-add_executable(runReferenceElementTests unit/fem/runReferenceElementTests.cpp)
-target_include_directories(runReferenceElementTests
+add_executable(runFiniteElementTests unit/fem/runFiniteElementTests.cpp)
+target_include_directories(runFiniteElementTests
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(runReferenceElementTests PRIVATE femx::femx)
-add_test(NAME ReferenceElementTests COMMAND runReferenceElementTests)
+target_link_libraries(runFiniteElementTests PRIVATE femx::femx)
+add_test(NAME FiniteElementTests COMMAND runFiniteElementTests)
 
 add_executable(runMeshSpaceTests unit/fem/runMeshSpaceTests.cpp)
 target_include_directories(runMeshSpaceTests

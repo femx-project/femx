@@ -20,6 +20,10 @@ MeshView<MemorySpace::Host> Mesh::view() const
   require(elem_offsets_.size() == numElems() + 1
               && elem_offsets_.back() == conn_.size(),
           "Mesh connectivity storage is inconsistent");
+  require(elem_entity_dims_.size() == numElems()
+              && elem_entity_tags_.size() == numElems()
+              && elem_physical_tags_.size() == numElems(),
+          "Mesh element classification storage is inconsistent");
   return {dim_,
           numNodes(),
           numElems(),
@@ -42,7 +46,7 @@ void Mesh::addNode(const Node& node)
 }
 
 void Mesh::addElem(const HostVector<Index>& nids,
-                   Element::Shape           shape,
+                   ElementShape             shape,
                    Index                    edim,
                    Index                    etag,
                    Index                    ptag,
@@ -51,27 +55,25 @@ void Mesh::addElem(const HostVector<Index>& nids,
   require(!nids.empty(),
           "Mesh elements must contain nodes");
 
-  HostVector<Node> elem_nodes;
-  elem_nodes.reserve(nids.size());
   for (Index in : nids)
   {
     require(in >= 0 && in < numNodes(),
             "Mesh element connectivity is out of range");
-    elem_nodes.push_back(node(in));
   }
-  elems_.emplace_back(nids,
-                      std::move(elem_nodes),
-                      shape,
-                      edim,
-                      etag,
-                      ptag,
-                      std::move(pname));
 
   for (Index in : nids)
   {
     conn_.push_back(in);
   }
   elem_offsets_.push_back(conn_.size());
+  elem_shapes_.push_back(shape);
+  elem_entity_dims_.push_back(edim);
+  elem_entity_tags_.push_back(etag);
+  elem_physical_tags_.push_back(ptag);
+  if (!pname.empty())
+  {
+    addPhysicalName(edim, ptag, std::move(pname));
+  }
   max_elem_nodes_ = std::max(max_elem_nodes_, nids.size());
 }
 
@@ -123,7 +125,7 @@ Mesh Mesh::makeStructuredQuad(Index num_x_cells,
       const Index n3 = n0 + nodes_per_row;
       const Index n2 = n3 + 1;
       mesh.addElem({n0, n1, n2, n3},
-                   Element::Shape::Quadrilateral,
+                   ElementShape::Quadrilateral,
                    2,
                    0,
                    0,

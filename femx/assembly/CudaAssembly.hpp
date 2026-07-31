@@ -147,7 +147,7 @@ __global__ void assembleKernel(
   {
     const Index in   = i / mesh.dim();
     const Index d    = i - in * mesh.dim();
-    const Index node = mesh.elemNode(ie, in);
+    const Index node = mesh.elemNodeId(ie, in);
     coords_e[i]      = mesh.coord(node, d);
   }
   for (Index row = tid; row < num_rows; row += stride)

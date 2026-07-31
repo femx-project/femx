@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Moved element connectivity, topology, and classification into `Mesh` flat
+  storage. Use `elemNodeIds`, `elemNodeId`, `elemNode`, `elemShape`, and the
+  element classification accessors directly on `Mesh`.
+- Unified mesh, finite-element, and quadrature topology metadata as
+  `ElementShape`.
+
+### Removed
+
+- Removed the owning `Element` class and the duplicate `ReferenceElement`
+  enumeration.
+
 ## v0.8.1
 
 ### Fixed

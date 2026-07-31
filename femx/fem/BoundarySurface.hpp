@@ -5,7 +5,6 @@
 #include <femx/common/Math.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/common/Vector.hpp>
-#include <femx/fem/Element.hpp>
 #include <femx/fem/Mesh.hpp>
 
 namespace femx
@@ -74,7 +73,7 @@ public:
     return elements_;
   }
 
-  const HostVector<Element::Shape>& elementShapes() const noexcept
+  const HostVector<ElementShape>& elementShapes() const noexcept
   {
     return element_shapes_;
   }
@@ -99,7 +98,7 @@ private:
   HostVector<Index>             mesh_node_ids_;
   HostVector<Point3>            nodes_;
   HostVector<HostVector<Index>> elements_;
-  HostVector<Element::Shape>    element_shapes_;
+  HostVector<ElementShape>      element_shapes_;
   HostVector<Index>             rim_node_ids_;
 };
 

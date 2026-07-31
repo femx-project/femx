@@ -153,7 +153,7 @@ TestOutcome meshProvidesRuntimeAssemblyData()
     status *= view.elemNumNodes(ie) == 4;
     for (Index in = 0; in < 4; ++in)
     {
-      status *= view.elemNode(ie, in) == conn[ie * 4 + in];
+      status *= view.elemNodeId(ie, in) == conn[ie * 4 + in];
     }
   }
 

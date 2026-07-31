@@ -5,7 +5,7 @@
 #include <femx/common/Types.hpp>
 #include <femx/common/View.hpp>
 #include <femx/fem/GaussQuadrature.hpp>
-#include <femx/fem/ReferenceElement.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {
@@ -39,8 +39,8 @@ public:
   /** @brief Return the polynomial order of the elem. */
   virtual Index order() const = 0;
 
-  /** @brief Return the reference elem shape used by this elem. */
-  virtual ReferenceElement referenceElement() const = 0;
+  /** @brief Return the element topology. */
+  virtual ElementShape shape() const = 0;
 
   /**
    * @brief Evaluate shape functions at a reference quadrature point.

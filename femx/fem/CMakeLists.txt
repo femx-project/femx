@@ -22,7 +22,6 @@ target_sources(
          TimeDirichletData.hpp
          BoundarySurface.hpp
          ControlMap.hpp
-         Element.hpp
          DirichletControl.hpp
          MixedFESpace.hpp
          DofMap.hpp
@@ -34,7 +33,6 @@ target_sources(
          GmshReader.hpp
          Mesh.hpp
          ObservationGrid.hpp
-         ReferenceElement.hpp
          TimePointInterpolator.hpp
          VelocityProfile.hpp
          elements/LagrangeQuadQ1.hpp
