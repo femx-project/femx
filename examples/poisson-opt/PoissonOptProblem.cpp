@@ -234,7 +234,7 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
   elem_data_ = makeElementQuadData(
       space_,
       GaussQuadrature::make(
-          fe_.referenceElement(), 2));
+          fe_.shape(), 2));
 
   assm_map_ = assembly::makeAssemblyMap(space_.dofMap());
 

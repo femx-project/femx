@@ -56,7 +56,7 @@ PoissonProblem::PoissonProblem(const Options& opts)
     space_(&mesh_, &fe_)
 {
   space_.setup();
-  elem_data_ = makeElementQuadData(space_, GaussQuadrature::make(fe_.referenceElement(), 2));
+  elem_data_ = makeElementQuadData(space_, GaussQuadrature::make(fe_.shape(), 2));
   assm_map_  = assembly::makeAssemblyMap(space_.dofMap());
 
   DirichletBC boundary;

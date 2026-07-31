@@ -10,43 +10,42 @@ namespace femx::linalg
 namespace
 {
 
-void checkElement(const ElementJacobianView& element)
+void checkElement(const ElementJacobianView& elem)
 {
-  require(element.values.rows() == element.rows.size()
-              && element.values.cols() == element.columns.size()
-              && element.csr_entries.size()
-                     == element.values.rows() * element.values.cols(),
+  require(elem.values.rows() == elem.rows.size()
+              && elem.values.cols() == elem.columns.size()
+              && elem.csr_entries.size()
+                     == elem.values.rows() * elem.values.cols(),
           "Element Jacobian views have incompatible dimensions");
 }
 
-void checkCsrApply(const HostCsrMatrix&       matrix,
-                   HostVectorView<const Real> direction,
+void checkCsrApply(const HostCsrMatrix&       mat,
+                   HostVectorView<const Real> dir,
                    HostVectorView<Real>       out,
-                   bool                       transpose)
+                   bool                       trans)
 {
-  const Index input_size  = transpose ? matrix.rows() : matrix.cols();
-  const Index output_size = transpose ? matrix.cols() : matrix.rows();
-  require(direction.size() == input_size && out.size() == output_size,
+  const Index in_size  = trans ? mat.rows() : mat.cols();
+  const Index out_size = trans ? mat.cols() : mat.rows();
+  require(dir.size() == in_size && out.size() == out_size,
           "Host CSR application vector size mismatch");
-  require(!femx::detail::overlaps(direction, out),
+  require(!femx::detail::overlaps(dir, out),
           "Host CSR application does not support in-place views");
 }
 
-void checkDenseApply(HostMatrixView<const Real> matrix,
-                     HostVectorView<const Real> direction,
+void checkDenseApply(HostMatrixView<const Real> mat,
+                     HostVectorView<const Real> dir,
                      HostVectorView<Real>       out,
-                     bool                       transpose)
+                     bool                       trans)
 {
-  const Index input_size  = transpose ? matrix.rows() : matrix.cols();
-  const Index output_size = transpose ? matrix.cols() : matrix.rows();
-  require(matrix.rows() >= 0 && matrix.cols() >= 0
-              && direction.size() == input_size && out.size() == output_size
-              && (matrix.rows() * matrix.cols() == 0
-                  || matrix.data() != nullptr),
+  const Index in_size  = trans ? mat.rows() : mat.cols();
+  const Index out_size = trans ? mat.cols() : mat.rows();
+  require(mat.rows() >= 0 && mat.cols() >= 0
+              && dir.size() == in_size && out.size() == out_size
+              && (mat.rows() * mat.cols() == 0 || mat.data() != nullptr),
           "Host dense application received incompatible storage");
-  require(!femx::detail::overlaps(direction, out)
-              && !femx::detail::overlaps(matrix.data(),
-                                         matrix.rows() * matrix.cols(),
+  require(!femx::detail::overlaps(dir, out)
+              && !femx::detail::overlaps(mat.data(),
+                                         mat.rows() * mat.cols(),
                                          out.data(),
                                          out.size()),
           "Host dense application does not support aliased output");
@@ -61,13 +60,13 @@ public:
                HostVectorView<const Index> rows) const
   {
     if (layout_id != pattern.layoutId()
-        || constrained_rows.size() != rows.size())
+        || cached_rows.size() != rows.size())
     {
       return false;
     }
     for (Index i = 0; i < rows.size(); ++i)
     {
-      if (constrained_rows[i] != rows[i])
+      if (cached_rows[i] != rows[i])
       {
         return false;
       }
@@ -82,13 +81,13 @@ public:
             "System matrix constraints require a square CSR pattern");
 
     layout_id = pattern.layoutId();
-    constrained_rows.resize(rows.size());
+    cached_rows.resize(rows.size());
     for (Index i = 0; i < rows.size(); ++i)
     {
-      constrained_rows[i] = rows[i];
+      cached_rows[i] = rows[i];
     }
-    diagonal_entries.assign(rows.size(), -1);
-    column_offsets.assign(rows.size() + 1, 0);
+    diag_entries.assign(rows.size(), -1);
+    col_offsets.assign(rows.size() + 1, 0);
     row_to_constraint.assign(pattern.rows(), -1);
 
     for (Index ib = 0; ib < rows.size(); ++ib)
@@ -107,16 +106,16 @@ public:
            entry < pattern.rowPtrData()[row + 1];
            ++entry)
       {
-        const Index column = pattern.colIndData()[entry];
-        const Index ib     = row_to_constraint[column];
+        const Index col = pattern.colIndData()[entry];
+        const Index ib  = row_to_constraint[col];
         if (ib >= 0)
         {
-          ++column_offsets[ib + 1];
-          if (row == column)
+          ++col_offsets[ib + 1];
+          if (row == col)
           {
-            require(diagonal_entries[ib] < 0,
+            require(diag_entries[ib] < 0,
                     "System matrix constrained row has duplicate diagonal entries");
-            diagonal_entries[ib] = entry;
+            diag_entries[ib] = entry;
           }
         }
       }
@@ -124,14 +123,14 @@ public:
 
     for (Index ib = 0; ib < rows.size(); ++ib)
     {
-      require(diagonal_entries[ib] >= 0,
+      require(diag_entries[ib] >= 0,
               "System matrix constrained row has no diagonal entry");
-      column_offsets[ib + 1] += column_offsets[ib];
+      col_offsets[ib + 1] += col_offsets[ib];
     }
 
-    column_entries.resize(column_offsets.back());
-    column_rows.resize(column_offsets.back());
-    HostVector<Index> next = column_offsets;
+    col_entries.resize(col_offsets.back());
+    col_rows.resize(col_offsets.back());
+    HostVector<Index> next = col_offsets;
     for (Index row = 0; row < pattern.rows(); ++row)
     {
       for (Index entry = pattern.rowPtrData()[row];
@@ -141,21 +140,21 @@ public:
         const Index ib = row_to_constraint[pattern.colIndData()[entry]];
         if (ib >= 0)
         {
-          const Index destination     = next[ib]++;
-          column_entries[destination] = entry;
-          column_rows[destination]    = row;
+          const Index dst  = next[ib]++;
+          col_entries[dst] = entry;
+          col_rows[dst]    = row;
         }
       }
     }
   }
 
-  std::uint64_t     layout_id{0};
-  HostVector<Index> constrained_rows;
-  HostVector<Index> diagonal_entries;
-  HostVector<Index> column_offsets;
-  HostVector<Index> column_entries;
-  HostVector<Index> column_rows;
-  HostVector<Index> row_to_constraint;
+  std::uint64_t     layout_id{0};      ///< Cached CSR layout identifier.
+  HostVector<Index> cached_rows;       ///< Cached constrained row indices.
+  HostVector<Index> diag_entries;      ///< CSR diagonal entries by constraint.
+  HostVector<Index> col_offsets;       ///< Constraint column-entry offsets.
+  HostVector<Index> col_entries;       ///< CSR entries in constrained columns.
+  HostVector<Index> col_rows;          ///< Rows of constrained-column entries.
+  HostVector<Index> row_to_constraint; ///< Row-to-constraint mapping.
 };
 
 HostSystemMatrix::HostSystemMatrix(Context<MemorySpace::Host>& ctx) noexcept
@@ -167,75 +166,75 @@ HostSystemMatrix::~HostSystemMatrix() = default;
 
 void HostSystemMatrix::setup(const HostCsrPattern& pattern)
 {
-  if (matrix_.pattern().layoutId() != pattern.layoutId())
+  if (mat_.pattern().layoutId() != pattern.layoutId())
   {
-    matrix_      = HostCsrMatrix(pattern);
+    mat_         = HostCsrMatrix(pattern);
     constraints_ = std::make_unique<ConstraintCache>();
   }
   else
   {
-    ctx_.vectorHandler().zero(matrix_.vals().view());
+    ctx_.vectorHandler().zero(mat_.vals().view());
   }
 }
 
-void HostSystemMatrix::addElement(const ElementJacobianView& element)
+void HostSystemMatrix::addElement(const ElementJacobianView& elem)
 {
-  checkElement(element);
-  for (Index i = 0; i < element.csr_entries.size(); ++i)
+  checkElement(elem);
+  for (Index i = 0; i < elem.csr_entries.size(); ++i)
   {
-    const Index entry = element.csr_entries[i];
-    require(entry >= 0 && entry < matrix_.nnz(),
+    const Index entry = elem.csr_entries[i];
+    require(entry >= 0 && entry < mat_.nnz(),
             "Element Jacobian CSR entry is out of range");
 #pragma omp atomic update
-    matrix_.valsData()[entry] += element.values.data()[i];
+    mat_.valsData()[entry] += elem.values.data()[i];
   }
 }
 
 void HostSystemMatrix::replaceRows(HostVectorView<const Index> rows,
-                                   Real                        diagonal)
+                                   Real                        diag)
 {
   ConstraintCache& cache = constraints(rows);
   for (Index ib = 0; ib < rows.size(); ++ib)
   {
     const Index row = rows[ib];
-    for (Index entry = matrix_.rowPtrData()[row];
-         entry < matrix_.rowPtrData()[row + 1];
+    for (Index entry = mat_.rowPtrData()[row];
+         entry < mat_.rowPtrData()[row + 1];
          ++entry)
     {
-      matrix_.valsData()[entry] = 0.0;
+      mat_.valsData()[entry] = 0.0;
     }
-    matrix_.valsData()[cache.diagonal_entries[ib]] = diagonal;
+    mat_.valsData()[cache.diag_entries[ib]] = diag;
   }
 }
 
 void HostSystemMatrix::eliminateColumns(HostVectorView<const Index> rows,
-                                        HostVectorView<const Real>  values,
+                                        HostVectorView<const Real>  vals,
                                         HostVectorView<Real>        rhs)
 {
-  require(values.size() == rows.size() && rhs.size() == matrix_.rows(),
+  require(vals.size() == rows.size() && rhs.size() == mat_.rows(),
           "System matrix constraint vectors have incompatible dimensions");
   ConstraintCache& cache = constraints(rows);
 
   for (Index ib = 0; ib < rows.size(); ++ib)
   {
-    for (Index i = cache.column_offsets[ib];
-         i < cache.column_offsets[ib + 1];
+    for (Index i = cache.col_offsets[ib];
+         i < cache.col_offsets[ib + 1];
          ++i)
     {
-      const Index row   = cache.column_rows[i];
-      const Index entry = cache.column_entries[i];
+      const Index row   = cache.col_rows[i];
+      const Index entry = cache.col_entries[i];
       if (cache.row_to_constraint[row] < 0)
       {
-        rhs[row] -= matrix_.valsData()[entry] * values[ib];
+        rhs[row] -= mat_.valsData()[entry] * vals[ib];
       }
-      matrix_.valsData()[entry] = 0.0;
+      mat_.valsData()[entry] = 0.0;
     }
   }
 
   replaceRows(rows, 1.0);
   for (Index ib = 0; ib < rows.size(); ++ib)
   {
-    rhs[rows[ib]] = values[ib];
+    rhs[rows[ib]] = vals[ib];
   }
 }
 
@@ -243,79 +242,79 @@ void HostSystemMatrix::finalize()
 {
 }
 
-void HostSystemMatrix::apply(HostVectorView<const Real> direction,
+void HostSystemMatrix::apply(HostVectorView<const Real> dir,
                              HostVector<Real>&          out) const
 {
-  if (out.size() != matrix_.rows())
+  if (out.size() != mat_.rows())
   {
-    out.resize(matrix_.rows());
+    out.resize(mat_.rows());
   }
-  detail::applyHost(matrix_, direction, out.view());
+  detail::applyHost(mat_, dir, out.view());
 }
 
-void HostSystemMatrix::applyT(HostVectorView<const Real> direction,
+void HostSystemMatrix::applyT(HostVectorView<const Real> dir,
                               HostVector<Real>&          out) const
 {
-  if (out.size() != matrix_.cols())
+  if (out.size() != mat_.cols())
   {
-    out.resize(matrix_.cols());
+    out.resize(mat_.cols());
   }
-  detail::applyHostT(matrix_, direction, out.view());
+  detail::applyHostT(mat_, dir, out.view());
 }
 
 const HostCsrMatrix& HostSystemMatrix::matrix() const noexcept
 {
-  return matrix_;
+  return mat_;
 }
 
-void HostSystemMatrix::transpose(const HostCsrMatrix& source,
-                                 HostCsrMatrix&       destination) const
+void HostSystemMatrix::transpose(const HostCsrMatrix& src,
+                                 HostCsrMatrix&       dst) const
 {
-  detail::transposeHostCsr(source, destination);
+  detail::transposeHostCsr(src, dst);
 }
 
-void HostSystemMatrix::apply(const HostCsrMatrix&       matrix,
-                             HostVectorView<const Real> direction,
+void HostSystemMatrix::apply(const HostCsrMatrix&       mat,
+                             HostVectorView<const Real> dir,
                              HostVectorView<Real>       out,
                              Real                       alpha,
                              Real                       beta) const
 {
-  detail::applyHost(matrix, direction, out, alpha, beta);
+  detail::applyHost(mat, dir, out, alpha, beta);
 }
 
-void HostSystemMatrix::applyT(const HostCsrMatrix&       matrix,
-                              HostVectorView<const Real> direction,
+void HostSystemMatrix::applyT(const HostCsrMatrix&       mat,
+                              HostVectorView<const Real> dir,
                               HostVectorView<Real>       out,
                               Real                       alpha,
                               Real                       beta) const
 {
-  detail::applyHostT(matrix, direction, out, alpha, beta);
+  detail::applyHostT(mat, dir, out, alpha, beta);
 }
 
-void HostSystemMatrix::apply(HostMatrixView<const Real> matrix,
-                             HostVectorView<const Real> direction,
+void HostSystemMatrix::apply(HostMatrixView<const Real> mat,
+                             HostVectorView<const Real> dir,
                              HostVectorView<Real>       out,
                              Real                       alpha,
                              Real                       beta) const
 {
-  detail::applyHost(matrix, direction, out, alpha, beta);
+  detail::applyHost(mat, dir, out, alpha, beta);
 }
 
-void HostSystemMatrix::applyT(HostMatrixView<const Real> matrix,
-                              HostVectorView<const Real> direction,
+void HostSystemMatrix::applyT(HostMatrixView<const Real> mat,
+                              HostVectorView<const Real> dir,
                               HostVectorView<Real>       out,
                               Real                       alpha,
                               Real                       beta) const
 {
-  detail::applyHostT(matrix, direction, out, alpha, beta);
+  detail::applyHostT(mat, dir, out, alpha, beta);
 }
 
 HostSystemMatrix::ConstraintCache& HostSystemMatrix::constraints(
     HostVectorView<const Index> rows)
 {
-  if (!constraints_->matches(matrix_.pattern(), rows))
+  if (!constraints_->matches(mat_.pattern(), rows))
   {
-    constraints_->build(matrix_.pattern(), rows);
+    constraints_->build(mat_.pattern(), rows);
   }
   return *constraints_;
 }
@@ -323,123 +322,122 @@ HostSystemMatrix::ConstraintCache& HostSystemMatrix::constraints(
 namespace detail
 {
 
-void applyHost(const HostCsrMatrix&       matrix,
-               HostVectorView<const Real> direction,
+void applyHost(const HostCsrMatrix&       mat,
+               HostVectorView<const Real> dir,
                HostVectorView<Real>       out,
                Real                       alpha,
                Real                       beta)
 {
-  checkCsrApply(matrix, direction, out, false);
-  for (Index row = 0; row < matrix.rows(); ++row)
+  checkCsrApply(mat, dir, out, false);
+  for (Index row = 0; row < mat.rows(); ++row)
   {
-    Real value = 0.0;
-    for (Index entry = matrix.rowPtrData()[row];
-         entry < matrix.rowPtrData()[row + 1];
+    Real val = 0.0;
+    for (Index entry = mat.rowPtrData()[row];
+         entry < mat.rowPtrData()[row + 1];
          ++entry)
     {
-      value += matrix.valsData()[entry]
-               * direction[matrix.colIndData()[entry]];
+      val += mat.valsData()[entry] * dir[mat.colIndData()[entry]];
     }
-    out[row] = alpha * value + beta * out[row];
+    out[row] = alpha * val + beta * out[row];
   }
 }
 
-void applyHostT(const HostCsrMatrix&       matrix,
-                HostVectorView<const Real> direction,
+void applyHostT(const HostCsrMatrix&       mat,
+                HostVectorView<const Real> dir,
                 HostVectorView<Real>       out,
                 Real                       alpha,
                 Real                       beta)
 {
-  checkCsrApply(matrix, direction, out, true);
-  for (Index column = 0; column < matrix.cols(); ++column)
+  checkCsrApply(mat, dir, out, true);
+  for (Index column = 0; column < mat.cols(); ++column)
   {
     out[column] *= beta;
   }
-  for (Index row = 0; row < matrix.rows(); ++row)
+  for (Index row = 0; row < mat.rows(); ++row)
   {
-    const Real value = alpha * direction[row];
-    for (Index entry = matrix.rowPtrData()[row];
-         entry < matrix.rowPtrData()[row + 1];
+    const Real val = alpha * dir[row];
+    for (Index entry = mat.rowPtrData()[row];
+         entry < mat.rowPtrData()[row + 1];
          ++entry)
     {
-      out[matrix.colIndData()[entry]] += matrix.valsData()[entry] * value;
+      out[mat.colIndData()[entry]] += mat.valsData()[entry] * val;
     }
   }
 }
 
-void applyHost(HostMatrixView<const Real> matrix,
-               HostVectorView<const Real> direction,
+void applyHost(HostMatrixView<const Real> mat,
+               HostVectorView<const Real> dir,
                HostVectorView<Real>       out,
                Real                       alpha,
                Real                       beta)
 {
-  checkDenseApply(matrix, direction, out, false);
-  for (Index row = 0; row < matrix.rows(); ++row)
+  checkDenseApply(mat, dir, out, false);
+  for (Index row = 0; row < mat.rows(); ++row)
   {
-    Real value = 0.0;
-    for (Index column = 0; column < matrix.cols(); ++column)
+    Real val = 0.0;
+    for (Index col = 0; col < mat.cols(); ++col)
     {
-      value += matrix(row, column) * direction[column];
+      val += mat(row, col) * dir[col];
     }
-    out[row] = alpha * value + beta * out[row];
+    out[row] = alpha * val + beta * out[row];
   }
 }
 
-void applyHostT(HostMatrixView<const Real> matrix,
-                HostVectorView<const Real> direction,
+void applyHostT(HostMatrixView<const Real> mat,
+                HostVectorView<const Real> dir,
                 HostVectorView<Real>       out,
                 Real                       alpha,
                 Real                       beta)
 {
-  checkDenseApply(matrix, direction, out, true);
-  for (Index column = 0; column < matrix.cols(); ++column)
+  checkDenseApply(mat, dir, out, true);
+  for (Index col = 0; col < mat.cols(); ++col)
   {
-    Real value = 0.0;
-    for (Index row = 0; row < matrix.rows(); ++row)
+    Real val = 0.0;
+    for (Index row = 0; row < mat.rows(); ++row)
     {
-      value += matrix(row, column) * direction[row];
+      val += mat(row, col) * dir[row];
     }
-    out[column] = alpha * value + beta * out[column];
+    out[col] = alpha * val + beta * out[col];
   }
 }
 
-void transposeHostCsr(const HostCsrMatrix& source,
-                      HostCsrMatrix&       destination)
+void transposeHostCsr(const HostCsrMatrix& src,
+                      HostCsrMatrix&       dst)
 {
-  require(&source != &destination,
+  require(&src != &dst,
           "CSR transpose does not support in-place output");
 
-  HostVector<Index> row_offsets(source.cols() + 1, 0);
-  for (Index entry = 0; entry < source.nnz(); ++entry)
+  HostVector<Index> row_offsets(src.cols() + 1, 0);
+  for (Index entry = 0; entry < src.nnz(); ++entry)
   {
-    ++row_offsets[source.colIndData()[entry] + 1];
+    ++row_offsets[src.colIndData()[entry] + 1];
   }
-  for (Index row = 0; row < source.cols(); ++row)
+  for (Index row = 0; row < src.cols(); ++row)
   {
     row_offsets[row + 1] += row_offsets[row];
   }
 
   HostVector<Index> next = row_offsets;
-  HostVector<Index> column_indices(source.nnz());
-  HostVector<Real>  values(source.nnz());
-  for (Index row = 0; row < source.rows(); ++row)
+  HostVector<Index> col_inds(src.nnz());
+  HostVector<Real>  vals(src.nnz());
+  for (Index row = 0; row < src.rows(); ++row)
   {
-    for (Index entry = source.rowPtrData()[row];
-         entry < source.rowPtrData()[row + 1];
+    for (Index entry = src.rowPtrData()[row];
+         entry < src.rowPtrData()[row + 1];
          ++entry)
     {
-      const Index transpose_row         = source.colIndData()[entry];
-      const Index destination_entry     = next[transpose_row]++;
-      column_indices[destination_entry] = row;
-      values[destination_entry]         = source.valsData()[entry];
+      const Index trans_row = src.colIndData()[entry];
+      const Index dst_entry = next[trans_row]++;
+      col_inds[dst_entry]   = row;
+      vals[dst_entry]       = src.valsData()[entry];
     }
   }
 
-  destination        = HostCsrMatrix(HostCsrPattern(source.cols(),
-                                             source.rows(),
-                                             std::move(row_offsets),
-                                             std::move(column_indices)));
-  destination.vals() = values;
+  dst        = HostCsrMatrix(HostCsrPattern(src.cols(),
+                                     src.rows(),
+                                     std::move(row_offsets),
+                                     std::move(col_inds)));
+  dst.vals() = vals;
 }
 
 } // namespace detail

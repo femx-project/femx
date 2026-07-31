@@ -22,6 +22,11 @@ FESpace::FESpace(const Mesh*          mesh,
   {
     throw std::runtime_error("FESpace: invalid component count");
   }
+  if (mesh_->dim() != fe_->dim())
+  {
+    throw std::runtime_error(
+        "FESpace: mesh dimension does not match finite element");
+  }
 }
 
 void FESpace::setup()
@@ -35,14 +40,19 @@ void FESpace::setup()
 
   for (Index ie = 0; ie < num_elem; ++ie)
   {
-    const auto& elem = mesh_->elem(ie);
-    if (elem.numNodes() != fe_->numNodes())
+    if (mesh_->elemNumNodes(ie) != fe_->numNodes())
     {
       throw std::runtime_error(
           "FESpace: finite-element node count does not match mesh element");
     }
+    if (mesh_->elemShape(ie) != ElementShape::Unknown
+        && mesh_->elemShape(ie) != fe_->shape())
+    {
+      throw std::runtime_error(
+          "FESpace: mesh element topology does not match finite element");
+    }
 
-    const Index* conn = mesh_->elemNodeIds(ie);
+    const auto conn = mesh_->elemNodeIds(ie);
     for (Index in = 0; in < num_shapes_per_elem_; ++in)
     {
       for (Index ic = 0; ic < comps_; ++ic)

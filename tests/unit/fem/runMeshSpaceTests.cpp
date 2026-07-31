@@ -65,6 +65,7 @@ TestOutcome structuredQuadMesh()
   status *= mesh.dim() == 2;
   status *= mesh.numNodes() == 6;
   status *= mesh.numElems() == 2;
+  status *= mesh.maxElemNodes() == 4;
 
   status *= pointNear(mesh.node(0), std::array<Real, 3>{{-1.0, 2.0, 0.0}});
   status *= pointNear(mesh.node(1), std::array<Real, 3>{{0.0, 2.0, 0.0}});
@@ -72,11 +73,19 @@ TestOutcome structuredQuadMesh()
   status *= pointNear(mesh.node(3), std::array<Real, 3>{{-1.0, 4.0, 0.0}});
   status *= pointNear(mesh.node(5), std::array<Real, 3>{{1.0, 4.0, 0.0}});
 
-  status *= mesh.elem(0).shape() == Element::Shape::Quadrilateral;
-  status *= mesh.elem(1).shape() == Element::Shape::Quadrilateral;
-  status *= indexValuesEqual(mesh.elem(0).nodeIds(),
+  status *= mesh.elemShape(0) == ElementShape::Quadrilateral;
+  status *= mesh.elemShape(1) == ElementShape::Quadrilateral;
+  status *= mesh.elemNumNodes(0) == 4;
+  status *= mesh.elemNodeId(0, 2) == 4;
+  status *= pointNear(mesh.elemNode(0, 2),
+                      std::array<Real, 3>{{0.0, 4.0, 0.0}});
+  status *= mesh.elemEntityDim(0) == 2;
+  status *= mesh.elemEntityTag(0) == 0;
+  status *= mesh.elemPhysicalTag(0) == 0;
+  status *= mesh.elemPhysicalName(0).empty();
+  status *= indexValuesEqual(HostVector<Index>(mesh.elemNodeIds(0)),
                              std::array<Index, 4>{{0, 1, 4, 3}});
-  status *= indexValuesEqual(mesh.elem(1).nodeIds(),
+  status *= indexValuesEqual(HostVector<Index>(mesh.elemNodeIds(1)),
                              std::array<Index, 4>{{1, 2, 5, 4}});
 
   return status.report();
@@ -103,6 +112,26 @@ TestOutcome scalarFESpaceDofMap()
                              std::array<Index, 4>{{0, 1, 4, 3}});
   status *= indexValuesEqual(space.elemDofs(1),
                              std::array<Index, 4>{{1, 2, 5, 4}});
+
+  return status.report();
+}
+
+TestOutcome classifiedElementMetadata()
+{
+  TestStatus status(__func__);
+
+  Mesh mesh(2);
+  mesh.addNode({0.0, 0.0, 0.0});
+  mesh.addNode({1.0, 0.0, 0.0});
+  mesh.addNode({0.0, 1.0, 0.0});
+  mesh.addElem({0, 1, 2}, ElementShape::Triangle, 2, 11, 7, "fluid");
+
+  status *= mesh.elemShape(0) == ElementShape::Triangle;
+  status *= mesh.elemEntityDim(0) == 2;
+  status *= mesh.elemEntityTag(0) == 11;
+  status *= mesh.elemPhysicalTag(0) == 7;
+  status *= mesh.elemPhysicalName(0) == "fluid";
+  status *= mesh.physicalName(2, 7) == "fluid";
 
   return status.report();
 }
@@ -204,7 +233,7 @@ TestOutcome invalidFESpaceInputs()
   triangle_like.addNode({0.0, 0.0, 0.0});
   triangle_like.addNode({1.0, 0.0, 0.0});
   triangle_like.addNode({0.0, 1.0, 0.0});
-  triangle_like.addElem({0, 1, 2}, Element::Shape::Triangle, 2, 0, 0, {});
+  triangle_like.addElem({0, 1, 2}, ElementShape::Triangle, 2, 0, 0, {});
 
   threw = false;
   try
@@ -288,6 +317,7 @@ int main(int, char**)
   femx::tests::TestingResults results;
 
   results += femx::tests::structuredQuadMesh();
+  results += femx::tests::classifiedElementMetadata();
   results += femx::tests::scalarFESpaceDofMap();
   results += femx::tests::vectorFESpaceDofMap();
   results += femx::tests::variableElementDofMap();

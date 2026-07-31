@@ -33,8 +33,8 @@ public:
 
   Context<MemorySpace::Device>&      context() noexcept override;
   SystemMatrix<MemorySpace::Device>& matrix() noexcept override;
-  void                               solve(ConstView rhs, Vector& solution) override;
-  void                               solveT(ConstView rhs, Vector& solution) override;
+  void                               solve(ConstView rhs, Vector& x) override;
+  void                               solveT(ConstView rhs, Vector& x) override;
 
 private:
   CudaContext                                        ctx_;

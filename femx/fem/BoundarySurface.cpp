@@ -173,8 +173,8 @@ void BoundarySurface::initialize(
     {
       throw std::runtime_error(label + " contains mixed facet dimensions");
     }
-    if (facet.shape != Element::Shape::Segment
-        && facet.shape != Element::Shape::Triangle)
+    if (facet.shape != ElementShape::Segment
+        && facet.shape != ElementShape::Triangle)
     {
       throw std::runtime_error(
           label + " supports only segment and triangle facets");
@@ -209,7 +209,7 @@ void BoundarySurface::findRimNodes()
     HostVector<Index> incidence(numNodes(), 0);
     for (Index ie = 0; ie < numElements(); ++ie)
     {
-      if (element_shapes_[ie] != Element::Shape::Segment
+      if (element_shapes_[ie] != ElementShape::Segment
           || elements_[ie].size() != 2)
       {
         throw std::runtime_error("One-dimensional boundary surface must use segments");
@@ -227,7 +227,7 @@ void BoundarySurface::findRimNodes()
     std::map<std::pair<Index, Index>, Index> edge_counts;
     for (Index ie = 0; ie < numElements(); ++ie)
     {
-      if (element_shapes_[ie] != Element::Shape::Triangle
+      if (element_shapes_[ie] != ElementShape::Triangle
           || elements_[ie].size() != 3)
       {
         throw std::runtime_error("Two-dimensional boundary surface must use triangles");
@@ -275,11 +275,11 @@ BoundaryScalarMatrices BoundarySurface::scalarMatrices() const
 
   for (Index ie = 0; ie < numElements(); ++ie)
   {
-    if (element_shapes_[ie] == Element::Shape::Segment)
+    if (element_shapes_[ie] == ElementShape::Segment)
     {
       assembleSegment(elements_[ie], nodes_, out);
     }
-    else if (element_shapes_[ie] == Element::Shape::Triangle)
+    else if (element_shapes_[ie] == ElementShape::Triangle)
     {
       assembleTriangle(elements_[ie], nodes_, out);
     }

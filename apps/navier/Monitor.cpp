@@ -21,14 +21,14 @@ using namespace io;
 namespace
 {
 
-Real elemMinEdge(const fem::Element& elem)
+Real elemMinEdge(const fem::Mesh& mesh, Index ie)
 {
   Real h = std::numeric_limits<Real>::infinity();
-  for (Index in = 0; in < elem.numNodes(); ++in)
+  for (Index in = 0; in < mesh.elemNumNodes(ie); ++in)
   {
-    for (Index jn = in + 1; jn < elem.numNodes(); ++jn)
+    for (Index jn = in + 1; jn < mesh.elemNumNodes(ie); ++jn)
     {
-      h = std::min(h, distance(elem.node(in), elem.node(jn)));
+      h = std::min(h, distance(mesh.elemNode(ie, in), mesh.elemNode(ie, jn)));
     }
   }
   return std::isfinite(h) ? h : 0.0;
@@ -396,16 +396,15 @@ Real maxVelocityCfl(const fem::MixedFESpace& space,
 
   for (Index ie = 0; ie < space.mesh().numElems(); ++ie)
   {
-    const fem::Element& elem = space.mesh().elem(ie);
-    const Real          h    = elemMinEdge(elem);
+    const Real h = elemMinEdge(space.mesh(), ie);
     if (h <= 0.0)
     {
       continue;
     }
 
-    for (Index in = 0; in < elem.numNodes(); ++in)
+    for (Index in = 0; in < space.mesh().elemNumNodes(ie); ++in)
     {
-      const Index node = elem.nodeIds()[in];
+      const Index node = space.mesh().elemNodeId(ie, in);
       Real        vel2 = 0.0;
       for (Index ic = 0; ic < comps; ++ic)
       {

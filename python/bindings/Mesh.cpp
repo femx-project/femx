@@ -57,17 +57,16 @@ py::array_t<Index> meshElements(const Mesh& mesh)
   {
     return py::array_t<Index>(py::array::ShapeContainer{0, 0});
   }
-  const Index        nodes_per_element = mesh.elems().front().numNodes();
+  const Index        nodes_per_element = mesh.elemNumNodes(0);
   py::array_t<Index> out({mesh.numElems(), nodes_per_element});
   auto               data = out.mutable_unchecked<2>();
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const auto& element = mesh.elem(ie);
-    if (element.numNodes() != nodes_per_element)
+    if (mesh.elemNumNodes(ie) != nodes_per_element)
     {
       throw std::runtime_error("Mesh contains mixed element sizes");
     }
-    const Index* node_ids = mesh.elemNodeIds(ie);
+    const auto node_ids = mesh.elemNodeIds(ie);
     for (Index in = 0; in < nodes_per_element; ++in)
     {
       data(ie, in) = node_ids[in];

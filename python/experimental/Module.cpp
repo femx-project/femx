@@ -21,21 +21,21 @@ using femx::Index;
 using femx::Real;
 using femx::fem::Mesh;
 
-std::string shapeName(femx::fem::Element::Shape shape)
+std::string shapeName(femx::fem::ElementShape shape)
 {
   switch (shape)
   {
-  case femx::fem::Element::Shape::Unknown:
+  case femx::fem::ElementShape::Unknown:
     return "unknown";
-  case femx::fem::Element::Shape::Segment:
+  case femx::fem::ElementShape::Segment:
     return "segment";
-  case femx::fem::Element::Shape::Triangle:
+  case femx::fem::ElementShape::Triangle:
     return "triangle";
-  case femx::fem::Element::Shape::Quadrilateral:
+  case femx::fem::ElementShape::Quadrilateral:
     return "quadrilateral";
-  case femx::fem::Element::Shape::Tetrahedron:
+  case femx::fem::ElementShape::Tetrahedron:
     return "tetrahedron";
-  case femx::fem::Element::Shape::Hexahedron:
+  case femx::fem::ElementShape::Hexahedron:
     return "hexahedron";
   }
   return "unknown";
@@ -94,8 +94,7 @@ py::dict elementShapeCounts(const Mesh& mesh)
   std::map<std::string, Index> counts;
   for (Index ie = 0; ie < mesh.numElems(); ++ie)
   {
-    const auto& elem = mesh.elem(ie);
-    ++counts[shapeName(elem.shape())];
+    ++counts[shapeName(mesh.elemShape(ie))];
   }
 
   py::dict out;

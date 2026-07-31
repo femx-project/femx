@@ -21,7 +21,7 @@ HostElementQuadData makeElementQuadData(
     throw std::runtime_error(
         "Element quadrature data requires an initialized finite-element space");
   }
-  if (finite_element.referenceElement() != quad.referenceElement())
+  if (finite_element.shape() != quad.shape())
   {
     throw std::runtime_error(
         "Finite element and quadrature reference elements do not match");
@@ -46,7 +46,7 @@ HostElementQuadData makeElementQuadData(
       data.num_qpts_ * data.num_shapes_ * data.dim_;
   for (Index ie = 0; ie < data.num_elems_; ++ie)
   {
-    vals.reinit(space.mesh().elem(ie));
+    vals.reinit(space.mesh(), ie);
     std::copy(vals.dNdxData(),
               vals.dNdxData() + gradient_size,
               data.dNdx_.begin() + ie * gradient_size);

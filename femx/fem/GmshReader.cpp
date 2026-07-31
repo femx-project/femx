@@ -37,7 +37,7 @@ struct ElemRecord
   Index             edim  = 0;
   Index             etag  = 0;
   Index             ptag  = 0;
-  Element::Shape    shape = Element::Shape::Unknown;
+  ElementShape      shape = ElementShape::Unknown;
   HostVector<Index> nids;
 };
 
@@ -62,22 +62,22 @@ void expectMarker(std::istream& in, const std::string& exp)
   }
 }
 
-Element::Shape gmshShape(Index elem_type)
+ElementShape gmshShape(Index elem_type)
 {
   switch (elem_type)
   {
   case 1:
-    return Element::Shape::Segment;
+    return ElementShape::Segment;
   case 2:
-    return Element::Shape::Triangle;
+    return ElementShape::Triangle;
   case 3:
-    return Element::Shape::Quadrilateral;
+    return ElementShape::Quadrilateral;
   case 4:
-    return Element::Shape::Tetrahedron;
+    return ElementShape::Tetrahedron;
   case 5:
-    return Element::Shape::Hexahedron;
+    return ElementShape::Hexahedron;
   default:
-    return Element::Shape::Unknown;
+    return ElementShape::Unknown;
   }
 }
 
@@ -309,8 +309,8 @@ void readElemsV2(std::istream&                 input,
       input >> tags[j];
     }
 
-    const Index          num_nodes = gmshNumNodes(elem_type);
-    const Element::Shape shape     = gmshShape(elem_type);
+    const Index        num_nodes = gmshNumNodes(elem_type);
+    const ElementShape shape     = gmshShape(elem_type);
 
     ElemRecord rec;
     rec.edim  = gmshElemDim(elem_type);
@@ -331,7 +331,7 @@ void readElemsV2(std::istream&                 input,
       rec.nids.push_back(node_it->second);
     }
 
-    if (shape != Element::Shape::Unknown && rec.edim > 0)
+    if (shape != ElementShape::Unknown && rec.edim > 0)
     {
       elems.push_back(std::move(rec));
     }
@@ -359,8 +359,8 @@ void readElemsV4(std::istream&                 input,
     Index num_elems_block = 0;
     input >> edim >> etag >> elem_type >> num_elems_block;
 
-    const Index          num_nodes = gmshNumNodes(elem_type);
-    const Element::Shape shape     = gmshShape(elem_type);
+    const Index        num_nodes = gmshNumNodes(elem_type);
+    const ElementShape shape     = gmshShape(elem_type);
 
     for (Index ie = 0; ie < num_elems_block; ++ie)
     {
@@ -386,7 +386,7 @@ void readElemsV4(std::istream&                 input,
         rec.nids.push_back(node_it->second);
       }
 
-      if (shape != Element::Shape::Unknown)
+      if (shape != ElementShape::Unknown)
       {
         elems.push_back(std::move(rec));
       }
@@ -404,12 +404,12 @@ Index meshDim(const HostVector<ElemRecord>& elems)
     const auto& elem = elems[ie];
     switch (elem.shape)
     {
-    case Element::Shape::Triangle:
-    case Element::Shape::Quadrilateral:
+    case ElementShape::Triangle:
+    case ElementShape::Quadrilateral:
       dim = std::max<Index>(dim, 2);
       break;
-    case Element::Shape::Tetrahedron:
-    case Element::Shape::Hexahedron:
+    case ElementShape::Tetrahedron:
+    case ElementShape::Hexahedron:
       dim = std::max<Index>(dim, 3);
       break;
     default:

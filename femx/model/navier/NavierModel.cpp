@@ -26,16 +26,16 @@ std::unique_ptr<fem::FiniteElement> makeElement(const fem::Mesh& mesh)
 {
   require(mesh.numElems() > 0, "Mesh has no elements");
 
-  const fem::Element::Shape shape = mesh.elems().front().shape();
-  if (shape == fem::Element::Shape::Quadrilateral)
+  const fem::ElementShape shape = mesh.elemShape(0);
+  if (shape == fem::ElementShape::Quadrilateral)
   {
     return std::make_unique<fem::LagrangeQuadQ1>();
   }
-  if (shape == fem::Element::Shape::Triangle)
+  if (shape == fem::ElementShape::Triangle)
   {
     return std::make_unique<fem::LagrangeTriangleP1>();
   }
-  if (shape == fem::Element::Shape::Tetrahedron)
+  if (shape == fem::ElementShape::Tetrahedron)
   {
     return std::make_unique<fem::LagrangeTetrahedronP1>();
   }
@@ -91,7 +91,7 @@ fem::GaussQuadrature makeVelocityQuadrature(
     const fem::MixedFESpace& space)
 {
   return fem::GaussQuadrature::make(
-      space.field(0).space().finiteElement().referenceElement(),
+      space.field(0).space().finiteElement().shape(),
       kQuadratureOrder);
 }
 

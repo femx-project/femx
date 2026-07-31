@@ -3,9 +3,10 @@
 #include <cmath>
 #include <stdexcept>
 
-#include <femx/fem/Element.hpp>
+#include <femx/common/Checks.hpp>
 #include <femx/fem/ElementValues.hpp>
 #include <femx/fem/FiniteElement.hpp>
+#include <femx/fem/Mesh.hpp>
 
 namespace femx
 {
@@ -35,9 +36,11 @@ ElementValues::ElementValues(const FiniteElement&   fe,
   calcReferenceValues();
 }
 
-void ElementValues::reinit(const Element& elem)
+void ElementValues::reinit(const Mesh& mesh, Index ie)
 {
-  calcPhysicalValues(elem);
+  require(mesh.elemNumNodes(ie) == num_nodes_,
+          "ElementValues mesh element node count does not match finite element");
+  calcPhysicalValues(mesh, ie);
 }
 
 Index ElementValues::numNodes() const
@@ -135,7 +138,7 @@ void ElementValues::calcReferenceValues()
   }
 }
 
-void ElementValues::calcPhysicalValues(const Element& elem)
+void ElementValues::calcPhysicalValues(const Mesh& mesh, Index ie)
 {
   for (Index iq = 0; iq < num_qpts_; ++iq)
   {
@@ -147,7 +150,7 @@ void ElementValues::calcPhysicalValues(const Element& elem)
     {
       for (Index id = 0; id < dim_; ++id)
       {
-        const Real x = elem.node(in)[id];
+        const Real x = mesh.elemNode(ie, in)[id];
 
         for (Index jd = 0; jd < dim_; ++jd)
         {

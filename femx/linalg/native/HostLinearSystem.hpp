@@ -36,8 +36,8 @@ public:
 
   Context<MemorySpace::Host>&      context() noexcept override;
   SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
-  void                             solve(ConstView rhs, Vector& solution) override;
-  void                             solveT(ConstView rhs, Vector& solution) override;
+  void                             solve(ConstView rhs, Vector& x) override;
+  void                             solveT(ConstView rhs, Vector& x) override;
 
 private:
   HostContext                                      ctx_;

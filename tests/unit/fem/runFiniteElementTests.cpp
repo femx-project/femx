@@ -104,7 +104,7 @@ Real quadratureWeightSum(const GaussQuadrature& quad)
   return total;
 }
 
-TestOutcome ElementQuadDataMapsToPhysicalSpace()
+TestOutcome elementQuadDataMapsToPhysicalSpace()
 {
   TestStatus status(__func__);
 
@@ -115,7 +115,7 @@ TestOutcome ElementQuadDataMapsToPhysicalSpace()
 
   const auto data = makeElementQuadData(
       space,
-      GaussQuadrature::make(ReferenceElement::Quadrilateral, 2));
+      GaussQuadrature::make(ElementShape::Quadrilateral, 2));
   const auto view = data.view();
 
   status *= data.numElems() == 1;
@@ -157,7 +157,7 @@ TestOutcome elementMetadata()
   status *= tri.numNodes() == 3;
   status *= tri.numDofsPerElement() == 3;
   status *= tri.order() == 1;
-  status *= tri.referenceElement() == ReferenceElement::Triangle;
+  status *= tri.shape() == ElementShape::Triangle;
 
   LagrangeQuadQ1 quad;
   status *= quad.name() == "LagrangeQuadQ1";
@@ -165,7 +165,7 @@ TestOutcome elementMetadata()
   status *= quad.numNodes() == 4;
   status *= quad.numDofsPerElement() == 4;
   status *= quad.order() == 1;
-  status *= quad.referenceElement() == ReferenceElement::Quadrilateral;
+  status *= quad.shape() == ElementShape::Quadrilateral;
 
   LagrangeTetrahedronP1 tet;
   status *= tet.name() == "LagrangeTetrahedronP1";
@@ -173,7 +173,7 @@ TestOutcome elementMetadata()
   status *= tet.numNodes() == 4;
   status *= tet.numDofsPerElement() == 4;
   status *= tet.order() == 1;
-  status *= tet.referenceElement() == ReferenceElement::Tetrahedron;
+  status *= tet.shape() == ElementShape::Tetrahedron;
 
   return status.report();
 }
@@ -274,29 +274,29 @@ TestOutcome quadratureIntegratesConstants()
 {
   TestStatus status(__func__);
 
-  const GaussQuadrature segment = GaussQuadrature::make(ReferenceElement::Segment, 3);
+  const GaussQuadrature segment = GaussQuadrature::make(ElementShape::Segment, 3);
 
-  status *= segment.referenceElement() == ReferenceElement::Segment;
+  status *= segment.shape() == ElementShape::Segment;
   status *= segment.dim() == 1;
   status *= segment.size() == 3;
   status *= near(quadratureWeightSum(segment), 2.0);
 
-  const GaussQuadrature triangle = GaussQuadrature::make(ReferenceElement::Triangle, 2);
+  const GaussQuadrature triangle = GaussQuadrature::make(ElementShape::Triangle, 2);
 
-  status *= triangle.referenceElement() == ReferenceElement::Triangle;
+  status *= triangle.shape() == ElementShape::Triangle;
   status *= triangle.dim() == 2;
   status *= triangle.size() == 3;
   status *= near(quadratureWeightSum(triangle), 0.5);
 
-  const GaussQuadrature quad = GaussQuadrature::make(ReferenceElement::Quadrilateral, 2);
+  const GaussQuadrature quad = GaussQuadrature::make(ElementShape::Quadrilateral, 2);
 
-  status *= quad.referenceElement() == ReferenceElement::Quadrilateral;
+  status *= quad.shape() == ElementShape::Quadrilateral;
   status *= quad.dim() == 2;
   status *= quad.size() == 4;
   status *= near(quadratureWeightSum(quad), 4.0);
 
-  const GaussQuadrature tet  = GaussQuadrature::make(ReferenceElement::Tetrahedron, 2);
-  status                    *= tet.referenceElement() == ReferenceElement::Tetrahedron;
+  const GaussQuadrature tet  = GaussQuadrature::make(ElementShape::Tetrahedron, 2);
+  status                    *= tet.shape() == ElementShape::Tetrahedron;
   status                    *= tet.dim() == 3;
   status                    *= tet.size() == 4;
   status                    *= near(quadratureWeightSum(tet), 1.0 / 6.0);
@@ -304,7 +304,7 @@ TestOutcome quadratureIntegratesConstants()
   bool threw = false;
   try
   {
-    GaussQuadrature::make(ReferenceElement::Triangle, 3);
+    GaussQuadrature::make(ElementShape::Triangle, 3);
   }
   catch (const std::runtime_error&)
   {
@@ -328,7 +328,7 @@ int main(int, char**)
   results += femx::tests::quadQ1ShapeFunctions();
   results += femx::tests::tetrahedronP1ShapeFunctions();
   results += femx::tests::quadratureIntegratesConstants();
-  results += femx::tests::ElementQuadDataMapsToPhysicalSpace();
+  results += femx::tests::elementQuadDataMapsToPhysicalSpace();
 
   return results.summary();
 }

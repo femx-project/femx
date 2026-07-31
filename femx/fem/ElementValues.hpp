@@ -9,9 +9,9 @@ namespace femx
 namespace fem
 {
 
-class Element;
 class FiniteElement;
 class GaussQuadrature;
+class Mesh;
 
 /**
  * @brief Shape values, physical gradients, and weights for one element.
@@ -33,8 +33,13 @@ public:
   ElementValues(const FiniteElement&   finite_element,
                 const GaussQuadrature& quad);
 
-  /** @brief Recompute physical values for an element instance. */
-  void reinit(const Element& elem);
+  /**
+   * @brief Recompute physical values for one mesh element.
+   *
+   * @param[in] mesh - Mesh containing the element.
+   * @param[in] ie - Element index.
+   */
+  void reinit(const Mesh& mesh, Index ie);
 
   Index numNodes() const;
   Index numDofs() const;
@@ -55,7 +60,7 @@ public:
 
 private:
   void calcReferenceValues();
-  void calcPhysicalValues(const Element& elem);
+  void calcPhysicalValues(const Mesh& mesh, Index ie);
 
   static Real invJacobian(const HostVector<Real>& J,
                           HostVector<Real>&       invJ,

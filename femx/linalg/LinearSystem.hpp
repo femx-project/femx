@@ -30,17 +30,17 @@ public:
    * @brief Solve the assembled system.
    *
    * @param[in] rhs - Right-hand side view.
-   * @param[out] solution - Solution vector.
+   * @param[out] x - Solution vector.
    */
-  virtual void solve(ConstView rhs, Vector& solution) = 0;
+  virtual void solve(ConstView rhs, Vector& x) = 0;
 
   /**
    * @brief Solve the transposed assembled system.
    *
    * @param[in] rhs - Right-hand side view.
-   * @param[out] solution - Solution vector.
+   * @param[out] x - Solution vector.
    */
-  virtual void solveT(ConstView rhs, Vector& solution) = 0;
+  virtual void solveT(ConstView rhs, Vector& x) = 0;
 };
 
 } // namespace femx::linalg

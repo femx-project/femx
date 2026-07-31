@@ -70,13 +70,13 @@ Mesh makeBoundaryMesh()
                          1,
                          7,
                          "left",
-                         Element::Shape::Segment,
+                         ElementShape::Segment,
                          HostVector<Index>{0, 2}});
   mesh.addBoundaryFacet({1,
                          2,
                          8,
                          "right",
-                         Element::Shape::Segment,
+                         ElementShape::Segment,
                          HostVector<Index>{1, 3}});
   return mesh;
 }
@@ -92,13 +92,13 @@ Mesh makeBoundaryLineMesh()
                          1,
                          4,
                          "inlet",
-                         Element::Shape::Segment,
+                         ElementShape::Segment,
                          HostVector<Index>{0, 1}});
   mesh.addBoundaryFacet({1,
                          2,
                          4,
                          "inlet",
-                         Element::Shape::Segment,
+                         ElementShape::Segment,
                          HostVector<Index>{1, 2}});
   return mesh;
 }
@@ -120,7 +120,7 @@ Mesh makeBoundaryTriangleMesh()
                            i + 1,
                            4,
                            "inlet",
-                           Element::Shape::Triangle,
+                           ElementShape::Triangle,
                            facets[i]});
   }
   return mesh;
