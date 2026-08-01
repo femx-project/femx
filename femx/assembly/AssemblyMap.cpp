@@ -9,7 +9,6 @@
 #include <femx/common/Checks.hpp>
 #include <femx/fem/DofMap.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -199,9 +198,9 @@ HostAssemblyMap makeAssemblyMap(const fem::DofMap& dof_map)
   return makeAssemblyMap(dof_map, dof_map);
 }
 
-void copy(const HostAssemblyMap& src,
-          DeviceAssemblyMap&     dst,
-          linalg::CudaContext&   ctx)
+void copy(const HostAssemblyMap&                src,
+          DeviceAssemblyMap&                    dst,
+          linalg::Context<MemorySpace::Device>& ctx)
 {
   auto&               vec_handler = ctx.vectorHandler();
   DeviceVector<Index> res_offsets;

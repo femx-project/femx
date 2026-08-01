@@ -900,7 +900,8 @@ public:
   }
 
   std::unique_ptr<femx::inverse::DeviceTimeObservationOperator>
-  copyToDevice(femx::linalg::CudaContext& ctx) const override
+  copyToDevice(
+      femx::linalg::Context<femx::MemorySpace::Device>& ctx) const override
   {
     return interpolator_.copyToDevice(ctx);
   }
@@ -1086,8 +1087,8 @@ public:
 private:
   femx::linalg::CudaLinearSystem
       system_; ///< Device linear system.
-  femx::model::navier::DeviceNavierResidual
-      navier_; ///< Device Navier-Stokes residual.
+  femx::model::navier::CudaNavierResidual
+      navier_; ///< CUDA Navier-Stokes residual.
   femx::assembly::DeviceConstrainedTimeResidual
                                     res_;   ///< Constrained Device residual.
   femx::state::DeviceTimeIntegrator integ_; ///< Device time integrator.

@@ -26,9 +26,9 @@ void validateTimeContext(const state::DeviceTimeContext& time,
 
 } // namespace
 
-DeviceNavierResidual::DeviceNavierResidual(
-    const NavierModel&   model,
-    linalg::CudaContext& ctx)
+CudaNavierResidual::CudaNavierResidual(
+    const NavierModel&                    model,
+    linalg::Context<MemorySpace::Device>& ctx)
   : num_steps_(model.numSteps()),
     h_pattern_(model.assemblyMap().pattern())
 {
@@ -37,7 +37,7 @@ DeviceNavierResidual::DeviceNavierResidual(
   kernel_ = DeviceNavierElementKernel(elem_data_.view(), model.fluid(), model.dt());
 }
 
-state::TimeDims DeviceNavierResidual::dims() const
+state::TimeDims CudaNavierResidual::dims() const
 {
   return {num_steps_,
           assm_map_.numStates(),
@@ -46,12 +46,12 @@ state::TimeDims DeviceNavierResidual::dims() const
           kNumHist};
 }
 
-const HostCsrPattern& DeviceNavierResidual::hostPattern() const
+const HostCsrPattern& CudaNavierResidual::hostPattern() const
 {
   return h_pattern_;
 }
 
-void DeviceNavierResidual::initialState(
+void CudaNavierResidual::initialState(
     ConstView prm,
     Vec&      out,
     Ctx&      base_ctx) const
@@ -61,7 +61,7 @@ void DeviceNavierResidual::initialState(
   ctx.vectorHandler().assign(out, assm_map_.numStates(), 0);
 }
 
-void DeviceNavierResidual::assembleNext(
+void CudaNavierResidual::assembleNext(
     const StepCtx& time,
     Vec&           res,
     Jac&           base_jac,
@@ -88,7 +88,7 @@ void DeviceNavierResidual::assembleNext(
                        ctx);
 }
 
-void DeviceNavierResidual::applyJacT(
+void CudaNavierResidual::applyJacT(
     const StepCtx&       time,
     state::VariableBlock with_respect_to,
     ConstView            adj,

@@ -38,7 +38,7 @@ public:
   /**
    * @brief Return the owned CUDA vector operations.
    */
-  CudaVectorHandler& vectorHandler() noexcept override;
+  VectorHandler<MemorySpace::Device>& vectorHandler() noexcept override;
 
   /**
    * @brief Return the full Device element range.

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <femx/common/Checks.hpp>
-#include <femx/common/Cuda.hpp>
+#include <femx/common/Device.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/common/View.hpp>
 
@@ -68,7 +68,7 @@ public:
    * @throws - If the view size is negative.
    */
   template <class U>
-  Vector(VectorView<MemorySpace::Host, U> view)
+  Vector(HostVectorView<U> view)
   {
     assign(view);
   }
@@ -101,7 +101,7 @@ public:
    * @throws - If the view size is negative.
    */
   template <class U>
-  Vector& operator=(VectorView<MemorySpace::Host, U> view)
+  Vector& operator=(HostVectorView<U> view)
   {
     assign(view);
     return *this;
@@ -305,7 +305,7 @@ public:
   /**
    * @brief Return a mutable view of the stored values.
    */
-  VectorView<MemorySpace::Host, T> view() noexcept
+  HostVectorView<T> view() noexcept
   {
     return {data(), size()};
   }
@@ -313,7 +313,7 @@ public:
   /**
    * @brief Return a read-only view of the stored values.
    */
-  VectorView<MemorySpace::Host, const T> view() const noexcept
+  HostVectorView<const T> view() const noexcept
   {
     return {data(), size()};
   }
@@ -326,7 +326,7 @@ private:
   }
 
   template <class U>
-  void assign(VectorView<MemorySpace::Host, U> view)
+  void assign(HostVectorView<U> view)
   {
     vals_.resize(checkedSize(view.size()));
     for (Index i = 0; i < view.size(); ++i)
@@ -339,11 +339,10 @@ private:
 };
 
 /**
- * @brief Own a move-only contiguous CUDA Device allocation.
+ * @brief Own a move-only contiguous Device allocation.
  *
  * Resizing replaces the allocation and invalidates all views and borrowed
- * pointers. Host access requires an explicit `CudaVectorHandler::copy()`
- * operation.
+ * pointers. Host access requires an explicit Device vector copy operation.
  */
 template <class T>
 class Vector<MemorySpace::Device, T>
@@ -360,7 +359,7 @@ public:
    * @brief Construct a zeroed Device vector.
    *
    * @param[in] size - Number of values.
-   * @throws - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a Device operation fails.
    */
   explicit Vector(Index size)
   {
@@ -397,7 +396,7 @@ public:
    * @brief Replace storage with a zeroed Device allocation.
    *
    * @param[in] size - New number of values.
-   * @throws - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a Device operation fails.
    */
   void resize(Index size)
   {
@@ -405,22 +404,21 @@ public:
     T* replacement = nullptr;
     if (size > 0)
     {
-      replacement = static_cast<T*>(cuda::allocate(bytesFor(size)));
+      replacement = static_cast<T*>(device::allocate(bytesFor(size)));
       try
       {
-        cuda::zero(replacement, bytesFor(size));
-        // The context-free memset runs on the default stream. CudaContext uses
-        // a non-blocking stream, so make initialization complete before the
-        // replacement pointer becomes visible to work on another stream.
-        cuda::sync(nullptr);
+        device::zero(replacement, bytesFor(size));
+        // Context-free initialization runs on the backend's default stream.
+        // Complete it before exposing the pointer to another stream.
+        device::sync(nullptr);
       }
       catch (...)
       {
-        cuda::release(replacement);
+        device::release(replacement);
         throw;
       }
     }
-    cuda::release(data_);
+    device::release(data_);
     data_ = replacement;
     size_ = size;
   }
@@ -430,7 +428,7 @@ public:
    *
    * @param[in] size - New number of values.
    * @param[in] val - Value assigned to every entry.
-   * @throws - If `size` is negative or a CUDA operation fails.
+   * @throws - If `size` is negative or a Device operation fails.
    */
   void assign(Index size, const T& val)
   {
@@ -438,22 +436,21 @@ public:
     T* replacement = nullptr;
     if (size > 0)
     {
-      replacement = static_cast<T*>(cuda::allocate(bytesFor(size)));
+      replacement = static_cast<T*>(device::allocate(bytesFor(size)));
       try
       {
-        cuda::fill(replacement, size, val);
-        // The context-free fill runs on the default stream. CudaContext uses
-        // a non-blocking stream, so make initialization complete before the
-        // replacement pointer becomes visible to work on another stream.
-        cuda::sync(nullptr);
+        device::fill(replacement, size, val);
+        // Context-free initialization runs on the backend's default stream.
+        // Complete it before exposing the pointer to another stream.
+        device::sync(nullptr);
       }
       catch (...)
       {
-        cuda::release(replacement);
+        device::release(replacement);
         throw;
       }
     }
-    cuda::release(data_);
+    device::release(data_);
     data_ = replacement;
     size_ = size;
   }
@@ -463,7 +460,7 @@ public:
    */
   void clear() noexcept
   {
-    cuda::release(data_);
+    device::release(data_);
     data_ = nullptr;
     size_ = 0;
   }
@@ -503,7 +500,7 @@ public:
   /**
    * @brief Return a mutable Device view of the allocation.
    */
-  VectorView<MemorySpace::Device, T> view() noexcept
+  DeviceVectorView<T> view() noexcept
   {
     return {data_, size_};
   }
@@ -511,7 +508,7 @@ public:
   /**
    * @brief Return a read-only Device view of the allocation.
    */
-  VectorView<MemorySpace::Device, const T> view() const noexcept
+  DeviceVectorView<const T> view() const noexcept
   {
     return {data_, size_};
   }

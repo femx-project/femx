@@ -8,8 +8,8 @@
 #include <femx/fem/TimePointInterpolator.hpp>
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -18,7 +18,7 @@ namespace tests
 namespace
 {
 
-using fem::DeviceTimePointInterpolator;
+using fem::CudaTimePointInterpolator;
 using fem::TimePointInterpolator;
 
 class InterpolatorFixture
@@ -132,13 +132,13 @@ TestOutcome cudaObserveAndTransposeMatchHost()
   op.observe(0, state, prm, expected_obs);
   op.applyStateJacT(0, state, prm, dir, expected_trans);
 
-  linalg::CudaContext         ctx;
-  auto&                       vec_handler = ctx.vectorHandler();
-  DeviceTimePointInterpolator d_op;
-  DeviceVector<Real>          d_state;
-  DeviceVector<Real>          d_dir;
-  DeviceVector<Real>          d_obs(op.numObservations());
-  DeviceVector<Real>          d_trans(op.numStates());
+  linalg::CudaContext       ctx;
+  auto&                     vec_handler = ctx.vectorHandler();
+  CudaTimePointInterpolator d_op;
+  DeviceVector<Real>        d_state;
+  DeviceVector<Real>        d_dir;
+  DeviceVector<Real>        d_obs(op.numObservations());
+  DeviceVector<Real>        d_trans(op.numStates());
 
   fem::copy(op, d_op, ctx);
   vec_handler.copy(state, d_state);

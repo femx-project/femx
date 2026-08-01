@@ -7,7 +7,7 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonProblem.hpp"
 #include "PoissonResidual.hpp"
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/state/StateSolver.hpp>
 
@@ -55,7 +55,7 @@ Real solveDevice(const ExampleHelper&  helper,
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  DevicePoissonResidual          res(problem, ctx);
+  CudaPoissonResidual            res(problem, ctx);
   state::DeviceLinearStateSolver state_solver(res, system);
 
   DeviceVector<Real> d_x;

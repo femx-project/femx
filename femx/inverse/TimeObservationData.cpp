@@ -10,7 +10,7 @@
 #include <femx/inverse/TimeObservationData.hpp>
 #include <femx/inverse/TimeObservationOperator.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/host/HostContext.hpp>
 #include <femx/state/TimeTrajectory.hpp>
 using namespace femx::state;
 

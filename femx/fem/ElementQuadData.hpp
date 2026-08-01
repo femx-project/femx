@@ -3,7 +3,6 @@
 #include <femx/common/Types.hpp>
 #include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -38,11 +37,11 @@ HostElementQuadData makeElementQuadData(
  *
  * @param[in]     src - Host data kept alive while copies are queued.
  * @param[out]    dst - Device data replaced by the copy.
- * @param[in,out] ctx - CUDA execution context receiving the copies.
+ * @param[in,out] ctx - Device execution context receiving the copies.
  */
-void copy(const HostElementQuadData& src,
-          DeviceElementQuadData&     dst,
-          linalg::CudaContext&       ctx);
+void copy(const HostElementQuadData&            src,
+          DeviceElementQuadData&                dst,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 /**
  * @brief Provide non-owning access to element quadrature data.
@@ -260,9 +259,9 @@ private:
       const FESpace&         space,
       const GaussQuadrature& quad);
 
-  friend void copy(const HostElementQuadData& src,
-                   DeviceElementQuadData&     dst,
-                   linalg::CudaContext&       ctx);
+  friend void copy(const HostElementQuadData&            src,
+                   DeviceElementQuadData&                dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   Index               num_elems_{0};  ///< Number of elements.
   Index               num_qpts_{0};   ///< Quadrature points per element.
@@ -273,9 +272,9 @@ private:
   Vector<Space, Real> JxW_;           ///< Weighted Jacobian determinants.
 };
 
-inline void copy(const HostElementQuadData& src,
-                 DeviceElementQuadData&     dst,
-                 linalg::CudaContext&       ctx)
+inline void copy(const HostElementQuadData&            src,
+                 DeviceElementQuadData&                dst,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
   auto& vec_handler = ctx.vectorHandler();
   dst.num_elems_    = src.num_elems_;

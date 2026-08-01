@@ -59,7 +59,7 @@ public:
 private:
   friend void copy(const BoundaryMap<MemorySpace::Host>& source,
                    BoundaryMap<MemorySpace::Device>&     destination,
-                   linalg::CudaContext&                  ctx);
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   Vector<Space, Index> constrained_rows_; ///< Constrained row indices.
 };
@@ -79,11 +79,11 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& rows);
  *
  * @param[in]  source - Host boundary map.
  * @param[out] destination - Replaced Device boundary map.
- * @param[in]  ctx - CUDA context used for the asynchronous copy.
+ * @param[in]  ctx - Device context used for the asynchronous copy.
  */
-void copy(const HostBoundaryMap& source,
-          DeviceBoundaryMap&     destination,
-          linalg::CudaContext&   ctx);
+void copy(const HostBoundaryMap&                source,
+          DeviceBoundaryMap&                    destination,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 /**
  * @brief Apply Dirichlet conditions to a Host residual.

@@ -2,7 +2,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/HostVectorHandler.hpp>
+#include <femx/linalg/host/HostVectorHandler.hpp>
 
 namespace femx::linalg
 {
@@ -16,7 +16,7 @@ public:
   /**
    * @brief Return the owned Host vector operations.
    */
-  HostVectorHandler& vectorHandler() noexcept override
+  VectorHandler<MemorySpace::Host>& vectorHandler() noexcept override
   {
     return vec_handler_;
   }

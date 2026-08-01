@@ -79,7 +79,7 @@ private:
 };
 
 /** @brief Own Device data and assemble the Poisson residual with CUDA. */
-class DevicePoissonResidual final : public state::DeviceResidual
+class CudaPoissonResidual final : public state::DeviceResidual
 {
 public:
   /**
@@ -88,8 +88,8 @@ public:
    * @param[in] problem - Source Host problem.
    * @param[in,out] ctx - CUDA context receiving the copies.
    */
-  DevicePoissonResidual(const PoissonProblem& problem,
-                        linalg::CudaContext&  ctx);
+  CudaPoissonResidual(const PoissonProblem& problem,
+                      linalg::CudaContext&  ctx);
 
   /** @brief Return the state, parameter, and residual dimensions. */
   state::Dimensions dims() const override;

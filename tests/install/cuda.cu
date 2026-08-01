@@ -1,5 +1,7 @@
 #include <cuda_runtime.h>
 
+#include <femx/common/Vector.hpp>
+
 namespace
 {
 
@@ -12,20 +14,29 @@ __global__ void setValue(int* value)
 
 int main()
 {
-  int* value = nullptr;
-  if (cudaMallocManaged(&value, sizeof(int)) != cudaSuccess)
+  int device_count = 0;
+  if (cudaGetDeviceCount(&device_count) != cudaSuccess || device_count == 0)
   {
-    return 1;
+    cudaGetLastError();
+    return 0;
   }
 
-  setValue<<<1, 1>>>(value);
+  femx::DeviceVector<int> value(1);
+
+  setValue<<<1, 1>>>(value.data());
   if (cudaDeviceSynchronize() != cudaSuccess)
   {
-    cudaFree(value);
     return 1;
   }
 
-  const int result = *value;
-  cudaFree(value);
+  int result = 0;
+  if (cudaMemcpy(&result,
+                 value.data(),
+                 sizeof(result),
+                 cudaMemcpyDeviceToHost)
+      != cudaSuccess)
+  {
+    return 1;
+  }
   return result == 1 ? 0 : 1;
 }

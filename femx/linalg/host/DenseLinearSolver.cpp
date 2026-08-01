@@ -4,7 +4,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
+#include <femx/linalg/host/DenseLinearSolver.hpp>
 
 namespace femx::linalg
 {

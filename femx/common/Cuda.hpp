@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstddef>
-
 #include <femx/common/Types.hpp>
 
 #if defined(__CUDACC__)
@@ -29,43 +27,8 @@ inline unsigned int numBlocks(Index        work_items,
   return static_cast<unsigned int>((count + threads - 1) / threads);
 }
 
-void* allocate(std::size_t bytes);
-void  release(void* ptr) noexcept;
-
-void copy(void*       dst,
-          MemorySpace dst_memspace,
-          const void* src,
-          MemorySpace src_memspace,
-          std::size_t bytes,
-          void*       stream = nullptr);
-
-void zero(void* ptr, std::size_t bytes, void* stream = nullptr);
-
-/**
- * @brief Fill Device values with one scalar value.
- *
- * @param[out] ptr - Device values to replace.
- * @param[in]  size - Number of values.
- * @param[in]  val - Value assigned to every entry.
- * @param[in]  stream - CUDA stream, or `nullptr` for the default stream.
- * @throws - If a CUDA operation fails.
- */
-void fill(Real* ptr, Index size, Real val, void* stream = nullptr);
-
-/**
- * @brief Fill Device index values with one scalar value.
- *
- * @param[out] ptr - Device values to replace.
- * @param[in]  size - Number of values.
- * @param[in]  val - Value assigned to every entry.
- * @param[in]  stream - CUDA stream, or `nullptr` for the default stream.
- * @throws - If a CUDA operation fails.
- */
-void fill(Index* ptr, Index size, Index val, void* stream = nullptr);
-
 void* createStream();
 void  destroyStream(void* stream) noexcept;
-void  sync(void* stream);
 void  checkLastError();
 
 } // namespace femx::cuda

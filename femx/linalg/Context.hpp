@@ -2,8 +2,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/View.hpp>
-#include <femx/linalg/cuda/CudaVectorHandler.hpp>
-#include <femx/linalg/native/HostVectorHandler.hpp>
+#include <femx/linalg/VectorHandler.hpp>
 
 namespace femx::linalg
 {
@@ -35,7 +34,7 @@ public:
   /**
    * @brief Return the owned Host vector operations.
    */
-  virtual HostVectorHandler& vectorHandler() noexcept = 0;
+  virtual VectorHandler<MemorySpace::Host>& vectorHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.
@@ -93,9 +92,9 @@ public:
   virtual ~Context() = default;
 
   /**
-   * @brief Return the owned CUDA vector operations.
+   * @brief Return the owned Device vector operations.
    */
-  virtual CudaVectorHandler& vectorHandler() noexcept = 0;
+  virtual VectorHandler<MemorySpace::Device>& vectorHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.

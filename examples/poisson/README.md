@@ -45,11 +45,11 @@ From the build directory:
 
 All variants build the finite-element operator through `Mesh`,
 `AssemblyMap`, `BoundaryMap`, and memory-space-specific CSR storage. The
-default executable uses the native dense fallback to solve that assembled CSR
+default executable uses the Host dense fallback to solve that assembled CSR
 system and does not require optional solver packages.
 
 `PoissonProblem` constructs the mesh and finite-element data.
-`HostPoissonResidual` uses that data directly, while `DevicePoissonResidual`
+`HostPoissonResidual` uses that data directly, while `CudaPoissonResidual`
 copies it to the GPU. The three `main` files only choose a linear system and
 run the matching residual.
 

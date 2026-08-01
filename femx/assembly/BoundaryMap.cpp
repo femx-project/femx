@@ -22,9 +22,9 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& rows)
   return HostBoundaryMap(std::move(constrained_rows));
 }
 
-void copy(const HostBoundaryMap& source,
-          DeviceBoundaryMap&     destination,
-          linalg::CudaContext&   ctx)
+void copy(const HostBoundaryMap&                source,
+          DeviceBoundaryMap&                    destination,
+          linalg::Context<MemorySpace::Device>& ctx)
 {
   DeviceVector<Index> constrained_rows;
   ctx.vectorHandler().copy(source.constrained_rows_, constrained_rows);

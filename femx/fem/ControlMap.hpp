@@ -84,7 +84,7 @@ private:
 
   friend void copy(const ControlMap<MemorySpace::Host>&,
                    ControlMap<MemorySpace::Device>&,
-                   linalg::CudaContext&);
+                   linalg::Context<MemorySpace::Device>&);
 
   friend void controlVals(const ControlMap<MemorySpace::Host>&,
                           Index,
@@ -144,9 +144,9 @@ HostControlMap makeControlMap(
     Index                           ctr_off,
     Index                           num_prm = -1);
 
-void copy(const HostControlMap& src,
-          DeviceControlMap&     dst,
-          linalg::CudaContext&  ctx);
+void copy(const HostControlMap&                 src,
+          DeviceControlMap&                     dst,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 void controlVals(const HostControlMap&      map,
                  Index                      step,
@@ -224,7 +224,7 @@ private:
 
   friend void copy(const InitialStateMap<MemorySpace::Host>&,
                    InitialStateMap<MemorySpace::Device>&,
-                   linalg::CudaContext&);
+                   linalg::Context<MemorySpace::Device>&);
 
   friend void initialState(const InitialStateMap<MemorySpace::Host>&,
                            HostVectorView<const Real>,
@@ -264,9 +264,9 @@ HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
                                         Index                   ctr_off,
                                         Index                   num_prm);
 
-void copy(const HostInitialStateMap& src,
-          DeviceInitialStateMap&     dst,
-          linalg::CudaContext&       ctx);
+void copy(const HostInitialStateMap&            src,
+          DeviceInitialStateMap&                dst,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 void initialState(const HostInitialStateMap& map,
                   HostVectorView<const Real> prm,

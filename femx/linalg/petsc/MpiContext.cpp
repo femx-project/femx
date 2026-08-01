@@ -61,7 +61,7 @@ MpiContext::~MpiContext()
   }
 }
 
-HostVectorHandler& MpiContext::vectorHandler() noexcept
+VectorHandler<MemorySpace::Host>& MpiContext::vectorHandler() noexcept
 {
   return vec_handler_;
 }

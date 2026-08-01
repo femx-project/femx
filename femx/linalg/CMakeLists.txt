@@ -7,11 +7,12 @@ target_sources(
           cuda/CudaSystemMatrix.cpp
           cuda/CudaLinearSystem.cpp
           cuda/CudaVectorHandler.cpp
-          native/DenseLinearSolver.cpp
-          native/HostSystemMatrix.cpp
-          native/HostLinearSystem.cpp
-          native/HostVectorHandler.cpp
+          host/DenseLinearSolver.cpp
+          host/HostSystemMatrix.cpp
+          host/HostLinearSystem.cpp
+          host/HostVectorHandler.cpp
   PUBLIC Context.hpp
+         VectorHandler.hpp
          SystemMatrix.hpp
          LinearSystem.hpp
          CsrPattern.hpp
@@ -22,11 +23,11 @@ target_sources(
          cuda/CudaLinearSystem.hpp
          cuda/CudaVectorHandler.hpp
          LinearSolver.hpp
-         native/DenseLinearSolver.hpp
-         native/HostContext.hpp
-         native/HostSystemMatrix.hpp
-         native/HostLinearSystem.hpp
-         native/HostVectorHandler.hpp)
+         host/DenseLinearSolver.hpp
+         host/HostContext.hpp
+         host/HostSystemMatrix.hpp
+         host/HostLinearSystem.hpp
+         host/HostVectorHandler.hpp)
 
 target_link_libraries(femx_linalg PUBLIC femx_config femx_common)
 

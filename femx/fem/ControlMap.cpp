@@ -7,8 +7,8 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -132,9 +132,9 @@ HostControlMap makeControlMap(
   return out;
 }
 
-void copy(const HostControlMap& src,
-          DeviceControlMap&     dst,
-          linalg::CudaContext&  ctx)
+void copy(const HostControlMap&                 src,
+          DeviceControlMap&                     dst,
+          linalg::Context<MemorySpace::Device>& ctx)
 {
   auto& vec_handler = ctx.vectorHandler();
   dst.num_steps_    = src.num_steps_;
@@ -422,9 +422,9 @@ HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
   return out;
 }
 
-void copy(const HostInitialStateMap& src,
-          DeviceInitialStateMap&     dst,
-          linalg::CudaContext&       ctx)
+void copy(const HostInitialStateMap&            src,
+          DeviceInitialStateMap&                dst,
+          linalg::Context<MemorySpace::Device>& ctx)
 {
   auto& vec_handler = ctx.vectorHandler();
   dst.num_states_   = src.num_states_;

@@ -10,7 +10,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/common/Vector.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/Context.hpp>
 
 namespace femx
 {
@@ -194,7 +194,7 @@ private:
 
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
-                   linalg::CudaContext&);
+                   linalg::Context<MemorySpace::Device>&);
   friend class linalg::CudaSystemMatrix;
 
   void checkSizes() const
@@ -232,35 +232,18 @@ private:
  *
  * @param[in]  src - Source Host pattern.
  * @param[out] dst - Destination Device pattern.
- * @param[in]  ctx - CUDA context used to enqueue the copy.
- * @throws - If a CUDA allocation or copy fails.
+ * @param[in]  ctx - Device context used to enqueue the copy.
+ * @throws - If a Device allocation or copy fails.
  */
-inline void copy(const HostCsrPattern& src,
-                 DeviceCsrPattern&     dst,
-                 linalg::CudaContext&  ctx)
+inline void copy(const HostCsrPattern&                 src,
+                 DeviceCsrPattern&                     dst,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
   DeviceVector<Index> row_ptr;
   DeviceVector<Index> col_ind;
-  row_ptr.resize(src.rowPtr().size());
-  col_ind.resize(src.colInd().size());
-  if (!row_ptr.empty())
-  {
-    cuda::copy(row_ptr.data(),
-               MemorySpace::Device,
-               src.rowPtrData(),
-               MemorySpace::Host,
-               static_cast<std::size_t>(row_ptr.size()) * sizeof(Index),
-               ctx.stream());
-  }
-  if (!col_ind.empty())
-  {
-    cuda::copy(col_ind.data(),
-               MemorySpace::Device,
-               src.colIndData(),
-               MemorySpace::Host,
-               static_cast<std::size_t>(col_ind.size()) * sizeof(Index),
-               ctx.stream());
-  }
+  auto&               vec_handler = ctx.vectorHandler();
+  vec_handler.copy(src.rowPtr(), row_ptr);
+  vec_handler.copy(src.colInd(), col_ind);
   dst = DeviceCsrPattern(src.rows(),
                          src.cols(),
                          std::move(row_ptr),

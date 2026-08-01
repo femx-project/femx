@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx::linalg
 {

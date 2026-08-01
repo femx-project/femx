@@ -6,7 +6,6 @@
 #include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrPattern.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
 
 namespace femx
 {
@@ -160,9 +159,9 @@ private:
       const HostVector<HostVector<Index>>& res_dofs,
       const HostVector<HostVector<Index>>& state_dofs);
 
-  friend void copy(const HostAssemblyMap& src,
-                   DeviceAssemblyMap&     dst,
-                   linalg::CudaContext&   ctx);
+  friend void copy(const HostAssemblyMap&                src,
+                   DeviceAssemblyMap&                    dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
 public:
   /**
@@ -299,11 +298,11 @@ HostAssemblyMap makeAssemblyMap(const fem::DofMap& dof_map);
  *
  * @param[in]     src - Host assembly map.
  * @param[out]    dst - Device assembly map.
- * @param[in,out] ctx - CUDA context receiving the copies.
+ * @param[in,out] ctx - Device context receiving the copies.
  */
-void copy(const HostAssemblyMap& src,
-          DeviceAssemblyMap&     dst,
-          linalg::CudaContext&   ctx);
+void copy(const HostAssemblyMap&                src,
+          DeviceAssemblyMap&                    dst,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 } // namespace assembly
 } // namespace femx

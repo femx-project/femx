@@ -9,7 +9,7 @@ problems.  The public API is organized around a few core layers:
 - `%femx::state` provides steady and time-dependent state solvers.
 - `%femx::inverse` provides objectives, observations, regularization, and
   reduced functionals.
-- `%femx::linalg` provides native, PETSc, and ReSolve linear-system
+- `%femx::linalg` provides Host/CUDA, PETSc, and ReSolve linear-system
   implementations.
 - `%femx::io` provides lightweight visualization and time-series I/O.
 - `%femx::opt` provides optimization interfaces.

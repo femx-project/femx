@@ -5,7 +5,7 @@
 #include "../ExampleHelper.hpp"
 #include "PoissonProblem.hpp"
 #include "PoissonResidual.hpp"
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #include <femx/state/StateSolver.hpp>
 
 using namespace femx;

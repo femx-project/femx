@@ -3,8 +3,8 @@
 #include <memory>
 
 #include <femx/linalg/LinearSystem.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx::linalg
 {

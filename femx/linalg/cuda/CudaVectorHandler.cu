@@ -2,6 +2,7 @@
 #include <cusparse.h>
 
 #include <cublas_v2.h>
+#include <femx/common/Cuda.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaHandles.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
@@ -137,10 +138,10 @@ __global__ void axpbyKernel(Index       size,
 }
 
 template <class T>
-void assignVector(Vector<MemorySpace::Device, T>& out,
-                  Index                           size,
-                  T                               val,
-                  CudaContext&                    ctx)
+void assignVector(DeviceVector<T>& out,
+                  Index            size,
+                  T                val,
+                  CudaContext&     ctx)
 {
   require(size >= 0, "Vector size must be non-negative");
   if (out.size() != size)
@@ -152,7 +153,7 @@ void assignVector(Vector<MemorySpace::Device, T>& out,
   {
     return;
   }
-  cuda::fill(out.data(), out.size(), val, ctx.stream());
+  device::fill(out.data(), out.size(), val, ctx.stream());
 }
 } // namespace
 
@@ -184,12 +185,12 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
   require(!femx::detail::overlaps(src, dst),
           "Device view copy does not support partial overlap");
 
-  cuda::copy(dst.data(),
-             MemorySpace::Device,
-             src.data(),
-             MemorySpace::Device,
-             static_cast<std::size_t>(src.size()) * sizeof(Real),
-             ctx_.stream());
+  device::copy(dst.data(),
+               MemorySpace::Device,
+               src.data(),
+               MemorySpace::Device,
+               static_cast<std::size_t>(src.size()) * sizeof(Real),
+               ctx_.stream());
 }
 
 void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
@@ -208,12 +209,12 @@ void CudaVectorHandler::copy(HostVectorView<const Real> src,
 
   if (!src.empty())
   {
-    cuda::copy(dst.data(),
-               MemorySpace::Device,
-               src.data(),
-               MemorySpace::Host,
-               static_cast<std::size_t>(src.size()) * sizeof(Real),
-               ctx_.stream());
+    device::copy(dst.data(),
+                 MemorySpace::Device,
+                 src.data(),
+                 MemorySpace::Host,
+                 static_cast<std::size_t>(src.size()) * sizeof(Real),
+                 ctx_.stream());
   }
 }
 
@@ -232,12 +233,12 @@ void CudaVectorHandler::copy(DeviceVectorView<const Real> src,
   require(src.size() == dst.size(), "Device-to-Host view copy requires equal sizes");
   if (!src.empty())
   {
-    cuda::copy(dst.data(),
-               MemorySpace::Host,
-               src.data(),
-               MemorySpace::Device,
-               static_cast<std::size_t>(src.size()) * sizeof(Real),
-               ctx_.stream());
+    device::copy(dst.data(),
+                 MemorySpace::Host,
+                 src.data(),
+                 MemorySpace::Device,
+                 static_cast<std::size_t>(src.size()) * sizeof(Real),
+                 ctx_.stream());
   }
 }
 
@@ -253,9 +254,9 @@ void CudaVectorHandler::zero(DeviceVectorView<Real> vals) const
   require(vals.isValid(), "zero has an invalid view");
   if (!vals.empty())
   {
-    cuda::zero(vals.data(),
-               static_cast<std::size_t>(vals.size()) * sizeof(Real),
-               ctx_.stream());
+    device::zero(vals.data(),
+                 static_cast<std::size_t>(vals.size()) * sizeof(Real),
+                 ctx_.stream());
   }
 }
 

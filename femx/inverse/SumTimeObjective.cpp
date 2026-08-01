@@ -1,7 +1,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/SumTimeObjective.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/host/HostContext.hpp>
 using namespace femx::state;
 
 namespace femx

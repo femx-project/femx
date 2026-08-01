@@ -4,8 +4,8 @@
 #include "PoissonProblem.hpp"
 #include "PoissonResidual.hpp"
 #include "TestHelper.hpp"
-#include <femx/linalg/native/HostLinearSystem.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 #include <femx/state/StateSolver.hpp>
 
 namespace femx::tests

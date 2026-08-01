@@ -11,8 +11,8 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -294,46 +294,49 @@ ScalarStencil findScalarStencil(const FESpace& space,
 
 } // namespace
 
-Index DeviceTimePointInterpolator::numSteps() const
+Index CudaTimePointInterpolator::numSteps() const
 {
   return num_steps_;
 }
 
-Index DeviceTimePointInterpolator::numStates() const
+Index CudaTimePointInterpolator::numStates() const
 {
   return data_.numStates();
 }
 
-Index DeviceTimePointInterpolator::numObservations() const
+Index CudaTimePointInterpolator::numObservations() const
 {
   return data_.numObservations();
 }
 
-void DeviceTimePointInterpolator::observe(Index                        level,
-                                          DeviceVectorView<const Real> state,
-                                          DeviceVectorView<Real>       out,
-                                          linalg::CudaContext&         ctx) const
+void CudaTimePointInterpolator::observe(
+    Index                                 level,
+    DeviceVectorView<const Real>          state,
+    DeviceVectorView<Real>                out,
+    linalg::Context<MemorySpace::Device>& base_ctx) const
 {
   checkLevel(level);
+  auto&                    ctx = dynamic_cast<linalg::CudaContext&>(base_ctx);
   linalg::CudaSystemMatrix jac(ctx);
   jac.apply(data_.matrix(), state, out);
 }
 
-void DeviceTimePointInterpolator::addStateJacT(
-    Index                        level,
-    DeviceVectorView<const Real> dir,
-    DeviceVectorView<Real>       out,
-    linalg::CudaContext&         ctx) const
+void CudaTimePointInterpolator::addStateJacT(
+    Index                                 level,
+    DeviceVectorView<const Real>          dir,
+    DeviceVectorView<Real>                out,
+    linalg::Context<MemorySpace::Device>& base_ctx) const
 {
   checkLevel(level);
+  auto&                    ctx = dynamic_cast<linalg::CudaContext&>(base_ctx);
   linalg::CudaSystemMatrix jac(ctx);
   jac.applyT(data_.matrix(), dir, out, 1.0, 1.0);
 }
 
-void DeviceTimePointInterpolator::checkLevel(Index level) const
+void CudaTimePointInterpolator::checkLevel(Index level) const
 {
   require(level >= 0 && level <= numSteps(),
-          "DeviceTimePointInterpolator time level is out of range");
+          "CudaTimePointInterpolator time level is out of range");
 }
 
 TimePointInterpolator::TimePointInterpolator(Index               num_steps,
@@ -389,9 +392,10 @@ Index TimePointInterpolator::numObservations() const
 }
 
 std::unique_ptr<DeviceTimeObservationOperator>
-TimePointInterpolator::copyToDevice(linalg::CudaContext& ctx) const
+TimePointInterpolator::copyToDevice(
+    linalg::Context<MemorySpace::Device>& ctx) const
 {
-  auto out = std::make_unique<DeviceTimePointInterpolator>();
+  auto out = std::make_unique<CudaTimePointInterpolator>();
   copy(*this, *out, ctx);
   return out;
 }

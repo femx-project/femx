@@ -199,7 +199,7 @@ iteration on the fully nonlinear Navier-Stokes residual.
 
 `NavierModel` owns the mesh, finite-element space, element data, and
 immutable `AssemblyMap`. `HostNavierResidual` uses that data directly,
-while `DeviceNavierResidual` copies the execution data to the GPU.
+while `CudaNavierResidual` copies the execution data to the GPU.
 `NavierProblem` adds the configured boundary data and initial state.
 Each app entry point then composes the physics residual with
 `ConstrainedTimeResidual` before constructing its time integrator.

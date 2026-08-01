@@ -16,8 +16,8 @@
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/navier/NavierModel.hpp>
 #include <femx/model/navier/NavierResidual.hpp>
@@ -140,10 +140,10 @@ TestOutcome resolveCudaHistoryVjpMatchesCpu()
         steps,
         0.1,
         {1.0, 0.1});
-    model::navier::HostNavierResidual   host_res(model);
-    linalg::HostContext                 host_ctx;
-    linalg::CudaContext                 cuda_ctx;
-    model::navier::DeviceNavierResidual device_res(model, cuda_ctx);
+    model::navier::HostNavierResidual host_res(model);
+    linalg::HostContext               host_ctx;
+    linalg::CudaContext               cuda_ctx;
+    model::navier::CudaNavierResidual device_res(model, cuda_ctx);
 
     const Index      num_states = model.numStates();
     HostVector<Real> hist(2 * num_states);
@@ -281,7 +281,7 @@ TestOutcome resolveCudaReducedGradientMatchesCpuAndFd()
         std::make_unique<linalg::ReSolveLinearSolver>());
     auto& cuda_ctx =
         static_cast<linalg::CudaContext&>(cuda_fwd_system.context());
-    model::navier::DeviceNavierResidual d_navier(
+    model::navier::CudaNavierResidual d_navier(
         model, cuda_ctx);
     assembly::DeviceConstrainedTimeResidual cuda_res(
         d_navier,
