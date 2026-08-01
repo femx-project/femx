@@ -1,9 +1,7 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 #include <femx/state/EnsembleBasis.hpp>
 
 namespace femx
@@ -50,9 +48,9 @@ void EnsembleBasis::apply(const HostVector<Real>& alpha,
 {
   checkAlpha(alpha);
   out = mean_;
-  linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jac(ctx);
-  jac.apply(perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
+  linalg::HostContext ctx;
+  ctx.matrixHandler().matvec(
+      perts_.view(), alpha.view(), out.view(), 1.0, 1.0);
 }
 
 void EnsembleBasis::applyT(const HostVector<Real>& grad,
@@ -60,9 +58,8 @@ void EnsembleBasis::applyT(const HostVector<Real>& grad,
 {
   checkPhysical(grad);
   out.resize(numCoefficients());
-  linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jac(ctx);
-  jac.applyT(perts_.view(), grad.view(), out.view());
+  linalg::HostContext ctx;
+  ctx.matrixHandler().matvecT(perts_.view(), grad.view(), out.view());
 }
 
 void EnsembleBasis::checkDims() const

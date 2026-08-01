@@ -22,8 +22,7 @@ public:
    *
    * @param[in] rows - Number of rows.
    * @param[in] cols - Number of columns.
-   * @throws - If either dimension is negative or their
-   * product exceeds the supported size.
+   * @throws std::runtime_error If validation fails.
    */
   DenseMatrix(Index rows, Index cols)
     : rows_(rows), cols_(cols), vals_(checkedSize(rows, cols))
@@ -35,8 +34,7 @@ public:
    *
    * @param[in] rows - Number of rows.
    * @param[in] cols - Number of columns.
-   * @throws - If either dimension is negative or their
-   * product exceeds the supported size.
+   * @throws std::runtime_error If validation fails.
    */
   void resize(Index rows, Index cols)
   {

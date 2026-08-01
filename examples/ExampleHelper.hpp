@@ -44,7 +44,7 @@ inline bool hasHelp(int argc, char* const argv[])
  *
  * @param[in] val - Value supplied to `--backend`.
  * @return Memory space used by the selected backend.
- * @throws std::runtime_error - If `val` is neither `cpu` nor `cuda`.
+ * @throws std::runtime_error If validation fails.
  */
 inline MemorySpace parseBackend(const std::string& val)
 {
@@ -81,10 +81,10 @@ inline const char* backendName(MemorySpace space) noexcept
 /**
  * @brief Parse a `yes` or `no` example option.
  *
- * @param[in] val - Option value.
+ * @param[in] val    - Option value.
  * @param[in] option - Option name used in diagnostics.
  * @return `true` for `yes` and `false` for `no`.
- * @throws std::runtime_error - If `val` is neither `yes` nor `no`.
+ * @throws std::runtime_error If validation fails.
  */
 inline bool parseYesNo(const std::string& val,
                        const std::string& option)
@@ -103,10 +103,10 @@ inline bool parseYesNo(const std::string& val,
 /**
  * @brief Parse a positive example index.
  *
- * @param[in] val - Integer text to parse.
+ * @param[in] val    - Integer text to parse.
  * @param[in] option - Option name used in diagnostics.
  * @return Parsed positive index.
- * @throws std::runtime_error - If `val` is not a positive `Index`.
+ * @throws std::runtime_error If validation fails.
  */
 inline Index parsePositiveIndex(const std::string& val,
                                 const std::string& option)
@@ -133,8 +133,8 @@ public:
   /**
    * @brief Bind solver, execution backend, and output directory.
    *
-   * @param[in] solver - Solver used by the example.
-   * @param[in] space - Memory space used by the execution backend.
+   * @param[in] solver  - Solver used by the example.
+   * @param[in] space   - Memory space used by the execution backend.
    * @param[in] out_dir - Directory for generated output files.
    */
   ExampleHelper(runtime::SolverType solver,
@@ -146,7 +146,9 @@ public:
   {
   }
 
-  /** @brief Return the `solver/backend` display name. */
+  /**
+   * @brief Return the `solver/backend` display name.
+   */
   std::string name() const
   {
     return std::string(runtime::name(solver_)) + "/"
@@ -156,9 +158,9 @@ public:
   /**
    * @brief Compute the Host residual norm.
    *
-   * @param[in] op - Residual operator.
-   * @param[in] state - State at which to evaluate the residual.
-   * @param[in,out] ctx - Host execution context.
+   * @param[in]     op    - Residual operator.
+   * @param[in]     state - State at which to evaluate the residual.
+   * @param[in,out] ctx   - Host execution context.
    * @return Euclidean norm of the residual.
    */
   Real resNorm(const state::HostResidual&          op,
@@ -177,9 +179,9 @@ public:
    *
    * The operation synchronizes `ctx` before returning the Host result.
    *
-   * @param[in] op - Residual operator.
-   * @param[in] state - Device state at which to evaluate the residual.
-   * @param[in,out] ctx - Device execution context.
+   * @param[in]     op    - Residual operator.
+   * @param[in]     state - Device state at which to evaluate the residual.
+   * @param[in,out] ctx   - Device execution context.
    * @return Euclidean norm of the residual.
    */
   Real resNorm(
@@ -219,7 +221,7 @@ public:
   /**
    * @brief Print the path of a visualization file after it has been written.
    *
-   * @param[in] base - Output path without an extension.
+   * @param[in] base      - Output path without an extension.
    * @param[in] extension - Visualization file extension, including its dot.
    */
   void printVisualizationPath(const std::string& base,
@@ -237,9 +239,9 @@ private:
 /**
  * @brief Print a standard example error message and return failure status.
  *
- * @param[in] app_name - Application name used as the message prefix.
- * @param[in] e - Exception whose message is reported.
- * @param[in,out] err - Stream that receives the error message.
+ * @param[in]     app_name - Application name used as the message prefix.
+ * @param[in]     e        - Exception whose message is reported.
+ * @param[in,out] err      - Stream that receives the error message.
  * @return Failure status code `1`.
  */
 inline int reportError(const char*           app_name,

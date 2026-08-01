@@ -16,9 +16,9 @@ template <MemorySpace Space>
 class LinearSystem
 {
 public:
-  using Vector    = femx::Vector<Space, Real>;
-  using ConstView = VectorView<Space, const Real>;
-  using Solver    = LinearSolver<Space>;
+  using Vector     = femx::Vector<Space, Real>;
+  using VectorView = femx::VectorView<Space, const Real>;
+  using Solver     = LinearSolver<Space>;
 
   virtual ~LinearSystem() = default;
 
@@ -36,17 +36,17 @@ public:
    * @brief Solve the assembled system.
    *
    * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @param[out] x   - Solution vector.
    */
-  virtual void solve(ConstView rhs, Vector& x) = 0;
+  virtual void solve(VectorView rhs, Vector& x) = 0;
 
   /**
    * @brief Solve the transposed assembled system.
    *
    * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @param[out] x   - Solution vector.
    */
-  virtual void solveT(ConstView rhs, Vector& x) = 0;
+  virtual void solveT(VectorView rhs, Vector& x) = 0;
 };
 
 } // namespace femx::linalg

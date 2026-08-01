@@ -69,19 +69,19 @@ public:
    * @brief Replace constrained rows by diagonal rows.
    *
    * @param[in] rows - Constrained global row indices.
-   * @param[in] diagonal - Replacement diagonal value.
+   * @param[in] diag - Replacement diagonal value.
    */
   virtual void replaceRows(HostVectorView<const Index> rows,
-                           Real                        diagonal) = 0;
+                           Real                        diag) = 0;
 
   /**
    * @brief Eliminate constrained columns and correct a right-hand side.
    *
    * The value order must match `rows`.
    *
-   * @param[in]     rows - Constrained global row indices.
+   * @param[in]     rows   - Constrained global row indices.
    * @param[in]     values - Prescribed values.
-   * @param[in,out] rhs - Right-hand side corrected in place.
+   * @param[in,out] rhs    - Right-hand side corrected in place.
    */
   virtual void eliminateColumns(HostVectorView<const Index> rows,
                                 HostVectorView<const Real>  values,
@@ -95,20 +95,20 @@ public:
   /**
    * @brief Compute the system-matrix product.
    *
-   * @param[in]  direction - Input direction.
+   * @param[in]  dir - Input direction.
    * @param[out] out - Resized output vector.
    */
-  virtual void apply(HostVectorView<const Real> direction,
-                     HostVector<Real>&          out) const = 0;
+  virtual void matvec(HostVectorView<const Real> dir,
+                      HostVector<Real>&          out) const = 0;
 
   /**
    * @brief Compute the transposed system-matrix product.
    *
-   * @param[in]  direction - Input direction.
+   * @param[in]  dir - Input direction.
    * @param[out] out - Resized output vector.
    */
-  virtual void applyT(HostVectorView<const Real> direction,
-                      HostVector<Real>&          out) const = 0;
+  virtual void matvecT(HostVectorView<const Real> dir,
+                       HostVector<Real>&          out) const = 0;
 };
 
 /**
@@ -131,17 +131,17 @@ public:
    * @brief Replace constrained rows by diagonal rows.
    *
    * @param[in] rows - Device constrained row indices.
-   * @param[in] diagonal - Replacement diagonal value.
+   * @param[in] diag - Replacement diagonal value.
    */
   virtual void replaceRows(DeviceVectorView<const Index> rows,
-                           Real                          diagonal) = 0;
+                           Real                          diag) = 0;
 
   /**
    * @brief Eliminate constrained columns and correct a right-hand side.
    *
-   * @param[in]     rows - Device constrained row indices.
+   * @param[in]     rows   - Device constrained row indices.
    * @param[in]     values - Device prescribed values.
-   * @param[in,out] rhs - Device right-hand side corrected in place.
+   * @param[in,out] rhs    - Device right-hand side corrected in place.
    */
   virtual void eliminateColumns(DeviceVectorView<const Index> rows,
                                 DeviceVectorView<const Real>  values,
@@ -155,20 +155,20 @@ public:
   /**
    * @brief Compute the Device system-matrix product.
    *
-   * @param[in]  direction - Device input direction.
+   * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  virtual void apply(DeviceVectorView<const Real> direction,
-                     DeviceVector<Real>&          out) const = 0;
+  virtual void matvec(DeviceVectorView<const Real> dir,
+                      DeviceVector<Real>&          out) const = 0;
 
   /**
    * @brief Compute the transposed Device system-matrix product.
    *
-   * @param[in]  direction - Device input direction.
+   * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  virtual void applyT(DeviceVectorView<const Real> direction,
-                      DeviceVector<Real>&          out) const = 0;
+  virtual void matvecT(DeviceVectorView<const Real> dir,
+                       DeviceVector<Real>&          out) const = 0;
 };
 
 } // namespace femx::linalg

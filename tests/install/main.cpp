@@ -70,7 +70,7 @@ int main()
     checkClose(x[1], 2.0, "x[1]");
 
     femx::HostVector<femx::Real> Ax;
-    jac.apply(x.view(), Ax);
+    jac.matvec(x.view(), Ax);
     checkClose(Ax[0], rhs[0], "Ax[0]");
     checkClose(Ax[1], rhs[1], "Ax[1]");
   }

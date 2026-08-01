@@ -47,13 +47,13 @@ public:
   /**
    * @brief Construct a view over flattened mesh data.
    *
-   * @param[in] dim - Spatial dimension.
-   * @param[in] num_nodes - Number of global nodes.
-   * @param[in] num_elems - Number of elements.
+   * @param[in] dim            - Spatial dimension.
+   * @param[in] num_nodes      - Number of global nodes.
+   * @param[in] num_elems      - Number of elements.
    * @param[in] max_elem_nodes - Largest element node count.
-   * @param[in] coords - Node-major coordinate components.
-   * @param[in] elem_offsets - Element offsets into `conn`.
-   * @param[in] conn - Flattened element-to-node connectivity.
+   * @param[in] coords         - Node-major coordinate components.
+   * @param[in] elem_offsets   - Element offsets into `conn`.
+   * @param[in] conn           - Flattened element-to-node connectivity.
    */
   FEMX_HOST_DEVICE MeshView(
       Index                          dim,
@@ -109,7 +109,7 @@ public:
    * @brief Return one coordinate component for a global node.
    *
    * @param[in] node - Global node index.
-   * @param[in] d - Coordinate component.
+   * @param[in] d    - Coordinate component.
    * @return Requested coordinate component.
    */
   FEMX_HOST_DEVICE Real coord(Index node, Index d) const
@@ -274,10 +274,10 @@ public:
    *
    * @param[in] num_x_cells - Number of cells in the x direction.
    * @param[in] num_y_cells - Number of cells in the y direction.
-   * @param[in] x_min - Lower x coordinate.
-   * @param[in] x_max - Upper x coordinate.
-   * @param[in] y_min - Lower y coordinate.
-   * @param[in] y_max - Upper y coordinate.
+   * @param[in] x_min       - Lower x coordinate.
+   * @param[in] x_max       - Upper x coordinate.
+   * @param[in] y_min       - Lower y coordinate.
+   * @param[in] y_max       - Upper y coordinate.
    * @return Mesh with Q1-compatible quadrilateral connectivity.
    */
   static Mesh makeStructuredQuad(Index num_x_cells,
@@ -323,8 +323,7 @@ public:
    * @brief Return a non-owning Host view of coordinates and connectivity.
    *
    * @return View valid until nodes or elements are added.
-   * @throws - If the mesh dimension or internal storage is
-   * invalid.
+   * @throws std::runtime_error If validation fails.
    */
   MeshView<MemorySpace::Host> view() const;
 
@@ -514,11 +513,11 @@ public:
   /**
    * @brief Add one element with topology and physical classification.
    *
-   * @param[in] nids - Mesh node identifiers in element-local order.
+   * @param[in] nids  - Mesh node identifiers in element-local order.
    * @param[in] shape - Element topology.
-   * @param[in] edim - Entity dimension from the mesh generator.
-   * @param[in] etag - Entity tag from the mesh generator.
-   * @param[in] ptag - Physical group tag.
+   * @param[in] edim  - Entity dimension from the mesh generator.
+   * @param[in] etag  - Entity tag from the mesh generator.
+   * @param[in] ptag  - Physical group tag.
    * @param[in] pname - Physical group name.
    */
   void addElem(const HostVector<Index>& nids,
@@ -541,8 +540,8 @@ public:
   /**
    * @brief Add a physical name.
    *
-   * @param[in] dim - Entity dimension.
-   * @param[in] tag - Physical tag.
+   * @param[in] dim  - Entity dimension.
+   * @param[in] tag  - Physical tag.
    * @param[in] name - Physical name.
    */
   void addPhysicalName(Index       dim,

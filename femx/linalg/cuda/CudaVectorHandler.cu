@@ -21,13 +21,13 @@ class SparseVectorDescriptor
 public:
   SparseVectorDescriptor(Index        size,
                          Index        nnz,
-                         const Index* indices,
+                         const Index* idx,
                          Real*        vals)
   {
     checkCusparse(cusparseCreateSpVec(&descriptor_,
                                       size,
                                       nnz,
-                                      const_cast<Index*>(indices),
+                                      const_cast<Index*>(idx),
                                       vals,
                                       CUSPARSE_INDEX_32I,
                                       CUSPARSE_INDEX_BASE_ZERO,
@@ -37,13 +37,13 @@ public:
 
   SparseVectorDescriptor(Index        size,
                          Index        nnz,
-                         const Index* indices,
+                         const Index* idx,
                          const Real*  vals)
   {
     checkCusparse(cusparseCreateConstSpVec(&const_descriptor_,
                                            size,
                                            nnz,
-                                           indices,
+                                           idx,
                                            vals,
                                            CUSPARSE_INDEX_32I,
                                            CUSPARSE_INDEX_BASE_ZERO,
@@ -287,13 +287,13 @@ void CudaVectorHandler::axpby(Real                         a,
 }
 
 void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
-                               DeviceVectorView<const Index> indices,
+                               DeviceVectorView<const Index> idx,
                                DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "gather has an invalid source view");
-  require(indices.isValid(), "gather has an invalid index view");
+  require(idx.isValid(), "gather has an invalid index view");
   require(dst.isValid(), "gather has an invalid output view");
-  require(indices.size() == dst.size(), "gather output size mismatch");
+  require(idx.size() == dst.size(), "gather output size mismatch");
 
   if (dst.empty())
   {
@@ -305,8 +305,8 @@ void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
 
   DenseVectorDescriptor  dense(src.size(), src.data());
   SparseVectorDescriptor sparse(src.size(),
-                                indices.size(),
-                                indices.data(),
+                                idx.size(),
+                                idx.data(),
                                 dst.data());
 
   checkCusparse(cusparseGather(detail::cusparseHandle(ctx_),
@@ -316,13 +316,13 @@ void CudaVectorHandler::gather(DeviceVectorView<const Real>  src,
 }
 
 void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
-                                DeviceVectorView<const Index> indices,
+                                DeviceVectorView<const Index> idx,
                                 DeviceVectorView<Real>        dst) const
 {
   require(src.isValid(), "scatter has an invalid source view");
-  require(indices.isValid(), "scatter has an invalid index view");
+  require(idx.isValid(), "scatter has an invalid index view");
   require(dst.isValid(), "scatter has an invalid output view");
-  require(src.size() == indices.size(), "scatter input size mismatch");
+  require(src.size() == idx.size(), "scatter input size mismatch");
 
   if (src.empty())
   {
@@ -333,8 +333,8 @@ void CudaVectorHandler::scatter(DeviceVectorView<const Real>  src,
           "scatter does not support aliased vectors");
 
   SparseVectorDescriptor sparse(dst.size(),
-                                indices.size(),
-                                indices.data(),
+                                idx.size(),
+                                idx.data(),
                                 src.data());
   DenseVectorDescriptor  dense(dst.size(), dst.data());
   checkCusparse(cusparseScatter(detail::cusparseHandle(ctx_),

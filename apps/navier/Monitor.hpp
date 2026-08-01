@@ -14,7 +14,9 @@
 namespace femx::apps::navier
 {
 
-/** @brief Store the final state and convergence summary of a forward run. */
+/**
+ * @brief Store the final state and convergence summary of a forward run.
+ */
 struct SolveResult
 {
   HostVector<Real> final_state;      ///< Last accepted state vector.
@@ -24,7 +26,9 @@ struct SolveResult
   bool             converged{false}; ///< True when convergence stopped the run.
 };
 
-/** @brief Monitor time-step progress, convergence, logging, and field output. */
+/**
+ * @brief Monitor time-step progress, convergence, logging, and field output.
+ */
 class Monitor final
 {
 public:
@@ -32,7 +36,7 @@ public:
    * @brief Construct a monitor for one finite-element time interval.
    *
    * @param[in] space - State finite-element space.
-   * @param[in] dt - Time-step size.
+   * @param[in] dt    - Time-step size.
    * @param[in] steps - Configured number of time steps.
    */
   Monitor(const fem::MixedFESpace& space,
@@ -43,7 +47,7 @@ public:
   /**
    * @brief Configure field output.
    *
-   * @param[in] dir - Output directory.
+   * @param[in] dir      - Output directory.
    * @param[in] interval - Time-step interval between output levels.
    */
   void setFieldOutput(std::string dir,
@@ -52,9 +56,9 @@ public:
   /**
    * @brief Configure terminal and persistent detailed logs.
    *
-   * @param[out] terminal - Optional terminal stream.
-   * @param[out] log_out - Optional persistent log stream.
-   * @param[in] show_velocity_change - Include the relative velocity change.
+   * @param[out] terminal             - Optional terminal stream.
+   * @param[out] log_out              - Optional persistent log stream.
+   * @param[in]  show_velocity_change - Include the relative velocity change.
    */
   void setDetailedLog(std::ostream* terminal,
                       std::ostream* log_out,
@@ -67,13 +71,15 @@ public:
    */
   void setConvergence(ConvergenceConfig prm);
 
-  /** @brief Return the current solve result. */
+  /**
+   * @brief Return the current solve result.
+   */
   const SolveResult& result() const;
 
   /**
    * @brief Start monitoring a time integration.
    *
-   * @param[in] num_steps - Integrator step count.
+   * @param[in] num_steps  - Integrator step count.
    * @param[in] num_states - Integrator state size.
    */
   void start(Index num_steps,
@@ -96,7 +102,9 @@ public:
    */
   bool observeStep(const state::TimeStepStateContext& ctx);
 
-  /** @brief Stop monitoring and write the final field level if needed. */
+  /**
+   * @brief Stop monitoring and write the final field level if needed.
+   */
   void stop();
 
 private:
@@ -137,10 +145,10 @@ private:
  * @brief Compute the relative velocity change between two states.
  *
  * @param[in] space - State finite-element space.
- * @param[in] prev - Previous state.
- * @param[in] curr - Current state.
+ * @param[in] prev  - Previous state.
+ * @param[in] curr  - Current state.
  * @return Relative velocity change.
- * @throws std::runtime_error - If the state sizes are incompatible.
+ * @throws std::runtime_error If validation fails.
  */
 Real velocityRelativeChange(const fem::MixedFESpace& space,
                             const HostVector<Real>&  prev,
@@ -151,9 +159,9 @@ Real velocityRelativeChange(const fem::MixedFESpace& space,
  *
  * @param[in] space - State finite-element space.
  * @param[in] state - State used for the velocity field.
- * @param[in] dt - Time-step size.
+ * @param[in] dt    - Time-step size.
  * @return Maximum velocity CFL number.
- * @throws std::runtime_error - If the state size is incompatible.
+ * @throws std::runtime_error If validation fails.
  */
 Real maxVelocityCfl(const fem::MixedFESpace& space,
                     const HostVector<Real>&  state,
@@ -162,9 +170,9 @@ Real maxVelocityCfl(const fem::MixedFESpace& space,
 /**
  * @brief Return whether a step should be written.
  *
- * @param[in] step - Current time step.
+ * @param[in] step        - Current time step.
  * @param[in] total_steps - Final time step.
- * @param[in] interval - Output interval.
+ * @param[in] interval    - Output interval.
  * @return `true` at an output interval or the final step.
  */
 bool shouldWriteOutput(Index step,

@@ -8,9 +8,7 @@
 #include <femx/fem/Mesh.hpp>
 #include <femx/fem/MixedFESpace.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -304,22 +302,20 @@ void DirichletControl::apply(const HostVector<Real>& dir,
                              HostVector<Real>&       out) const
 {
   checkControlVector(dir);
-  linalg::HostContext      ctx;
-  auto&                    vec_handler = ctx.vectorHandler();
-  linalg::HostSystemMatrix jac(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.assign(out, numStateDofs(), 0);
-  jac.apply(matrix_, dir.view(), out.view());
+  ctx.matrixHandler().matvec(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::applyT(const HostVector<Real>& dir,
                               HostVector<Real>&       out) const
 {
   checkStateVector(dir);
-  linalg::HostContext      ctx;
-  auto&                    vec_handler = ctx.vectorHandler();
-  linalg::HostSystemMatrix jac(ctx);
+  linalg::HostContext ctx;
+  auto&               vec_handler = ctx.vectorHandler();
   vec_handler.assign(out, numControlParams(), 0);
-  jac.applyT(matrix_, dir.view(), out.view());
+  ctx.matrixHandler().matvecT(matrix_, dir.view(), out.view());
 }
 
 void DirichletControl::checkDofIndex(Index i) const

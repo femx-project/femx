@@ -10,7 +10,6 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx::tests::solver
 {
@@ -195,17 +194,17 @@ inline TestOutcome solvesForwardAndTranspose(
 
   try
   {
-    linalg::HostContext      ctx;
-    linalg::HostSystemMatrix jac(ctx);
-    HostVector<Real>         rhs(mat.rows());
-    jac.apply(mat, expected.view(), rhs.view());
+    linalg::HostContext ctx;
+    auto&               mat_handler = ctx.matrixHandler();
+    HostVector<Real>    rhs(mat.rows());
+    mat_handler.matvec(mat, expected.view(), rhs.view());
 
     HostVector<Real> x;
     solver.solve(mat, rhs, x, ctx);
     status *= vecNear(x, expected, tol);
 
     HostVector<Real> rhs_t(mat.cols());
-    jac.applyT(mat, expected.view(), rhs_t.view());
+    mat_handler.matvecT(mat, expected.view(), rhs_t.view());
 
     HostVector<Real> xt;
     solver.solveT(mat, rhs_t, xt, ctx);

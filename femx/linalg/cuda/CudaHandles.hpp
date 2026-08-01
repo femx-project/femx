@@ -26,7 +26,7 @@ public:
    * @brief Create CUDA library handles bound to a stream.
    *
    * @param[in] stream - CUDA stream used by both handles.
-   * @throws - If handle creation or stream binding fails.
+   * @throws std::runtime_error If validation fails.
    */
   explicit CudaHandles(void* stream);
 
@@ -77,18 +77,18 @@ std::shared_ptr<void>& cudaSparseState(CudaContext& ctx);
 /**
  * @brief Throw when a cuBLAS operation fails.
  *
- * @param[in] status - cuBLAS status to check.
+ * @param[in] status    - cuBLAS status to check.
  * @param[in] operation - Operation name included in an error message.
- * @throws - If `status` does not indicate success.
+ * @throws std::runtime_error If validation fails.
  */
 void checkCublas(cublasStatus_t status, const char* operation);
 
 /**
  * @brief Throw when a cuSPARSE operation fails.
  *
- * @param[in] status - cuSPARSE status to check.
+ * @param[in] status    - cuSPARSE status to check.
  * @param[in] operation - Operation name included in an error message.
- * @throws - If `status` does not indicate success.
+ * @throws std::runtime_error If validation fails.
  */
 void checkCusparse(cusparseStatus_t status, const char* operation);
 

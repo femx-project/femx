@@ -2,6 +2,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/host/HostMatrixHandler.hpp>
 #include <femx/linalg/host/HostVectorHandler.hpp>
 
 namespace femx::linalg
@@ -12,9 +13,11 @@ namespace femx::linalg
  */
 class HostContext final : public Context<MemorySpace::Host>
 {
+  using Base = Context<MemorySpace::Host>;
+
 public:
   /**
-   * @brief Return the owned Host vector operations.
+   * @copydoc Base::vectorHandler()
    */
   VectorHandler<MemorySpace::Host>& vectorHandler() noexcept override
   {
@@ -22,11 +25,17 @@ public:
   }
 
   /**
-   * @brief Return the full element range.
+   * @copydoc Base::matrixHandler()
+   */
+  MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept override
+  {
+    return mat_handler_;
+  }
+
+  /**
+   * @copydoc Base::elementRange()
    *
-   * @param[in] count - Element count.
-   * @return Full half-open element range.
-   * @throws - If `count` is negative.
+   * @details Assigns the full range to the serial Host context.
    */
   IndexRange elementRange(Index count) const override
   {
@@ -36,13 +45,9 @@ public:
   }
 
   /**
-   * @brief Report ownership of every valid serial Host element.
+   * @copydoc Base::ownsElement()
    *
-   * @param[in] element - Global element index.
-   * @param[in] count - Global element count.
-   * @param[in] rows - Element rows, which may be empty.
-   * @return `true` for every valid element.
-   * @throws - If `element` or `count` is invalid.
+   * @details Owns every valid element in serial execution.
    */
   bool ownsElement(
       Index                       element,
@@ -56,9 +61,9 @@ public:
   }
 
   /**
-   * @brief Leave serial Host values unchanged.
+   * @copydoc Base::allReduceSum()
    *
-   * @param[in,out] vals - Values left unchanged.
+   * @details Leaves values unchanged in serial execution.
    */
   void allReduceSum(HostVectorView<Real> vals) const override
   {
@@ -66,13 +71,16 @@ public:
   }
 
   /**
-   * @brief Complete pending Host work; serial execution is synchronous.
+   * @copydoc Base::sync()
+   *
+   * @details Serial Host execution is synchronous.
    */
   void sync() const override
   {
   }
 
 private:
+  HostMatrixHandler mat_handler_; ///< Owned Host matrix operations.
   HostVectorHandler vec_handler_; ///< Owned Host vector operations.
 };
 

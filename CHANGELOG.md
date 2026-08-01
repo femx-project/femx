@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Added Host and CUDA `MatrixHandler` APIs for CSR and dense matrix-vector
+  products and CSR transpose operations.
+
 ### Changed
 
+- Renamed system-matrix `apply` and `applyT` operations to `matvec` and
+  `matvecT`.
 - Moved element connectivity, topology, and classification into `Mesh` flat
   storage. Use `elemNodeIds`, `elemNodeId`, `elemNode`, `elemShape`, and the
   element classification accessors directly on `Mesh`.

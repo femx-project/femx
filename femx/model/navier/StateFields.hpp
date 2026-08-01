@@ -11,13 +11,13 @@ namespace femx::model::navier
 /**
  * @brief Extract nodal velocity components and pressure from a state vector.
  *
- * @param[in]  state - Mixed Navier-Stokes state vector.
- * @param[in]  space - Mixed velocity-pressure finite-element space.
- * @param[out] ux - Nodal x-velocity values.
- * @param[out] uy - Nodal y-velocity values.
- * @param[out] uz - Nodal z-velocity values.
+ * @param[in]  state    - Mixed Navier-Stokes state vector.
+ * @param[in]  space    - Mixed velocity-pressure finite-element space.
+ * @param[out] ux       - Nodal x-velocity values.
+ * @param[out] uy       - Nodal y-velocity values.
+ * @param[out] uz       - Nodal z-velocity values.
  * @param[out] pressure - Nodal pressure values.
- * @throws - If the input or output dimensions are invalid.
+ * @throws std::runtime_error If validation fails.
  */
 void splitStateFields(HostVectorView<const Real> state,
                       const fem::MixedFESpace&   space,

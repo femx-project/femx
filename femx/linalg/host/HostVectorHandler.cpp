@@ -36,34 +36,34 @@ Real HostVectorHandler::dot(HostVectorView<const Real> x,
 }
 
 void HostVectorHandler::gather(HostVectorView<const Real>  src,
-                               HostVectorView<const Index> indices,
+                               HostVectorView<const Index> idx,
                                HostVectorView<Real>        dst) const
 {
-  require(indices.size() == dst.size(),
+  require(idx.size() == dst.size(),
           "Host gather output size mismatch");
   require(!femx::detail::overlaps(src, dst),
           "Host gather does not support aliased vectors");
-  for (Index i = 0; i < indices.size(); ++i)
+  for (Index i = 0; i < idx.size(); ++i)
   {
-    require(indices[i] >= 0 && indices[i] < src.size(),
+    require(idx[i] >= 0 && idx[i] < src.size(),
             "Host gather index is out of range");
-    dst[i] = src[indices[i]];
+    dst[i] = src[idx[i]];
   }
 }
 
 void HostVectorHandler::scatter(HostVectorView<const Real>  src,
-                                HostVectorView<const Index> indices,
+                                HostVectorView<const Index> idx,
                                 HostVectorView<Real>        dst) const
 {
-  require(src.size() == indices.size(),
+  require(src.size() == idx.size(),
           "Host scatter input size mismatch");
   require(!femx::detail::overlaps(src, dst),
           "Host scatter does not support aliased vectors");
-  for (Index i = 0; i < indices.size(); ++i)
+  for (Index i = 0; i < idx.size(); ++i)
   {
-    require(indices[i] >= 0 && indices[i] < dst.size(),
+    require(idx[i] >= 0 && idx[i] < dst.size(),
             "Host scatter index is out of range");
-    dst[indices[i]] = src[i];
+    dst[idx[i]] = src[i];
   }
 }
 

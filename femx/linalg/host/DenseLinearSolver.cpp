@@ -10,7 +10,7 @@ namespace femx::linalg
 {
 
 DenseLinearSolver::DenseLinearSolver(Real pivot_tolerance)
-  : pivot_tolerance_(pivot_tolerance)
+  : pivot_tol_(pivot_tolerance)
 {
   require(pivot_tolerance >= 0.0,
           "DenseLinearSolver pivot tolerance must be non-negative");
@@ -24,7 +24,7 @@ void DenseLinearSolver::solve(const HostCsrMatrix&        mat,
   require(mat.rows() == mat.cols() && rhs.size() == mat.rows(),
           "DenseLinearSolver received inconsistent CSR dimensions");
   DenseMatrix dense;
-  sample(mat, false, dense);
+  copyToDense(mat, false, dense);
   solveDense(std::move(dense), rhs, x, ctx);
 }
 
@@ -36,13 +36,13 @@ void DenseLinearSolver::solveT(const HostCsrMatrix&        mat,
   require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
           "DenseLinearSolver received inconsistent transposed CSR dimensions");
   DenseMatrix dense;
-  sample(mat, true, dense);
+  copyToDense(mat, true, dense);
   solveDense(std::move(dense), rhs, x, ctx);
 }
 
-void DenseLinearSolver::sample(const HostCsrMatrix& mat,
-                               bool                 transpose,
-                               DenseMatrix&         dense) const
+void DenseLinearSolver::copyToDense(const HostCsrMatrix& mat,
+                                    bool                 transpose,
+                                    DenseMatrix&         dense) const
 {
   dense.resize(mat.rows(), mat.cols());
   for (Index row = 0; row < mat.rows(); ++row)
@@ -83,7 +83,7 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
         pivot = row;
       }
     }
-    if (best <= pivot_tolerance_)
+    if (best <= pivot_tol_)
     {
       throw std::runtime_error(
           "DenseLinearSolver detected singular matrix");

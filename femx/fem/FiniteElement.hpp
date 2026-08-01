@@ -58,7 +58,7 @@ public:
    * @brief Evaluate shape functions at a reference quadrature point.
    *
    * @param[in]  qp - Reference quadrature point.
-   * @param[out] N - Output vector of length numDofsPerElement().
+   * @param[out] N  - Output vector of length numDofsPerElement().
    */
   virtual void calcN(const QuadraturePoint& qp,
                      HostVectorView<Real>   N) const = 0;
@@ -66,7 +66,7 @@ public:
   /**
    * @brief Evaluate shape-function gradients in reference coordinates.
    *
-   * @param[in]  qp - Reference quadrature point.
+   * @param[in]  qp    - Reference quadrature point.
    * @param[out] dNdxi - Matrix with one row per shape and one column per
    * reference coordinate.
    */

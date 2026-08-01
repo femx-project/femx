@@ -27,6 +27,7 @@ std::unique_ptr<CudaHandles> makeCudaHandles(void* stream)
 
 CudaContext::CudaContext()
   : stream_(cuda::createStream()),
+    mat_handler_(*this),
     vec_handler_(*this)
 {
 #if defined(FEMX_HAS_CUDA)
@@ -53,6 +54,11 @@ CudaContext::~CudaContext()
 VectorHandler<MemorySpace::Device>& CudaContext::vectorHandler() noexcept
 {
   return vec_handler_;
+}
+
+MatrixHandler<MemorySpace::Device>& CudaContext::matrixHandler() noexcept
+{
+  return mat_handler_;
 }
 
 IndexRange CudaContext::elementRange(Index count) const

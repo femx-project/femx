@@ -21,7 +21,9 @@
 namespace femx::apps::navier
 {
 
-/** @brief Configure optional steady-state convergence detection. */
+/**
+ * @brief Configure optional steady-state convergence detection.
+ */
 struct ConvergenceConfig
 {
   bool  enabled     = false;  ///< Enable steady-state convergence check.
@@ -29,7 +31,9 @@ struct ConvergenceConfig
   Index min_steps   = 1;      ///< Minimum steps before convergence can stop.
 };
 
-/** @brief Configure the forward time interval. */
+/**
+ * @brief Configure the forward time interval.
+ */
 struct TimeConfig
 {
   Index             steps = 100;  ///< Number of time steps.
@@ -37,7 +41,9 @@ struct TimeConfig
   ConvergenceConfig convergence;  ///< Optional convergence stopping criteria.
 };
 
-/** @brief Configure the selected linear solver. */
+/**
+ * @brief Configure the selected linear solver.
+ */
 struct SolverConfig
 {
   std::string method             = "iterative"; ///< Solver method family.
@@ -51,7 +57,9 @@ struct SolverConfig
   bool        flexible           = true;        ///< Enable flexible Krylov methods.
 };
 
-/** @brief Configure field and log output. */
+/**
+ * @brief Configure field and log output.
+ */
 struct OutputConfig
 {
   bool        enabled   = true;                   ///< Enable field and log output.
@@ -59,7 +67,9 @@ struct OutputConfig
   std::string directory = FEMX_NAVIER_OUTPUT_DIR; ///< Output directory.
 };
 
-/** @brief Configure a spatial velocity profile. */
+/**
+ * @brief Configure a spatial velocity profile.
+ */
 struct VelocityProfileConfig
 {
   std::string                        type = "uniform"; ///< Profile type.
@@ -67,7 +77,9 @@ struct VelocityProfileConfig
   std::optional<std::array<Real, 3>> cen;              ///< Profile center.
 };
 
-/** @brief Configure a time-dependent boundary velocity. */
+/**
+ * @brief Configure a time-dependent boundary velocity.
+ */
 struct VelocityBoundaryConfig
 {
   HostVector<Real>      time;                     ///< Time samples.
@@ -80,7 +92,9 @@ struct VelocityBoundaryConfig
   VelocityProfileConfig prof;                     ///< Spatial velocity profile.
 };
 
-/** @brief Configure one ordered boundary condition. */
+/**
+ * @brief Configure one ordered boundary condition.
+ */
 struct BoundaryConditionConfig
 {
   Index                                 tag  = 0;           ///< Physical boundary tag.
@@ -92,7 +106,9 @@ struct BoundaryConditionConfig
   std::optional<VelocityBoundaryConfig> velocity;           ///< Time-dependent velocity input.
 };
 
-/** @brief Store one validated Navier-Stokes application configuration. */
+/**
+ * @brief Store one validated Navier-Stokes application configuration.
+ */
 struct Config
 {
   std::string                         mesh_file;           ///< Mesh file path.
@@ -108,7 +124,7 @@ struct Config
  *
  * @param[in] path - JSON configuration path.
  * @return Validated application configuration.
- * @throws std::runtime_error - If the file cannot be read or is invalid.
+ * @throws std::runtime_error If validation fails.
  */
 Config loadConfig(const std::string& path);
 

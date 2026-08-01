@@ -9,7 +9,6 @@
 #include <femx/fem/elements/LagrangeQuadQ1.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -91,16 +90,17 @@ TestOutcome hostFlatObserveAndTranspose()
   HostVector<Real> expected_obs;
   op.observe(1, state, prm, expected_obs);
 
-  HostVector<Real>         flat_obs(op.numObservations());
-  linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jac(ctx);
-  jac.apply(op.data().matrix(), state.view(), flat_obs.view());
+  HostVector<Real>    flat_obs(op.numObservations());
+  linalg::HostContext ctx;
+  auto&               mat_handler = ctx.matrixHandler();
+  mat_handler.matvec(op.data().matrix(), state.view(), flat_obs.view());
 
   HostVector<Real> expected_trans;
   op.applyStateJacT(1, state, prm, dir, expected_trans);
 
   HostVector<Real> flat_trans(op.numStates());
-  jac.applyT(op.data().matrix(), dir.view(), flat_trans.view(), 1.0, 1.0);
+  mat_handler.matvecT(
+      op.data().matrix(), dir.view(), flat_trans.view(), 1.0, 1.0);
 
   status *= op.data().numObservations() == 4;
   status *= op.data().numEntries() == 16;

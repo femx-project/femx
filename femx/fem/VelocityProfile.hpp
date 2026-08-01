@@ -28,11 +28,11 @@ struct AxialVelocityProfile
 /**
  * @brief Compute the weighted center of selected boundary facets.
  *
- * @param[in] mesh - Finite-element mesh.
- * @param[in] sel - Boundary-facet selector.
+ * @param[in] mesh  - Finite-element mesh.
+ * @param[in] sel   - Boundary-facet selector.
  * @param[in] label - Boundary label used in diagnostics.
  * @return Weighted boundary center.
- * @throws - If no selected facets are found.
+ * @throws std::runtime_error If validation fails.
  */
 Point3 boundaryCenter(const Mesh&                  mesh,
                       const BoundaryFacetSelector& sel,
@@ -44,17 +44,17 @@ Point3 boundaryCenter(const Mesh&                  mesh,
  * @param[in] mesh - Finite-element mesh.
  * @param[in] ptag - Physical boundary tag.
  * @return Weighted boundary center.
- * @throws - If no matching facets are found.
+ * @throws std::runtime_error If validation fails.
  */
 Point3 boundaryCenter(const Mesh& mesh, Index ptag);
 
 /**
  * @brief Compute the center of a physically named boundary.
  *
- * @param[in] mesh - Finite-element mesh.
+ * @param[in] mesh  - Finite-element mesh.
  * @param[in] pname - Physical boundary name.
  * @return Weighted boundary center.
- * @throws - If no matching facets are found.
+ * @throws std::runtime_error If validation fails.
  */
 Point3 boundaryCenter(const Mesh& mesh, const std::string& pname);
 
@@ -73,7 +73,7 @@ AxialVelocityProfile uniformProfile(const Point3& nrm);
  * @param[in] nrm - Axial direction.
  * @param[in] rad - Profile radius.
  * @return Poiseuille velocity profile.
- * @throws - If the radius is not positive.
+ * @throws std::runtime_error If validation fails.
  */
 AxialVelocityProfile poiseuilleProfile(const Point3& cen,
                                        const Point3& nrm,
@@ -83,7 +83,7 @@ AxialVelocityProfile poiseuilleProfile(const Point3& cen,
  * @brief Compute the scalar factor of an axial profile at a point.
  *
  * @param[in] prof - Velocity profile.
- * @param[in] p - Evaluation point.
+ * @param[in] p    - Evaluation point.
  * @return Profile factor.
  */
 Real profileFactor(const AxialVelocityProfile& prof,
@@ -92,10 +92,10 @@ Real profileFactor(const AxialVelocityProfile& prof,
 /**
  * @brief Compute one velocity component at a point.
  *
- * @param[in] prof - Velocity profile.
- * @param[in] p - Evaluation point.
+ * @param[in] prof       - Velocity profile.
+ * @param[in] p          - Evaluation point.
  * @param[in] peak_speed - Peak velocity magnitude.
- * @param[in] comp - Component index.
+ * @param[in] comp       - Component index.
  * @return Velocity component.
  */
 Real velocityComponent(const AxialVelocityProfile& prof,
@@ -106,10 +106,10 @@ Real velocityComponent(const AxialVelocityProfile& prof,
 /**
  * @brief Convert a velocity quantity to peak speed.
  *
- * @param[in] qty - Velocity quantity name.
+ * @param[in] qty          - Velocity quantity name.
  * @param[in] profile_type - Velocity profile type.
- * @param[in] val - Input quantity.
- * @param[in] area - Boundary area.
+ * @param[in] val          - Input quantity.
+ * @param[in] area         - Boundary area.
  * @param[in] mean_to_peak - Mean-to-peak conversion factor.
  * @return Peak speed.
  */
@@ -122,9 +122,9 @@ Real peakSpeed(const std::string& qty,
 /**
  * @brief Compute a sinusoidal pulse factor.
  *
- * @param[in] time - Evaluation time.
+ * @param[in] time      - Evaluation time.
  * @param[in] amplitude - Pulse amplitude.
- * @param[in] per - Pulse period.
+ * @param[in] per       - Pulse period.
  * @return Multiplicative pulse factor.
  */
 Real sinePulseFactor(Real time, Real amplitude, Real per);

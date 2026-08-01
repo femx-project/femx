@@ -12,7 +12,7 @@ namespace femx::device
  *
  * @param[in] bytes - Number of bytes to allocate.
  * @return Device pointer, or `nullptr` when `bytes` is zero.
- * @throws - If no Device backend is configured or allocation fails.
+ * @throws std::runtime_error If validation fails.
  */
 void* allocate(std::size_t bytes);
 
@@ -26,13 +26,13 @@ void release(void* ptr) noexcept;
 /**
  * @brief Copy bytes between Host and configured Device storage.
  *
- * @param[out] dst - Destination pointer.
- * @param[in] dst_space - Destination memory space.
- * @param[in] src - Source pointer.
- * @param[in] src_space - Source memory space.
- * @param[in] bytes - Number of bytes to copy.
- * @param[in] stream - Backend stream, or `nullptr` for its default stream.
- * @throws - If no Device backend is configured or the copy fails.
+ * @param[out] dst       - Destination pointer.
+ * @param[in]  dst_space - Destination memory space.
+ * @param[in]  src       - Source pointer.
+ * @param[in]  src_space - Source memory space.
+ * @param[in]  bytes     - Number of bytes to copy.
+ * @param[in]  stream    - Backend stream, or `nullptr` for its default stream.
+ * @throws std::runtime_error If validation fails.
  */
 void copy(void*       dst,
           MemorySpace dst_space,
@@ -44,10 +44,10 @@ void copy(void*       dst,
 /**
  * @brief Set Device storage bytes to zero.
  *
- * @param[out] ptr - Device pointer.
- * @param[in] bytes - Number of bytes to set.
- * @param[in] stream - Backend stream, or `nullptr` for its default stream.
- * @throws - If no Device backend is configured or the operation fails.
+ * @param[out] ptr    - Device pointer.
+ * @param[in]  bytes  - Number of bytes to set.
+ * @param[in]  stream - Backend stream, or `nullptr` for its default stream.
+ * @throws std::runtime_error If validation fails.
  */
 void zero(void* ptr, std::size_t bytes, void* stream = nullptr);
 
@@ -65,7 +65,7 @@ void fill(Index* ptr, Index size, Index val, void* stream = nullptr);
  * @brief Wait for work submitted to a configured Device backend stream.
  *
  * @param[in] stream - Backend stream, or `nullptr` for its default stream.
- * @throws - If no Device backend is configured or synchronization fails.
+ * @throws std::runtime_error If validation fails.
  */
 void sync(void* stream);
 

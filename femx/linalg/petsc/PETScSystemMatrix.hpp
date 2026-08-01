@@ -12,6 +12,8 @@ namespace femx::linalg
  */
 class PETScSystemMatrix final : public SystemMatrix<MemorySpace::Host>
 {
+  using Base = SystemMatrix<MemorySpace::Host>;
+
 public:
   /**
    * @brief Construct a PETSc system matrix on an MPI context communicator.
@@ -20,18 +22,45 @@ public:
    */
   explicit PETScSystemMatrix(MpiContext& ctx);
 
+  /**
+   * @copydoc Base::setup()
+   */
   void setup(const HostCsrPattern& pattern) override;
+
+  /**
+   * @copydoc Base::addElement()
+   */
   void addElement(const ElementJacobianView& element) override;
+
+  /**
+   * @copydoc Base::replaceRows()
+   */
   void replaceRows(HostVectorView<const Index> rows,
-                   Real                        diagonal) override;
+                   Real                        diag) override;
+
+  /**
+   * @copydoc Base::eliminateColumns()
+   */
   void eliminateColumns(HostVectorView<const Index> rows,
                         HostVectorView<const Real>  values,
                         HostVectorView<Real>        rhs) override;
+
+  /**
+   * @copydoc Base::finalize()
+   */
   void finalize() override;
-  void apply(HostVectorView<const Real> direction,
-             HostVector<Real>&          out) const override;
-  void applyT(HostVectorView<const Real> direction,
+
+  /**
+   * @copydoc Base::matvec()
+   */
+  void matvec(HostVectorView<const Real> dir,
               HostVector<Real>&          out) const override;
+
+  /**
+   * @copydoc Base::matvecT()
+   */
+  void matvecT(HostVectorView<const Real> dir,
+               HostVector<Real>&          out) const override;
 
   /**
    * @brief Return the owned PETSc matrix for the native solver.
@@ -40,7 +69,7 @@ public:
 
 private:
   MpiContext& ctx_;
-  PETScMatrix matrix_;
+  PETScMatrix mat_;
 };
 
 } // namespace femx::linalg

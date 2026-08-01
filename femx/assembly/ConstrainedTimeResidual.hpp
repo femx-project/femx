@@ -30,7 +30,7 @@ public:
    * @brief Decorate a non-owning Host residual.
    *
    * @param[in] base - Residual kept alive while this decorator is used.
-   * @param[in] ctr - Host control map copied into the decorator.
+   * @param[in] ctr  - Host control map copied into the decorator.
    * @param[in] init - Host initial-state map copied into the decorator.
    */
   ConstrainedTimeResidual(const Base&              base,
@@ -41,9 +41,9 @@ public:
    * @brief Decorate a non-owning Device residual and copy constraint data.
    *
    * @param[in]     base - Residual kept alive while this decorator is used.
-   * @param[in]     ctr - Host control map copied to Device storage.
+   * @param[in]     ctr  - Host control map copied to Device storage.
    * @param[in]     init - Host initial-state map copied to Device storage.
-   * @param[in,out] ctx - Device context receiving the copies.
+   * @param[in,out] ctx  - Device context receiving the copies.
    */
   ConstrainedTimeResidual(const Base&              base,
                           fem::HostControlMap      ctr,

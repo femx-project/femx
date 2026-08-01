@@ -90,7 +90,7 @@ public:
    * @brief Return a subview without bounds checking.
    *
    * @param[in] offset - Offset of the first value in the subview.
-   * @param[in] count - Number of values in the subview.
+   * @param[in] count  - Number of values in the subview.
    * @return View of the requested range.
    */
   FEMX_HOST_DEVICE VectorView subview(Index offset, Index count) const
@@ -121,7 +121,7 @@ public:
    *
    * @param[in] vals - Values to copy.
    * @return This view.
-   * @throws - If the source and destination sizes differ.
+   * @throws std::runtime_error If validation fails.
    */
   template <class Values>
   VectorView& operator=(const Values& vals)
@@ -154,8 +154,8 @@ public:
   /**
    * @brief Construct a view of equal-sized contiguous blocks.
    *
-   * @param[in] data - Address of the first value.
-   * @param[in] blocks - Number of blocks.
+   * @param[in] data       - Address of the first value.
+   * @param[in] blocks     - Number of blocks.
    * @param[in] block_size - Number of values per block.
    */
   FEMX_HOST_DEVICE BlockVectorView(T*    data,
@@ -169,7 +169,7 @@ public:
    * @brief Access a value without bounds checking.
    *
    * @param[in] block - Block index.
-   * @param[in] i - Value index within the block.
+   * @param[in] i     - Value index within the block.
    * @return Reference to the indexed value.
    */
   FEMX_HOST_DEVICE T& operator()(Index block, Index i) const

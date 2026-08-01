@@ -21,12 +21,12 @@ bool hasFiniteValues(const HostVector<Real>& vals);
 /**
  * @brief Run the Host time integrator and monitor accepted states.
  *
- * @param[in,out] integ - Configured Host time integrator.
- * @param[in] problem - Navier-Stokes problem data.
- * @param[in] time - Time-stepping configuration.
- * @param[in] out - Field-output configuration.
- * @param[out] terminal - Optional terminal log stream.
- * @param[out] log_out - Optional persistent log stream.
+ * @param[in,out] integ    - Configured Host time integrator.
+ * @param[in]     problem  - Navier-Stokes problem data.
+ * @param[in]     time     - Time-stepping configuration.
+ * @param[in]     out      - Field-output configuration.
+ * @param[out]    terminal - Optional terminal log stream.
+ * @param[out]    log_out  - Optional persistent log stream.
  * @return Final state and run summary.
  */
 SolveResult solve(state::HostTimeIntegrator& integ,
@@ -40,12 +40,12 @@ SolveResult solve(state::HostTimeIntegrator& integ,
 /**
  * @brief Run the Device time integrator and monitor accepted states.
  *
- * @param[in,out] integ - Configured Device time integrator.
- * @param[in] problem - Navier-Stokes problem data.
- * @param[in] time - Time-stepping configuration.
- * @param[in] out - Field-output configuration.
- * @param[out] terminal - Optional terminal log stream.
- * @param[out] log_out - Optional persistent log stream.
+ * @param[in,out] integ    - Configured Device time integrator.
+ * @param[in]     problem  - Navier-Stokes problem data.
+ * @param[in]     time     - Time-stepping configuration.
+ * @param[in]     out      - Field-output configuration.
+ * @param[out]    terminal - Optional terminal log stream.
+ * @param[out]    log_out  - Optional persistent log stream.
  * @return Final state and run summary.
  */
 SolveResult solve(state::DeviceTimeIntegrator& integ,

@@ -25,6 +25,7 @@ namespace
 
 int run(const Options& opts)
 {
+  // Validate the backend and construct the shared Poisson problem data.
   constexpr auto solver_type = runtime::SolverType::PETSc;
   if (opts.memspace != MemorySpace::Host)
   {
@@ -35,8 +36,10 @@ int run(const Options& opts)
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
   PoissonProblem problem(opts);
 
+  // Build the PETSc linear system on the global communicator.
   linalg::PETScLinearSystem system(PETSC_COMM_WORLD);
 
+  // Bind the residual to the linear system and solve the state equation.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
@@ -44,16 +47,20 @@ int run(const Options& opts)
 
   state_solver.solve(x);
 
+  // Evaluate the residual norm of the computed solution.
   const Real rnorm = helper.resNorm(res, x, system.context());
 
+  // Produce output from the root MPI rank.
   if (isRoot())
   {
+    // Report the computed solution.
     printReport(std::cout,
                 helper.name(),
                 problem,
                 problem.errorReport(x),
                 rnorm);
 
+    // Optional: write visualization output.
     if (opts.write_output)
     {
       const std::string base = helper.outputBase(outputStem(opts));
@@ -72,9 +79,11 @@ int main(int argc, char* argv[])
   int status = 0;
   try
   {
+    // Initialize PETSc/MPI and use one OpenMP thread per MPI rank.
     PetscSession petsc(argc, argv);
     setSerialOpenMp();
 
+    // Parse options and run collectively; only the root rank prints messages.
     try
     {
       if (examples::hasHelp(argc, argv))
@@ -98,6 +107,7 @@ int main(int argc, char* argv[])
       status = 1;
     }
 
+    // Finalize PETSc collectively without hiding an earlier application error.
     const PetscErrorCode ierr = petsc.finalize();
     if (ierr != PETSC_SUCCESS && status == 0)
     {

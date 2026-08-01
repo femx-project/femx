@@ -18,13 +18,13 @@ SystemMatrix<MemorySpace::Host>& PETScLinearSystem::matrix() noexcept
   return mat_;
 }
 
-void PETScLinearSystem::solve(ConstView rhs, Vector& x)
+void PETScLinearSystem::solve(VectorView rhs, Vector& x)
 {
   ctx_.vectorHandler().copy(rhs, rhs_);
   solver_.solve(mat_.matrix(), rhs_, x);
 }
 
-void PETScLinearSystem::solveT(ConstView rhs, Vector& x)
+void PETScLinearSystem::solveT(VectorView rhs, Vector& x)
 {
   ctx_.vectorHandler().copy(rhs, rhs_);
   solver_.solveT(mat_.matrix(), rhs_, x);

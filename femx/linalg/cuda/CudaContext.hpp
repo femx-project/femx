@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaMatrixHandler.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
 
 namespace femx::linalg
@@ -19,6 +20,8 @@ struct CudaContextAccess;
  */
 class CudaContext final : public Context<MemorySpace::Device>
 {
+  using Base = Context<MemorySpace::Device>;
+
 public:
   /**
    * @brief Create a context owning one non-blocking CUDA stream.
@@ -36,21 +39,24 @@ public:
   CudaContext& operator=(CudaContext&&)      = delete;
 
   /**
-   * @brief Return the owned CUDA vector operations.
+   * @copydoc Base::vectorHandler()
    */
   VectorHandler<MemorySpace::Device>& vectorHandler() noexcept override;
 
   /**
-   * @brief Return the full Device element range.
+   * @copydoc Base::matrixHandler()
+   */
+  MatrixHandler<MemorySpace::Device>& matrixHandler() noexcept override;
+
+  /**
+   * @copydoc Base::elementRange()
    *
-   * @param[in] count - Element count.
-   * @return Full half-open element range.
-   * @throws - If `count` is negative.
+   * @details Assigns the full range to the Device context.
    */
   IndexRange elementRange(Index count) const override;
 
   /**
-   * @brief Wait for all work queued on this context.
+   * @copydoc Base::sync()
    */
   void sync() const override;
 
@@ -70,6 +76,7 @@ private:
   void*                                stream_{nullptr}; ///< Owned CUDA stream.
   std::unique_ptr<detail::CudaHandles> handles_;         ///< Owned CUDA library handles.
   std::shared_ptr<void>                sparse_state_;    ///< Cached sparse operation state.
+  CudaMatrixHandler                    mat_handler_;     ///< Owned CUDA matrix operations.
   CudaVectorHandler                    vec_handler_;     ///< Owned CUDA vector operations.
 };
 

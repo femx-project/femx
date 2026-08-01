@@ -93,7 +93,7 @@ even when the documentation fits on one line.
  *
  * @param[in] index - Value index.
  * @return Value at `index`.
- * @throws - If `index` is out of range.
+ * @throws std::runtime_error If validation fails.
  */
 Real value(Index index) const;
 ```
@@ -113,7 +113,7 @@ The directions are:
 - `[out]` for values replaced by the function;
 - `[in,out]` for values both read and modified.
 
-Use the form `@throws - Description.` without an exception type.
+Use the form `@throws std::runtime_error If validation fails.`.
 
 Document each class member variable with a trailing `///<` comment:
 

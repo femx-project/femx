@@ -2,6 +2,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/View.hpp>
+#include <femx/linalg/MatrixHandler.hpp>
 #include <femx/linalg/VectorHandler.hpp>
 
 namespace femx::linalg
@@ -37,12 +38,16 @@ public:
   virtual VectorHandler<MemorySpace::Host>& vectorHandler() noexcept = 0;
 
   /**
+   * @brief Return the owned Host matrix operations.
+   */
+  virtual MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept = 0;
+
+  /**
    * @brief Return the elements assigned to this context.
    *
    * @param[in] count - Global element count.
    * @return Assigned half-open element range.
-   * @throws - If `count` is negative or the execution
-   * environment is invalid.
+   * @throws std::runtime_error If validation fails.
    */
   virtual IndexRange elementRange(Index count) const = 0;
 
@@ -50,11 +55,10 @@ public:
    * @brief Report whether this context owns an element contribution.
    *
    * @param[in] element - Global element index.
-   * @param[in] count - Global element count.
-   * @param[in] rows - Element residual rows in application numbering.
+   * @param[in] count   - Global element count.
+   * @param[in] rows    - Element residual rows in application numbering.
    * @return `true` when this context should evaluate the element.
-   * @throws - If the element data or execution environment
-   * is invalid.
+   * @throws std::runtime_error If validation fails.
    */
   virtual bool ownsElement(
       Index                       element,
@@ -70,14 +74,14 @@ public:
    * @brief Sum replicated Host values across the execution context.
    *
    * @param[in,out] vals - Values replaced by their global sums.
-   * @throws - If a collective operation fails.
+   * @throws std::runtime_error If validation fails.
    */
   virtual void allReduceSum(HostVectorView<Real> vals) const = 0;
 
   /**
    * @brief Wait for work submitted to this context.
    *
-   * @throws - If synchronization fails.
+   * @throws std::runtime_error If validation fails.
    */
   virtual void sync() const = 0;
 };
@@ -97,18 +101,23 @@ public:
   virtual VectorHandler<MemorySpace::Device>& vectorHandler() noexcept = 0;
 
   /**
+   * @brief Return the owned Device matrix operations.
+   */
+  virtual MatrixHandler<MemorySpace::Device>& matrixHandler() noexcept = 0;
+
+  /**
    * @brief Return the elements assigned to this context.
    *
    * @param[in] count - Global element count.
    * @return Assigned half-open element range.
-   * @throws - If `count` is negative.
+   * @throws std::runtime_error If validation fails.
    */
   virtual IndexRange elementRange(Index count) const = 0;
 
   /**
    * @brief Wait for work submitted to this context.
    *
-   * @throws - If synchronization fails.
+   * @throws std::runtime_error If validation fails.
    */
   virtual void sync() const = 0;
 };

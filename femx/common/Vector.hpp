@@ -42,7 +42,7 @@ public:
    * @brief Construct a value-initialized vector.
    *
    * @param[in] size - Number of values.
-   * @throws - If `size` is negative.
+   * @throws std::runtime_error If validation fails.
    */
   explicit Vector(Index size)
     : vals_(checkedSize(size), T{})
@@ -53,8 +53,8 @@ public:
    * @brief Construct a vector filled with one value.
    *
    * @param[in] size - Number of values.
-   * @param[in] val - Initial value for every entry.
-   * @throws - If `size` is negative.
+   * @param[in] val  - Initial value for every entry.
+   * @throws std::runtime_error If validation fails.
    */
   Vector(Index size, const T& val)
     : vals_(checkedSize(size), val)
@@ -65,7 +65,7 @@ public:
    * @brief Construct a vector by copying a Host view.
    *
    * @param[in] view - Values to copy.
-   * @throws - If the view size is negative.
+   * @throws std::runtime_error If validation fails.
    */
   template <class U>
   Vector(HostVectorView<U> view)
@@ -98,7 +98,7 @@ public:
    *
    * @param[in] view - Values to copy.
    * @return This vector.
-   * @throws - If the view size is negative.
+   * @throws std::runtime_error If validation fails.
    */
   template <class U>
   Vector& operator=(HostVectorView<U> view)
@@ -114,7 +114,7 @@ public:
    * value-initialized.
    *
    * @param[in] size - New number of entries.
-   * @throws - If `size` is negative.
+   * @throws std::runtime_error If validation fails.
    */
   void resize(Index size)
   {
@@ -125,8 +125,8 @@ public:
    * @brief Replace storage with copies of one value.
    *
    * @param[in] size - New number of entries.
-   * @param[in] val - Value assigned to every entry.
-   * @throws - If `size` is negative.
+   * @param[in] val  - Value assigned to every entry.
+   * @throws std::runtime_error If validation fails.
    */
   void assign(Index size, const T& val)
   {
@@ -161,7 +161,7 @@ public:
    * @brief Reserve storage for at least the requested number of values.
    *
    * @param[in] size - Requested capacity.
-   * @throws - If `size` is negative.
+   * @throws std::runtime_error If validation fails.
    */
   void reserve(Index size)
   {
@@ -359,7 +359,7 @@ public:
    * @brief Construct a zeroed Device vector.
    *
    * @param[in] size - Number of values.
-   * @throws - If `size` is negative or a Device operation fails.
+   * @throws std::runtime_error If validation fails.
    */
   explicit Vector(Index size)
   {
@@ -396,7 +396,7 @@ public:
    * @brief Replace storage with a zeroed Device allocation.
    *
    * @param[in] size - New number of values.
-   * @throws - If `size` is negative or a Device operation fails.
+   * @throws std::runtime_error If validation fails.
    */
   void resize(Index size)
   {
@@ -427,8 +427,8 @@ public:
    * @brief Replace storage with copies of one value.
    *
    * @param[in] size - New number of values.
-   * @param[in] val - Value assigned to every entry.
-   * @throws - If `size` is negative or a Device operation fails.
+   * @param[in] val  - Value assigned to every entry.
+   * @throws std::runtime_error If validation fails.
    */
   void assign(Index size, const T& val)
   {

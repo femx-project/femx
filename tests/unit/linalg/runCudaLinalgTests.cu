@@ -6,9 +6,7 @@
 #include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -95,11 +93,11 @@ TestOutcome persistentCudaCsrOps()
     const HostVector<Real> h_affine_input{1.0, 2.0, 3.0};
     const HostVector<Real> h_trans_input{2.0, -1.0, 0.5};
 
-    linalg::HostContext      cpu_ctx;
-    linalg::CudaContext      ctx;
-    linalg::HostSystemMatrix h_jac(cpu_ctx);
-    linalg::CudaSystemMatrix jac(ctx);
-    auto&                    vec_handler = ctx.vectorHandler();
+    linalg::HostContext cpu_ctx;
+    linalg::CudaContext ctx;
+    auto&               host_mat_handler = cpu_ctx.matrixHandler();
+    auto&               mat_handler      = ctx.matrixHandler();
+    auto&               vec_handler      = ctx.vectorHandler();
 
     DeviceVector<Real> assigned_reals;
     vec_handler.assign(assigned_reals, 3, 2);
@@ -127,7 +125,7 @@ TestOutcome persistentCudaCsrOps()
     copyMatrix(h_mat, d_mat, ctx);
 
     DeviceCsrMatrix d_transpose;
-    jac.transpose(d_mat, d_transpose);
+    mat_handler.transpose(d_mat, d_transpose);
     const Index* transpose_row_ptr = d_transpose.rowPtrData();
     const Index* transpose_col_ind = d_transpose.colIndData();
     Real*        transpose_vals    = d_transpose.valsData();
@@ -175,9 +173,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(input.view(), sliced_input.view().subview(3, 4));
 
     DeviceVector<Real> output(3);
-    jac.apply(d_mat,
-              sliced_input.view().subview(3, 4),
-              output.view());
+    mat_handler.matvec(d_mat,
+                       sliced_input.view().subview(3, 4),
+                       output.view());
     HostVector<Real> first_product;
     vec_handler.copy(output, first_product);
 
@@ -195,20 +193,20 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real> d_trans_input;
     vec_handler.copy(h_trans_input, d_trans_input);
     DeviceVector<Real> d_direct_trans_product(4);
-    jac.applyT(d_mat,
-               d_trans_input.view(),
-               d_direct_trans_product.view());
+    mat_handler.matvecT(d_mat,
+                        d_trans_input.view(),
+                        d_direct_trans_product.view());
     HostVector<Real> actual_direct_trans_product;
     vec_handler.copy(d_direct_trans_product, actual_direct_trans_product);
     HostVector<Real> expected_trans_product(4);
-    h_jac.applyT(h_mat,
-                 h_trans_input.view(),
-                 expected_trans_product.view());
+    host_mat_handler.matvecT(h_mat,
+                             h_trans_input.view(),
+                             expected_trans_product.view());
     ctx.sync();
 
     record(status,
            near(first_product, HostVector<Real>{-1.0, 22.0, 17.0}),
-           "rectangular CSR apply");
+           "rectangular CSR matvec");
     record(status,
            std::abs(actual_squared_norm[0] - 30.0) <= 1.0e-12,
            "cuBLAS squared norm");
@@ -244,13 +242,13 @@ TestOutcome persistentCudaCsrOps()
     DeviceVector<Real>     d_dense;
     vec_handler.copy(h_dense, d_dense);
     DeviceVector<Real> dense_product(2);
-    jac.apply(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
-              input.view().subview(0, 3),
-              dense_product.view());
+    mat_handler.matvec(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
+                       input.view().subview(0, 3),
+                       dense_product.view());
     DeviceVector<Real> d_dense_trans_product(3);
-    jac.applyT(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
-               dense_product.view(),
-               d_dense_trans_product.view());
+    mat_handler.matvecT(DeviceMatrixView<const Real>(d_dense.data(), 2, 3),
+                        dense_product.view(),
+                        d_dense_trans_product.view());
     HostVector<Real> actual_dense;
     HostVector<Real> actual_dense_trans;
     vec_handler.copy(dense_product, actual_dense);
@@ -265,17 +263,17 @@ TestOutcome persistentCudaCsrOps()
 
     record(status,
            near(actual_direct_trans_product, expected_trans_product),
-           "transposed CSR apply");
+           "transposed CSR matvec");
 
     h_mat.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
     copyMatrix(h_mat, d_mat, ctx);
-    jac.transpose(d_mat, d_transpose);
-    jac.apply(d_mat,
-              sliced_input.view().subview(3, 4),
-              output.view());
-    jac.applyT(d_mat,
-               d_trans_input.view(),
-               d_direct_trans_product.view());
+    mat_handler.transpose(d_mat, d_transpose);
+    mat_handler.matvec(d_mat,
+                       sliced_input.view().subview(3, 4),
+                       output.view());
+    mat_handler.matvecT(d_mat,
+                        d_trans_input.view(),
+                        d_direct_trans_product.view());
 
     HostVector<Real> updated_product;
     HostVector<Real> updated_direct_trans_product;
@@ -283,9 +281,9 @@ TestOutcome persistentCudaCsrOps()
     vec_handler.copy(output, updated_product);
     vec_handler.copy(d_direct_trans_product, updated_direct_trans_product);
     vec_handler.copy(d_transpose.vals(), updated_transpose_vals);
-    h_jac.applyT(h_mat,
-                 h_trans_input.view(),
-                 expected_trans_product.view());
+    host_mat_handler.matvecT(h_mat,
+                             h_trans_input.view(),
+                             expected_trans_product.view());
     ctx.sync();
 
     record(status,
@@ -310,15 +308,17 @@ TestOutcome persistentCudaCsrOps()
     bool overlap_rejected = false;
     try
     {
-      jac.apply(d_mat,
-                sliced_input.view().subview(3, 4),
-                sliced_input.view().subview(4, 3));
+      mat_handler.matvec(d_mat,
+                         sliced_input.view().subview(3, 4),
+                         sliced_input.view().subview(4, 3));
     }
     catch (const std::runtime_error&)
     {
       overlap_rejected = true;
     }
-    record(status, overlap_rejected, "CSR apply rejects overlapping views");
+    record(status,
+           overlap_rejected,
+           "CSR matvec rejects overlapping views");
   }
   catch (const std::exception& error)
   {
