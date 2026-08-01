@@ -1,5 +1,6 @@
 #include <stdexcept>
 
+#include <femx/common/Device.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
 
 namespace femx::linalg
@@ -95,5 +96,14 @@ void CudaVectorHandler::dot(DeviceVectorView<const Real>,
   cudaUnavailable();
 }
 #endif
+
+void CudaVectorHandler::copyBytes(const void* src,
+                                  MemorySpace src_space,
+                                  void*       dst,
+                                  MemorySpace dst_space,
+                                  std::size_t bytes) const
+{
+  device::copy(dst, dst_space, src, src_space, bytes, stream());
+}
 
 } // namespace femx::linalg

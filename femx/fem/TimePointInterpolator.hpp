@@ -7,7 +7,7 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -21,7 +21,7 @@ template <MemorySpace Space>
 class PointInterpolatorData;
 
 class TimePointInterpolator;
-class DeviceTimePointInterpolator;
+class CudaTimePointInterpolator;
 
 using HostPointInterpolatorData =
     PointInterpolatorData<MemorySpace::Host>;
@@ -77,9 +77,9 @@ public:
 private:
   friend class TimePointInterpolator;
 
-  friend void copy(const HostPointInterpolatorData& src,
-                   DevicePointInterpolatorData&     dst,
-                   linalg::CudaContext&             ctx);
+  friend void copy(const HostPointInterpolatorData&      src,
+                   DevicePointInterpolatorData&          dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   CsrMatrix<Space> mat_;
 };
@@ -90,9 +90,9 @@ private:
  * The source must remain alive until work queued on `ctx` has consumed the
  * copy or the context has been synchronized.
  */
-inline void copy(const HostPointInterpolatorData& src,
-                 DevicePointInterpolatorData&     dst,
-                 linalg::CudaContext&             ctx)
+inline void copy(const HostPointInterpolatorData&      src,
+                 DevicePointInterpolatorData&          dst,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
   auto&            vec_handler = ctx.vectorHandler();
   DeviceCsrPattern pattern;
@@ -103,24 +103,24 @@ inline void copy(const HostPointInterpolatorData& src,
 }
 
 /**
- * @brief Explicitly initialized Device point observation operator.
+ * @brief Explicitly initialized CUDA point observation operator.
  *
  * Construct an empty owner, then call copy(TimePointInterpolator, ...) before
  * use. Its operations consume preallocated Device views without mirroring.
  */
-class DeviceTimePointInterpolator final
+class CudaTimePointInterpolator final
   : public DeviceTimeObservationOperator
 {
 public:
-  DeviceTimePointInterpolator() = default;
+  CudaTimePointInterpolator() = default;
 
-  DeviceTimePointInterpolator(const DeviceTimePointInterpolator&) = delete;
-  DeviceTimePointInterpolator& operator=(
-      const DeviceTimePointInterpolator&) = delete;
-  DeviceTimePointInterpolator(DeviceTimePointInterpolator&&) noexcept =
+  CudaTimePointInterpolator(const CudaTimePointInterpolator&) = delete;
+  CudaTimePointInterpolator& operator=(
+      const CudaTimePointInterpolator&) = delete;
+  CudaTimePointInterpolator(CudaTimePointInterpolator&&) noexcept =
       default;
-  DeviceTimePointInterpolator& operator=(
-      DeviceTimePointInterpolator&&) noexcept = default;
+  CudaTimePointInterpolator& operator=(
+      CudaTimePointInterpolator&&) noexcept = default;
 
   /**
    * @brief Number of residual time steps.
@@ -137,20 +137,20 @@ public:
    */
   Index numObservations() const override;
 
-  void observe(Index                        level,
-               DeviceVectorView<const Real> state,
-               DeviceVectorView<Real>       out,
-               linalg::CudaContext&         ctx) const override;
+  void observe(Index                                 level,
+               DeviceVectorView<const Real>          state,
+               DeviceVectorView<Real>                out,
+               linalg::Context<MemorySpace::Device>& ctx) const override;
 
-  void addStateJacT(Index                        level,
-                    DeviceVectorView<const Real> dir,
-                    DeviceVectorView<Real>       out,
-                    linalg::CudaContext&         ctx) const override;
+  void addStateJacT(Index                                 level,
+                    DeviceVectorView<const Real>          dir,
+                    DeviceVectorView<Real>                out,
+                    linalg::Context<MemorySpace::Device>& ctx) const override;
 
 private:
-  friend void copy(const TimePointInterpolator& src,
-                   DeviceTimePointInterpolator& dst,
-                   linalg::CudaContext&         ctx);
+  friend void copy(const TimePointInterpolator&          src,
+                   CudaTimePointInterpolator&            dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   void checkLevel(Index level) const;
 
@@ -186,7 +186,7 @@ public:
    * @brief Create an independently owned explicit Device copy.
    */
   std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
-      linalg::CudaContext& ctx) const override;
+      linalg::Context<MemorySpace::Device>& ctx) const override;
 
   void observe(Index                   level,
                const HostVector<Real>& state,
@@ -258,9 +258,9 @@ private:
 /**
  * @brief Explicitly copy the Host data owned by `src` to Device.
  */
-inline void copy(const TimePointInterpolator& src,
-                 DevicePointInterpolatorData& dst,
-                 linalg::CudaContext&         ctx)
+inline void copy(const TimePointInterpolator&          src,
+                 DevicePointInterpolatorData&          dst,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
   copy(src.data(), dst, ctx);
 }
@@ -268,9 +268,9 @@ inline void copy(const TimePointInterpolator& src,
 /**
  * @brief Explicitly initialize a Device observation operator from `src`.
  */
-inline void copy(const TimePointInterpolator& src,
-                 DeviceTimePointInterpolator& dst,
-                 linalg::CudaContext&         ctx)
+inline void copy(const TimePointInterpolator&          src,
+                 CudaTimePointInterpolator&            dst,
+                 linalg::Context<MemorySpace::Device>& ctx)
 {
   copy(src.data(), dst.data_, ctx);
   dst.num_steps_ = src.numSteps();

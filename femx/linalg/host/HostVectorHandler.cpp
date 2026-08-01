@@ -1,4 +1,4 @@
-#include <femx/linalg/native/HostVectorHandler.hpp>
+#include <femx/linalg/host/HostVectorHandler.hpp>
 
 namespace femx::linalg
 {
@@ -33,11 +33,6 @@ Real HostVectorHandler::dot(HostVectorView<const Real> x,
     val += x[i] * y[i];
   }
   return val;
-}
-
-Real HostVectorHandler::squaredNorm(HostVectorView<const Real> x) const
-{
-  return dot(x, x);
 }
 
 void HostVectorHandler::gather(HostVectorView<const Real>  src,

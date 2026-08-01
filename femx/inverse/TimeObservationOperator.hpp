@@ -7,8 +7,9 @@
 
 namespace femx::linalg
 {
-class CudaContext;
-}
+template <MemorySpace Space>
+class Context;
+} // namespace femx::linalg
 
 namespace femx
 {
@@ -24,8 +25,8 @@ namespace inverse
 class DeviceTimeObservationOperator
 {
 public:
-  using ConstView = VectorView<MemorySpace::Device, const Real>;
-  using View      = VectorView<MemorySpace::Device, Real>;
+  using ConstView = DeviceVectorView<const Real>;
+  using View      = DeviceVectorView<Real>;
 
   virtual ~DeviceTimeObservationOperator() = default;
 
@@ -45,18 +46,18 @@ public:
   /**
    * @brief Overwrite a preallocated observation vector on `ctx`.
    */
-  virtual void observe(Index                level,
-                       ConstView            state,
-                       View                 out,
-                       linalg::CudaContext& ctx) const = 0;
+  virtual void observe(Index                                 level,
+                       ConstView                             state,
+                       View                                  out,
+                       linalg::Context<MemorySpace::Device>& ctx) const = 0;
 
   /**
    * @brief Add the state-transpose product to preallocated `out` on `ctx`.
    */
-  virtual void addStateJacT(Index                level,
-                            ConstView            dir,
-                            View                 out,
-                            linalg::CudaContext& ctx) const = 0;
+  virtual void addStateJacT(Index                                 level,
+                            ConstView                             dir,
+                            View                                  out,
+                            linalg::Context<MemorySpace::Device>& ctx) const = 0;
 };
 
 /**
@@ -95,7 +96,7 @@ public:
    * returned operator and controls when initialization is synchronized.
    */
   virtual std::unique_ptr<DeviceTimeObservationOperator> copyToDevice(
-      linalg::CudaContext&) const
+      linalg::Context<MemorySpace::Device>&) const
   {
     return {};
   }

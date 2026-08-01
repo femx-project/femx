@@ -4,7 +4,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/fem/Mesh.hpp>
-#include <femx/linalg/cuda/CudaContext.hpp>
+#include <femx/linalg/Context.hpp>
 
 namespace femx
 {
@@ -77,9 +77,9 @@ void Mesh::addElem(const HostVector<Index>& nids,
   max_elem_nodes_ = std::max(max_elem_nodes_, nids.size());
 }
 
-void copy(const Mesh&          src,
-          DeviceMesh&          dst,
-          linalg::CudaContext& ctx)
+void copy(const Mesh&                           src,
+          DeviceMesh&                           dst,
+          linalg::Context<MemorySpace::Device>& ctx)
 {
   (void) src.view();
   dst.dim_            = src.dim_;

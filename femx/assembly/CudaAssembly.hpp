@@ -9,6 +9,7 @@
 
 #include <femx/assembly/Assembly.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/common/Cuda.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
@@ -165,8 +166,7 @@ __global__ void assembleKernel(
 
   for (Index row = tid; row < num_rows; row += stride)
   {
-    VectorView<MemorySpace::Device, Real> jac_row(jac_e + row * num_cols,
-                                                  num_cols);
+    DeviceVectorView<Real> jac_row(jac_e + row * num_cols, num_cols);
     kernel.evalRow(elem, row, res_e[row], jac_row);
   }
   __syncthreads();
@@ -246,7 +246,7 @@ __global__ void assembleTimeKernel(
       {nxt_e, ncol}};
   for (Index row = tid; row < nrow; row += stride)
   {
-    VectorView<MemorySpace::Device, Real> jac_row(jac_e + row * ncol, ncol);
+    DeviceVectorView<Real> jac_row(jac_e + row * ncol, ncol);
     kernel.evalRow(elem, wrt, row, res_e[row], jac_row);
   }
   __syncthreads();

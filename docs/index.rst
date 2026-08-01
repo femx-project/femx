@@ -48,7 +48,7 @@ Examples
 --------
 
 The forward Poisson examples accept mesh dimensions, execution backend, and VTU
-output selection. The ``poisson`` target uses the native dense linear system
+output selection. The ``poisson`` target uses the Host dense linear system
 for small dependency-free checks:
 
 .. code-block:: bash

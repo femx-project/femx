@@ -7,7 +7,7 @@
 namespace femx::examples::poisson
 {
 
-DevicePoissonResidual::DevicePoissonResidual(
+CudaPoissonResidual::CudaPoissonResidual(
     const PoissonProblem& problem,
     linalg::CudaContext&  ctx)
   : num_dofs_(problem.numDofs()),
@@ -20,17 +20,17 @@ DevicePoissonResidual::DevicePoissonResidual(
   ctx.vectorHandler().copy(problem.boundaryValues(), boundary_vals_);
 }
 
-state::Dimensions DevicePoissonResidual::dims() const
+state::Dimensions CudaPoissonResidual::dims() const
 {
   return {num_dofs_, 0, num_dofs_};
 }
 
-const HostCsrPattern& DevicePoissonResidual::hostPattern() const
+const HostCsrPattern& CudaPoissonResidual::hostPattern() const
 {
   return h_pattern_;
 }
 
-void DevicePoissonResidual::assembleResidual(
+void CudaPoissonResidual::assembleResidual(
     const DeviceVector<Real>& state,
     const DeviceVector<Real>& /* prm */,
     DeviceVector<Real>&                   out,
@@ -54,7 +54,7 @@ void DevicePoissonResidual::assembleResidual(
       ctx);
 }
 
-void DevicePoissonResidual::assembleJacobian(
+void CudaPoissonResidual::assembleJacobian(
     const DeviceVector<Real>& state,
     const DeviceVector<Real>& /* prm */,
     linalg::SystemMatrix<MemorySpace::Device>& out,
@@ -74,7 +74,7 @@ void DevicePoissonResidual::assembleJacobian(
   assembly::applyDirichletConditions(boundary_map_, jac);
 }
 
-void DevicePoissonResidual::applyParamJacT(
+void CudaPoissonResidual::applyParamJacT(
     const DeviceVector<Real>& /* state */,
     const DeviceVector<Real>& /* prm */,
     const DeviceVector<Real>& /* adj */,

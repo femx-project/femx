@@ -12,7 +12,8 @@ namespace femx
 {
 namespace linalg
 {
-class CudaContext;
+template <MemorySpace Space>
+class Context;
 }
 
 namespace fem
@@ -211,9 +212,9 @@ public:
   }
 
 private:
-  friend void copy(const Mesh&          src,
-                   DeviceMesh&          dst,
-                   linalg::CudaContext& ctx);
+  friend void copy(const Mesh&                           src,
+                   DeviceMesh&                           dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   Index               dim_{0};            ///< Spatial dimension.
   Index               num_nodes_{0};      ///< Number of global nodes.
@@ -552,9 +553,9 @@ public:
   }
 
 private:
-  friend void copy(const Mesh&          src,
-                   DeviceMesh&          dst,
-                   linalg::CudaContext& ctx);
+  friend void copy(const Mesh&                           src,
+                   DeviceMesh&                           dst,
+                   linalg::Context<MemorySpace::Device>& ctx);
 
   Index                     dim_{0};             ///< Spatial dimension.
   HostVector<Node>          nodes_;              ///< Global nodes.
@@ -576,11 +577,11 @@ private:
  *
  * @param[in]  src - Host mesh kept alive while copies are queued.
  * @param[out] dst - Device mesh replaced by the copy.
- * @param[in]  ctx - CUDA context used for the asynchronous copy.
+ * @param[in]  ctx - Device context used for the asynchronous copy.
  */
-void copy(const Mesh&          src,
-          DeviceMesh&          dst,
-          linalg::CudaContext& ctx);
+void copy(const Mesh&                           src,
+          DeviceMesh&                           dst,
+          linalg::Context<MemorySpace::Device>& ctx);
 
 } // namespace fem
 } // namespace femx

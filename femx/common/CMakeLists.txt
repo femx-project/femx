@@ -6,6 +6,7 @@ target_sources(
   PRIVATE Math.cpp
   PUBLIC Checks.hpp
          Cuda.hpp
+         Device.hpp
          LinearInterpolation.hpp
          Math.hpp
          Types.hpp
@@ -20,5 +21,5 @@ if(FEMX_HAS_CUDA)
   set_target_properties(femx_common PROPERTIES CUDA_STANDARD 17
                                                CUDA_STANDARD_REQUIRED ON)
 else()
-  target_sources(femx_common PRIVATE Cuda.cpp)
+  target_sources(femx_common PRIVATE Cuda.cpp Device.cpp)
 endif()

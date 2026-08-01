@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <cublas_v2.h>
+#include <femx/common/Cuda.hpp>
+#include <femx/common/Device.hpp>
 #include <femx/linalg/cuda/CudaHandles.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 
@@ -32,7 +34,7 @@ struct SpmvOperation
 
   ~SpmvOperation()
   {
-    cuda::release(workspace);
+    device::release(workspace);
     if (y != nullptr)
     {
       cusparseDestroyDnVec(y);
@@ -93,7 +95,7 @@ struct CsrState
 {
   ~CsrState()
   {
-    cuda::release(trans_workspace);
+    device::release(trans_workspace);
   }
 
   std::mutex                                      mutex;
@@ -295,9 +297,9 @@ void scaleOutput(DeviceVectorView<Real> y, Real beta, CudaContext& ctx)
   }
   if (beta == 0.0)
   {
-    cuda::zero(y.data(),
-               static_cast<std::size_t>(y.size()) * sizeof(Real),
-               ctx.stream());
+    device::zero(y.data(),
+                 static_cast<std::size_t>(y.size()) * sizeof(Real),
+                 ctx.stream());
     return;
   }
   scaleKernel<<<cuda::numBlocks(y.size(), kThreads),
@@ -430,8 +432,8 @@ void spmv(const DeviceCsrMatrix&       mat,
                 "cusparseSpMV_bufferSize failed");
   if (workspace_size > spmv_op.workspace_capacity)
   {
-    cuda::release(spmv_op.workspace);
-    spmv_op.workspace          = cuda::allocate(workspace_size);
+    device::release(spmv_op.workspace);
+    spmv_op.workspace          = device::allocate(workspace_size);
     spmv_op.workspace_capacity = workspace_size;
     spmv_op.preprocessed       = false;
   }
@@ -624,8 +626,8 @@ void CudaSystemMatrix::transpose(
 
     if (workspace_size > state.trans_workspace_capacity)
     {
-      void* replacement = cuda::allocate(workspace_size);
-      cuda::release(state.trans_workspace);
+      void* replacement = device::allocate(workspace_size);
+      device::release(state.trans_workspace);
       state.trans_workspace          = replacement;
       state.trans_workspace_capacity = workspace_size;
     }

@@ -7,13 +7,14 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
+#include <femx/common/Device.hpp>
 #include <femx/common/Vector.hpp>
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaSystemMatrix.hpp>
-#include <femx/linalg/native/HostContext.hpp>
-#include <femx/linalg/native/HostSystemMatrix.hpp>
+#include <femx/linalg/host/HostContext.hpp>
+#include <femx/linalg/host/HostSystemMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -673,7 +674,7 @@ private:
 
     // ReSolve currently launches on its own/default stream. Complete it before
     // the caller resumes work on the femx non-blocking stream.
-    cuda::sync(nullptr);
+    device::sync(nullptr);
   }
 
 #endif

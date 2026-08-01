@@ -11,7 +11,7 @@
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/linalg/petsc/PETScLinearSystem.hpp>
 #include <femx/runtime/PETScRuntime.hpp>

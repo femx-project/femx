@@ -33,7 +33,7 @@ The initial control is zero. `--obs-stride 0` selects an observation spacing
 equal to one eighth of the smaller mesh dimension.
 
 `PoissonOptProblem` contains only the mathematical and discretization data.
-`HostPoissonOptResidual` and `DevicePoissonOptResidual` implement the same
+`HostPoissonOptResidual` and `CudaPoissonOptResidual` implement the same
 controlled PDE in different memory spaces. `optimize()` is shared by both executables.
 
 ## Backends

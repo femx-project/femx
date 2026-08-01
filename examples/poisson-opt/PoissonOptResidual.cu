@@ -44,7 +44,7 @@ __global__ void parameterVjpKernel(
 
 } // namespace
 
-DevicePoissonOptResidual::DevicePoissonOptResidual(
+CudaPoissonOptResidual::CudaPoissonOptResidual(
     const PoissonOptProblem& problem,
     linalg::CudaContext&     ctx)
   : num_states_(problem.numStates()),
@@ -60,17 +60,17 @@ DevicePoissonOptResidual::DevicePoissonOptResidual(
   ctx.sync();
 }
 
-state::Dimensions DevicePoissonOptResidual::dims() const
+state::Dimensions CudaPoissonOptResidual::dims() const
 {
   return {num_states_, num_prm_, num_states_};
 }
 
-const HostCsrPattern& DevicePoissonOptResidual::hostPattern() const
+const HostCsrPattern& CudaPoissonOptResidual::hostPattern() const
 {
   return h_pattern_;
 }
 
-void DevicePoissonOptResidual::assembleResidual(
+void CudaPoissonOptResidual::assembleResidual(
     const DeviceVector<Real>&             state,
     const DeviceVector<Real>&             prm,
     DeviceVector<Real>&                   out,
@@ -94,7 +94,7 @@ void DevicePoissonOptResidual::assembleResidual(
                                      ctx);
 }
 
-void DevicePoissonOptResidual::assembleJacobian(
+void CudaPoissonOptResidual::assembleJacobian(
     const DeviceVector<Real>&                  state,
     const DeviceVector<Real>&                  prm,
     linalg::SystemMatrix<MemorySpace::Device>& out,
@@ -115,7 +115,7 @@ void DevicePoissonOptResidual::assembleJacobian(
   assembly::applyDirichletConditions(boundary_map_, jac);
 }
 
-void DevicePoissonOptResidual::applyParamJacT(
+void CudaPoissonOptResidual::applyParamJacT(
     const DeviceVector<Real>&             state,
     const DeviceVector<Real>&             prm,
     const DeviceVector<Real>&             adj,
@@ -152,7 +152,7 @@ void DevicePoissonOptResidual::applyParamJacT(
 #endif
 }
 
-void DevicePoissonOptResidual::checkVectors(
+void CudaPoissonOptResidual::checkVectors(
     const DeviceVector<Real>& state,
     const DeviceVector<Real>& prm) const
 {
@@ -163,7 +163,7 @@ void DevicePoissonOptResidual::checkVectors(
 }
 
 DeviceVectorView<const Real>
-DevicePoissonOptResidual::boundaryValues(
+CudaPoissonOptResidual::boundaryValues(
     const DeviceVector<Real>& prm,
     linalg::CudaContext&      ctx) const
 {

@@ -19,47 +19,6 @@ bool available() noexcept
   return false;
 }
 
-void* allocate(std::size_t)
-{
-  unavailable();
-}
-
-void release(void*) noexcept
-{
-}
-
-void copy(void*, MemorySpace, const void*, MemorySpace, std::size_t bytes, void*)
-{
-  if (bytes != 0)
-  {
-    unavailable();
-  }
-}
-
-void zero(void*, std::size_t bytes, void*)
-{
-  if (bytes != 0)
-  {
-    unavailable();
-  }
-}
-
-void fill(Real*, Index size, Real, void*)
-{
-  if (size != 0)
-  {
-    unavailable();
-  }
-}
-
-void fill(Index*, Index size, Index, void*)
-{
-  if (size != 0)
-  {
-    unavailable();
-  }
-}
-
 void* createStream()
 {
   unavailable();
@@ -67,11 +26,6 @@ void* createStream()
 
 void destroyStream(void*) noexcept
 {
-}
-
-void sync(void*)
-{
-  unavailable();
 }
 
 void checkLastError()

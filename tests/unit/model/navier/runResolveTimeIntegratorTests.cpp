@@ -10,7 +10,7 @@
 #include <femx/fem/DirichletControl.hpp>
 #include <femx/fem/Mesh.hpp>
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/model/navier/NavierModel.hpp>
 #include <femx/model/navier/NavierResidual.hpp>
@@ -108,7 +108,7 @@ TestOutcome resolveCudaAdvancesTwoSteps()
         std::make_unique<linalg::ReSolveLinearSolver>());
     auto& cuda_ctx =
         static_cast<linalg::CudaContext&>(cuda_system.context());
-    model::navier::DeviceNavierResidual d_navier(
+    model::navier::CudaNavierResidual d_navier(
         model, cuda_ctx);
     assembly::DeviceConstrainedTimeResidual cuda_res(
         d_navier,

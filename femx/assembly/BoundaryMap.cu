@@ -2,6 +2,7 @@
 
 #include <femx/assembly/BoundaryMap.hpp>
 #include <femx/common/Checks.hpp>
+#include <femx/common/Cuda.hpp>
 
 namespace femx::assembly
 {

@@ -5,7 +5,7 @@
 #include <femx/common/Checks.hpp>
 #include <femx/inverse/LeastSquaresObjective.hpp>
 #include <femx/linalg/Context.hpp>
-#include <femx/linalg/native/HostContext.hpp>
+#include <femx/linalg/host/HostContext.hpp>
 
 namespace femx
 {

@@ -5,14 +5,7 @@
 #include <femx/model/navier/NavierElementKernel.hpp>
 #include <femx/state/TimeResidual.hpp>
 
-namespace femx
-{
-namespace linalg
-{
-class CudaContext;
-}
-
-namespace model::navier
+namespace femx::model::navier
 {
 
 class NavierModel;
@@ -86,17 +79,18 @@ private:
 /**
  * @brief Own Device data and assemble the Navier-Stokes residual with CUDA.
  */
-class DeviceNavierResidual final : public state::DeviceTimeResidual
+class CudaNavierResidual final : public state::DeviceTimeResidual
 {
 public:
   /**
    * @brief Copy a Host Navier-Stokes model to Device storage.
    *
    * @param[in]     model - Source Host model.
-   * @param[in,out] ctx - CUDA context receiving the copies.
+   * @param[in,out] ctx - Device context receiving the copies.
    */
-  DeviceNavierResidual(const NavierModel&   model,
-                       linalg::CudaContext& ctx);
+  CudaNavierResidual(
+      const NavierModel&                    model,
+      linalg::Context<MemorySpace::Device>& ctx);
 
   /**
    * @brief Return the time-residual dimensions.
@@ -155,5 +149,4 @@ private:
   DeviceNavierElementKernel   kernel_;    ///< Device element operator.
 };
 
-} // namespace model::navier
-} // namespace femx
+} // namespace femx::model::navier

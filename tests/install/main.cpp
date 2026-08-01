@@ -10,7 +10,7 @@
 #include <femx/io/VtuWriter.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 
 namespace
 {

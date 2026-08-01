@@ -2,8 +2,7 @@
 
 #include <cstddef>
 
-#include <femx/common/Cuda.hpp>
-#include <femx/common/Vector.hpp>
+#include <femx/linalg/VectorHandler.hpp>
 
 namespace femx::linalg
 {
@@ -11,292 +10,68 @@ namespace femx::linalg
 class CudaContext;
 
 /**
- * @brief Provide CUDA vector operations and explicit Host/Device transfers.
+ * @brief Implement Device vector operations with CUDA.
  *
- * Operations are enqueued on the stream owned by the bound context.
- * Synchronize the context before reading Host destinations.
+ * Operations are enqueued on the stream owned by the bound CUDA context.
  */
-class CudaVectorHandler final
+class CudaVectorHandler final : public VectorHandler<MemorySpace::Device>
 {
 public:
-  /**
-   * @brief Bind vector operations to a CUDA context.
-   *
-   * @param[in] ctx - CUDA execution context.
-   */
   explicit CudaVectorHandler(CudaContext& ctx) noexcept;
 
-  /**
-   * @brief Copy a Host vector to Device storage.
-   *
-   * @param[in]  src - Source Host vector.
-   * @param[out] dst - Destination Device vector.
-   * @throws - If allocation or a CUDA operation fails.
-   */
-  template <class T>
-  void copy(const Vector<MemorySpace::Host, T>& src,
-            Vector<MemorySpace::Device, T>&     dst) const
-  {
-    resize(dst, src.size());
-    copyStorage(src.data(), MemorySpace::Host, dst.data(), src.size());
-  }
+  using VectorHandler<MemorySpace::Device>::copy;
 
-  /**
-   * @brief Copy a Device vector to Device storage.
-   *
-   * @param[in]  src - Source Device vector.
-   * @param[out] dst - Destination Device vector.
-   * @throws - If allocation or a CUDA operation fails.
-   */
-  template <class T>
-  void copy(const Vector<MemorySpace::Device, T>& src,
-            Vector<MemorySpace::Device, T>&       dst) const
-  {
-    if (&src == &dst)
-    {
-      return;
-    }
-    resize(dst, src.size());
-    copyStorage(src.data(), MemorySpace::Device, dst.data(), src.size());
-  }
+  void assign(DeviceVector<Real>& out,
+              Index               size,
+              Real                val) const override;
 
-  /**
-   * @brief Copy a Device vector to Host storage.
-   *
-   * @param[in]  src - Source Device vector.
-   * @param[out] dst - Destination Host vector.
-   * @throws - If allocation or a CUDA operation fails.
-   */
-  template <class T>
-  void copy(const Vector<MemorySpace::Device, T>& src,
-            Vector<MemorySpace::Host, T>&         dst) const
-  {
-    resize(dst, src.size());
-    if (!src.empty())
-    {
-      cuda::copy(dst.data(),
-                 MemorySpace::Host,
-                 src.data(),
-                 MemorySpace::Device,
-                 static_cast<std::size_t>(src.size()) * sizeof(T),
-                 stream());
-    }
-  }
+  void assign(DeviceVector<Index>& out,
+              Index                size,
+              Index                val) const override;
 
-  /**
-   * @brief Reject copying from a temporary Host vector.
-   *
-   * @param[in]  src - Temporary source vector.
-   * @param[out] dst - Destination vector.
-   */
-  template <class T>
-  void copy(Vector<MemorySpace::Host, T>&&  src,
-            Vector<MemorySpace::Device, T>& dst) const = delete;
+  void copy(DeviceVectorView<const Real> src,
+            DeviceVectorView<Real>       dst) const override;
 
-  /**
-   * @brief Reject copying from a temporary Device vector.
-   *
-   * @param[in]  src - Temporary source vector.
-   * @param[out] dst - Destination vector.
-   */
-  template <class T>
-  void copy(Vector<MemorySpace::Device, T>&& src,
-            Vector<MemorySpace::Device, T>&  dst) const = delete;
+  void copy(DeviceVectorView<const Real> src,
+            DeviceVector<Real>&          dst) const override;
 
-  /**
-   * @brief Replace a Device vector with copies of one value.
-   *
-   * @param[out] out - Device vector to replace.
-   * @param[in]  size - Required vector size.
-   * @param[in]  val - Value assigned to every entry.
-   * @throws - If `size` is negative or a CUDA operation
-   * fails.
-   */
-  void assign(DeviceVector<Real>& out, Index size, Real val) const;
+  void copy(HostVectorView<const Real> src,
+            DeviceVectorView<Real>     dst) const override;
 
-  /**
-   * @brief Replace a Device index vector with copies of one value.
-   *
-   * @param[out] out - Device vector to replace.
-   * @param[in]  size - Required vector size.
-   * @param[in]  val - Value assigned to every entry.
-   * @throws - If `size` is negative or a CUDA operation
-   * fails.
-   */
-  void assign(DeviceVector<Index>& out, Index size, Index val) const;
+  void copy(HostVectorView<const Real> src,
+            DeviceVector<Real>&        dst) const override;
 
-  /**
-   * @brief Copy between same-sized Device views.
-   *
-   * @param[in]  src - Source Device view.
-   * @param[out] dst - Destination Device view.
-   * @throws - If views are invalid, sizes differ, overlap,
-   * or a CUDA operation fails.
-   */
-  void copy(DeviceVectorView<const Real> src, DeviceVectorView<Real> dst) const;
+  void copy(DeviceVectorView<const Real> src,
+            HostVectorView<Real>         dst) const override;
 
-  /**
-   * @brief Replace a Device vector by copying a Device view.
-   *
-   * @param[in]  src - Source Device view.
-   * @param[out] dst - Destination Device vector.
-   * @throws - If the view is invalid or a CUDA operation
-   * fails.
-   */
-  void copy(DeviceVectorView<const Real> src, DeviceVector<Real>& dst) const;
+  void copy(DeviceVectorView<const Real> src,
+            HostVector<Real>&            dst) const override;
 
-  /**
-   * @brief Copy between same-sized Host and Device views.
-   *
-   * @param[in]  src - Source Host view.
-   * @param[out] dst - Destination Device view.
-   * @throws - If views are invalid, sizes differ, or a CUDA
-   * operation fails.
-   */
-  void copy(HostVectorView<const Real> src, DeviceVectorView<Real> dst) const;
+  void zero(DeviceVectorView<Real> vals) const override;
 
-  /**
-   * @brief Replace a Device vector by copying a Host view.
-   *
-   * @param[in]  src - Source Host view.
-   * @param[out] dst - Destination Device vector.
-   * @throws - If the view is invalid or a CUDA operation
-   * fails.
-   */
-  void copy(HostVectorView<const Real> src, DeviceVector<Real>& dst) const;
-
-  /**
-   * @brief Copy between same-sized Device and Host views.
-   *
-   * @param[in]  src - Source Device view.
-   * @param[out] dst - Destination Host view.
-   * @throws - If views are invalid, sizes differ, or a CUDA
-   * operation fails.
-   */
-  void copy(DeviceVectorView<const Real> src, HostVectorView<Real> dst) const;
-
-  /**
-   * @brief Replace a Host vector by copying a Device view.
-   *
-   * @param[in]  src - Source Device view.
-   * @param[out] dst - Destination Host vector.
-   * @throws - If the view is invalid or a CUDA operation
-   * fails.
-   */
-  void copy(DeviceVectorView<const Real> src, HostVector<Real>& dst) const;
-
-  /**
-   * @brief Set every Device value to zero.
-   *
-   * @param[out] vals - Device values to clear.
-   * @throws - If the view is invalid or a CUDA operation
-   * fails.
-   */
-  void zero(DeviceVectorView<Real> vals) const;
-
-  /**
-   * @brief Compute `y = a * x + b * y` on Device.
-   *
-   * @param[in]     a - Input-vector scale.
-   * @param[in]     x - Device input vector.
-   * @param[in]     b - Existing-output scale.
-   * @param[in,out] y - Device output vector.
-   * @throws - If inputs are invalid or a CUDA operation
-   * fails.
-   */
   void axpby(Real                         a,
              DeviceVectorView<const Real> x,
              Real                         b,
-             DeviceVectorView<Real>       y) const;
+             DeviceVectorView<Real>       y) const override;
 
-  /**
-   * @brief Gather indexed Device values into a contiguous destination.
-   *
-   * @param[in]  src - Device source values.
-   * @param[in]  indices - Device source indices in destination order.
-   * @param[out] dst - Contiguous Device destination values.
-   * @throws - If inputs are invalid or a CUDA operation
-   * fails.
-   */
   void gather(DeviceVectorView<const Real>  src,
               DeviceVectorView<const Index> indices,
-              DeviceVectorView<Real>        dst) const;
+              DeviceVectorView<Real>        dst) const override;
 
-  /**
-   * @brief Scatter contiguous Device values to indexed destinations.
-   *
-   * @param[in]  src - Contiguous Device source values.
-   * @param[in]  indices - Device destination indices in source order.
-   * @param[out] dst - Indexed Device destination values.
-   * @throws - If inputs are invalid or a CUDA operation
-   * fails.
-   */
   void scatter(DeviceVectorView<const Real>  src,
                DeviceVectorView<const Index> indices,
-               DeviceVectorView<Real>        dst) const;
+               DeviceVectorView<Real>        dst) const override;
 
-  /**
-   * @brief Compute a Device dot product into one Device value.
-   *
-   * @param[in]  x - First Device input vector.
-   * @param[in]  y - Second Device input vector.
-   * @param[out] out - One-value Device result view.
-   * @throws - If inputs are invalid or a CUDA operation
-   * fails.
-   */
   void dot(DeviceVectorView<const Real> x,
            DeviceVectorView<const Real> y,
-           DeviceVectorView<Real>       out) const;
-
-  /**
-   * @brief Compute a squared Euclidean norm into one Device value.
-   *
-   * @param[in]  x - Device input vector.
-   * @param[out] out - One-value Device result view.
-   * @throws - If inputs are invalid or a CUDA operation
-   * fails.
-   */
-  void squaredNorm(DeviceVectorView<const Real> x,
-                   DeviceVectorView<Real>       out) const
-  {
-    dot(x, x, out);
-  }
+           DeviceVectorView<Real>       out) const override;
 
 private:
-  template <class T>
-  static void resize(Vector<MemorySpace::Device, T>& dst, Index size)
-  {
-    if (dst.size() != size)
-    {
-      dst.resize(size);
-    }
-  }
-
-  template <class T>
-  static void resize(Vector<MemorySpace::Host, T>& dst, Index size)
-  {
-    if (dst.size() != size)
-    {
-      dst.resize(size);
-    }
-  }
-
-  template <class T>
-  void copyStorage(const T*    src,
-                   MemorySpace src_space,
-                   T*          dst,
-                   Index       size) const
-  {
-    if (size > 0)
-    {
-      cuda::copy(dst,
-                 MemorySpace::Device,
-                 src,
-                 src_space,
-                 static_cast<std::size_t>(size) * sizeof(T),
-                 stream());
-    }
-  }
+  void copyBytes(const void* src,
+                 MemorySpace src_space,
+                 void*       dst,
+                 MemorySpace dst_space,
+                 std::size_t bytes) const override;
 
   void* stream() const noexcept;
 

@@ -8,7 +8,7 @@
 #include "PoissonOptProblem.hpp"
 #include "PoissonOptResidual.hpp"
 #include "PoissonOptSolve.hpp"
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 #include <femx/runtime/PETScRuntime.hpp>
 #include <femx/state/StateSolver.hpp>
@@ -55,7 +55,7 @@ Result optimizeDevice(PoissonOptProblem& problem)
 
   auto& ctx = static_cast<linalg::CudaContext&>(fwd_system.context());
 
-  DevicePoissonOptResidual       res(problem, ctx);
+  CudaPoissonOptResidual         res(problem, ctx);
   state::DeviceLinearStateSolver state_solver(res, fwd_system);
 
   return optimize(problem, state_solver, adj_system, PETSC_COMM_SELF);

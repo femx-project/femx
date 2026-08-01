@@ -1,8 +1,8 @@
 #include <utility>
 
 #include <femx/common/Checks.hpp>
-#include <femx/linalg/native/DenseLinearSolver.hpp>
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/DenseLinearSolver.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 
 namespace femx::linalg
 {

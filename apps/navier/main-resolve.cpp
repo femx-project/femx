@@ -25,7 +25,7 @@
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaLinearSystem.hpp>
 #else
-#include <femx/linalg/native/HostLinearSystem.hpp>
+#include <femx/linalg/host/HostLinearSystem.hpp>
 #endif
 
 using namespace femx;
@@ -141,7 +141,7 @@ int run(const Config& prm)
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  model::navier::DeviceNavierResidual     navier(problem.model(), ctx);
+  model::navier::CudaNavierResidual       navier(problem.model(), ctx);
   assembly::DeviceConstrainedTimeResidual res(navier, problem.controlMap(), {}, ctx);
 
   DeviceTimeIntegrator integ(res, system);

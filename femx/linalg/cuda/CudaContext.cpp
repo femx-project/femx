@@ -1,5 +1,6 @@
 #include <femx/common/Checks.hpp>
 #include <femx/common/Cuda.hpp>
+#include <femx/common/Device.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
 #include <femx/linalg/cuda/CudaHandles.hpp>
 
@@ -49,7 +50,7 @@ CudaContext::~CudaContext()
   cuda::destroyStream(stream_);
 }
 
-CudaVectorHandler& CudaContext::vectorHandler() noexcept
+VectorHandler<MemorySpace::Device>& CudaContext::vectorHandler() noexcept
 {
   return vec_handler_;
 }
@@ -63,7 +64,7 @@ IndexRange CudaContext::elementRange(Index count) const
 
 void CudaContext::sync() const
 {
-  cuda::sync(stream_);
+  device::sync(stream_);
 }
 
 void* CudaContext::stream() const noexcept

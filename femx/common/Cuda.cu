@@ -5,10 +5,13 @@
 #include <string>
 
 #include <femx/common/Cuda.hpp>
+#include <femx/common/Device.hpp>
 
-namespace femx::cuda
+namespace femx
 {
 
+namespace cuda
+{
 void check(cudaError_t status, const char* operation)
 {
   if (status != cudaSuccess)
@@ -17,6 +20,7 @@ void check(cudaError_t status, const char* operation)
                              + cudaGetErrorString(status));
   }
 }
+} // namespace cuda
 
 namespace
 {
@@ -74,18 +78,20 @@ void fillValues(T* ptr, Index size, T val, void* stream)
   }
   if (hasZeroBytes(val))
   {
-    zero(ptr, static_cast<std::size_t>(size) * sizeof(T), stream);
+    device::zero(ptr, static_cast<std::size_t>(size) * sizeof(T), stream);
     return;
   }
 
-  fillKernel<<<numBlocks(size, kThreads),
+  fillKernel<<<cuda::numBlocks(size, kThreads),
                kThreads,
                0,
                asStream(stream)>>>(size, val, ptr);
-  checkLastError();
+  cuda::checkLastError();
 }
 } // namespace
 
+namespace cuda
+{
 bool available() noexcept
 {
   int        count  = 0;
@@ -97,7 +103,10 @@ bool available() noexcept
   }
   return count > 0;
 }
+} // namespace cuda
 
+namespace device
+{
 void* allocate(std::size_t bytes)
 {
   if (bytes == 0)
@@ -105,7 +114,7 @@ void* allocate(std::size_t bytes)
     return nullptr;
   }
   void* ptr = nullptr;
-  check(cudaMalloc(&ptr, bytes), "cudaMalloc failed");
+  cuda::check(cudaMalloc(&ptr, bytes), "cudaMalloc failed");
   return ptr;
 }
 
@@ -131,12 +140,12 @@ void copy(void*       dst,
   const cudaMemcpyKind kind = copyKind(dst_memspace, src_memspace);
   if (stream != nullptr)
   {
-    check(cudaMemcpyAsync(dst, src, bytes, kind, asStream(stream)),
-          "cudaMemcpyAsync failed");
+    cuda::check(cudaMemcpyAsync(dst, src, bytes, kind, asStream(stream)),
+                "cudaMemcpyAsync failed");
   }
   else
   {
-    check(cudaMemcpy(dst, src, bytes, kind), "cudaMemcpy failed");
+    cuda::check(cudaMemcpy(dst, src, bytes, kind), "cudaMemcpy failed");
   }
 }
 
@@ -148,12 +157,12 @@ void zero(void* ptr, std::size_t bytes, void* stream)
   }
   if (stream != nullptr)
   {
-    check(cudaMemsetAsync(ptr, 0, bytes, asStream(stream)),
-          "cudaMemsetAsync failed");
+    cuda::check(cudaMemsetAsync(ptr, 0, bytes, asStream(stream)),
+                "cudaMemsetAsync failed");
   }
   else
   {
-    check(cudaMemset(ptr, 0, bytes), "cudaMemset failed");
+    cuda::check(cudaMemset(ptr, 0, bytes), "cudaMemset failed");
   }
 }
 
@@ -167,6 +176,15 @@ void fill(Index* ptr, Index size, Index val, void* stream)
   fillValues(ptr, size, val, stream);
 }
 
+void sync(void* stream)
+{
+  cuda::check(cudaStreamSynchronize(asStream(stream)),
+              "cudaStreamSynchronize failed");
+}
+} // namespace device
+
+namespace cuda
+{
 void* createStream()
 {
   cudaStream_t stream = nullptr;
@@ -183,15 +201,10 @@ void destroyStream(void* stream) noexcept
   }
 }
 
-void sync(void* stream)
-{
-  check(cudaStreamSynchronize(asStream(stream)),
-        "cudaStreamSynchronize failed");
-}
-
 void checkLastError()
 {
   check(cudaGetLastError(), "CUDA kernel launch failed");
 }
 
-} // namespace femx::cuda
+} // namespace cuda
+} // namespace femx
