@@ -6,8 +6,6 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {

@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/cuda/CudaMatrixHandler.hpp>
 #include <femx/linalg/cuda/CudaVectorHandler.hpp>
 
 namespace femx::linalg
@@ -41,6 +42,11 @@ public:
   VectorHandler<MemorySpace::Device>& vectorHandler() noexcept override;
 
   /**
+   * @brief Return the owned CUDA matrix operations.
+   */
+  MatrixHandler<MemorySpace::Device>& matrixHandler() noexcept override;
+
+  /**
    * @brief Return the full Device element range.
    *
    * @param[in] count - Element count.
@@ -70,6 +76,7 @@ private:
   void*                                stream_{nullptr}; ///< Owned CUDA stream.
   std::unique_ptr<detail::CudaHandles> handles_;         ///< Owned CUDA library handles.
   std::shared_ptr<void>                sparse_state_;    ///< Cached sparse operation state.
+  CudaMatrixHandler                    mat_handler_;     ///< Owned CUDA matrix operations.
   CudaVectorHandler                    vec_handler_;     ///< Owned CUDA vector operations.
 };
 

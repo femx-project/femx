@@ -8,9 +8,7 @@
 #include <TestHelper.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 namespace femx
@@ -167,11 +165,11 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     HostCsrMatrix h_trans_mat(h_graph);
     fillGridMat(h_trans_mat);
 
-    linalg::HostContext      cpu_ctx;
-    linalg::CudaContext      ctx;
-    linalg::HostSystemMatrix h_jac(cpu_ctx);
-    auto&                    vec_handler = ctx.vectorHandler();
-    DeviceCsrPattern         d_graph;
+    linalg::HostContext cpu_ctx;
+    linalg::CudaContext ctx;
+    auto&               host_mat_handler = cpu_ctx.matrixHandler();
+    auto&               vec_handler      = ctx.vectorHandler();
+    DeviceCsrPattern    d_graph;
     copy(h_graph, d_graph, ctx);
 
     DeviceCsrMatrix d_mat(d_graph);
@@ -205,9 +203,9 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     status *= vecNear(fwd_result, expected);
 
     HostVector<Real> trans_rhs(h_trans_mat.cols());
-    h_jac.applyT(h_trans_mat,
-                 expected.view(),
-                 trans_rhs.view());
+    host_mat_handler.matvecT(h_trans_mat,
+                             expected.view(),
+                             trans_rhs.view());
 
     DeviceVector<Real> d_trans_rhs;
     DeviceVector<Real> d_trans_result;
@@ -252,9 +250,9 @@ TestOutcome unifiedResolveSolvesDeviceStorage()
     copyMatrix(h_trans_mat, d_trans_mat, ctx);
     const HostVector<Real> rhs2 = mul(h_mat, expected);
     HostVector<Real>       trans_rhs2(h_trans_mat.cols());
-    h_jac.applyT(h_trans_mat,
-                 expected.view(),
-                 trans_rhs2.view());
+    host_mat_handler.matvecT(h_trans_mat,
+                             expected.view(),
+                             trans_rhs2.view());
     vec_handler.copy(rhs2, d_rhs);
     vec_handler.copy(trans_rhs2, d_trans_rhs);
     solver.solve(d_mat, d_rhs, d_result, ctx);

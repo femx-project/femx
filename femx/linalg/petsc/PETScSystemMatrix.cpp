@@ -41,16 +41,16 @@ void PETScSystemMatrix::finalize()
   matrix_.finalize();
 }
 
-void PETScSystemMatrix::apply(HostVectorView<const Real> direction,
-                              HostVector<Real>&          out) const
-{
-  matrix_.apply(direction, out);
-}
-
-void PETScSystemMatrix::applyT(HostVectorView<const Real> direction,
+void PETScSystemMatrix::matvec(HostVectorView<const Real> direction,
                                HostVector<Real>&          out) const
 {
-  matrix_.applyT(direction, out);
+  matrix_.matvec(direction, out);
+}
+
+void PETScSystemMatrix::matvecT(HostVectorView<const Real> direction,
+                                HostVector<Real>&          out) const
+{
+  matrix_.matvecT(direction, out);
 }
 
 const PETScMatrix& PETScSystemMatrix::matrix() const noexcept

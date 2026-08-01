@@ -2,6 +2,7 @@
 
 #include <femx/common/Checks.hpp>
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/host/HostMatrixHandler.hpp>
 #include <femx/linalg/host/HostVectorHandler.hpp>
 
 namespace femx::linalg
@@ -19,6 +20,14 @@ public:
   VectorHandler<MemorySpace::Host>& vectorHandler() noexcept override
   {
     return vec_handler_;
+  }
+
+  /**
+   * @brief Return the owned Host matrix operations.
+   */
+  MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept override
+  {
+    return mat_handler_;
   }
 
   /**
@@ -73,6 +82,7 @@ public:
   }
 
 private:
+  HostMatrixHandler mat_handler_; ///< Owned Host matrix operations.
   HostVectorHandler vec_handler_; ///< Owned Host vector operations.
 };
 

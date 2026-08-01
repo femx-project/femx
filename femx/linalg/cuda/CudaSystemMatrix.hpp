@@ -66,8 +66,8 @@ public:
    * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  void apply(DeviceVectorView<const Real> dir,
-             DeviceVector<Real>&          out) const override;
+  void matvec(DeviceVectorView<const Real> dir,
+              DeviceVector<Real>&          out) const override;
 
   /**
    * @brief Compute the transposed Device system-matrix product.
@@ -75,8 +75,8 @@ public:
    * @param[in]  dir - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  void applyT(DeviceVectorView<const Real> dir,
-              DeviceVector<Real>&          out) const override;
+  void matvecT(DeviceVectorView<const Real> dir,
+               DeviceVector<Real>&          out) const override;
 
   /**
    * @brief Return Device CSR storage for an assembly kernel.
@@ -87,88 +87,6 @@ public:
    * @brief Return the owned CSR matrix for a native Device solver.
    */
   const DeviceCsrMatrix& matrix() const noexcept;
-
-  /**
-   * @brief Construct or update a Device CSR transpose.
-   *
-   * @param[in]     src - Source matrix.
-   * @param[in,out] dst - Transposed destination.
-   * @throws - If `src` and `dst` are the same matrix.
-   */
-  void transpose(const DeviceCsrMatrix& src,
-                 DeviceCsrMatrix&       dst) const;
-
-  /**
-   * @brief Apply an arbitrary Device CSR matrix.
-   *
-   * Compute `out = alpha * mat * dir + beta * out`.
-   *
-   * @param[in]     mat - Device CSR matrix.
-   * @param[in]     dir - Input direction.
-   * @param[in,out] out - Output vector.
-   * @param[in]     alpha - Matrix-product scale.
-   * @param[in]     beta - Existing-output scale.
-   * @throws - If dimensions or storage are incompatible.
-   */
-  void apply(const DeviceCsrMatrix&       mat,
-             DeviceVectorView<const Real> dir,
-             DeviceVectorView<Real>       out,
-             Real                         alpha = 1.0,
-             Real                         beta  = 0.0) const;
-
-  /**
-   * @brief Apply the transpose of an arbitrary Device CSR matrix.
-   *
-   * Compute `out = alpha * transpose(mat) * dir + beta * out`.
-   *
-   * @param[in]     mat - Device CSR matrix.
-   * @param[in]     dir - Input direction.
-   * @param[in,out] out - Output vector.
-   * @param[in]     alpha - Matrix-product scale.
-   * @param[in]     beta - Existing-output scale.
-   * @throws - If dimensions or storage are incompatible.
-   */
-  void applyT(const DeviceCsrMatrix&       mat,
-              DeviceVectorView<const Real> dir,
-              DeviceVectorView<Real>       out,
-              Real                         alpha = 1.0,
-              Real                         beta  = 0.0) const;
-
-  /**
-   * @brief Apply a row-major dense Device matrix.
-   *
-   * Compute `out = alpha * mat * dir + beta * out`.
-   *
-   * @param[in]     mat - Row-major dense Device matrix.
-   * @param[in]     dir - Input direction.
-   * @param[in,out] out - Output vector.
-   * @param[in]     alpha - Matrix-product scale.
-   * @param[in]     beta - Existing-output scale.
-   * @throws - If dimensions or storage are incompatible.
-   */
-  void apply(DeviceMatrixView<const Real> mat,
-             DeviceVectorView<const Real> dir,
-             DeviceVectorView<Real>       out,
-             Real                         alpha = 1.0,
-             Real                         beta  = 0.0) const;
-
-  /**
-   * @brief Apply the transpose of a row-major dense Device matrix.
-   *
-   * Compute `out = alpha * transpose(mat) * dir + beta * out`.
-   *
-   * @param[in]     mat - Row-major dense Device matrix.
-   * @param[in]     dir - Input direction.
-   * @param[in,out] out - Output vector.
-   * @param[in]     alpha - Matrix-product scale.
-   * @param[in]     beta - Existing-output scale.
-   * @throws - If dimensions or storage are incompatible.
-   */
-  void applyT(DeviceMatrixView<const Real> mat,
-              DeviceVectorView<const Real> dir,
-              DeviceVectorView<Real>       out,
-              Real                         alpha = 1.0,
-              Real                         beta  = 0.0) const;
 
 private:
   struct ConstraintCache

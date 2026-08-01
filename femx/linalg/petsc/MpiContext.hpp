@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <femx/linalg/Context.hpp>
+#include <femx/linalg/host/HostMatrixHandler.hpp>
 #include <femx/linalg/host/HostVectorHandler.hpp>
 
 namespace femx::linalg
@@ -40,6 +41,11 @@ public:
    * @brief Return the owned Host vector operations.
    */
   VectorHandler<MemorySpace::Host>& vectorHandler() noexcept override;
+
+  /**
+   * @brief Return the owned local Host matrix operations.
+   */
+  MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept override;
 
   /**
    * @brief Return the element range that may contain this rank's work.
@@ -101,6 +107,7 @@ private:
   MPI_Comm          comm_{MPI_COMM_NULL}; ///< Owned MPI communicator.
   int               rank_{0};             ///< Rank in the owned communicator.
   int               size_{1};             ///< Size of the owned communicator.
+  HostMatrixHandler mat_handler_;         ///< Owned local Host matrix operations.
   HostVectorHandler vec_handler_;         ///< Owned Host vector operations.
   std::shared_ptr<const PETScPartition>
       partition_; ///< Graph partition shared with the system matrix.

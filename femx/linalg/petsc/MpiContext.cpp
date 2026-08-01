@@ -66,6 +66,11 @@ VectorHandler<MemorySpace::Host>& MpiContext::vectorHandler() noexcept
   return vec_handler_;
 }
 
+MatrixHandler<MemorySpace::Host>& MpiContext::matrixHandler() noexcept
+{
+  return mat_handler_;
+}
+
 IndexRange MpiContext::elementRange(Index count) const
 {
   require(count >= 0,

@@ -430,7 +430,8 @@ void PETScMatrix::eliminateColumns(
   rhs = corrected;
 }
 
-void PETScMatrix::apply(HostVectorView<const Real> dir, HostVector<Real>& out) const
+void PETScMatrix::matvec(HostVectorView<const Real> dir,
+                         HostVector<Real>&          out) const
 {
   require(dir.size() == cols(),
           "PETScMatrix apply received incompatible vector");
@@ -444,7 +445,8 @@ void PETScMatrix::apply(HostVectorView<const Real> dir, HostVector<Real>& out) c
   check(detail::copyFromPETSc(y.get(), out, partition_), "copyFromPETSc");
 }
 
-void PETScMatrix::applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const
+void PETScMatrix::matvecT(HostVectorView<const Real> dir,
+                          HostVector<Real>&          out) const
 {
   require(dir.size() == rows(),
           "PETScMatrix transpose apply received incompatible vector");

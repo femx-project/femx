@@ -98,8 +98,8 @@ public:
    * @param[in]  direction - Input direction.
    * @param[out] out - Resized output vector.
    */
-  virtual void apply(HostVectorView<const Real> direction,
-                     HostVector<Real>&          out) const = 0;
+  virtual void matvec(HostVectorView<const Real> direction,
+                      HostVector<Real>&          out) const = 0;
 
   /**
    * @brief Compute the transposed system-matrix product.
@@ -107,8 +107,8 @@ public:
    * @param[in]  direction - Input direction.
    * @param[out] out - Resized output vector.
    */
-  virtual void applyT(HostVectorView<const Real> direction,
-                      HostVector<Real>&          out) const = 0;
+  virtual void matvecT(HostVectorView<const Real> direction,
+                       HostVector<Real>&          out) const = 0;
 };
 
 /**
@@ -158,8 +158,8 @@ public:
    * @param[in]  direction - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  virtual void apply(DeviceVectorView<const Real> direction,
-                     DeviceVector<Real>&          out) const = 0;
+  virtual void matvec(DeviceVectorView<const Real> direction,
+                      DeviceVector<Real>&          out) const = 0;
 
   /**
    * @brief Compute the transposed Device system-matrix product.
@@ -167,8 +167,8 @@ public:
    * @param[in]  direction - Device input direction.
    * @param[out] out - Resized Device output vector.
    */
-  virtual void applyT(DeviceVectorView<const Real> direction,
-                      DeviceVector<Real>&          out) const = 0;
+  virtual void matvecT(DeviceVectorView<const Real> direction,
+                       DeviceVector<Real>&          out) const = 0;
 };
 
 } // namespace femx::linalg

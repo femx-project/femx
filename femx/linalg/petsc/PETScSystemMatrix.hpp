@@ -28,10 +28,10 @@ public:
                         HostVectorView<const Real>  values,
                         HostVectorView<Real>        rhs) override;
   void finalize() override;
-  void apply(HostVectorView<const Real> direction,
-             HostVector<Real>&          out) const override;
-  void applyT(HostVectorView<const Real> direction,
+  void matvec(HostVectorView<const Real> direction,
               HostVector<Real>&          out) const override;
+  void matvecT(HostVectorView<const Real> direction,
+               HostVector<Real>&          out) const override;
 
   /**
    * @brief Return the owned PETSc matrix for the native solver.

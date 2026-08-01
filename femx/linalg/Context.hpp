@@ -2,6 +2,7 @@
 
 #include <femx/common/Types.hpp>
 #include <femx/common/View.hpp>
+#include <femx/linalg/MatrixHandler.hpp>
 #include <femx/linalg/VectorHandler.hpp>
 
 namespace femx::linalg
@@ -35,6 +36,11 @@ public:
    * @brief Return the owned Host vector operations.
    */
   virtual VectorHandler<MemorySpace::Host>& vectorHandler() noexcept = 0;
+
+  /**
+   * @brief Return the owned Host matrix operations.
+   */
+  virtual MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.
@@ -95,6 +101,11 @@ public:
    * @brief Return the owned Device vector operations.
    */
   virtual VectorHandler<MemorySpace::Device>& vectorHandler() noexcept = 0;
+
+  /**
+   * @brief Return the owned Device matrix operations.
+   */
+  virtual MatrixHandler<MemorySpace::Device>& matrixHandler() noexcept = 0;
 
   /**
    * @brief Return the elements assigned to this context.

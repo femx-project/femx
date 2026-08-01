@@ -11,7 +11,6 @@
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 
 namespace femx
 {
@@ -255,24 +254,24 @@ TestOutcome denseMatrixApplies()
   mat(1, 1) = 5.0;
   mat(1, 2) = 6.0;
 
-  const HostVector<Real>   x{1.0, 2.0, 3.0};
-  linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jac(ctx);
+  const HostVector<Real> x{1.0, 2.0, 3.0};
+  linalg::HostContext    ctx;
+  auto&                  mat_handler = ctx.matrixHandler();
 
   HostVector<Real> y(2);
-  jac.apply(mat.view(), x.view(), y.view());
+  mat_handler.matvec(mat.view(), x.view(), y.view());
   status *= valsNear(y.data(), std::array<Real, 2>{{14.0, 32.0}});
 
   const HostVector<Real> xt{2.0, -1.0};
   HostVector<Real>       yt(3);
-  jac.applyT(mat.view(), xt.view(), yt.view());
+  mat_handler.matvecT(mat.view(), xt.view(), yt.view());
   status *= valsNear(yt.data(), std::array<Real, 3>{{-2.0, -1.0, 0.0}});
 
   bool threw = false;
   try
   {
     HostVector<Real> wrong_input(2);
-    jac.apply(mat.view(), wrong_input.view(), y.view());
+    mat_handler.matvec(mat.view(), wrong_input.view(), y.view());
   }
   catch (const std::runtime_error&)
   {
@@ -367,10 +366,10 @@ TestOutcome csrMatrixTranspose()
   HostCsrMatrix src(pattern);
   src.vals() = {2.0, -1.0, 3.0, 4.0, -2.0, 5.0, 1.0};
 
-  linalg::HostContext      ctx;
-  linalg::HostSystemMatrix jac(ctx);
-  HostCsrMatrix            dst;
-  jac.transpose(src, dst);
+  linalg::HostContext ctx;
+  auto&               mat_handler = ctx.matrixHandler();
+  HostCsrMatrix       dst;
+  mat_handler.transpose(src, dst);
 
   status *= dst.rows() == 4 && dst.cols() == 3 && dst.nnz() == 7;
   status *= valsEqual(dst.rowPtrData(),
@@ -381,7 +380,7 @@ TestOutcome csrMatrixTranspose()
                      std::array<Real, 7>{{2.0, -2.0, 3.0, -1.0, 5.0, 4.0, 1.0}});
 
   src.vals() = {-1.0, 2.0, 0.5, -3.0, 4.0, 1.0, -2.0};
-  jac.transpose(src, dst);
+  mat_handler.transpose(src, dst);
 
   status *= valsNear(dst.valsData(),
                      std::array<Real, 7>{{-1.0, 4.0, 0.5, 2.0, 1.0, -3.0, -2.0}});
@@ -389,7 +388,7 @@ TestOutcome csrMatrixTranspose()
   bool alias_rejected = false;
   try
   {
-    jac.transpose(src, src);
+    mat_handler.transpose(src, src);
   }
   catch (const std::runtime_error&)
   {

@@ -154,7 +154,7 @@ public:
    * @throws - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void apply(HostVectorView<const Real> dir, HostVector<Real>& out) const;
+  void matvec(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
   /**
    * @brief Apply the transpose to a replicated Host vector.
@@ -164,7 +164,7 @@ public:
    * @throws - If dimensions are inconsistent, the operator
    * is uninitialized, or PETSc reports an error.
    */
-  void applyT(HostVectorView<const Real> dir, HostVector<Real>& out) const;
+  void matvecT(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
 private:
   class ScopedVec

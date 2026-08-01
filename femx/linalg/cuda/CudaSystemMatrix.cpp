@@ -21,7 +21,7 @@ void CudaSystemMatrix::setup(const HostCsrPattern& pattern)
   }
   else
   {
-    ctx_.vectorHandler().zero(mat_.vals().view());
+    ctx_.matrixHandler().zero(mat_);
   }
 }
 
@@ -29,24 +29,24 @@ void CudaSystemMatrix::finalize()
 {
 }
 
-void CudaSystemMatrix::apply(DeviceVectorView<const Real> dir,
-                             DeviceVector<Real>&          out) const
+void CudaSystemMatrix::matvec(DeviceVectorView<const Real> dir,
+                              DeviceVector<Real>&          out) const
 {
   if (out.size() != mat_.rows())
   {
     out.resize(mat_.rows());
   }
-  apply(mat_, dir, out.view());
+  ctx_.matrixHandler().matvec(mat_, dir, out.view());
 }
 
-void CudaSystemMatrix::applyT(DeviceVectorView<const Real> dir,
-                              DeviceVector<Real>&          out) const
+void CudaSystemMatrix::matvecT(DeviceVectorView<const Real> dir,
+                               DeviceVector<Real>&          out) const
 {
   if (out.size() != mat_.cols())
   {
     out.resize(mat_.cols());
   }
-  applyT(mat_, dir, out.view());
+  ctx_.matrixHandler().matvecT(mat_, dir, out.view());
 }
 
 DeviceCsrAssemblyView CudaSystemMatrix::assemblyView() noexcept
@@ -91,47 +91,6 @@ void CudaSystemMatrix::ensureConstraints(DeviceVectorView<const Index>)
   cudaUnavailable();
 }
 
-void CudaSystemMatrix::transpose(const DeviceCsrMatrix&,
-                                 DeviceCsrMatrix&) const
-{
-  cudaUnavailable();
-}
-
-void CudaSystemMatrix::apply(const DeviceCsrMatrix&,
-                             DeviceVectorView<const Real>,
-                             DeviceVectorView<Real>,
-                             Real,
-                             Real) const
-{
-  cudaUnavailable();
-}
-
-void CudaSystemMatrix::applyT(const DeviceCsrMatrix&,
-                              DeviceVectorView<const Real>,
-                              DeviceVectorView<Real>,
-                              Real,
-                              Real) const
-{
-  cudaUnavailable();
-}
-
-void CudaSystemMatrix::apply(DeviceMatrixView<const Real>,
-                             DeviceVectorView<const Real>,
-                             DeviceVectorView<Real>,
-                             Real,
-                             Real) const
-{
-  cudaUnavailable();
-}
-
-void CudaSystemMatrix::applyT(DeviceMatrixView<const Real>,
-                              DeviceVectorView<const Real>,
-                              DeviceVectorView<Real>,
-                              Real,
-                              Real) const
-{
-  cudaUnavailable();
-}
 #endif
 
 } // namespace femx::linalg

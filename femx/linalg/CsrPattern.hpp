@@ -17,6 +17,7 @@ namespace femx
 
 namespace linalg
 {
+class CudaMatrixHandler;
 class CudaSystemMatrix;
 } // namespace linalg
 
@@ -195,6 +196,7 @@ private:
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
                    linalg::Context<MemorySpace::Device>&);
+  friend class linalg::CudaMatrixHandler;
   friend class linalg::CudaSystemMatrix;
 
   void checkSizes() const

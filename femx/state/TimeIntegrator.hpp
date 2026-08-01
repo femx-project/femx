@@ -282,7 +282,7 @@ SolveStats TimeIntegrator<Space>::solveStep(Index step, ConstView prm)
   require(res_vec_.size() == dims_.num_res, "TimeIntegrator residual size mismatch");
 
   jac.finalize();
-  jac.apply(nxt_.view(), rhs_);
+  jac.matvec(nxt_.view(), rhs_);
   vec_handler.axpby(-1.0, res_vec_.view(), 1.0, rhs_.view());
 
   res_.setup(time, jac, rhs_, ctx_);

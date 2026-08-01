@@ -33,7 +33,7 @@ public:
    * @param[out] jac - Local Jacobian row.
    */
   FEMX_HOST_DEVICE void evalRow(
-      const assembly::ElementView<Space>& e,
+      const assembly::ElementView<Space>& elem,
       Index                               row,
       Real&                               res,
       VectorView<Space, Real>             jac) const
@@ -51,16 +51,16 @@ public:
         Real grad_dot = 0.0;
         for (Index id = 0; id < data_.dim(); ++id)
         {
-          grad_dot += data_.dNdx(e.ie, iq, row, id)
-                      * data_.dNdx(e.ie, iq, col, id);
+          grad_dot += data_.dNdx(elem.ie, iq, row, id)
+                      * data_.dNdx(elem.ie, iq, col, id);
         }
-        jac[col] += grad_dot * data_.JxW(e.ie, iq);
+        jac[col] += grad_dot * data_.JxW(elem.ie, iq);
       }
     }
 
     for (Index col = 0; col < jac.size(); ++col)
     {
-      res += jac[col] * e.state[col];
+      res += jac[col] * elem.state[col];
     }
   }
 

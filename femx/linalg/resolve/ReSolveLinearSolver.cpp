@@ -12,9 +12,7 @@
 #include <femx/linalg/Context.hpp>
 #include <femx/linalg/CsrMatrix.hpp>
 #include <femx/linalg/cuda/CudaContext.hpp>
-#include <femx/linalg/cuda/CudaSystemMatrix.hpp>
 #include <femx/linalg/host/HostContext.hpp>
-#include <femx/linalg/host/HostSystemMatrix.hpp>
 #include <femx/linalg/resolve/ReSolveLinearSolver.hpp>
 
 #if defined(FEMX_HAS_RESOLVE)
@@ -131,6 +129,7 @@ public:
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Host transpose dimensions");
     checkHostAliases(mat, rhs, x);
+
 #if defined(FEMX_HAS_RESOLVE)
     solveHostT(mat, rhs, x);
 #else
@@ -180,19 +179,22 @@ public:
               CudaContext&              ctx)
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
+
     ensureCuda();
     require(mat.rows() == mat.cols() && rhs.size() == mat.cols(),
             "ReSolveLinearSolver received inconsistent Device transpose dimensions");
-    CudaSystemMatrix system_mat(ctx);
-    system_mat.transpose(mat, d_trans_mat_);
+    ctx.matrixHandler().transpose(mat, d_trans_mat_);
     bindCuda(cuda_trans_system_, d_trans_mat_, *cuda_work_);
     solveDeviceWith(cuda_trans_system_, cuda_vecs_, rhs, x, ctx);
+
 #else
+
     (void) mat;
     (void) rhs;
     (void) x;
     (void) ctx;
     unavailableCuda();
+
 #endif
   }
 
@@ -228,12 +230,12 @@ private:
                                const HostVector<Real>& rhs,
                                const HostVector<Real>& x)
   {
-    const bool rhs_x = &rhs == &x
-                       || (!rhs.empty() && rhs.data() == x.data());
+    const bool rhs_x   = &rhs == &x
+                         || (!rhs.empty() && rhs.data() == x.data());
     const bool rhs_mat = &rhs == &mat.vals()
                          || (!rhs.empty() && rhs.data() == mat.valsData());
-    const bool x_mat = &x == &mat.vals()
-                       || (!x.empty() && x.data() == mat.valsData());
+    const bool x_mat   = &x == &mat.vals()
+                         || (!x.empty() && x.data() == mat.valsData());
     require(!rhs_x && !rhs_mat && !x_mat,
             "ReSolveLinearSolver Host vectors and matrix values must not alias");
   }
@@ -440,7 +442,7 @@ private:
   void setTransposeOperator(const HostCsrMatrix& mat)
   {
     ensureCpu();
-    h_mat_.transpose(mat, h_trans_mat_);
+    h_matrix_ctx_.matrixHandler().transpose(mat, h_trans_mat_);
 
     const bool reuse = trans_mat_ != nullptr
                        && trans_rows_ == mat.cols()
@@ -511,6 +513,7 @@ private:
                   "femx/ReSolve index types must match for zero-copy use");
     static_assert(std::is_same<Real, ReSolve::real_type>::value,
                   "femx/ReSolve real types must match for zero-copy use");
+
     work = std::make_unique<ReSolve::LinAlgWorkspaceCUDA>();
     work->initializeHandles();
   }
@@ -582,8 +585,8 @@ private:
     sys.col_ind        = col_ind;
     sys.vals           = vals;
     sys.setup_complete = false;
-    sys.mat            = std::make_unique<ReSolve::matrix::Csr>(
-        rows, cols, nnz);
+
+    sys.mat = std::make_unique<ReSolve::matrix::Csr>(rows, cols, nnz);
     check(sys.mat->setDataPointers(const_cast<Index*>(sys.row_ptr),
                                    const_cast<Index*>(sys.col_ind),
                                    sys.vals,
@@ -597,6 +600,7 @@ private:
         opts_.solve,
         opts_.precond,
         opts_.ir);
+
     applyIterativeOpts(*sys.solver, "ReSolve Device");
     check(sys.solver->setMatrix(sys.mat.get()),
           "ReSolve Device SystemSolver::setMatrix failed");
@@ -606,8 +610,7 @@ private:
                                const DeviceVector<Real>& rhs,
                                const DeviceVector<Real>& x)
   {
-    const bool rhs_x = &rhs == &x
-                       || (!rhs.empty() && rhs.data() == x.data());
+    const bool rhs_x   = &rhs == &x || (!rhs.empty() && rhs.data() == x.data());
     const bool rhs_mat = !rhs.empty() && rhs.data() == sys.vals;
     const bool x_mat   = !x.empty() && x.data() == sys.vals;
     require(!rhs_x && !rhs_mat && !x_mat,
@@ -681,7 +684,6 @@ private:
 
   ReSolveOptions       opts_;
   HostContext          h_matrix_ctx_;
-  HostSystemMatrix     h_mat_{h_matrix_ctx_};
   const HostCsrMatrix* h_op_{nullptr};
   Index                cpu_rows_{0};
   Index                cpu_cols_{0};
