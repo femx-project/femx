@@ -64,7 +64,7 @@ struct AssemblyMapView
    * @brief Map an element residual row to a global residual degree of freedom.
    *
    * @param[in] ie - Element index.
-   * @param[in] i - Element-local residual row.
+   * @param[in] i  - Element-local residual row.
    * @return Global residual degree of freedom.
    */
   FEMX_HOST_DEVICE Index resDof(Index ie, Index i) const
@@ -76,7 +76,7 @@ struct AssemblyMapView
    * @brief Map an element state column to a global state degree of freedom.
    *
    * @param[in] ie - Element index.
-   * @param[in] i - Element-local state column.
+   * @param[in] i  - Element-local state column.
    * @return Global state degree of freedom.
    */
   FEMX_HOST_DEVICE Index stateDof(Index ie, Index i) const
@@ -88,7 +88,7 @@ struct AssemblyMapView
    * @brief Map a local Jacobian entry to a CSR value index.
    *
    * @param[in] ie - Element index.
-   * @param[in] i - Row-major local Jacobian index.
+   * @param[in] i  - Row-major local Jacobian index.
    * @return CSR value index.
    */
   FEMX_HOST_DEVICE Index jacIndex(Index ie, Index i) const
@@ -260,9 +260,9 @@ private:
 /**
  * @brief Build a host assembly map from explicit element DOF tables.
  *
- * @param[in] num_res - Global residual size.
+ * @param[in] num_res    - Global residual size.
  * @param[in] num_states - Global state size.
- * @param[in] res_dofs - Residual degrees of freedom for each element.
+ * @param[in] res_dofs   - Residual degrees of freedom for each element.
  * @param[in] state_dofs - State degrees of freedom for each element.
  * @return Validated map and its immutable CSR pattern.
  */
@@ -275,7 +275,7 @@ HostAssemblyMap makeAssemblyMap(
 /**
  * @brief Build a rectangular assembly map from residual and state maps.
  *
- * @param[in] res_map - Element-to-global map for residual rows.
+ * @param[in] res_map   - Element-to-global map for residual rows.
  * @param[in] state_map - Element-to-global map for state columns.
  * @return Validated assembly map and its immutable sparse pattern.
  */

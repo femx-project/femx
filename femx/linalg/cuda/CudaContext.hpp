@@ -20,6 +20,8 @@ struct CudaContextAccess;
  */
 class CudaContext final : public Context<MemorySpace::Device>
 {
+  using Base = Context<MemorySpace::Device>;
+
 public:
   /**
    * @brief Create a context owning one non-blocking CUDA stream.
@@ -37,26 +39,24 @@ public:
   CudaContext& operator=(CudaContext&&)      = delete;
 
   /**
-   * @brief Return the owned CUDA vector operations.
+   * @copydoc Base::vectorHandler()
    */
   VectorHandler<MemorySpace::Device>& vectorHandler() noexcept override;
 
   /**
-   * @brief Return the owned CUDA matrix operations.
+   * @copydoc Base::matrixHandler()
    */
   MatrixHandler<MemorySpace::Device>& matrixHandler() noexcept override;
 
   /**
-   * @brief Return the full Device element range.
+   * @copydoc Base::elementRange()
    *
-   * @param[in] count - Element count.
-   * @return Full half-open element range.
-   * @throws - If `count` is negative.
+   * @details Assigns the full range to the Device context.
    */
   IndexRange elementRange(Index count) const override;
 
   /**
-   * @brief Wait for all work queued on this context.
+   * @copydoc Base::sync()
    */
   void sync() const override;
 

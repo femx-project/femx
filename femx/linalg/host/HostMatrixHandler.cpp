@@ -81,10 +81,11 @@ void HostMatrixHandler::transpose(const HostCsrMatrix& src,
     }
   }
 
-  dst        = HostCsrMatrix(HostCsrPattern(src.cols(),
+  dst = HostCsrMatrix(HostCsrPattern(src.cols(),
                                      src.rows(),
                                      std::move(row_offsets),
                                      std::move(col_inds)));
+
   dst.vals() = vals;
 }
 

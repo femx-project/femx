@@ -26,7 +26,9 @@ FEMX_HOST_DEVICE inline Real controlResidual(Real state, Real ctr)
 
 } // namespace detail
 
-/** @brief Assemble the controlled Poisson residual with Host data. */
+/**
+ * @brief Assemble the controlled Poisson residual with Host data.
+ */
 class HostPoissonOptResidual final : public state::HostResidual
 {
 public:
@@ -37,19 +39,23 @@ public:
    */
   explicit HostPoissonOptResidual(const PoissonOptProblem& problem);
 
-  /** @brief Return the residual dimensions. */
+  /**
+   * @brief Return the residual dimensions.
+   */
   state::Dimensions dims() const override;
 
-  /** @brief Return the Host Jacobian sparsity pattern. */
+  /**
+   * @brief Return the Host Jacobian sparsity pattern.
+   */
   const HostCsrPattern& hostPattern() const override;
 
   /**
    * @brief Assemble the controlled Poisson residual.
    *
-   * @param[in] state - State vector.
-   * @param[in] prm - Boundary-control parameters.
-   * @param[out] out - Residual vector.
-   * @param[in,out] ctx - Linear algebra context.
+   * @param[in]     state - State vector.
+   * @param[in]     prm   - Boundary-control parameters.
+   * @param[out]    out   - Residual vector.
+   * @param[in,out] ctx   - Linear algebra context.
    */
   void assembleResidual(const HostVector<Real>& state,
                         const HostVector<Real>& prm,
@@ -59,10 +65,10 @@ public:
   /**
    * @brief Assemble the state Jacobian.
    *
-   * @param[in] state - State vector.
-   * @param[in] prm - Boundary-control parameters.
-   * @param[out] out - State Jacobian.
-   * @param[in,out] ctx - Linear algebra context.
+   * @param[in]     state - State vector.
+   * @param[in]     prm   - Boundary-control parameters.
+   * @param[out]    out   - State Jacobian.
+   * @param[in,out] ctx   - Linear algebra context.
    */
   void assembleJacobian(const HostVector<Real>& state,
                         const HostVector<Real>& prm,
@@ -72,11 +78,11 @@ public:
   /**
    * @brief Apply the parameter Jacobian transpose.
    *
-   * @param[in] state - State vector.
-   * @param[in] prm - Boundary-control parameters.
-   * @param[in] adj - Residual adjoint.
-   * @param[out] out - Parameter-space result.
-   * @param[in,out] ctx - Linear algebra context.
+   * @param[in]     state - State vector.
+   * @param[in]     prm   - Boundary-control parameters.
+   * @param[in]     adj   - Residual adjoint.
+   * @param[out]    out   - Parameter-space result.
+   * @param[in,out] ctx   - Linear algebra context.
    */
   void applyParamJacT(const HostVector<Real>& state,
                       const HostVector<Real>& prm,
@@ -94,32 +100,38 @@ private:
   const PoissonOptProblem& problem_; ///< Bound Host problem.
 };
 
-/** @brief Own Device data and assemble the controlled Poisson residual on CUDA. */
+/**
+ * @brief Own Device data and assemble the controlled Poisson residual on CUDA.
+ */
 class CudaPoissonOptResidual final : public state::DeviceResidual
 {
 public:
   /**
    * @brief Copy a Host Poisson optimization problem to Device storage.
    *
-   * @param[in] problem - Source Host problem.
-   * @param[in,out] ctx - CUDA context receiving the copies.
+   * @param[in]     problem - Source Host problem.
+   * @param[in,out] ctx     - CUDA context receiving the copies.
    */
   CudaPoissonOptResidual(const PoissonOptProblem& problem,
                          linalg::CudaContext&     ctx);
 
-  /** @brief Return the residual dimensions. */
+  /**
+   * @brief Return the residual dimensions.
+   */
   state::Dimensions dims() const override;
 
-  /** @brief Return the Host Jacobian sparsity pattern. */
+  /**
+   * @brief Return the Host Jacobian sparsity pattern.
+   */
   const HostCsrPattern& hostPattern() const override;
 
   /**
    * @brief Assemble the controlled Poisson residual on Device.
    *
-   * @param[in] state - Device state vector.
-   * @param[in] prm - Device boundary-control parameters.
-   * @param[out] out - Device residual vector.
-   * @param[in,out] ctx - Device linear algebra context.
+   * @param[in]     state - Device state vector.
+   * @param[in]     prm   - Device boundary-control parameters.
+   * @param[out]    out   - Device residual vector.
+   * @param[in,out] ctx   - Device linear algebra context.
    */
   void assembleResidual(const DeviceVector<Real>& state,
                         const DeviceVector<Real>& prm,
@@ -129,10 +141,10 @@ public:
   /**
    * @brief Assemble the Device state Jacobian.
    *
-   * @param[in] state - Device state vector.
-   * @param[in] prm - Device boundary-control parameters.
-   * @param[out] out - Device state Jacobian.
-   * @param[in,out] ctx - Device linear algebra context.
+   * @param[in]     state - Device state vector.
+   * @param[in]     prm   - Device boundary-control parameters.
+   * @param[out]    out   - Device state Jacobian.
+   * @param[in,out] ctx   - Device linear algebra context.
    */
   void assembleJacobian(const DeviceVector<Real>& state,
                         const DeviceVector<Real>& prm,
@@ -142,11 +154,11 @@ public:
   /**
    * @brief Apply the Device parameter Jacobian transpose.
    *
-   * @param[in] state - Device state vector.
-   * @param[in] prm - Device boundary-control parameters.
-   * @param[in] adj - Device residual adjoint.
-   * @param[out] out - Device parameter-space result.
-   * @param[in,out] ctx - Device linear algebra context.
+   * @param[in]     state - Device state vector.
+   * @param[in]     prm   - Device boundary-control parameters.
+   * @param[in]     adj   - Device residual adjoint.
+   * @param[out]    out   - Device parameter-space result.
+   * @param[in,out] ctx   - Device linear algebra context.
    */
   void applyParamJacT(const DeviceVector<Real>& state,
                       const DeviceVector<Real>& prm,

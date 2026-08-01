@@ -54,7 +54,7 @@ public:
    * @brief Return the initialized PETSc matrix handle.
    *
    * @return Borrowed PETSc matrix handle.
-   * @throws - If the operator is not initialized.
+   * @throws std::runtime_error If validation fails.
    */
   Mat mat() const;
 
@@ -73,8 +73,7 @@ public:
    *
    * @param[in] rows - Global number of rows.
    * @param[in] cols - Global number of columns.
-   * @throws - If PETSc is not initialized or PETSc or MPI
-   * reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void resize(Index rows, Index cols);
 
@@ -82,15 +81,14 @@ public:
    * @brief Allocate from an exact Host CSR pattern.
    *
    * @param[in] pattern - CSR pattern used for preallocation.
-   * @throws - If PETSc is not initialized or PETSc or MPI
-   * reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void resize(const HostCsrPattern& pattern);
 
   /**
    * @brief Zero all numeric entries while retaining sparsity.
    *
-   * @throws - If PETSc reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void setZero();
 
@@ -100,19 +98,17 @@ public:
    * @param[in] row - Global row index.
    * @param[in] col - Global column index.
    * @param[in] val - Replacement value.
-   * @throws - If the operator is uninitialized or PETSc
-   * reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void set(Index row, Index col, Real val);
 
   /**
    * @brief Add a dense block using global index arrays.
    *
-   * @param[in] rows - Global row indices.
-   * @param[in] cols - Global column indices.
-   * @param[in] mat_e - Dense values matching the index arrays.
-   * @throws - If dimensions are inconsistent, the operator
-   * is uninitialized, or PETSc reports an error.
+   * @param[in] rows    - Global row indices.
+   * @param[in] columns - Global column indices.
+   * @param[in] values  - Dense values matching the index arrays.
+   * @throws std::runtime_error If validation fails.
    */
   void addBlock(HostVectorView<const Index> rows,
                 HostVectorView<const Index> columns,
@@ -121,8 +117,7 @@ public:
   /**
    * @brief Complete PETSc matrix assembly.
    *
-   * @throws - If the operator is uninitialized or PETSc
-   * reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void finalize();
 
@@ -131,16 +126,16 @@ public:
    *
    * @param[in] rows - Global rows to replace.
    * @param[in] diag - Replacement diagonal value.
-   * @throws - If a row is invalid or PETSc reports an error.
+   * @throws std::runtime_error If validation fails.
    */
-  void replaceRows(HostVectorView<const Index> rows, Real diagonal);
+  void replaceRows(HostVectorView<const Index> rows, Real diag);
 
   /**
    * @brief Eliminate constrained rows and columns with RHS correction.
    *
-   * @param[in]     rows - Global constrained rows.
+   * @param[in]     rows   - Global constrained rows.
    * @param[in]     values - Prescribed values in row order.
-   * @param[in,out] rhs - Replicated Host right-hand side.
+   * @param[in,out] rhs    - Replicated Host right-hand side.
    */
   void eliminateColumns(HostVectorView<const Index> rows,
                         HostVectorView<const Real>  values,
@@ -151,8 +146,7 @@ public:
    *
    * @param[in]  dir - Input vector.
    * @param[out] out - Replicated result vector.
-   * @throws - If dimensions are inconsistent, the operator
-   * is uninitialized, or PETSc reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void matvec(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
@@ -161,8 +155,7 @@ public:
    *
    * @param[in]  dir - Input vector.
    * @param[out] out - Replicated result vector.
-   * @throws - If dimensions are inconsistent, the operator
-   * is uninitialized, or PETSc reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   void matvecT(HostVectorView<const Real> dir, HostVector<Real>& out) const;
 
@@ -188,7 +181,7 @@ private:
                 Index           num_cols,
                 const Real*     vals);
 
-  void zeroRows(HostVectorView<const Index> rows, Real diagonal);
+  void zeroRows(HostVectorView<const Index> rows, Real diag);
 
   static void computePrealloc(const HostCsrPattern& pattern,
                               PetscInt              begin,
@@ -209,8 +202,8 @@ private:
   Index         rows_{0};               ///< Global row count.
   Index         cols_{0};               ///< Global column count.
   std::uint64_t layout_id_{0};          ///< CSR layout used to create the matrix.
-  std::shared_ptr<const PETScPartition>
-      partition_; ///< Graph partition and application/PETSc numbering.
+
+  std::shared_ptr<const PETScPartition> partition_; ///< Graph partition and application/PETSc numbering.
 };
 
 } // namespace linalg

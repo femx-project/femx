@@ -123,7 +123,7 @@ private:
     setInitialGuess(
         x_vec.get(), x, op.rows(), op.partition());
 
-    ensureKsp();
+    initializeKsp();
     configureKsp(ksp_);
     check(KSPSetOperators(ksp_, op.mat(), op.mat()), "KSPSetOperators");
     if (trans)
@@ -190,7 +190,7 @@ private:
     }
   }
 
-  void ensureKsp()
+  void initializeKsp()
   {
     checkInit();
     if (ksp_ == nullptr)

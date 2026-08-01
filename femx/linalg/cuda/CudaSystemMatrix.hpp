@@ -11,13 +11,11 @@ namespace femx::linalg
 
 /**
  * @brief Own and operate on a Device CSR system matrix.
- *
- * Assembly, constraint kernels, matrix application, and copies use the stream
- * owned by the bound CUDA context. Constraint metadata is cached in Device
- * storage.
  */
 class CudaSystemMatrix final : public SystemMatrix<MemorySpace::Device>
 {
+  using Base = SystemMatrix<MemorySpace::Device>;
+
 public:
   /**
    * @brief Bind the system matrix to a CUDA execution context.
@@ -27,53 +25,40 @@ public:
   explicit CudaSystemMatrix(CudaContext& ctx) noexcept;
 
   /**
-   * @brief Prepare zero-valued Device storage from a Host CSR pattern.
-   *
-   * @param[in] pattern - Canonical global sparsity pattern.
+   * @copydoc Base::setup()
    */
   void setup(const HostCsrPattern& pattern) override;
 
   /**
-   * @brief Replace constrained rows by diagonal rows.
+   * @copydoc Base::replaceRows()
    *
-   * @param[in] rows - Device constrained row indices.
-   * @param[in] diag - Replacement diagonal value.
-   * @throws - If the constrained rows are invalid.
+   * @throws std::runtime_error If validation fails.
    */
   void replaceRows(DeviceVectorView<const Index> rows,
                    Real                          diag) override;
 
   /**
-   * @brief Eliminate constrained columns and correct a right-hand side.
+   * @copydoc Base::eliminateColumns()
    *
-   * @param[in]     rows - Device constrained row indices.
-   * @param[in]     vals - Device prescribed values.
-   * @param[in,out] rhs - Device right-hand side corrected in place.
-   * @throws - If the constraint vectors are incompatible.
+   * @throws std::runtime_error If validation fails.
    */
   void eliminateColumns(DeviceVectorView<const Index> rows,
-                        DeviceVectorView<const Real>  vals,
+                        DeviceVectorView<const Real>  values,
                         DeviceVectorView<Real>        rhs) override;
 
   /**
-   * @brief Complete assembly before matrix application.
+   * @copydoc Base::finalize()
    */
   void finalize() override;
 
   /**
-   * @brief Compute the Device system-matrix product.
-   *
-   * @param[in]  dir - Device input direction.
-   * @param[out] out - Resized Device output vector.
+   * @copydoc Base::matvec()
    */
   void matvec(DeviceVectorView<const Real> dir,
               DeviceVector<Real>&          out) const override;
 
   /**
-   * @brief Compute the transposed Device system-matrix product.
-   *
-   * @param[in]  dir - Device input direction.
-   * @param[out] out - Resized Device output vector.
+   * @copydoc Base::matvecT()
    */
   void matvecT(DeviceVectorView<const Real> dir,
                DeviceVector<Real>&          out) const override;

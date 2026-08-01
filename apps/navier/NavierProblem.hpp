@@ -9,7 +9,9 @@
 namespace femx::apps::navier
 {
 
-/** @brief Own the model, constraints, and initial state for a forward run. */
+/**
+ * @brief Own the model, constraints, and initial state for a forward run.
+ */
 class NavierProblem
 {
 public:
@@ -25,16 +27,24 @@ public:
   NavierProblem(NavierProblem&&)                 = delete;
   NavierProblem& operator=(NavierProblem&&)      = delete;
 
-  /** @brief Return the Navier-Stokes discretization. */
+  /**
+   * @brief Return the Navier-Stokes discretization.
+   */
   const model::navier::NavierModel& model() const noexcept;
 
-  /** @brief Return the fixed boundary data. */
+  /**
+   * @brief Return the fixed boundary data.
+   */
   const fem::TimeDirichletData& boundaryData() const noexcept;
 
-  /** @brief Return the boundary control map. */
+  /**
+   * @brief Return the boundary control map.
+   */
   const fem::HostControlMap& controlMap() const noexcept;
 
-  /** @brief Return the initial state. */
+  /**
+   * @brief Return the initial state.
+   */
   const HostVector<Real>& initialState() const noexcept;
 
 private:

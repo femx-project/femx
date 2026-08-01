@@ -24,7 +24,7 @@ public:
    *
    * @param[in]     mat - System matrix.
    * @param[in]     rhs - Right-hand side vector.
-   * @param[in,out] x - Initial guess replaced by the solution.
+   * @param[in,out] x   - Initial guess replaced by the solution.
    * @param[in]     ctx - Execution context.
    */
   virtual void solve(const Matrix&     mat,
@@ -37,7 +37,7 @@ public:
    *
    * @param[in]     mat - System matrix.
    * @param[in]     rhs - Right-hand side vector.
-   * @param[in,out] x - Initial guess replaced by the solution.
+   * @param[in,out] x   - Initial guess replaced by the solution.
    * @param[in]     ctx - Execution context.
    */
   virtual void solveT(const Matrix&     mat,

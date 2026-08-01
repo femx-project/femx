@@ -9,17 +9,13 @@ namespace femx
 
 /**
  * @brief Own numeric values for an immutable CSR pattern.
- *
- * A matrix retains an immutable shared pattern handle, allowing multiple
- * matrices and maps to reuse one sparse structure without lifetime coupling.
- * Numeric values are owned exclusively by this matrix in `Space`.
  */
 template <MemorySpace Space>
 class CsrMatrix
 {
 public:
   using Pattern = CsrPattern<Space>;
-  using Vals    = Vector<Space>;
+  using Vector  = Vector<Space>;
 
   /**
    * @brief Construct an empty zero-by-zero matrix.
@@ -33,8 +29,7 @@ public:
    * @brief Construct a zero-valued matrix for a CSR pattern.
    *
    * @param[in] pattern - Immutable sparsity pattern.
-   * @throws - If Device value allocation or initialization
-   * fails.
+   * @throws std::runtime_error If validation fails.
    */
   explicit CsrMatrix(const Pattern& pattern)
     : pattern_(pattern), vals_(pattern.nnz())
@@ -108,7 +103,7 @@ public:
   /**
    * @brief Return the owned numeric values.
    */
-  Vals& vals() noexcept
+  Vector& vals() noexcept
   {
     return vals_;
   }
@@ -116,14 +111,14 @@ public:
   /**
    * @brief Return the owned numeric values.
    */
-  const Vals& vals() const noexcept
+  const Vector& vals() const noexcept
   {
     return vals_;
   }
 
 private:
   Pattern pattern_; ///< Shared immutable CSR pattern.
-  Vals    vals_;    ///< Numeric values in CSR order.
+  Vector  vals_;    ///< Numeric values in CSR order.
 };
 
 } // namespace femx

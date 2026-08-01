@@ -77,9 +77,9 @@ HostBoundaryMap makeBoundaryMap(const HostVector<Index>& rows);
 /**
  * @brief Copy constrained rows to Device storage.
  *
- * @param[in]  source - Host boundary map.
+ * @param[in]  source      - Host boundary map.
  * @param[out] destination - Replaced Device boundary map.
- * @param[in]  ctx - Device context used for the asynchronous copy.
+ * @param[in]  ctx         - Device context used for the asynchronous copy.
  */
 void copy(const HostBoundaryMap&                source,
           DeviceBoundaryMap&                    destination,
@@ -88,9 +88,9 @@ void copy(const HostBoundaryMap&                source,
 /**
  * @brief Apply Dirichlet conditions to a Host residual.
  *
- * @param[in]  map - Constrained rows in prescribed-value order.
- * @param[in]  state - Current state.
- * @param[in]  vals - Values prescribed at the constrained rows.
+ * @param[in]  map      - Constrained rows in prescribed-value order.
+ * @param[in]  state    - Current state.
+ * @param[in]  vals     - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
@@ -102,9 +102,9 @@ void applyDirichletConditions(
 /**
  * @brief Apply Dirichlet conditions to an owning Host residual vector.
  *
- * @param[in]  map - Constrained rows in prescribed-value order.
- * @param[in]  state - Current state.
- * @param[in]  vals - Values prescribed at the constrained rows.
+ * @param[in]  map      - Constrained rows in prescribed-value order.
+ * @param[in]  state    - Current state.
+ * @param[in]  vals     - Values prescribed at the constrained rows.
  * @param[out] residual - Residual whose constrained entries are replaced.
  */
 void applyDirichletConditions(
@@ -116,11 +116,11 @@ void applyDirichletConditions(
 /**
  * @brief Apply Dirichlet conditions to a Device residual.
  *
- * @param[in]     map - Constrained rows in prescribed-value order.
- * @param[in]     state - Current Device state.
- * @param[in]     vals - Device values prescribed at constrained rows.
+ * @param[in]     map      - Constrained rows in prescribed-value order.
+ * @param[in]     state    - Current Device state.
+ * @param[in]     vals     - Device values prescribed at constrained rows.
  * @param[out]    residual - Device residual whose constrained entries are replaced.
- * @param[in,out] ctx - CUDA context used for the asynchronous update.
+ * @param[in,out] ctx      - CUDA context used for the asynchronous update.
  */
 void applyDirichletConditions(
     const DeviceBoundaryMap&     map,

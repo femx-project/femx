@@ -27,8 +27,8 @@ public:
   /**
    * @brief Evaluate one local residual row and its Jacobian row.
    *
-   * @param[in] e - Element state and metadata.
-   * @param[in] row - Local residual row.
+   * @param[in]  elem - Element state and metadata.
+   * @param[in]  row - Local residual row.
    * @param[out] res - Local residual value.
    * @param[out] jac - Local Jacobian row.
    */

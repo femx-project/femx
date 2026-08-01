@@ -30,30 +30,24 @@ public:
   CudaLinearSystem& operator=(CudaLinearSystem&&)      = delete;
 
   /**
-   * @brief Return the system-owned CUDA execution context.
+   * @copydoc LinearSystem::context()
    */
   Context<MemorySpace::Device>& context() noexcept override;
 
   /**
-   * @brief Return the system-owned CUDA matrix.
+   * @copydoc LinearSystem::matrix()
    */
   SystemMatrix<MemorySpace::Device>& matrix() noexcept override;
 
   /**
-   * @brief Solve the assembled CUDA system.
-   *
-   * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @copydoc LinearSystem::solve()
    */
-  void solve(ConstView rhs, Vector& x) override;
+  void solve(VectorView rhs, Vector& x) override;
 
   /**
-   * @brief Solve the transposed assembled CUDA system.
-   *
-   * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @copydoc LinearSystem::solveT()
    */
-  void solveT(ConstView rhs, Vector& x) override;
+  void solveT(VectorView rhs, Vector& x) override;
 
 private:
   CudaContext             ctx_;    ///< Owned CUDA execution context.

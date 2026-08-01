@@ -44,9 +44,9 @@ public:
    * @brief Assemble the residual at a state and parameter point.
    *
    * @param[in]     state - State vector.
-   * @param[in]     prm - Parameter vector.
-   * @param[out]    out - Assembled residual.
-   * @param[in,out] ctx - Linear algebra context.
+   * @param[in]     prm   - Parameter vector.
+   * @param[out]    out   - Assembled residual.
+   * @param[in,out] ctx   - Linear algebra context.
    */
   virtual void assembleResidual(const Vec& state,
                                 const Vec& prm,
@@ -57,9 +57,9 @@ public:
    * @brief Assemble the state Jacobian at a state and parameter point.
    *
    * @param[in]     state - State vector.
-   * @param[in]     prm - Parameter vector.
-   * @param[in,out] out - State Jacobian receiving assembled entries.
-   * @param[in,out] ctx - Linear algebra context.
+   * @param[in]     prm   - Parameter vector.
+   * @param[in,out] out   - State Jacobian receiving assembled entries.
+   * @param[in,out] ctx   - Linear algebra context.
    */
   virtual void assembleJacobian(const Vec& state,
                                 const Vec& prm,

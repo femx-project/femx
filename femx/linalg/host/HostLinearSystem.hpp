@@ -34,10 +34,25 @@ public:
   HostLinearSystem(HostLinearSystem&&)                 = delete;
   HostLinearSystem& operator=(HostLinearSystem&&)      = delete;
 
-  Context<MemorySpace::Host>&      context() noexcept override;
+  /**
+   * @copydoc LinearSystem::context()
+   */
+  Context<MemorySpace::Host>& context() noexcept override;
+
+  /**
+   * @copydoc LinearSystem::matrix()
+   */
   SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
-  void                             solve(ConstView rhs, Vector& x) override;
-  void                             solveT(ConstView rhs, Vector& x) override;
+
+  /**
+   * @copydoc LinearSystem::solve()
+   */
+  void solve(VectorView rhs, Vector& x) override;
+
+  /**
+   * @copydoc LinearSystem::solveT()
+   */
+  void solveT(VectorView rhs, Vector& x) override;
 
 private:
   HostContext             ctx_;

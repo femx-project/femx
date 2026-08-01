@@ -19,7 +19,7 @@ using Point3 = std::array<Real, 3>;
  * @param[in] x - First vector.
  * @param[in] y - Second vector.
  * @return Dot product of `x` and `y`.
- * @throws - If the vector sizes differ.
+ * @throws std::runtime_error If validation fails.
  */
 Real dot(const HostVector<Real>& x, const HostVector<Real>& y);
 
@@ -70,7 +70,7 @@ Real norm(const Point3& x);
  * @param[in] x - First vector.
  * @param[in] y - Second vector.
  * @return Root mean square error between `x` and `y`.
- * @throws - If the vector sizes differ.
+ * @throws std::runtime_error If validation fails.
  */
 Real rootMeanSquareError(const HostVector<Real>& x,
                          const HostVector<Real>& y);
@@ -81,7 +81,7 @@ Real rootMeanSquareError(const HostVector<Real>& x,
  * @param[in] x - Vector to subtract from.
  * @param[in] y - Vector to subtract.
  * @return Component-wise difference `x - y`.
- * @throws - If the vector sizes differ.
+ * @throws std::runtime_error If validation fails.
  */
 HostVector<Real> difference(const HostVector<Real>& x,
                             const HostVector<Real>& y);
@@ -109,7 +109,7 @@ Point3 cross(const Point3& x, const Point3& y);
  *
  * @param[in] x - Input vector.
  * @return Unit vector in the direction of `x`.
- * @throws - If `x` is the zero vector.
+ * @throws std::runtime_error If validation fails.
  */
 Point3 normalized(const Point3& x);
 
@@ -144,11 +144,11 @@ Real triangleArea(const Point3& a, const Point3& b, const Point3& c);
 /**
  * @brief Compute squared distance from a point to a line.
  *
- * @param[in] point - Point whose distance to the line is computed.
- * @param[in] line_point - Point on the line.
+ * @param[in] point          - Point whose distance to the line is computed.
+ * @param[in] line_point     - Point on the line.
  * @param[in] line_direction - Line direction.
  * @return Squared distance from `point` to the line.
- * @throws - If `line_direction` is the zero vector.
+ * @throws std::runtime_error If validation fails.
  */
 Real squaredDistanceToLine(const Point3& point,
                            const Point3& line_point,

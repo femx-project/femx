@@ -351,14 +351,14 @@ void PETScMatrix::finalize()
 }
 
 void PETScMatrix::replaceRows(HostVectorView<const Index> rows,
-                              Real                        diagonal)
+                              Real                        diag)
 {
   finalize();
-  zeroRows(rows, diagonal);
+  zeroRows(rows, diag);
 }
 
 void PETScMatrix::zeroRows(HostVectorView<const Index> rows,
-                           Real                        diagonal)
+                           Real                        diag)
 {
   if (rows.empty())
   {
@@ -377,7 +377,7 @@ void PETScMatrix::zeroRows(HostVectorView<const Index> rows,
   check(MatZeroRows(mat(),
                     static_cast<PetscInt>(prows.size()),
                     prows.data(),
-                    static_cast<PetscScalar>(diagonal),
+                    static_cast<PetscScalar>(diag),
                     nullptr,
                     nullptr),
         "MatZeroRows");

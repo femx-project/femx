@@ -278,10 +278,10 @@ CsrTransposeEntry* findTransposeEntry(CsrState&              state,
   return iter == state.trans_entries.end() ? nullptr : iter->get();
 }
 
-void ensureDescriptors(SpmvOperation&               op,
-                       const DeviceCsrMatrix&       mat,
-                       DeviceVectorView<const Real> dir,
-                       DeviceVectorView<Real>       out)
+void setDescriptors(SpmvOperation&               op,
+                    const DeviceCsrMatrix&       mat,
+                    DeviceVectorView<const Real> dir,
+                    DeviceVectorView<Real>       out)
 {
   if (op.mat == nullptr)
   {
@@ -340,7 +340,7 @@ void spmv(const DeviceCsrMatrix&       mat,
   std::lock_guard<std::mutex> lock(state.mutex);
   MatrixEntry&                entry   = findOrCreateEntry(state, mat);
   SpmvOperation&              spmv_op = trans ? entry.matvecT : entry.matvec;
-  ensureDescriptors(spmv_op, mat, dir, out);
+  setDescriptors(spmv_op, mat, dir, out);
 
   const auto  cusparse_op    = trans ? CUSPARSE_OPERATION_TRANSPOSE
                                      : CUSPARSE_OPERATION_NON_TRANSPOSE;
@@ -418,8 +418,7 @@ void CudaMatrixHandler::transpose(const DeviceCsrMatrix& src,
         src.cols(),
         src.rows(),
         std::move(trans_row_ptr),
-        std::move(trans_col_ind),
-        femx::detail::newCsrLayoutId());
+        std::move(trans_col_ind));
 
     created->src_to_trans = std::move(src_to_trans);
     state.trans_entries.push_back(std::move(created));

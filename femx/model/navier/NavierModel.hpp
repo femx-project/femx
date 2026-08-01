@@ -24,10 +24,10 @@ public:
   /**
    * @brief Read a mesh and construct the Navier-Stokes discretization.
    *
-   * @param[in] path - Mesh file path.
+   * @param[in] path      - Mesh file path.
    * @param[in] num_steps - Number of time steps.
-   * @param[in] dt - Time-step size.
-   * @param[in] fluid - Fluid properties.
+   * @param[in] dt        - Time-step size.
+   * @param[in] fluid     - Fluid properties.
    */
   NavierModel(const std::string& path,
               Index              num_steps,
@@ -37,10 +37,10 @@ public:
   /**
    * @brief Construct the Navier-Stokes discretization on an owned mesh.
    *
-   * @param[in] mesh - Owned finite-element mesh.
+   * @param[in] mesh      - Owned finite-element mesh.
    * @param[in] num_steps - Number of time steps.
-   * @param[in] dt - Time-step size.
-   * @param[in] fluid - Fluid properties.
+   * @param[in] dt        - Time-step size.
+   * @param[in] fluid     - Fluid properties.
    */
   NavierModel(fem::Mesh       mesh,
               Index           num_steps,

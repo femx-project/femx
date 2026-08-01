@@ -28,7 +28,7 @@ public:
    * @brief Construct evaluator for one finite element and quadrature rule.
    *
    * @param[in] finite_element - Reference finite element.
-   * @param[in] quad - Quadrature rule on the same reference element.
+   * @param[in] quad           - Quadrature rule on the same reference element.
    */
   ElementValues(const FiniteElement&   finite_element,
                 const GaussQuadrature& quad);
@@ -37,7 +37,7 @@ public:
    * @brief Recompute physical values for one mesh element.
    *
    * @param[in] mesh - Mesh containing the element.
-   * @param[in] ie - Element index.
+   * @param[in] ie   - Element index.
    */
   void reinit(const Mesh& mesh, Index ie);
 

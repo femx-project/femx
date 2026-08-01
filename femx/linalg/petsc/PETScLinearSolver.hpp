@@ -71,9 +71,8 @@ public:
    *
    * @param[in]     mat - Square PETSc system matrix.
    * @param[in]     rhs - Replicated Host right-hand side.
-   * @param[in,out] x - Initial guess replaced by the replicated solution.
-   * @throws - If inputs are invalid, PETSc reports an error,
-   * or the solver does not converge.
+   * @param[in,out] x   - Initial guess replaced by the replicated solution.
+   * @throws std::runtime_error If validation fails.
    */
   void solve(const PETScMatrix&      mat,
              const HostVector<Real>& rhs,
@@ -84,9 +83,8 @@ public:
    *
    * @param[in]     mat - Square PETSc system matrix.
    * @param[in]     rhs - Replicated Host right-hand side.
-   * @param[in,out] x - Initial guess replaced by the replicated solution.
-   * @throws - If inputs are invalid, PETSc reports an error,
-   * or the solver does not converge.
+   * @param[in,out] x   - Initial guess replaced by the replicated solution.
+   * @throws std::runtime_error If validation fails.
    */
   void solveT(const PETScMatrix&      mat,
               const HostVector<Real>& rhs,

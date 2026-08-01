@@ -27,30 +27,24 @@ public:
   PETScLinearSystem& operator=(PETScLinearSystem&&)      = delete;
 
   /**
-   * @brief Return the system-owned MPI execution context.
+   * @copydoc LinearSystem::context()
    */
   Context<MemorySpace::Host>& context() noexcept override;
 
   /**
-   * @brief Return the system-owned PETSc matrix.
+   * @copydoc LinearSystem::matrix()
    */
   SystemMatrix<MemorySpace::Host>& matrix() noexcept override;
 
   /**
-   * @brief Solve the assembled PETSc system.
-   *
-   * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @copydoc LinearSystem::solve()
    */
-  void solve(ConstView rhs, Vector& x) override;
+  void solve(VectorView rhs, Vector& x) override;
 
   /**
-   * @brief Solve the transposed assembled PETSc system.
-   *
-   * @param[in]  rhs - Right-hand side view.
-   * @param[out] x - Solution vector.
+   * @copydoc LinearSystem::solveT()
    */
-  void solveT(ConstView rhs, Vector& x) override;
+  void solveT(VectorView rhs, Vector& x) override;
 
   /**
    * @brief Return the owned PETSc solver for option configuration.

@@ -21,6 +21,7 @@ namespace
 
 int run(const Options& opts)
 {
+  // Validate the backend and construct the shared Poisson problem data.
   constexpr auto solver_type = runtime::SolverType::Dense;
   if (opts.memspace != MemorySpace::Host)
   {
@@ -31,20 +32,24 @@ int run(const Options& opts)
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
   PoissonProblem problem(opts);
 
+  // Build the native dense Host linear system.
   linalg::HostLinearSystem system;
 
+  // Bind the residual to the linear system and solve the state equation.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
   HostVector<Real> result;
   state_solver.solve(result);
 
+  // Report the computed solution.
   printReport(std::cout,
               helper.name(),
               problem,
               problem.errorReport(result),
               helper.resNorm(res, result, system.context()));
 
+  // Optional: write visualization output.
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));

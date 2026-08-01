@@ -22,21 +22,20 @@ public:
   /**
    * @brief Create a uniform element degree-of-freedom map.
    *
-   * @param[in] num_dofs - Number of global degrees of freedom.
-   * @param[in] num_elems - Number of elements.
+   * @param[in] num_dofs          - Number of global degrees of freedom.
+   * @param[in] num_elems         - Number of elements.
    * @param[in] num_dofs_per_elem - Number of degrees of freedom per element.
-   * @throws - If a dimension is invalid.
+   * @throws std::runtime_error If validation fails.
    */
   DofMap(Index num_dofs, Index num_elems, Index num_dofs_per_elem);
 
   /**
    * @brief Create a possibly variable-size element degree-of-freedom map.
    *
-   * @param[in] num_dofs - Number of global degrees of freedom.
+   * @param[in] num_dofs     - Number of global degrees of freedom.
    * @param[in] elem_offsets - Offsets into `elem_dofs`, starting at zero.
-   * @param[in] elem_dofs - Flattened global degrees of freedom.
-   * @throws - If the offsets or degrees of freedom are
-   * invalid.
+   * @param[in] elem_dofs    - Flattened global degrees of freedom.
+   * @throws std::runtime_error If validation fails.
    */
   DofMap(Index             num_dofs,
          HostVector<Index> elem_offsets,
@@ -45,10 +44,10 @@ public:
   /**
    * @brief Allocate and reset a uniform element degree-of-freedom map.
    *
-   * @param[in] num_dofs - Number of global degrees of freedom.
-   * @param[in] num_elems - Number of elements.
+   * @param[in] num_dofs          - Number of global degrees of freedom.
+   * @param[in] num_elems         - Number of elements.
    * @param[in] num_dofs_per_elem - Number of degrees of freedom per element.
-   * @throws - If a dimension is invalid.
+   * @throws std::runtime_error If validation fails.
    */
   void allocate(Index num_dofs,
                 Index num_elems,
@@ -74,7 +73,7 @@ public:
    *
    * @param[in] ie - Element index.
    * @return Number of degrees of freedom on the element.
-   * @throws - If the element index is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   Index numElementDofs(Index ie) const;
 
@@ -84,17 +83,17 @@ public:
    * @param[in] ie - Element index.
    * @param[in] il - Local degree-of-freedom index.
    * @return Global degree-of-freedom index.
-   * @throws - If an index is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   Index elementDof(Index ie, Index il) const;
 
   /**
    * @brief Assign a global degree of freedom to a local element index.
    *
-   * @param[in] ie - Element index.
-   * @param[in] il - Local degree-of-freedom index.
+   * @param[in] ie         - Element index.
+   * @param[in] il         - Local degree-of-freedom index.
    * @param[in] global_dof - Global degree-of-freedom index.
-   * @throws - If an index is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   void setElementDof(Index ie, Index il, Index global_dof);
 
@@ -103,7 +102,7 @@ public:
    *
    * @param[in] ie - Element index.
    * @return Non-owning view of the element's global degrees of freedom.
-   * @throws - If the element index is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   HostVectorView<const Index> elementDofs(Index ie) const;
 

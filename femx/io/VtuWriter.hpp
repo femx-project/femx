@@ -41,8 +41,8 @@ public:
   /**
    * @brief Write mesh geometry, connectivity, and point fields.
    *
-   * @param[in] fname - Output `.vtu` file name.
-   * @param[in] mesh - Mesh to write.
+   * @param[in] fname  - Output `.vtu` file name.
+   * @param[in] mesh   - Mesh to write.
    * @param[in] fields - Point data fields with mesh.numNodes() entries per
    * component.
    */
@@ -53,7 +53,7 @@ public:
   /**
    * @brief Write a point cloud as vertex cells with optional point fields.
    *
-   * @param[in] fname - Output `.vtu` file name.
+   * @param[in] fname  - Output `.vtu` file name.
    * @param[in] points - Point coordinates.
    * @param[in] fields - Point data fields with points.size() entries per
    * component.

@@ -270,12 +270,12 @@ void assembleHostElements(
  * @brief Assemble residual and Jacobian on the CPU reference path.
  *
  * @param[in]     kernel - Element evaluator.
- * @param[in]     mesh - Host mesh matching the map's element order.
- * @param[in]     map - Element-to-global assembly map.
- * @param[in]     state - Global state vector.
- * @param[out]    res - Global residual replaced by the assembled result.
- * @param[in,out] jac - Jacobian receiving element contributions.
- * @param[in,out] ctx - Host execution context.
+ * @param[in]     mesh   - Host mesh matching the map's element order.
+ * @param[in]     map    - Element-to-global assembly map.
+ * @param[in]     state  - Global state vector.
+ * @param[out]    res    - Global residual replaced by the assembled result.
+ * @param[in,out] jac    - Jacobian receiving element contributions.
+ * @param[in,out] ctx    - Host execution context.
  */
 template <class ElementKernel>
 void assembleResidualAndJacobian(
@@ -295,11 +295,11 @@ void assembleResidualAndJacobian(
  * @brief Assemble a stationary Host residual without a Jacobian.
  *
  * @param[in]     kernel - Element evaluator.
- * @param[in]     mesh - Host mesh matching the map's element order.
- * @param[in]     map - Element-to-global assembly map.
- * @param[in]     state - Global state vector.
- * @param[out]    res - Global residual replaced by the assembled result.
- * @param[in,out] ctx - Host execution context.
+ * @param[in]     mesh   - Host mesh matching the map's element order.
+ * @param[in]     map    - Element-to-global assembly map.
+ * @param[in]     state  - Global state vector.
+ * @param[out]    res    - Global residual replaced by the assembled result.
+ * @param[in,out] ctx    - Host execution context.
  */
 template <class ElementKernel>
 void assembleResidual(const ElementKernel&                kernel,
@@ -317,11 +317,11 @@ void assembleResidual(const ElementKernel&                kernel,
  * @brief Assemble a stationary Host Jacobian without a residual.
  *
  * @param[in]     kernel - Element evaluator.
- * @param[in]     mesh - Host mesh matching the map's element order.
- * @param[in]     map - Element-to-global assembly map.
- * @param[in]     state - Global state vector.
- * @param[in,out] jac - Jacobian receiving element contributions.
- * @param[in,out] ctx - Host execution context.
+ * @param[in]     mesh   - Host mesh matching the map's element order.
+ * @param[in]     map    - Element-to-global assembly map.
+ * @param[in]     state  - Global state vector.
+ * @param[in,out] jac    - Jacobian receiving element contributions.
+ * @param[in,out] ctx    - Host execution context.
  */
 template <class ElementKernel>
 void assembleJacobian(
@@ -339,20 +339,19 @@ void assembleJacobian(
 /**
  * @brief Assemble a time residual and state Jacobian over an element range.
  *
- * @param[in]     kernel - Element evaluator.
- * @param[in]     step - Residual step index.
- * @param[in]     num_hist - Number of history states.
- * @param[in]     wrt - State block differentiated by the Jacobian.
- * @param[in]     map - Element-to-global assembly map.
+ * @param[in]     kernel     - Element evaluator.
+ * @param[in]     step       - Residual step index.
+ * @param[in]     num_hist   - Number of history states.
+ * @param[in]     wrt        - State block differentiated by the Jacobian.
+ * @param[in]     map        - Element-to-global assembly map.
  * @param[in]     elem_begin - First element to assemble.
- * @param[in]     elem_end - One past the last element to assemble.
- * @param[in]     hist - Global lag-major history states.
- * @param[in]     nxt - Global next state.
- * @param[out]    res - Global residual replaced by the assembled result.
- * @param[in,out] jac - Matrix zeroed and assembled in place.
- * @param[in,out] ctx - Execution context matching `jac`.
- * @throws - If dimensions, the range, matrix layout, or
- * aliasing are invalid, or if the implementation reports an error.
+ * @param[in]     elem_end   - One past the last element to assemble.
+ * @param[in]     hist       - Global lag-major history states.
+ * @param[in]     nxt        - Global next state.
+ * @param[out]    res        - Global residual replaced by the assembled result.
+ * @param[in,out] jac        - Matrix zeroed and assembled in place.
+ * @param[in,out] ctx        - Execution context matching `jac`.
+ * @throws std::runtime_error If validation fails.
  */
 template <class ElementKernel>
 void assembleResidualAndJacobian(
@@ -436,18 +435,17 @@ void assembleResidualAndJacobian(
 /**
  * @brief Assemble a time residual over an element range.
  *
- * @param[in]     kernel - Element evaluator.
- * @param[in]     step - Residual step index.
- * @param[in]     num_hist - Number of history states.
- * @param[in]     map - Element-to-global assembly map.
+ * @param[in]     kernel     - Element evaluator.
+ * @param[in]     step       - Residual step index.
+ * @param[in]     num_hist   - Number of history states.
+ * @param[in]     map        - Element-to-global assembly map.
  * @param[in]     elem_begin - First element to assemble.
- * @param[in]     elem_end - One past the last element to assemble.
- * @param[in]     hist - Global lag-major history states.
- * @param[in]     nxt - Global next state.
- * @param[out]    res - Global residual replaced by the assembled result.
- * @param[in,out] ctx - Execution context.
- * @throws - If dimensions, the range, or aliasing are
- * invalid, or if the implementation reports an error.
+ * @param[in]     elem_end   - One past the last element to assemble.
+ * @param[in]     hist       - Global lag-major history states.
+ * @param[in]     nxt        - Global next state.
+ * @param[out]    res        - Global residual replaced by the assembled result.
+ * @param[in,out] ctx        - Execution context.
+ * @throws std::runtime_error If validation fails.
  */
 template <class ElementKernel, class Context>
 void assembleResidual(

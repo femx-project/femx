@@ -25,8 +25,8 @@ public:
   /**
    * @brief Create a finite-element space on a mesh.
    *
-   * @param[in] mesh - Mesh that owns the element topology and coordinates.
-   * @param[in] fe - Reference finite element used by every cell.
+   * @param[in] mesh  - Mesh that owns the element topology and coordinates.
+   * @param[in] fe    - Reference finite element used by every cell.
    * @param[in] comps - Number of field components per mesh node.
    */
   FESpace(const Mesh*          mesh,
@@ -78,7 +78,7 @@ public:
    * @brief Return the local degree of freedom for a shape component.
    *
    * @param[in] shape_idx - Shape-function index.
-   * @param[in] comp - Component index.
+   * @param[in] comp      - Component index.
    * @return Element-local degree-of-freedom index.
    */
   Index localDof(Index shape_idx,
@@ -87,7 +87,7 @@ public:
   /**
    * @brief Return the global degree of freedom for a node component.
    *
-   * @param[in] in - Mesh-node index.
+   * @param[in] in   - Mesh-node index.
    * @param[in] comp - Component index.
    * @return Global degree-of-freedom index.
    */
@@ -97,7 +97,7 @@ public:
   /**
    * @brief Fill the global degrees of freedom used by one element.
    *
-   * @param[in]  ie - Element index.
+   * @param[in]  ie   - Element index.
    * @param[out] dofs - Global degrees of freedom.
    */
   void elemDofs(Index              ie,

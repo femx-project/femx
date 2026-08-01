@@ -34,8 +34,8 @@ public:
    * @brief Bind forward and adjoint systems to a Host objective.
    *
    * @param[in,out] state_solver - Forward state solver.
-   * @param[in,out] adj_system - Linear system used for adjoint solves.
-   * @param[in]     obj - Host objective with matching dimensions.
+   * @param[in,out] adj_system   - Linear system used for adjoint solves.
+   * @param[in]     obj          - Host objective with matching dimensions.
    */
   ReducedFunctional(StateSolver&     state_solver,
                     System&          adj_system,

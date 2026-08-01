@@ -15,8 +15,8 @@ public:
   /**
    * @brief Create a view of one field inside a mixed finite-element space.
    *
-   * @param[in] space - Scalar or vector-valued field space.
-   * @param[in] local_offset - Field offset in element-local numbering.
+   * @param[in] space         - Scalar or vector-valued field space.
+   * @param[in] local_offset  - Field offset in element-local numbering.
    * @param[in] global_offset - Field offset in global numbering.
    */
   MixedFieldView(const FESpace* space,
@@ -44,7 +44,7 @@ public:
    * @brief Return the mixed-space local degree of freedom for a shape component.
    *
    * @param[in] shape_idx - Shape-function index.
-   * @param[in] comp - Component index.
+   * @param[in] comp      - Component index.
    * @return Mixed-space element-local degree-of-freedom index.
    */
   Index localDof(Index shape_idx,
@@ -54,7 +54,7 @@ public:
    * @brief Return the mixed-space global degree of freedom.
    *
    * @param[in] scalar_dof - Field-space global degree of freedom.
-   * @param[in] comp - Component index.
+   * @param[in] comp       - Component index.
    * @return Mixed-space global degree-of-freedom index.
    */
   Index globalDof(Index scalar_dof,
@@ -86,7 +86,7 @@ public:
    *
    * @param[in] fid - Field identifier.
    * @return View of the selected field.
-   * @throws - If the field identifier is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   MixedFieldView field(Index fid) const;
   /**
@@ -118,7 +118,7 @@ public:
   /**
    * @brief Fill the mixed-space global degrees of freedom for one element.
    *
-   * @param[in]  ie - Element index.
+   * @param[in]  ie   - Element index.
    * @param[out] dofs - Global degrees of freedom.
    */
   void elemDofs(Index              ie,

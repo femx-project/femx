@@ -16,19 +16,15 @@ public:
    * @brief Construct a dense solver with a pivot tolerance.
    *
    * @param[in] pivot_tolerance - Minimum accepted pivot magnitude.
-   * @throws - If `pivot_tolerance` is negative.
+   * @throws std::runtime_error If validation fails.
    */
   explicit DenseLinearSolver(Real pivot_tolerance = 1.0e-14);
 
   /**
-   * @brief Solve a Host CSR system through dense factorization.
+   * @copydoc LinearSolver::solve()
    *
-   * @param[in]  mat - Square system matrix.
-   * @param[in]  rhs - Right-hand side vector.
-   * @param[out] x - Solution vector.
-   * @param[in]  ctx - CPU execution context.
-   * @throws - If dimensions are inconsistent or the matrix
-   * is singular within the configured tolerance.
+   * @details Uses dense factorization.
+   * @throws std::runtime_error If validation fails.
    */
   void solve(const HostCsrMatrix&        mat,
              const HostVector<Real>&     rhs,
@@ -36,14 +32,10 @@ public:
              Context<MemorySpace::Host>& ctx) override;
 
   /**
-   * @brief Solve a transposed Host CSR system through dense factorization.
+   * @copydoc LinearSolver::solveT()
    *
-   * @param[in]  mat - Square system matrix.
-   * @param[in]  rhs - Right-hand side vector.
-   * @param[out] x - Solution vector.
-   * @param[in]  ctx - CPU execution context.
-   * @throws - If dimensions are inconsistent or the matrix
-   * is singular within the configured tolerance.
+   * @details Uses dense factorization.
+   * @throws std::runtime_error If validation fails.
    */
   void solveT(const HostCsrMatrix&        mat,
               const HostVector<Real>&     rhs,
@@ -51,16 +43,16 @@ public:
               Context<MemorySpace::Host>& ctx) override;
 
 private:
-  void sample(const HostCsrMatrix& mat,
-              bool                 transpose,
-              DenseMatrix&         dense) const;
+  void copyToDense(const HostCsrMatrix& mat,
+                   bool                 transpose,
+                   DenseMatrix&         dense) const;
 
   void solveDense(DenseMatrix                 mat,
                   const HostVector<Real>&     rhs,
                   HostVector<Real>&           x,
                   Context<MemorySpace::Host>& ctx) const;
 
-  Real pivot_tolerance_{1.0e-14}; ///< Minimum accepted pivot magnitude.
+  Real pivot_tol_; ///< Minimum accepted pivot magnitude.
 };
 
 } // namespace femx::linalg

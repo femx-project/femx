@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <type_traits>
 #include <utility>
 
 #include <femx/common/Checks.hpp>
@@ -14,12 +13,6 @@
 
 namespace femx
 {
-
-namespace linalg
-{
-class CudaMatrixHandler;
-class CudaSystemMatrix;
-} // namespace linalg
 
 namespace detail
 {
@@ -33,24 +26,18 @@ inline std::uint64_t newCsrLayoutId() noexcept
 /**
  * @brief Own an immutable compressed-sparse-row pattern.
  *
- * CsrPattern owns only the row offsets and column indices. Numeric matrix values
- * are owned separately by CsrMatrix so one pattern can be reused by multiple
- * matrices with the same sparsity structure.
+ * CsrPattern owns only the row offsets and column indices.
+ * Numeric matrix values are owned separately by CsrMatrix.
  */
 template <MemorySpace Space>
 class CsrPattern
 {
-  template <MemorySpace S>
-  using HostOnly = std::enable_if_t<S == MemorySpace::Host, int>;
-  template <MemorySpace S>
-  using DeviceOnly = std::enable_if_t<S == MemorySpace::Device, int>;
-
 public:
   /**
    * @brief Construct an empty zero-by-zero CSR pattern.
    */
   CsrPattern()
-    : storage_(std::make_shared<Storage>())
+    : data_(std::make_shared<Data>())
   {
   }
 
@@ -63,26 +50,24 @@ public:
   CsrPattern& operator=(CsrPattern&&) noexcept = default;
 
   /**
-   * @brief Construct and validate a Host CSR pattern.
+   * @brief Construct a CSR pattern in the selected memory space.
    *
-   * @param[in] rows - Number of rows.
-   * @param[in] cols - Number of columns.
+   * @param[in] rows    - Number of rows.
+   * @param[in] cols    - Number of columns.
    * @param[in] row_ptr - CSR row offsets.
    * @param[in] col_ind - CSR column indices.
-   * @throws - If dimensions or CSR indices are invalid.
+   * @throws std::runtime_error If validation fails.
    */
-  template <MemorySpace S = Space, HostOnly<S> = 0>
   CsrPattern(Index                rows,
              Index                cols,
              Vector<Space, Index> row_ptr,
              Vector<Space, Index> col_ind)
-    : storage_(std::make_shared<Storage>(rows,
-                                         cols,
-                                         std::move(row_ptr),
-                                         std::move(col_ind),
-                                         detail::newCsrLayoutId()))
+    : CsrPattern(rows,
+                 cols,
+                 std::move(row_ptr),
+                 std::move(col_ind),
+                 detail::newCsrLayoutId())
   {
-    checkSizes();
   }
 
   /**
@@ -90,7 +75,7 @@ public:
    */
   Index rows() const noexcept
   {
-    return storage_->rows;
+    return data_->rows;
   }
 
   /**
@@ -98,7 +83,7 @@ public:
    */
   Index cols() const noexcept
   {
-    return storage_->cols;
+    return data_->cols;
   }
 
   /**
@@ -106,7 +91,7 @@ public:
    */
   Index nnz() const noexcept
   {
-    return storage_->col_ind.size();
+    return data_->col_ind.size();
   }
 
   /**
@@ -116,7 +101,7 @@ public:
    */
   std::uint64_t layoutId() const noexcept
   {
-    return storage_->layout_id;
+    return data_->layout_id;
   }
 
   /**
@@ -124,7 +109,7 @@ public:
    */
   const Vector<Space, Index>& rowPtr() const noexcept
   {
-    return storage_->row_ptr;
+    return data_->row_ptr;
   }
 
   /**
@@ -132,7 +117,7 @@ public:
    */
   const Vector<Space, Index>& colInd() const noexcept
   {
-    return storage_->col_ind;
+    return data_->col_ind;
   }
 
   /**
@@ -140,7 +125,7 @@ public:
    */
   const Index* rowPtrData() const noexcept
   {
-    return storage_->row_ptr.data();
+    return data_->row_ptr.data();
   }
 
   /**
@@ -148,19 +133,19 @@ public:
    */
   const Index* colIndData() const noexcept
   {
-    return storage_->col_ind.data();
+    return data_->col_ind.data();
   }
 
 private:
-  struct Storage
+  struct Data
   {
-    Storage() = default;
+    Data() = default;
 
-    Storage(Index                num_rows,
-            Index                num_cols,
-            Vector<Space, Index> row_ptr,
-            Vector<Space, Index> col_ind,
-            std::uint64_t        id)
+    Data(Index                num_rows,
+         Index                num_cols,
+         Vector<Space, Index> row_ptr,
+         Vector<Space, Index> col_ind,
+         std::uint64_t        id)
       : rows(num_rows),
         cols(num_cols),
         row_ptr(std::move(row_ptr)),
@@ -176,28 +161,24 @@ private:
     std::uint64_t        layout_id{0}; ///< Stable CSR layout identifier.
   };
 
-  template <MemorySpace S = Space, DeviceOnly<S> = 0>
   CsrPattern(Index                rows,
              Index                cols,
              Vector<Space, Index> row_ptr,
              Vector<Space, Index> col_ind,
              std::uint64_t        layout_id)
-    : storage_(std::make_shared<Storage>(rows,
-                                         cols,
-                                         std::move(row_ptr),
-                                         std::move(col_ind),
-                                         layout_id))
+    : data_(std::make_shared<Data>(rows,
+                                   cols,
+                                   std::move(row_ptr),
+                                   std::move(col_ind),
+                                   layout_id))
   {
     checkSizes();
-    require(storage_->layout_id != 0,
-            "Device CsrPattern requires a valid layout identity");
+    require(data_->layout_id != 0, "CsrPattern requires a valid layout identity");
   }
 
   friend void copy(const HostCsrPattern&,
                    DeviceCsrPattern&,
                    linalg::Context<MemorySpace::Device>&);
-  friend class linalg::CudaMatrixHandler;
-  friend class linalg::CudaSystemMatrix;
 
   void checkSizes() const
   {
@@ -226,7 +207,7 @@ private:
     }
   }
 
-  std::shared_ptr<Storage> storage_; ///< Shared immutable pattern storage.
+  std::shared_ptr<Data> data_; ///< Shared immutable pattern data.
 };
 
 /**
@@ -235,7 +216,7 @@ private:
  * @param[in]  src - Source Host pattern.
  * @param[out] dst - Destination Device pattern.
  * @param[in]  ctx - Device context used to enqueue the copy.
- * @throws - If a Device allocation or copy fails.
+ * @throws std::runtime_error If validation fails.
  */
 inline void copy(const HostCsrPattern&                 src,
                  DeviceCsrPattern&                     dst,
@@ -244,8 +225,10 @@ inline void copy(const HostCsrPattern&                 src,
   DeviceVector<Index> row_ptr;
   DeviceVector<Index> col_ind;
   auto&               vec_handler = ctx.vectorHandler();
+
   vec_handler.copy(src.rowPtr(), row_ptr);
   vec_handler.copy(src.colInd(), col_ind);
+
   dst = DeviceCsrPattern(src.rows(),
                          src.cols(),
                          std::move(row_ptr),

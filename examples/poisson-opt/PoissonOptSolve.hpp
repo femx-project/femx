@@ -9,7 +9,9 @@
 namespace femx::examples::poisson_opt
 {
 
-/** @brief Return the TAO result and final controlled state. */
+/**
+ * @brief Return the TAO result and final controlled state.
+ */
 struct Result
 {
   Report           report;             ///< Final diagnostic metrics.
@@ -24,10 +26,10 @@ struct Result
 /**
  * @brief Optimize with Host state and adjoint systems.
  *
- * @param[in,out] problem - Problem whose objective is prepared.
+ * @param[in,out] problem      - Problem whose objective is prepared.
  * @param[in,out] state_solver - Host forward state solver.
- * @param[in,out] adj_system - Host adjoint linear system.
- * @param[in] comm - Communicator used by TAO.
+ * @param[in,out] adj_system   - Host adjoint linear system.
+ * @param[in]     comm         - Communicator used by TAO.
  * @return Optimization result and final state.
  */
 Result optimize(
@@ -40,10 +42,10 @@ Result optimize(
 /**
  * @brief Optimize with Device state and adjoint systems.
  *
- * @param[in,out] problem - Problem whose objective is prepared.
+ * @param[in,out] problem      - Problem whose objective is prepared.
  * @param[in,out] state_solver - Device forward state solver.
- * @param[in,out] adj_system - Device adjoint linear system.
- * @param[in] comm - Communicator used by TAO.
+ * @param[in,out] adj_system   - Device adjoint linear system.
+ * @param[in]     comm         - Communicator used by TAO.
  * @return Optimization result and final state.
  */
 Result optimize(

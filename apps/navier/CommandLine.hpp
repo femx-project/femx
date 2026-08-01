@@ -9,7 +9,9 @@
 namespace femx::apps::navier
 {
 
-/** @brief Store parsed command-line options for the Navier-Stokes app. */
+/**
+ * @brief Store parsed command-line options for the Navier-Stokes app.
+ */
 struct CommandLineOptions
 {
   std::string config_file;  ///< Input JSON configuration file.
@@ -19,11 +21,11 @@ struct CommandLineOptions
 /**
  * @brief Parse navier command-line options.
  *
- * @param[in] argc - Argument count.
- * @param[in] argv - Argument values.
+ * @param[in] argc                  - Argument count.
+ * @param[in] argv                  - Argument values.
  * @param[in] allow_unknown_options - Preserve options owned by a solver.
  * @return Parsed command-line options.
- * @throws std::runtime_error - If required or supported options are invalid.
+ * @throws std::runtime_error If validation fails.
  */
 CommandLineOptions parseCommandLine(int   argc,
                                     char* argv[],
@@ -32,10 +34,10 @@ CommandLineOptions parseCommandLine(int   argc,
 /**
  * @brief Print navier command-line usage.
  *
- * @param[out] out - Output stream.
- * @param[in] executable - Executable name.
- * @param[in] option_suffix - Additional solver option syntax.
- * @param[in] extra_lines - Additional usage lines.
+ * @param[out] out           - Output stream.
+ * @param[in]  executable    - Executable name.
+ * @param[in]  option_suffix - Additional solver option syntax.
+ * @param[in]  extra_lines   - Additional usage lines.
  */
 void printUsage(std::ostream&                  out,
                 const std::string&             executable,

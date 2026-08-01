@@ -22,11 +22,10 @@ using DeviceElementQuadData = ElementQuadData<MemorySpace::Device>;
  * @brief Compute reusable element quadrature data on the Host.
  *
  * @param[in] space - Initialized finite-element space.
- * @param[in] quad - Quadrature rule for the space's reference element.
+ * @param[in] quad  - Quadrature rule for the space's reference element.
  * @return Shape values, physical gradients, and weighted Jacobians for every
  * element.
- * @throws - If the space is not initialized or its finite
- * element and quadrature rule are incompatible.
+ * @throws std::runtime_error If validation fails.
  */
 HostElementQuadData makeElementQuadData(
     const FESpace&         space,
@@ -57,13 +56,13 @@ public:
   /**
    * @brief Bind a view to flattened element quadrature arrays.
    *
-   * @param[in] num_elems - Number of elements.
-   * @param[in] num_qpts - Number of quadrature points per element.
+   * @param[in] num_elems  - Number of elements.
+   * @param[in] num_qpts   - Number of quadrature points per element.
    * @param[in] num_shapes - Number of scalar shape functions per element.
-   * @param[in] dim - Spatial dimension.
-   * @param[in] N - Shape values in quadrature-point-major order.
-   * @param[in] dNdx - Physical shape gradients in element-major order.
-   * @param[in] JxW - Weighted absolute Jacobian determinants in element-major
+   * @param[in] dim        - Spatial dimension.
+   * @param[in] N          - Shape values in quadrature-point-major order.
+   * @param[in] dNdx       - Physical shape gradients in element-major order.
+   * @param[in] JxW        - Weighted absolute Jacobian determinants in element-major
    * order.
    */
   FEMX_HOST_DEVICE ElementQuadDataView(
@@ -119,7 +118,7 @@ public:
   /**
    * @brief Return a shape-function value at a quadrature point.
    *
-   * @param[in] iq - Quadrature-point index.
+   * @param[in] iq    - Quadrature-point index.
    * @param[in] shape - Shape-function index.
    * @return Reference shape-function value.
    */
@@ -131,10 +130,10 @@ public:
   /**
    * @brief Return a physical shape-function gradient component.
    *
-   * @param[in] ie - Element index.
-   * @param[in] iq - Quadrature-point index.
+   * @param[in] ie    - Element index.
+   * @param[in] iq    - Quadrature-point index.
    * @param[in] shape - Shape-function index.
-   * @param[in] d - Spatial component index.
+   * @param[in] d     - Spatial component index.
    * @return Physical gradient component.
    */
   FEMX_HOST_DEVICE Real dNdx(Index ie,

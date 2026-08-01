@@ -21,14 +21,10 @@ public:
   /**
    * @brief Partition a square Host CSR graph over a communicator.
    *
-   * ParMETIS is preferred when PETSc provides it. The PETSc options database
-   * can override the partitioner with `-femx_mat_partitioning_type`.
-   *
-   * @param[in] comm - Communicator receiving the partitioned graph.
+   * @param[in] comm    - Communicator receiving the partitioned graph.
    * @param[in] pattern - Replicated square application-order CSR graph.
    * @return Shared immutable partition and numbering.
-   * @throws - If the graph is invalid or PETSc or MPI
-   * reports an error.
+   * @throws std::runtime_error If validation fails.
    */
   static std::shared_ptr<const PETScPartition> create(
       MPI_Comm              comm,
@@ -59,7 +55,7 @@ public:
    *
    * @param[in] index - Application degree-of-freedom index.
    * @return Partitioned PETSc index.
-   * @throws - If `index` is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   PetscInt petscIndex(Index index) const;
 
@@ -68,7 +64,7 @@ public:
    *
    * @param[in] index - Partitioned PETSc index.
    * @return Application degree-of-freedom index.
-   * @throws - If `index` is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   Index applicationIndex(PetscInt index) const;
 
@@ -77,7 +73,7 @@ public:
    *
    * @param[in] index - Application degree-of-freedom index.
    * @return Owning communicator rank.
-   * @throws - If `index` is out of range.
+   * @throws std::runtime_error If validation fails.
    */
   PetscMPIInt owner(Index index) const;
 
@@ -88,8 +84,7 @@ public:
    *
    * @param[in] rows - Element rows in application numbering.
    * @return Rank assigned to the element.
-   * @throws - If `rows` is empty or contains an invalid
-   * index.
+   * @throws std::runtime_error If validation fails.
    */
   PetscMPIInt elementOwner(HostVectorView<const Index> rows) const;
 

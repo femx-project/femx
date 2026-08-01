@@ -32,14 +32,17 @@ Real solveHost(const ExampleHelper&  helper,
                const PoissonProblem& problem,
                HostVector<Real>&     h_x)
 {
+  // Build a ReSolve-backed Host linear system.
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   HostLinearSystem system(std::move(solver));
 
+  // Bind the Poisson residual and solve the state equation.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
   state_solver.solve(h_x);
 
+  // Evaluate the residual norm of the computed solution.
   const Real rnorm = helper.resNorm(res, h_x, system.context());
 
   return rnorm;
@@ -50,17 +53,20 @@ Real solveDevice(const ExampleHelper&  helper,
                  const PoissonProblem& problem,
                  HostVector<Real>&     h_x)
 {
+  // Build a ReSolve-backed CUDA linear system.
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   CudaLinearSystem system(std::move(solver));
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
+  // Copy the problem data to Device and solve the state equation there.
   CudaPoissonResidual            res(problem, ctx);
   state::DeviceLinearStateSolver state_solver(res, system);
 
   DeviceVector<Real> d_x;
   state_solver.solve(d_x);
 
+  // Evaluate on Device, then return the solution to Host for reporting.
   const Real rnorm = helper.resNorm(res, d_x, ctx);
   ctx.vectorHandler().copy(d_x, h_x);
   ctx.sync();
@@ -71,10 +77,12 @@ Real solveDevice(const ExampleHelper&  helper,
 
 int run(const Options& opts)
 {
+  // Construct the backend-independent problem and reporting helper.
   constexpr auto solver_type = runtime::SolverType::ReSolve;
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
   PoissonProblem problem(opts);
 
+  // Solve with the selected backend while keeping the final result on Host.
   HostVector<Real> x;
   Real             rnorm;
   if (opts.memspace == MemorySpace::Host)
@@ -91,12 +99,14 @@ int run(const Options& opts)
 #endif
   }
 
+  // Report the computed solution.
   printReport(std::cout,
               helper.name(),
               problem,
               problem.errorReport(x),
               rnorm);
 
+  // Optional: write visualization output.
   if (opts.write_output)
   {
     const std::string base = helper.outputBase(outputStem(opts));

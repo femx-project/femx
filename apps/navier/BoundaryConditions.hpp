@@ -21,8 +21,8 @@ namespace femx::apps::navier
  * wall condition define inlet/outlet rims and cavity corners explicitly.
  *
  * @param[in] space - Mixed velocity-pressure finite-element space.
- * @param[in] bcs - Ordered boundary configurations.
- * @param[in] time - Evaluation time.
+ * @param[in] bcs   - Ordered boundary configurations.
+ * @param[in] time  - Evaluation time.
  * @return Unique Dirichlet degrees of freedom and values.
  */
 fem::DirichletBC makeDirichletBoundaryConditions(
