@@ -3,8 +3,9 @@ femx
 ****
 
 femx is a research finite-element code for forward and inverse PDE workflows.
-v0.7.0 aligns public function names with the project naming conventions and
-reduces preprocessing time and memory for time-dependent Dirichlet conditions.
+v0.9.0 streamlines the public finite-element and linear-algebra APIs around
+``Mesh``, ``ElementShape``, and memory-space-specific vector and matrix
+handlers.
 
 Documentation
 -------------

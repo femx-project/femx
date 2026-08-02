@@ -67,7 +67,7 @@ public:
    * partition. Otherwise the contiguous fallback element range is used.
    */
   bool ownsElement(
-      Index                       elem,
+      Index                       element,
       Index                       count,
       HostVectorView<const Index> rows) const override;
 
