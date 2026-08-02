@@ -23,6 +23,7 @@ fi
 cd "$repo_root"
 
 printf '%s\n' "Generating Doxygen documentation..."
+rm -rf "$repo_root/docs/doxygen/html"
 doxygen docs/doxygen/Doxyfile.in
 
 printf '\n%s\n' "Serving docs/doxygen/html at http://localhost:$port/"

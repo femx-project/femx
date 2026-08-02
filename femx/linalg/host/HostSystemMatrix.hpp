@@ -44,7 +44,7 @@ public:
    *
    * @throws std::runtime_error If validation fails.
    */
-  void addElement(const ElementJacobianView& elem) override;
+  void addElement(const ElementJacobianView& element) override;
 
   /**
    * @copydoc Base::replaceRows()

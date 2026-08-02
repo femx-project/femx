@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.9.0
+
+v0.9.0 streamlines the public finite-element and linear-algebra APIs. Existing
+C++ and Python applications may require updates.
 
 ### Added
 
@@ -11,11 +14,18 @@
 
 - Renamed system-matrix `apply` and `applyT` operations to `matvec` and
   `matvecT`.
+- Generalized vector and matrix operations around memory-space-specific
+  handlers, moved Host linear-algebra headers from `femx/linalg/native` to
+  `femx/linalg/host`, and moved device allocation, copying, and synchronization
+  into the backend-neutral `femx/common/Device.hpp` API.
 - Moved element connectivity, topology, and classification into `Mesh` flat
   storage. Use `elemNodeIds`, `elemNodeId`, `elemNode`, `elemShape`, and the
   element classification accessors directly on `Mesh`.
 - Unified mesh, finite-element, and quadrature topology metadata as
   `ElementShape`.
+- Expanded the forward and boundary-control Poisson documentation with the
+  problem definitions, Q1 discretizations, solver workflows, and backend
+  behavior.
 
 ### Removed
 

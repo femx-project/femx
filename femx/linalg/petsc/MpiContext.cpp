@@ -85,11 +85,11 @@ IndexRange MpiContext::elementRange(Index count) const
 }
 
 bool MpiContext::ownsElement(
-    Index                       elem,
+    Index                       element,
     Index                       count,
     HostVectorView<const Index> rows) const
 {
-  require(count >= 0 && elem >= 0 && elem < count,
+  require(count >= 0 && element >= 0 && element < count,
           "MpiContext element index is out of range");
 
   if (partition_ && !rows.empty())
@@ -99,7 +99,7 @@ bool MpiContext::ownsElement(
   }
 
   const IndexRange range = contiguousRange(count, rank_, size_);
-  return elem >= range.begin && elem < range.end;
+  return element >= range.begin && element < range.end;
 }
 
 void MpiContext::allReduceSum(HostVectorView<Real> vals) const

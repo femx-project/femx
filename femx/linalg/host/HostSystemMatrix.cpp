@@ -143,16 +143,16 @@ void HostSystemMatrix::setup(const HostCsrPattern& pattern)
   }
 }
 
-void HostSystemMatrix::addElement(const ElementJacobianView& elem)
+void HostSystemMatrix::addElement(const ElementJacobianView& element)
 {
-  checkElement(elem);
-  for (Index k = 0; k < elem.csr_entries.size(); ++k)
+  checkElement(element);
+  for (Index k = 0; k < element.csr_entries.size(); ++k)
   {
-    const Index entry = elem.csr_entries[k];
+    const Index entry = element.csr_entries[k];
     require(entry >= 0 && entry < mat_.nnz(),
             "Element Jacobian CSR entry is out of range");
 #pragma omp atomic update
-    mat_.valsData()[entry] += elem.values.data()[k];
+    mat_.valsData()[entry] += element.values.data()[k];
   }
 }
 
