@@ -32,7 +32,7 @@ struct Options
   bool  write_output       = false;  ///< Write VTU output.
   Real  alpha              = 1.0e-6; ///< Control regularization weight.
   Index observation_stride = 0;      ///< Observation spacing in mesh cells.
-  Index max_iterations     = 50;     ///< Maximum TAO iterations.
+  Index max_itrs           = 50;     ///< Maximum TAO iterations.
 };
 
 /**
@@ -50,6 +50,11 @@ struct Report
 
 /**
  * @brief Own the Poisson discretization, control layout, and objective data.
+ *
+ * The parameter vector `m` supplies Dirichlet values on the upper
+ * boundary. For each `m`, the state is defined implicitly by the discrete
+ * equation `R(x, m) = 0`. This class also identifies the observed state
+ * entries and builds the state misfit and control regularization terms.
  */
 class PoissonOptProblem
 {
@@ -69,7 +74,7 @@ public:
   /**
    * @brief Return the validated problem options.
    */
-  const Options& options() const noexcept;
+  const Options& opts() const noexcept;
 
   /**
    * @brief Return the finite-element mesh.
@@ -109,9 +114,11 @@ public:
   /**
    * @brief Prepare the objective from the discrete target state.
    *
+   * J(x,m) = 1/2 sum_i w_i (x_i-d_i)^2 + alpha/2 sum_i w^m_i m_i^2`
+   *
    * @param[in] target_state - State generated from `targetControl()`.
    */
-  void prepareObjective(HostVector<Real> target_state);
+  void setupObjective(HostVector<Real> target_state);
 
   /**
    * @brief Return the number of mesh nodes.
@@ -210,13 +217,13 @@ Options parseOptions(int argc, char** argv, bool ignore_unknown);
 /**
  * @brief Print command-line usage for an optimization executable.
  *
- * @param[in,out] out           - Output stream.
- * @param[in]     app_name      - Executable name.
- * @param[in]     petsc_options - Whether PETSc options are accepted.
+ * @param[in,out] out        - Output stream.
+ * @param[in]     app_name   - Executable name.
+ * @param[in]     petsc_opts - Whether PETSc options are accepted.
  */
 void printUsage(std::ostream& out,
                 const char*   app_name,
-                bool          petsc_options);
+                bool          petsc_opts);
 
 /**
  * @brief Return the build-local directory for optimization output.
@@ -234,18 +241,18 @@ std::string outputStem(const Options& opts);
 /**
  * @brief Print the standard optimization result summary.
  *
- * @param[in,out] out           - Output stream.
- * @param[in]     configuration - Solver configuration name.
- * @param[in]     problem       - Solved optimization problem.
- * @param[in]     rep           - Final optimization metrics.
- * @param[in]     iterations    - Number of optimizer iterations.
- * @param[in]     reason        - PETSc/TAO convergence reason.
+ * @param[in,out] out     - Output stream.
+ * @param[in]     config  - Solver configuration name.
+ * @param[in]     problem - Solved optimization problem.
+ * @param[in]     rep     - Final optimization metrics.
+ * @param[in]     itrs    - Number of optimizer iterations.
+ * @param[in]     reason  - PETSc/TAO convergence reason.
  */
 void printReport(std::ostream&            out,
-                 const std::string&       configuration,
+                 const std::string&       config,
                  const PoissonOptProblem& problem,
                  const Report&            rep,
-                 Index                    iterations,
+                 Index                    itrs,
                  int                      reason);
 
 } // namespace femx::examples::poisson_opt

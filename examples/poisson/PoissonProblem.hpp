@@ -39,6 +39,11 @@ struct ErrorReport
 
 /**
  * @brief Forward Poisson example on a structured quadrilateral mesh.
+ *
+ * Collects the data that defines the discrete problem: the Q1
+ * finite-element space, quadrature data, local-to-global assembly mapping,
+ * and prescribed Dirichlet rows and values. The residual classes use
+ * this data to assemble the algebraic equation `R(x) = 0`.
  */
 class PoissonProblem
 {
@@ -53,7 +58,7 @@ public:
   /**
    * @brief Return the validated problem options.
    */
-  const Options& options() const noexcept;
+  const Options& opts() const noexcept;
 
   /**
    * @brief Return the finite-element mesh.
@@ -148,25 +153,25 @@ std::string outputStem(const Options& opts);
 /**
  * @brief Print command-line usage for the forward Poisson example.
  *
- * @param[in] app_name      - Executable name.
- * @param[in] petsc_options - Whether PETSc options are accepted.
- * @param[in] backend_note  - Optional execution-backend note.
+ * @param[in] app_name     - Executable name.
+ * @param[in] petsc_opts   - Whether PETSc options are accepted.
+ * @param[in] backend_note - Optional execution-backend note.
  */
 void printUsage(const char* app_name,
-                bool        petsc_options,
+                bool        petsc_opts,
                 const char* backend_note = nullptr);
 
 /**
  * @brief Print the standard forward-solve result summary.
  *
- * @param[in,out] out           - Output stream.
- * @param[in]     configuration - Solver configuration name.
- * @param[in]     problem       - Solved problem.
- * @param[in]     err           - Solution error metrics.
- * @param[in]     rnorm         - Residual L2 norm.
+ * @param[in,out] out     - Output stream.
+ * @param[in]     config  - Solver configuration name.
+ * @param[in]     problem - Solved problem.
+ * @param[in]     err     - Solution error metrics.
+ * @param[in]     rnorm   - Residual L2 norm.
  */
 void printReport(std::ostream&         out,
-                 const std::string&    configuration,
+                 const std::string&    config,
                  const PoissonProblem& problem,
                  const ErrorReport&    err,
                  Real                  rnorm);

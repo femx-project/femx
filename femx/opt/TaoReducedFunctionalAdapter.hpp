@@ -17,8 +17,7 @@ namespace opt
 {
 
 using TaoNumParamsCallback = std::function<Index()>;
-using TaoValueGradCallback =
-    std::function<Real(const HostVector<Real>&, HostVector<Real>&)>;
+using TaoValueGradCallback = std::function<Real(const HostVector<Real>&, HostVector<Real>&)>;
 
 /**
  * @brief Adapter from PETSc TAO callbacks to a reduced functional.

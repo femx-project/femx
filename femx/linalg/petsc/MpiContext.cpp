@@ -38,10 +38,10 @@ MpiContext::MpiContext(MPI_Comm comm)
 {
   int initialized = 0;
   checkMPI(MPI_Initialized(&initialized), "MPI_Initialized");
-  require(initialized != 0,
-          "MpiContext requires initialized MPI");
-  require(comm != MPI_COMM_NULL,
-          "MpiContext requires a valid communicator");
+
+  require(initialized != 0, "MpiContext requires initialized MPI");
+  require(comm != MPI_COMM_NULL, "MpiContext requires a valid communicator");
+
   checkMPI(MPI_Comm_dup(comm, &comm_), "MPI_Comm_dup");
   checkMPI(MPI_Comm_rank(comm_, &rank_), "MPI_Comm_rank");
   checkMPI(MPI_Comm_size(comm_, &size_), "MPI_Comm_size");
@@ -85,11 +85,11 @@ IndexRange MpiContext::elementRange(Index count) const
 }
 
 bool MpiContext::ownsElement(
-    Index                       element,
+    Index                       elem,
     Index                       count,
     HostVectorView<const Index> rows) const
 {
-  require(count >= 0 && element >= 0 && element < count,
+  require(count >= 0 && elem >= 0 && elem < count,
           "MpiContext element index is out of range");
 
   if (partition_ && !rows.empty())
@@ -99,7 +99,7 @@ bool MpiContext::ownsElement(
   }
 
   const IndexRange range = contiguousRange(count, rank_, size_);
-  return element >= range.begin && element < range.end;
+  return elem >= range.begin && elem < range.end;
 }
 
 void MpiContext::allReduceSum(HostVectorView<Real> vals) const

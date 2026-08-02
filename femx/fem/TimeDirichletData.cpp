@@ -71,9 +71,9 @@ TimeDirichletData makeTimeDirichletData(
   }
 
   HostVector<Index> col_by_dof(nstate, -1);
-  for (Index col = 0; col < out.dofs.size(); ++col)
+  for (Index j = 0; j < out.dofs.size(); ++j)
   {
-    col_by_dof[out.dofs[col]] = col;
+    col_by_dof[out.dofs[j]] = j;
   }
   HostVector<Index> seen(out.dofs.size(), -1);
 

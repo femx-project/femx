@@ -289,18 +289,18 @@ public:
     HostVector<Index> jac_columns(cols);
     HostVector<Index> csr_entries(rows * cols);
     const auto        data = mat.unchecked<2>();
-    for (Index row = 0; row < rows; ++row)
+    for (Index i = 0; i < rows; ++i)
     {
-      jac_rows[row] = row;
-      for (Index col = 0; col < cols; ++col)
+      jac_rows[i] = i;
+      for (Index j = 0; j < cols; ++j)
       {
-        values(row, col)              = data(row, col);
-        csr_entries[row * cols + col] = row * cols + col;
+        values(i, j)              = data(i, j);
+        csr_entries[i * cols + j] = i * cols + j;
       }
     }
-    for (Index col = 0; col < cols; ++col)
+    for (Index j = 0; j < cols; ++j)
     {
-      jac_columns[col] = col;
+      jac_columns[j] = j;
     }
     jac.addElement(
         {jac_rows.view(),
@@ -355,15 +355,15 @@ private:
     }
     femx::HostVector<Index> row_ptr(dim.num_res + 1);
     femx::HostVector<Index> col_ind(dim.num_res * dim.num_states);
-    for (Index row = 0; row <= dim.num_res; ++row)
+    for (Index i = 0; i <= dim.num_res; ++i)
     {
-      row_ptr[row] = row * dim.num_states;
+      row_ptr[i] = i * dim.num_states;
     }
-    for (Index row = 0; row < dim.num_res; ++row)
+    for (Index i = 0; i < dim.num_res; ++i)
     {
-      for (Index col = 0; col < dim.num_states; ++col)
+      for (Index j = 0; j < dim.num_states; ++j)
       {
-        col_ind[row * dim.num_states + col] = col;
+        col_ind[i * dim.num_states + j] = j;
       }
     }
     pattern_ = femx::HostCsrPattern(
@@ -403,11 +403,11 @@ py::array trajectoryLevel(TimeTrajectory& trajectory, Index level)
 
 std::unique_ptr<femx::linalg::LinearSystem<femx::MemorySpace::Host>>
 makePythonHostLinearSystem(SolverType        solver,
-                           const py::object& options)
+                           const py::object& opts)
 {
   if (solver == SolverType::Dense)
   {
-    if (!options.is_none())
+    if (!opts.is_none())
     {
       throw py::value_error(
           "Dense solver options are not supported");
@@ -418,15 +418,15 @@ makePythonHostLinearSystem(SolverType        solver,
   if (solver == SolverType::ReSolve)
   {
 #if defined(FEMX_HAS_RESOLVE)
-    const ReSolveOptions opts =
-        options.is_none() ? ReSolveOptions{}
-                          : options.cast<ReSolveOptions>();
+    const ReSolveOptions solver_opts =
+        opts.is_none() ? ReSolveOptions{}
+                       : opts.cast<ReSolveOptions>();
     auto native_solver =
-        std::make_unique<ReSolveLinearSolver>(opts);
+        std::make_unique<ReSolveLinearSolver>(solver_opts);
     return std::make_unique<femx::linalg::HostLinearSystem>(
         std::move(native_solver));
 #else
-    static_cast<void>(options);
+    static_cast<void>(opts);
     throw py::value_error(
         "ReSolve is unavailable in this femx build");
 #endif
@@ -434,7 +434,7 @@ makePythonHostLinearSystem(SolverType        solver,
 
   if (solver == SolverType::PETSc)
   {
-    if (!options.is_none())
+    if (!opts.is_none())
     {
       throw py::value_error(
           "PETSc solver options are not supported");

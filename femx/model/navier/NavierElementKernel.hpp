@@ -229,9 +229,9 @@ public:
       VectorView<Space, Real>                 jac) const
   {
     res = 0.0;
-    for (Index col = 0; col < jac.size(); ++col)
+    for (Index j = 0; j < jac.size(); ++j)
     {
-      jac[col] = 0.0;
+      jac[j] = 0.0;
     }
 
     if (wrt.isNextState() && !jac.empty())
@@ -277,9 +277,9 @@ private:
       Real*                                   lhs) const
   {
     const Index num_dofs = numDofs();
-    for (Index col = 0; col < num_dofs; ++col)
+    for (Index j = 0; j < num_dofs; ++j)
     {
-      lhs[col] = 0.0;
+      lhs[j] = 0.0;
     }
 
     const Index dim       = data_.dim();
@@ -391,9 +391,9 @@ private:
     }
 
     rhs = -rhs;
-    for (Index col = 0; col < num_dofs; ++col)
+    for (Index j = 0; j < num_dofs; ++j)
     {
-      rhs += lhs[col] * e.nxt[col];
+      rhs += lhs[j] * e.nxt[j];
     }
     return rhs;
   }
@@ -450,11 +450,11 @@ FEMX_HOST_DEVICE Real evalResAdj(Index       num_elems,
   Real                             val = 0.0;
 
   const Index num_dofs = (data.dim() + 1) * data.numShapes();
-  for (Index row = 0; row < num_dofs; ++row)
+  for (Index i = 0; i < num_dofs; ++i)
   {
     Real res = 0.0;
-    kernel.evalRow(elem, state::VariableBlock::NextState, row, res, {});
-    val += res * adj[row];
+    kernel.evalRow(elem, state::VariableBlock::NextState, i, res, {});
+    val += res * adj[i];
   }
 
   return val;

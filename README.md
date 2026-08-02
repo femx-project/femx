@@ -99,6 +99,20 @@ Run the install test before packaging a release:
 make test_install
 ```
 
+## Run Tests
+
+Unit tests are disabled by default. Enable them when configuring the build,
+then build and run CTest:
+
+```shell
+cmake .. -DFEMX_BUILD_TESTS=ON
+make
+ctest --output-on-failure
+```
+
+Tests for optional backends are included when the corresponding dependencies
+are enabled in the same build.
+
 ## Run Examples
 
 The default Poisson example uses the Host dense solver and does not require

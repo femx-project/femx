@@ -23,7 +23,6 @@ public:
   /**
    * @copydoc LinearSolver::solve()
    *
-   * @details Uses dense factorization.
    * @throws std::runtime_error If validation fails.
    */
   void solve(const HostCsrMatrix&        mat,
@@ -34,7 +33,6 @@ public:
   /**
    * @copydoc LinearSolver::solveT()
    *
-   * @details Uses dense factorization.
    * @throws std::runtime_error If validation fails.
    */
   void solveT(const HostCsrMatrix&        mat,

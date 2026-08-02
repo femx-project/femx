@@ -21,7 +21,7 @@ namespace
 
 int run(const Options& opts)
 {
-  // Validate the backend and construct the shared Poisson problem data.
+  // Use the built-in dense linear solver and require Host execution.
   constexpr auto solver_type = runtime::SolverType::Dense;
   if (opts.memspace != MemorySpace::Host)
   {
@@ -29,16 +29,22 @@ int run(const Options& opts)
         "Dense Poisson supports only the CPU backend");
   }
 
-  ExampleHelper  helper(solver_type, opts.memspace, outputDir());
+  ExampleHelper helper(solver_type, opts.memspace, outputDir());
+
+  // The problem owns the FEM data needed to assemble the system.
   PoissonProblem problem(opts);
 
-  // Build the native dense Host linear system.
+  // Create a native dense linear system in host memory. It owns
+  // A, b, and the solver that provides the backend-specific interface.
   linalg::HostLinearSystem system;
 
-  // Bind the residual to the linear system and solve the state equation.
+  // Define the discrete Poisson residual R(x) = A x - b. The state solver
+  // uses this residual and the dense linear system to find R(x) = 0.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
+  // Assemble R(0) = -b and J = dR/dx = A, then solve J x = -R(0),
+  // which corresponds to the original linear system A x = b.
   HostVector<Real> result;
   state_solver.solve(result);
 

@@ -315,9 +315,9 @@ void PETScMatrix::addBlock(HostVectorView<const Index> rows,
   {
     petsc_rows[i] = mappedIndex(rows[i]);
   }
-  for (Index i = 0; i < columns.size(); ++i)
+  for (Index j = 0; j < columns.size(); ++j)
   {
-    petsc_cols[i] = mappedIndex(columns[i]);
+    petsc_cols[j] = mappedIndex(columns[j]);
   }
   addBlock(petsc_rows.data(),
            petsc_rows.size(),
@@ -367,11 +367,11 @@ void PETScMatrix::zeroRows(HostVectorView<const Index> rows,
 
   HostVector<PetscInt> prows;
   prows.reserve(rows.size());
-  for (Index row : rows)
+  for (Index i : rows)
   {
-    require(row >= 0 && row < rows_,
+    require(i >= 0 && i < rows_,
             "PETScMatrix zeroRows row is out of range");
-    prows.push_back(mappedIndex(row));
+    prows.push_back(mappedIndex(i));
   }
 
   check(MatZeroRows(mat(),
@@ -506,11 +506,11 @@ void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
 
   const Index* rp = pattern.rowPtrData();
   const Index* ci = pattern.colIndData();
-  for (PetscInt row = begin; row < end; ++row)
+  for (PetscInt i = begin; i < end; ++i)
   {
     PetscInt diag = 0;
     PetscInt off  = 0;
-    for (Index k = rp[row]; k < rp[row + 1]; ++k)
+    for (Index k = rp[i]; k < rp[i + 1]; ++k)
     {
       const PetscInt col = static_cast<PetscInt>(ci[k]);
       if (col >= begin && col < end)
@@ -522,8 +522,8 @@ void PETScMatrix::computePrealloc(const HostCsrPattern& pattern,
         ++off;
       }
     }
-    diag_nnz[row - begin]    = diag;
-    offdiag_nnz[row - begin] = off;
+    diag_nnz[i - begin]    = diag;
+    offdiag_nnz[i - begin] = off;
   }
 }
 
@@ -538,9 +538,9 @@ void PETScMatrix::computePrealloc(
 
   const Index* rp = pattern.rowPtrData();
   const Index* ci = pattern.colIndData();
-  for (Index app_row = 0; app_row < pattern.rows(); ++app_row)
+  for (Index i = 0; i < pattern.rows(); ++i)
   {
-    const PetscInt row = partition.petscIndex(app_row);
+    const PetscInt row = partition.petscIndex(i);
     if (row < partition.begin() || row >= partition.end())
     {
       continue;
@@ -548,7 +548,7 @@ void PETScMatrix::computePrealloc(
 
     PetscInt diag = 0;
     PetscInt off  = 0;
-    for (Index k = rp[app_row]; k < rp[app_row + 1]; ++k)
+    for (Index k = rp[i]; k < rp[i + 1]; ++k)
     {
       const PetscInt col = partition.petscIndex(ci[k]);
       if (col >= partition.begin() && col < partition.end())

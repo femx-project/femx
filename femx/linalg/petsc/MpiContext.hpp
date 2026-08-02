@@ -47,7 +47,7 @@ public:
   /**
    * @copydoc Base::matrixHandler()
    *
-   * @details Returns operations for local Host matrices.
+   * Returns operations for local Host matrices.
    */
   MatrixHandler<MemorySpace::Host>& matrixHandler() noexcept override;
 
@@ -67,21 +67,21 @@ public:
    * partition. Otherwise the contiguous fallback element range is used.
    */
   bool ownsElement(
-      Index                       element,
+      Index                       elem,
       Index                       count,
       HostVectorView<const Index> rows) const override;
 
   /**
    * @copydoc Base::allReduceSum()
    *
-   * @details Reduces values over the owned communicator.
+   * Reduces values over the owned communicator.
    */
   void allReduceSum(HostVectorView<Real> vals) const override;
 
   /**
    * @copydoc Base::sync()
    *
-   * @details MPI operations are synchronous here.
+   * MPI operations are synchronous here.
    */
   void sync() const override;
 

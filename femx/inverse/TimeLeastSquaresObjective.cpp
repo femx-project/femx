@@ -111,14 +111,14 @@ Real TimeLeastSquaresObjective::value(const TimeTrajectory&   traj,
 {
   Real             val = 0.0;
   HostVector<Real> res;
-  for (Index row = 0; row < data_.numTimeLevels(); ++row)
+  for (Index i = 0; i < data_.numTimeLevels(); ++i)
   {
-    const LinearInterpolation interp = interpolation(row);
-    obsResidual(row, interp, traj, prm, res);
+    const LinearInterpolation interp = interpolation(i);
+    obsResidual(i, interp, traj, prm, res);
     const Real wt = observationWeight(interp);
-    for (Index i = 0; i < res.size(); ++i)
+    for (Index j = 0; j < res.size(); ++j)
     {
-      val += 0.5 * wt * observationEntryWeight(row, i) * res[i] * res[i];
+      val += 0.5 * wt * observationEntryWeight(i, j) * res[j] * res[j];
     }
   }
   return val;
@@ -136,9 +136,9 @@ void TimeLeastSquaresObjective::stateGrad(Index                   level,
 
   HostVector<Real> weighted_res;
   HostVector<Real> level_grad;
-  for (Index row = 0; row < data_.numTimeLevels(); ++row)
+  for (Index i = 0; i < data_.numTimeLevels(); ++i)
   {
-    const LinearInterpolation interp = interpolation(row);
+    const LinearInterpolation interp = interpolation(i);
     Real                      factor = 0.0;
     interp.forEachWeight(
         [&](Index interp_level, Real wt)
@@ -159,13 +159,13 @@ void TimeLeastSquaresObjective::stateGrad(Index                   level,
       continue;
     }
 
-    obsResidual(row, interp, traj, prm, weighted_res);
-    scaleObservationResidual(row, weighted_res, factor * wt);
+    obsResidual(i, interp, traj, prm, weighted_res);
+    scaleObservationResidual(i, weighted_res, factor * wt);
     obs_.applyStateJacT(level, traj[level], prm, weighted_res, level_grad);
     checkSize(level_grad, numStates());
-    for (Index i = 0; i < out.size(); ++i)
+    for (Index j = 0; j < out.size(); ++j)
     {
-      out[i] += level_grad[i];
+      out[j] += level_grad[j];
     }
   }
 }
@@ -180,17 +180,17 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory&   traj,
 
   HostVector<Real> weighted_res;
   HostVector<Real> level_grad;
-  for (Index row = 0; row < data_.numTimeLevels(); ++row)
+  for (Index i = 0; i < data_.numTimeLevels(); ++i)
   {
-    const LinearInterpolation interp = interpolation(row);
+    const LinearInterpolation interp = interpolation(i);
     const Real                wt     = observationWeight(interp);
     if (wt == 0.0)
     {
       continue;
     }
 
-    obsResidual(row, interp, traj, prm, weighted_res);
-    scaleObservationResidual(row, weighted_res, wt);
+    obsResidual(i, interp, traj, prm, weighted_res);
+    scaleObservationResidual(i, weighted_res, wt);
 
     interp.forEachWeight(
         [&](Index interp_level, Real interp_weight)
@@ -203,9 +203,9 @@ void TimeLeastSquaresObjective::paramGrad(const TimeTrajectory&   traj,
               level_grad);
           checkSize(level_grad, numParams());
           scale(level_grad, interp_weight);
-          for (Index i = 0; i < out.size(); ++i)
+          for (Index j = 0; j < out.size(); ++j)
           {
-            out[i] += level_grad[i];
+            out[j] += level_grad[j];
           }
         });
   }
@@ -228,9 +228,9 @@ void TimeLeastSquaresObjective::checkInputs() const
   require(data_.hasTimeLevels() || data_.hasTimeValues()
               || data_.numTimeLevels() == numTimeLevels(),
           "TimeLeastSquaresObjective received inconsistent time levels");
-  for (Index row = 0; row < data_.numTimeLevels(); ++row)
+  for (Index i = 0; i < data_.numTimeLevels(); ++i)
   {
-    (void) interpolation(row);
+    (void) interpolation(i);
   }
   for (Index level = 0; level < wts_.size(); ++level)
   {

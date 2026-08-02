@@ -55,17 +55,22 @@ PoissonProblem::PoissonProblem(const Options& opts)
     mesh_(makePoissonMesh(opts)),
     space_(&mesh_, &fe_)
 {
+  // Q1 basis functions and Gauss quadrature define the element stiffness
+  // integrals used by the Poisson kernel.
   space_.setup();
   elem_data_ = makeElementQuadData(space_, GaussQuadrature::make(fe_.shape(), 2));
-  assm_map_  = assembly::makeAssemblyMap(space_.dofMap());
 
+  // Map each element residual and stiffness entry into the global CSR rows.
+  assm_map_ = assembly::makeAssemblyMap(space_.dofMap());
+
+  // Store the constrained rows and g_i values used to replace their residuals by x_i - g_i.
   DirichletBC boundary;
   boundary.addBoundary(space_, onBoundary, boundaryValue);
   boundary_values_ = boundary.vals();
   boundary_map_    = assembly::makeBoundaryMap(boundary.dofs());
 }
 
-const Options& PoissonProblem::options() const noexcept
+const Options& PoissonProblem::opts() const noexcept
 {
   return opts_;
 }
@@ -252,13 +257,13 @@ std::string outputStem(const Options& opts)
 }
 
 void printUsage(const char* app_name,
-                bool        petsc_options,
+                bool        petsc_opts,
                 const char* backend_note)
 {
   std::cout << "Usage: " << app_name
             << " [--nx N] [--ny N] [-b cpu|cuda]"
             << " [--output yes|no]";
-  if (petsc_options)
+  if (petsc_opts)
   {
     std::cout << " [PETSc options]";
   }
@@ -269,7 +274,7 @@ void printUsage(const char* app_name,
   {
     std::cout << " (" << backend_note << ")";
   }
-  else if (petsc_options)
+  else if (petsc_opts)
   {
     std::cout << " (PETSc supports Host execution only)";
   }
@@ -280,13 +285,13 @@ void printUsage(const char* app_name,
 }
 
 void printReport(std::ostream&         out,
-                 const std::string&    configuration,
+                 const std::string&    config,
                  const PoissonProblem& problem,
                  const ErrorReport&    err,
                  Real                  rnorm)
 {
-  const Options& opts = problem.options();
-  out << "Poisson forward (" << configuration << ")\n";
+  const Options& opts = problem.opts();
+  out << "Poisson forward (" << config << ")\n";
   out << "  cells: " << opts.num_x_cells << " x " << opts.num_y_cells
       << '\n';
   out << "  nodes: " << problem.numNodes() << '\n';

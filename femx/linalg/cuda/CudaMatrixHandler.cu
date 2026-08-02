@@ -125,16 +125,16 @@ __global__ void buildTransposeMapKernel(Index        rows,
                                         Index*       src_to_trans)
 {
   const Index stride = static_cast<Index>(blockDim.x * gridDim.x);
-  for (Index row = static_cast<Index>(blockIdx.x * blockDim.x
-                                      + threadIdx.x);
-       row < rows;
-       row += stride)
+  for (Index i = static_cast<Index>(blockIdx.x * blockDim.x
+                                    + threadIdx.x);
+       i < rows;
+       i += stride)
   {
-    for (Index k = src_row_ptr[row]; k < src_row_ptr[row + 1]; ++k)
+    for (Index k = src_row_ptr[i]; k < src_row_ptr[i + 1]; ++k)
     {
       const Index trans_row = src_col_ind[k];
       Index       rank      = 0;
-      for (Index previous = src_row_ptr[row]; previous < k; ++previous)
+      for (Index previous = src_row_ptr[i]; previous < k; ++previous)
       {
         rank += src_col_ind[previous] == trans_row ? 1 : 0;
       }
@@ -142,7 +142,7 @@ __global__ void buildTransposeMapKernel(Index        rows,
            trans_idx < trans_row_ptr[trans_row + 1];
            ++trans_idx)
       {
-        if (trans_col_ind[trans_idx] == row)
+        if (trans_col_ind[trans_idx] == i)
         {
           if (rank == 0)
           {

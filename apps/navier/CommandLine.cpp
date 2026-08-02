@@ -10,7 +10,7 @@ namespace femx::apps::navier
 
 CommandLineOptions parseCommandLine(int   argc,
                                     char* argv[],
-                                    bool  allow_unknown_options)
+                                    bool  allow_unknown_opts)
 {
   CommandLineOptions opts;
 
@@ -27,7 +27,7 @@ CommandLineOptions parseCommandLine(int   argc,
       opts.config_file = runtime::requireValue(argc, argv, i, key);
       continue;
     }
-    if (!allow_unknown_options)
+    if (!allow_unknown_opts)
     {
       throw std::runtime_error("Unknown option: " + key);
     }

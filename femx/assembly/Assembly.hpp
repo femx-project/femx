@@ -143,14 +143,14 @@ inline void addTimeElement(
   rows.resize(map_v.numResDofs(ie));
   cols.resize(map_v.numStateDofs(ie));
 
-  for (Index row = 0; row < rows.size(); ++row)
+  for (Index i = 0; i < rows.size(); ++i)
   {
-    rows[row] = map_v.resDof(ie, row);
+    rows[i] = map_v.resDof(ie, i);
   }
 
-  for (Index col = 0; col < cols.size(); ++col)
+  for (Index j = 0; j < cols.size(); ++j)
   {
-    cols[col] = map_v.stateDof(ie, col);
+    cols[j] = map_v.stateDof(ie, j);
   }
 
   const Index num_entries = rows.size() * cols.size();
@@ -223,9 +223,9 @@ void assembleHostElements(
       res_e.resize(num_rows);
       jac_e.resize(num_rows, num_cols);
 
-      for (Index col = 0; col < num_cols; ++col)
+      for (Index j = 0; j < num_cols; ++j)
       {
-        state_e[col] = state[map_v.stateDof(ie, col)];
+        state_e[j] = state[map_v.stateDof(ie, j)];
       }
       for (Index in = 0; in < num_nodes; ++in)
       {
@@ -238,15 +238,15 @@ void assembleHostElements(
 
       const HostElementView elem{
           ie, mesh.dim(), num_nodes, state_e.view(), coords_e.view()};
-      for (Index row = 0; row < num_rows; ++row)
+      for (Index i = 0; i < num_rows; ++i)
       {
         HostVectorView<Real> jac_row(
-            jac_e.data() + row * num_cols, num_cols);
-        kernel.evalRow(elem, row, res_e[row], jac_row);
+            jac_e.data() + i * num_cols, num_cols);
+        kernel.evalRow(elem, i, res_e[i], jac_row);
         if (res != nullptr)
         {
 #pragma omp atomic update
-          (*res)[map_v.resDof(ie, row)] += res_e[row];
+          (*res)[map_v.resDof(ie, i)] += res_e[i];
         }
       }
       if (jac != nullptr)
@@ -399,30 +399,30 @@ void assembleResidualAndJacobian(
 
       for (Index lag = 0; lag < num_hist; ++lag)
       {
-        for (Index col = 0; col < num_cols; ++col)
+        for (Index j = 0; j < num_cols; ++j)
         {
-          const Index dof                 = map_v.stateDof(ie, col);
-          work.hist[lag * num_cols + col] = hist[lag * map.numStates() + dof];
+          const Index dof               = map_v.stateDof(ie, j);
+          work.hist[lag * num_cols + j] = hist[lag * map.numStates() + dof];
         }
       }
-      for (Index col = 0; col < num_cols; ++col)
+      for (Index j = 0; j < num_cols; ++j)
       {
-        work.nxt[col] = nxt[map_v.stateDof(ie, col)];
+        work.nxt[j] = nxt[map_v.stateDof(ie, j)];
       }
 
       const HostTimeElementView elem{
           ie, step, num_hist, work.hist.view(), work.nxt.view()};
-      for (Index row = 0; row < num_rows; ++row)
+      for (Index i = 0; i < num_rows; ++i)
       {
         Real local_res = 0.0;
         kernel.evalRow(elem,
                        wrt,
-                       row,
+                       i,
                        local_res,
-                       {work.mat.data() + row * num_cols, num_cols});
+                       {work.mat.data() + i * num_cols, num_cols});
 
 #pragma omp atomic update
-        res[map_v.resDof(ie, row)] += local_res;
+        res[map_v.resDof(ie, i)] += local_res;
       }
       detail::addTimeElement(
           map, ie, work.mat, work.rows, work.cols, jac);
@@ -489,29 +489,29 @@ void assembleResidual(
 
       for (Index lag = 0; lag < num_hist; ++lag)
       {
-        for (Index col = 0; col < num_cols; ++col)
+        for (Index j = 0; j < num_cols; ++j)
         {
-          const Index dof                 = map_v.stateDof(ie, col);
-          work.hist[lag * num_cols + col] = hist[lag * map.numStates() + dof];
+          const Index dof               = map_v.stateDof(ie, j);
+          work.hist[lag * num_cols + j] = hist[lag * map.numStates() + dof];
         }
       }
-      for (Index col = 0; col < num_cols; ++col)
+      for (Index j = 0; j < num_cols; ++j)
       {
-        work.nxt[col] = nxt[map_v.stateDof(ie, col)];
+        work.nxt[j] = nxt[map_v.stateDof(ie, j)];
       }
 
       const HostTimeElementView elem{
           ie, step, num_hist, work.hist.view(), work.nxt.view()};
-      for (Index row = 0; row < num_rows; ++row)
+      for (Index i = 0; i < num_rows; ++i)
       {
         Real local_res = 0.0;
         kernel.evalRow(elem,
                        state::VariableBlock::NextState,
-                       row,
+                       i,
                        local_res,
                        HostVectorView<Real>{});
 #pragma omp atomic update
-        res[map_v.resDof(ie, row)] += local_res;
+        res[map_v.resDof(ie, i)] += local_res;
       }
     }
   }

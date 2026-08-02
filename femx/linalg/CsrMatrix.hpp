@@ -15,7 +15,7 @@ class CsrMatrix
 {
 public:
   using Pattern = CsrPattern<Space>;
-  using Vector  = Vector<Space>;
+  using Vector  = femx::Vector<Space>;
 
   /**
    * @brief Construct an empty zero-by-zero matrix.

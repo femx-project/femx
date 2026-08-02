@@ -81,13 +81,13 @@ HostAssemblyMap makeAssemblyMap(
     checkDofs(rows, num_res, "residual");
     checkDofs(cols, num_states, "state");
 
-    for (Index row : rows)
+    for (Index i : rows)
     {
-      res_dofs.push_back(row);
+      res_dofs.push_back(i);
     }
-    for (Index col : cols)
+    for (Index j : cols)
     {
-      state_dofs.push_back(col);
+      state_dofs.push_back(j);
     }
 
     const Index elem_nnz  = checkedMul(rows.size(), cols.size());
@@ -108,12 +108,12 @@ HostAssemblyMap makeAssemblyMap(
   Index k = 0;
   for (Index ie = 0; ie < num_elem; ++ie)
   {
-    for (Index row : elem_res[ie])
+    for (Index i : elem_res[ie])
     {
-      for (Index col : elem_state[ie])
+      for (Index j : elem_state[ie])
       {
-        coo_rows[k] = row;
-        coo_cols[k] = col;
+        coo_rows[k] = i;
+        coo_cols[k] = j;
         order[k]    = k;
         ++k;
       }
@@ -136,11 +136,11 @@ HostAssemblyMap makeAssemblyMap(
   cols.reserve(nnz);
 
   Index csr_i = -1;
-  for (Index i = 0; i < nnz; ++i)
+  for (k = 0; k < nnz; ++k)
   {
-    const Index curr   = order[i];
-    const bool  is_new = i == 0 || coo_rows[curr] != coo_rows[order[i - 1]]
-                        || coo_cols[curr] != coo_cols[order[i - 1]];
+    const Index curr   = order[k];
+    const bool  is_new = k == 0 || coo_rows[curr] != coo_rows[order[k - 1]]
+                        || coo_cols[curr] != coo_cols[order[k - 1]];
     if (is_new)
     {
       ++csr_i;
@@ -150,9 +150,9 @@ HostAssemblyMap makeAssemblyMap(
     jac_map[curr] = csr_i;
   }
 
-  for (Index row = 0; row < num_res; ++row)
+  for (Index i = 0; i < num_res; ++i)
   {
-    row_ptr[row + 1] += row_ptr[row];
+    row_ptr[i + 1] += row_ptr[i];
   }
 
   HostCsrPattern pattern(num_res,

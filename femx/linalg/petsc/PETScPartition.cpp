@@ -133,26 +133,25 @@ void makeAdjacency(MPI_Comm              comm,
   const Index* row_ptr = pattern.rowPtrData();
   const Index* col_ind = pattern.colIndData();
 
-  std::vector<std::vector<PetscInt>> neighbors(
-      static_cast<std::size_t>(local_size));
-  for (Index row = 0; row < pattern.rows(); ++row)
+  std::vector<std::vector<PetscInt>> neighbors(static_cast<std::size_t>(local_size));
+  for (Index i = 0; i < pattern.rows(); ++i)
   {
-    for (Index k = row_ptr[row]; k < row_ptr[row + 1]; ++k)
+    for (Index k = row_ptr[i]; k < row_ptr[i + 1]; ++k)
     {
       const Index column = col_ind[k];
-      if (column == row)
+      if (column == i)
       {
         continue;
       }
-      if (row >= begin && row < end)
+      if (i >= begin && i < end)
       {
-        neighbors[static_cast<std::size_t>(row - begin)].push_back(
+        neighbors[static_cast<std::size_t>(i - begin)].push_back(
             static_cast<PetscInt>(column));
       }
       if (column >= begin && column < end)
       {
         neighbors[static_cast<std::size_t>(column - begin)].push_back(
-            static_cast<PetscInt>(row));
+            static_cast<PetscInt>(i));
       }
     }
   }
@@ -179,14 +178,14 @@ void makeAdjacency(MPI_Comm              comm,
 
   PetscInt edge = 0;
   offsets[0]    = 0;
-  for (PetscInt local_row = 0; local_row < local_size; ++local_row)
+  for (PetscInt i = 0; i < local_size; ++i)
   {
-    for (const PetscInt column :
-         neighbors[static_cast<std::size_t>(local_row)])
+    for (const PetscInt j :
+         neighbors[static_cast<std::size_t>(i)])
     {
-      columns[edge++] = column;
+      columns[edge++] = j;
     }
-    offsets[local_row + 1] = edge;
+    offsets[i + 1] = edge;
   }
 
   const PetscErrorCode ierr =
@@ -249,10 +248,9 @@ std::shared_ptr<const PETScPartition> PETScPartition::create(
 
   if (out->size_ == 0 || out->comm_size_ == 1)
   {
-    out->local_size_ =
-        out->comm_size_ == 1 ? static_cast<PetscInt>(out->size_) : 0;
-    out->begin_ = 0;
-    out->type_  = out->size_ == 0 ? "empty" : "single";
+    out->local_size_ = out->comm_size_ == 1 ? static_cast<PetscInt>(out->size_) : 0;
+    out->begin_      = 0;
+    out->type_       = out->size_ == 0 ? "empty" : "single";
     for (Index i = 0; i < out->size_; ++i)
     {
       out->app_to_petsc_[i] = static_cast<PetscInt>(i);
@@ -296,6 +294,7 @@ std::shared_ptr<const PETScPartition> PETScPartition::create(
                             out->comm_size_,
                             counts.data()),
         "ISPartitioningCount");
+
   out->local_size_ = counts[rank];
   out->begin_      = 0;
   for (PetscMPIInt irank = 0; irank < rank; ++irank)

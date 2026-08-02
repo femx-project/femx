@@ -672,9 +672,9 @@ py::array_t<Real> timeDirichletValueArray(
   auto              vals = out.mutable_unchecked<2>();
   for (Index step = 0; step < stored_steps; ++step)
   {
-    for (Index col = 0; col < data.dofs.size(); ++col)
+    for (Index j = 0; j < data.dofs.size(); ++j)
     {
-      vals(step, col) = data.vals[step * data.dofs.size() + col];
+      vals(step, j) = data.vals[step * data.dofs.size() + j];
     }
   }
   return out;
@@ -800,9 +800,9 @@ public:
     const Index                comps = u_dof.numComponents();
     HostVector<Index>          nodes(ctr_.numControlParams(), -1);
     const femx::HostCsrMatrix& matrix = ctr_.matrix();
-    for (Index row = 0; row < matrix.rows(); ++row)
+    for (Index i = 0; i < matrix.rows(); ++i)
     {
-      const Index dof  = ctr_.stateDof(row);
+      const Index dof  = ctr_.stateDof(i);
       const Index node = dof / comps;
       const Index comp = dof % comps;
       if (node < 0 || node >= model_.mesh().numNodes()
@@ -811,8 +811,8 @@ public:
         throw std::runtime_error(
             "Normal velocity control contains a non-velocity dof");
       }
-      for (Index k = matrix.rowPtrData()[row];
-           k < matrix.rowPtrData()[row + 1];
+      for (Index k = matrix.rowPtrData()[i];
+           k < matrix.rowPtrData()[i + 1];
            ++k)
       {
         Index& stored = nodes[matrix.colIndData()[k]];

@@ -27,6 +27,7 @@ void HostPoissonResidual::assembleResidual(
     HostVector<Real>&                   out,
     linalg::Context<MemorySpace::Host>& ctx) const
 {
+  // Assemble A x from the element residuals R_i^e = sum_j A_ij^e x_j^e.
   assembly::assembleResidual(
       HostPoissonElementKernel(problem_.elementData().view()),
       problem_.mesh(),
@@ -35,6 +36,8 @@ void HostPoissonResidual::assembleResidual(
       out,
       ctx);
 
+  // Apply R_i(x) = x_i - g_i at prescribed rows to obtain the residual
+  // R(x) = A x - b of the Dirichlet-constrained system.
   assembly::applyDirichletConditions(problem_.boundaryMap(),
                                      state.view(),
                                      problem_.boundaryValues().view(),
@@ -47,6 +50,7 @@ void HostPoissonResidual::assembleJacobian(
     linalg::SystemMatrix<MemorySpace::Host>& out,
     linalg::Context<MemorySpace::Host>&      ctx) const
 {
+  // Assemble dR/dx = A from the element matrices A^e.
   assembly::assembleJacobian(
       HostPoissonElementKernel(problem_.elementData().view()),
       problem_.mesh(),
@@ -55,6 +59,8 @@ void HostPoissonResidual::assembleJacobian(
       out,
       ctx);
 
+  // A constrained residual is x_i - g_i, hence its Jacobian row is the
+  // corresponding identity row.
   assembly::applyDirichletConditions(problem_.boundaryMap(), out);
 }
 

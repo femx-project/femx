@@ -32,14 +32,17 @@ Real solveHost(const ExampleHelper&  helper,
                const PoissonProblem& problem,
                HostVector<Real>&     h_x)
 {
-  // Build a ReSolve-backed Host linear system.
+  // Create a ReSolve linear system in Host memory.
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   HostLinearSystem system(std::move(solver));
 
-  // Bind the Poisson residual and solve the state equation.
+  // Define the discrete Poisson residual R(x) = A x - b. The state solver
+  // uses this residual and the ReSolve linear system to find R(x) = 0.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
+  // Assemble R(0) = -b and J = dR/dx = A, then solve J x = -R(0),
+  // which corresponds to the original linear system A x = b.
   state_solver.solve(h_x);
 
   // Evaluate the residual norm of the computed solution.
@@ -49,20 +52,24 @@ Real solveHost(const ExampleHelper&  helper,
 }
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
-Real solveDevice(const ExampleHelper&  helper,
-                 const PoissonProblem& problem,
-                 HostVector<Real>&     h_x)
+Real solveCuda(const ExampleHelper&  helper,
+               const PoissonProblem& problem,
+               HostVector<Real>&     h_x)
 {
-  // Build a ReSolve-backed CUDA linear system.
+  // Create a ReSolve linear system in Device memory.
   auto             solver = std::make_unique<ReSolveLinearSolver>();
   CudaLinearSystem system(std::move(solver));
 
   auto& ctx = static_cast<linalg::CudaContext&>(system.context());
 
-  // Copy the problem data to Device and solve the state equation there.
+  // Copy the finite-element data to Device and define the same discrete
+  // Poisson residual R(x) = A x - b there. The Device state solver uses
+  // this residual and the ReSolve linear system to find R(x) = 0.
   CudaPoissonResidual            res(problem, ctx);
   state::DeviceLinearStateSolver state_solver(res, system);
 
+  // Assemble R(0) = -b and J = dR/dx = A on Device, then solve
+  // J x = -R(0), which corresponds to the original linear system A x = b.
   DeviceVector<Real> d_x;
   state_solver.solve(d_x);
 
@@ -77,14 +84,17 @@ Real solveDevice(const ExampleHelper&  helper,
 
 int run(const Options& opts)
 {
-  // Construct the backend-independent problem and reporting helper.
+  // Use ReSolve as the linear solver backend in the selected memory space.
   constexpr auto solver_type = runtime::SolverType::ReSolve;
   ExampleHelper  helper(solver_type, opts.memspace, outputDir());
+
+  // The problem owns the FEM data needed to assemble the system.
   PoissonProblem problem(opts);
 
   // Solve with the selected backend while keeping the final result on Host.
   HostVector<Real> x;
   Real             rnorm;
+
   if (opts.memspace == MemorySpace::Host)
   {
     rnorm = solveHost(helper, problem, x);
@@ -92,7 +102,7 @@ int run(const Options& opts)
   else
   {
 #if defined(FEMX_RESOLVE_USE_CUDA)
-    rnorm = solveDevice(helper, problem, x);
+    rnorm = solveCuda(helper, problem, x);
 #else
     throw std::runtime_error(
         "The CUDA backend requires a CUDA-enabled ReSolve build");

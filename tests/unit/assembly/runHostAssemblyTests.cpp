@@ -80,9 +80,9 @@ struct AffineElementKernel
   {
     res = in.state[row] + static_cast<Real>(in.ie + 1)
           + in.coords[0];
-    for (Index col = 0; col < jac.size(); ++col)
+    for (Index j = 0; j < jac.size(); ++j)
     {
-      jac[col] = row == col ? 2.0 : 1.0;
+      jac[j] = row == j ? 2.0 : 1.0;
     }
   }
 };
@@ -95,11 +95,11 @@ struct RectangularElementKernel
                HostVectorView<Real>             jac) const
   {
     res = static_cast<Real>(row + 1);
-    for (Index col = 0; col < in.state.size(); ++col)
+    for (Index j = 0; j < in.state.size(); ++j)
     {
-      res      += in.state[col];
-      jac[col]  = 10.0 * static_cast<Real>(row + 1)
-                 + static_cast<Real>(col + 1);
+      res    += in.state[j];
+      jac[j]  = 10.0 * static_cast<Real>(row + 1)
+               + static_cast<Real>(j + 1);
     }
   }
 };
@@ -120,9 +120,9 @@ struct TimeElementKernel
     const Real diag = wrt.isNextState()
                           ? 1.0
                           : (wrt.historyLag() == 0 ? -2.0 : 0.5);
-    for (Index col = 0; col < jac.size(); ++col)
+    for (Index j = 0; j < jac.size(); ++j)
     {
-      jac[col] = row == col ? diag : 0.0;
+      jac[j] = row == j ? diag : 0.0;
     }
   }
 };
@@ -235,10 +235,10 @@ TestOutcome hostAssemblyUsesRuntimeMapAndSharedGraph()
       AffineElementKernel{}, mesh, map, state, jac_only, ctx);
   const HostCsrMatrix& jac_only_mat  = jac_only.matrix();
   status                            *= jac_only_mat.nnz() == jac.nnz();
-  for (Index entry = 0; entry < jac.nnz(); ++entry)
+  for (Index k = 0; k < jac.nnz(); ++k)
   {
     status *=
-        near(jac_only_mat.valsData()[entry], jac.valsData()[entry]);
+        near(jac_only_mat.valsData()[k], jac.valsData()[k]);
   }
 
   return status.report();

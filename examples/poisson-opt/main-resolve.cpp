@@ -31,15 +31,21 @@ namespace
 
 Result optimizeHost(PoissonOptProblem& problem)
 {
+  // The forward system solves R(x,m) = 0. The adjoint system solves
+  // (dR/dx)^T lambda = dJ/dx to form the reduced gradient.
   auto fwd_solver = std::make_unique<linalg::ReSolveLinearSolver>();
   auto adj_solver = std::make_unique<linalg::ReSolveLinearSolver>();
 
   linalg::HostLinearSystem fwd_system(std::move(fwd_solver));
   linalg::HostLinearSystem adj_system(std::move(adj_solver));
 
+  // This residual connects the finite-element problem data and boundary
+  // control parameter m to both the forward and adjoint equations.
   HostPoissonOptResidual       res(problem);
   state::HostLinearStateSolver state_solver(res, fwd_system);
 
+  // Minimize j(m) = J(x(m),m). TAO updates only m; optimize() solves for
+  // the state x(m) and the adjoint needed to evaluate the gradient.
   return optimize(problem, state_solver, adj_system, PETSC_COMM_SELF);
 }
 
@@ -47,6 +53,8 @@ Result optimizeHost(PoissonOptProblem& problem)
 
 Result optimizeDevice(PoissonOptProblem& problem)
 {
+  // The forward system solves R(x,m) = 0. The adjoint system solves
+  // (dR/dx)^T lambda = dJ/dx to form the reduced gradient.
   auto fwd_solver = std::make_unique<linalg::ReSolveLinearSolver>();
   auto adj_solver = std::make_unique<linalg::ReSolveLinearSolver>();
 
@@ -55,9 +63,13 @@ Result optimizeDevice(PoissonOptProblem& problem)
 
   auto& ctx = static_cast<linalg::CudaContext&>(fwd_system.context());
 
+  // Copy the finite-element problem to Device and use the same controlled
+  // residual for both equations.
   CudaPoissonOptResidual         res(problem, ctx);
   state::DeviceLinearStateSolver state_solver(res, fwd_system);
 
+  // TAO updates only m on Host; optimize() solves for the state x(m) and
+  // the adjoint on Device to evaluate the objective and gradient.
   return optimize(problem, state_solver, adj_system, PETSC_COMM_SELF);
 }
 
@@ -65,9 +77,7 @@ Result optimizeDevice(PoissonOptProblem& problem)
 
 int run(const Options& opts)
 {
-  ExampleHelper     helper(runtime::SolverType::ReSolve,
-                       opts.memspace,
-                       outputDir());
+  ExampleHelper     helper(runtime::SolverType::ReSolve, opts.memspace, outputDir());
   PoissonOptProblem problem(opts);
 
   Result result;
@@ -90,7 +100,7 @@ int run(const Options& opts)
               helper.name(),
               problem,
               result.report,
-              result.iterations,
+              result.itrs,
               result.reason);
 
   if (opts.write_output)

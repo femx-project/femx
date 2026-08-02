@@ -218,39 +218,39 @@ void DirichletBC::apply(HostCsrMatrix& A, HostVector<Real>& b) const
     bc_vals[id]      = val;
   }
 
-  for (Index row = 0; row < A.rows(); ++row)
+  for (Index i = 0; i < A.rows(); ++i)
   {
-    const bool row_is_dirichlet = is_dirichlet[row] != 0;
+    const bool row_is_dirichlet = is_dirichlet[i] != 0;
 
-    for (Index k = rp[row]; k < rp[row + 1]; ++k)
+    for (Index k = rp[i]; k < rp[i + 1]; ++k)
     {
       const Index col = ci[k];
 
       if (row_is_dirichlet)
       {
         vals[k] = 0.0;
-        if (col == row)
+        if (col == i)
         {
-          vals[k]             = 1.0;
-          found_diagonal[row] = 1;
+          vals[k]           = 1.0;
+          found_diagonal[i] = 1;
         }
       }
       else if (is_dirichlet[col] != 0)
       {
-        b[row]  -= vals[k] * bc_vals[col];
+        b[i]    -= vals[k] * bc_vals[col];
         vals[k]  = 0.0;
       }
     }
 
     if (row_is_dirichlet)
     {
-      b[row] = bc_vals[row];
+      b[i] = bc_vals[i];
     }
   }
 
-  for (Index row = 0; row < A.rows(); ++row)
+  for (Index i = 0; i < A.rows(); ++i)
   {
-    if (is_dirichlet[row] != 0 && found_diagonal[row] == 0)
+    if (is_dirichlet[i] != 0 && found_diagonal[i] == 0)
     {
       throw std::runtime_error("Dirichlet row has no diagonal entry");
     }

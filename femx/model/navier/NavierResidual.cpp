@@ -46,16 +46,16 @@ void gatherElement(const assembly::HostAssemblyMap& map,
 
   for (Index lag = 0; lag < kNumHist; ++lag)
   {
-    for (Index column = 0; column < num_state_dofs; ++column)
+    for (Index j = 0; j < num_state_dofs; ++j)
     {
-      const Index dof = map_view.stateDof(elem, column);
-      work.hist[lag * num_state_dofs + column] =
+      const Index dof = map_view.stateDof(elem, j);
+      work.hist[lag * num_state_dofs + j] =
           hist[lag * map.numStates() + dof];
     }
   }
-  for (Index column = 0; column < num_state_dofs; ++column)
+  for (Index j = 0; j < num_state_dofs; ++j)
   {
-    work.next[column] = next[map_view.stateDof(elem, column)];
+    work.next[j] = next[map_view.stateDof(elem, j)];
   }
 }
 
@@ -103,9 +103,9 @@ void applyHistoryJacT(
       work.adj.resize(num_res_dofs);
       work.product.resize(kNumHist * num_state_dofs);
 
-      for (Index row = 0; row < num_res_dofs; ++row)
+      for (Index i = 0; i < num_res_dofs; ++i)
       {
-        work.adj[row] = adj[map_view.resDof(ie, row)];
+        work.adj[i] = adj[map_view.resDof(ie, i)];
       }
 
       const assembly::HostTimeElementView element_view{
@@ -117,11 +117,11 @@ void applyHistoryJacT(
       histVjp(
           kernel, element_view, work.adj.view(), work.product.view());
 
-      for (Index column = 0; column < num_state_dofs; ++column)
+      for (Index j = 0; j < num_state_dofs; ++j)
       {
         add(out,
-            map_view.stateDof(ie, column),
-            work.product[lag * num_state_dofs + column]);
+            map_view.stateDof(ie, j),
+            work.product[lag * num_state_dofs + j]);
       }
     }
   }

@@ -79,7 +79,7 @@ public:
   /**
    * @copydoc LinearSolver::solve()
    *
-   * @details Operates without Host staging.
+   * Operates without Host staging.
    * @throws std::runtime_error If validation fails.
    */
   void solve(const DeviceCsrMatrix&        mat,

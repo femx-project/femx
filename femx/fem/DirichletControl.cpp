@@ -51,9 +51,9 @@ HostCsrMatrix makeControlMatrix(
             "DirichletControl received duplicate map entry");
     ++row_ptr[entry.state_row + 1];
   }
-  for (Index row = 0; row < rows; ++row)
+  for (Index i = 0; i < rows; ++i)
   {
-    row_ptr[row + 1] += row_ptr[row];
+    row_ptr[i + 1] += row_ptr[i];
   }
 
   HostVector<Index> col_ind(entries.size());
@@ -241,24 +241,24 @@ DirichletControl DirichletControl::withoutStateDofs(
   HostVector<Index> old_to_new_row(numStateDofs(), -1);
   HostVector<Index> state_dofs;
   state_dofs.reserve(numStateDofs());
-  for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
+  for (Index i = 0; i < numStateDofs(); ++i)
   {
-    if (excluded_set.find(dofs_[old_row]) == excluded_set.end())
+    if (excluded_set.find(dofs_[i]) == excluded_set.end())
     {
-      old_to_new_row[old_row] = state_dofs.size();
-      state_dofs.push_back(dofs_[old_row]);
+      old_to_new_row[i] = state_dofs.size();
+      state_dofs.push_back(dofs_[i]);
     }
   }
 
   HostVector<char> used_cols(numControlParams(), 0);
-  for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
+  for (Index i = 0; i < numStateDofs(); ++i)
   {
-    if (old_to_new_row[old_row] < 0)
+    if (old_to_new_row[i] < 0)
     {
       continue;
     }
-    for (Index k = matrix_.rowPtrData()[old_row];
-         k < matrix_.rowPtrData()[old_row + 1];
+    for (Index k = matrix_.rowPtrData()[i];
+         k < matrix_.rowPtrData()[i + 1];
          ++k)
     {
       used_cols[matrix_.colIndData()[k]] = 1;
@@ -267,25 +267,25 @@ DirichletControl DirichletControl::withoutStateDofs(
 
   HostVector<Index> old_to_new_col(numControlParams(), -1);
   Index             num_ctr_params = 0;
-  for (Index old_column = 0; old_column < numControlParams(); ++old_column)
+  for (Index j = 0; j < numControlParams(); ++j)
   {
-    if (used_cols[old_column] != 0)
+    if (used_cols[j] != 0)
     {
-      old_to_new_col[old_column] = num_ctr_params++;
+      old_to_new_col[j] = num_ctr_params++;
     }
   }
 
   HostVector<DirichletControlMapEntry> entries;
   entries.reserve(matrix_.nnz());
-  for (Index old_row = 0; old_row < numStateDofs(); ++old_row)
+  for (Index i = 0; i < numStateDofs(); ++i)
   {
-    const Index row = old_to_new_row[old_row];
+    const Index row = old_to_new_row[i];
     if (row < 0)
     {
       continue;
     }
-    for (Index k = matrix_.rowPtrData()[old_row];
-         k < matrix_.rowPtrData()[old_row + 1];
+    for (Index k = matrix_.rowPtrData()[i];
+         k < matrix_.rowPtrData()[i + 1];
          ++k)
     {
       entries.push_back({row,

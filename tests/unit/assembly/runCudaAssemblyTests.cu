@@ -35,9 +35,9 @@ struct AffineElementKernel
   {
     res = in.state[row] + static_cast<Real>(in.ie + 1)
           + in.coords[0];
-    for (Index col = 0; col < jac.size(); ++col)
+    for (Index j = 0; j < jac.size(); ++j)
     {
-      jac[col] = row == col ? 2.0 : 1.0;
+      jac[j] = row == j ? 2.0 : 1.0;
     }
   }
 };
@@ -58,9 +58,9 @@ struct TimeElementKernel
     const Real diag = wrt.isNextState()
                           ? 1.0
                           : (wrt.historyLag() == 0 ? -2.0 : 0.5);
-    for (Index col = 0; col < jac.size(); ++col)
+    for (Index j = 0; j < jac.size(); ++j)
     {
-      jac[col] = row == col ? diag : 0.0;
+      jac[j] = row == j ? diag : 0.0;
     }
   }
 };
@@ -101,9 +101,9 @@ bool matsNear(const HostCsrMatrix& lhs,
       return false;
     }
   }
-  for (Index row = 0; row <= lhs.rows(); ++row)
+  for (Index i = 0; i <= lhs.rows(); ++i)
   {
-    if (lhs.rowPtrData()[row] != rhs.rowPtrData()[row])
+    if (lhs.rowPtrData()[i] != rhs.rowPtrData()[i])
     {
       return false;
     }
@@ -149,17 +149,17 @@ void loadMatrix(const HostCsrMatrix&      source,
 {
   destination.setup(source.pattern());
   HostVector<Index> row(1);
-  for (Index global_row = 0; global_row < source.rows(); ++global_row)
+  for (Index i = 0; i < source.rows(); ++i)
   {
-    const Index begin = source.rowPtrData()[global_row];
+    const Index begin = source.rowPtrData()[i];
     const Index count =
-        source.rowPtrData()[global_row + 1] - begin;
+        source.rowPtrData()[i + 1] - begin;
     HostVector<Index> entries(count);
-    for (Index i = 0; i < count; ++i)
+    for (Index k = 0; k < count; ++k)
     {
-      entries[i] = begin + i;
+      entries[k] = begin + k;
     }
-    row[0] = global_row;
+    row[0] = i;
     destination.addElement(
         {row.view(),
          {source.colIndData() + begin, count},

@@ -65,11 +65,11 @@ void zeroBoundary(const HostBoundaryMap& map,
                   HostVectorView<Real>   values)
 {
   const auto rows = map.view().constrained_rows;
-  for (Index row : rows)
+  for (Index i : rows)
   {
-    require(row < values.size(),
+    require(i < values.size(),
             "BoundaryMap constrained row is out of vector range");
-    values[row] = 0.0;
+    values[i] = 0.0;
   }
 }
 
