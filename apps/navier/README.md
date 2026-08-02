@@ -215,7 +215,8 @@ inlets, outlets, or a moving cavity lid when the wall should own the rim.
 
 ## Run
 
-From your build directory, run the executable for the solver you enabled:
+From the top-level `build/` directory created with the non-preset build
+commands in the main README, run the executable for the solver you enabled:
 
 ```shell
 ./apps/navier/navier-resolve \

@@ -19,6 +19,7 @@ namespace examples::poisson_opt
 namespace detail
 {
 
+/** @brief Evaluate a controlled Dirichlet row `R_i(x,m) = x_i - m_i`. */
 FEMX_HOST_DEVICE inline Real controlResidual(Real state, Real ctr)
 {
   return state - ctr;
@@ -28,6 +29,11 @@ FEMX_HOST_DEVICE inline Real controlResidual(Real state, Real ctr)
 
 /**
  * @brief Assemble the controlled Poisson residual with Host data.
+ *
+ * Interior rows are `R_i(x,m) = sum_j K_ij x_j`, controlled
+ * boundary rows are `R_i(x,m) = x_i - m_i`, and the other boundary rows are
+ * `R_i(x,m) = x_i`. Thus `dR/dm` has one `-1` per controlled row, which is
+ * also used to form the adjoint contribution to the reduced gradient.
  */
 class HostPoissonOptResidual final : public state::HostResidual
 {
@@ -102,6 +108,10 @@ private:
 
 /**
  * @brief Own Device data and assemble the controlled Poisson residual on CUDA.
+ *
+ * Implements the same `R(x,m)`, state Jacobian, and parameter
+ * Jacobian-transpose action as `HostPoissonOptResidual`, with the finite-
+ * element work performed on Device.
  */
 class CudaPoissonOptResidual final : public state::DeviceResidual
 {

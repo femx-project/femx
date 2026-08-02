@@ -87,15 +87,15 @@ HostCsrPattern interleavedPathPattern()
 
   HostVector<Index> row_ptr(size + 1, 0);
   HostVector<Index> col_ind;
-  for (Index row = 0; row < size; ++row)
+  for (Index i = 0; i < size; ++i)
   {
-    auto& columns = rows[row];
+    auto& columns = rows[i];
     std::sort(columns.begin(), columns.end());
-    for (const Index column : columns)
+    for (const Index j : columns)
     {
-      col_ind.push_back(column);
+      col_ind.push_back(j);
     }
-    row_ptr[row + 1] = col_ind.size();
+    row_ptr[i + 1] = col_ind.size();
   }
   return {size, size, std::move(row_ptr), std::move(col_ind)};
 }
@@ -153,12 +153,12 @@ TestOutcome partitionedSolveKeepsApplicationOrdering()
 #endif
 
   HostVector<Real> rhs(pattern.rows(), 0.0);
-  for (Index row = 0; row < pattern.rows(); ++row)
+  for (Index i = 0; i < pattern.rows(); ++i)
   {
-    const PetscInt petsc_row  = partition->petscIndex(row);
-    status                   *= partition->applicationIndex(petsc_row) == row;
+    const PetscInt petsc_row  = partition->petscIndex(i);
+    status                   *= partition->applicationIndex(petsc_row) == i;
 
-    const bool owned  = partition->owner(row) == rank;
+    const bool owned  = partition->owner(i) == rank;
     status           *= owned
               == (petsc_row >= partition->begin()
                   && petsc_row < partition->end());
@@ -167,17 +167,17 @@ TestOutcome partitionedSolveKeepsApplicationOrdering()
       continue;
     }
 
-    rhs[row] = 2.0;
-    for (Index k = pattern.rowPtr()[row];
-         k < pattern.rowPtr()[row + 1];
+    rhs[i] = 2.0;
+    for (Index k = pattern.rowPtr()[i];
+         k < pattern.rowPtr()[i + 1];
          ++k)
     {
       const Index column = pattern.colInd()[k];
-      const Real  value  = column == row ? 2.0 : -1.0;
-      matrix.set(row, column, value);
-      if (column != row)
+      const Real  value  = column == i ? 2.0 : -1.0;
+      matrix.set(i, column, value);
+      if (column != i)
       {
-        rhs[row] -= 1.0;
+        rhs[i] -= 1.0;
       }
     }
   }

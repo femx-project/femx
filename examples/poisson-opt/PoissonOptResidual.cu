@@ -51,10 +51,14 @@ CudaPoissonOptResidual::CudaPoissonOptResidual(
     num_prm_(problem.numParameters()),
     h_pattern_(problem.assemblyMap().pattern())
 {
+  // Copy the immutable discretization and boundary-control layout needed to
+  // evaluate the same R(x,m) as the Host implementation on Device.
   fem::copy(problem.mesh(), mesh_, ctx);
   fem::copy(problem.elementData(), elem_data_, ctx);
+
   assembly::copy(problem.assemblyMap(), assm_map_, ctx);
   assembly::copy(problem.boundaryMap(), boundary_map_, ctx);
+
   ctx.vectorHandler().copy(problem.controlDofs(), ctr_dofs_);
   boundary_vals_.resize(problem.boundaryMap().numBcs());
   ctx.sync();
@@ -79,6 +83,7 @@ void CudaPoissonOptResidual::assembleResidual(
   checkVectors(state, prm);
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
 
+  // Assemble K x, then replace boundary rows by x_i - m_i or x_i.
   assembly::assembleResidual(
       poisson::DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
@@ -104,6 +109,8 @@ void CudaPoissonOptResidual::assembleJacobian(
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
   auto& jac = static_cast<linalg::CudaSystemMatrix&>(out);
 
+  // dR/dx is K in the interior and identity on the boundary, independent of
+  // m for this affine problem.
   assembly::assembleJacobian(
       poisson::DevicePoissonElementKernel(elem_data_.view()),
       mesh_,
@@ -129,6 +136,8 @@ void CudaPoissonOptResidual::applyParamJacT(
   auto& ctx = static_cast<linalg::CudaContext&>(base_ctx);
   ctx.vectorHandler().assign(out, num_prm_, 0);
 
+  // Form (dR/dm)^T adj = -adj on the state rows controlled by m. With Enzyme
+  // the scalar boundary residual is differentiated inside the CUDA kernel.
 #if defined(FEMX_HAS_ENZYME)
 
   constexpr unsigned int threads = 128;
@@ -167,11 +176,13 @@ CudaPoissonOptResidual::boundaryValues(
     const DeviceVector<Real>& prm,
     linalg::CudaContext&      ctx) const
 {
+  // Boundary-map order is [controlled rows, fixed rows]. The trailing fixed
+  // values remain zero after inserting m into the leading entries.
   ctx.vectorHandler().zero(boundary_vals_.view());
   ctx.vectorHandler().copy(
       prm.view(),
-      DeviceVectorView<Real>(
-          boundary_vals_.data(), num_prm_));
+      DeviceVectorView<Real>(boundary_vals_.data(), num_prm_));
+
   return boundary_vals_.view();
 }
 

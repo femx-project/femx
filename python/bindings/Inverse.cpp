@@ -65,8 +65,8 @@ public:
   PythonHostTimeReducedFunctional(PythonHostTimeIntegrator& owner,
                                   const TimeObjective&      obj,
                                   SolverType                solver,
-                                  const py::object&         options)
-    : adj_system_(makePythonHostLinearSystem(solver, options)),
+                                  const py::object&         opts)
+    : adj_system_(makePythonHostLinearSystem(solver, opts)),
       impl_(owner.get(), *adj_system_, obj)
   {
   }
@@ -146,17 +146,17 @@ TimeObservationData observationDataFromArrays(
 
   TimeObservationData out(vals.shape(0), vals.shape(1));
   const auto          data = vals.unchecked<2>();
-  for (Index row = 0; row < out.numTimeLevels(); ++row)
+  for (Index i = 0; i < out.numTimeLevels(); ++i)
   {
-    auto out_row = out[row];
-    for (Index column = 0; column < out.numObservations(); ++column)
+    auto out_row = out[i];
+    for (Index j = 0; j < out.numObservations(); ++j)
     {
-      const Real value = data(row, column);
+      const Real value = data(i, j);
       if (!std::isfinite(value))
       {
         throw std::runtime_error("observation values must be finite");
       }
-      out_row[column] = value;
+      out_row[j] = value;
     }
   }
 
@@ -194,12 +194,12 @@ py::array_t<Real> observationDataArray(const TimeObservationData& vals)
   py::array_t<Real> out(
       {vals.numTimeLevels(), vals.numObservations()});
   auto data = out.mutable_unchecked<2>();
-  for (Index row = 0; row < vals.numTimeLevels(); ++row)
+  for (Index i = 0; i < vals.numTimeLevels(); ++i)
   {
-    const auto src = vals[row];
-    for (Index column = 0; column < vals.numObservations(); ++column)
+    const auto src = vals[i];
+    for (Index j = 0; j < vals.numObservations(); ++j)
     {
-      data(row, column) = src[column];
+      data(i, j) = src[j];
     }
   }
   return out;

@@ -192,11 +192,11 @@ private:
     {
       require(rowPtr()[0] == 0 && rowPtr()[rows()] == nnz(),
               "CsrPattern row offsets must begin at zero and end at nnz");
-      for (Index row = 0; row < rows(); ++row)
+      for (Index i = 0; i < rows(); ++i)
       {
-        require(rowPtr()[row] >= 0
-                    && rowPtr()[row] <= rowPtr()[row + 1]
-                    && rowPtr()[row + 1] <= nnz(),
+        require(rowPtr()[i] >= 0
+                    && rowPtr()[i] <= rowPtr()[i + 1]
+                    && rowPtr()[i + 1] <= nnz(),
                 "CsrPattern row offsets must be monotone and in range");
       }
       for (Index k = 0; k < nnz(); ++k)

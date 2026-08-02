@@ -46,11 +46,11 @@ inline void requireFinite(const HostVector<Real>& vals, const char* name)
 
 inline void requireFinite(const DenseMatrix& vals, const char* name)
 {
-  for (Index row = 0; row < vals.rows(); ++row)
+  for (Index i = 0; i < vals.rows(); ++i)
   {
-    for (Index col = 0; col < vals.cols(); ++col)
+    for (Index j = 0; j < vals.cols(); ++j)
     {
-      if (!std::isfinite(vals(row, col)))
+      if (!std::isfinite(vals(i, j)))
       {
         throw std::runtime_error(std::string(name) + " must be finite");
       }
@@ -110,11 +110,11 @@ inline DenseMatrix denseMatrixFromArray(const RealArray& vals,
   DenseMatrix out(static_cast<Index>(vals.shape(0)),
                   static_cast<Index>(vals.shape(1)));
   const auto  data = vals.unchecked<2>();
-  for (Index row = 0; row < out.rows(); ++row)
+  for (Index i = 0; i < out.rows(); ++i)
   {
-    for (Index col = 0; col < out.cols(); ++col)
+    for (Index j = 0; j < out.cols(); ++j)
     {
-      out(row, col) = data(row, col);
+      out(i, j) = data(i, j);
     }
   }
   if (finite_check == FiniteCheck::Require)
@@ -171,11 +171,11 @@ inline pybind11::array_t<Real> denseMatrixArray(const DenseMatrix& vals)
 {
   pybind11::array_t<Real> out({vals.rows(), vals.cols()});
   auto                    data = out.mutable_unchecked<2>();
-  for (Index row = 0; row < vals.rows(); ++row)
+  for (Index i = 0; i < vals.rows(); ++i)
   {
-    for (Index col = 0; col < vals.cols(); ++col)
+    for (Index j = 0; j < vals.cols(); ++j)
     {
-      data(row, col) = vals(row, col);
+      data(i, j) = vals(i, j);
     }
   }
   return out;

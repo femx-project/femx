@@ -42,6 +42,9 @@ names may be used when their meaning is clear.
 | `dim`      | `dimension`                 |
 | `idx`      | `index`                     |
 | `num`      | `number`                    |
+| `itrs`     | `iterations`                |
+| `opts`     | `options`                   |
+| `config`   | `configuration`             |
 
 When a local variable, function parameter, or private data member needs a
 memory-space qualifier, prefix it with `h_` for Host storage and `d_` for
@@ -56,6 +59,14 @@ Do not shorten words in documentation, comments, diagnostics, or user-facing
 messages.
 
 ## Loop indices
+
+Use the following names when traversing matrix storage:
+
+| Index | Iteration domain          |
+| ----- | ------------------------- |
+| `i`   | matrix row                |
+| `j`   | matrix column             |
+| `k`   | stored matrix entry       |
 
 Use the following semantic names for finite-element loop indices:
 

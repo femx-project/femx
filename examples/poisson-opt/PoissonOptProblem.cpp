@@ -47,7 +47,7 @@ void validateOptions(const Options& opts)
     throw std::runtime_error(
         "Poisson optimization alpha must be nonnegative");
   }
-  if (opts.max_iterations <= 0)
+  if (opts.max_itrs <= 0)
   {
     throw std::runtime_error(
         "Poisson optimization maximum iterations must be positive");
@@ -229,6 +229,7 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
     mesh_(makePoissonMesh(opts)),
     space_(&mesh_, &fe_)
 {
+  // Use the same Q1 Poisson discretization as the forward example.
   space_.setup();
 
   elem_data_ = makeElementQuadData(
@@ -236,14 +237,17 @@ PoissonOptProblem::PoissonOptProblem(const Options& opts)
       GaussQuadrature::make(
           fe_.shape(), 2));
 
+  // Map local element residuals and stiffness entries into global CSR rows.
   assm_map_ = assembly::makeAssemblyMap(space_.dofMap());
 
+  // Define which boundary values are optimization parameters, manufacture a
+  // target control, and select the interior state entries to observe.
   initBoundary();
   initTargetControl();
   initObservations();
 }
 
-const Options& PoissonOptProblem::options() const noexcept
+const Options& PoissonOptProblem::opts() const noexcept
 {
   return opts_;
 }
@@ -293,8 +297,7 @@ const Objective& PoissonOptProblem::objective() const
   return *obj_;
 }
 
-void PoissonOptProblem::prepareObjective(
-    HostVector<Real> target_state)
+void PoissonOptProblem::setupObjective(HostVector<Real> target_state)
 {
   if (obj_)
   {
@@ -307,26 +310,25 @@ void PoissonOptProblem::prepareObjective(
   }
   target_state_ = std::move(target_state);
 
-  HostVector<Real> zero_ctr(numParameters(), 0.0);
+  // Minimizes J(x,m) = J_misfit(x) + J_reg(m), where
+  // J_misfit(x) = 1/2 sum_i w_i (x_i - d_i)^2 and J_reg(m) = alpha/2 sum_i w_i^m m_i^2.
+
+  HostVector<Real> reg_target(numParameters(), 0.0);
   HostVector<Real> reg_weights(numParameters(), 0.0);
   for (Index idx = 0; idx < reg_weights.size(); ++idx)
   {
     reg_weights[idx] = opts_.alpha * ctr_weights_[idx];
   }
 
-  misfit_ = std::make_unique<LeastSquaresObjective>(
-      numStates(), numParameters());
-  misfit_->setStateTerm(
-      target_state_, observationWeights());
+  // J_misfit(x) term.
+  misfit_ = std::make_unique<LeastSquaresObjective>(numStates(), numParameters());
+  misfit_->setStateTerm(target_state_, observationWeights());
 
-  reg_ = std::make_unique<LeastSquaresObjective>(
-      numStates(), numParameters());
-  reg_->setParamTerm(
-      std::move(zero_ctr),
-      std::move(reg_weights));
+  // J_reg(m) term.
+  reg_ = std::make_unique<LeastSquaresObjective>(numStates(), numParameters());
+  reg_->setParamTerm(std::move(reg_target), std::move(reg_weights));
 
-  obj_ = std::make_unique<SumObjective>(
-      numStates(), numParameters());
+  obj_ = std::make_unique<SumObjective>(numStates(), numParameters());
   obj_->add(*misfit_);
   obj_->add(*reg_);
 }
@@ -374,8 +376,7 @@ Report PoissonOptProblem::report(
   {
     const Real error     = state[idx] - target_state_[idx];
     state_error_squared += error * error;
-    out.state_max_error =
-        std::max(out.state_max_error, std::abs(error));
+    out.state_max_error  = std::max(out.state_max_error, std::abs(error));
   }
   out.state_rms_error =
       std::sqrt(state_error_squared
@@ -384,10 +385,9 @@ Report PoissonOptProblem::report(
   Real ctr_error_squared = 0.0;
   for (Index idx = 0; idx < ctr.size(); ++idx)
   {
-    const Real error   = ctr[idx] - target_ctr_[idx];
-    ctr_error_squared += error * error;
-    out.control_max_error =
-        std::max(out.control_max_error, std::abs(error));
+    const Real error       = ctr[idx] - target_ctr_[idx];
+    ctr_error_squared     += error * error;
+    out.control_max_error  = std::max(out.control_max_error, std::abs(error));
   }
 
   out.control_rms_error =
@@ -529,6 +529,8 @@ void PoissonOptProblem::initBoundary()
   std::set<Index> ctr_rows;
   std::set<Index> fixed_rows;
 
+  // Interior nodes of the top edge are controlled by m. The remaining outer
+  // boundary is fixed to zero.
   for (Index in = 0; in < mesh_.numNodes(); ++in)
   {
     const Mesh::Node& point = mesh_.node(in);
@@ -552,23 +554,28 @@ void PoissonOptProblem::initBoundary()
   boundary_rows.reserve(static_cast<Index>(
       ctr_rows.size() + fixed_rows.size()));
 
-  for (Index row : ctr_rows)
+  // Put controlled rows first so the residual can copy m directly into the
+  // leading boundary values; fixed rows retain the trailing zero values.
+  for (Index i : ctr_rows)
   {
-    ctr_dofs_.push_back(row);
-    boundary_rows.push_back(row);
+    ctr_dofs_.push_back(i);
+    boundary_rows.push_back(i);
   }
-  for (Index row : fixed_rows)
+  for (Index i : fixed_rows)
   {
-    boundary_rows.push_back(row);
+    boundary_rows.push_back(i);
   }
   boundary_map_ = assembly::makeBoundaryMap(boundary_rows);
 
+  // Lump the one-dimensional boundary integral onto the control nodes.
   const Real cell_width = 1.0 / static_cast<Real>(opts_.num_x_cells);
   ctr_weights_.assign(ctr_dofs_.size(), cell_width);
 }
 
 void PoissonOptProblem::initTargetControl()
 {
+  // Sampling a harmonic manufactured solution on the controlled edge gives
+  // a known control from which noise-free observations can be generated.
   target_ctr_.resize(numParameters());
   for (Index idx = 0; idx < ctr_dofs_.size();
        ++idx)
@@ -580,6 +587,8 @@ void PoissonOptProblem::initTargetControl()
 
 void PoissonOptProblem::initObservations()
 {
+  // Observe a regular subset of interior nodal values. Their target values
+  // are filled later by solving the state equation at target_ctr_.
   const Index stride = effectiveObservationStride();
   const Index count_x =
       (opts_.num_x_cells - 1) / stride;
@@ -729,7 +738,7 @@ Options parseOptions(int    argc,
     }
     if (argument == "--max-its")
     {
-      opts.max_iterations = parsePositiveIndex(
+      opts.max_itrs = parsePositiveIndex(
           runtime::requireValue(
               argc, argv, idx, argument),
           argument);
@@ -748,7 +757,7 @@ Options parseOptions(int    argc,
         || readPositiveAssignment(
             argument,
             "--max-its",
-            opts.max_iterations)
+            opts.max_itrs)
         || readRealAssignment(
             argument, "--alpha", opts.alpha)
         || readNonnegativeAssignment(
@@ -786,13 +795,13 @@ Options parseOptions(int    argc,
 
 void printUsage(std::ostream& out,
                 const char*   app_name,
-                bool          petsc_options)
+                bool          petsc_opts)
 {
   out << "Usage: " << app_name
       << " [--nx N] [--ny N] [-b cpu|cuda]"
       << " [--output yes|no] [--alpha A]"
       << " [--obs-stride N] [--max-its N]";
-  if (petsc_options)
+  if (petsc_opts)
   {
     out << " [PETSc/TAO options]";
   }
@@ -815,14 +824,14 @@ std::string outputStem(const Options& opts)
 }
 
 void printReport(std::ostream&            out,
-                 const std::string&       configuration,
+                 const std::string&       config,
                  const PoissonOptProblem& problem,
                  const Report&            rep,
-                 Index                    iterations,
+                 Index                    itrs,
                  int                      reason)
 {
-  const Options& opts = problem.options();
-  out << "Poisson optimal control (" << configuration << ")\n";
+  const Options& opts = problem.opts();
+  out << "Poisson optimal control (" << config << ")\n";
   out << "  backend: " << backendName(opts.memspace) << '\n';
   out << "  parameter VJP: "
       << (ad::has_enzyme ? "Enzyme" : "analytic fallback")
@@ -845,7 +854,7 @@ void printReport(std::ostream&            out,
   }
   out << '\n';
   out << "  alpha: " << opts.alpha << '\n';
-  out << "  TAO iterations: " << iterations << '\n';
+  out << "  TAO iterations: " << itrs << '\n';
   out << "  TAO reason: " << reason << '\n';
   out << "  final value: " << rep.value << '\n';
   out << "  gradient norm: " << rep.gradient_norm

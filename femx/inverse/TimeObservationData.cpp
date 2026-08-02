@@ -245,18 +245,18 @@ void writeTimeObsData(const std::string& path, const TimeObservationData& data)
   if (data.hasTimeValues())
   {
     out << "time_values\n";
-    for (Index row = 0; row < data.numTimeLevels(); ++row)
+    for (Index i = 0; i < data.numTimeLevels(); ++i)
     {
-      out << "  " << data.timeValue(row) << '\n';
+      out << "  " << data.timeValue(i) << '\n';
     }
     out << '\n';
   }
   else if (data.hasTimeLevels())
   {
     out << "time_levels\n";
-    for (Index row = 0; row < data.numTimeLevels(); ++row)
+    for (Index i = 0; i < data.numTimeLevels(); ++i)
     {
-      out << "  " << data.timeLevel(row) << '\n';
+      out << "  " << data.timeLevel(i) << '\n';
     }
     out << '\n';
   }

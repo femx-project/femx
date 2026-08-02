@@ -45,18 +45,18 @@ void DenseLinearSolver::copyToDense(const HostCsrMatrix& mat,
                                     DenseMatrix&         dense) const
 {
   dense.resize(mat.rows(), mat.cols());
-  for (Index row = 0; row < mat.rows(); ++row)
+  for (Index i = 0; i < mat.rows(); ++i)
   {
-    for (Index k = mat.rowPtrData()[row]; k < mat.rowPtrData()[row + 1]; ++k)
+    for (Index k = mat.rowPtrData()[i]; k < mat.rowPtrData()[i + 1]; ++k)
     {
       const Index col = mat.colIndData()[k];
       if (transpose)
       {
-        dense(col, row) = mat.valsData()[k];
+        dense(col, i) = mat.valsData()[k];
       }
       else
       {
-        dense(row, col) = mat.valsData()[k];
+        dense(i, col) = mat.valsData()[k];
       }
     }
   }
@@ -74,13 +74,13 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
   {
     Index pivot = k;
     Real  best  = std::abs(mat(k, k));
-    for (Index row = k + 1; row < size; ++row)
+    for (Index i = k + 1; i < size; ++i)
     {
-      const Real candidate = std::abs(mat(row, k));
+      const Real candidate = std::abs(mat(i, k));
       if (candidate > best)
       {
         best  = candidate;
-        pivot = row;
+        pivot = i;
       }
     }
     if (best <= pivot_tol_)
@@ -90,34 +90,34 @@ void DenseLinearSolver::solveDense(DenseMatrix                 mat,
     }
     if (pivot != k)
     {
-      for (Index col = k; col < size; ++col)
+      for (Index j = k; j < size; ++j)
       {
-        std::swap(mat(k, col), mat(pivot, col));
+        std::swap(mat(k, j), mat(pivot, j));
       }
       std::swap(b[k], b[pivot]);
     }
-    for (Index row = k + 1; row < size; ++row)
+    for (Index i = k + 1; i < size; ++i)
     {
-      const Real factor = mat(row, k) / mat(k, k);
-      mat(row, k)       = 0.0;
-      for (Index col = k + 1; col < size; ++col)
+      const Real factor = mat(i, k) / mat(k, k);
+      mat(i, k)         = 0.0;
+      for (Index j = k + 1; j < size; ++j)
       {
-        mat(row, col) -= factor * mat(k, col);
+        mat(i, j) -= factor * mat(k, j);
       }
-      b[row] -= factor * b[k];
+      b[i] -= factor * b[k];
     }
   }
 
   auto& vec_handler = ctx.vectorHandler();
   vec_handler.assign(x, size, 0);
-  for (Index row = size; row-- > 0;)
+  for (Index i = size; i-- > 0;)
   {
-    Real sum = b[row];
-    for (Index col = row + 1; col < size; ++col)
+    Real sum = b[i];
+    for (Index j = i + 1; j < size; ++j)
     {
-      sum -= mat(row, col) * x[col];
+      sum -= mat(i, j) * x[j];
     }
-    x[row] = sum / mat(row, row);
+    x[i] = sum / mat(i, i);
   }
 }
 

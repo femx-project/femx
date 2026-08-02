@@ -390,13 +390,13 @@ HostInitialStateMap makeInitialStateMap(HostVector<Real>        mean,
               && init_off + modes.cols() <= num_prm
               && ctr_off + ctr.numControlParams() <= num_prm,
           "InitialStateMap parameter blocks do not fit the parameter vector");
-  for (Index row : ctr.stateDofs())
+  for (Index i : ctr.stateDofs())
   {
-    require(row >= 0 && row < mean.size(),
+    require(i >= 0 && i < mean.size(),
             "InitialStateMap controlled state DOF is out of range");
-    for (Index col = 0; col < modes.cols(); ++col)
+    for (Index j = 0; j < modes.cols(); ++j)
     {
-      require(modes(row, col) == 0.0,
+      require(modes(i, j) == 0.0,
               "InitialStateMap modes must vanish on controlled DOFs");
     }
   }

@@ -35,7 +35,7 @@ public:
   /**
    * @copydoc Base::elementRange()
    *
-   * @details Assigns the full range to the serial Host context.
+   * Assigns the full range to the serial Host context.
    */
   IndexRange elementRange(Index count) const override
   {
@@ -47,7 +47,7 @@ public:
   /**
    * @copydoc Base::ownsElement()
    *
-   * @details Owns every valid element in serial execution.
+   * Owns every valid element in serial execution.
    */
   bool ownsElement(
       Index                       element,
@@ -63,7 +63,7 @@ public:
   /**
    * @copydoc Base::allReduceSum()
    *
-   * @details Leaves values unchanged in serial execution.
+   * Leaves values unchanged in serial execution.
    */
   void allReduceSum(HostVectorView<Real> vals) const override
   {
@@ -73,7 +73,7 @@ public:
   /**
    * @copydoc Base::sync()
    *
-   * @details Serial Host execution is synchronous.
+   * Serial Host execution is synchronous.
    */
   void sync() const override
   {

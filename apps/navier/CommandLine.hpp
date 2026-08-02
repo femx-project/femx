@@ -21,15 +21,15 @@ struct CommandLineOptions
 /**
  * @brief Parse navier command-line options.
  *
- * @param[in] argc                  - Argument count.
- * @param[in] argv                  - Argument values.
- * @param[in] allow_unknown_options - Preserve options owned by a solver.
+ * @param[in] argc               - Argument count.
+ * @param[in] argv               - Argument values.
+ * @param[in] allow_unknown_opts - Preserve options owned by a solver.
  * @return Parsed command-line options.
  * @throws std::runtime_error If validation fails.
  */
 CommandLineOptions parseCommandLine(int   argc,
                                     char* argv[],
-                                    bool  allow_unknown_options);
+                                    bool  allow_unknown_opts);
 
 /**
  * @brief Print navier command-line usage.

@@ -140,9 +140,9 @@ __global__ void assembleKernel(
   Real*                  res_e    = coords_e + num_coords;
   Real*                  jac_e    = res_e + num_rows;
 
-  for (Index col = tid; col < num_cols; col += stride)
+  for (Index j = tid; j < num_cols; j += stride)
   {
-    state_e[col] = state[map.stateDof(ie, col)];
+    state_e[j] = state[map.stateDof(ie, j)];
   }
   for (Index i = tid; i < num_coords; i += stride)
   {
@@ -151,38 +151,38 @@ __global__ void assembleKernel(
     const Index node = mesh.elemNodeId(ie, in);
     coords_e[i]      = mesh.coord(node, d);
   }
-  for (Index row = tid; row < num_rows; row += stride)
+  for (Index i = tid; i < num_rows; i += stride)
   {
-    res_e[row] = Real{};
+    res_e[i] = Real{};
   }
-  for (Index i = tid; i < num_jac; i += stride)
+  for (Index k = tid; k < num_jac; k += stride)
   {
-    jac_e[i] = Real{};
+    jac_e[k] = Real{};
   }
   __syncthreads();
 
   const DeviceElementView elem{
       ie, mesh.dim(), num_nodes, {state_e, num_cols}, {coords_e, num_coords}};
 
-  for (Index row = tid; row < num_rows; row += stride)
+  for (Index i = tid; i < num_rows; i += stride)
   {
-    DeviceVectorView<Real> jac_row(jac_e + row * num_cols, num_cols);
-    kernel.evalRow(elem, row, res_e[row], jac_row);
+    DeviceVectorView<Real> jac_row(jac_e + i * num_cols, num_cols);
+    kernel.evalRow(elem, i, res_e[i], jac_row);
   }
   __syncthreads();
 
   if (res != nullptr)
   {
-    for (Index row = tid; row < num_rows; row += stride)
+    for (Index i = tid; i < num_rows; i += stride)
     {
-      atomicAdd(res + map.resDof(ie, row), res_e[row]);
+      atomicAdd(res + map.resDof(ie, i), res_e[i]);
     }
   }
   if (jac != nullptr)
   {
-    for (Index i = tid; i < num_jac; i += stride)
+    for (Index k = tid; k < num_jac; k += stride)
     {
-      atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+      atomicAdd(jac + map.jacIndex(ie, k), jac_e[k]);
     }
   }
 }
@@ -224,17 +224,17 @@ __global__ void assembleTimeKernel(
     const Index dof = map.stateDof(ie, col);
     hist_e[i]       = hist[lag * map.num_states + dof];
   }
-  for (Index col = tid; col < ncol; col += stride)
+  for (Index j = tid; j < ncol; j += stride)
   {
-    nxt_e[col] = nxt[map.stateDof(ie, col)];
+    nxt_e[j] = nxt[map.stateDof(ie, j)];
   }
-  for (Index row = tid; row < nrow; row += stride)
+  for (Index i = tid; i < nrow; i += stride)
   {
-    res_e[row] = Real{};
+    res_e[i] = Real{};
   }
-  for (Index i = tid; i < njac; i += stride)
+  for (Index k = tid; k < njac; k += stride)
   {
-    jac_e[i] = Real{};
+    jac_e[k] = Real{};
   }
   __syncthreads();
 
@@ -244,22 +244,22 @@ __global__ void assembleTimeKernel(
       num_hist,
       {hist_e, num_hist * ncol},
       {nxt_e, ncol}};
-  for (Index row = tid; row < nrow; row += stride)
+  for (Index i = tid; i < nrow; i += stride)
   {
-    DeviceVectorView<Real> jac_row(jac_e + row * ncol, ncol);
-    kernel.evalRow(elem, wrt, row, res_e[row], jac_row);
+    DeviceVectorView<Real> jac_row(jac_e + i * ncol, ncol);
+    kernel.evalRow(elem, wrt, i, res_e[i], jac_row);
   }
   __syncthreads();
 
-  for (Index row = tid; row < nrow; row += stride)
+  for (Index i = tid; i < nrow; i += stride)
   {
-    atomicAdd(res + map.resDof(ie, row), res_e[row]);
+    atomicAdd(res + map.resDof(ie, i), res_e[i]);
   }
   if (jac != nullptr)
   {
-    for (Index i = tid; i < njac; i += stride)
+    for (Index k = tid; k < njac; k += stride)
     {
-      atomicAdd(jac + map.jacIndex(ie, i), jac_e[i]);
+      atomicAdd(jac + map.jacIndex(ie, k), jac_e[k]);
     }
   }
 }

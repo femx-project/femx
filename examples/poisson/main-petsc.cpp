@@ -25,7 +25,7 @@ namespace
 
 int run(const Options& opts)
 {
-  // Validate the backend and construct the shared Poisson problem data.
+  // Use PETSc as the linear solver backend and require Host execution.
   constexpr auto solver_type = runtime::SolverType::PETSc;
   if (opts.memspace != MemorySpace::Host)
   {
@@ -33,16 +33,21 @@ int run(const Options& opts)
         "PETSc Poisson supports only the CPU backend");
   }
 
-  ExampleHelper  helper(solver_type, opts.memspace, outputDir());
+  ExampleHelper helper(solver_type, opts.memspace, outputDir());
+
+  // The problem owns the FEM data needed to assemble the system.
   PoissonProblem problem(opts);
 
-  // Build the PETSc linear system on the global communicator.
+  // Create a PETSc linear system on the global MPI communicator.
   linalg::PETScLinearSystem system(PETSC_COMM_WORLD);
 
-  // Bind the residual to the linear system and solve the state equation.
+  // Define the discrete Poisson residual R(x) = A x - b. The state solver
+  // uses this residual and PETSc to find R(x) = 0 collectively.
   HostPoissonResidual          res(problem);
   state::HostLinearStateSolver state_solver(res, system);
 
+  // Assemble R(0) = -b and J = dR/dx = A, then solve J x = -R(0),
+  // which corresponds to the original linear system A x = b.
   HostVector<Real> x;
 
   state_solver.solve(x);

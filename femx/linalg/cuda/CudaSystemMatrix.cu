@@ -43,11 +43,11 @@ __global__ void replaceConstraintRowsKernel(
   }
 
   const Index row = rows[ib];
-  for (Index entry = row_offsets[row] + threadIdx.x;
-       entry < row_offsets[row + 1];
-       entry += blockDim.x)
+  for (Index k = row_offsets[row] + threadIdx.x;
+       k < row_offsets[row + 1];
+       k += blockDim.x)
   {
-    mat_vals[entry] = col_inds[entry] == row ? diag : 0.0;
+    mat_vals[k] = col_inds[k] == row ? diag : 0.0;
   }
   if (threadIdx.x == 0 && rhs != nullptr)
   {
@@ -70,19 +70,19 @@ __global__ void eliminateConstraintColumnsKernel(
     return;
   }
 
-  for (Index entry = row_offsets[row] + threadIdx.x;
-       entry < row_offsets[row + 1];
-       entry += blockDim.x)
+  for (Index k = row_offsets[row] + threadIdx.x;
+       k < row_offsets[row + 1];
+       k += blockDim.x)
   {
-    const Index ib = row_to_constraint[col_inds[entry]];
+    const Index ib = row_to_constraint[col_inds[k]];
     if (ib >= 0)
     {
-      const Real val = mat_vals[entry];
+      const Real val = mat_vals[k];
       if (row_to_constraint[row] < 0)
       {
         atomicAdd(rhs + row, -val * vals[ib]);
       }
-      mat_vals[entry] = 0.0;
+      mat_vals[k] = 0.0;
     }
   }
 }

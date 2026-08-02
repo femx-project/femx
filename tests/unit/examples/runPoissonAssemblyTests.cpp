@@ -60,16 +60,16 @@ TestOutcome poissonUsesMappedGraphAndBoundaryRows()
   HostVector<Real> res;
   poisson_res.assembleResidual(state, prm, res, system.context());
   bool has_positive_interior = false;
-  for (Index row = 0; row < state.size(); ++row)
+  for (Index i = 0; i < state.size(); ++i)
   {
-    status *= std::isfinite(state[row]);
-    status *= near(res[row], 0.0);
+    status *= std::isfinite(state[i]);
+    status *= near(res[i], 0.0);
     const bool constrained =
         std::find(view.constrained_rows.begin(),
                   view.constrained_rows.end(),
-                  row)
+                  i)
         != view.constrained_rows.end();
-    if (!constrained && state[row] > 0.0)
+    if (!constrained && state[i] > 0.0)
     {
       has_positive_interior = true;
     }

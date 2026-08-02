@@ -31,18 +31,21 @@ int run(const Options& opts)
         "PETSc Poisson optimization supports only the CPU backend");
   }
 
-  ExampleHelper helper(runtime::SolverType::PETSc,
-                       opts.memspace,
-                       outputDir());
-
+  ExampleHelper     helper(runtime::SolverType::PETSc, opts.memspace, outputDir());
   PoissonOptProblem problem(opts);
 
+  // The forward system solves R(x,m) = 0. The separate adjoint system solves
+  // (dR/dx)^T lambda = dJ/dx for the reduced gradient; both are collective.
   linalg::PETScLinearSystem fwd_system(PETSC_COMM_WORLD);
   linalg::PETScLinearSystem adj_system(PETSC_COMM_WORLD);
 
+  // The residual defines how the finite-element state depends on the boundary
+  // control. The state solver uses its affine R(x,m) to compute x(m).
   HostPoissonOptResidual       res(problem);
   state::HostLinearStateSolver state_solver(res, fwd_system);
 
+  // Minimize j(m) = J(x(m),m). TAO updates only m; optimize() solves for
+  // the state x(m) and the adjoint needed to evaluate the gradient.
   const Result result = optimize(problem, state_solver, adj_system, PETSC_COMM_WORLD);
 
   if (runtime::isRoot())
@@ -51,7 +54,7 @@ int run(const Options& opts)
                 helper.name(),
                 problem,
                 result.report,
-                result.iterations,
+                result.itrs,
                 result.reason);
 
     if (opts.write_output)

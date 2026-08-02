@@ -51,7 +51,7 @@ public:
   /**
    * @copydoc Base::elementRange()
    *
-   * @details Assigns the full range to the Device context.
+   * Assigns the full range to the Device context.
    */
   IndexRange elementRange(Index count) const override;
 

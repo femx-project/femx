@@ -66,22 +66,22 @@ public:
       row_to_constraint[row] = ib;
     }
 
-    for (Index row = 0; row < pattern.rows(); ++row)
+    for (Index i = 0; i < pattern.rows(); ++i)
     {
-      for (Index entry = pattern.rowPtrData()[row];
-           entry < pattern.rowPtrData()[row + 1];
-           ++entry)
+      for (Index k = pattern.rowPtrData()[i];
+           k < pattern.rowPtrData()[i + 1];
+           ++k)
       {
-        const Index col = pattern.colIndData()[entry];
+        const Index col = pattern.colIndData()[k];
         const Index ib  = row_to_constraint[col];
         if (ib >= 0)
         {
           ++col_offsets[ib + 1];
-          if (row == col)
+          if (i == col)
           {
             require(diag_entries[ib] < 0,
                     "System matrix constrained row has duplicate diagonal entries");
-            diag_entries[ib] = entry;
+            diag_entries[ib] = k;
           }
         }
       }
@@ -97,18 +97,18 @@ public:
     col_entries.resize(col_offsets.back());
     col_rows.resize(col_offsets.back());
     HostVector<Index> next = col_offsets;
-    for (Index row = 0; row < pattern.rows(); ++row)
+    for (Index i = 0; i < pattern.rows(); ++i)
     {
-      for (Index entry = pattern.rowPtrData()[row];
-           entry < pattern.rowPtrData()[row + 1];
-           ++entry)
+      for (Index k = pattern.rowPtrData()[i];
+           k < pattern.rowPtrData()[i + 1];
+           ++k)
       {
-        const Index ib = row_to_constraint[pattern.colIndData()[entry]];
+        const Index ib = row_to_constraint[pattern.colIndData()[k]];
         if (ib >= 0)
         {
           const Index dst  = next[ib]++;
-          col_entries[dst] = entry;
-          col_rows[dst]    = row;
+          col_entries[dst] = k;
+          col_rows[dst]    = i;
         }
       }
     }
@@ -146,13 +146,13 @@ void HostSystemMatrix::setup(const HostCsrPattern& pattern)
 void HostSystemMatrix::addElement(const ElementJacobianView& elem)
 {
   checkElement(elem);
-  for (Index i = 0; i < elem.csr_entries.size(); ++i)
+  for (Index k = 0; k < elem.csr_entries.size(); ++k)
   {
-    const Index entry = elem.csr_entries[i];
+    const Index entry = elem.csr_entries[k];
     require(entry >= 0 && entry < mat_.nnz(),
             "Element Jacobian CSR entry is out of range");
 #pragma omp atomic update
-    mat_.valsData()[entry] += elem.values.data()[i];
+    mat_.valsData()[entry] += elem.values.data()[k];
   }
 }
 
@@ -163,11 +163,11 @@ void HostSystemMatrix::replaceRows(HostVectorView<const Index> rows,
   for (Index ib = 0; ib < rows.size(); ++ib)
   {
     const Index row = rows[ib];
-    for (Index entry = mat_.rowPtrData()[row];
-         entry < mat_.rowPtrData()[row + 1];
-         ++entry)
+    for (Index k = mat_.rowPtrData()[row];
+         k < mat_.rowPtrData()[row + 1];
+         ++k)
     {
-      mat_.valsData()[entry] = 0.0;
+      mat_.valsData()[k] = 0.0;
     }
     mat_.valsData()[cache.diag_entries[ib]] = diag;
   }

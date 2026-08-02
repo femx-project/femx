@@ -61,10 +61,10 @@ __global__ void histVjpKernel(
     hist_dir[i]          = 0.0;
   }
   hist_dir[lag * ndof + col] = 1.0;
-  for (Index col = 0; col < ndof; ++col)
+  for (Index j = 0; j < ndof; ++j)
   {
-    nxt_e[col]   = nxt[map.stateDof(ie, col)];
-    nxt_dir[col] = 0.0;
+    nxt_e[j]   = nxt[map.stateDof(ie, j)];
+    nxt_dir[j] = 0.0;
   }
   const auto data = kernel.data();
   const Real val  = __enzyme_fwddiff<Real>(

@@ -14,6 +14,9 @@ namespace femx::state
 
 /**
  * @brief Define a stationary state solver in one memory space.
+ *
+ * Finds a state `x` that satisfies the discrete state equation
+ * `R(x, p) = 0` at parameters `p`.
  */
 template <MemorySpace Space>
 class StateSolver
@@ -35,14 +38,18 @@ public:
   /**
    * @brief Solve for a state at the supplied parameter point.
    *
-   * The default empty parameter vector is valid only when `numParams()` is
-   * zero.
+   * The default empty parameter vector is valid only when `numParams()` is zero.
    */
   virtual void solve(Vec& state, const Vec& prm = Vec{}) = 0;
 };
 
 /**
- * @brief State solver for affine-linear stationary residuals.
+ * @brief Solve a stationary state equation of the form `A(p) x = b(p)`.
+ *
+ * Written as a residual, this system is `R(x, p) = A(p) x - b(p) = 0`.
+ * This solver assembles `R(0, p) = -b(p)` and `J = dR/dx = A(p)`, then
+ * asks the supplied linear system to solve `J x = -R(0, p)`, which
+ * corresponds to the original linear system `A(p) x = b(p)`.
  */
 template <MemorySpace Space>
 class LinearStateSolver final : public StateSolver<Space>
@@ -100,17 +107,24 @@ public:
     auto& jac = system_.matrix();
     jac.setup(res_.hostPattern());
 
+    // Assemble res_vec_ = R(0, prm) = -b(prm).
     res_.assembleResidual(zero_, prm, res_vec_, ctx_);
-    require(res_vec_.size() == numRes(), "LinearStateSolver residual size mismatch");
+    require(res_vec_.size() == numRes(),
+            "LinearStateSolver residual size mismatch");
 
+    // Set rhs_ = -res_vec_ = b(prm).
     vec_handler.axpby(-1.0, res_vec_.view(), 0.0, rhs_.view());
+
+    // Assemble jac = dR/dx = A(prm)
     res_.assembleJacobian(zero_, prm, jac, ctx_);
-
     jac.finalize();
-    system_.solve(rhs_.view(), state);
 
+    // Solve jac * state = rhs_, which corresponds to A(prm) x = b(prm).
+    system_.solve(rhs_.view(), state);
     ctx_.sync();
-    require(state.size() == numStates(), "LinearStateSolver solution size mismatch");
+
+    require(state.size() == numStates(),
+            "LinearStateSolver solution size mismatch");
   }
 
 private:

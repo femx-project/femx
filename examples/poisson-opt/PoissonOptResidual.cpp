@@ -12,6 +12,8 @@ namespace
 
 Real controlDerivative(Real state, Real ctr)
 {
+  // Differentiate x_i - m_i with respect to m_i. The Enzyme path demonstrates
+  // automatic differentiation; the analytic derivative is exactly -1.
 #if defined(FEMX_HAS_ENZYME)
   return __enzyme_fwddiff<Real>(
       reinterpret_cast<void*>(detail::controlResidual),
@@ -55,9 +57,10 @@ void HostPoissonOptResidual::assembleResidual(
 {
   checkVectors(state, prm);
 
+  // Assemble K x in the interior, then make the controlled boundary rows
+  // x_i - m_i and the remaining boundary rows x_i.
   assembly::assembleResidual(
-      poisson::HostPoissonElementKernel(
-          problem_.elementData().view()),
+      poisson::HostPoissonElementKernel(problem_.elementData().view()),
       problem_.mesh(),
       problem_.assemblyMap(),
       state,
@@ -78,6 +81,9 @@ void HostPoissonOptResidual::assembleJacobian(
     linalg::Context<MemorySpace::Host>&      ctx) const
 {
   checkVectors(state, prm);
+
+  // dR/dx is K in the interior and identity on every Dirichlet row. It is
+  // independent of m for this affine boundary-control problem.
   assembly::assembleJacobian(
       poisson::HostPoissonElementKernel(
           problem_.elementData().view()),
@@ -101,11 +107,14 @@ void HostPoissonOptResidual::applyParamJacT(
           "Poisson optimization adjoint size mismatch");
 
   out.resize(problem_.numParameters());
+
+  // Form (dR/dm)^T adj. Since each m_i controls one residual row, this is
+  // simply -adj at the corresponding controlled state degree of freedom.
   for (Index ip = 0; ip < problem_.numParameters(); ++ip)
   {
     const Index state_dof = problem_.controlDofs()[ip];
-    out[ip] =
-        controlDerivative(state[state_dof], prm[ip]) * adj[state_dof];
+
+    out[ip] = controlDerivative(state[state_dof], prm[ip]) * adj[state_dof];
   }
 }
 
@@ -122,6 +131,8 @@ void HostPoissonOptResidual::checkVectors(
 HostVector<Real> HostPoissonOptResidual::boundaryValues(
     const HostVector<Real>& prm) const
 {
+  // Boundary-map order is [controlled rows, fixed rows]. Copy m into the
+  // controlled values and leave all fixed values at zero.
   HostVector<Real> vals(problem_.boundaryMap().numBcs(), 0.0);
   for (Index ip = 0; ip < problem_.numParameters(); ++ip)
   {

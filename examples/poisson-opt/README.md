@@ -29,6 +29,9 @@ w_i\left(u_i(m)-d_i\right)^2
 \frac{\alpha}{2}\int_{\Gamma_{\mathrm{top}}}m^2\,d\Gamma.
 ```
 
+TAO updates only `m`. For each control, `optimize()` solves the state equation
+for `u(m)` and solves the adjoint equation needed to evaluate the gradient.
+
 The initial control is zero. `--obs-stride 0` selects an observation spacing
 equal to one eighth of the smaller mesh dimension.
 

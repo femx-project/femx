@@ -15,7 +15,10 @@ namespace examples::poisson
 {
 
 /**
- * @brief Assemble the Poisson residual with Host data.
+ * @brief Assemble the Poisson residual using Host data.
+ *
+ * The state `x` represents nodal solution values. The residual is
+ * `R(x) = A x`, with each Dirichlet row replaced by `R_i(x) = x_i - g_i`.
  */
 class HostPoissonResidual final : public state::HostResidual
 {
@@ -86,6 +89,9 @@ private:
 
 /**
  * @brief Own Device data and assemble the Poisson residual with CUDA.
+ *
+ * Uses the same discrete residual as `HostPoissonResidual`, with
+ * element assembly and Dirichlet-row replacement performed on Device.
  */
 class CudaPoissonResidual final : public state::DeviceResidual
 {

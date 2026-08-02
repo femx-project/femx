@@ -11,7 +11,7 @@
 
 std::unique_ptr<femx::linalg::LinearSystem<femx::MemorySpace::Host>>
 makePythonHostLinearSystem(femx::runtime::SolverType solver,
-                           const pybind11::object&   options);
+                           const pybind11::object&   opts);
 
 class PythonHostTimeIntegrator final
 {
@@ -19,8 +19,8 @@ public:
   PythonHostTimeIntegrator(
       const femx::state::HostTimeResidual& res,
       femx::runtime::SolverType            solver,
-      const pybind11::object&              options)
-    : system_(makePythonHostLinearSystem(solver, options)),
+      const pybind11::object&              opts)
+    : system_(makePythonHostLinearSystem(solver, opts)),
       integ_(res, *system_)
   {
   }

@@ -48,9 +48,9 @@ HostCsrPattern gridGraph(Index nx, Index ny)
       if (y + 1 < ny)
         row_cols.push_back(gridNode(x, y + 1, nx));
       std::sort(row_cols.begin(), row_cols.end());
-      for (Index col : row_cols)
+      for (Index j : row_cols)
       {
-        cols.push_back(col);
+        cols.push_back(j);
       }
       row_ptr[row + 1] = cols.size();
     }
@@ -63,20 +63,20 @@ HostCsrPattern gridGraph(Index nx, Index ny)
 
 void fillGridMat(HostCsrMatrix& mat, Real diag_shift = 0.0)
 {
-  for (Index row = 0; row < mat.rows(); ++row)
+  for (Index i = 0; i < mat.rows(); ++i)
   {
-    for (Index k = mat.rowPtrData()[row];
-         k < mat.rowPtrData()[row + 1];
+    for (Index k = mat.rowPtrData()[i];
+         k < mat.rowPtrData()[i + 1];
          ++k)
     {
       const Index col = mat.colIndData()[k];
-      if (row == col)
+      if (i == col)
       {
         mat.valsData()[k] = 4.0 + diag_shift;
       }
       else
       {
-        mat.valsData()[k] = col > row ? -1.1 : -0.9;
+        mat.valsData()[k] = col > i ? -1.1 : -0.9;
       }
     }
   }
@@ -99,14 +99,14 @@ HostVector<Real> expectedGridSolution(Index nx, Index ny)
 HostVector<Real> mul(const HostCsrMatrix& mat, const HostVector<Real>& x)
 {
   HostVector<Real> out(mat.rows());
-  for (Index row = 0; row < mat.rows(); ++row)
+  for (Index i = 0; i < mat.rows(); ++i)
   {
-    for (Index k = mat.rowPtrData()[row];
-         k < mat.rowPtrData()[row + 1];
+    for (Index k = mat.rowPtrData()[i];
+         k < mat.rowPtrData()[i + 1];
          ++k)
     {
-      out[row] += mat.valsData()[k]
-                  * x[mat.colIndData()[k]];
+      out[i] += mat.valsData()[k]
+                * x[mat.colIndData()[k]];
     }
   }
   return out;
