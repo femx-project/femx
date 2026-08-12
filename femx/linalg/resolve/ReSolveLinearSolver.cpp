@@ -26,6 +26,7 @@
 #endif
 
 #if defined(FEMX_RESOLVE_USE_CUDA)
+#include <resolve/LinSolverDirect.hpp>
 #include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
 #endif
 
@@ -593,6 +594,9 @@ private:
         opts_.precond,
         opts_.ir);
 
+    check(state.solver->getPreconditionerSolver().setCliParam(
+              "numeric_boost", "no"),
+          "ReSolve Device ILU0 numeric boost setup failed");
     applyIterativeOpts(*state.solver, "ReSolve Device");
     check(state.solver->setMatrix(state.mat.get()),
           "ReSolve Device SystemSolver::setMatrix failed");
