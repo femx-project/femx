@@ -20,7 +20,9 @@ Note: The C++ and Python APIs are pre-1.0 and may change between minor releases.
 Optional dependencies:
 
 - HDF5, for HDF5/XDMF output
-- Re::Solve built from the `develop` branch, for Host/Device linear solves
+- Re::Solve for Host/Device linear solves, tested with commit
+  [`4d13cf1871d09aefca12a8cbf63713ff049f0c2e`](https://github.com/ORNL/ReSolve/commit/4d13cf1871d09aefca12a8cbf63713ff049f0c2e)
+  (this commit or a compatible descendant is required)
 - PETSc 3.19 or later (tested with PETSc 3.19.6); a ParMETIS-enabled build is
   recommended for MPI graph partitioning
 - MPI, used with PETSc for linear solvers and TAO optimization
