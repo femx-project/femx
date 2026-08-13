@@ -32,8 +32,9 @@ if(@FEMX_HAS_RESOLVE@)
     if(NOT EXISTS "${ReSolve_DIR}/ReSolveTargets.cmake")
       set(femx_FOUND FALSE)
       set(femx_NOT_FOUND_MESSAGE
-          "femx requires a ReSolve develop package. Set ReSolve_DIR or "
-          "add its installation prefix to CMAKE_PREFIX_PATH.")
+          "femx requires a ReSolve package containing commit "
+          "@FEMX_RESOLVE_REQUIRED_COMMIT@. Set ReSolve_DIR or add its "
+          "installation prefix to CMAKE_PREFIX_PATH.")
       return()
     endif()
     include("${ReSolve_DIR}/ReSolveTargets.cmake")

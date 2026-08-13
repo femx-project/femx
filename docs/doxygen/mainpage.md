@@ -16,7 +16,8 @@ problems.  The public API is organized around a few core layers:
 - `%femx::runtime` provides runtime, CLI, and parallel-execution utilities.
 - `%femx::model::navier` provides the Navier--Stokes forward model.
 
-For v0.9.0, start with the C++ Poisson examples or the supported Python Navier
-example for end-to-end usage. This release streamlines the public
-finite-element and linear-algebra APIs around `Mesh`, `ElementShape`, and
-memory-space-specific vector and matrix handlers.
+For v0.9.1, start with the C++ Poisson examples or the supported Python Navier
+example for end-to-end usage. This patch release disables ReSolve CUDA ILU0
+numeric boosting by default and retains the v0.9 public finite-element and
+linear-algebra APIs around `Mesh`, `ElementShape`, and memory-space-specific
+vector and matrix handlers.

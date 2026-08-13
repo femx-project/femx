@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.9.1
+
+### Changed
+
+- Disabled ReSolve CUDA ILU0 numeric boosting by default.
+- Updated the ReSolve requirement to commit
+  `4d13cf1871d09aefca12a8cbf63713ff049f0c2e` or a compatible descendant;
+  tested with this commit.
+
+### Fixed
+
+- Fixed installed-package validation with PETSc when multiple MPI or PETSc
+  installations are available.
+
 ## v0.9.0
 
 v0.9.0 streamlines the public finite-element and linear-algebra APIs. Existing

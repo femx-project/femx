@@ -10,7 +10,7 @@ option(FEMX_ENABLE_CUDA "Enable CUDA execution and Device storage" OFF)
 
 project(
   femx
-  VERSION 0.9.0
+  VERSION 0.9.1
   LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
@@ -58,6 +58,8 @@ set(FEMX_RESOLVE_REVISION
     ""
     CACHE STRING
           "Optional revision label for the installed ReSolve development tree")
+set(FEMX_RESOLVE_REQUIRED_COMMIT
+    "4d13cf1871d09aefca12a8cbf63713ff049f0c2e")
 
 if(NOT FEMX_RESOLVE_DEVICE_MODE MATCHES "^(AUTO|HOST|DEVICE)$")
   message(FATAL_ERROR "FEMX_RESOLVE_DEVICE must be AUTO, HOST, or DEVICE.")
@@ -209,9 +211,9 @@ if(FEMX_ENABLE_RESOLVE)
     if(NOT EXISTS "${ReSolve_DIR}/ReSolveTargets.cmake")
       message(
         FATAL_ERROR
-          "FEMX_ENABLE_RESOLVE=ON requires a ReSolve package built from the "
-          "develop branch. Set ReSolve_DIR or add its installation prefix to "
-          "CMAKE_PREFIX_PATH.")
+          "FEMX_ENABLE_RESOLVE=ON requires a ReSolve package containing commit "
+          "${FEMX_RESOLVE_REQUIRED_COMMIT}. Set ReSolve_DIR or add its "
+          "installation prefix to CMAKE_PREFIX_PATH.")
     endif()
     include("${ReSolve_DIR}/ReSolveTargets.cmake")
     set(ReSolve_FOUND TRUE)
@@ -222,9 +224,9 @@ if(FEMX_ENABLE_RESOLVE)
   if(NOT ReSolve_FOUND)
     message(
       FATAL_ERROR
-        "FEMX_ENABLE_RESOLVE=ON requires a ReSolve package built from the "
-        "develop branch. Set ReSolve_DIR or add its installation prefix to "
-        "CMAKE_PREFIX_PATH.")
+        "FEMX_ENABLE_RESOLVE=ON requires a ReSolve package containing commit "
+        "${FEMX_RESOLVE_REQUIRED_COMMIT}. Set ReSolve_DIR or add its "
+        "installation prefix to CMAKE_PREFIX_PATH.")
   endif()
 
   if(FEMX_RESOLVE_REVISION)
@@ -604,6 +606,17 @@ set(FEMX_INSTALL_TEST_BUILD_DIR "${FEMX_INSTALL_TEST_DIR}/consumer-build")
 set(FEMX_INSTALL_TEST_CONFIGURE_ARGS
     -DCMAKE_PREFIX_PATH="${FEMX_INSTALL_TEST_PREFIX}"
     -DCMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER}")
+
+if(FEMX_HAS_PETSC)
+  if(MPI_CXX_COMPILER)
+    list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+         -DMPI_CXX_COMPILER="${MPI_CXX_COMPILER}")
+  endif()
+  if(PKG_CONFIG_EXECUTABLE)
+    list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS
+         -DPKG_CONFIG_EXECUTABLE="${PKG_CONFIG_EXECUTABLE}")
+  endif()
+endif()
 
 if(FEMX_HAS_CUDA)
   list(APPEND FEMX_INSTALL_TEST_CONFIGURE_ARGS

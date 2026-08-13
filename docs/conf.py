@@ -1,6 +1,6 @@
 project = "femx"
 author = "femx developers"
-release = "0.9.0"
+release = "0.9.1"
 
 extensions = [
     "sphinx.ext.mathjax",

@@ -3,9 +3,9 @@ femx
 ****
 
 femx is a research finite-element code for forward and inverse PDE workflows.
-v0.9.0 streamlines the public finite-element and linear-algebra APIs around
-``Mesh``, ``ElementShape``, and memory-space-specific vector and matrix
-handlers.
+v0.9.1 disables ReSolve CUDA ILU0 numeric boosting by default. It retains the
+v0.9 public finite-element and linear-algebra APIs organized around ``Mesh``,
+``ElementShape``, and memory-space-specific vector and matrix handlers.
 
 Documentation
 -------------
