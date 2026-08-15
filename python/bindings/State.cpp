@@ -6,11 +6,14 @@
 #include "Bindings.hpp"
 #include "NumpyConversions.hpp"
 #include "PETScInit.hpp"
+#include <femx/common/Checks.hpp>
 #include <femx/common/Types.hpp>
 #include <femx/common/Vector.hpp>
 #include <femx/fem/ControlMap.hpp>
 #include <femx/linalg/DenseMatrix.hpp>
+#include <femx/linalg/LinearSolver.hpp>
 #include <femx/linalg/SystemMatrix.hpp>
+#include <femx/linalg/host/DenseLinearSolver.hpp>
 #include <femx/linalg/host/HostLinearSystem.hpp>
 #ifdef FEMX_HAS_PETSC
 #include <femx/linalg/petsc/PETScLinearSystem.hpp>
@@ -32,6 +35,7 @@ namespace
 {
 
 using femx::DenseMatrix;
+using femx::HostCsrMatrix;
 using femx::HostVector;
 using femx::HostVectorView;
 using femx::Index;
@@ -59,6 +63,79 @@ using femx::state::TimeStepStateContext;
 using TimeResidual = femx::state::HostTimeResidual;
 using femx::state::TimeTrajectory;
 using femx::state::VariableBlock;
+
+class PythonObservedHostLinearSolver final
+  : public femx::linalg::LinearSolver<MemorySpace::Host>
+{
+public:
+  using NativeSolver = femx::linalg::LinearSolver<MemorySpace::Host>;
+
+  PythonObservedHostLinearSolver(std::unique_ptr<NativeSolver> solver,
+                                 py::object                    observer)
+    : solver_(std::move(solver)), observer_(std::move(observer))
+  {
+    femx::require(solver_ != nullptr,
+                  "Observed Host linear solver requires a native solver");
+  }
+
+  void solve(const Matrix&     mat,
+             const Vector&     rhs,
+             Vector&           x,
+             ExecutionContext& ctx) override
+  {
+    solver_->solve(mat, rhs, x, ctx);
+    notify(mat, rhs, x);
+  }
+
+  void solveT(const Matrix&     mat,
+              const Vector&     rhs,
+              Vector&           x,
+              ExecutionContext& ctx) override
+  {
+    solver_->solveT(mat, rhs, x, ctx);
+  }
+
+private:
+  void notify(const HostCsrMatrix&    mat,
+              const HostVector<Real>& rhs,
+              const HostVector<Real>& solution)
+  {
+    py::gil_scoped_acquire acquire;
+    if (PyErr_CheckSignals() != 0)
+    {
+      throw py::error_already_set();
+    }
+
+    py::dict sample;
+    sample["rows"]    = mat.rows();
+    sample["cols"]    = mat.cols();
+    sample["row_ptr"] = vectorArray(
+        HostVectorView<const Index>(mat.rowPtrData(), mat.rows() + 1));
+    sample["col_ind"] = vectorArray(
+        HostVectorView<const Index>(mat.colIndData(), mat.nnz()));
+    sample["values"] = vectorArray(
+        HostVectorView<const Real>(mat.valsData(), mat.nnz()));
+    sample["rhs"]      = vectorArray(rhs);
+    sample["solution"] = vectorArray(solution);
+    observer_(std::move(sample));
+  }
+
+  std::unique_ptr<NativeSolver> solver_;
+  py::object                    observer_;
+};
+
+std::unique_ptr<femx::linalg::LinearSolver<MemorySpace::Host>>
+observeHostLinearSolver(
+    std::unique_ptr<femx::linalg::LinearSolver<MemorySpace::Host>> solver,
+    const py::object&                                              observer)
+{
+  if (observer.is_none())
+  {
+    return solver;
+  }
+  return std::make_unique<PythonObservedHostLinearSolver>(
+      std::move(solver), observer);
+}
 
 class PythonTimeObserver
 {
@@ -403,8 +480,14 @@ py::array trajectoryLevel(TimeTrajectory& trajectory, Index level)
 
 std::unique_ptr<femx::linalg::LinearSystem<femx::MemorySpace::Host>>
 makePythonHostLinearSystem(SolverType        solver,
-                           const py::object& opts)
+                           const py::object& opts,
+                           const py::object& observer)
 {
+  if (!observer.is_none() && !PyCallable_Check(observer.ptr()))
+  {
+    throw py::type_error("linear_system_observer must be callable");
+  }
+
   if (solver == SolverType::Dense)
   {
     if (!opts.is_none())
@@ -412,7 +495,10 @@ makePythonHostLinearSystem(SolverType        solver,
       throw py::value_error(
           "Dense solver options are not supported");
     }
-    return std::make_unique<femx::linalg::HostLinearSystem>();
+    auto native_solver =
+        std::make_unique<femx::linalg::DenseLinearSolver>();
+    return std::make_unique<femx::linalg::HostLinearSystem>(
+        observeHostLinearSolver(std::move(native_solver), observer));
   }
 
   if (solver == SolverType::ReSolve)
@@ -424,7 +510,7 @@ makePythonHostLinearSystem(SolverType        solver,
     auto native_solver =
         std::make_unique<ReSolveLinearSolver>(solver_opts);
     return std::make_unique<femx::linalg::HostLinearSystem>(
-        std::move(native_solver));
+        observeHostLinearSolver(std::move(native_solver), observer));
 #else
     static_cast<void>(opts);
     throw py::value_error(
@@ -434,6 +520,11 @@ makePythonHostLinearSystem(SolverType        solver,
 
   if (solver == SolverType::PETSc)
   {
+    if (!observer.is_none())
+    {
+      throw py::value_error(
+          "linear_system_observer is unavailable for PETSc");
+    }
     if (!opts.is_none())
     {
       throw py::value_error(
@@ -634,10 +725,12 @@ void bindState(py::module_& module)
   py::class_<PythonHostTimeIntegrator>(module, "TimeIntegrator")
       .def(py::init<const TimeResidual&,
                     SolverType,
+                    const py::object&,
                     const py::object&>(),
            py::arg("problem"),
-           py::arg("solver")  = SolverType::Dense,
-           py::arg("options") = py::none(),
+           py::arg("solver")                 = SolverType::Dense,
+           py::arg("options")                = py::none(),
+           py::arg("linear_system_observer") = py::none(),
            py::keep_alive<1, 2>())
       .def_property_readonly(
           "num_steps",

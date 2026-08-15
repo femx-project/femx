@@ -720,6 +720,7 @@ class NavierProblem:
         memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
+        linear_system_observer=None,
     ):
         """Create a forward solver from memory-space and solver values."""
 
@@ -728,6 +729,7 @@ class NavierProblem:
             memspace,
             solver_type,
             options=options,
+            linear_system_observer=linear_system_observer,
         )
 
     def create_reduced(
@@ -777,11 +779,23 @@ class NavierSolver:
         memspace=_core.MemorySpace.HOST,
         solver_type=_core.SolverType.DENSE,
         options=None,
+        linear_system_observer=None,
     ):
         if not isinstance(problem, NavierProblem):
             raise TypeError("problem must be a NavierProblem")
         space, solver = _selection(memspace, solver_type)
         options = _solver_options(solver, options)
+        if linear_system_observer is not None:
+            if not callable(linear_system_observer):
+                raise TypeError("linear_system_observer must be callable")
+            if space != _core.MemorySpace.HOST:
+                raise ValueError(
+                    "linear_system_observer is available only on Host"
+                )
+            if solver == _core.SolverType.PETSC:
+                raise ValueError(
+                    "linear_system_observer is unavailable for PETSc"
+                )
         problem._ensure_built()
 
         self._problem = problem
@@ -810,6 +824,7 @@ class NavierSolver:
                 problem.residual,
                 solver,
                 options,
+                linear_system_observer,
             )
             if problem._initial_map is None:
                 time.set_initial_state(problem._initial_state)

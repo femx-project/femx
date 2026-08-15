@@ -85,6 +85,43 @@ class TimeIntegratorTest(unittest.TestCase):
         self.assertEqual(integrator.assembly_calls, 3)
         self.assertEqual(integrator.solve_calls, 3)
 
+    def test_observes_completed_host_linear_systems(self):
+        problem = ScalarRecurrence(num_steps=3)
+        systems = []
+        integrator = femx.TimeIntegrator(
+            problem,
+            linear_system_observer=lambda sample: systems.append(dict(sample)),
+        )
+        integrator.set_initial_state(np.array([1.0]))
+
+        trajectory = integrator.solve(np.array([2.0]))
+
+        np.testing.assert_allclose(
+            trajectory.values[:, 0],
+            [1.0, 3.0, 5.0, 7.0],
+        )
+        self.assertEqual(len(systems), 3)
+        for sample in systems:
+            self.assertEqual(sample["rows"], 1)
+            self.assertEqual(sample["cols"], 1)
+            np.testing.assert_array_equal(sample["row_ptr"], [0, 1])
+            np.testing.assert_array_equal(sample["col_ind"], [0])
+            np.testing.assert_allclose(sample["values"], [1.0])
+            np.testing.assert_allclose(
+                sample["values"] * sample["solution"],
+                sample["rhs"],
+            )
+
+    def test_rejects_non_callable_linear_system_observer(self):
+        with self.assertRaisesRegex(
+            TypeError,
+            "linear_system_observer must be callable",
+        ):
+            femx.TimeIntegrator(
+                ScalarRecurrence(num_steps=1),
+                linear_system_observer=object(),
+            )
+
     def test_constructor_keeps_dependencies_alive(self):
         integrator = self.make_integrator()
         gc.collect()
